@@ -14,6 +14,14 @@ export default function App() {
   // Dual role toggle state: 'client' or 'lawyer'
   const [currentRole, setCurrentRole] = useState<'client' | 'lawyer'>('client');
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roleParam = params.get('role');
+    if (roleParam === 'lawyer' || roleParam === 'admin') {
+      setCurrentRole('lawyer');
+    }
+  }, []);
+
   // Core application states
   const [requests, setRequests] = useState<ConsultRequest[]>([]);
   const [messages, setMessages] = useState<ConsultMessage[]>([]);
@@ -108,58 +116,6 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
       
-      {/* Universal Demo controller bar (Sticky / Fixed at top) */}
-      <div className="bg-slate-950 text-white py-2 px-4 border-b border-slate-800 text-xs flex flex-col md:flex-row items-center justify-between gap-3 shadow-lg z-50">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 font-bold text-amber-400">
-            <Scale className="w-4 h-4" />
-            <span>Legal Platform Demo 가상 컨트롤러</span>
-          </span>
-          <span className="text-slate-500 hidden md:inline">|</span>
-          <p className="text-slate-400 text-[11px] hidden lg:inline">
-            본 데모는 <strong>동일 웹브라우저 로컬 데이터(localStorage)를 동기화</strong>하므로 의뢰인 모드에서 등록한 채무 정보와 상담이 변호사 CRM 모드에 실시간 반영됩니다.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Reset button */}
-          <button 
-            onClick={handleResetData}
-            title="초기 템플릿 데이터로 리셋"
-            className="p-1 px-2.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-semibold text-[11px] transition-colors border border-slate-700 flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" />
-            <span>데이터 초기화</span>
-          </button>
-
-          {/* Role selector switches */}
-          <div className="bg-slate-900 rounded-lg p-1 border border-slate-800 flex gap-1">
-            <button 
-              onClick={() => setCurrentRole('client')}
-              className={`p-1 px-3 rounded-md transition-all font-bold text-[11px] flex items-center gap-1 ${
-                currentRole === 'client' 
-                ? 'bg-blue-600 text-white shadow' 
-                : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-300"></span>
-              <span>1. 의뢰인 모드(개인회생 신청)</span>
-            </button>
-            <button 
-              onClick={() => setCurrentRole('lawyer')}
-              className={`p-1 px-3 rounded-md transition-all font-bold text-[11px] flex items-center gap-1 ${
-                currentRole === 'lawyer' 
-                ? 'bg-amber-500 text-slate-950 shadow' 
-                : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-950"></span>
-              <span>2. 변호사/직원 모드(SaaS CRM)</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Role View Render */}
       <div className="flex-1">
         {currentRole === 'client' ? (
