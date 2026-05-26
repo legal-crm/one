@@ -529,39 +529,55 @@ export default function ClientRole({
           <div className="space-y-10 animate-fadeIn text-left">
             
             {/* 1. Search Box (Lawtalk Search Bar Style) */}
-            <div className="text-center py-4 max-w-2xl mx-auto space-y-4">
-              <h2 className="text-xl md:text-3xl font-extrabold text-slate-800 dark:text-white leading-tight">
+            <div className="text-center py-6 max-w-3xl mx-auto space-y-6">
+              <h2 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
                 어떤 채무 고민을 겪고 계신가요?
               </h2>
               <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
-                개인회생·파산 법원 지원 자격 진단 및 도산 법률 대리인 매칭 서비스
+                대한변협 등록 도산 전문 변호사와 즉시 매칭되는 안심 회생·파산 센터
               </p>
               
-              <div className="relative flex items-center bg-white dark:bg-slate-900 border-2 border-blue-500 rounded-2xl shadow-md px-4 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                <Search className="w-5 h-5 text-blue-500 mr-2 shrink-0" />
+              <div className="relative flex items-center bg-white dark:bg-slate-900 border-2 border-blue-600 dark:border-blue-500 rounded-2xl shadow-lg px-4 py-2 focus-within:ring-4 focus-within:ring-blue-500/25 transition-all">
+                <Search className="w-5.5 h-5.5 text-blue-600 mr-2.5 shrink-0" />
                 <input
                   type="text"
-                  placeholder="예: 신용카드 연체, 최근 대출 30%, 코인 실패"
+                  placeholder="의뢰 분야, 키워드 또는 변호사 이름을 검색하세요 (예: 코인, 압류, 김우진)"
                   value={homeSearchQuery}
                   onChange={(e) => setHomeSearchQuery(e.target.value)}
-                  className="w-full bg-transparent border-none outline-none text-sm py-2 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+                  className="w-full bg-transparent border-none outline-none text-sm md:text-base py-2.5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium"
                 />
                 {homeSearchQuery && (
                   <button
                     onClick={() => setHomeSearchQuery('')}
-                    className="text-xs text-slate-400 hover:text-slate-600 px-2 font-semibold"
+                    className="text-xs text-slate-400 hover:text-slate-600 px-2 font-bold transition-colors"
                   >
-                    지우기
+                    초기화
                   </button>
                 )}
               </div>
               
+              {/* Lawtalk Style Metric Bar */}
+              <div className="grid grid-cols-3 gap-2 py-3.5 px-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm text-center">
+                <div className="space-y-0.5 border-r border-slate-100 dark:border-slate-800/60">
+                  <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-semibold block">누적 상담 신청</span>
+                  <span className="text-sm sm:text-lg font-extrabold text-blue-600 dark:text-blue-400">8,421건</span>
+                </div>
+                <div className="space-y-0.5 border-r border-slate-100 dark:border-slate-800/60">
+                  <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-semibold block">의뢰인 만족도</span>
+                  <span className="text-sm sm:text-lg font-extrabold text-slate-850 dark:text-slate-100">98.7%</span>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-semibold block">평균 답변 시간</span>
+                  <span className="text-sm sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400">10분 내</span>
+                </div>
+              </div>
+              
               <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] sm:text-xs text-slate-500">
-                <span className="font-semibold text-slate-700 dark:text-slate-400">자주 찾는 키워드:</span>
-                <button onClick={() => handleCategoryClick('investment')} className="bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 transition-colors font-medium">#코인실패</button>
-                <button onClick={() => handleCategoryClick('seizure')} className="bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 transition-colors font-medium">#급여압류</button>
-                <button onClick={() => handleCategoryClick('high_interest')} className="bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 transition-colors font-medium">#대부업독촉</button>
-                <button onClick={() => handleCategoryClick('bankruptcy')} className="bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 transition-colors font-medium">#고령파산</button>
+                <span className="font-semibold text-slate-700 dark:text-slate-400">인기 키워드:</span>
+                <button onClick={() => handleCategoryClick('investment')} className="bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400 px-3 py-1 rounded-full border border-orange-200/50 dark:border-orange-900/30 transition-colors font-semibold">#코인실패</button>
+                <button onClick={() => handleCategoryClick('seizure')} className="bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 px-3 py-1 rounded-full border border-rose-200/50 dark:border-rose-900/30 transition-colors font-semibold">#급여압류</button>
+                <button onClick={() => handleCategoryClick('high_interest')} className="bg-amber-50 hover:bg-amber-100 text-amber-750 dark:bg-amber-950/20 dark:text-amber-400 px-3 py-1 rounded-full border border-amber-200/50 dark:border-amber-900/30 transition-colors font-semibold">#대부업채무</button>
+                <button onClick={() => handleCategoryClick('bankruptcy')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-200/50 dark:border-indigo-900/30 transition-colors font-semibold">#고령파산</button>
               </div>
             </div>
 
@@ -793,6 +809,107 @@ export default function ClientRole({
 
 
 
+            {/* 4. Active Lawyers Grid Section (Lawtalk Style) */}
+            <div className="space-y-4 pt-4 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
+                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  <span>이 시간 활동 중인 도산 전문 변호사</span>
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                </h3>
+                <span className="text-xs text-slate-400">원하시는 변호사를 지정하거나 맞춤형 상담 예약을 진행할 수 있습니다</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {lawyers
+                  .filter(l => l.role === 'LAWYER')
+                  .map(l => {
+                    const rating = l.id === 'lawyer-1' ? '4.9' : l.id === 'lawyer-2' ? '4.8' : '4.9';
+                    const reviewsCount = l.id === 'lawyer-1' ? '184' : l.id === 'lawyer-2' ? '129' : '94';
+                    
+                    return (
+                      <div key={l.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between overflow-hidden">
+                        <div className="p-5 space-y-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="relative shrink-0">
+                              <img 
+                                src={l.avatar} 
+                                alt={l.name}
+                                className="w-12 h-12 rounded-full object-cover border border-slate-100 dark:border-slate-800"
+                              />
+                              <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 animate-pulse"></span>
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <h4 className="font-extrabold text-sm text-slate-850 dark:text-white">{l.name}</h4>
+                                <span className="text-[9px] bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 font-extrabold px-1.5 py-0.2 rounded-md">도산 전문</span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-medium block">법무법인 한빛 · 서울/인천/수원 대응</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-50 dark:bg-slate-950/50 p-2 rounded-xl">
+                            <span className="text-amber-500 font-bold">★ {rating}</span>
+                            <span className="text-slate-300">|</span>
+                            <span>후기 {reviewsCount}건</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-blue-500">매칭 {l.matchedCount}건</span>
+                          </div>
+
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
+                            "{l.bio}"
+                          </p>
+
+                          <div className="flex flex-wrap gap-1">
+                            {l.fields.map(f => (
+                              <span key={f} className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md font-semibold">
+                                #{f}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/80 p-3 grid grid-cols-2 gap-2 text-center text-[10px] font-bold">
+                          <button
+                            onClick={() => {
+                              setRequestType('direct');
+                              setSelectedLawyerId(l.id);
+                              setIncome(230);
+                              setDebtTotal(6500);
+                              setTitle(`[15분 전화상담 예약] ${l.name}`);
+                              setContent(`[전화상담 신청] ${l.name} 변호사님과의 15분 긴급 전화 매칭 상담을 요청합니다. 신용카드 연체 독촉 중단 및 최저생계비 보정을 위한 법률 소명 가이드를 구합니다.`);
+                              setRequestStep(3);
+                              setActiveTab('request');
+                            }}
+                            className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 py-2 rounded-xl transition-all"
+                          >
+                            📞 전화상담 (2만원)
+                          </button>
+                          <button
+                            onClick={() => {
+                              setRequestType('direct');
+                              setSelectedLawyerId(l.id);
+                              setIncome(230);
+                              setDebtTotal(6500);
+                              setTitle(`[1:1 대면/지정상담] ${l.name} 변호`);
+                              setContent(`[1:1 서류검토 상담] ${l.name} 변호사님과의 정밀 서류 검토 및 1:1 회생 성공 가용자금 계획안 수립을 신청합니다.`);
+                              setRequestStep(2);
+                              setActiveTab('request');
+                            }}
+                            className="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl transition-all shadow-sm"
+                          >
+                            ✍️ 1:1 상담 예약
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
             {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
             <div className="space-y-4 pt-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
@@ -823,13 +940,17 @@ export default function ClientRole({
                           className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4"
                         >
                           <div className="space-y-2 text-left">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2.5">
                               <span className="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-450 text-[9px] font-extrabold px-2.5 py-0.5 rounded-md">
                                 {qa.category}
                               </span>
                               <span className="text-[10px] text-slate-400 font-semibold">
                                 {qa.author}
                               </span>
+                              <div className="flex items-center gap-1.5 ml-auto">
+                                <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-800 bg-slate-105 shrink-0" />
+                                <span className="text-[10px] font-bold text-slate-650 dark:text-slate-400">{qa.lawyerName} 답변</span>
+                              </div>
                             </div>
                             <h4 className="font-extrabold text-sm sm:text-base text-slate-850 dark:text-slate-200 pr-4 leading-snug">
                               Q. {qa.question}
