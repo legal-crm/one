@@ -1,0 +1,6 @@
+{
+  "name": "Legal CRM - 회생파산 상담 플랫폼",
+  "description": "개인회생·파산 상담 요청 기반 Legal CRM SaaS 플랫폼. 채무 정보 입력, 직접 선택 및 참여형 분산 상담, 사건 관리 및 변호사 협업 CRM을 제공합니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
