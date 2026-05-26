@@ -42,10 +42,8 @@ export default function ClientRole({
   const [userAlias, setUserAlias] = useState<string>('');
   const [alertMode, setAlertMode] = useState<'NORMAL' | 'STEALTH' | 'SECRET'>('STEALTH');
   const [senderNameOverride, setSenderNameOverride] = useState<string>('원케어');
-  const [panicButtonEnabled, setPanicButtonEnabled] = useState<boolean>(true);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
-  const [isPanicState, setIsPanicState] = useState<boolean>(false);
 
   // OTP and Verification Simulation States
   const [authPhone, setAuthPhone] = useState<string>('');
@@ -129,36 +127,7 @@ export default function ClientRole({
     return () => clearInterval(timer);
   }, []);
 
-  // Panic Mode keyboard shortcut (F2 or double-press Escape)
-  useEffect(() => {
-    let escapePressCount = 0;
-    let escapeTimer: number;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isLoggedIn || !panicButtonEnabled) return;
-
-      if (e.key === 'F2') {
-        e.preventDefault();
-        setIsPanicState(true);
-      } else if (e.key === 'Escape') {
-        escapePressCount++;
-        if (escapePressCount === 2) {
-          setIsPanicState(true);
-          escapePressCount = 0;
-        }
-        window.clearTimeout(escapeTimer);
-        escapeTimer = window.setTimeout(() => {
-          escapePressCount = 0;
-        }, 400);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.clearTimeout(escapeTimer);
-    };
-  }, [isLoggedIn, panicButtonEnabled]);
 
   // Customized Q&As for Rehabilitation/Bankruptcy (로톡 상담사례 스타일)
   const mockQAs = [
@@ -451,141 +420,7 @@ export default function ClientRole({
   // Formatted calculation
   const totalCalculatedDebt = debtBanks + debtCards + debtPersonals + recentLoans + coinCrypto;
 
-  if (isPanicState) {
-    return (
-      <div className="flex flex-col min-h-screen bg-sky-50/50 dark:bg-slate-950 text-slate-800 dark:text-slate-200">
-        <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800">
-          <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-            <div 
-              className="flex items-center gap-2 cursor-pointer select-none"
-              onDoubleClick={() => {
-                setIsPanicState(false);
-              }}
-              title="더블클릭하여 원래 화면으로 복구"
-            >
-              <Activity className="w-5 h-5 text-sky-500 animate-pulse" />
-              <span className="font-extrabold text-base tracking-tight text-slate-800 dark:text-white">실시간 전국 날씨 예보</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5 rounded font-bold">
-                실시간 기상청 위성 연동
-              </span>
-            </div>
-          </div>
-        </header>
 
-        <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-6 text-left">
-          {/* Main Weather Card */}
-          <div className="bg-gradient-to-br from-sky-400 via-sky-500 to-indigo-600 text-white rounded-3xl p-6 md:p-8 shadow-lg relative overflow-hidden">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-yellow-300/30 rounded-full blur-2xl"></div>
-            
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="space-y-2">
-                <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider">현재 위치</span>
-                <h2 className="text-2xl md:text-3xl font-extrabold flex items-center gap-1.5">
-                  서울특별시 서초구 서초동
-                </h2>
-                <p className="text-xs text-sky-100">최근 업데이트: 오늘 14:02 (실시간 예보)</p>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-5xl md:text-6xl font-black tracking-tighter">21.5°C</div>
-                  <div className="text-sm font-bold text-sky-100">구름 조금, 맑음 (체감 22.0°C)</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/10 text-xs">
-              <div className="bg-white/10 p-3 rounded-2xl">
-                <span className="text-sky-200 block mb-0.5">미세먼지</span>
-                <strong className="text-sm font-bold">15 ㎍/㎥ (좋음)</strong>
-              </div>
-              <div className="bg-white/10 p-3 rounded-2xl">
-                <span className="text-sky-200 block mb-0.5">초미세먼지</span>
-                <strong className="text-sm font-bold">8 ㎍/㎥ (좋음)</strong>
-              </div>
-              <div className="bg-white/10 p-3 rounded-2xl">
-                <span className="text-sky-200 block mb-0.5">강수확률</span>
-                <strong className="text-sm font-bold">10%</strong>
-              </div>
-              <div className="bg-white/10 p-3 rounded-2xl">
-                <span className="text-sky-200 block mb-0.5">습도/바람</span>
-                <strong className="text-sm font-bold">45% / 북서풍 2.1 m/s</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Forecast layout */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* Hourly Forecast */}
-            <div className="md:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-              <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">시간별 기온 추이</h3>
-              <div className="flex justify-between gap-2 overflow-x-auto pb-2">
-                {[
-                  { time: '14:00', temp: '21.5°', state: '맑음', active: true },
-                  { time: '16:00', temp: '22.0°', state: '맑음' },
-                  { time: '18:00', temp: '19.5°', state: '구름조금' },
-                  { time: '20:00', temp: '17.2°', state: '흐림' },
-                  { time: '22:00', temp: '15.0°', state: '비' },
-                  { time: '24:00', temp: '13.8°', state: '비' }
-                ].map((h, idx) => (
-                  <div key={idx} className={`flex flex-col items-center p-3 rounded-2xl min-w-[70px] ${h.active ? 'bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-850 text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-500'}`}>
-                    <span className="text-[10px]">{h.time}</span>
-                    <span className="text-sm font-extrabold my-2">{h.temp}</span>
-                    <span className="text-[10px]">{h.state}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Weekly Forecast */}
-            <div className="md:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-              <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">주간 일기 예보</h3>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {[
-                  { day: '내일 (수)', temp: '14° / 23°', state: '맑음' },
-                  { day: '목요일', temp: '12° / 20°', state: '비' },
-                  { day: '금요일', temp: '11° / 21°', state: '맑음' },
-                  { day: '토요일', temp: '13° / 24°', state: '구름조금' },
-                  { day: '일요일', temp: '14° / 22°', state: '흐림' }
-                ].map((w, idx) => (
-                  <div key={idx} className="flex justify-between items-center py-2.5">
-                    <span className="font-semibold text-slate-700 dark:text-slate-400">{w.day}</span>
-                    <span className="text-slate-400">{w.state}</span>
-                    <span className="font-bold">{w.temp}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Weather News / Information */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-            <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">기상 속보 & 알림</h3>
-            <div className="space-y-3 text-xs">
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-amber-800 dark:text-amber-300">
-                <strong>[특보] 건조주의보 발령:</strong> 일부 경기 내륙 및 강원 산지 대기가 매우 건조하오니 산불 예방 등 화재에 각별히 유의하시기 바랍니다.
-              </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-slate-600 dark:text-slate-400 leading-relaxed">
-                • <strong>주간 전망:</strong> 목요일 서해상에서 발달하는 비구름대의 영향으로 전국적으로 비가 내리겠으며, 비가 그친 후에는 북서쪽의 찬 공기가 유입되어 기온이 큰 폭으로 떨어질 예정입니다.
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <footer className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 text-center py-6 text-[10px] text-slate-400 relative">
-          <p>© 2026 기상청 국가기상포털 시스템 정보 연동 서비스. All rights reserved.</p>
-          <button 
-            onClick={() => setIsPanicState(false)}
-            className="absolute right-4 bottom-4 text-slate-300 hover:text-slate-500 dark:text-slate-800 dark:hover:text-slate-600 text-[9px] font-semibold transition-colors"
-          >
-            복구
-          </button>
-        </footer>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -2098,22 +1933,6 @@ export default function ClientRole({
                   </div>
                 </div>
               </div>
-
-              {/* Panic Button Toggle */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">긴급 화면 대피 버튼 활성화</label>
-                  <p className="text-[10px] text-slate-400 leading-normal">
-                    화면 하단에 긴급 대피 플로팅 버튼을 노출합니다. (단축키 F2/Esc 2회는 항시 작동)
-                  </p>
-                </div>
-                <input 
-                  type="checkbox"
-                  checked={panicButtonEnabled}
-                  onChange={(e) => setPanicButtonEnabled(e.target.checked)}
-                  className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 w-5 h-5 cursor-pointer shrink-0"
-                />
-              </div>
             </div>
 
             <div className="pt-2">
@@ -2126,18 +1945,6 @@ export default function ClientRole({
             </div>
           </div>
         </div>
-      )}
-
-      {/* Floating Panic Button */}
-      {isLoggedIn && panicButtonEnabled && (
-        <button
-          onClick={() => setIsPanicState(true)}
-          className="fixed bottom-6 right-6 z-40 bg-red-600 hover:bg-red-500 text-white font-bold p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2 group cursor-pointer"
-          title="긴급 화면 대피 (F2 또는 Esc 두 번)"
-        >
-          <ShieldCheck className="w-5 h-5 text-white animate-pulse" />
-          <span className="text-xs pr-1">긴급 대피 (F2)</span>
-        </button>
       )}
 
     </div>
