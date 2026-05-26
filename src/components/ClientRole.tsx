@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   PlusCircle, Users, Scale, FileText, ChevronRight, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
-  Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake
+  Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
+  Settings, LogOut, Lock, X
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage } from '../types';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
@@ -35,6 +36,38 @@ export default function ClientRole({
   const [bannerIndex, setBannerIndex] = useState<number>(0);
   const [openedQaId, setOpenedQaId] = useState<string | null>(null);
   const [homeSearchQuery, setHomeSearchQuery] = useState<string>('');
+
+  // User Auth & Privacy States
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [userAlias, setUserAlias] = useState<string>('');
+  const [alertMode, setAlertMode] = useState<'NORMAL' | 'STEALTH' | 'SECRET'>('STEALTH');
+  const [senderNameOverride, setSenderNameOverride] = useState<string>('원케어');
+  const [panicButtonEnabled, setPanicButtonEnabled] = useState<boolean>(true);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [isPanicState, setIsPanicState] = useState<boolean>(false);
+
+  // OTP and Verification Simulation States
+  const [authPhone, setAuthPhone] = useState<string>('');
+  const [authOtp, setAuthOtp] = useState<string>('');
+  const [otpSent, setOtpSent] = useState<boolean>(false);
+  const [otpCountdown, setOtpCountdown] = useState<number>(180);
+  const [otpError, setOtpError] = useState<string>('');
+  const [otpSuccess, setOtpSuccess] = useState<boolean>(false);
+  const [authConsent, setAuthConsent] = useState<boolean>(false);
+
+  useEffect(() => {
+    let timer: number;
+    if (otpSent && otpCountdown > 0 && !otpSuccess) {
+      timer = window.setInterval(() => {
+        setOtpCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (otpCountdown === 0) {
+      setOtpSent(false);
+      setOtpError('인증 시간이 만료되었습니다. 다시 시도해 주세요.');
+    }
+    return () => window.clearInterval(timer);
+  }, [otpSent, otpCountdown, otpSuccess]);
   
   // New Request Form State
   const [requestStep, setRequestStep] = useState<number>(1);
@@ -95,6 +128,37 @@ export default function ClientRole({
     }, 4500);
     return () => clearInterval(timer);
   }, []);
+
+  // Panic Mode keyboard shortcut (F2 or double-press Escape)
+  useEffect(() => {
+    let escapePressCount = 0;
+    let escapeTimer: number;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isLoggedIn || !panicButtonEnabled) return;
+
+      if (e.key === 'F2') {
+        e.preventDefault();
+        setIsPanicState(true);
+      } else if (e.key === 'Escape') {
+        escapePressCount++;
+        if (escapePressCount === 2) {
+          setIsPanicState(true);
+          escapePressCount = 0;
+        }
+        window.clearTimeout(escapeTimer);
+        escapeTimer = window.setTimeout(() => {
+          escapePressCount = 0;
+        }, 400);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.clearTimeout(escapeTimer);
+    };
+  }, [isLoggedIn, panicButtonEnabled]);
 
   // Customized Q&As for Rehabilitation/Bankruptcy (로톡 상담사례 스타일)
   const mockQAs = [
@@ -255,7 +319,7 @@ export default function ClientRole({
     const newRequest: ConsultRequest = {
       id: `req-${Date.now()}`,
       clientId: 'client-temp',
-      clientName: '홍준표 (의뢰인)',
+      clientName: isLoggedIn ? `${userAlias} (의뢰인)` : '익명 의뢰인',
       phone: '010-4567-8901',
       requestType,
       maxParticipants: requestType === 'open' ? 3 : 1,
@@ -310,7 +374,7 @@ export default function ClientRole({
 
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
-    onAddMessage(activeChatReqId, chatInput.trim(), 'client', 'client-temp', '의뢰인(본인)');
+    onAddMessage(activeChatReqId, chatInput.trim(), 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)');
     setChatInput('');
 
     // Simulate lawyer responding back
@@ -325,12 +389,203 @@ export default function ClientRole({
     }, 2500);
   };
 
+  // Simulated Auth and Security Handlers
+  const handleSocialLogin = (platform: string) => {
+    if (!authConsent) {
+      alert('필수 개인정보 및 마이데이터 수집 이용 동의를 체크해 주세요.');
+      return;
+    }
+    setTimeout(() => {
+      setIsLoggedIn(true);
+      const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+      setUserAlias(generatedAlias);
+      setShowAuthModal(false);
+      setAuthPhone('');
+      setAuthOtp('');
+      setOtpSent(false);
+      setOtpError('');
+      alert(`[안내] ${platform} 계정 연동 및 간편 회원가입이 완료되었습니다!\n개인 정보 보호를 위해 의뢰인 식별명은 가명 '${generatedAlias}'으로 자동 생성되었습니다.`);
+    }, 400);
+  };
+
+  const handleSendOtp = () => {
+    if (!authPhone.trim()) {
+      setOtpError('휴대폰 번호를 입력해 주세요.');
+      return;
+    }
+    if (!authConsent) {
+      setOtpError('필수 개인정보 수집 이용 동의를 체크해 주세요.');
+      return;
+    }
+    setOtpError('');
+    setOtpSent(true);
+    setOtpCountdown(180);
+    alert('[가상 인증 번호 발송]\n본인인증을 위한 6자리 코드 [777777]이 화면에 임시 발송되었습니다. 입력란에 기입해 주세요.');
+  };
+
+  const handleVerifyOtp = () => {
+    if (authOtp === '777777') {
+      setIsLoggedIn(true);
+      const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+      setUserAlias(generatedAlias);
+      setShowAuthModal(false);
+      setOtpSent(false);
+      setOtpError('');
+      setAuthPhone('');
+      setAuthOtp('');
+      alert(`[인증 성공] 안전하게 로그인이 활성화 완료되었습니다!\n배정된 가명: ${generatedAlias}`);
+    } else {
+      setOtpError('인증번호가 일치하지 않습니다. (가상 테스트용 코드: 777777)');
+    }
+  };
+
+  const handleRegenAlias = () => {
+    const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+    setUserAlias(generatedAlias);
+  };
+
   // Helper values
   const currentRequest = requests.find(r => r.id === activeChatReqId);
   const activeChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
 
   // Formatted calculation
   const totalCalculatedDebt = debtBanks + debtCards + debtPersonals + recentLoans + coinCrypto;
+
+  if (isPanicState) {
+    return (
+      <div className="flex flex-col min-h-screen bg-sky-50/50 dark:bg-slate-950 text-slate-800 dark:text-slate-200">
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800">
+          <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div 
+              className="flex items-center gap-2 cursor-pointer select-none"
+              onDoubleClick={() => {
+                setIsPanicState(false);
+              }}
+              title="더블클릭하여 원래 화면으로 복구"
+            >
+              <Activity className="w-5 h-5 text-sky-500 animate-pulse" />
+              <span className="font-extrabold text-base tracking-tight text-slate-800 dark:text-white">실시간 전국 날씨 예보</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5 rounded font-bold">
+                실시간 기상청 위성 연동
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-6 text-left">
+          {/* Main Weather Card */}
+          <div className="bg-gradient-to-br from-sky-400 via-sky-500 to-indigo-600 text-white rounded-3xl p-6 md:p-8 shadow-lg relative overflow-hidden">
+            <div className="absolute -right-10 -top-10 w-40 h-40 bg-yellow-300/30 rounded-full blur-2xl"></div>
+            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="space-y-2">
+                <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider">현재 위치</span>
+                <h2 className="text-2xl md:text-3xl font-extrabold flex items-center gap-1.5">
+                  서울특별시 서초구 서초동
+                </h2>
+                <p className="text-xs text-sky-100">최근 업데이트: 오늘 14:02 (실시간 예보)</p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-5xl md:text-6xl font-black tracking-tighter">21.5°C</div>
+                  <div className="text-sm font-bold text-sky-100">구름 조금, 맑음 (체감 22.0°C)</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/10 text-xs">
+              <div className="bg-white/10 p-3 rounded-2xl">
+                <span className="text-sky-200 block mb-0.5">미세먼지</span>
+                <strong className="text-sm font-bold">15 ㎍/㎥ (좋음)</strong>
+              </div>
+              <div className="bg-white/10 p-3 rounded-2xl">
+                <span className="text-sky-200 block mb-0.5">초미세먼지</span>
+                <strong className="text-sm font-bold">8 ㎍/㎥ (좋음)</strong>
+              </div>
+              <div className="bg-white/10 p-3 rounded-2xl">
+                <span className="text-sky-200 block mb-0.5">강수확률</span>
+                <strong className="text-sm font-bold">10%</strong>
+              </div>
+              <div className="bg-white/10 p-3 rounded-2xl">
+                <span className="text-sky-200 block mb-0.5">습도/바람</span>
+                <strong className="text-sm font-bold">45% / 북서풍 2.1 m/s</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Forecast layout */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            {/* Hourly Forecast */}
+            <div className="md:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+              <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">시간별 기온 추이</h3>
+              <div className="flex justify-between gap-2 overflow-x-auto pb-2">
+                {[
+                  { time: '14:00', temp: '21.5°', state: '맑음', active: true },
+                  { time: '16:00', temp: '22.0°', state: '맑음' },
+                  { time: '18:00', temp: '19.5°', state: '구름조금' },
+                  { time: '20:00', temp: '17.2°', state: '흐림' },
+                  { time: '22:00', temp: '15.0°', state: '비' },
+                  { time: '24:00', temp: '13.8°', state: '비' }
+                ].map((h, idx) => (
+                  <div key={idx} className={`flex flex-col items-center p-3 rounded-2xl min-w-[70px] ${h.active ? 'bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-850 text-sky-600 dark:text-sky-400 font-bold' : 'text-slate-500'}`}>
+                    <span className="text-[10px]">{h.time}</span>
+                    <span className="text-sm font-extrabold my-2">{h.temp}</span>
+                    <span className="text-[10px]">{h.state}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Weekly Forecast */}
+            <div className="md:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+              <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">주간 일기 예보</h3>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                {[
+                  { day: '내일 (수)', temp: '14° / 23°', state: '맑음' },
+                  { day: '목요일', temp: '12° / 20°', state: '비' },
+                  { day: '금요일', temp: '11° / 21°', state: '맑음' },
+                  { day: '토요일', temp: '13° / 24°', state: '구름조금' },
+                  { day: '일요일', temp: '14° / 22°', state: '흐림' }
+                ].map((w, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-2.5">
+                    <span className="font-semibold text-slate-700 dark:text-slate-400">{w.day}</span>
+                    <span className="text-slate-400">{w.state}</span>
+                    <span className="font-bold">{w.temp}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Weather News / Information */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+            <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">기상 속보 & 알림</h3>
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-amber-800 dark:text-amber-300">
+                <strong>[특보] 건조주의보 발령:</strong> 일부 경기 내륙 및 강원 산지 대기가 매우 건조하오니 산불 예방 등 화재에 각별히 유의하시기 바랍니다.
+              </div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-slate-600 dark:text-slate-400 leading-relaxed">
+                • <strong>주간 전망:</strong> 목요일 서해상에서 발달하는 비구름대의 영향으로 전국적으로 비가 내리겠으며, 비가 그친 후에는 북서쪽의 찬 공기가 유입되어 기온이 큰 폭으로 떨어질 예정입니다.
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <footer className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 text-center py-6 text-[10px] text-slate-400 relative">
+          <p>© 2026 기상청 국가기상포털 시스템 정보 연동 서비스. All rights reserved.</p>
+          <button 
+            onClick={() => setIsPanicState(false)}
+            className="absolute right-4 bottom-4 text-slate-300 hover:text-slate-500 dark:text-slate-800 dark:hover:text-slate-600 text-[9px] font-semibold transition-colors"
+          >
+            복구
+          </button>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -343,7 +598,7 @@ export default function ClientRole({
             <span className="font-bold text-lg text-slate-800 dark:text-slate-150">개인회생·파산 의뢰인 센터</span>
           </div>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1.5">
             <button 
               onClick={() => setActiveTab('landing')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -380,6 +635,45 @@ export default function ClientRole({
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
               </span>
             </button>
+
+            {/* Auth section */}
+            {isLoggedIn ? (
+              <div className="flex items-center gap-2.5 ml-2 pl-3 border-l border-slate-200 dark:border-slate-850">
+                <div className="flex flex-col items-end hidden md:flex">
+                  <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                    👤 <span className="text-blue-600 dark:text-blue-400">{userAlias}</span>님
+                  </span>
+                  <span className="text-[8px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1 py-0.2 rounded font-semibold leading-none">
+                    스텔스 보호중
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setShowSettingsModal(true)}
+                  className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title="스텔스 & 보안 설정"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsLoggedIn(false);
+                    setUserAlias('');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">로그아웃</span>
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setShowAuthModal(true)}
+                className="ml-2 flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow-md"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>로그인/회원가입</span>
+              </button>
+            )}
           </nav>
         </div>
       </header>
@@ -1553,6 +1847,298 @@ export default function ClientRole({
         <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼. All rights reserved.</p>
         <p>본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
       </footer>
+
+      {/* Auth Modal (로그인 / 회원가입) */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl p-6 md:p-8 space-y-5 relative overflow-hidden text-left animate-fadeIn">
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                  의뢰인 스텔스 보안
+                </span>
+                <h3 className="font-extrabold text-xl text-slate-800 dark:text-white mt-1">로그인 및 회원가입</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  채무 사실 노출을 막기 위해 가명 닉네임과 가명 발신자 알림 시스템이 자동으로 활성화됩니다.
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setOtpSent(false);
+                  setOtpError('');
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Social Logins */}
+            <div className="space-y-2.5 pt-2">
+              <button 
+                onClick={() => handleSocialLogin('Google')}
+                className="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+              >
+                <span className="w-4 h-4 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full">G</span>
+                <span>Google로 간편 로그인</span>
+              </button>
+
+              <button 
+                onClick={() => handleSocialLogin('카카오')}
+                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/95 text-[#191919] font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+              >
+                <span className="w-4 h-4 flex items-center justify-center font-extrabold text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full">K</span>
+                <span>카카오로 간편 로그인</span>
+              </button>
+
+              <button 
+                onClick={() => handleSocialLogin('네이버')}
+                className="w-full bg-[#03C75A] hover:bg-[#03C75A]/95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+              >
+                <span className="w-4 h-4 flex items-center justify-center font-black text-xs bg-white text-[#03C75A] rounded-full">N</span>
+                <span>네이버로 간편 로그인</span>
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+              <span className="flex-shrink mx-4 text-slate-400 text-xs font-semibold">또는 휴대폰 인증번호 로그인</span>
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+            </div>
+
+            {/* Phone Login Form */}
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">휴대폰 번호</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="tel"
+                    placeholder="010-1234-5678"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    disabled={otpSent}
+                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                  />
+                  <button 
+                    onClick={handleSendOtp}
+                    disabled={otpSent}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-3 rounded-xl text-xs transition-colors shrink-0 disabled:bg-slate-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+                  >
+                    {otpSent ? '발송 완료' : '인증번호 발송'}
+                  </button>
+                </div>
+              </div>
+
+              {otpSent && (
+                <div className="space-y-2 animate-slideDown">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">인증번호 6자리</label>
+                    <span className="text-[11px] text-red-500 font-bold">
+                      {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      placeholder="인증번호 6자리 입력 (777777)"
+                      value={authOtp}
+                      onChange={(e) => setAuthOtp(e.target.value)}
+                      maxLength={6}
+                      className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-blue-500"
+                    />
+                    <button 
+                      onClick={handleVerifyOtp}
+                      className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-3 rounded-xl text-xs transition-colors shrink-0"
+                    >
+                      인증 및 로그인
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {otpError && <p className="text-xs text-red-500 font-semibold">{otpError}</p>}
+            </div>
+
+            {/* Terms Consent */}
+            <div className="flex items-start gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <input 
+                type="checkbox" 
+                id="authConsent" 
+                checked={authConsent}
+                onChange={(e) => setAuthConsent(e.target.checked)}
+                className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 w-4 h-4 shrink-0"
+              />
+              <label htmlFor="authConsent" className="text-[11px] text-slate-600 dark:text-slate-400 select-none cursor-pointer leading-normal">
+                <strong>(필수)</strong> 개인정보 제3자 제공 및 신용정보원 마이데이터 대출/연체 정보 조회 동의서에 동의합니다.
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal (스텔스 & 보안 설정) */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl p-6 md:p-8 space-y-6 relative overflow-hidden text-left animate-fadeIn">
+            
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                  스텔스 설정
+                </span>
+                <h3 className="font-extrabold text-xl text-slate-800 dark:text-white mt-1">보안 및 스텔스 설정</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  휴대폰 화면 노출을 완전 차단하고, 법률 용어가 들어간 메세지를 일반 안내로 우회합니다.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowSettingsModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 pt-1">
+              {/* Alias generation */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">의뢰인 가명 설정 (변호사 노출명)</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={userAlias}
+                    onChange={(e) => setUserAlias(e.target.value)}
+                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button 
+                    onClick={handleRegenAlias}
+                    className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-4 rounded-xl text-xs transition-colors shrink-0 border border-slate-200 dark:border-slate-700"
+                  >
+                    가명 재발급
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  * 실명이 아닌 법적 효력이 무관한 임의의 식별 닉네임을 생성하여 플랫폼 내 모든 노출을 가명화합니다.
+                </p>
+              </div>
+
+              {/* Sender Name Override */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">카카오 알림톡/SMS 발신자 표기명 변경</label>
+                <input 
+                  type="text" 
+                  value={senderNameOverride}
+                  onChange={(e) => setSenderNameOverride(e.target.value)}
+                  placeholder="예: 원케어, 오피스원"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-1 focus:ring-blue-500"
+                />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {['원케어', '오피스원', '가족생활건강', 'L-CRM'].map(name => (
+                    <button
+                      key={name}
+                      onClick={() => setSenderNameOverride(name)}
+                      className={`text-[10px] px-2.5 py-1 rounded-full border transition-all ${
+                        senderNameOverride === name 
+                        ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900' 
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Alert Mode (Stealth Level) */}
+              <div className="space-y-2.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">스텔스 알림 보안 레벨</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['NORMAL', 'STEALTH', 'SECRET'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setAlertMode(mode)}
+                      className={`py-2 text-xs font-bold rounded-xl border transition-all ${
+                        alertMode === mode
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      {mode === 'NORMAL' ? '일반 모드' : mode === 'STEALTH' ? '스텔스 모드' : '비밀 모드'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dynamic Screen Notification Preview */}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-4 rounded-2xl text-left space-y-2">
+                  <span className="text-[10px] text-slate-400 block border-b border-slate-200 dark:border-slate-800 pb-1 font-semibold uppercase tracking-wider">
+                    🔔 모바일 수신 화면 미리보기
+                  </span>
+                  
+                  <div className="bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 flex items-start gap-2.5 max-w-sm">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 text-xs font-bold">
+                      {alertMode === 'NORMAL' ? 'L' : senderNameOverride.slice(0, 1)}
+                    </div>
+                    <div className="space-y-0.5 text-left flex-1 min-w-0">
+                      <div className="flex justify-between items-center">
+                        <strong className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                          {alertMode === 'NORMAL' ? '개인회생CRM' : senderNameOverride}
+                        </strong>
+                        <span className="text-[9px] text-slate-400">방금 전</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed truncate">
+                        {alertMode === 'NORMAL' && '이소민 변호사가 대화방에 입장해 답변을 남겼습니다.'}
+                        {alertMode === 'STEALTH' && '요청하신 서비스의 신규 메세지가 도착했습니다. 본인 확인 후 열람 가능합니다.'}
+                        {alertMode === 'SECRET' && '안내드립니다. 본인 지정 우편물 발송 안내 메세지입니다.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Panic Button Toggle */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">긴급 화면 대피 버튼 활성화</label>
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    화면 하단에 긴급 대피 플로팅 버튼을 노출합니다. (단축키 F2/Esc 2회는 항시 작동)
+                  </p>
+                </div>
+                <input 
+                  type="checkbox"
+                  checked={panicButtonEnabled}
+                  onChange={(e) => setPanicButtonEnabled(e.target.checked)}
+                  className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 w-5 h-5 cursor-pointer shrink-0"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-2xl text-xs transition-colors shadow-md"
+              >
+                설정 저장 및 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Panic Button */}
+      {isLoggedIn && panicButtonEnabled && (
+        <button
+          onClick={() => setIsPanicState(true)}
+          className="fixed bottom-6 right-6 z-40 bg-red-600 hover:bg-red-500 text-white font-bold p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2 group cursor-pointer"
+          title="긴급 화면 대피 (F2 또는 Esc 두 번)"
+        >
+          <ShieldCheck className="w-5 h-5 text-white animate-pulse" />
+          <span className="text-xs pr-1">긴급 대피 (F2)</span>
+        </button>
+      )}
 
     </div>
   );
