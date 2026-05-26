@@ -103,19 +103,22 @@ export default function ClientRole({
       title: "빚 독촉의 고통, 오늘 끊을 수 있습니다.",
       subtitle: "개인회생 신청 즉시 법원의 금지명령으로 빗발치는 독촉 전화, 추심 방문, 급여 압류가 전면 금지됩니다. 늦기 전에 골든타임을 확보하세요.",
       badge: "신속한 독촉 차단",
-      color: "from-blue-900 via-indigo-950 to-slate-950"
+      color: "rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)",
+      image: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200"
     },
     {
       title: "코인·주식 투자 실패도 최대 90% 탕감 가능",
       subtitle: "단순 과장 광고가 아닙니다. 최근 개정된 회생 법원 실무 기준에 맞추어 투자 손실을 최소화하는 개인회생 계획안을 수립합니다.",
       badge: "투자 실패 부채 전문",
-      color: "from-indigo-950 via-slate-900 to-slate-950"
+      color: "rgba(30, 27, 75, 0.93), rgba(15, 23, 42, 0.88)",
+      image: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&q=80&w=1200"
     },
     {
       title: "알선료 수수료 0%! 투명한 도산 전문 변호사 매칭",
       subtitle: "본 플랫폼은 불법 사무장 브로커를 철저히 배제하고 법률적 책임이 보장된 정식 변호사단으로만 투명하게 운영됩니다.",
       badge: "변호사법 제34조 준수",
-      color: "from-slate-950 via-blue-950 to-indigo-950"
+      color: "rgba(15, 23, 42, 0.95), rgba(23, 37, 84, 0.9)",
+      image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=1200"
     }
   ];
 
@@ -585,7 +588,14 @@ export default function ClientRole({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               
               {/* Banner Slider */}
-              <div className={`lg:col-span-8 bg-gradient-to-br ${banners[bannerIndex].color} text-white p-6 md:p-10 rounded-2xl shadow-lg border border-slate-800/40 flex flex-col justify-between relative overflow-hidden transition-all duration-700 ease-in-out min-h-[250px]`}>
+              <div 
+                style={{ 
+                  backgroundImage: `linear-gradient(to bottom right, ${banners[bannerIndex].color}), url(${banners[bannerIndex].image})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+                className="lg:col-span-8 text-white p-6 md:p-10 rounded-2xl shadow-lg border border-slate-800/40 flex flex-col justify-between relative overflow-hidden transition-all duration-700 ease-in-out min-h-[250px]"
+              >
                 <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
                 
                 <div className="space-y-3.5 z-10 text-left">
