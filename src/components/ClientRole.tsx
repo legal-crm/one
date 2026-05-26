@@ -27,7 +27,7 @@ export default function ClientRole({
   onAddMessage
 }: ClientRoleProps) {
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator'>('landing');
   
   // Home Landing States
   const [calcIncome, setCalcIncome] = useState<number>(250);
@@ -443,6 +443,14 @@ export default function ClientRole({
               홈 / 안내
             </button>
             <button 
+              onClick={() => setActiveTab('calculator')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'calculator' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              탕감액 계산기
+            </button>
+            <button 
               onClick={() => setActiveTab('request')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'request' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
@@ -604,20 +612,20 @@ export default function ClientRole({
               {/* Quick Actions (Right Column) */}
               <div className="lg:col-span-4 grid grid-cols-1 gap-3.5">
                 
-                {/* 3분 자가진단 */}
-                <a
-                  href="#self-calc-widget"
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+                {/* 탕감액 계산기 */}
+                <button
+                  onClick={() => setActiveTab('calculator')}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-between group w-full text-left"
                 >
-                  <div className="space-y-1 text-left">
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">3분 자가진단</span>
-                    <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">내 빚 탕감액 미리보기</h4>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">자가진단</span>
+                    <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">내 빚 탕감액 계산기</h4>
                     <p className="text-[11px] text-slate-500">소득, 채무만 입력하면 예상 변제금 계산</p>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0 ml-2">
                     <Activity className="w-5 h-5" />
                   </div>
-                </a>
+                </button>
 
                 {/* 1:1 지정 변호사 */}
                 <button
@@ -783,8 +791,108 @@ export default function ClientRole({
               </div>
             </div>
 
-            {/* 4. Instant Self-Rehabilitation Calculator Widget */}
-            <div id="self-calc-widget" className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl shadow-lg border border-slate-800 p-6 md:p-8 space-y-6 text-left">
+
+
+            {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
+            <div className="space-y-4 pt-4 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
+                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-blue-500" />
+                  <span>실시간 고민 해결 상담사례</span>
+                </h3>
+                <span className="text-xs text-slate-400">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
+              </div>
+
+              <div className="space-y-3.5">
+                {mockQAs
+                  .filter(qa => {
+                    if (!homeSearchQuery) return true;
+                    const query = homeSearchQuery.toLowerCase();
+                    return qa.question.toLowerCase().includes(query) || qa.category.toLowerCase().includes(query) || qa.answer.toLowerCase().includes(query);
+                  })
+                  .map(qa => {
+                    const isOpen = openedQaId === qa.id;
+                    return (
+                      <div
+                        key={qa.id}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm"
+                      >
+                        {/* Header */}
+                        <div
+                          onClick={() => setOpenedQaId(isOpen ? null : qa.id)}
+                          className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4"
+                        >
+                          <div className="space-y-2 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-450 text-[9px] font-extrabold px-2.5 py-0.5 rounded-md">
+                                {qa.category}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-semibold">
+                                {qa.author}
+                              </span>
+                            </div>
+                            <h4 className="font-extrabold text-sm sm:text-base text-slate-850 dark:text-slate-200 pr-4 leading-snug">
+                              Q. {qa.question}
+                            </h4>
+                          </div>
+                          
+                          <span className="text-xs font-bold text-blue-500 shrink-0 select-none pt-1">
+                            {isOpen ? '닫기 ▲' : '답변보기 ▼'}
+                          </span>
+                        </div>
+
+                        {/* Answer Details */}
+                        {isOpen && (
+                          <div className="px-5 pb-5 border-t border-slate-100 dark:border-slate-800 pt-4 bg-slate-50/50 dark:bg-slate-950/20 text-left space-y-4 animate-slideDown">
+                            <div className="flex items-start gap-3">
+                              <img
+                                src={qa.lawyerAvatar}
+                                alt={qa.lawyerName}
+                                className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0"
+                              />
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-extrabold text-xs text-slate-850 dark:text-white">{qa.lawyerName}</span>
+                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold px-2 py-0.5 rounded-md">전문가 답변</span>
+                                </div>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
+                                  {qa.answer}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <button
+                                onClick={() => {
+                                  // Pre-fill question context
+                                  setTitle(`${qa.category} 관련 법률 상담 신청`);
+                                  setContent(`고민 사례 질문:\nQ. ${qa.question}\n\n위의 Q&A 고민 사례를 확인하고 저에게 동일하게 적용될 수 있는 법리적 가능성을 상담받고 싶습니다. 변호사님의 정밀 가이드가 필요합니다.`);
+                                  setRequestStep(3); // Go directly to submit step
+                                  setActiveTab('request');
+                                }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-[10px] transition-colors"
+                              >
+                                이 변호사에게 유사건 즉시 상담 신청
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <BannedNotice />
+          </div>
+        )}
+
+
+
+        {/* TAB: 탕감액 계산기 */}
+        {activeTab === 'calculator' && (
+          <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-left">
+            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl shadow-lg border border-slate-800 p-6 md:p-8 space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
                 <div className="space-y-1">
                   <span className="text-[10px] text-blue-300 font-bold uppercase tracking-widest flex items-center gap-1">
@@ -931,8 +1039,8 @@ export default function ClientRole({
                               setDebtTotal(calcDebt);
                               setDependents(calcDependents);
                               // Pre-fill fields based on calculation
-                              setTitle(`자가진단 계산기 연동 개인회생 신청 상담`);
-                              setContent(`자가진단 계산기 실행 결과:\n- 월 세후 소득: ${calcIncome}만 원\n- 총 부채액: ${calcDebt}만 원\n- 부양가족 수: ${calcDependents}명 (${calcDependents + 1}인 가구)\n\n상기 수치 데이터를 기반으로 법정 개시가 안전하게 가능한 구조인지, 추가적인 탕감율 극대화 전략에 대한 도산 전문 변호사의 상담을 신청합니다.`);
+                              setTitle(`탕감액 계산기 연동 상담 신청`);
+                              setContent(`탕감액 계산기 실행 결과:\n- 월 세후 소득: ${calcIncome}만 원\n- 총 부채액: ${calcDebt}만 원\n- 부양가족 수: ${calcDependents}명 (${calcDependents + 1}인 가구)\n\n상기 수치 데이터를 기반으로 법정 개시가 안전하게 가능한 구조인지, 추가적인 탕감율 극대화 전략에 대한 도산 전문 변호사의 상담을 신청합니다.`);
                               setRequestStep(3); // Go to final submit step
                               setActiveTab('request');
                             }}
@@ -949,97 +1057,35 @@ export default function ClientRole({
               </div>
             </div>
 
-            {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
-            <div className="space-y-4 pt-4 text-left">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-blue-500" />
-                  <span>실시간 고민 해결 상담사례</span>
-                </h3>
-                <span className="text-xs text-slate-400">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
-              </div>
-
-              <div className="space-y-3.5">
-                {mockQAs
-                  .filter(qa => {
-                    if (!homeSearchQuery) return true;
-                    const query = homeSearchQuery.toLowerCase();
-                    return qa.question.toLowerCase().includes(query) || qa.category.toLowerCase().includes(query) || qa.answer.toLowerCase().includes(query);
-                  })
-                  .map(qa => {
-                    const isOpen = openedQaId === qa.id;
-                    return (
-                      <div
-                        key={qa.id}
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm"
-                      >
-                        {/* Header */}
-                        <div
-                          onClick={() => setOpenedQaId(isOpen ? null : qa.id)}
-                          className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4"
-                        >
-                          <div className="space-y-2 text-left">
-                            <div className="flex items-center gap-2">
-                              <span className="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-450 text-[9px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                {qa.category}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-semibold">
-                                {qa.author}
-                              </span>
-                            </div>
-                            <h4 className="font-extrabold text-sm sm:text-base text-slate-850 dark:text-slate-200 pr-4 leading-snug">
-                              Q. {qa.question}
-                            </h4>
-                          </div>
-                          
-                          <span className="text-xs font-bold text-blue-500 shrink-0 select-none pt-1">
-                            {isOpen ? '닫기 ▲' : '답변보기 ▼'}
-                          </span>
-                        </div>
-
-                        {/* Answer Details */}
-                        {isOpen && (
-                          <div className="px-5 pb-5 border-t border-slate-100 dark:border-slate-800 pt-4 bg-slate-50/50 dark:bg-slate-950/20 text-left space-y-4 animate-slideDown">
-                            <div className="flex items-start gap-3">
-                              <img
-                                src={qa.lawyerAvatar}
-                                alt={qa.lawyerName}
-                                className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0"
-                              />
-                              <div className="space-y-1 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-extrabold text-xs text-slate-850 dark:text-white">{qa.lawyerName}</span>
-                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold px-2 py-0.5 rounded-md">전문가 답변</span>
-                                </div>
-                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
-                                  {qa.answer}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
-                              <button
-                                onClick={() => {
-                                  // Pre-fill question context
-                                  setTitle(`${qa.category} 관련 법률 상담 신청`);
-                                  setContent(`고민 사례 질문:\nQ. ${qa.question}\n\n위의 Q&A 고민 사례를 확인하고 저에게 동일하게 적용될 수 있는 법리적 가능성을 상담받고 싶습니다. 변호사님의 정밀 가이드가 필요합니다.`);
-                                  setRequestStep(3); // Go directly to submit step
-                                  setActiveTab('request');
-                                }}
-                                className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-[10px] transition-colors"
-                              >
-                                이 변호사에게 유사건 즉시 상담 신청
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+            {/* Banner Notice linking to lawyer matching importance */}
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 p-5 rounded-2xl text-xs space-y-2.5">
+              <h4 className="font-extrabold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>탕감액 계산기 이용 시 유의사항 (변호사 전문 소명의 중요성)</span>
+              </h4>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                위 계산기는 보건복지부 기준 최저생계비를 대입한 <strong>가계산(가상 결과)</strong>입니다. 
+                실제 법원 접수 시에는 채무 형성 경로(최근 대출 비율, 사행성 투자 손실 유무) 및 의뢰인의 개별 소득 형태, 재산 가치(청산가치)에 따라 법원이 인정해주는 생계비의 보정 폭이 매우 크게 달라집니다.
+              </p>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                따라서, 계산 결과를 토대로 반드시 **도산 전문 변호사와의 1:1 상담 및 매칭**을 진행하여 적법하게 생계비를 극대화하고 변제금을 최소화하는 전략적 계획서를 수립하셔야 합니다.
+              </p>
+              <div className="pt-1.5 flex justify-end">
+                <button 
+                  onClick={() => {
+                    setIncome(calcIncome);
+                    setDebtTotal(calcDebt);
+                    setDependents(calcDependents);
+                    setRequestType('open');
+                    setRequestStep(1);
+                    setActiveTab('request');
+                  }}
+                  className="text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2 rounded-xl transition-all"
+                >
+                  내 조건으로 전문 변호사 매칭받기 &rarr;
+                </button>
               </div>
             </div>
-
-            <BannedNotice />
           </div>
         )}
 
