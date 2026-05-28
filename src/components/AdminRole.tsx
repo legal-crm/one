@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
-  Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink 
+  Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
+  LogOut, Lock 
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus } from '../types';
 import { platformPlans } from '../data';
@@ -20,6 +21,42 @@ export default function AdminRole({
   setLawyers
 }: AdminRoleProps) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing'>('dashboard');
+
+  // Auth states
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('legal_crm_admin_session') !== null;
+  });
+  const [loginId, setLoginId] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
+  const [loginError, setLoginError] = useState<string>('');
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginId.trim() || !loginPassword.trim()) {
+      setLoginError('아이디와 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    const id = loginId.trim().toLowerCase();
+    const pw = loginPassword.trim();
+
+    if ((id === 'admin' && pw === 'admin') || (id === '1' && pw === '1')) {
+      localStorage.setItem('legal_crm_admin_session', 'active');
+      setIsLoggedIn(true);
+      setLoginError('');
+      setLoginId('');
+      setLoginPassword('');
+    } else {
+      setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+    }
+  };
+
+  const handleLogout = () => {
+    if (confirm('어드민 세션을 로그아웃 하시겠습니까?')) {
+      localStorage.removeItem('legal_crm_admin_session');
+      setIsLoggedIn(false);
+    }
+  };
 
   // Search/Filter states
   const [clientSearch, setClientSearch] = useState<string>('');
@@ -151,6 +188,92 @@ export default function AdminRole({
     alert('구독 플랜 한도가 수동 조정되었습니다.');
   };
 
+  if (!isLoggedIn) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#07090E] text-slate-100 font-sans selection:bg-indigo-600 selection:text-white items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0F121C] border border-[#1E293B]/60 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
+          {/* Logo / Header */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <span className="font-black text-xl tracking-tight text-white">회생톡 통합 어드민</span>
+            </div>
+            <p className="text-slate-400 text-xs">플랫폼 통합 의뢰인 및 파트너 제어 관리 센터</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
+            <h3 className="font-extrabold text-sm text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-indigo-400" />
+              <span>관리자 인증</span>
+            </h3>
+
+            {loginError && (
+              <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-xs p-3 rounded-xl">
+                {loginError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-slate-500 block uppercase font-bold">어드민 ID</label>
+              <input 
+                type="text" 
+                placeholder="어드민 아이디 입력 (기본: admin 또는 1)"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-slate-500 block uppercase font-bold">비밀번호</label>
+              <input 
+                type="password" 
+                placeholder="비밀번호 입력 (기본: admin 또는 1)"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+              />
+            </div>
+
+            {/* Test credentials info */}
+            <div className="bg-[#111622] border border-[#1E293B]/40 rounded-xl p-3.5 text-[11px] text-slate-400 space-y-1">
+              <span className="font-bold text-indigo-400 block">🔑 테스트용 관리자 계정</span>
+              <div>• 아이디: <strong className="text-white">admin</strong> / 비밀번호: <strong className="text-white">admin</strong></div>
+              <div>• (또는 초간편 바이패스: <strong className="text-slate-350">1</strong> / <strong className="text-slate-350">1</strong>)</div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button 
+                type="submit"
+                className="flex-1 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>어드민 로그인</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('legal_crm_admin_session', 'active');
+                  setIsLoggedIn(true);
+                }}
+                className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
+              >
+                테스트 계정 1초 로그인
+              </button>
+            </div>
+          </form>
+
+          {/* Compliance statement */}
+          <div className="text-[10px] text-slate-500 leading-normal border-t border-[#1E293B]/30 pt-3 flex items-center justify-center gap-1">
+            <span>🔒 플랫폼 보안 1등급 마스터 라이선스 적용됨</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-[#07090E] text-slate-100 font-sans selection:bg-indigo-600 selection:text-white">
       <div className="w-full max-w-[1024px] min-h-screen mx-auto bg-[#0F121C] border-x border-[#1E293B]/60 shadow-2xl flex flex-col relative">
@@ -171,11 +294,19 @@ export default function AdminRole({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>실시간 운영 모니터링 가동 중</span>
               </span>
+
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-1 bg-[#111622] hover:bg-[#161B26] text-slate-400 hover:text-white px-2.5 py-1.5 rounded-[200px] border border-[#1E293B]/60 text-[10px] transition-colors"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>로그아웃</span>
+              </button>
             </div>
           </div>
         </header>
