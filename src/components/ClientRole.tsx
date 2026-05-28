@@ -9,6 +9,271 @@ import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMe
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
 import { RequestDisclaimer, ChatDisclaimer, BannedNotice } from './Disclaimers';
 
+interface RemedyPreset {
+  jobType: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
+  debtCause: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'OTHER';
+  harassmentLevel: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE';
+  creditorCount: number;
+  debtBanks: number;
+  debtCards: number;
+  debtPersonals: number;
+  recentLoans: number;
+  coinCrypto: number;
+  debtTotal: number;
+  income: number;
+  assetsTotal?: number;
+  title: string;
+  content: string;
+}
+
+interface RemedyInfo {
+  id: string;
+  title: string;
+  subtitle: string;
+  remedyTitle: string;
+  remedyDesc: string;
+  guideTitle: string;
+  guideDesc: string;
+  iconName: string;
+  badgeText: string;
+  themeColor: string;
+  preset: RemedyPreset;
+}
+
+const remedyData: Record<string, RemedyInfo> = {
+  card_loan: {
+    id: 'card_loan',
+    title: '신용카드/카드론 연체',
+    subtitle: '리볼빙·돌려막기 한계 도달',
+    remedyTitle: '이자 100% 면제 및 고금리 채무 개인회생 흡수 탕감',
+    remedyDesc: '신용카드 대금, 리볼빙, 카드론은 이자율이 15%~20%에 육박하는 초고금리 채무입니다. 이를 개인회생 채권 목록에 포함시켜 이자 전액을 면제받고, 소득 수준 및 부양가족에 따라 원금의 최대 90%까지 법적으로 감면받을 수 있습니다.',
+    guideTitle: '골든타임 절대 금지 행동 지침',
+    guideDesc: '연체를 막기 위해 다른 카드로 현금서비스를 받거나 돌려막기를 하는 것은 최근 채무 비율을 높여 법원 심사 시 "최근 채무 과다"로 기각 사유가 되거나 탕감률이 낮아지는 결정적 원인이 됩니다. 돌려막기 한계에 도달한 즉시 모든 카드 결제를 멈추고 신속히 법적 보호 절차를 개시하셔야 합니다.',
+    iconName: 'Landmark',
+    badgeText: '원금 최대 90% 감면',
+    themeColor: 'red',
+    preset: {
+      jobType: 'SALARIED',
+      debtCause: 'LIVING',
+      harassmentLevel: 'CALL',
+      creditorCount: 4,
+      debtBanks: 1500,
+      debtCards: 3500,
+      debtPersonals: 0,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 5000,
+      income: 230,
+      title: '신용카드 및 카드론 연체 독촉 위기 해결 상담',
+      content: '신용카드 사용액 및 카드론 돌려막기로 인해 채무가 눈덩이처럼 늘어났습니다. 연체가 시작되어 채권 독촉 전화를 받고 있으며, 개인회생을 통해 월 납입금을 조정하고 독촉을 즉시 정지시키고 싶습니다.'
+    }
+  },
+  bank_loan: {
+    id: 'bank_loan',
+    title: '은행 신용대출 연체',
+    subtitle: '기한이익 상실 및 원금상환 압박',
+    remedyTitle: '법원 금지명령으로 예금·급여 압류 및 채권 상계 원천 차단',
+    remedyDesc: '시중은행 신용대출 연체 발생 시 1~2개월 내 기한이익상실(만기연장 거절 및 원금 전액 일시상환 청구)이 발생합니다. 법원의 금지명령을 즉각 이끌어내어 직장 급여 가압류 및 거래 은행 계좌 동결을 사전에 법적으로 완벽하게 방어합니다.',
+    guideTitle: '예금 및 급여 통장 강제 상계 주의보',
+    guideDesc: '대출을 보유 중인 시중은행 계좌에 돈이 남아있거나 해당 은행으로 월급이 수령될 경우, 은행은 연체 즉시 별도의 법원 판결 없이도 채무자의 돈을 강제로 상계(강제 인출)할 수 있습니다. 법적 구제 절차를 준비하는 즉시 주거래 은행과 급여 수납 계좌를 대출 채무가 전혀 없는 제3금융권(카카오뱅크, 토스뱅크 혹은 새마을금고 등)으로 가장 먼저 변경하셔야 소중한 생계비를 보존할 수 있습니다.',
+    iconName: 'TrendingDown',
+    badgeText: '예금/급여 강제압류 차단',
+    themeColor: 'indigo',
+    preset: {
+      jobType: 'SALARIED',
+      debtCause: 'LIVING',
+      harassmentLevel: 'LETTER',
+      creditorCount: 3,
+      debtBanks: 5000,
+      debtCards: 0,
+      debtPersonals: 0,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 5000,
+      income: 250,
+      title: '시중은행 신용대출 및 마이너스 통장 연체 회생',
+      content: '직장인 신용대출 및 마이너스 통장 만기 연장이 불가능하다는 통보를 받아 일시 상환 압박을 받고 있습니다. 월급 수준으로는 상환이 불가능해 개인회생 신청이 가능한지 긴급히 상담받고 싶습니다.'
+    }
+  },
+  high_interest: {
+    id: 'high_interest',
+    title: '대부업/고금리 사채',
+    subtitle: '가혹한 추심 행위 즉시 방어',
+    remedyTitle: '변호사 채무자대리인 제도 선임 및 불법 야간추심 형사고소',
+    remedyDesc: '대부업 및 사채 채무는 가혹한 추심을 동반하는 경우가 많습니다. 채무자대리인 제도를 발동하여 변호사가 대리인단으로 선임된 즉시, 채권자는 채무자 본인에게 문자, 전화, 직장 및 자택 방문 등 일체의 직접적 추심 행위를 법적으로 할 수 없게 되며 모든 협의는 변호사 사무실로만 단일화됩니다.',
+    guideTitle: '불법 고금리(연 20% 초과) 및 불법 추심 방어전략',
+    guideDesc: '법정 최고이자율 연 20%를 초과하는 사채 이자는 민법상 무효이므로 원금 상환액으로 갈음할 수 있습니다. 사채업자들의 협박성 폭언, 야간 연락, 부모·형제에게 알리겠다는 등의 채무 유포 협박은 모두 불법추심법 위반으로 강력한 형사고소 사유입니다. 녹취 및 문자 캡처를 변호사 대리인단에게 공유하시면 신속하게 사채 독촉을 전면 무력화하겠습니다.',
+    iconName: 'DollarSign',
+    badgeText: '채무자대리인 즉시 선임',
+    themeColor: 'amber',
+    preset: {
+      jobType: 'DAILY',
+      debtCause: 'LIVING',
+      harassmentLevel: 'LETTER',
+      creditorCount: 5,
+      debtBanks: 0,
+      debtCards: 1000,
+      debtPersonals: 3000,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 4000,
+      income: 200,
+      title: '고금리 사채 및 대부업 채무 통합 해결',
+      content: '저축은행, 캐피탈 뿐만 아니라 사채 및 등록 대부업체로부터 고금리 대출을 받았습니다. 무리한 채권자들의 상환 독촉 및 일상생활 위협을 겪고 있어 개인회생 금지명령으로 보호받고자 합니다.'
+    }
+  },
+  guarantee: {
+    id: 'guarantee',
+    title: '연대보증 채무 위기',
+    subtitle: '지인 채무 전가 완벽 대처',
+    remedyTitle: '보증인 단독 개인회생 신청으로 구상권 청구 및 채무 상속 방어',
+    remedyDesc: '주채무자가 면책 신청을 하거나 잠적할 경우, 연대보증인은 주채무자와 상관없이 채무 전액을 갚아야 할 민사상 연대 책무를 집니다. 이때 주채무자의 회복 여부와 상관없이 보증인 본인 명의로 단독 개인회생을 신청하여 주채무가 넘어온 것을 상쇄하고 탕감율을 인정받을 수 있습니다.',
+    guideTitle: '주채무자 면책 시의 오해와 대처법',
+    guideDesc: '많은 연대보증인들이 "주채무자가 파산했거나 회생했으니 나에게도 독촉이 없겠지"라고 오해하지만, 법원 도산 절차는 주채무자의 책임만을 감면할 뿐 보증인의 변제 책임은 100% 그대로 남습니다. 채권사들은 주채무자의 회생 소식을 들은 즉시 보증인의 부동산이나 급여 가압류를 전방위로 실행합니다. 보증 독촉 통지서를 받은 직후 본인의 단독 회생 골든타임을 확보하셔야 안전합니다.',
+    iconName: 'Users',
+    badgeText: '보증채무 100% 흡수 조정',
+    themeColor: 'purple',
+    preset: {
+      jobType: 'SALARIED',
+      debtCause: 'GUARANTEE',
+      harassmentLevel: 'LAWSUIT',
+      creditorCount: 3,
+      debtBanks: 6000,
+      debtCards: 0,
+      debtPersonals: 2000,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 8000,
+      income: 350,
+      title: '연대보증 채무 독촉에 따른 개인회생 대응',
+      content: '주채무자의 도산 및 연락 두절로 인해 연대보증인인 저에게 전액 청구 독촉이 들어왔습니다. 급여 가압류 통지서가 날아온 상태이며, 주위 사실 노출 없이 해결 가능한 개인회생을 긴급히 신청하고자 합니다.'
+    }
+  },
+  investment: {
+    id: 'investment',
+    title: '주식/코인 투자 손실',
+    subtitle: '탕감률 극대화 실무준칙 설계',
+    remedyTitle: '회생법원 실무준칙 적용으로 투자 손실액 청산가치 제외 특례 개시',
+    remedyDesc: '서울/수원/부산회생법원의 핵심 실무준칙(주식 및 가상자산 손실액 청산가치 불산입)을 적극 활용합니다. 투자 실패로 날아간 빚은 재산으로 잡지 않고 오직 보유하고 있는 현재의 잔고만을 청산가치로 산정함으로써, 원금의 최대 90%까지 극적인 법정 탕감률을 달성해 드립니다.',
+    guideTitle: '최근 대출금 사용처 집중 소명 기법',
+    guideDesc: '투자 채무 회생의 핵심은 대출 후 투자로 이어진 자금의 흐름을 1원 단위까지 투명하게 입증하는 것입니다. 주식 거래원장, 가상자산 거래 내역 등을 일목요연하게 엑셀로 계통 분석하여 법원 보정 권고에 완벽하게 대비합니다. 또한, 이를 개인 소비나 재산 은닉으로 오해하지 않도록 전문 변호인단이 의견서를 강력하게 개진해야 탕감폭이 좁아지지 않습니다.',
+    iconName: 'AlertTriangle',
+    badgeText: '투자손실 청산가치 제외',
+    themeColor: 'orange',
+    preset: {
+      jobType: 'SALARIED',
+      debtCause: 'INVESTMENT',
+      harassmentLevel: 'CALL',
+      creditorCount: 6,
+      debtBanks: 3500,
+      debtCards: 0,
+      debtPersonals: 0,
+      recentLoans: 1500,
+      coinCrypto: 4500,
+      debtTotal: 9500,
+      income: 280,
+      title: '주식 및 가상화폐(코인) 투자 실패 채무 탕감',
+      content: '비트코인 선물 거래 및 주식 레버리지 투자 실패로 큰 빚을 지게 되었습니다. 최근 대출 비중이 높아 법원의 기각이나 청산가치 반영 비율이 걱정됩니다. 투자 채무 탕감 성공 경험이 많은 변호사의 조력을 구합니다.'
+    }
+  },
+  freelancer: {
+    id: 'freelancer',
+    title: '일용직/프리랜서 회생',
+    subtitle: '불규칙한 월소득 적법 소명',
+    remedyTitle: '플랫폼 정산 및 다각적 계좌 입출금 거래 분석을 통한 가용소득 맞춤 입증',
+    remedyDesc: '고정 월급제가 아닌 일용직, 특수고용형태, 프리랜서, 배달 라이더 분들도 회생 신청이 100% 가능합니다. 최근 6~12개월간의 소득 증빙 입금 내역, 플랫폼 정산 원장, 노무 확인서 등을 종합적으로 체계화하여 법원이 승인할 수 있는 가장 합리적인 "평균 소득"을 합법 소명하여 변제금을 낮춰 드립니다.',
+    guideTitle: '들쑥날쑥한 프리랜서 소득 소명 가이드',
+    guideDesc: '세무서에 종합소득세 신고가 누락되었거나 소득이 불규칙하더라도 낙담하실 필요 없습니다. 변호사 사무실의 계좌 거래원장 전수 분석을 통해 매월 수납되는 현금 흐름을 성실히 정립해 드립니다. 변제 의지가 확고하며 반복적 소득이 발생하고 있음만 증명해 내면 법원은 가차 없이 개시 결정을 내려줍니다.',
+    iconName: 'Smartphone',
+    badgeText: '부정기 소득 적법 소명',
+    themeColor: 'emerald',
+    preset: {
+      jobType: 'FREELANCER',
+      debtCause: 'LIVING',
+      harassmentLevel: 'CALL',
+      creditorCount: 4,
+      debtBanks: 2000,
+      debtCards: 1500,
+      debtPersonals: 0,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 3500,
+      income: 180,
+      title: '일용직/프리랜서 부정기 소득자의 개인회생',
+      content: '프리랜서 및 일용직 노동자로 근무하여 매달 소득이 불규칙합니다. 소득 증빙 서류 준비와 월 가용 소득 산정 기준이 애매해 상담을 원합니다. 개인회생 개시 조건에 맞는 최적의 소득 소명을 진행하고 싶습니다.'
+    }
+  },
+  seizure: {
+    id: 'seizure',
+    title: '급여/재산 압류 해제',
+    subtitle: '압류 중지·해제명령 긴급신청',
+    remedyTitle: '개인회생 신청 즉시 법원 중지명령 송달 및 인가 후 가압류 즉시 취소/말소',
+    remedyDesc: '이미 급여나 은행 예금 통장이 압류되어 생계 위협에 직면한 경우, 개인회생 접수와 동시에 강력한 법원 중지명령 신청을 병행합니다. 법원의 중지 결정을 도출해 내어 압류 추심을 동결시키고, 이후 회생 계획안 인가 결정을 받아 가압류를 영구적으로 해제·말소시킬 수 있습니다.',
+    guideTitle: '압류 진행 시 직장 내 노출 방어 기법',
+    guideDesc: '급여 압류가 들어올 경우 직장 급여담당자에게 강제 압류 결정문이 송달되어 심각한 신용 저하 소문이 직장 내 퍼질 수 있습니다. 연체 시작 후 지급명령 결정문이나 소장 수령 즉시 법원 접수를 진행해야 파국을 피할 수 있습니다. 만약 압류가 개시되었다면 법원 중지 결정을 통해 회사 급여담당자가 임금을 채권자에게 양도하지 못하도록 차단하고 압류 적립금을 법원에 예치 처리해야 합니다.',
+    iconName: 'ShieldCheck',
+    badgeText: '압류금 적립 및 영구해제',
+    themeColor: 'rose',
+    preset: {
+      jobType: 'SALARIED',
+      debtCause: 'LIVING',
+      harassmentLevel: 'SEIZURE',
+      creditorCount: 5,
+      debtBanks: 4000,
+      debtCards: 2000,
+      debtPersonals: 0,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 6000,
+      income: 240,
+      title: '급여/가압류/통장 압류 해제 및 중지 명령 신청',
+      content: '채권자동에 의한 예금 통장 압류 및 직장 급여 가압류 결정문이 송달되었습니다. 당장 가계 생계비 지출이 불가능해, 개인회생 접수와 함께 중지/금지명령을 통해 압류를 해제하고 생업을 유지하고 싶습니다.'
+    }
+  },
+  bankruptcy: {
+    id: 'bankruptcy',
+    title: '개인파산/면책 신청',
+    subtitle: '무직·고령·질병 전액 탕감',
+    remedyTitle: '법적 자격 심사 후 빚 100% 일시 탕감 및 신용 정보 기록 전면 면책 청구',
+    remedyDesc: '만 60세 이상의 고령자, 중증 장애 혹은 중증 질병으로 근로 활동을 아예 수행할 수 없어 최저생계비 이하로 거주하는 상태라면, 매달 나눠 갚는 개인회생 대신 채무 전액을 일시에 지워버리는 개인파산 및 면책을 청구하는 것이 최고의 솔루션입니다.',
+    guideTitle: '개인회생 vs 개인파산 선택 가이드라인',
+    guideDesc: '파산 면책은 청산할 보유 재산이 빚보다 적고 장래 소득 발생 능력이 없음이 객관적으로 입증되어야 인용됩니다. 무조건적인 파산 신청은 채무 면책 기각을 불러와 막대한 비용 손실만 낳을 수 있으므로 법적 자격 진단이 절대적으로 우선되어야 합니다. 재산 목록과 과거 사업 폐업 내역서를 정밀 세무 검토하여 단 1원도 갚지 않는 전액 파산 면책 판결을 완성합니다.',
+    iconName: 'Scale',
+    badgeText: '원금 이자 100% 전액 탕감',
+    themeColor: 'indigo',
+    preset: {
+      jobType: 'DAILY',
+      debtCause: 'OTHER',
+      harassmentLevel: 'LETTER',
+      creditorCount: 3,
+      debtBanks: 4000,
+      debtCards: 0,
+      debtPersonals: 3500,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 7500,
+      income: 80,
+      assetsTotal: 100,
+      title: '고령/폐업 자영업자 개인파산 및 면책 신청',
+      content: '질병 및 건강 악화, 혹은 사업 실패로 인해 앞으로 전혀 소득 활동을 할 수 없는 상황입니다. 보유 재산보다 빚이 훨씬 많아 더 이상 생계 및 상환을 지속할 수 없기에 개인파산을 통한 전액 면책을 희망합니다.'
+    }
+  }
+};
+
+const renderRemedyIcon = (iconName: string, className = "w-6 h-6") => {
+  switch (iconName) {
+    case 'Landmark': return <Landmark className={className} />;
+    case 'TrendingDown': return <TrendingDown className={className} />;
+    case 'DollarSign': return <DollarSign className={className} />;
+    case 'Users': return <Users className={className} />;
+    case 'AlertTriangle': return <AlertTriangle className={className} />;
+    case 'Smartphone': return <Smartphone className={className} />;
+    case 'ShieldCheck': return <ShieldCheck className={className} />;
+    case 'Scale': return <Scale className={className} />;
+    default: return <Scale className={className} />;
+  }
+};
+
 interface ClientRoleProps {
   requests: ConsultRequest[];
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
@@ -109,6 +374,7 @@ export default function ClientRole({
   // Currently opened Chat consultation request ID
   const [activeChatReqId, setActiveChatReqId] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>('');
+  const [activeRemedyCategory, setActiveRemedyCategory] = useState<string | null>(null);
 
   // Reviews page state
   const [reviewCategoryFilter, setReviewCategoryFilter] = useState<string>('전체');
@@ -268,6 +534,13 @@ export default function ClientRole({
 
   // Routing and pre-filling request form from category grid
   const handleCategoryClick = (category: string) => {
+    setActiveRemedyCategory(category);
+  };
+
+  const handleApplyRemedy = (categoryId: string) => {
+    const item = remedyData[categoryId];
+    if (!item) return;
+
     // Reset specific breakdowns
     setDebtBanks(0);
     setDebtCards(0);
@@ -275,66 +548,34 @@ export default function ClientRole({
     setRecentLoans(0);
     setCoinCrypto(0);
 
-    if (category === 'card_loan') {
-      setTitle('신용카드 및 카드론 연체 독촉 위기 해결 상담');
-      setContent('신용카드 사용액 및 카드론 돌려막기로 인해 채무가 눈덩이처럼 늘어났습니다. 연체가 시작되어 채권 독촉 전화를 받고 있으며, 개인회생을 통해 월 납입금을 조정하고 독촉을 즉시 정지시키고 싶습니다.');
-      setDebtCards(3500);
-      setDebtBanks(1500);
-      setDebtTotal(5000);
-      setIncome(230);
-    } else if (category === 'bank_loan') {
-      setTitle('시중은행 신용대출 및 마이너스 통장 연체 회생');
-      setContent('직장인 신용대출 및 마이너스 통장 만기 연장이 불가능하다는 통보를 받아 일시 상환 압박을 받고 있습니다. 월급 수준으로는 상환이 불가능해 개인회생 신청이 가능한지 긴급히 상담받고 싶습니다.');
-      setDebtBanks(5000);
-      setDebtTotal(5000);
-      setIncome(250);
-    } else if (category === 'high_interest') {
-      setTitle('고금리 사채 및 대부업 채무 통합 해결');
-      setContent('저축은행, 캐피탈 뿐만 아니라 사채 및 등록 대부업체로부터 고금리 대출을 받았습니다. 무리한 채권자들의 상환 독촉 및 일상생활 위협을 겪고 있어 개인회생 금지명령으로 보호받고자 합니다.');
-      setDebtPersonals(3000);
-      setDebtCards(1000);
-      setDebtTotal(4000);
-      setIncome(200);
-    } else if (category === 'guarantee') {
-      setTitle('연대보증 채무 독촉에 따른 개인회생 대응');
-      setContent('주채무자의 도산 및 연락 두절로 인해 연대보증인인 저에게 전액 청구 독촉이 들어왔습니다. 급여 가압류 통지서가 날아온 상태이며, 주위 사실 노출 없이 해결 가능한 개인회생을 긴급히 신청하고자 합니다.');
-      setDebtBanks(6000);
-      setDebtPersonals(2000);
-      setDebtTotal(8000);
-      setIncome(350);
-    } else if (category === 'investment') {
-      setTitle('주식 및 가상화폐(코인) 투자 실패 채무 탕감');
-      setContent('비트코인 선물 거래 및 주식 레버리지 투자 실패로 큰 빚을 지게 되었습니다. 최근 대출 비중이 높아 법원의 기각이나 청산가치 반영 비율이 걱정됩니다. 투자 채무 탕감 성공 경험이 많은 변호사의 조력을 구합니다.');
-      setCoinCrypto(4000);
-      setDebtBanks(3000);
-      setRecentLoans(2000);
-      setDebtTotal(9000);
-      setIncome(280);
-    } else if (category === 'freelancer') {
-      setTitle('일용직/프리랜서 부정기 소득자의 개인회생');
-      setContent('프리랜서 및 일용직 노동자로 근무하여 매달 소득이 불규칙합니다. 소득 증빙 서류 준비와 월 가용 소득 산정 기준이 애매해 상담을 원합니다. 개인회생 개시 조건에 맞는 최적의 소득 소명을 진행하고 싶습니다.');
-      setIncome(180);
-      setDebtTotal(3500);
-      setDebtCards(1500);
-      setDebtBanks(2000);
-    } else if (category === 'seizure') {
-      setTitle('급여/가압류/통장 압류 해제 및 중지 명령 신청');
-      setContent('채권자동에 의한 예금 통장 압류 및 직장 급여 가압류 결정문이 송달되었습니다. 당장 가계 생계비 지출이 불가능해, 개인회생 접수와 함께 중지/금지명령을 통해 압류를 해제하고 생업을 유지하고 싶습니다.');
-      setDebtBanks(4000);
-      setDebtCards(2000);
-      setDebtTotal(6000);
-      setIncome(240);
-    } else if (category === 'bankruptcy') {
-      setTitle('고령/폐업 자영업자 개인파산 및 면책 신청');
-      setContent('질병 및 건강 악화, 혹은 사업 실패로 인해 앞으로 전혀 소득 활동을 할 수 없는 상황입니다. 보유 재산보다 빚이 훨씬 많아 더 이상 생계 및 상환을 지속할 수 없기에 개인파산을 통한 전액 면책을 희망합니다.');
-      setIncome(80);
-      setDebtTotal(7500);
-      setDebtPersonals(3500);
-      setDebtBanks(4000);
-      setRequestType('direct');
-      if (lawyers.length > 0) setSelectedLawyerId(lawyers[2].id);
+    const { preset } = item;
+    
+    // Set basic preset fields
+    setJobType(preset.jobType);
+    setDebtCause(preset.debtCause);
+    setHarassmentLevel(preset.harassmentLevel);
+    setCreditorCount(preset.creditorCount);
+    setDebtBanks(preset.debtBanks);
+    setDebtCards(preset.debtCards);
+    setDebtPersonals(preset.debtPersonals);
+    setRecentLoans(preset.recentLoans);
+    setCoinCrypto(preset.coinCrypto);
+    setDebtTotal(preset.debtTotal);
+    setIncome(preset.income);
+    
+    if (preset.assetsTotal !== undefined) {
+      setAssetsTotal(preset.assetsTotal);
+    } else {
+      setAssetsTotal(1000); // default
     }
 
+    setTitle(preset.title);
+    setContent(preset.content);
+
+    // Close remedy modal
+    setActiveRemedyCategory(null);
+
+    // Move to next step of request
     setRequestStep(2);
     setActiveTab('request');
   };
@@ -2982,6 +3223,110 @@ export default function ClientRole({
           </span>
         </button>
       </nav>
+
+      {/* 8대 채무 맞춤 솔루션 모달 (Remedy Modal) */}
+      {activeRemedyCategory && remedyData[activeRemedyCategory] && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative max-w-2xl w-full bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800/80 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Header with theme color background */}
+            <div className="relative p-6 md:p-8 text-left border-b border-slate-100 dark:border-slate-800">
+              <button 
+                onClick={() => setActiveRemedyCategory(null)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                  activeRemedyCategory === 'card_loan' ? 'bg-rose-50 text-rose-500 dark:bg-rose-950/20' :
+                  activeRemedyCategory === 'bank_loan' ? 'bg-indigo-50 text-indigo-500 dark:bg-indigo-950/20' :
+                  activeRemedyCategory === 'high_interest' ? 'bg-amber-50 text-amber-500 dark:bg-amber-950/20' :
+                  activeRemedyCategory === 'guarantee' ? 'bg-purple-50 text-purple-500 dark:bg-purple-950/20' :
+                  activeRemedyCategory === 'investment' ? 'bg-orange-50 text-orange-500 dark:bg-orange-950/20' :
+                  activeRemedyCategory === 'freelancer' ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/20' :
+                  activeRemedyCategory === 'seizure' ? 'bg-rose-50 text-rose-500 dark:bg-rose-950/20' :
+                  'bg-indigo-50 text-indigo-500 dark:bg-indigo-950/20'
+                }`}>
+                  {renderRemedyIcon(remedyData[activeRemedyCategory].iconName, "w-6 h-6")}
+                </div>
+                <div className="space-y-0.5">
+                  <span className="inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light">
+                    {remedyData[activeRemedyCategory].badgeText}
+                  </span>
+                  <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    {remedyData[activeRemedyCategory].title} 맞춤 법리 솔루션
+                  </h4>
+                </div>
+              </div>
+            </div>
+
+            {/* Content Body (Scrollable) */}
+            <div className="p-6 md:p-8 space-y-6 overflow-y-auto text-left">
+              
+              {/* Section 1: 법리적 대표 해결책 */}
+              <div className="bg-slate-50 dark:bg-slate-950/30 p-5 md:p-6 rounded-2xl border border-slate-100/50 dark:border-slate-800/50 space-y-3">
+                <h5 className="font-extrabold text-sm text-brand dark:text-brand-light flex items-center gap-2">
+                  <Scale className="w-4 h-4" />
+                  <span>법률상 대표적 해법 (Remedy)</span>
+                </h5>
+                <div className="space-y-2">
+                  <h6 className="font-bold text-sm text-slate-805 dark:text-slate-200">
+                    "{remedyData[activeRemedyCategory].remedyTitle}"
+                  </h6>
+                  <p className="text-xs text-[#7e7e8f] dark:text-slate-400 leading-relaxed font-medium">
+                    {remedyData[activeRemedyCategory].remedyDesc}
+                  </p>
+                </div>
+              </div>
+
+              {/* Section 2: 변호사 조언 (골든타임 가이드) */}
+              <div className="bg-rose-50/40 dark:bg-rose-950/10 p-5 md:p-6 rounded-2xl border border-rose-100/50 dark:border-rose-900/10 space-y-3">
+                <h5 className="font-extrabold text-sm text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>🚨 변호사의 골든타임 행동 지침</span>
+                </h5>
+                <div className="space-y-2">
+                  <h6 className="font-bold text-sm text-slate-850 dark:text-slate-200">
+                    {remedyData[activeRemedyCategory].guideTitle}
+                  </h6>
+                  <p className="text-xs text-[#7e7e8f] dark:text-slate-400 leading-relaxed font-medium">
+                    {remedyData[activeRemedyCategory].guideDesc}
+                  </p>
+                </div>
+              </div>
+
+              {/* Live matching stats badge */}
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#7e7e8f] bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl">
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  실시간 도산 전문 변호사 매칭 대기 중
+                </span>
+                <span className="text-brand">안심 100% 비공개 보장</span>
+              </div>
+            </div>
+
+            {/* Footer with CTA Button */}
+            <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setActiveRemedyCategory(null)}
+                className="px-5 py-3 rounded-2xl text-xs font-extrabold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+              >
+                닫기
+              </button>
+              <button 
+                onClick={() => handleApplyRemedy(activeRemedyCategory)}
+                className="flex-1 sm:flex-none px-7 py-3 bg-brand text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-brand/20 hover:shadow-xl hover:bg-brand-dark transition-all duration-300 transform active:scale-[0.98] animate-pulse hover:animate-none flex items-center justify-center gap-2"
+              >
+                <span>이 솔루션으로 1:1 진단 및 상담 신청하기</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       </div>
     </div>
