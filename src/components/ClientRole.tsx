@@ -84,6 +84,19 @@ export default function ClientRole({
   const [recentLoans, setRecentLoans] = useState<number>(0);
   const [coinCrypto, setCoinCrypto] = useState<number>(0);
 
+  // New Individual Rehabilitation states
+  const [jobType, setJobType] = useState<'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER'>('SALARIED');
+  const [companyName, setCompanyName] = useState<string>('');
+  const [employmentDate, setEmploymentDate] = useState<string>('');
+  const [residenceRegion, setResidenceRegion] = useState<string>('서울');
+  const [spouseAsset, setSpouseAsset] = useState<number>(0);
+  const [spouseIncome, setSpouseIncome] = useState<number>(0);
+  const [hasRecentJobChange, setHasRecentJobChange] = useState<boolean>(false);
+  const [rentalDeposit, setRentalDeposit] = useState<number>(0);
+  const [debtCause, setDebtCause] = useState<'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'OTHER'>('LIVING');
+  const [harassmentLevel, setHarassmentLevel] = useState<'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE'>('CALL');
+  const [creditorCount, setCreditorCount] = useState<number>(3);
+
   // Form final step
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
@@ -391,9 +404,18 @@ export default function ClientRole({
   const handleMyDataLoad = () => {
     // Simulated MyData pull
     const presets = [
-      { inc: 245, debt: 8200, asset: 1500, bank: 4000, card: 2500, p: 1700, rec: 1500, coin: 3500, dep: 1, m: 'MARRIED' as const },
-      { inc: 180, debt: 4500, asset: 300, bank: 2000, card: 1500, p: 1000, rec: 500, coin: 0, dep: 0, m: 'SINGLE' as const },
-      { inc: 350, debt: 15000, asset: 4200, bank: 9000, card: 3000, p: 3000, rec: 4000, coin: 6000, dep: 2, m: 'DIVORCED' as const }
+      { 
+        inc: 245, debt: 8200, asset: 1500, bank: 4000, card: 2500, p: 1700, rec: 1500, coin: 3500, dep: 1, m: 'MARRIED' as const,
+        job: 'SALARIED' as const, comp: '(주)가나상사', empDate: '2022-04-10', region: '서울', spAsset: 1200, spIncome: 180, recentJob: false, rentDep: 5000, cause: 'INVESTMENT' as const, haras: 'LETTER' as const, creds: 5
+      },
+      { 
+        inc: 180, debt: 4500, asset: 300, bank: 2000, card: 1500, p: 1000, rec: 500, coin: 0, dep: 0, m: 'SINGLE' as const,
+        job: 'DAILY' as const, comp: '현대건설인력', empDate: '2024-01-15', region: '경기', spAsset: 0, spIncome: 0, recentJob: true, rentDep: 1500, cause: 'LIVING' as const, haras: 'CALL' as const, creds: 3
+      },
+      { 
+        inc: 350, debt: 15000, asset: 4200, bank: 9000, card: 3000, p: 3000, rec: 4000, coin: 6000, dep: 2, m: 'DIVORCED' as const,
+        job: 'BUSINESS' as const, comp: '우진네치킨', empDate: '2020-08-01', region: '부산', spAsset: 0, spIncome: 0, recentJob: false, rentDep: 3000, cause: 'BUSINESS' as const, haras: 'SEIZURE' as const, creds: 8
+      }
     ];
     const rand = presets[Math.floor(Math.random() * presets.length)];
     setIncome(rand.inc);
@@ -406,6 +428,19 @@ export default function ClientRole({
     setCoinCrypto(rand.coin);
     setDependents(rand.dep);
     setMaritalStatus(rand.m);
+    
+    // Set new fields
+    setJobType(rand.job);
+    setCompanyName(rand.comp);
+    setEmploymentDate(rand.empDate);
+    setResidenceRegion(rand.region);
+    setSpouseAsset(rand.spAsset);
+    setSpouseIncome(rand.spIncome);
+    setHasRecentJobChange(rand.recentJob);
+    setRentalDeposit(rand.rentDep);
+    setDebtCause(rand.cause);
+    setHarassmentLevel(rand.haras);
+    setCreditorCount(rand.creds);
   };
 
   // Submit Handler
@@ -428,7 +463,12 @@ export default function ClientRole({
     if (coinCrypto > 2000) riskFlags.push('투자/사행성 손실 채무 포함');
     if (finalDebtTotal > income * 24) riskFlags.push('소득 대비 장기 한계 부채');
     if (income < 130 + dependents * 60) riskFlags.push('최저 생계비 임계점 도달');
-
+    if (harassmentLevel === 'SEIZURE') riskFlags.push('독촉 및 가압류 강제집행 개시 (금지명령 시급)');
+    if (hasRecentJobChange) riskFlags.push('최근 1년 이내 취업자 (법원 밀착 심사 대상)');
+    if (jobType === 'BUSINESS') riskFlags.push('영업소득자 (자영업/프리랜서 장부 소명 필요)');
+    if (spouseAsset > 1000) riskFlags.push('배우자 명의 자산 보유 (청산가치 분할 반영)');
+    if (creditorCount >= 7) riskFlags.push('다중채무자 (채권기관 7곳 이상)');
+ 
     const newRequest: ConsultRequest = {
       id: `req-${Date.now()}`,
       clientId: 'client-temp',
@@ -455,7 +495,21 @@ export default function ClientRole({
           recentLoans,
           coinCrypto
         },
-        riskFlags
+        riskFlags,
+        jobType,
+        companyName,
+        companyNameMasked: companyName 
+          ? companyName.replace(/./g, (c, i) => i > 0 && i < companyName.length - 1 ? '*' : c)
+          : (jobType === 'DAILY' || jobType === 'FREELANCER' ? '프리랜서/일용직' : '미기재'),
+        employmentDate,
+        residenceRegion,
+        spouseAsset,
+        spouseIncome,
+        hasRecentJobChange,
+        rentalDeposit,
+        debtCause,
+        harassmentLevel,
+        creditorCount
       }
     };
 
@@ -1845,7 +1899,7 @@ export default function ClientRole({
             {/* STEP 2: FINANCIAL CALCULATOR */}
             {requestStep === 2 && (
               <div className="space-y-6 animate-fadeIn">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                   <div>
                     <h2 className="text-xl font-bold mb-1">소득 및 채무 위기 수준을 기입해 주세요.</h2>
                     <p className="text-slate-500 text-sm">마이데이터 조회 연동으로 원클릭 기입 혹은 수기 작성이 모두 가능합니다.</p>
@@ -1853,161 +1907,399 @@ export default function ClientRole({
                   <button 
                     type="button"
                     onClick={handleMyDataLoad}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-brand-light hover:bg-blue-200 dark:bg-brand/10 dark:hover:bg-blue-900 text-brand dark:text-brand-light text-xs font-semibold rounded-lg transition-colors border border-brand/20/50"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-brand-light hover:bg-blue-200 dark:bg-brand/10 dark:hover:bg-blue-900 text-brand dark:text-brand-light text-xs font-semibold rounded-lg transition-colors border border-brand/20"
                   >
                     <RefreshCw className="w-3.5 h-3.5 animate-spin-hover" />
                     <span>마이데이터 채무 불러오기</span>
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Income input */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">월 평균 세후 실수령 소득 (만 원)</label>
-                    <div className="relative rounded-md shadow-sm">
-                      <input 
-                        type="number" 
-                        value={income}
-                        onChange={(e) => setIncome(Number(e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-brand"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-slate-400">만 원</div>
+                {/* Section 1: 직업 및 소득 상태 */}
+                <div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4">
+                  <h3 className="text-sm font-extrabold text-slate-850 dark:text-slate-200 flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-brand rounded-full"></span>
+                    <span>1. 직업 및 소득 정보</span>
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Job Type Selector */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">직업 유형*</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {([
+                          { key: 'SALARIED', label: '급여소득' },
+                          { key: 'BUSINESS', label: '영업소득' },
+                          { key: 'DAILY', label: '일용직' },
+                          { key: 'FREELANCER', label: '프리랜서' }
+                        ] as const).map(item => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => {
+                              setJobType(item.key);
+                              if (item.key === 'DAILY' || item.key === 'FREELANCER') {
+                                setCompanyName('');
+                                setEmploymentDate('');
+                              }
+                            }}
+                            className={`py-2 text-[11px] font-bold rounded-lg border transition-all ${
+                              jobType === item.key 
+                              ? 'bg-brand text-white border-brand shadow-sm animate-pulse-light' 
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 text-slate-650 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Assets input */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">보유 재산 합산 (부동산/예금 등, 만 원)</label>
-                    <div className="relative rounded-md shadow-sm">
+                    {/* Company name */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">
+                        {jobType === 'BUSINESS' ? '상호명' : '직장명'} 
+                        {jobType === 'SALARIED' || jobType === 'BUSINESS' ? ' *' : ' (선택)'}
+                      </label>
                       <input 
-                        type="number" 
-                        value={assetsTotal}
-                        onChange={(e) => setAssetsTotal(Number(e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-brand"
+                        type="text" 
+                        placeholder={jobType === 'DAILY' || jobType === 'FREELANCER' ? '해당 사항 없음' : '예: (주)가나상사'}
+                        disabled={jobType === 'DAILY' || jobType === 'FREELANCER'}
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand disabled:opacity-50"
                       />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-slate-400">만 원</div>
                     </div>
-                  </div>
 
-                  {/* Dependents input */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">부양 가족 수 (본인 제외, 명)</label>
-                    <select 
-                      value={dependents}
-                      onChange={(e) => setDependents(Number(e.target.value))}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-brand"
-                    >
-                      <option value={0}>0명 (1인 가구 - 본인만)</option>
-                      <option value={1}>1명 (2인 가구 - 부양 1인)</option>
-                      <option value={2}>2명 (3인 가구 - 부양 2인)</option>
-                      <option value={3}>3명 이상 (4인 이상 가구)</option>
-                    </select>
-                  </div>
+                    {/* Employment Date */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">
+                        {jobType === 'BUSINESS' ? '개업 연월일' : '입사일자'}
+                        {jobType === 'SALARIED' || jobType === 'BUSINESS' ? ' *' : ' (선택)'}
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder={jobType === 'DAILY' || jobType === 'FREELANCER' ? '해당 사항 없음' : '예: 2022-04-10'}
+                        disabled={jobType === 'DAILY' || jobType === 'FREELANCER'}
+                        value={employmentDate}
+                        onChange={(e) => setEmploymentDate(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand disabled:opacity-50"
+                      />
+                    </div>
 
-                  {/* Marital status */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">결혼 여부</label>
-                    <div className="flex gap-2">
-                      {(['SINGLE', 'MARRIED', 'DIVORCED'] as const).map(m => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setMaritalStatus(m)}
-                          className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                            maritalStatus === m 
-                            ? 'bg-brand text-white border-brand' 
-                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:bg-slate-100'
-                          }`}
-                        >
-                          {m === 'SINGLE' ? '미혼' : m === 'MARRIED' ? '기혼' : '이혼'}
-                        </button>
-                      ))}
+                    {/* Income */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">월 평균 세후 실수령 소득 (만 원)*</label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input 
+                          type="number" 
+                          value={income}
+                          onChange={(e) => setIncome(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
+                      </div>
+                    </div>
+
+                    {/* Recent Job Change */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">최근 1년 이내 취업 / 이직 여부*</label>
+                      <div className="flex gap-2">
+                        {[
+                          { key: false, label: '아니오 (장기 근속)' },
+                          { key: true, label: '예 (최근 1년 이내 취업)' }
+                        ].map(item => (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={() => setHasRecentJobChange(item.key)}
+                            className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                              hasRecentJobChange === item.key 
+                              ? 'bg-brand text-white border-brand shadow-sm' 
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Sub Debt breakdown calculator */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Landmark className="w-4 h-4 text-brand" />
-                    <span>채무 구조 상세 정보 기입</span>
-                  </span>
+                {/* Section 2: 거주 및 재산 상태 */}
+                <div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-855 space-y-4">
+                  <h3 className="text-sm font-extrabold text-slate-855 dark:text-slate-200 flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-brand rounded-full"></span>
+                    <span>2. 거주 및 자산 정보</span>
+                  </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">1금융권 은행 채무</label>
-                      <input 
-                        type="number" 
-                        value={debtBanks} 
-                        onChange={(e) => setDebtBanks(Number(e.target.value))}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-xs focus:ring-1" 
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Residence Region */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">실거주지 지역 (관할법원 지정용)*</label>
+                      <select 
+                        value={residenceRegion}
+                        onChange={(e) => setResidenceRegion(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
+                      >
+                        <option value="서울">서울시 (서울회생법원 관할)</option>
+                        <option value="경기">경기도 (수원/의정부/인천 등)</option>
+                        <option value="인천">인천시 (인천지방법원 관할)</option>
+                        <option value="부산">부산시 (부산회생법원 관할)</option>
+                        <option value="대구">대구시 (대구지방법원 관할)</option>
+                        <option value="대전">대전시 (대전지방법원 관할)</option>
+                        <option value="광주">광주시 (광주지방법원 관할)</option>
+                        <option value="울산">울산시 (울산지방법원 관할)</option>
+                        <option value="기타">기타 강원/제주/충청/경상/전라 등</option>
+                      </select>
                     </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">카드사 카드론/현금서비스</label>
-                      <input 
-                        type="number" 
-                        value={debtCards} 
-                        onChange={(e) => setDebtCards(Number(e.target.value))}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-xs focus:ring-1" 
-                      />
+
+                    {/* Rental Deposit */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">주거 임차보증금 (자가인 경우 0 기입, 만 원)</label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input 
+                          type="number" 
+                          value={rentalDeposit}
+                          onChange={(e) => setRentalDeposit(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">저축은행/캐피탈/사채 등</label>
-                      <input 
-                        type="number" 
-                        value={debtPersonals} 
-                        onChange={(e) => setDebtPersonals(Number(e.target.value))}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-xs focus:ring-1" 
-                      />
+
+                    {/* Own Assets Total */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">본인 명의 총 자산 규모 (자가 시세/예금/차량 등, 만 원)*</label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input 
+                          type="number" 
+                          value={assetsTotal}
+                          onChange={(e) => setAssetsTotal(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
+                      </div>
+                    </div>
+
+                    {/* Dependents */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">부양 가족 수 (본인 제외, 명)*</label>
+                      <select 
+                        value={dependents}
+                        onChange={(e) => setDependents(Number(e.target.value))}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
+                      >
+                        <option value={0}>0명 (1인 가구 - 본인만)</option>
+                        <option value={1}>1명 (2인 가구 - 부양가족 1인)</option>
+                        <option value={2}>2명 (3인 가구 - 부양가족 2인)</option>
+                        <option value={3}>3명 이상 (4인 이상 가구)</option>
+                      </select>
+                    </div>
+
+                    {/* Marital Status */}
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-500">결혼 상태*</label>
+                      <div className="flex gap-2">
+                        {(['SINGLE', 'MARRIED', 'DIVORCED'] as const).map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => {
+                              setMaritalStatus(m);
+                              if (m !== 'MARRIED') {
+                                setSpouseAsset(0);
+                                setSpouseIncome(0);
+                              }
+                            }}
+                            className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                              maritalStatus === m 
+                              ? 'bg-brand text-white border-brand shadow-sm' 
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 hover:bg-slate-100'
+                            }`}
+                          >
+                            {m === 'SINGLE' ? '미혼' : m === 'MARRIED' ? '기혼' : '이혼'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div className="bg-amber-500/5 p-2 rounded border border-amber-500/10">
-                      <label className="block text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span>최근 1년 이내 무리한 추가 대출 (만 원)</span>
-                      </label>
-                      <input 
-                        type="number" 
-                        value={recentLoans} 
-                        onChange={(e) => setRecentLoans(Number(e.target.value))}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-xs focus:ring-1" 
-                      />
+                  {maritalStatus === 'MARRIED' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-850 animate-slideDown">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-550 dark:text-slate-350">배우자 명의 총 재산 가액 (만 원)</label>
+                        <div className="relative rounded-md shadow-sm">
+                          <input 
+                            type="number" 
+                            value={spouseAsset}
+                            onChange={(e) => setSpouseAsset(Number(e.target.value))}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
+                          />
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
+                        </div>
+                        <span className="text-[10px] text-slate-400 block leading-tight">* 실무상 배우자 재산의 50%는 신청인의 청산가치에 임의 가산될 수 있습니다.</span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-555 dark:text-slate-355">배우자 월 평균 소득 규모 (만 원)</label>
+                        <div className="relative rounded-md shadow-sm">
+                          <input 
+                            type="number" 
+                            value={spouseIncome}
+                            onChange={(e) => setSpouseIncome(Number(e.target.value))}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
+                          />
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-red-500/5 p-2 rounded border border-red-500/10">
-                      <label className="block text-xs font-semibold text-red-700 dark:text-red-300 mb-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span>사행성 손실 (주식/코인/도박 투자금, 만 원)</span>
-                      </label>
-                      <input 
-                        type="number" 
-                        value={coinCrypto} 
-                        onChange={(e) => setCoinCrypto(Number(e.target.value))}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-xs focus:ring-1" 
-                      />
+                  )}
+                </div>
+
+                {/* Section 3: 채무 및 위기 수준 */}
+                <div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4">
+                  <h3 className="text-sm font-extrabold text-slate-855 dark:text-slate-200 flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-brand rounded-full"></span>
+                    <span>3. 채무 구조 및 추심 위기수준</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Creditor Count */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">채권자 기관 수 (대출받은 금융처 수)*</label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input 
+                          type="number" 
+                          value={creditorCount}
+                          onChange={(e) => setCreditorCount(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">곳</div>
+                      </div>
+                    </div>
+
+                    {/* Debt Cause */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">주된 채무 발생 원인*</label>
+                      <select 
+                        value={debtCause}
+                        onChange={(e) => setDebtCause(e.target.value as any)}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
+                      >
+                        <option value="LIVING">생활비 부족 및 가계 생계 대출</option>
+                        <option value="BUSINESS">개인 사업장 창업 및 경영난/부도</option>
+                        <option value="INVESTMENT">투자 실패 (주식/코인/도박 손실)</option>
+                        <option value="GUARANTEE">보증 채무 연대 대리상환</option>
+                        <option value="OTHER">타인 대여/의료비/사기 피해 등 기타</option>
+                      </select>
+                    </div>
+
+                    {/* Harassment Level */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-500">현재 채무 독촉 및 위기 수준*</label>
+                      <select 
+                        value={harassmentLevel}
+                        onChange={(e) => setHarassmentLevel(e.target.value as any)}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
+                      >
+                        <option value="CALL">단순 추심전화 및 독촉 안내문자 단계</option>
+                        <option value="LETTER">독촉 최고서 수령 및 거주지 방문 예고</option>
+                        <option value="LAWSUIT">법원 지급명령 송달 및 민사소송 개시 단계</option>
+                        <option value="SEIZURE">급여 가압류 / 통장 압류 개시 실행</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-3">
-                    <span className="text-slate-600 dark:text-slate-400 text-xs">상기 구조별 합산 채무액:</span>
-                    <span className="text-lg font-bold text-brand dark:text-brand-light">
-                      {totalCalculatedDebt > 0 ? `${(totalCalculatedDebt / 10000).toFixed(2)}억 원 (${totalCalculatedDebt.toLocaleString()}만 원)` : `${(debtTotal / 10000).toFixed(2)}억 원 (${debtTotal.toLocaleString()}만 원)`}
+                  {/* Sub Debt breakdown calculator */}
+                  <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-850 space-y-4">
+                    <span className="text-xs font-bold text-slate-850 dark:text-slate-200 flex items-center gap-1.5">
+                      <Landmark className="w-3.5 h-3.5 text-brand" />
+                      <span>기관 분류별 채무 명세 상세 입력</span>
                     </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-slate-450 mb-1">1금융권 은행 채무</label>
+                        <input 
+                          type="number" 
+                          value={debtBanks} 
+                          onChange={(e) => setDebtBanks(Number(e.target.value))}
+                          className="w-full bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-450 mb-1">카드사 카드론/현금서비스</label>
+                        <input 
+                          type="number" 
+                          value={debtCards} 
+                          onChange={(e) => setDebtCards(Number(e.target.value))}
+                          className="w-full bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-455 mb-1">저축은행/대부업/사채 등</label>
+                        <input 
+                          type="number" 
+                          value={debtPersonals} 
+                          onChange={(e) => setDebtPersonals(Number(e.target.value))}
+                          className="w-full bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div className="bg-amber-500/5 p-2 rounded border border-amber-500/10">
+                        <label className="block text-[10px] font-semibold text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>최근 1년 이내 무리한 추가 대출 (만 원)</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={recentLoans} 
+                          onChange={(e) => setRecentLoans(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
+                        />
+                      </div>
+                      <div className="bg-red-500/5 p-2 rounded border border-red-500/10">
+                        <label className="block text-[10px] font-semibold text-red-700 dark:text-red-300 mb-1 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>사행성 손실액 (주식/코인/도박, 만 원)</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          value={coinCrypto} 
+                          onChange={(e) => setCoinCrypto(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+                      <span className="text-slate-600 dark:text-slate-400 text-xs">상기 구조별 합산 채무액:</span>
+                      <span className="text-sm font-bold text-brand dark:text-brand-light bg-brand/5 dark:bg-brand/10 px-2.5 py-1 rounded-full">
+                        {totalCalculatedDebt > 0 ? `${(totalCalculatedDebt / 10000).toFixed(2)}억 원 (${totalCalculatedDebt.toLocaleString()}만 원)` : `${(debtTotal / 10000).toFixed(2)}억 원 (${debtTotal.toLocaleString()}만 원)`}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-2">
+                <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800 pt-4">
                   <button 
                     onClick={() => setRequestStep(1)}
-                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-5 py-2 rounded-lg text-sm"
+                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-5 py-2 rounded-lg text-xs font-semibold hover:bg-slate-200"
                   >
                     이전으로
                   </button>
                   <button 
-                    onClick={() => setRequestStep(3)}
-                    className="bg-brand hover:bg-brand text-white font-medium px-6 py-2 rounded-lg flex items-center gap-1.5"
+                    onClick={() => {
+                      if ((jobType === 'SALARIED' || jobType === 'BUSINESS') && (!companyName.trim() || !employmentDate.trim())) {
+                        alert('급여소득 및 영업소득자는 직장/상호명과 입사/개업일자를 반드시 입력하셔야 합니다.');
+                        return;
+                      }
+                      setRequestStep(3);
+                    }}
+                    className="bg-brand hover:bg-brand-hover text-white font-bold px-6 py-2 rounded-lg flex items-center gap-1.5 text-xs shadow"
                   >
                     <span>마지막 단계로 이동</span>
                     <ChevronRight className="w-4 h-4" />

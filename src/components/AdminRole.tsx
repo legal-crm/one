@@ -592,10 +592,45 @@ export default function AdminRole({
                             <span>총 기재 채무액</span>
                             <strong className="text-white">{selectedClient.financialProfile.debtTotal.toLocaleString()}만 원</strong>
                           </div>
-                          <div className="flex justify-between">
+                          <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
                             <span>부양 가족수 / 결혼 구조</span>
-                            <strong className="text-white">{selectedClient.financialProfile.dependents}명 / {selectedClient.financialProfile.maritalStatus}</strong>
+                            <strong className="text-white">{selectedClient.financialProfile.dependents}명 / {selectedClient.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : selectedClient.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</strong>
                           </div>
+
+                          {selectedClient.financialProfile.jobType && (
+                            <>
+                              <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 pt-0.5">
+                                <span>직업 유형 및 직장명</span>
+                                <strong className="text-white">
+                                  {selectedClient.financialProfile.jobType === 'SALARIED' ? '급여소득' : selectedClient.financialProfile.jobType === 'BUSINESS' ? '영업소득' : selectedClient.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}
+                                  {selectedClient.financialProfile.companyNameMasked && ` (${selectedClient.financialProfile.companyNameMasked})`}
+                                </strong>
+                              </div>
+                              <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                                <span>실거주 지역 / 임차보증금</span>
+                                <strong className="text-white">{selectedClient.financialProfile.residenceRegion} / {selectedClient.financialProfile.rentalDeposit?.toLocaleString()}만원</strong>
+                              </div>
+                              {selectedClient.financialProfile.maritalStatus === 'MARRIED' && (
+                                <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                                  <span>배우자 재산 / 소득</span>
+                                  <strong className="text-white">{selectedClient.financialProfile.spouseAsset?.toLocaleString()}만 / {selectedClient.financialProfile.spouseIncome}만원</strong>
+                                </div>
+                              )}
+                              <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                                <span>채무 주원인 / 채권자수</span>
+                                <strong className="text-white">
+                                  {selectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : selectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : selectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : selectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
+                                  {` (${selectedClient.financialProfile.creditorCount}곳 금융기관)`}
+                                </strong>
+                              </div>
+                              <div className="flex justify-between text-indigo-400">
+                                <span>현재 채무 추심 단계</span>
+                                <strong className="font-bold">
+                                  {selectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심 전화 및 문자' : selectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉장 및 가택방문' : selectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소급/소송 진행' : '급여/통장 압류 단계'}
+                                </strong>
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         <div className="space-y-1">

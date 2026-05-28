@@ -21,6 +21,20 @@ export interface FinancialProfile {
     coinCrypto: number;  // Cod/Coin/Stock losses (코인/주식 손실)
   };
   riskFlags: string[]; // ['최근 1년 이내 대출 과다', '사행성 채무(코인/토토)', '소득 대비 과다 채무']
+  
+  // New Individual Rehabilitation Fields
+  jobType?: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
+  companyName?: string;
+  companyNameMasked?: string;
+  employmentDate?: string;
+  residenceRegion?: string;
+  spouseAsset?: number;
+  spouseIncome?: number;
+  hasRecentJobChange?: boolean;
+  rentalDeposit?: number;
+  debtCause?: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'OTHER';
+  harassmentLevel?: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE';
+  creditorCount?: number;
 }
 
 export type RequestType = 'direct' | 'open';

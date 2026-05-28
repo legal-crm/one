@@ -922,6 +922,16 @@ export default function LawyerRole({
                           <div>• 소득 대비 부채비: <strong className="text-red-400 font-bold">{debtRatio}배 수준</strong></div>
                         </div>
 
+                        {/* Expanded Legal Profile details */}
+                        {r.financialProfile.jobType && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 bg-slate-950/40 p-3 rounded-lg text-[10px] text-slate-450 border border-slate-850">
+                            <div>• 직업유형: <strong className="text-slate-300">{r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'} ({r.financialProfile.companyName || '미기재'})</strong></div>
+                            <div>• 거주지역: <strong className="text-slate-300">{r.financialProfile.residenceRegion || '미기재'}</strong></div>
+                            <div>• 채무원인: <strong className="text-slate-300">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong></div>
+                            <div>• 채권자수 / 추심: <strong className="text-amber-400">{r.financialProfile.creditorCount || 0}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류/압류'}</strong></div>
+                          </div>
+                        )}
+
                         {r.financialProfile.riskFlags.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 pt-1">
                             {r.financialProfile.riskFlags.map(rf => (
@@ -1135,7 +1145,27 @@ export default function LawyerRole({
                       <div className="flex justify-between table-auto"><span>총 채무진단:</span> <span className="font-bold text-red-400">{currentChatRequest.financialProfile.debtTotal.toLocaleString()}만 원</span></div>
                       <div className="flex justify-between"><span>자산수준합산:</span> <span className="text-slate-200">{currentChatRequest.financialProfile.assetsTotal.toLocaleString()}만 원</span></div>
                       <div className="flex justify-between"><span>부양 가족수:</span> <span className="text-slate-200">{currentChatRequest.financialProfile.dependents}명</span></div>
-                      <div className="flex justify-between"><span>결혼 자격구조:</span> <span className="text-slate-200">{currentChatRequest.financialProfile.maritalStatus}</span></div>
+                      <div className="flex justify-between"><span>결혼 자격구조:</span> <span className="text-slate-200">{currentChatRequest.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : currentChatRequest.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
+                      
+                      {currentChatRequest.financialProfile.jobType && (
+                        <>
+                          <div className="border-t border-slate-800 my-1.5 pt-1.5 flex justify-between">
+                            <span>직업 유형:</span> 
+                            <span className="text-white font-bold">
+                              {currentChatRequest.financialProfile.jobType === 'SALARIED' ? '급여소득' : currentChatRequest.financialProfile.jobType === 'BUSINESS' ? '영업소득' : currentChatRequest.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}
+                              {currentChatRequest.financialProfile.companyName && ` (${currentChatRequest.financialProfile.companyName})`}
+                            </span>
+                          </div>
+                          <div className="flex justify-between"><span>거주 지역:</span> <span className="text-white">{currentChatRequest.financialProfile.residenceRegion}</span></div>
+                          <div className="flex justify-between"><span>임차 보증금:</span> <span className="text-white">{currentChatRequest.financialProfile.rentalDeposit?.toLocaleString()}만 원</span></div>
+                          {currentChatRequest.financialProfile.maritalStatus === 'MARRIED' && (
+                            <div className="flex justify-between"><span>배우자 재산:</span> <span className="text-white">{currentChatRequest.financialProfile.spouseAsset?.toLocaleString()}만 원</span></div>
+                          )}
+                          <div className="flex justify-between"><span>주된 채무원인:</span> <span className="text-white">{currentChatRequest.financialProfile.debtCause === 'LIVING' ? '생활비' : currentChatRequest.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : currentChatRequest.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : currentChatRequest.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
+                          <div className="flex justify-between text-amber-400"><span>추심 단계:</span> <span>{currentChatRequest.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : currentChatRequest.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : currentChatRequest.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '압류/가압류'}</span></div>
+                          <div className="flex justify-between"><span>채권자 기관수:</span> <span className="text-white">{currentChatRequest.financialProfile.creditorCount}곳</span></div>
+                        </>
+                      )}
                     </div>
 
                     {currentChatRequest.financialProfile.riskFlags.length > 0 && (
@@ -1651,6 +1681,47 @@ export default function LawyerRole({
                         <div>총 채무 규모: <strong className="text-red-400 font-extrabold">{crmSelectedClient.financialProfile.debtTotal.toLocaleString()}만원</strong></div>
                         <div>자산수준합산: <strong className="text-white">{crmSelectedClient.financialProfile.assetsTotal.toLocaleString()}만원</strong></div>
                         <div>부양 가족수: <strong className="text-white">{crmSelectedClient.financialProfile.dependents}명</strong></div>
+                        {crmSelectedClient.financialProfile.jobType && (
+                          <>
+                            <div className="col-span-2 border-t border-slate-800 my-1 pt-1.5 flex justify-between">
+                              <span>직업 (직장명):</span> 
+                              <strong className="text-slate-200">
+                                {crmSelectedClient.financialProfile.jobType === 'SALARIED' ? '급여소득' : crmSelectedClient.financialProfile.jobType === 'BUSINESS' ? '영업소득' : crmSelectedClient.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}
+                                {crmSelectedClient.financialProfile.companyName && ` (${crmSelectedClient.financialProfile.companyName})`}
+                              </strong>
+                            </div>
+                            <div className="col-span-2 flex justify-between">
+                              <span>입사/개업일:</span>
+                              <strong className="text-slate-200">{crmSelectedClient.financialProfile.employmentDate || '미기재'}</strong>
+                            </div>
+                            <div className="col-span-2 flex justify-between">
+                              <span>거주지 (관할법원):</span>
+                              <strong className="text-slate-200">{crmSelectedClient.financialProfile.residenceRegion}</strong>
+                            </div>
+                            <div className="col-span-2 flex justify-between">
+                              <span>임차 보증금:</span>
+                              <strong className="text-slate-200">{crmSelectedClient.financialProfile.rentalDeposit?.toLocaleString()}만원</strong>
+                            </div>
+                            {crmSelectedClient.financialProfile.maritalStatus === 'MARRIED' && (
+                              <div className="col-span-2 flex justify-between">
+                                <span>배우자 자산/소득:</span>
+                                <strong className="text-slate-200">{crmSelectedClient.financialProfile.spouseAsset?.toLocaleString()}만 / {crmSelectedClient.financialProfile.spouseIncome}만원</strong>
+                              </div>
+                            )}
+                            <div className="col-span-2 flex justify-between">
+                              <span>채무 원인:</span>
+                              <strong className="text-slate-200">{crmSelectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : crmSelectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : crmSelectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : crmSelectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong>
+                            </div>
+                            <div className="col-span-2 flex justify-between text-amber-400">
+                              <span>추심 단계:</span>
+                              <strong>{crmSelectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : crmSelectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉 최고서' : crmSelectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류/지급명령'}</strong>
+                            </div>
+                            <div className="col-span-2 flex justify-between">
+                              <span>채권자 수:</span>
+                              <strong className="text-slate-200">{crmSelectedClient.financialProfile.creditorCount}곳</strong>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 
