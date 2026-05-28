@@ -41,7 +41,7 @@ export default function ClientRole({
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userAlias, setUserAlias] = useState<string>('');
   const [alertMode, setAlertMode] = useState<'NORMAL' | 'STEALTH' | 'SECRET'>('STEALTH');
-  const [senderNameOverride, setSenderNameOverride] = useState<string>('원케어');
+  const [senderNameOverride, setSenderNameOverride] = useState<string>('회생톡');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
@@ -572,9 +572,12 @@ export default function ClientRole({
       {/* Dynamic Client Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="bg-blue-600 text-white p-2 rounded-lg text-xs font-bold tracking-wider">CLIENT</span>
-            <span className="font-bold text-lg text-slate-800 dark:text-slate-150">개인회생·파산 의뢰인 센터</span>
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
+            <img src="/logo.png" alt="회생톡 로고" className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-indigo-500/20" />
+            <div className="flex flex-col text-left">
+              <span className="font-black text-lg tracking-tight text-slate-900 dark:text-white leading-none">회생톡</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold tracking-wide mt-0.5">안심 채무 해결 센터</span>
+            </div>
           </div>
 
           <nav className="flex items-center gap-1.5">
@@ -1448,7 +1451,7 @@ export default function ClientRole({
                 </span>
                 
                 <h1 className="text-2xl md:text-3.5xl font-black tracking-tight leading-tight">
-                  원케어 회생파산 성공후기
+                  회생톡 회생파산 성공후기
                 </h1>
                 
                 <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
@@ -2465,11 +2468,11 @@ export default function ClientRole({
                   type="text" 
                   value={senderNameOverride}
                   onChange={(e) => setSenderNameOverride(e.target.value)}
-                  placeholder="예: 원케어, 오피스원"
+                  placeholder="예: 회생톡, 오피스원"
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-1 focus:ring-blue-500"
                 />
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {['원케어', '오피스원', '가족생활건강', 'L-CRM'].map(name => (
+                  {['회생톡', '오피스원', '가족생활건강', 'L-CRM'].map(name => (
                     <button
                       key={name}
                       onClick={() => setSenderNameOverride(name)}

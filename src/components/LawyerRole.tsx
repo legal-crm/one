@@ -148,10 +148,16 @@ export default function LawyerRole({
       {/* Lawyer CRM Premium Header */}
       <header className="sticky top-0 z-40 bg-slate-950 border-b border-slate-800 shadow-xl px-4 py-3">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded font-extrabold text-[11px] tracking-wider uppercase">LAWYER CRM</span>
-            <span className="font-extrabold text-base tracking-tight">회생파산 전문 법률 대리인 SaaS</span>
-            <span className="text-slate-500 dark:text-slate-400 text-xs hidden sm:inline ml-2 border-l border-slate-800 pl-3">팀: {activeLawyer.name.split(' ')[0]} 법률지부</span>
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="회생톡 로고" className="w-8 h-8 rounded-lg object-cover" />
+            <div className="flex flex-col text-left">
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="font-black text-sm tracking-tight text-white">회생톡 변호사 CRM</span>
+                <span className="bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded font-extrabold text-[9px] tracking-wider uppercase">SaaS</span>
+              </div>
+              <span className="text-[10px] text-slate-400 mt-0.5">도산 전문 법률 대리인 지부</span>
+            </div>
+            <span className="text-slate-700 text-xs hidden sm:inline ml-2 border-l border-slate-800 pl-3">팀: {activeLawyer.name.split(' ')[0]} 법률지부</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -930,7 +936,7 @@ export default function LawyerRole({
 
       {/* Sub status footer */}
       <footer className="bg-slate-950 border-t border-slate-850 text-center py-4 text-[10px] text-slate-500 space-y-1">
-        <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼. All rights reserved.</p>
+        <p>© 2026 회생톡 도산 전문 변호사 CRM. All rights reserved.</p>
         <p>본 플랫폼의 매출 구조는 변호사법 제34조 정식 원칙 가이드(활동 기반 월 고정 구독료 책정)를 철저하게 이행합니다.</p>
       </footer>
 
