@@ -3,7 +3,7 @@ import {
   PlusCircle, Users, Scale, FileText, ChevronRight, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
-  Settings, LogOut, Lock, X
+  Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage } from '../types';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
@@ -567,7 +567,7 @@ export default function ClientRole({
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-16 md:pb-0">
       
       {/* Dynamic Client Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
@@ -581,58 +581,60 @@ export default function ClientRole({
           </div>
 
           <nav className="flex items-center gap-1.5">
-            <button 
-              onClick={() => setActiveTab('landing')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'landing' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              홈 / 안내
-            </button>
-            <button 
-              onClick={() => setActiveTab('calculator')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'calculator' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              탕감액 계산기
-            </button>
-            <button 
-              onClick={() => setActiveTab('reviews')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'reviews' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              성공 후기
-            </button>
-            <button 
-              onClick={() => setActiveTab('request')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'request' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              상담 신청
-            </button>
-            <button 
-              onClick={() => setActiveTab('lawyers')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'lawyers' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              변호사 찾기
-            </button>
-            <button 
-              onClick={() => setActiveTab('chat')}
-              className={`relative px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'chat' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              내 상담방
-              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
-              </span>
-            </button>
+            <div className="hidden md:flex items-center gap-1.5">
+              <button 
+                onClick={() => setActiveTab('landing')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'landing' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                홈 / 안내
+              </button>
+              <button 
+                onClick={() => setActiveTab('calculator')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'calculator' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                탕감액 계산기
+              </button>
+              <button 
+                onClick={() => setActiveTab('reviews')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'reviews' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                성공 후기
+              </button>
+              <button 
+                onClick={() => setActiveTab('request')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'request' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                상담 신청
+              </button>
+              <button 
+                onClick={() => setActiveTab('lawyers')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'lawyers' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                변호사 찾기
+              </button>
+              <button 
+                onClick={() => setActiveTab('chat')}
+                className={`relative px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'chat' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 font-semibold' : 'text-slate-600 dark:bg-slate-900 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                내 상담방
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+                </span>
+              </button>
+            </div>
 
             {/* Auth section */}
             {isLoggedIn ? (
@@ -754,10 +756,10 @@ export default function ClientRole({
                   <span className="bg-blue-600/90 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full border border-blue-400/30">
                     {banners[bannerIndex].badge}
                   </span>
-                  <h1 className="text-xl md:text-3xl font-extrabold tracking-tight leading-snug">
+                  <h1 className="text-lg md:text-3xl font-black tracking-tight leading-snug">
                     {banners[bannerIndex].title}
                   </h1>
-                  <p className="text-slate-300 text-xs md:text-sm max-w-xl leading-relaxed">
+                  <p className="text-slate-300 text-[11px] md:text-sm max-w-xl leading-relaxed hidden sm:block">
                     {banners[bannerIndex].subtitle}
                   </p>
                 </div>
@@ -1238,7 +1240,7 @@ export default function ClientRole({
         {/* TAB: 탕감액 계산기 */}
         {activeTab === 'calculator' && (
           <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-left">
-            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl shadow-lg border border-slate-800 p-6 md:p-8 space-y-6">
+            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl shadow-lg border border-slate-800 p-4 sm:p-6 md:p-8 space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
                 <div className="space-y-1">
                   <span className="text-[10px] text-blue-300 font-bold uppercase tracking-widest flex items-center gap-1">
@@ -1268,7 +1270,7 @@ export default function ClientRole({
                       step="10"
                       value={calcIncome}
                       onChange={(e) => setCalcIncome(Number(e.target.value))}
-                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 py-1"
                     />
                     <div className="flex justify-between text-[10px] text-slate-500">
                       <span>100만 원</span>
@@ -1292,7 +1294,7 @@ export default function ClientRole({
                       step="500"
                       value={calcDebt}
                       onChange={(e) => setCalcDebt(Number(e.target.value))}
-                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                      className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500 py-1"
                     />
                     <div className="flex justify-between text-[10px] text-slate-500">
                       <span>1,000만 원</span>
@@ -1588,7 +1590,7 @@ export default function ClientRole({
                         </div>
 
                         {/* Content text */}
-                        <p className="text-[11px] text-slate-550 dark:text-slate-400 leading-relaxed font-normal">
+                        <p className="text-[11px] text-slate-550 dark:text-slate-400 leading-relaxed font-normal line-clamp-3 md:line-clamp-none">
                           {rev.content}
                         </p>
 
@@ -1649,36 +1651,41 @@ export default function ClientRole({
           <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 p-6 md:p-8 animate-fadeIn">
             
             {/* Steps Visual Guidance */}
-            <div className="flex items-center justify-between mb-8 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  requestStep >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+            <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                  requestStep >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'
                 }`}>1</span>
-                <div>
-                  <span className="block font-semibold text-sm">상담 방식 선정</span>
-                  <span className="text-xs text-slate-500">직접 / 분산 다중 연결</span>
+                <div className="hidden sm:block text-left">
+                  <span className="block font-semibold text-xs md:text-sm">상담 방식 선정</span>
+                  <span className="text-[10px] text-slate-500 hidden md:block">직접 / 분산 다중 연결</span>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400" />
-              <div className="flex items-center gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  requestStep >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+              <div className="flex items-center gap-2 md:gap-3">
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                  requestStep >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'
                 }`}>2</span>
-                <div>
-                  <span className="block font-semibold text-sm">소득 / 채무 자가계산</span>
-                  <span className="text-xs text-slate-500">마이데이터 및 상세 내역</span>
+                <div className="hidden sm:block text-left">
+                  <span className="block font-semibold text-xs md:text-sm">소득 / 채무 자가계산</span>
+                  <span className="text-[10px] text-slate-500 hidden md:block">마이데이터 및 상세 내역</span>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400" />
-              <div className="flex items-center gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  requestStep >= 3 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+              <div className="flex items-center gap-2 md:gap-3">
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                  requestStep >= 3 ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'
                 }`}>3</span>
-                <div>
-                  <span className="block font-semibold text-sm">상담 내용 접수</span>
-                  <span className="text-xs text-slate-500">법적 책임 동의 및 완료</span>
+                <div className="hidden sm:block text-left">
+                  <span className="block font-semibold text-xs md:text-sm">상담 내용 접수</span>
+                  <span className="text-[10px] text-slate-500 hidden md:block">법적 책임 동의 및 완료</span>
                 </div>
               </div>
+            </div>
+
+            {/* Mobile-only Step Status Title */}
+            <div className="sm:hidden text-center text-xs font-bold text-slate-600 dark:text-slate-400 mb-6 bg-slate-50 dark:bg-slate-950/40 py-2 rounded-xl border border-slate-100 dark:border-slate-850">
+              현재 단계: {requestStep === 1 ? '1. 상담 방식 선정' : requestStep === 2 ? '2. 소득/채무 자가계산' : '3. 상담 내용 접수'}
             </div>
 
             {/* STEP 1: CHOICE OF FLOW */}
@@ -2285,8 +2292,8 @@ export default function ClientRole({
 
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl p-6 md:p-8 space-y-5 relative overflow-hidden text-left animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-full sm:max-w-md w-full shadow-2xl p-6 md:p-8 space-y-5 relative overflow-hidden text-left animate-slideUp sm:animate-fadeIn">
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
@@ -2416,8 +2423,8 @@ export default function ClientRole({
 
       {/* Settings Modal (스텔스 & 보안 설정) */}
       {showSettingsModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl p-6 md:p-8 space-y-6 relative overflow-hidden text-left animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-full sm:max-w-md w-full shadow-2xl p-6 md:p-8 space-y-6 relative overflow-hidden text-left animate-slideUp sm:animate-fadeIn">
             
             {/* Header */}
             <div className="flex justify-between items-start">
@@ -2546,6 +2553,72 @@ export default function ClientRole({
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom GNB (Global Navigation Bar) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around py-2.5 pb-safe-bottom shadow-lg">
+        {/* 홈 */}
+        <button
+          onClick={() => setActiveTab('landing')}
+          className={`flex flex-col items-center gap-1 flex-1 text-center transition-colors ${
+            activeTab === 'landing' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-650'
+          }`}
+        >
+          <Home className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight">홈</span>
+        </button>
+
+        {/* 계산기 */}
+        <button
+          onClick={() => setActiveTab('calculator')}
+          className={`flex flex-col items-center gap-1 flex-1 text-center transition-colors ${
+            activeTab === 'calculator' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-650'
+          }`}
+        >
+          <Activity className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight">탕감 계산기</span>
+        </button>
+
+        {/* 성공후기 */}
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`flex flex-col items-center gap-1 flex-1 text-center transition-colors relative ${
+            activeTab === 'reviews' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-650'
+          }`}
+        >
+          <BookOpen className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight">성공 후기</span>
+        </button>
+
+        {/* 상담신청 */}
+        <button
+          onClick={() => {
+            setRequestType('open');
+            setRequestStep(1);
+            setActiveTab('request');
+          }}
+          className={`flex flex-col items-center gap-1 flex-1 text-center transition-colors ${
+            activeTab === 'request' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-650'
+          }`}
+        >
+          <PlusCircle className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight">상담 신청</span>
+        </button>
+
+        {/* 내상담 */}
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`flex flex-col items-center gap-1 flex-1 text-center transition-colors relative ${
+            activeTab === 'chat' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-650'
+          }`}
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight">내 상담방</span>
+          <span className="absolute top-1.5 right-4.5 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+          </span>
+        </button>
+      </nav>
 
     </div>
   );
