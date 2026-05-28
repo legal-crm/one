@@ -180,7 +180,8 @@ export default function LawyerRole({
       bio: signupBio.trim() || `${signupName.trim()} ${signupRole === 'LAWYER' ? '변호사' : '실장'}입니다.`,
       recentActivity: '신규 회원 가입 완료',
       matchedCount: 0,
-      password: signupPassword
+      password: signupPassword,
+      approved: false // New lawyer accounts must be approved by the admin portal
     };
 
     setLawyers(prev => [...prev, newLawyer]);
@@ -568,6 +569,38 @@ export default function LawyerRole({
               </div>
             </form>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoggedIn && activeLawyer.approved === false) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#070A13] text-slate-100 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0F1626]/90 backdrop-blur-md border border-[#1F2937]/80 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
+          {/* logo & brand header */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <img src="./logo.png" alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
+              <span className="font-black text-xl tracking-tight text-white">회생톡 변호사 CRM</span>
+            </div>
+            <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
+          </div>
+
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl p-4 text-xs text-left space-y-2 leading-relaxed">
+            <h4 className="font-bold text-sm text-center">⏳ 계정 승인 심사 대기 중</h4>
+            <p>안녕하세요, <strong>{activeLawyer.name}</strong> 님.</p>
+            <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
+            <p>회생톡 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
+            <p className="text-[11px] text-slate-400">* 어드민 페이지(Admin Portal)에서 본 계정의 승인 처리를 하실 수 있습니다.</p>
+          </div>
+
+          <button 
+            onClick={handleLogout}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-slate-300 font-extrabold py-3 rounded-[200px] text-xs border border-slate-800 transition-colors shrink-0"
+          >
+            로그아웃
+          </button>
         </div>
       </div>
     );

@@ -85,6 +85,7 @@ export interface User {
   recentActivity: string;
   matchedCount: number;
   password?: string; // Optional password for authentication
+  approved?: boolean; // Admin approval status for lawyers
 }
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';
