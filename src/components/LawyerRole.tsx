@@ -118,18 +118,26 @@ export default function LawyerRole({
     }
 
     const cleanedLoginId = loginId.trim().toLowerCase();
-    const found = lawyers.find(l => 
-      l.id.toLowerCase() === cleanedLoginId || 
-      l.name.toLowerCase() === cleanedLoginId ||
-      l.name.replace(/\s*변호사|\s*실장/g, '').toLowerCase() === cleanedLoginId
-    );
+    
+    // Quick simple login bypass for testing
+    let found = null;
+    if (cleanedLoginId === '1' && loginPassword === '1') {
+      found = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0];
+    } else {
+      found = lawyers.find(l => 
+        l.id.toLowerCase() === cleanedLoginId || 
+        l.name.toLowerCase() === cleanedLoginId ||
+        l.name.replace(/\s*변호사|\s*실장/g, '').toLowerCase() === cleanedLoginId
+      );
+    }
 
     if (!found) {
       setLoginError('등록되지 않은 이메일(ID) 또는 사용자명입니다.');
       return;
     }
 
-    if (found.password && found.password !== loginPassword) {
+    // Bypass password check for simple bypass account
+    if (cleanedLoginId !== '1' && found.password && found.password !== loginPassword) {
       setLoginError('비밀번호가 일치하지 않습니다.');
       return;
     }
@@ -396,7 +404,7 @@ export default function LawyerRole({
                 <label className="text-[10px] text-slate-500 block uppercase font-bold">아이디 (이름 또는 ID)</label>
                 <input 
                   type="text" 
-                  placeholder="예: 김우진 또는 lawyer-1"
+                  placeholder="예: 1 또는 김우진 또는 lawyer-1"
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
                   className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 placeholder-slate-600"
@@ -406,18 +414,40 @@ export default function LawyerRole({
                 <label className="text-[10px] text-slate-500 block uppercase font-bold">비밀번호</label>
                 <input 
                   type="password" 
-                  placeholder="비밀번호를 입력하세요 (기본: 1234)"
+                  placeholder="비밀번호 입력 (기본: 1)"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 placeholder-slate-600"
                 />
               </div>
-              <button 
-                type="submit"
-                className="w-full bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md mt-2"
-              >
-                솔루션 로그인
-              </button>
+
+              {/* Quick test login info */}
+              <div className="bg-slate-900 border border-[#1F2937]/60 rounded-xl p-3 text-[11px] text-slate-400 space-y-1">
+                <span className="font-bold text-slate-350 block">🔑 테스트 로그인 계정 정보</span>
+                <div>• 아이디: <strong className="text-white">1</strong> / 비밀번호: <strong className="text-white">1</strong></div>
+                <div>• (또는 변호사명: <strong className="text-slate-300">김우진</strong> / 비밀번호: <strong className="text-slate-300">1234</strong>)</div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button 
+                  type="submit"
+                  className="flex-1 bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md"
+                >
+                  로그인
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
+                    localStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
+                    setActiveLawyer(demoLawyer);
+                    setIsLoggedIn(true);
+                  }}
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-brand-light font-extrabold py-3 rounded-[200px] text-xs border border-slate-800 transition-colors"
+                >
+                  테스트 계정 1초 로그인
+                </button>
+              </div>
               <div className="text-center pt-2 text-xs text-slate-400">
                 계정이 없으신가요?{' '}
                 <button 
