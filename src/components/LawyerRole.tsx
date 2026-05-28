@@ -215,7 +215,7 @@ export default function LawyerRole({
             <MessageSquare className="w-4 h-4" />
             <span>실시간 협업실 (채팅)</span>
             {activeChatsCount > 0 && (
-              <span className="bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px]">
+              <span className="bg-brand text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px]">
                 {activeChatsCount}
               </span>
             )}
@@ -267,9 +267,9 @@ export default function LawyerRole({
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
                 <div className="space-y-1">
                   <span className="text-[10px] text-slate-500 block uppercase font-bold">직접 지정 응답 대기</span>
-                  <span className="text-2xl font-black text-blue-400">{directCounselingCount}개</span>
+                  <span className="text-2xl font-black text-brand-light">{directCounselingCount}개</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-blue-400/10 text-blue-400">
+                <div className="p-2.5 rounded-lg bg-brand/10 text-brand-light">
                   <Clock className="w-5 h-5" />
                 </div>
               </div>
@@ -334,10 +334,10 @@ export default function LawyerRole({
                   <div className="space-y-1">
                     <div className="flex justify-between">
                       <span className="text-slate-400 text-xs font-semibold">상담 참여 락(Lock) 소진율 - 마케팅 원가 대비 전환</span>
-                      <span className="text-blue-400 font-bold">68.2%</span>
+                      <span className="text-brand-light font-bold">68.2%</span>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-blue-500 h-full w-[68%] rounded-full"></div>
+                      <div className="bg-brand h-full w-[68%] rounded-full"></div>
                     </div>
                   </div>
                 </div>
@@ -350,7 +350,7 @@ export default function LawyerRole({
                   </div>
                   <div className="bg-slate-900/50 p-2.5 rounded-lg border border-slate-800">
                     <span className="text-[10px] text-slate-500 block">서울회생법원</span>
-                    <strong className="text-xs text-blue-300">총 수임 155M</strong>
+                    <strong className="text-xs text-brand-light">총 수임 155M</strong>
                   </div>
                   <div className="bg-slate-900/50 p-2.5 rounded-lg border border-slate-800">
                     <span className="text-[10px] text-slate-500 block">부산지방법원</span>
@@ -458,7 +458,7 @@ export default function LawyerRole({
 
                         <button 
                           onClick={() => handleJoinConsult(r.id)}
-                          className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-2.5 rounded-lg text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5"
+                          className="w-full bg-brand hover:bg-brand text-white font-black py-2.5 rounded-lg text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           <span>상담 참여 & 실시간 채팅 참여</span>
@@ -711,7 +711,7 @@ export default function LawyerRole({
               {/* STAGES */}
               {(['document', 'filing', 'commencement', 'approval', 'discharge'] as const).map(stage => {
                 const stageName = stage === 'document' ? '1. 서류준비' : stage === 'filing' ? '2. 법원접수' : stage === 'commencement' ? '3. 개시결정' : stage === 'approval' ? '4. 최종인가' : '5. 파산면책';
-                const stageColor = stage === 'document' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-505' : stage === 'filing' ? 'bg-blue-500/20 text-blue-400 border-blue-505' : stage === 'commencement' ? 'bg-amber-500/20 text-amber-400 border-amber-505' : stage === 'approval' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-505' : 'bg-purple-500/20 text-purple-400 border-purple-505';
+                const stageColor = stage === 'document' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-505' : stage === 'filing' ? 'bg-brand/20 text-brand-light border-brand' : stage === 'commencement' ? 'bg-amber-500/20 text-amber-400 border-amber-505' : stage === 'approval' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-505' : 'bg-purple-500/20 text-purple-400 border-purple-505';
                 const stageCases = cases.filter(c => c.status === stage);
 
                 return (
@@ -877,7 +877,7 @@ export default function LawyerRole({
                 </div>
                 <div className="border-l border-slate-800 pl-6">
                   <span className="text-[10px] text-slate-500 block">누적 가형 충전 충전금</span>
-                  <strong className="text-base text-blue-400">35,000 원</strong>
+                  <strong className="text-base text-brand-light">35,000 원</strong>
                 </div>
               </div>
             </div>
@@ -887,7 +887,7 @@ export default function LawyerRole({
               {platformPlans.map((plan, idx) => (
                 <div key={idx} className={`bg-slate-950 rounded-xl p-6 border flex flex-col justify-between gap-6 relative ${plan.color}`}>
                   {plan.popular && (
-                    <span className="absolute -top-3 left-4 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-400 shadow">
+                    <span className="absolute -top-3 left-4 bg-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-brand-light shadow">
                       가장 많은 로펌 선택
                     </span>
                   )}
@@ -912,7 +912,7 @@ export default function LawyerRole({
 
                   <button className={`w-full py-2.5 rounded-lg text-xs font-bold transition-all ${
                     plan.name === 'Pro' 
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white ring-2 ring-blue-500/20 shadow' 
+                    ? 'bg-brand hover:bg-brand text-white ring-2 ring-brand/20 shadow' 
                     : 'bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800'
                   }`}>
                     {plan.name === 'Pro' ? '현재 요금제 이용 중' : '요금제 업그레이드 문의'}
