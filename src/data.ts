@@ -293,19 +293,19 @@ export const platformPlans = [
     name: 'Basic',
     price: '월 30만원',
     features: ['팀원 최대 2명', '기본 상담 관리 CRM', '실시간 채팅 통화 기능', '오픈 매칭 최대 5건/월 무료 참여'],
-    color: 'border-slate-300 dark:border-slate-800'
+    color: 'border-[#1F2937]/80'
   },
   {
     name: 'Pro',
     price: '월 80만원',
     features: ['팀원 최대 10명', '팀 관리 & 인원별 권한 분배', '보정명령 자동 추적 통합', '오픈 매칭 무제한 참여', '사건 관리 통합 칸반 보드'],
     popular: true,
-    color: 'border-blue-500 ring-2 ring-blue-500/20'
+    color: 'border-brand ring-2 ring-brand/20'
   },
   {
     name: 'Team / LawFirm Enterprise',
     price: '월 150만원',
     features: ['팀원 무제한', '다중 개별 영업 지부 분리 운영', '팀 KPI 대시보드 및 수임 성과 리포트', '마이데이터 연동 법원 문서 원클릭 자동 파싱', '전담 고객 성공(CS) 매니저 배정'],
-    color: 'border-amber-400'
+    color: 'border-indigo-500/50'
   }
 ];
