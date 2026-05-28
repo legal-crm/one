@@ -573,7 +573,7 @@ export default function ClientRole({
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
-            <img src="/logo.png" alt="회생톡 로고" className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-indigo-500/20" />
+            <img src="./logo.png" alt="회생톡 로고" className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-indigo-500/20" />
             <div className="flex flex-col text-left">
               <span className="font-black text-lg tracking-tight text-slate-900 dark:text-white leading-none">회생톡</span>
               <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold tracking-wide mt-0.5">안심 채무 해결 센터</span>

@@ -149,7 +149,7 @@ export default function LawyerRole({
       <header className="sticky top-0 z-40 bg-slate-950 border-b border-slate-800 shadow-xl px-4 py-3">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="회생톡 로고" className="w-8 h-8 rounded-lg object-cover" />
+            <img src="./logo.png" alt="회생톡 로고" className="w-8 h-8 rounded-lg object-cover" />
             <div className="flex flex-col text-left">
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="font-black text-sm tracking-tight text-white">회생톡 변호사 CRM</span>
