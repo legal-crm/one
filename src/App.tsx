@@ -26,13 +26,14 @@ export default function App() {
   const [requests, setRequests] = useState<ConsultRequest[]>([]);
   const [messages, setMessages] = useState<ConsultMessage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
-  const [lawyers] = useState<LawyerType[]>(mockLawyers);
+  const [lawyers, setLawyers] = useState<LawyerType[]>([]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
     const savedRequests = localStorage.getItem('legal_crm_requests');
     const savedMessages = localStorage.getItem('legal_crm_messages');
     const savedCases = localStorage.getItem('legal_crm_cases');
+    const savedLawyers = localStorage.getItem('legal_crm_lawyers');
 
     if (savedRequests) {
       setRequests(JSON.parse(savedRequests));
@@ -50,6 +51,14 @@ export default function App() {
       setCases(JSON.parse(savedCases));
     } else {
       setCases(initialCases);
+    }
+
+    if (savedLawyers) {
+      setLawyers(JSON.parse(savedLawyers));
+    } else {
+      // Set initial passwords to '1234' for easy mockup login
+      const lawyersWithPass = mockLawyers.map(l => ({ ...l, password: '1234' }));
+      setLawyers(lawyersWithPass);
     }
   }, []);
 
@@ -71,6 +80,12 @@ export default function App() {
       localStorage.setItem('legal_crm_cases', JSON.stringify(cases));
     }
   }, [cases]);
+
+  useEffect(() => {
+    if (lawyers.length > 0) {
+      localStorage.setItem('legal_crm_lawyers', JSON.stringify(lawyers));
+    }
+  }, [lawyers]);
 
   // Method to add customized chat messages
   const handleAddMessage = (
@@ -134,6 +149,7 @@ export default function App() {
             messages={messages}
             setMessages={setMessages}
             lawyers={lawyers}
+            setLawyers={setLawyers}
             onAddMessage={handleAddMessage}
             cases={cases}
             setCases={setCases}

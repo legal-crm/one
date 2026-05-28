@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
-  Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink 
+  Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
+  Users, LogOut, Lock
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus 
@@ -15,6 +16,7 @@ interface LawyerRoleProps {
   messages: ConsultMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: User[];
+  setLawyers: React.Dispatch<React.SetStateAction<User[]>>;
   onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string) => void;
   cases: Case[];
   setCases: React.Dispatch<React.SetStateAction<Case[]>>;
@@ -26,19 +28,75 @@ export default function LawyerRole({
   messages,
   setMessages,
   lawyers,
+  setLawyers,
   onAddMessage,
   cases,
   setCases
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'active-chats' | 'cases' | 'billing'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'active-chats' | 'cases' | 'billing' | 'client-crm'>('dashboard');
   
   // Mobile UI navigation controls
   const [mobilePane, setMobilePane] = useState<'threads' | 'chat' | 'crm'>('threads');
   const [mobileStageFilter, setMobileStageFilter] = useState<'document' | 'filing' | 'commencement' | 'approval' | 'discharge'>('document');
 
-  // Custom states
-  const [activeLawyer, setActiveLawyer] = useState<User>(lawyers[0]); // Simulated current logged lawyer
+  // Authentication states
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('legal_crm_lawyer_session') !== null;
+  });
+  const [activeLawyer, setActiveLawyer] = useState<User>(() => {
+    const sessionLawyerId = localStorage.getItem('legal_crm_lawyer_session');
+    if (sessionLawyerId) {
+      return mockLawyers[0];
+    }
+    return mockLawyers[0];
+  });
+
+  // Sync activeLawyer when lawyers prop updates
+  useEffect(() => {
+    const sessionLawyerId = localStorage.getItem('legal_crm_lawyer_session');
+    if (sessionLawyerId && lawyers.length > 0) {
+      const found = lawyers.find(l => l.id === sessionLawyerId);
+      if (found) {
+        setActiveLawyer(found);
+        setIsLoggedIn(true);
+      }
+    } else if (lawyers.length > 0 && !isLoggedIn) {
+      setActiveLawyer(lawyers[0]);
+    }
+  }, [lawyers, isLoggedIn]);
+
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  
+  // Login form state
+  const [loginId, setLoginId] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
+  const [loginError, setLoginError] = useState<string>('');
+
+  // Signup form state
+  const [signupId, setSignupId] = useState<string>('');
+  const [signupPassword, setSignupPassword] = useState<string>('');
+  const [signupName, setSignupName] = useState<string>('');
+  const [signupRole, setSignupRole] = useState<'LAWYER' | 'STAFF'>('LAWYER');
+  const [signupFields, setSignupFields] = useState<string[]>(['개인회생']);
+  const [signupRegion, setSignupRegion] = useState<string>('서울');
+  const [signupBio, setSignupBio] = useState<string>('');
+  const [signupAvatar, setSignupAvatar] = useState<string>('https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256');
+  const [signupError, setSignupError] = useState<string>('');
+
+  // CRM States
+  const [crmSearch, setCrmSearch] = useState<string>('');
+  const [crmStatusFilter, setCrmStatusFilter] = useState<string>('all');
+  const [crmLawyerFilter, setCrmLawyerFilter] = useState<string>('all');
+  const [crmSelectedId, setCrmSelectedId] = useState<string>('');
+  const [crmNewNote, setCrmNewNote] = useState<string>('');
+
+  // CRM Detailed fields
+  const [crmEditName, setCrmEditName] = useState<string>('');
+  const [crmEditPhone, setCrmEditPhone] = useState<string>('');
+  const [crmEditLawyerId, setCrmEditLawyerId] = useState<string>('');
+  const [crmEditStatus, setCrmEditStatus] = useState<ConsultStatus>('requested');
+
   const [selectedCaseId, setSelectedCaseId] = useState<string>('');
   const [activeChatReqId, setActiveChatReqId] = useState<string>('');
   
@@ -49,6 +107,172 @@ export default function LawyerRole({
     'req-1': '채무자가 가상 화폐 선물 거래 명세서 파싱에 소극적임. 법관 최근 심사에 불리함을 재상담 필요.',
     'req-2': '요양보호사 수입이 보건위생부 고시 최저생계비 이하라 개인파산 면책 전향이 매우 안전해 보임.',
     'req-3': '회사 급여 가압류 통지 효력 정지를 위한 긴급 금지명령 심리 작성팀에 신속 배정 완료.'
+  });
+
+  // Auth logic
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginId.trim() || !loginPassword.trim()) {
+      setLoginError('이메일(ID)과 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    const cleanedLoginId = loginId.trim().toLowerCase();
+    const found = lawyers.find(l => 
+      l.id.toLowerCase() === cleanedLoginId || 
+      l.name.toLowerCase() === cleanedLoginId ||
+      l.name.replace(/\s*변호사|\s*실장/g, '').toLowerCase() === cleanedLoginId
+    );
+
+    if (!found) {
+      setLoginError('등록되지 않은 이메일(ID) 또는 사용자명입니다.');
+      return;
+    }
+
+    if (found.password && found.password !== loginPassword) {
+      setLoginError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    localStorage.setItem('legal_crm_lawyer_session', found.id);
+    setActiveLawyer(found);
+    setIsLoggedIn(true);
+    setLoginError('');
+    setLoginId('');
+    setLoginPassword('');
+  };
+
+  const handleSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signupId.trim() || !signupPassword.trim() || !signupName.trim()) {
+      setSignupError('필수 입력 항목(* 표시)을 모두 입력해주세요.');
+      return;
+    }
+
+    const cleanedSignupId = signupId.trim().toLowerCase();
+    const exists = lawyers.some(l => 
+      l.id.toLowerCase() === cleanedSignupId || 
+      l.name.toLowerCase() === signupName.trim().toLowerCase()
+    );
+
+    if (exists) {
+      setSignupError('이미 등록되어 있는 ID 또는 이름입니다.');
+      return;
+    }
+
+    const newLawyer: User = {
+      id: signupId.trim(),
+      lawFirmId: 'firm-1',
+      teamId: signupRole === 'LAWYER' ? 'team-1' : 'team-1',
+      name: signupName.trim() + (signupRole === 'LAWYER' ? ' 변호사' : ' 실장'),
+      role: signupRole,
+      fields: signupFields,
+      region: signupRegion,
+      avatar: signupAvatar,
+      bio: signupBio.trim() || `${signupName.trim()} ${signupRole === 'LAWYER' ? '변호사' : '실장'}입니다.`,
+      recentActivity: '신규 회원 가입 완료',
+      matchedCount: 0,
+      password: signupPassword
+    };
+
+    setLawyers(prev => [...prev, newLawyer]);
+    alert('회원가입이 완료되었습니다. 로그인 해주세요!');
+    setAuthMode('login');
+    setLoginId(newLawyer.id);
+    setSignupId('');
+    setSignupPassword('');
+    setSignupName('');
+    setSignupBio('');
+    setSignupError('');
+  };
+
+  const handleLogout = () => {
+    if (confirm('로그아웃 하시겠습니까?')) {
+      localStorage.removeItem('legal_crm_lawyer_session');
+      setIsLoggedIn(false);
+      if (lawyers.length > 0) {
+        setActiveLawyer(lawyers[0]);
+      }
+    }
+  };
+
+  // CRM Logic
+  const crmSelectedClient = requests.find(r => r.id === crmSelectedId);
+  const crmSelectedNotes = crmSelectedId ? (internalNotes[crmSelectedId] ? internalNotes[crmSelectedId].split('\n').filter(Boolean) : []) : [];
+
+  useEffect(() => {
+    if (crmSelectedClient) {
+      setCrmEditName(crmSelectedClient.clientName);
+      setCrmEditPhone(crmSelectedClient.phone);
+      setCrmEditLawyerId(crmSelectedClient.selectedLawyerId || '');
+      setCrmEditStatus(crmSelectedClient.status);
+    }
+  }, [crmSelectedId, crmSelectedClient]);
+
+  const handleUpdateClientInfo = () => {
+    if (!crmSelectedId || !crmEditName.trim() || !crmEditPhone.trim()) return;
+    setRequests(prev => prev.map(r => {
+      if (r.id === crmSelectedId) {
+        return {
+          ...r,
+          clientName: crmEditName.trim(),
+          phone: crmEditPhone.trim()
+        };
+      }
+      return r;
+    }));
+    alert('의뢰인 기본 인적 정보가 성공적으로 업데이트되었습니다.');
+  };
+
+  const handleSaveCrmSession = () => {
+    if (!crmSelectedId) return;
+    setRequests(prev => prev.map(r => {
+      if (r.id === crmSelectedId) {
+        return {
+          ...r,
+          selectedLawyerId: crmEditLawyerId || undefined,
+          status: crmEditStatus
+        };
+      }
+      return r;
+    }));
+    alert('상담 세션 배정 및 상태가 성공적으로 저장되었습니다.');
+  };
+
+  const handleAddCrmNote = () => {
+    if (!crmSelectedId || !crmNewNote.trim()) return;
+    setInternalNotes(prev => {
+      const current = prev[crmSelectedId] || '';
+      const updated = current ? `${current}\n${crmNewNote.trim()}` : crmNewNote.trim();
+      return { ...prev, [crmSelectedId]: updated };
+    });
+    setCrmNewNote('');
+  };
+
+  const handleDeleteCrmNote = (idxToDelete: number) => {
+    if (!crmSelectedId) return;
+    setInternalNotes(prev => {
+      const notesArray = prev[crmSelectedId] ? prev[crmSelectedId].split('\n').filter(Boolean) : [];
+      const updatedArray = notesArray.filter((_, idx) => idx !== idxToDelete);
+      return { ...prev, [crmSelectedId]: updatedArray.join('\n') };
+    });
+  };
+
+  const filteredRequests = requests.filter(r => {
+    const matchesSearch = 
+      r.clientName.toLowerCase().includes(crmSearch.toLowerCase()) ||
+      r.phone.includes(crmSearch);
+    
+    const matchesStatus = crmStatusFilter === 'all' || r.status === crmStatusFilter;
+    
+    let matchesLawyer = true;
+    if (crmLawyerFilter === 'unassigned') {
+      matchesLawyer = !r.selectedLawyerId;
+    } else if (crmLawyerFilter !== 'all') {
+      matchesLawyer = r.selectedLawyerId === crmLawyerFilter;
+    }
+    
+    return matchesSearch && matchesStatus && matchesLawyer;
   });
 
   // Participate in an Open Request
@@ -147,6 +371,178 @@ export default function LawyerRole({
   const currentChatRequest = requests.find(r => r.id === activeChatReqId);
   const currentChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
 
+  if (!isLoggedIn) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#070A13] text-slate-100 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0F1626]/90 backdrop-blur-md border border-[#1F2937]/80 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
+          {/* logo & brand header */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <img src="./logo.png" alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
+              <span className="font-black text-xl tracking-tight text-white">회생톡 변호사 CRM</span>
+            </div>
+            <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
+          </div>
+
+          {authMode === 'login' ? (
+            <form onSubmit={handleLogin} className="space-y-4 text-left">
+              <h3 className="font-extrabold text-sm text-slate-200 border-b border-[#1F2937]/60 pb-2">로그인</h3>
+              {loginError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">
+                  {loginError}
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-slate-500 block uppercase font-bold">아이디 (이름 또는 ID)</label>
+                <input 
+                  type="text" 
+                  placeholder="예: 김우진 또는 lawyer-1"
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
+                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 placeholder-slate-600"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-slate-500 block uppercase font-bold">비밀번호</label>
+                <input 
+                  type="password" 
+                  placeholder="비밀번호를 입력하세요 (기본: 1234)"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 placeholder-slate-600"
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md mt-2"
+              >
+                솔루션 로그인
+              </button>
+              <div className="text-center pt-2 text-xs text-slate-400">
+                계정이 없으신가요?{' '}
+                <button 
+                  type="button" 
+                  onClick={() => setAuthMode('signup')}
+                  className="text-brand font-bold hover:underline"
+                >
+                  회원가입하기
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleSignup} className="space-y-4 text-left max-h-[450px] overflow-y-auto pr-1 scrollbar-hide">
+              <h3 className="font-extrabold text-sm text-slate-200 border-b border-[#1F2937]/60 pb-2">회원가입</h3>
+              {signupError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">
+                  {signupError}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-slate-500 block uppercase font-bold">아이디 (ID)*</label>
+                  <input 
+                    type="text" 
+                    placeholder="예: lawyer-kim"
+                    value={signupId}
+                    onChange={(e) => setSignupId(e.target.value)}
+                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-slate-500 block uppercase font-bold">비밀번호*</label>
+                  <input 
+                    type="password" 
+                    placeholder="비밀번호 입력"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-slate-500 block uppercase font-bold">이름 (성명)*</label>
+                  <input 
+                    type="text" 
+                    placeholder="예: 홍길동"
+                    value={signupName}
+                    onChange={(e) => setSignupName(e.target.value)}
+                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-slate-500 block uppercase font-bold">역할 구분*</label>
+                  <select 
+                    value={signupRole}
+                    onChange={(e) => setSignupRole(e.target.value as 'LAWYER' | 'STAFF')}
+                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  >
+                    <option value="LAWYER">변호사 (LAWYER)</option>
+                    <option value="STAFF">실장/사무장 (STAFF)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-slate-500 block uppercase font-bold">전문분야 (쉼표로 구분)</label>
+                <input 
+                  type="text" 
+                  placeholder="예: 개인회생, 개인파산, 보정명령대응"
+                  onChange={(e) => setSignupFields(e.target.value.split(',').map(f => f.trim()).filter(Boolean))}
+                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-slate-500 block uppercase font-bold">활동 지역</label>
+                <input 
+                  type="text" 
+                  placeholder="예: 서울, 경기/수원, 부산"
+                  value={signupRegion}
+                  onChange={(e) => setSignupRegion(e.target.value)}
+                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-slate-500 block uppercase font-bold">프로필 사진 URL</label>
+                <input 
+                  type="text" 
+                  value={signupAvatar}
+                  onChange={(e) => setSignupAvatar(e.target.value)}
+                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-slate-500 block uppercase font-bold">소개 약력(Bio)</label>
+                <textarea 
+                  rows={2}
+                  placeholder="전문 대리인으로서의 약력 및 인사말을 작성하세요."
+                  value={signupBio}
+                  onChange={(e) => setSignupBio(e.target.value)}
+                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md mt-2"
+              >
+                신규 대리인 등록 완료
+              </button>
+              <div className="text-center pt-2 text-xs text-slate-400">
+                이미 계정이 있으신가요?{' '}
+                <button 
+                  type="button" 
+                  onClick={() => setAuthMode('login')}
+                  className="text-brand font-bold hover:underline"
+                >
+                  로그인하기
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-[#070A13] text-slate-100 font-sans selection:bg-brand selection:text-white">
       <div className="w-full max-w-[1024px] min-h-screen mx-auto bg-[#0B111E] border-x border-[#1F2937]/80 shadow-2xl flex flex-col relative">
@@ -167,19 +563,25 @@ export default function LawyerRole({
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="text-xs text-slate-400">인증 가입자:</label>
-              <select 
-                value={activeLawyer.id} 
-                onChange={(e) => {
-                  const selected = lawyers.find(l => l.id === e.target.value);
-                  if (selected) setActiveLawyer(selected);
-                }}
-                className="bg-[#0B111E] border border-[#1F2937] rounded px-2 py-1 text-xs font-semibold text-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
+              <div className="flex items-center gap-2">
+                <img 
+                  src={activeLawyer.avatar} 
+                  alt={activeLawyer.name} 
+                  className="w-7 h-7 rounded-full object-cover border border-brand/30" 
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold text-slate-200 leading-none">{activeLawyer.name}</span>
+                  <span className="text-[9px] text-slate-400 mt-0.5">{activeLawyer.role}</span>
+                </div>
+              </div>
+              
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-slate-450 hover:text-white px-2.5 py-1.5 rounded-[200px] border border-slate-800 text-[10px] transition-colors"
               >
-                {lawyers.map(l => (
-                  <option key={l.id} value={l.id}>{l.name} ({l.role})</option>
-                ))}
-              </select>
+                <LogOut className="w-3 h-3" />
+                <span>로그아웃</span>
+              </button>
             </div>
           </div>
         </header>
@@ -225,6 +627,19 @@ export default function LawyerRole({
                   {activeChatsCount}
                 </span>
               )}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('client-crm')}
+              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                activeTab === 'client-crm' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>고객 관리 (CRM)</span>
+              <span className="bg-slate-800 text-slate-350 rounded-full px-1.5 text-[9px]">
+                {requests.length}
+              </span>
             </button>
 
             <button 
@@ -992,6 +1407,302 @@ export default function LawyerRole({
                 본 Legal CRM은 변호사법 위반을 피하기 위해 **개인회생 수임 성공(계약 성사)에 따른 배분 수수료를 절대 징수하지 않습니다**.
                 월 고정 요금제로 책정되는 SaaS 구독료 및 매칭 참여 시 차감되는 클릭 광고 차감 수수료(참여 1건당 무관 소진) 방식만으로 운영되어 사후 보증 및 로펌 운영 안전성이 100% 보장됩니다.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: CLIENT CRM (고객 관리) */}
+        {activeTab === 'client-crm' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Top overview card */}
+            <div className="bg-[#0F1626] p-5 rounded-3xl border border-[#1F2937]/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-brand" />
+                  <span>상담 신청 고객 통합 관리 CRM</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">상담이 접수된 전체 의뢰인의 진단 결과, 담당자 지정 및 진행 단계를 상세 관리합니다.</p>
+              </div>
+            </div>
+
+            {/* Search & Filter row */}
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full sm:max-w-xs">
+                <input 
+                  type="text" 
+                  placeholder="고객명 또는 연락처 검색..." 
+                  value={crmSearch}
+                  onChange={(e) => setCrmSearch(e.target.value)}
+                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-[200px] py-1.5 px-4 pl-9 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 placeholder-slate-600"
+                />
+                <span className="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+              </div>
+
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+                <select 
+                  value={crmStatusFilter} 
+                  onChange={(e) => setCrmStatusFilter(e.target.value)}
+                  className="bg-[#0B111E] border border-[#1F2937] rounded-xl px-3 py-1.5 text-xs text-slate-350"
+                >
+                  <option value="all">상태: 전체보기</option>
+                  <option value="requested">요청 대기 (requested)</option>
+                  <option value="responding">지정 대기 (responding)</option>
+                  <option value="counseling">상담 진행 (counseling)</option>
+                  <option value="closed">수임 완료/종결 (closed)</option>
+                </select>
+
+                <select 
+                  value={crmLawyerFilter} 
+                  onChange={(e) => setCrmLawyerFilter(e.target.value)}
+                  className="bg-[#0B111E] border border-[#1F2937] rounded-xl px-3 py-1.5 text-xs text-slate-350"
+                >
+                  <option value="all">담당자: 전체보기</option>
+                  <option value="unassigned">담당 변호사 미배정</option>
+                  {lawyers.map(l => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Split layout: List on left, details on right */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              {/* Left column: Clients table list */}
+              <div className="lg:col-span-7 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#0F1626]/80 text-slate-400 font-bold border-b border-slate-800">
+                        <th className="p-3">고객명</th>
+                        <th className="p-3">연락처</th>
+                        <th className="p-3">신청유형</th>
+                        <th className="p-3">상태</th>
+                        <th className="p-3 text-right">총 채무액</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-850">
+                      {filteredRequests.map(r => {
+                        const isSelected = r.id === crmSelectedId;
+                        const statusColors = {
+                          requested: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                          responding: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                          counseling: 'bg-brand/10 text-brand-light border-brand/20',
+                          closed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        };
+                        const statusLabels = {
+                          requested: '요청 대기',
+                          responding: '지정 대기',
+                          counseling: '상담 진행',
+                          closed: '수임/종결'
+                        };
+                        return (
+                          <tr 
+                            key={r.id}
+                            onClick={() => setCrmSelectedId(r.id)}
+                            className={`cursor-pointer transition-colors ${
+                              isSelected ? 'bg-brand/5 hover:bg-brand/10' : 'hover:bg-slate-900/50'
+                            }`}
+                          >
+                            <td className="p-3 font-bold text-white">{r.clientName}</td>
+                            <td className="p-3 font-mono text-slate-300">{r.phone}</td>
+                            <td className="p-3">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800">
+                                {r.requestType === 'direct' ? '단독지명' : '오픈형'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <span className={`text-[10px] px-2 py-0.5 rounded border ${statusColors[r.status]}`}>
+                                {statusLabels[r.status]}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right font-bold text-brand-light">
+                              {r.financialProfile.debtTotal.toLocaleString()}만원
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {filteredRequests.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-slate-500">
+                            검색 조건에 부합하는 상담 고객이 없습니다.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Right column: Selected Client CRM Details Panel */}
+              <div className="lg:col-span-5 bg-slate-950 rounded-xl border border-slate-800 p-5 space-y-5">
+                {crmSelectedClient ? (
+                  <>
+                    <div className="flex justify-between items-start border-b border-slate-800 pb-3">
+                      <div>
+                        <span className="text-[9px] text-brand font-bold block uppercase tracking-wider">CLIENT DETAIL SHEET</span>
+                        <h3 className="text-base font-extrabold text-white">{crmSelectedClient.clientName} 의뢰인</h3>
+                      </div>
+                      <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2 py-1 rounded">
+                        ID: {crmSelectedClient.id}
+                      </span>
+                    </div>
+
+                    {/* Edit general info */}
+                    <div className="space-y-3">
+                      <span className="text-[11px] font-bold text-slate-400 block">👤 인적 정보 수정</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 block">의뢰인 이름</label>
+                          <input 
+                            type="text" 
+                            value={crmEditName} 
+                            onChange={(e) => setCrmEditName(e.target.value)}
+                            className="w-full bg-[#0B111E] border border-slate-800 rounded p-1.5 text-xs text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 block">비상 연락처</label>
+                          <input 
+                            type="text" 
+                            value={crmEditPhone} 
+                            onChange={(e) => setCrmEditPhone(e.target.value)}
+                            className="w-full bg-[#0B111E] border border-slate-800 rounded p-1.5 text-xs text-white"
+                          />
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleUpdateClientInfo}
+                        className="w-full bg-slate-900 hover:bg-slate-850 text-brand-light border border-slate-800 py-1.5 rounded-[200px] text-xs font-semibold"
+                      >
+                        기본 정보 업데이트
+                      </button>
+                    </div>
+
+                    {/* Financial Summary */}
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-bold text-slate-400 block">📊 가계 채무 및 소득 진단 명세</span>
+                      <div className="grid grid-cols-2 gap-2 bg-[#0B111E] p-3 rounded-lg border border-slate-850 text-[11px] text-slate-355">
+                        <div>월 평균 소득: <strong className="text-white">{crmSelectedClient.financialProfile.income}만원</strong></div>
+                        <div>총 채무 규모: <strong className="text-red-400 font-extrabold">{crmSelectedClient.financialProfile.debtTotal.toLocaleString()}만원</strong></div>
+                        <div>자산수준합산: <strong className="text-white">{crmSelectedClient.financialProfile.assetsTotal.toLocaleString()}만원</strong></div>
+                        <div>부양 가족수: <strong className="text-white">{crmSelectedClient.financialProfile.dependents}명</strong></div>
+                      </div>
+                    </div>
+
+                    {/* CRM Assign & Status workflow */}
+                    <div className="space-y-3 bg-[#0B111E] p-4 rounded-xl border border-slate-850">
+                      <span className="text-[11px] font-bold text-brand-light block">⚙️ 상담 세션 제어</span>
+                      
+                      <div className="space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400">담당 변호사 지정:</span>
+                          <select 
+                            value={crmEditLawyerId}
+                            onChange={(e) => setCrmEditLawyerId(e.target.value)}
+                            className="bg-slate-950 border border-slate-800 rounded p-1.5 text-xs font-semibold text-slate-300 focus:outline-none"
+                          >
+                            <option value="">미배정 (선택해 주세요)</option>
+                            {lawyers.map(l => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400">상담 세션 상태:</span>
+                          <select 
+                            value={crmEditStatus}
+                            onChange={(e) => setCrmEditStatus(e.target.value as ConsultStatus)}
+                            className="bg-slate-950 border border-slate-800 rounded p-1.5 text-xs font-semibold text-slate-300 focus:outline-none"
+                          >
+                            <option value="requested">요청 대기 (requested)</option>
+                            <option value="responding">지정 대기 (responding)</option>
+                            <option value="counseling">상담 진행 (counseling)</option>
+                            <option value="closed">수임/상담 종결 (closed)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={handleSaveCrmSession}
+                        className="w-full bg-brand hover:bg-brand-hover text-white py-2 rounded-[200px] text-xs font-extrabold mt-2"
+                      >
+                        상담 세션 배정 및 상태 저장
+                      </button>
+                    </div>
+
+                    {/* Converting to Cases tab (수임 전환 CTA) */}
+                    <div className="bg-emerald-950/20 border border-emerald-500/10 p-4 rounded-xl space-y-2.5">
+                      <span className="text-[11px] font-bold text-emerald-400 block">⚖️ 정식 사건 수임 전환</span>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        상담이 완료되어 본 의뢰인을 정식 수임 사건 대장(Kanban 보드)으로 전환 등록하려면 아래 버튼을 클릭하십시오.
+                      </p>
+                      <button 
+                        onClick={() => handleConvertToCase(crmSelectedClient)}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-[200px] text-xs font-extrabold flex items-center justify-center gap-1"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>정식 수임사건으로 전환 등록</span>
+                      </button>
+                    </div>
+
+                    {/* Consultation Notes log */}
+                    <div className="space-y-3">
+                      <span className="text-[11px] font-bold text-slate-400 block">📌 CRM 상담 기록 비망록</span>
+                      
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="상담 메모 추가..."
+                          value={crmNewNote}
+                          onChange={(e) => setCrmNewNote(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddCrmNote();
+                          }}
+                          className="flex-1 bg-[#0B111E] border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100"
+                        />
+                        <button 
+                          onClick={handleAddCrmNote}
+                          className="bg-brand hover:bg-brand-hover text-white px-3 py-1.5 rounded-[200px] text-xs font-semibold shrink-0"
+                        >
+                          추가
+                        </button>
+                      </div>
+
+                      {/* Notes list */}
+                      <div className="bg-[#0B111E] border border-slate-850 rounded p-3 text-[11px] text-slate-300 space-y-2 max-h-40 overflow-y-auto">
+                        {crmSelectedNotes.length > 0 ? (
+                          crmSelectedNotes.map((note, idx) => (
+                            <div key={idx} className="flex gap-1.5 items-start justify-between">
+                              <div className="flex gap-1.5 items-start">
+                                <span className="text-brand-light font-bold select-none shrink-0">•</span>
+                                <span className="leading-relaxed text-left">{note}</span>
+                              </div>
+                              <button 
+                                onClick={() => handleDeleteCrmNote(idx)}
+                                className="text-slate-650 hover:text-red-400 text-[10px]"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-4 text-slate-650">
+                            기록된 상담 비망록 메모가 없습니다.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-12 text-slate-600 text-xs">
+                    고객 리스트에서 상세 조회할 상담 신청 고객을 선택해 주십시오.
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         )}

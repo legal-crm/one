@@ -84,6 +84,7 @@ export interface User {
   bio: string;
   recentActivity: string;
   matchedCount: number;
+  password?: string; // Optional password for authentication
 }
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';
