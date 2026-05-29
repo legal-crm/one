@@ -35,19 +35,4 @@ export function ChatDisclaimer() {
   );
 }
 
-export function BannedNotice() {
-  return (
-    <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-lg text-red-700 dark:text-red-300 text-xs leading-normal">
-      <div className="flex items-center gap-1.5 font-semibold mb-1">
-        <AlertCircle className="w-3.5 h-3.5" />
-        <span>변호사법 위반 소지 원천 차단 정책 (금지 사항 안내)</span>
-      </div>
-      <ul className="list-disc list-inside space-y-0.5 text-[11px] text-red-600/90 dark:text-red-400/90">
-        <li>특정 변호사 인위적 추천 및 추천 알고리즘 전면 부정</li>
-        <li>변호사 수임률 순위, 평점 순 세우기, 최저가 사건 수임 유도 전면 불가</li>
-        <li>성공 보증 및 무조건 탕감 확약 등 허위·과장 광고 배제</li>
-        <li>변호사 자격 미보유 스태프의 독자적인 1:1 법률 가이드 원천 한계 설정</li>
-      </ul>
-    </div>
-  );
-}
+

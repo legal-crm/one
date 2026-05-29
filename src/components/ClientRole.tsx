@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage } from '../types';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
-import { RequestDisclaimer, ChatDisclaimer, BannedNotice } from './Disclaimers';
+import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
 
 interface RemedyPreset {
   jobType: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
@@ -1526,8 +1526,6 @@ export default function ClientRole({
                   })}
               </div>
             </div>
-
-            <BannedNotice />
 
             {/* Babitalk-style App Promotion Banner */}
             <div className="pt-8 w-full">
