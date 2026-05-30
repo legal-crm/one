@@ -41,7 +41,7 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
 
   return (
     <div className={className}>
-      {label && <label className="block text-xs font-semibold text-slate-400 mb-1">{label}</label>}
+      {label && <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">{label}</label>}
       <div className="relative">
         <input
           {...props}
@@ -49,10 +49,10 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
           value={displayValue ? Number(displayValue).toLocaleString('ko-KR') : ''}
           onChange={handleChange}
           placeholder={placeholder}
-          className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg pr-12 text-right font-medium text-slate-200 focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-600 text-xs"
+          className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pr-12 text-right font-medium text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-400 dark:placeholder-slate-600 text-xs shadow-sm"
         />
         <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-          <span className="text-slate-500 text-xs">{unit === 10000 ? '만원' : '원'}</span>
+          <span className="text-slate-400 dark:text-slate-500 text-xs">{unit === 10000 ? '만원' : '원'}</span>
         </div>
       </div>
       {value > 0 && (
@@ -368,13 +368,13 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
     return Math.round(baseMedianIncome * 0.6);
   }, [settings, clientData.applyYear, familyData]);
 
-  const inputClass = "w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-all text-xs font-semibold";
-  const labelClass = "block text-xs font-bold text-slate-400 mb-1";
+  const inputClass = "w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-all text-xs font-semibold shadow-sm focus:outline-none";
+  const labelClass = "block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1";
 
   // --- Tab sections rendering ---
   const renderSection1 = () => (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
         <div>
           <label className="block text-[10px] font-extrabold text-slate-500 mb-1">상담 일자</label>
           <input type="date" className={`${inputClass} py-1.5`} value={clientData.consultDate} onChange={(e) => setClientData({...clientData, consultDate: e.target.value})} />
@@ -422,7 +422,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
               <select className={inputClass} value={clientData.birthDay} onChange={e => setClientData({...clientData, birthDay: e.target.value})}>
                 {days.map(d => <option key={d} value={d}>{d}일</option>)}
               </select>
-              <div className="px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap bg-slate-800 border border-slate-700 text-slate-300">
+              <div className="px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                 만 {manAge}세
               </div>
             </div>
@@ -439,14 +439,14 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           </div>
         </div>
         
-        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-800/20 rounded-xl border border-slate-700/50">
+        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-100/50 dark:bg-slate-800/20 rounded-xl border border-slate-200 dark:border-slate-700/50">
           <div className="relative">
              <label className={labelClass}>실거주지 주소 (시/구/군)</label>
              <input type="text" className={inputClass} value={clientData.residence} onChange={e => handleAddressChange('residence', e.target.value)} placeholder="예: 수원시 영통구" autoComplete="off" />
              {residenceSuggestions.length > 0 && (
-                <ul className="absolute z-10 w-full bg-slate-800 border border-slate-700 rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                <ul className="absolute z-10 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
                     {residenceSuggestions.map(suggestion => (
-                        <li key={suggestion} onMouseDown={() => handleSuggestionClick('residence', suggestion)} className="p-2.5 text-xs text-slate-300 hover:bg-blue-600 cursor-pointer"> {suggestion} </li>
+                        <li key={suggestion} onMouseDown={() => handleSuggestionClick('residence', suggestion)} className="p-2.5 text-xs text-slate-750 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 cursor-pointer"> {suggestion} </li>
                     ))}
                 </ul>
             )}
@@ -457,7 +457,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
              {workplaceSuggestions.length > 0 && (
                 <ul className="absolute z-10 w-full bg-slate-800 border border-slate-700 rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
                     {workplaceSuggestions.map(suggestion => (
-                        <li key={suggestion} onMouseDown={() => handleSuggestionClick('workplace', suggestion)} className="p-2.5 text-xs text-slate-300 hover:bg-blue-600 cursor-pointer"> {suggestion} </li>
+                        <li key={suggestion} onMouseDown={() => handleSuggestionClick('workplace', suggestion)} className="p-2.5 text-xs text-slate-750 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 cursor-pointer"> {suggestion} </li>
                     ))}
                 </ul>
             )}
@@ -474,7 +474,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           </div>
         </div>
 
-        <div className="md:col-span-2 p-4 border border-slate-700 rounded-xl bg-slate-900/40">
+        <div className="md:col-span-2 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40">
           <label className="flex items-center gap-3 cursor-pointer group">
             <input 
               type="checkbox" 
@@ -482,11 +482,11 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
               onChange={e => setClientData({...clientData, prevHistoryExists: e.target.checked})}
               className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
             />
-            <span className="font-bold text-xs text-slate-200 group-hover:text-white transition-colors">개인회생 또는 파산 기진행 이력 있음</span>
+            <span className="font-bold text-xs text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">개인회생 또는 파산 기진행 이력 있음</span>
           </label>
           
           {clientData.prevHistoryExists && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-800 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 animate-fadeIn">
               <div>
                 <label className={labelClass}>기존 사건 번호</label>
                 <input type="text" className={inputClass} value={clientData.prevCaseNumber} onChange={e => setClientData({...clientData, prevCaseNumber: e.target.value})} placeholder="예: 2020개회12345" />
@@ -499,26 +499,26 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           )}
         </div>
 
-        <div className="md:col-span-2 p-4 border border-purple-900/40 bg-purple-950/10 rounded-xl">
-          <h4 className="text-xs font-bold text-purple-400 mb-2 flex items-center gap-1.5">
+        <div className="md:col-span-2 p-4 border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-950/10 rounded-xl">
+          <h4 className="text-xs font-bold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-1.5">
             <Scale size={14} /> 취약계층 특별 고려 사항 (체크 시 24개월 최단기 변제 자격 부합)
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={clientData.isSingleParent} onChange={e => setClientData({...clientData, isSingleParent: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[10px] font-semibold text-slate-350">한부모 가족지원</span>
+              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-350">한부모 가족지원</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={clientData.isBasicLivelihood} onChange={e => setClientData({...clientData, isBasicLivelihood: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[10px] font-semibold text-slate-350">기초생활수급자</span>
+              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-350">기초생활수급자</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={clientData.isRentFraud} onChange={e => setClientData({...clientData, isRentFraud: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[10px] font-semibold text-slate-350">전세사기 피해자</span>
+              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-350">전세사기 피해자</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={clientData.isSevereDisability} onChange={e => setClientData({...clientData, isSevereDisability: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[10px] font-semibold text-slate-350">중증 장애인</span>
+              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-350">중증 장애인</span>
             </label>
           </div>
         </div>
@@ -557,12 +557,12 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             <label className={labelClass}>기타 동거/직계존속 부양가족 수</label>
             <select className={inputClass} value={familyData.otherDependents} onChange={e => setFamilyData({...familyData, otherDependents: Number(e.target.value)})}>{Array.from({length:6}).map((_,i) => <option key={i} value={i}>{i}명</option>)}</select>
           </div>
-          <div className="col-span-2 text-center py-2 bg-slate-950/60 rounded-lg"><span className="text-blue-400 font-extrabold text-xs">총 인정 부양가족 수 (자동연동): {rehabResult.client.dependents}명</span></div>
+          <div className="col-span-2 text-center py-2 bg-blue-50/50 dark:bg-slate-950/60 border border-blue-100 dark:border-slate-800 rounded-lg"><span className="text-blue-400 font-extrabold text-xs">총 인정 부양가족 수 (자동연동): {rehabResult.client.dependents}명</span></div>
         </div>
 
         {familyData.adultChildrenCount > 0 && (
-          <div className="space-y-2 pt-3 border-t border-slate-800">
-            <h4 className="text-xs font-bold text-slate-350">성년 자녀 생년월일</h4>
+          <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <h4 className="text-xs font-bold text-slate-600 dark:text-slate-350">성년 자녀 생년월일</h4>
             {familyData.adultChildrenDetails.map((child, index) => (
               <div key={index} className="flex gap-2 items-center">
                 <span className="text-[10px] text-slate-500 w-12 font-bold">자녀 {index + 1}</span>
@@ -575,7 +575,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         )}
 
         <div className="space-y-4 pt-4 border-t border-slate-800">
-          <h3 className="text-sm font-bold text-white flex items-center gap-1.5"><HeartPulse size={16} className="text-pink-500" /> 기본 및 특별 생계비 공제 신청 (월 기준)</h3>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5"><HeartPulse size={16} className="text-pink-500" /> 기본 및 특별 생계비 공제 신청 (월 기준)</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -588,8 +588,8 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             </div>
           </div>
 
-          <div className="p-3 bg-slate-900/40 rounded-xl space-y-3 border border-slate-800">
-            <h4 className="text-[11px] font-bold text-slate-350">기타 개별적 법원 추가 공제 비용 (만원)</h4>
+          <div className="p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl space-y-3 border border-slate-200 dark:border-slate-800">
+            <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-350">기타 개별적 법원 추가 공제 비용 (만원)</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div><MoneyInput label="전기/가스/수도료" unit={10000} value={familyData.expUtilities} onValueChange={v => setFamilyData({...familyData, expUtilities: v})} /></div>
               <div><MoneyInput label="일반 자녀교육비" unit={10000} value={familyData.expEducation} onValueChange={v => setFamilyData({...familyData, expEducation: v})} /></div>
@@ -600,7 +600,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
                 <label className={labelClass}>수동 생계비 지정 (만원)</label>
                 <input 
                   type="text" 
-                  className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-right font-medium text-slate-200 text-xs focus:ring-1 focus:ring-blue-500" 
+                  className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-right font-medium text-slate-800 dark:text-slate-200 text-xs focus:ring-1 focus:ring-blue-500" 
                   placeholder={`자동 산출: ${formatNumber(calculatedLivingCost)}원`} 
                   value={familyData.monthlyLivingCost > 0 ? (familyData.monthlyLivingCost / 10000) : ''} 
                   onChange={e => setFamilyData({...familyData, monthlyLivingCost: Number(e.target.value.replace(/,/g, '')) * 10000})} 
@@ -627,11 +627,11 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-sm font-bold text-white flex items-center gap-1"><Briefcase size={16} /> 월 소득 입증 정보</h3>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1"><Briefcase size={16} /> 월 소득 입증 정보</h3>
           <button type="button" onClick={addIncomeSource} className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-blue-700 transition-all font-bold"><Plus size={14} /> 소득원 추가</button>
         </div>
         {incomeSources.map((source, idx) => (
-          <div key={source.id} className="bg-slate-950/40 p-4 rounded-xl border border-slate-800 relative space-y-3">
+          <div key={source.id} className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 relative space-y-3">
             {incomeSources.length > 1 && (
               <button type="button" onClick={() => removeIncomeSource(source.id)} className="absolute top-3 right-3 p-1 text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
             )}
@@ -660,9 +660,9 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             </div>
           </div>
         ))}
-        <div className="text-right py-2 text-sm font-extrabold bg-slate-950/80 px-4 rounded-lg border border-slate-800">
-          <span className="text-slate-400">의뢰인 합산 월 총소득: </span>
-          <span className="text-white ml-2 text-base">{formatKoreanCurrency(rehabResult.client.monthlyIncome)}</span>
+        <div className="text-right py-2 text-sm font-extrabold bg-slate-100 dark:bg-slate-950/80 px-4 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+          <span className="text-slate-500 dark:text-slate-400">의뢰인 합산 월 총소득: </span>
+          <span className="text-slate-800 dark:text-white ml-2 text-base">{formatKoreanCurrency(rehabResult.client.monthlyIncome)}</span>
         </div>
       </div>
     );
@@ -675,7 +675,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         <button type="button" onClick={addAsset} className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-blue-700 transition-all font-bold"><Plus size={14} /> 자산 추가</button>
       </div>
       {assets.map((asset) => (
-        <div key={asset.id} className="bg-slate-950/40 p-4 rounded-xl border border-slate-800 relative space-y-3">
+        <div key={asset.id} className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 relative space-y-3">
           <button type="button" onClick={() => removeAsset(asset.id)} className="absolute top-3 right-3 p-1 text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -698,21 +698,21 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             </div>
             <div className="md:pt-5 flex flex-col gap-2 justify-center">
               <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-slate-300 font-bold select-none">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-650 text-blue-500" checked={asset.hasPledge} onChange={e => updateAsset(asset.id, 'hasPledge', e.target.checked)} />
+                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-650 text-blue-500" checked={asset.hasPledge} onChange={e => updateAsset(asset.id, 'hasPledge', e.target.checked)} />
                 담보 질권 설정 대출액 차감 반영
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-slate-300 font-bold select-none">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-650 text-blue-500" checked={asset.isExempt} onChange={e => updateAsset(asset.id, 'isExempt', e.target.checked)} />
+                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-650 text-blue-500" checked={asset.isExempt} onChange={e => updateAsset(asset.id, 'isExempt', e.target.checked)} />
                 면제 재산으로 청산가치 합산 제외
               </label>
             </div>
           </div>
         </div>
       ))}
-      <div className="text-right py-2 text-sm font-extrabold bg-slate-950/80 px-4 rounded-lg border border-slate-800 flex justify-between items-center">
+      <div className="text-right py-2 text-sm font-extrabold bg-slate-100 dark:bg-slate-950/80 px-4 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex justify-between items-center">
         <span className="text-slate-400 text-xs font-bold">※ 임대보증금 및 보험금 공제 한도가 지역 정책에 의거 자동 차감 연동됩니다.</span>
         <div>
-          <span className="text-slate-400">총 예상 청산가치(자산액): </span>
+          <span className="text-slate-500 dark:text-slate-400">총 예상 청산가치(자산액): </span>
           <span className="text-emerald-400 ml-2 text-base">{formatKoreanCurrency(rehabResult.base.liq)}</span>
         </div>
       </div>
@@ -726,7 +726,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         <button type="button" onClick={addDebt} className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-blue-700 transition-all font-bold"><Plus size={14} /> 채권자 추가</button>
       </div>
       {debts.map((debt) => (
-        <div key={debt.id} className="bg-slate-950/40 p-4 rounded-xl border border-slate-800 relative">
+        <div key={debt.id} className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 relative">
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr,1.5fr,1fr,1.5fr,0.5fr] gap-3 items-end">
             <div>
               <label className={labelClass}>금융사/채권 기관명</label>
@@ -741,12 +741,12 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             </div>
             
             <div className="flex items-center gap-2 h-9">
-              <label className="flex items-center gap-1 cursor-pointer text-[10px] text-slate-350 font-bold select-none" title="도박, 선물옵션, 주식/코인 투자 용도 대출">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-blue-500" checked={debt.isGamblingOrLuxury} onChange={e => updateDebt(debt.id, 'isGamblingOrLuxury', e.target.checked)} /> 
+              <label className="flex items-center gap-1 cursor-pointer text-[10px] text-slate-600 dark:text-slate-350 font-bold select-none" title="도박, 선물옵션, 주식/코인 투자 용도 대출">
+                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-blue-500" checked={debt.isGamblingOrLuxury} onChange={e => updateDebt(debt.id, 'isGamblingOrLuxury', e.target.checked)} /> 
                 주식/선물/코인
               </label>
-              <label className="flex items-center gap-1 cursor-pointer text-[10px] text-slate-350 font-bold select-none" title="최근 1년 이내 실행 대출">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-blue-500" checked={debt.isRecent} onChange={e => updateDebt(debt.id, 'isRecent', e.target.checked)} /> 
+              <label className="flex items-center gap-1 cursor-pointer text-[10px] text-slate-600 dark:text-slate-350 font-bold select-none" title="최근 1년 이내 실행 대출">
+                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-blue-500" checked={debt.isRecent} onChange={e => updateDebt(debt.id, 'isRecent', e.target.checked)} /> 
                 최근 1년 채무
               </label>
             </div>
@@ -755,8 +755,8 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           </div>
         </div>
       ))}
-      <div className="text-right py-2 text-sm font-extrabold bg-slate-950/80 px-4 rounded-lg border border-slate-800">
-        <span className="text-slate-400">총 합산 채무 잔액: </span>
+      <div className="text-right py-2 text-sm font-extrabold bg-slate-100 dark:bg-slate-950/80 px-4 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+        <span className="text-slate-500 dark:text-slate-400">총 합산 채무 잔액: </span>
         <span className="text-red-400 ml-2 text-base">{formatKoreanCurrency(rehabResult.base.debtTotal)}</span>
       </div>
     </div>
@@ -765,7 +765,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
   const renderSection6 = () => (
     <div className="space-y-4">
       {/* Real-time calculated simulation display */}
-      <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-4">
+      <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
         <h3 className="text-xs font-extrabold text-blue-400 uppercase tracking-widest flex items-center gap-1.5"><Calculator size={14} /> 실시간 AI 변제 계산 및 특허 시뮬레이션 결과</h3>
         
         {/* Warnings / Alerts */}
@@ -783,28 +783,28 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
             <span className="text-[10px] text-slate-500 font-bold">월 실수령 소득</span>
-            <p className="text-sm font-extrabold text-slate-100 mt-1">{formatKoreanCurrency(rehabResult.client.monthlyIncome)}</p>
+            <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100 mt-1">{formatKoreanCurrency(rehabResult.client.monthlyIncome)}</p>
           </div>
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
             <span className="text-[10px] text-slate-500 font-bold">월 공제 생계비</span>
-            <p className="text-sm font-extrabold text-slate-100 mt-1">{formatKoreanCurrency(rehabResult.base.living)}</p>
+            <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100 mt-1">{formatKoreanCurrency(rehabResult.base.living)}</p>
           </div>
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
             <span className="text-[10px] text-slate-500 font-bold">월 가용 소득</span>
             <p className="text-sm font-extrabold text-blue-400 mt-1">{formatKoreanCurrency(rehabResult.base.disposable)}</p>
           </div>
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
             <span className="text-[10px] text-slate-500 font-bold">총 청산가치(자산액)</span>
             <p className="text-sm font-extrabold text-emerald-400 mt-1">{formatKoreanCurrency(rehabResult.base.liq)}</p>
           </div>
         </div>
 
         {/* Detailed Simulation Table */}
-        <div className="overflow-hidden border border-slate-800 rounded-lg">
+        <div className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-lg">
           <table className="w-full text-[11px] text-left">
-            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 font-bold">
+            <thead className="bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold">
               <tr>
                 <th className="p-2">상환 기간</th>
                 <th className="p-2 text-right">월 변제금</th>
@@ -813,17 +813,17 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
                 <th className="p-2 text-center">상태 및 가능성</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-850 bg-slate-950/20 text-slate-300">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-850 bg-white dark:bg-slate-950/20 text-slate-700 dark:text-slate-300">
               {rehabResult.rows.map((row) => {
                 const isPreferred = row.m === rehabResult.preferred?.m;
                 return (
-                  <tr key={row.m} className={`hover:bg-slate-800/20 ${isPreferred ? 'bg-blue-900/10 font-bold' : ''}`}>
-                    <td className="p-2 text-slate-200">{row.m}개월 변제안</td>
+                  <tr key={row.m} className={`hover:bg-slate-100 dark:hover:bg-slate-800/20 ${isPreferred ? 'bg-blue-50 dark:bg-blue-900/10 font-bold' : ''}`}>
+                    <td className="p-2 text-slate-800 dark:text-slate-200">{row.m}개월 변제안</td>
                     <td className="p-2 text-right text-slate-100">{formatNumber(row.monthly)}원</td>
                     <td className="p-2 text-right text-slate-400">{formatKoreanCurrency(row.total)}</td>
                     <td className="p-2 text-center">
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        row.needCutPct > 0.2 ? 'bg-red-950 text-red-400' : row.needCutPct > 0 ? 'bg-yellow-950 text-yellow-400' : 'bg-emerald-950 text-emerald-400'
+                        row.needCutPct > 0.2 ? 'bg-red-50 text-red-750 dark:bg-red-950 dark:text-red-400' : row.needCutPct > 0 ? 'bg-yellow-50 text-yellow-750 dark:bg-yellow-950 dark:text-yellow-400' : 'bg-emerald-50 text-emerald-750 dark:bg-emerald-950 dark:text-emerald-400'
                       }`}>
                         {(row.needCutPct * 100).toFixed(0)}% 감액
                       </span>
@@ -843,9 +843,9 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         </div>
 
         {rehabResult.preferred && (
-          <div className="bg-indigo-950/20 border border-indigo-900 p-3 rounded-lg text-xs space-y-1">
+          <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-150 dark:border-indigo-900 p-3 rounded-lg text-xs space-y-1">
             <span className="font-extrabold text-indigo-400 block text-[10px] uppercase tracking-wider">💡 인공지능 정밀 최적 법리 추천안</span>
-            <p className="text-slate-200 font-bold">
+            <p className="text-slate-800 dark:text-slate-200 font-bold">
               👉 {rehabResult.preferred.m}개월 변제 플랜 (월 변제금: {formatNumber(rehabResult.preferred.monthly)}원)
             </p>
             <p className="text-slate-400 text-[10px] leading-relaxed">{rehabResult.preferred.why}</p>
@@ -854,8 +854,8 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
       </div>
 
       {/* Attorney fee configuration */}
-      <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800 space-y-3">
-        <h3 className="font-bold text-xs text-slate-200 flex items-center gap-1.5"><CreditCard size={14} className="text-emerald-400" /> 초기 수임료 약정 분납계약 설정</h3>
+      <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+        <h3 className="font-bold text-xs text-[#313142] dark:text-slate-200 flex items-center gap-1.5"><CreditCard size={14} className="text-emerald-400" /> 초기 수임료 약정 분납계약 설정</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <MoneyInput label="합산 총 수임 비용" unit={10000} value={feeData.totalFee} onValueChange={v => setFeeData({...feeData, totalFee: v})} />
@@ -874,13 +874,13 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
       </div>
       
       {/* Installment Fee Loan Option */}
-      <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800 space-y-3">
+      <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
         <label className="flex items-center gap-2.5 cursor-pointer select-none">
-          <input type="checkbox" checked={feeLoanData.useFeeLoan} onChange={e => setFeeLoanData({...feeLoanData, useFeeLoan: e.target.checked})} className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-blue-500 focus:ring-blue-500" />
-          <span className="font-bold text-xs text-slate-200">초기 서류 수임료 연계 금융 대출 이용 여부</span>
+          <input type="checkbox" checked={feeLoanData.useFeeLoan} onChange={e => setFeeLoanData({...feeLoanData, useFeeLoan: e.target.checked})} className="w-4 h-4 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-500 focus:ring-blue-500" />
+          <span className="font-bold text-xs text-slate-700 dark:text-slate-200">초기 서류 수임료 연계 금융 대출 이용 여부</span>
         </label>
         {feeLoanData.useFeeLoan && (
-          <div className="pt-3 border-t border-slate-800 space-y-3 animate-fadeIn">
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3 animate-fadeIn">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <MoneyInput label="대출 약정 총금액" value={feeLoanData.amount} onValueChange={v => setFeeLoanData({...feeLoanData, amount: v})} />
@@ -913,7 +913,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <FileText className="text-blue-500" size={24} />
             <span>신규 개인회생 상담 접수 (Customer Intake)</span>
           </h2>
@@ -923,7 +923,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           <button 
             type="button" 
             onClick={onCancel}
-            className="text-xs text-slate-400 bg-slate-800 border border-slate-700 hover:bg-slate-750 px-3 py-1.5 rounded-lg font-bold"
+            className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-750 px-3 py-1.5 rounded-lg font-bold"
           >
             취소
           </button>
@@ -931,7 +931,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
       </div>
 
       {/* Tabs visual selector */}
-      <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex justify-between gap-1 overflow-x-auto">
+      <div className="bg-slate-100 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between gap-1 overflow-x-auto">
         {tabs.map((tab) => (
           <button 
             key={tab.id} 
@@ -940,7 +940,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-bold text-xs shrink-0 transition-all ${
               activeSection === tab.id 
                 ? 'bg-blue-600 text-white shadow-lg' 
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <tab.icon size={14} />
@@ -950,7 +950,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-slate-900/60 p-6 rounded-2xl shadow-xl border border-slate-800/80">
+        <div className="bg-white dark:bg-slate-900/60 p-6 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800/80">
           {activeSection === 1 && renderSection1()}
           {activeSection === 2 && renderSection2()}
           {activeSection === 3 && renderSection3()}
@@ -958,12 +958,12 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           {activeSection === 5 && renderSection5()}
           {activeSection === 6 && renderSection6()}
           
-          <div className="mt-6 flex justify-between pt-4 border-t border-slate-800">
+          <div className="mt-6 flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
             <button 
               type="button" 
               onClick={() => setActiveSection(Math.max(1, activeSection - 1))} 
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${ 
-                activeSection === 1 ? 'text-slate-650 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-800 hover:text-white' 
+                activeSection === 1 ? 'text-slate-300 dark:text-slate-650 cursor-not-allowed' : 'text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white' 
               }`} 
               disabled={activeSection === 1}
             > 
