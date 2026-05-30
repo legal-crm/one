@@ -711,96 +711,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
   );
 
   const renderSection6 = () => (
-    <div className="space-y-4">
-      {/* Real-time calculated simulation display */}
-      <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
-        <h3 className="text-xs font-extrabold text-blue-400 uppercase tracking-widest flex items-center gap-1.5"><Calculator size={14} /> 실시간 AI 변제 계산 및 특허 시뮬레이션 결과</h3>
-        
-        {/* Warnings / Alerts */}
-        {rehabResult.alerts.length > 0 && (
-          <div className="space-y-1.5">
-            {rehabResult.alerts.map((alert, idx) => (
-              <div key={idx} className={`p-2.5 rounded-lg border text-xs flex items-center gap-2 ${
-                alert.severity === 'error' ? 'bg-red-950/20 border-red-900/60 text-red-300' : 'bg-yellow-950/20 border-yellow-900/60 text-yellow-300'
-              }`}>
-                <AlertTriangle size={14} className="shrink-0" />
-                <span>{alert.message}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
-            <span className="text-[10px] text-slate-500 font-bold">월 실수령 소득</span>
-            <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100 mt-1">{formatKoreanCurrency(rehabResult.client.monthlyIncome)}</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
-            <span className="text-[10px] text-slate-500 font-bold">월 공제 생계비</span>
-            <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100 mt-1">{formatKoreanCurrency(rehabResult.base.living)}</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
-            <span className="text-[10px] text-slate-500 font-bold">월 가용 소득</span>
-            <p className="text-sm font-extrabold text-blue-400 mt-1">{formatKoreanCurrency(rehabResult.base.disposable)}</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
-            <span className="text-[10px] text-slate-500 font-bold">총 청산가치(자산액)</span>
-            <p className="text-sm font-extrabold text-emerald-400 mt-1">{formatKoreanCurrency(rehabResult.base.liq)}</p>
-          </div>
-        </div>
-
-        {/* Detailed Simulation Table */}
-        <div className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-lg">
-          <table className="w-full text-[11px] text-left">
-            <thead className="bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold">
-              <tr>
-                <th className="p-2">상환 기간</th>
-                <th className="p-2 text-right">월 변제금</th>
-                <th className="p-2 text-right">총 변제금액</th>
-                <th className="p-2 text-center">필요 생계 감액률</th>
-                <th className="p-2 text-center">상태 및 가능성</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-850 bg-white dark:bg-slate-950/20 text-slate-700 dark:text-slate-300">
-              {rehabResult.rows.map((row) => {
-                const isPreferred = row.m === rehabResult.preferred?.m;
-                return (
-                  <tr key={row.m} className={`hover:bg-slate-100 dark:hover:bg-slate-800/20 ${isPreferred ? 'bg-blue-50 dark:bg-blue-900/10 font-bold' : ''}`}>
-                    <td className="p-2 text-slate-800 dark:text-slate-200">{row.m}개월 변제안</td>
-                    <td className="p-2 text-right text-slate-100">{formatNumber(row.monthly)}원</td>
-                    <td className="p-2 text-right text-slate-400">{formatKoreanCurrency(row.total)}</td>
-                    <td className="p-2 text-center">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        row.needCutPct > 0.2 ? 'bg-red-50 text-red-750 dark:bg-red-950 dark:text-red-400' : row.needCutPct > 0 ? 'bg-yellow-50 text-yellow-750 dark:bg-yellow-950 dark:text-yellow-400' : 'bg-emerald-50 text-emerald-750 dark:bg-emerald-950 dark:text-emerald-400'
-                      }`}>
-                        {(row.needCutPct * 100).toFixed(0)}% 감액
-                      </span>
-                    </td>
-                    <td className="p-2 text-center">
-                      <span className={`text-[10px] ${
-                        row.mode.includes('초과') || row.mode.includes('불만족') ? 'text-red-500' : 'text-slate-400'
-                      }`}>
-                        {row.mode}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {rehabResult.preferred && (
-          <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-150 dark:border-indigo-900 p-3 rounded-lg text-xs space-y-1">
-            <span className="font-extrabold text-indigo-400 block text-[10px] uppercase tracking-wider">💡 인공지능 정밀 최적 법리 추천안</span>
-            <p className="text-slate-800 dark:text-slate-200 font-bold">
-              👉 {rehabResult.preferred.m}개월 변제 플랜 (월 변제금: {formatNumber(rehabResult.preferred.monthly)}원)
-            </p>
-            <p className="text-slate-400 text-[10px] leading-relaxed">{rehabResult.preferred.why}</p>
-          </div>
-        )}
-      </div>
-
+    <div className="space-y-4 animate-fadeIn">
       {/* 특이사항 및 궁금한 사항 입력 영역 */}
       <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800/80 space-y-3">
         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
@@ -808,11 +719,11 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           <span>특이사항 및 궁금한 사항 (변호사 전달용)</span>
         </label>
         <textarea
-          rows={4}
+          rows={6}
           value={memoText}
           onChange={e => setMemoText(e.target.value)}
           placeholder="개인적인 특이사항(예: 주위 사실 노출 우려, 독촉 위기, 직장 노출 우려 등)이나 담당 변호사에게 특별히 궁금한 질문을 자유롭게 적어주세요. 자세히 소명해 주실수록 더욱 정밀하고 신속한 법률 대응이 개시됩니다."
-          className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 text-xs font-semibold placeholder-slate-400 dark:placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 text-xs font-semibold placeholder-slate-400 dark:placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:outline-none shadow-sm focus:border-blue-500"
         />
       </div>
     </div>
@@ -824,7 +735,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
     { id: 3, label: '소득/직업', icon: Briefcase },
     { id: 4, label: '자산', icon: Home },
     { id: 5, label: '채무', icon: DollarSign },
-    { id: 6, label: '메모/분석', icon: CheckSquare },
+    { id: 6, label: '메모/전달', icon: CheckSquare },
   ];
 
   return (
