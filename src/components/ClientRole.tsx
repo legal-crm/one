@@ -3,7 +3,7 @@ import {
   PlusCircle, Users, Scale, FileText, ChevronRight, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
-  Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare
+  Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData } from '../types';
 import { CustomerIntake } from './CustomerIntake';
@@ -1384,10 +1384,55 @@ export default function ClientRole({
                 <span className="text-xs text-[#7e7e8f]">원하시는 변호사를 지정하거나 맞춤형 상담 예약을 진행할 수 있습니다</span>
               </div>
 
+              {/* Region Selector Pills */}
+              <div className="flex flex-wrap items-center gap-2 pb-2">
+                <span className="text-xs text-slate-500 font-bold dark:text-slate-400 mr-2 flex items-center gap-1.5 shrink-0">
+                  <MapPin className="w-3.5 h-3.5 text-brand" />
+                  지역별 변호사 찾기:
+                </span>
+                {[
+                  { value: '전체', label: '전체 🌍' },
+                  { value: '서울', label: '서울 법원 🏛️' },
+                  { value: '서울/경기', label: '서울/경기 🚇' },
+                  { value: '경기/수원', label: '수원/경기 ⚖️' }
+                ].map(regionOption => {
+                  const isSelected = selectedRegion === regionOption.value;
+                  return (
+                    <button
+                      key={regionOption.value}
+                      type="button"
+                      onClick={() => setSelectedRegion(regionOption.value)}
+                      className={`text-xs px-3.5 py-1.5 rounded-full font-bold transition-all duration-200 border ${
+                        isSelected
+                          ? 'bg-brand text-white border-brand shadow-sm shadow-brand/20 scale-105'
+                          : 'bg-white dark:bg-slate-900 text-slate-650 dark:text-slate-350 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-55 dark:hover:bg-slate-850'
+                      }`}
+                    >
+                      {regionOption.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {lawyers
-                  .filter(l => l.role === 'LAWYER')
-                  .map(l => {
+                {(() => {
+                  const filtered = lawyers.filter(l => {
+                    const isLawyer = l.role === 'LAWYER';
+                    const matchesRegion = selectedRegion === '전체' || l.region.includes(selectedRegion);
+                    return isLawyer && matchesRegion;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="col-span-1 md:col-span-3 py-12 text-center text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 space-y-2">
+                        <Users className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 opacity-55 animate-pulse" />
+                        <p className="text-sm">선택하신 지역에 배정된 도산 전문 변호사가 없습니다.</p>
+                        <p className="text-xs font-semibold text-[#7e7e8f] font-normal">전체 지역 탭을 이용해 전국 대응 변호사를 확인해 보세요.</p>
+                      </div>
+                    );
+                  }
+
+                  return filtered.map(l => {
                     const rating = l.id === 'lawyer-1' ? '4.9' : l.id === 'lawyer-2' ? '4.8' : '4.9';
                     const reviewsCount = l.id === 'lawyer-1' ? '184' : l.id === 'lawyer-2' ? '129' : '94';
                     
@@ -1467,7 +1512,8 @@ export default function ClientRole({
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                })()}
               </div>
             </div>
 
