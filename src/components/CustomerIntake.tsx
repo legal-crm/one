@@ -374,31 +374,6 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
   // --- Tab sections rendering ---
   const renderSection1 = () => (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 mb-1">상담 일자</label>
-          <input type="date" className={`${inputClass} py-1.5`} value={clientData.consultDate} onChange={(e) => setClientData({...clientData, consultDate: e.target.value})} />
-        </div>
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 mb-1">유입 경로</label>
-          <select className={`${inputClass} py-1.5`} value={clientData.dbVendor} onChange={(e) => setClientData({...clientData, dbVendor: e.target.value})}>
-            {settings?.dbVendors.map(vendor => <option key={vendor} value={vendor}>{vendor}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 mb-1">사건 유형</label>
-          <select className={`${inputClass} py-1.5`} value={clientData.caseType} onChange={(e) => setClientData({ ...clientData, caseType: e.target.value as CaseType })}>
-            {settings?.caseTypes.map(type => ( <option key={type.key} value={type.key}>{type.label}</option> ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 mb-1">접수 연도 기준</label>
-          <select className={`${inputClass} py-1.5`} value={clientData.applyYear} onChange={(e) => setClientData({...clientData, applyYear: Number(e.target.value)})}>
-            {availableYears.map(year => <option key={year} value={year}>{year}년 정책</option>)}
-          </select>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>고객명 *</label>
