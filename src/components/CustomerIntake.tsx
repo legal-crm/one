@@ -214,6 +214,14 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
     return Array.from(courts);
   }, [clientData.residence, clientData.workplace, settings]);
 
+  useEffect(() => {
+    if (recommendedCourts.length > 0) {
+      setClientData(prev => ({ ...prev, selectedCourt: recommendedCourts[0] }));
+    } else {
+      setClientData(prev => ({ ...prev, selectedCourt: '서울회생법원' }));
+    }
+  }, [recommendedCourts]);
+
   // Handle address input and suggestions
   const handleAddressChange = (field: 'residence' | 'workplace', value: string) => {
     setClientData(prev => ({ ...prev, [field]: value }));
@@ -384,33 +392,21 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           <input type="text" className={inputClass} value={clientData.phone} onChange={e => setClientData({...clientData, phone: e.target.value})} placeholder="010-0000-0000" required />
         </div>
         
-        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-[2fr,1fr] gap-4 items-end">
-          <div>
-            <label className={labelClass}>생년월일 *</label>
-            <div className="flex gap-2 items-center">
-              <select className={inputClass} value={clientData.birthYear} onChange={e => setClientData({...clientData, birthYear: e.target.value})}>
-                {years.map(y => <option key={y} value={y}>{y}년</option>)}
-              </select>
-              <select className={inputClass} value={clientData.birthMonth} onChange={e => setClientData({...clientData, birthMonth: e.target.value})}>
-                {months.map(m => <option key={m} value={m}>{m}월</option>)}
-              </select>
-              <select className={inputClass} value={clientData.birthDay} onChange={e => setClientData({...clientData, birthDay: e.target.value})}>
-                {days.map(d => <option key={d} value={d}>{d}일</option>)}
-              </select>
-              <div className="px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-                만 {manAge}세
-              </div>
+        <div className="md:col-span-2">
+          <label className={labelClass}>생년월일 *</label>
+          <div className="flex gap-2 items-center">
+            <select className={inputClass} value={clientData.birthYear} onChange={e => setClientData({...clientData, birthYear: e.target.value})}>
+              {years.map(y => <option key={y} value={y}>{y}년</option>)}
+            </select>
+            <select className={inputClass} value={clientData.birthMonth} onChange={e => setClientData({...clientData, birthMonth: e.target.value})}>
+              {months.map(m => <option key={m} value={m}>{m}월</option>)}
+            </select>
+            <select className={inputClass} value={clientData.birthDay} onChange={e => setClientData({...clientData, birthDay: e.target.value})}>
+              {days.map(d => <option key={d} value={d}>{d}일</option>)}
+            </select>
+            <div className="px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              만 {manAge}세
             </div>
-          </div>
-          <div>
-            <label className={labelClass}>고객 포털 패스워드</label>
-            <input 
-              type="text" 
-              className={inputClass} 
-              value={clientData.portalPassword} 
-              onChange={e => setClientData({...clientData, portalPassword: e.target.value})} 
-              placeholder="숫자 4자리" 
-            />
           </div>
         </div>
         
@@ -430,23 +426,14 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
              <label className={labelClass}>직장 소재지 주소 (시/구/군)</label>
              <input type="text" className={inputClass} value={clientData.workplace} onChange={e => handleAddressChange('workplace', e.target.value)} placeholder="예: 서울 강남구" autoComplete="off" />
              {workplaceSuggestions.length > 0 && (
-                <ul className="absolute z-10 w-full bg-slate-800 border border-slate-700 rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                <ul className="absolute z-10 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg mt-1 shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
                     {workplaceSuggestions.map(suggestion => (
                         <li key={suggestion} onMouseDown={() => handleSuggestionClick('workplace', suggestion)} className="p-2.5 text-xs text-slate-750 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 cursor-pointer"> {suggestion} </li>
                     ))}
                 </ul>
             )}
           </div>
-          <div className="md:col-span-2">
-            <label className={`${labelClass} flex items-center gap-1`}><MapPin size={12} /> 관할법원 (주소 기반 자동추천)</label>
-            <select className={inputClass} value={clientData.selectedCourt} onChange={e => setClientData({...clientData, selectedCourt: e.target.value})}>
-              <option value="">법원을 선택해 주세요</option>
-              {recommendedCourts.map(court => ( <option key={court} value={court}>{court}</option> ))}
-              {Object.keys(settings.courtConfigs).map(court => (
-                <option key={court} value={court}>{court}</option>
-              ))}
-            </select>
-          </div>
+
         </div>
 
         <div className="md:col-span-2 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40">
