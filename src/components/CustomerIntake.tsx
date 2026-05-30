@@ -671,13 +671,6 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           </div>
         </div>
       ))}
-      <div className="text-right py-2 text-sm font-extrabold bg-slate-100 dark:bg-slate-950/80 px-4 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex justify-between items-center">
-        <span className="text-slate-400 text-xs font-bold">※ 임대보증금 및 보험금 공제 한도가 지역 정책에 의거 자동 차감 연동됩니다.</span>
-        <div>
-          <span className="text-slate-500 dark:text-slate-400">총 예상 청산가치(자산액): </span>
-          <span className="text-emerald-400 ml-2 text-base">{formatKoreanCurrency(rehabResult.base.liq)}</span>
-        </div>
-      </div>
     </div>
   );
   
