@@ -5,7 +5,11 @@ import {
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare
 } from 'lucide-react';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData } from '../types';
+import { CustomerIntake } from './CustomerIntake';
+import { calculateRehabPlan } from '../rehabEngine';
+import { DEFAULT_SETTINGS } from '../constants';
+import { formatKoreanCurrency, formatNumber } from '../utils';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
 
@@ -777,6 +781,103 @@ export default function ClientRole({
     setTitle('');
     setContent('');
     setConsentCheck(false);
+    setActiveTab('chat');
+  };
+
+  const handleIntakeSubmit = (intakeData: IntakeData) => {
+    const result = calculateRehabPlan(intakeData, DEFAULT_SETTINGS);
+    
+    // Convert Won units to Man-won (10,000 KRW) units
+    const incomeManWon = Math.round(result.client.monthlyIncome / 10000);
+    const debtManWon = Math.round(result.base.debtTotal / 10000);
+    const assetsManWon = Math.round(result.base.liq / 10000);
+    
+    // Calculate detailed debt types
+    let banks = 0;
+    let cards = 0;
+    let personals = 0;
+    let recentLoans = 0;
+    let coinCrypto = 0;
+    
+    intakeData.debts.forEach(d => {
+      const amt = Math.round(d.principal / 10000);
+      if (d.isRecent) recentLoans += amt;
+      if (d.isGamblingOrLuxury) coinCrypto += amt;
+      
+      if (d.type === 'secured') {
+        banks += amt;
+      } else if (d.type === 'tax') {
+        personals += amt;
+      } else {
+        cards += amt;
+      }
+    });
+    
+    // Generate risk flags based on the rehabEngine simulation
+    const riskFlags = [];
+    result.alerts.forEach(a => {
+      riskFlags.push(a.message);
+    });
+    if (intakeData.debts.some(d => d.isRecent)) riskFlags.push('최근 대출 비중 높음 (30% 이상)');
+    if (intakeData.debts.some(d => d.isGamblingOrLuxury)) riskFlags.push('투자/사행성 손실 채무 포함');
+    
+    // Construct the new ConsultRequest
+    const newRequest = {
+      id: `req-${Date.now()}`,
+      clientId: 'client-temp',
+      clientName: isLoggedIn ? `${userAlias} (의뢰인)` : '익명 의뢰인',
+      phone: intakeData.phoneNumber || '010-4567-8901',
+      requestType: 'open',
+      maxParticipants: 3,
+      status: 'requested',
+      createdAt: new Date().toISOString(),
+      title: `${intakeData.clientName}님의 정밀 개인회생 상담 분석 신청`,
+      content: `정밀 자가진단 분석 결과:\n- 월 소득: ${formatKoreanCurrency(result.client.monthlyIncome)}\n- 인정 생계비: ${formatKoreanCurrency(result.base.living)}\n- 예상 월 가용소득: ${formatKoreanCurrency(result.base.disposable)}\n- 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원 (${result.preferred?.m || 36}개월)\n- 총 채무액: ${formatKoreanCurrency(result.base.debtTotal)}\n- 총 청산가치(자산): ${formatKoreanCurrency(result.base.liq)}\n\n[의뢰인 소명 요지]\n과거 개인회생 이력: ${intakeData.prevHistory.exists ? '있음 (' + intakeData.prevHistory.caseNumber + ')' : '없음'}\n현재 거주 지역: ${intakeData.residence}\n주된 직업 유형: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : '영업 소득자'}`,
+      financialProfile: {
+        clientId: 'client-temp',
+        income: incomeManWon,
+        debtTotal: debtManWon,
+        assetsTotal: assetsManWon,
+        dependents: result.client.dependents,
+        maritalStatus: intakeData.maritalStatus === 'single' ? 'SINGLE' : intakeData.maritalStatus === 'married' ? 'MARRIED' : 'DIVORCED',
+        debtTypes: {
+          banks,
+          cards,
+          personals,
+          recentLoans,
+          coinCrypto
+        },
+        riskFlags,
+        jobType: intakeData.incomeSources[0]?.type === 'worker' ? 'SALARIED' : 'BUSINESS',
+        companyName: intakeData.workplace || '',
+        companyNameMasked: intakeData.workplace ? intakeData.workplace.replace(/./g, (c, i) => i > 0 && i < intakeData.workplace.length - 1 ? '*' : c) : '미기재',
+        employmentDate: intakeData.consultDate,
+        residenceRegion: intakeData.residence,
+        spouseAsset: Math.round((intakeData.spouseIncome || 0) / 10000),
+        spouseIncome: Math.round((intakeData.spouseIncome || 0) / 10000),
+        hasRecentJobChange: intakeData.debts.some(d => d.isRecent),
+        rentalDeposit: Math.round((intakeData.monthlyRent || 0) / 10000),
+        debtCause: 'LIVING',
+        harassmentLevel: 'CALL',
+        creditorCount: intakeData.debts.length
+      }
+    };
+    
+    // Save to requests and navigate to active chat
+    setRequests(prev => [newRequest, ...prev]);
+    setActiveChatReqId(newRequest.id);
+    
+    // Auto-respond simulation
+    setTimeout(() => {
+      onAddMessage(
+        newRequest.id,
+        `반갑습니다. 의뢰인님의 정밀 AI 분석 상담 요청이 정상 등록되었습니다. 예상 월 변제금은 약 ${formatNumber(result.preferred?.monthly || 0)}원(${result.preferred?.m || 36}개월)으로 진단되었습니다. 곧 배정된 회생 전문 변호사가 실시간 대화를 통해 서류 면밀 검토 및 기각 차단 법리 대책을 수립해 드리겠습니다.`,
+        'lawyer',
+        'lawyer-1',
+        '김우진 변호사'
+      );
+    }, 1500);
+
     setActiveTab('chat');
   };
 
@@ -2010,608 +2111,10 @@ export default function ClientRole({
         )}
 
 
-        {/* TAB 2: MULTI-STEP REQUEST FORM */}
+        {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
         {activeTab === 'request' && (
-          <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 p-6 md:p-8 animate-fadeIn">
-            
-            {/* Steps Visual Guidance */}
-            <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-2 md:gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                  requestStep >= 1 ? 'bg-brand text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'
-                }`}>1</span>
-                <div className="hidden sm:block text-left">
-                  <span className="block font-semibold text-xs md:text-sm">상담 방식 선정</span>
-                  <span className="text-[10px] text-slate-500 hidden md:block">직접 / 분산 다중 연결</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-              <div className="flex items-center gap-2 md:gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                  requestStep >= 2 ? 'bg-brand text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'
-                }`}>2</span>
-                <div className="hidden sm:block text-left">
-                  <span className="block font-semibold text-xs md:text-sm">소득 / 채무 자가계산</span>
-                  <span className="text-[10px] text-slate-500 hidden md:block">마이데이터 및 상세 내역</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-              <div className="flex items-center gap-2 md:gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                  requestStep >= 3 ? 'bg-brand text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'
-                }`}>3</span>
-                <div className="hidden sm:block text-left">
-                  <span className="block font-semibold text-xs md:text-sm">상담 내용 접수</span>
-                  <span className="text-[10px] text-slate-500 hidden md:block">법적 책임 동의 및 완료</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile-only Step Status Title */}
-            <div className="sm:hidden text-center text-xs font-bold text-slate-600 dark:text-slate-400 mb-6 bg-slate-50 dark:bg-slate-950/40 py-2 rounded-xl border border-slate-100 dark:border-slate-850">
-              현재 단계: {requestStep === 1 ? '1. 상담 방식 선정' : requestStep === 2 ? '2. 소득/채무 자가계산' : '3. 상담 내용 접수'}
-            </div>
-
-            {/* STEP 1: CHOICE OF FLOW */}
-            {requestStep === 1 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold mb-1 col-slate-800">상담을 원하는 방식을 선택해 주세요.</h2>
-                  <p className="text-slate-500 text-sm">본 플랫폼은 변호사법 위반을 막기 위해 의뢰인이 직접 상담 조건과 대상을 설정해야 합니다.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Open Choice */}
-                  <div 
-                    onClick={() => {
-                      setRequestType('open');
-                      setSelectedLawyerId('');
-                    }}
-                    className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                      requestType === 'open' ? 'border-brand bg-brand-light/20 dark:bg-brand/10/10' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <Users className="w-5 h-5 text-brand" />
-                      <span className="font-bold text-base">참여형 다중 상담 (추천)</span>
-                    </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-normal mb-2">
-                      요청 건을 오픈해 놓으면, 채무 상황에 능통한 도산 전문 변호사들이 자발적으로 상담참여 버튼을 눌러 매칭됩니다.
-                    </p>
-                    <span className="bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light text-[11px] font-semibold px-2 py-0.5 rounded">
-                      최대 3인 변호사 한정 제한
-                    </span>
-                  </div>
-
-                  {/* Direct Choice */}
-                  <div 
-                    onClick={() => {
-                      setRequestType('direct');
-                      if (lawyers.length > 0) setSelectedLawyerId(lawyers[0].id);
-                    }}
-                    className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                      requestType === 'direct' ? 'border-brand bg-brand-light/20 dark:bg-brand/10/10' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <User className="w-5 h-5 text-indigo-600" />
-                      <span className="font-bold text-base">특정 변호사 직접 선정</span>
-                    </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-normal mb-2">
-                      의뢰인이 프로필과 최근 수임 이력을 검토한 후 마음에 드는 단 한 명의 변호사를 직접 지명하여 조용하게 단독 진행합니다.
-                    </p>
-                    <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[11px] font-semibold px-2 py-0.5 rounded">
-                      1:1 비공개 상담 채널
-                    </span>
-                  </div>
-                </div>
-
-                {requestType === 'direct' && (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">상담을 전담할 인센티브 선임 변호사 지명:</label>
-                    <select 
-                      value={selectedLawyerId} 
-                      onChange={(e) => setSelectedLawyerId(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 sm:text-sm focus:ring-1 focus:ring-brand"
-                    >
-                      {lawyers.map(l => (
-                        <option key={l.id} value={l.id}>
-                          {l.name} ({l.region} | {l.fields.join(', ')})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="flex justify-end pt-2">
-                  <button 
-                    onClick={() => setRequestStep(2)}
-                    className="bg-brand hover:bg-brand text-white font-medium px-6 py-2 rounded-lg flex items-center gap-1.5"
-                  >
-                    <span>수립 단계로 이동</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2: FINANCIAL CALCULATOR */}
-            {requestStep === 2 && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <div>
-                    <h2 className="text-xl font-bold mb-1">소득 및 채무 위기 수준을 기입해 주세요.</h2>
-                    <p className="text-slate-500 text-sm">마이데이터 조회 연동으로 원클릭 기입 혹은 수기 작성이 모두 가능합니다.</p>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={handleMyDataLoad}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-brand-light hover:bg-blue-200 dark:bg-brand/10 dark:hover:bg-blue-900 text-brand dark:text-brand-light text-xs font-semibold rounded-lg transition-colors border border-brand/20"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin-hover" />
-                    <span>마이데이터 채무 불러오기</span>
-                  </button>
-                </div>
-
-                {/* Section 1: 직업 및 소득 상태 */}
-                <div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4">
-                  <h3 className="text-sm font-extrabold text-slate-850 dark:text-slate-200 flex items-center gap-2">
-                    <span className="w-1.5 h-3.5 bg-brand rounded-full"></span>
-                    <span>1. 직업 및 소득 정보</span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Job Type Selector */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">직업 유형*</label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {([
-                          { key: 'SALARIED', label: '급여소득' },
-                          { key: 'BUSINESS', label: '영업소득' },
-                          { key: 'DAILY', label: '일용직' },
-                          { key: 'FREELANCER', label: '프리랜서' }
-                        ] as const).map(item => (
-                          <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => {
-                              setJobType(item.key);
-                              if (item.key === 'DAILY' || item.key === 'FREELANCER') {
-                                setCompanyName('');
-                                setEmploymentDate('');
-                              }
-                            }}
-                            className={`py-2 text-[11px] font-bold rounded-lg border transition-all ${
-                              jobType === item.key 
-                              ? 'bg-brand text-white border-brand shadow-sm animate-pulse-light' 
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 text-slate-650 hover:bg-slate-100'
-                            }`}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Company name */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">
-                        {jobType === 'BUSINESS' ? '상호명' : '직장명'} 
-                        {jobType === 'SALARIED' || jobType === 'BUSINESS' ? ' *' : ' (선택)'}
-                      </label>
-                      <input 
-                        type="text" 
-                        placeholder={jobType === 'DAILY' || jobType === 'FREELANCER' ? '해당 사항 없음' : '예: (주)가나상사'}
-                        disabled={jobType === 'DAILY' || jobType === 'FREELANCER'}
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand disabled:opacity-50"
-                      />
-                    </div>
-
-                    {/* Employment Date */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">
-                        {jobType === 'BUSINESS' ? '개업 연월일' : '입사일자'}
-                        {jobType === 'SALARIED' || jobType === 'BUSINESS' ? ' *' : ' (선택)'}
-                      </label>
-                      <input 
-                        type="text" 
-                        placeholder={jobType === 'DAILY' || jobType === 'FREELANCER' ? '해당 사항 없음' : '예: 2022-04-10'}
-                        disabled={jobType === 'DAILY' || jobType === 'FREELANCER'}
-                        value={employmentDate}
-                        onChange={(e) => setEmploymentDate(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand disabled:opacity-50"
-                      />
-                    </div>
-
-                    {/* Income */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">월 평균 세후 실수령 소득 (만 원)*</label>
-                      <div className="relative rounded-md shadow-sm">
-                        <input 
-                          type="number" 
-                          value={income}
-                          onChange={(e) => setIncome(Number(e.target.value))}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
-                        />
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
-                      </div>
-                    </div>
-
-                    {/* Recent Job Change */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">최근 1년 이내 취업 / 이직 여부*</label>
-                      <div className="flex gap-2">
-                        {[
-                          { key: false, label: '아니오 (장기 근속)' },
-                          { key: true, label: '예 (최근 1년 이내 취업)' }
-                        ].map(item => (
-                          <button
-                            key={item.label}
-                            type="button"
-                            onClick={() => setHasRecentJobChange(item.key)}
-                            className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                              hasRecentJobChange === item.key 
-                              ? 'bg-brand text-white border-brand shadow-sm' 
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 hover:bg-slate-100'
-                            }`}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: 거주 및 재산 상태 */}
-                <div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-855 space-y-4">
-                  <h3 className="text-sm font-extrabold text-slate-855 dark:text-slate-200 flex items-center gap-2">
-                    <span className="w-1.5 h-3.5 bg-brand rounded-full"></span>
-                    <span>2. 거주 및 자산 정보</span>
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Residence Region */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">실거주지 지역 (관할법원 지정용)*</label>
-                      <select 
-                        value={residenceRegion}
-                        onChange={(e) => setResidenceRegion(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
-                      >
-                        <option value="서울">서울시 (서울회생법원 관할)</option>
-                        <option value="경기">경기도 (수원/의정부/인천 등)</option>
-                        <option value="인천">인천시 (인천지방법원 관할)</option>
-                        <option value="부산">부산시 (부산회생법원 관할)</option>
-                        <option value="대구">대구시 (대구지방법원 관할)</option>
-                        <option value="대전">대전시 (대전지방법원 관할)</option>
-                        <option value="광주">광주시 (광주지방법원 관할)</option>
-                        <option value="울산">울산시 (울산지방법원 관할)</option>
-                        <option value="기타">기타 강원/제주/충청/경상/전라 등</option>
-                      </select>
-                    </div>
-
-                    {/* Rental Deposit */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">주거 임차보증금 (자가인 경우 0 기입, 만 원)</label>
-                      <div className="relative rounded-md shadow-sm">
-                        <input 
-                          type="number" 
-                          value={rentalDeposit}
-                          onChange={(e) => setRentalDeposit(Number(e.target.value))}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
-                        />
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
-                      </div>
-                    </div>
-
-                    {/* Own Assets Total */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">본인 명의 총 자산 규모 (자가 시세/예금/차량 등, 만 원)*</label>
-                      <div className="relative rounded-md shadow-sm">
-                        <input 
-                          type="number" 
-                          value={assetsTotal}
-                          onChange={(e) => setAssetsTotal(Number(e.target.value))}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
-                        />
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
-                      </div>
-                    </div>
-
-                    {/* Dependents */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">부양 가족 수 (본인 제외, 명)*</label>
-                      <select 
-                        value={dependents}
-                        onChange={(e) => setDependents(Number(e.target.value))}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
-                      >
-                        <option value={0}>0명 (1인 가구 - 본인만)</option>
-                        <option value={1}>1명 (2인 가구 - 부양가족 1인)</option>
-                        <option value={2}>2명 (3인 가구 - 부양가족 2인)</option>
-                        <option value={3}>3명 이상 (4인 이상 가구)</option>
-                      </select>
-                    </div>
-
-                    {/* Marital Status */}
-                    <div className="space-y-1.5 md:col-span-2">
-                      <label className="block text-xs font-bold text-slate-500">결혼 상태*</label>
-                      <div className="flex gap-2">
-                        {(['SINGLE', 'MARRIED', 'DIVORCED'] as const).map(m => (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => {
-                              setMaritalStatus(m);
-                              if (m !== 'MARRIED') {
-                                setSpouseAsset(0);
-                                setSpouseIncome(0);
-                              }
-                            }}
-                            className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                              maritalStatus === m 
-                              ? 'bg-brand text-white border-brand shadow-sm' 
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 hover:bg-slate-100'
-                            }`}
-                          >
-                            {m === 'SINGLE' ? '미혼' : m === 'MARRIED' ? '기혼' : '이혼'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {maritalStatus === 'MARRIED' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-850 animate-slideDown">
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-550 dark:text-slate-350">배우자 명의 총 재산 가액 (만 원)</label>
-                        <div className="relative rounded-md shadow-sm">
-                          <input 
-                            type="number" 
-                            value={spouseAsset}
-                            onChange={(e) => setSpouseAsset(Number(e.target.value))}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
-                          />
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
-                        </div>
-                        <span className="text-[10px] text-slate-400 block leading-tight">* 실무상 배우자 재산의 50%는 신청인의 청산가치에 임의 가산될 수 있습니다.</span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-555 dark:text-slate-355">배우자 월 평균 소득 규모 (만 원)</label>
-                        <div className="relative rounded-md shadow-sm">
-                          <input 
-                            type="number" 
-                            value={spouseIncome}
-                            onChange={(e) => setSpouseIncome(Number(e.target.value))}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand"
-                          />
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">만 원</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Section 3: 채무 및 위기 수준 */}
-                <div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4">
-                  <h3 className="text-sm font-extrabold text-slate-855 dark:text-slate-200 flex items-center gap-2">
-                    <span className="w-1.5 h-3.5 bg-brand rounded-full"></span>
-                    <span>3. 채무 구조 및 추심 위기수준</span>
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Creditor Count */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">채권자 기관 수 (대출받은 금융처 수)*</label>
-                      <div className="relative rounded-md shadow-sm">
-                        <input 
-                          type="number" 
-                          value={creditorCount}
-                          onChange={(e) => setCreditorCount(Number(e.target.value))}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1"
-                        />
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400">곳</div>
-                      </div>
-                    </div>
-
-                    {/* Debt Cause */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">주된 채무 발생 원인*</label>
-                      <select 
-                        value={debtCause}
-                        onChange={(e) => setDebtCause(e.target.value as any)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
-                      >
-                        <option value="LIVING">생활비 부족 및 가계 생계 대출</option>
-                        <option value="BUSINESS">개인 사업장 창업 및 경영난/부도</option>
-                        <option value="INVESTMENT">투자 실패 (주식/코인/도박 손실)</option>
-                        <option value="GUARANTEE">보증 채무 연대 대리상환</option>
-                        <option value="OTHER">타인 대여/의료비/사기 피해 등 기타</option>
-                      </select>
-                    </div>
-
-                    {/* Harassment Level */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-500">현재 채무 독촉 및 위기 수준*</label>
-                      <select 
-                        value={harassmentLevel}
-                        onChange={(e) => setHarassmentLevel(e.target.value as any)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-brand text-slate-700 dark:text-slate-350"
-                      >
-                        <option value="CALL">단순 추심전화 및 독촉 안내문자 단계</option>
-                        <option value="LETTER">독촉 최고서 수령 및 거주지 방문 예고</option>
-                        <option value="LAWSUIT">법원 지급명령 송달 및 민사소송 개시 단계</option>
-                        <option value="SEIZURE">급여 가압류 / 통장 압류 개시 실행</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Sub Debt breakdown calculator */}
-                  <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-850 space-y-4">
-                    <span className="text-xs font-bold text-slate-850 dark:text-slate-200 flex items-center gap-1.5">
-                      <Landmark className="w-3.5 h-3.5 text-brand" />
-                      <span>기관 분류별 채무 명세 상세 입력</span>
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-[10px] text-slate-450 mb-1">1금융권 은행 채무</label>
-                        <input 
-                          type="number" 
-                          value={debtBanks} 
-                          onChange={(e) => setDebtBanks(Number(e.target.value))}
-                          className="w-full bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-450 mb-1">카드사 카드론/현금서비스</label>
-                        <input 
-                          type="number" 
-                          value={debtCards} 
-                          onChange={(e) => setDebtCards(Number(e.target.value))}
-                          className="w-full bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-455 mb-1">저축은행/대부업/사채 등</label>
-                        <input 
-                          type="number" 
-                          value={debtPersonals} 
-                          onChange={(e) => setDebtPersonals(Number(e.target.value))}
-                          className="w-full bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div className="bg-amber-500/5 p-2 rounded border border-amber-500/10">
-                        <label className="block text-[10px] font-semibold text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>최근 1년 이내 무리한 추가 대출 (만 원)</span>
-                        </label>
-                        <input 
-                          type="number" 
-                          value={recentLoans} 
-                          onChange={(e) => setRecentLoans(Number(e.target.value))}
-                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
-                        />
-                      </div>
-                      <div className="bg-red-500/5 p-2 rounded border border-red-500/10">
-                        <label className="block text-[10px] font-semibold text-red-700 dark:text-red-300 mb-1 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>사행성 손실액 (주식/코인/도박, 만 원)</span>
-                        </label>
-                        <input 
-                          type="number" 
-                          value={coinCrypto} 
-                          onChange={(e) => setCoinCrypto(Number(e.target.value))}
-                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs focus:ring-1" 
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
-                      <span className="text-slate-600 dark:text-slate-400 text-xs">상기 구조별 합산 채무액:</span>
-                      <span className="text-sm font-bold text-brand dark:text-brand-light bg-brand/5 dark:bg-brand/10 px-2.5 py-1 rounded-full">
-                        {totalCalculatedDebt > 0 ? `${(totalCalculatedDebt / 10000).toFixed(2)}억 원 (${totalCalculatedDebt.toLocaleString()}만 원)` : `${(debtTotal / 10000).toFixed(2)}억 원 (${debtTotal.toLocaleString()}만 원)`}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800 pt-4">
-                  <button 
-                    onClick={() => setRequestStep(1)}
-                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-5 py-2 rounded-lg text-xs font-semibold hover:bg-slate-200"
-                  >
-                    이전으로
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if ((jobType === 'SALARIED' || jobType === 'BUSINESS') && (!companyName.trim() || !employmentDate.trim())) {
-                        alert('급여소득 및 영업소득자는 직장/상호명과 입사/개업일자를 반드시 입력하셔야 합니다.');
-                        return;
-                      }
-                      setRequestStep(3);
-                    }}
-                    className="bg-brand hover:bg-brand-hover text-white font-bold px-6 py-2 rounded-lg flex items-center gap-1.5 text-xs shadow"
-                  >
-                    <span>마지막 단계로 이동</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3: SUBMIT */}
-            {requestStep === 3 && (
-              <div className="space-y-6 animate-fadeIn">
-                <div>
-                  <h2 className="text-xl font-bold mb-1">마지막으로 변호사가 파악할 상담내용을 기술해 주세요.</h2>
-                  <p className="text-slate-500 text-sm">기존 독촉 상황이나 재산 압류 예정 여부를 기입하시면 가장 빠르고 명확한 솔루션이 가능합니다.</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">상담 요약 한 줄 (제목)</label>
-                    <input 
-                      type="text" 
-                      placeholder="예) 보증 채무 압류 독촉 대응과 가용 가계 소득 부족 상담 원함"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-brand"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">구체적인 위기 사유 (설명)</label>
-                    <textarea 
-                      rows={5}
-                      placeholder="돌려막기 여부, 현재 독촉 수준, 채권자 수, 거주 형태, 채무 형성 경로 등을 적어주시면 정확하고 법률적인 상담 변호사의 빠른 개입이 가능합니다."
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-brand"
-                    />
-                  </div>
-
-                  <RequestDisclaimer />
-
-                  <div className="flex items-center gap-2 pt-2">
-                    <input 
-                      type="checkbox" 
-                      id="consentCheck"
-                      checked={consentCheck}
-                      onChange={(e) => setConsentCheck(e.target.checked)}
-                      className="rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand w-4 h-4"
-                    />
-                    <label htmlFor="consentCheck" className="text-xs font-semibold text-slate-800 dark:text-slate-200 select-none cursor-pointer">
-                      본인은 대리로 매칭을 청탁하지 않으며, 자율적인 상담 조건 설계에 상시 동의합니다. (필수 동의)
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <button 
-                    onClick={() => setRequestStep(2)}
-                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-5 py-2 rounded-lg text-sm"
-                  >
-                    이전으로
-                  </button>
-                  <button 
-                    onClick={handleRequestSubmit}
-                    className="bg-brand hover:bg-brand text-white font-bold px-7 py-2.5 rounded-lg flex items-center gap-1.5"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>정식 채무 상담방 개설 등록</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
+          <div className="animate-fadeIn">
+            <CustomerIntake onSubmit={handleIntakeSubmit} />
           </div>
         )}
 
