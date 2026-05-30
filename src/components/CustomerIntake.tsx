@@ -156,22 +156,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
     ]
   );
 
-  const [consultationLogs] = useState<ConsultationLog[]>(initialData?.consultationLogs || []);
-  const [feeData, setFeeData] = useState({ 
-    totalFee: initialData?.feeTotal || 0, 
-    installments: initialData?.feeInstallments || 1, 
-    startDate: initialData?.feeStartDate || new Date().toISOString().split('T')[0] 
-  });
-  const [feeLoanData, setFeeLoanData] = useState<FeeLoanInfo>(
-    initialData?.feeLoanInfo || { 
-      useFeeLoan: false, 
-      amount: 0, 
-      term: 12, 
-      contractDate: new Date().toISOString().split('T')[0], 
-      firstRepaymentDate: new Date().toISOString().split('T')[0], 
-      interestRate: 20 
-    }
-  );
+  const [memoText, setMemoText] = useState<string>(initialData?.consultationLogs?.[0]?.content || '');
 
   useEffect(() => {
     setFamilyData(prev => {
@@ -326,11 +311,19 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
       },
       assets,
       debts,
-      consultationLogs,
-      feeTotal: feeData.totalFee,
-      feeInstallments: feeData.installments,
-      feeStartDate: feeData.startDate,
-      feeLoanInfo: feeLoanData.useFeeLoan ? feeLoanData : undefined,
+      consultationLogs: memoText.trim() ? [
+        {
+          id: `memo-${Date.now()}`,
+          date: new Date().toISOString().split('T')[0],
+          consultantId: 'client',
+          consultantName: clientData.name || '의뢰인',
+          content: memoText
+        }
+      ] : [],
+      feeTotal: 0,
+      feeInstallments: 1,
+      feeStartDate: new Date().toISOString().split('T')[0],
+      feeLoanInfo: undefined,
     };
   };
 
@@ -353,7 +346,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
 
   // --- Real-Time Calculations (실시간 계산 연동) ---
   const currentPayload = useMemo(() => buildPayload(), [
-    clientData, familyData, incomeSources, assets, debts, feeData, feeLoanData
+    clientData, familyData, incomeSources, assets, debts, memoText
   ]);
 
   const rehabResult = useMemo(() => 
@@ -808,49 +801,19 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         )}
       </div>
 
-      {/* Attorney fee configuration */}
-      <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-        <h3 className="font-bold text-xs text-[#313142] dark:text-slate-200 flex items-center gap-1.5"><CreditCard size={14} className="text-emerald-400" /> 초기 수임료 약정 분납계약 설정</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <MoneyInput label="합산 총 수임 비용" unit={10000} value={feeData.totalFee} onValueChange={v => setFeeData({...feeData, totalFee: v})} />
-          </div>
-          <div>
-            <label className={labelClass}>분납 가능 할부 개월</label>
-            <select className={inputClass} value={feeData.installments} onChange={e => setFeeData({...feeData, installments: Number(e.target.value)})}>
-              {Array.from({length:10}).map((_,i) => <option key={i+1} value={i+1}>{i+1}개월 분납</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>최초 불입 시작일</label>
-            <input type="date" className={inputClass} value={feeData.startDate} onChange={e => setFeeData({...feeData, startDate: e.target.value})} />
-          </div>
-        </div>
-      </div>
-      
-      {/* Installment Fee Loan Option */}
-      <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-        <label className="flex items-center gap-2.5 cursor-pointer select-none">
-          <input type="checkbox" checked={feeLoanData.useFeeLoan} onChange={e => setFeeLoanData({...feeLoanData, useFeeLoan: e.target.checked})} className="w-4 h-4 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-500 focus:ring-blue-500" />
-          <span className="font-bold text-xs text-slate-700 dark:text-slate-200">초기 서류 수임료 연계 금융 대출 이용 여부</span>
+      {/* 특이사항 및 궁금한 사항 입력 영역 */}
+      <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800/80 space-y-3">
+        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+          <FileText size={14} className="text-blue-500" />
+          <span>특이사항 및 궁금한 사항 (변호사 전달용)</span>
         </label>
-        {feeLoanData.useFeeLoan && (
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3 animate-fadeIn">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <MoneyInput label="대출 약정 총금액" value={feeLoanData.amount} onValueChange={v => setFeeLoanData({...feeLoanData, amount: v})} />
-              </div>
-              <div>
-                <label className={labelClass}>대출 기간 (개월)</label>
-                <input type="number" className={inputClass} value={feeLoanData.term} onChange={e => setFeeLoanData({...feeLoanData, term: Number(e.target.value)})} />
-              </div>
-              <div>
-                <label className={labelClass}>금융 이자율 (%)</label>
-                <input type="number" step="0.1" className={inputClass} value={feeLoanData.interestRate} onChange={e => setFeeLoanData({...feeLoanData, interestRate: Number(e.target.value)})} />
-              </div>
-            </div>
-          </div>
-        )}
+        <textarea
+          rows={4}
+          value={memoText}
+          onChange={e => setMemoText(e.target.value)}
+          placeholder="개인적인 특이사항(예: 주위 사실 노출 우려, 독촉 위기, 직장 노출 우려 등)이나 담당 변호사에게 특별히 궁금한 질문을 자유롭게 적어주세요. 자세히 소명해 주실수록 더욱 정밀하고 신속한 법률 대응이 개시됩니다."
+          className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 text-xs font-semibold placeholder-slate-400 dark:placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+        />
       </div>
     </div>
   );

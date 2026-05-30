@@ -832,7 +832,7 @@ export default function ClientRole({
       status: 'requested',
       createdAt: new Date().toISOString(),
       title: `${intakeData.clientName}님의 정밀 개인회생 상담 분석 신청`,
-      content: `정밀 자가진단 분석 결과:\n- 월 소득: ${formatKoreanCurrency(result.client.monthlyIncome)}\n- 인정 생계비: ${formatKoreanCurrency(result.base.living)}\n- 예상 월 가용소득: ${formatKoreanCurrency(result.base.disposable)}\n- 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원 (${result.preferred?.m || 36}개월)\n- 총 채무액: ${formatKoreanCurrency(result.base.debtTotal)}\n- 총 청산가치(자산): ${formatKoreanCurrency(result.base.liq)}\n\n[의뢰인 소명 요지]\n과거 개인회생 이력: ${intakeData.prevHistory.exists ? '있음 (' + intakeData.prevHistory.caseNumber + ')' : '없음'}\n현재 거주 지역: ${intakeData.residence}\n주된 직업 유형: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : '영업 소득자'}`,
+      content: `정밀 자가진단 분석 결과:\n- 월 소득: ${formatKoreanCurrency(result.client.monthlyIncome)}\n- 인정 생계비: ${formatKoreanCurrency(result.base.living)}\n- 예상 월 가용소득: ${formatKoreanCurrency(result.base.disposable)}\n- 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원 (${result.preferred?.m || 36}개월)\n- 총 채무액: ${formatKoreanCurrency(result.base.debtTotal)}\n- 총 청산가치(자산): ${formatKoreanCurrency(result.base.liq)}\n\n[의뢰인 소명 요지]\n과거 개인회생 이력: ${intakeData.prevHistory.exists ? '있음 (' + intakeData.prevHistory.caseNumber + ')' : '없음'}\n현재 거주 지역: ${intakeData.residence}\n주된 직업 유형: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : '영업 소득자'}\n\n[의뢰인 요청 및 특이사항]\n${intakeData.consultationLogs[0]?.content || '없음'}`,
       financialProfile: {
         clientId: 'client-temp',
         income: incomeManWon,
