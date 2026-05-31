@@ -12,6 +12,7 @@ import { DEFAULT_SETTINGS } from '../constants';
 import { formatKoreanCurrency, formatNumber } from '../utils';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
+import { supabase } from '../supabaseClient';
 
 interface RemedyPreset {
   jobType: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
@@ -318,6 +319,12 @@ export default function ClientRole({
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
+  // Email and Real Auth States
+  const [authTab, setAuthTab] = useState<'phone' | 'email'>('phone');
+  const [emailInput, setEmailInput] = useState<string>('');
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
+
   // OTP and Verification Simulation States
   const [authPhone, setAuthPhone] = useState<string>('');
   const [authOtp, setAuthOtp] = useState<string>('');
@@ -339,6 +346,49 @@ export default function ClientRole({
     }
     return () => window.clearInterval(timer);
   }, [otpSent, otpCountdown, otpSuccess]);
+
+  useEffect(() => {
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setIsLoggedIn(true);
+        const metaAlias = session.user.user_metadata?.alias;
+        if (metaAlias) {
+          setUserAlias(metaAlias);
+        } else {
+          const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+          setUserAlias(generatedAlias);
+          supabase.auth.updateUser({
+            data: { alias: generatedAlias }
+          });
+        }
+      }
+    });
+
+    // Listen to changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setIsLoggedIn(true);
+        const metaAlias = session.user.user_metadata?.alias;
+        if (metaAlias) {
+          setUserAlias(metaAlias);
+        } else {
+          const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+          setUserAlias(generatedAlias);
+          supabase.auth.updateUser({
+            data: { alias: generatedAlias }
+          });
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUserAlias('');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
   
   // New Request Form State
   const [requestStep, setRequestStep] = useState<number>(1);
@@ -1232,26 +1282,37 @@ export default function ClientRole({
     }, 2500);
   };
 
-  // Simulated Auth and Security Handlers
-  const handleSocialLogin = (platform: string) => {
+  // Real Supabase and Fallback Auth Handlers
+  const handleSocialLogin = async (platform: string) => {
     if (!authConsent) {
       alert('필수 개인정보 및 마이데이터 수집 이용 동의를 체크해 주세요.');
       return;
     }
-    setTimeout(() => {
-      setIsLoggedIn(true);
+    try {
+      let provider: any = 'google';
+      if (platform === '카카오') provider = 'kakao';
+      if (platform === '네이버') provider = 'naver';
+
+      // Call Supabase OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin + window.location.pathname,
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error(`${platform} 로그인 오류:`, err.message);
+      // Fallback in case redirect or configuration is missing locally
       const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+      setIsLoggedIn(true);
       setUserAlias(generatedAlias);
       setShowAuthModal(false);
-      setAuthPhone('');
-      setAuthOtp('');
-      setOtpSent(false);
-      setOtpError('');
-      alert(`[안내] ${platform} 계정 연동 및 간편 회원가입이 완료되었습니다!\n개인 정보 보호를 위해 의뢰인 식별명은 가명 '${generatedAlias}'으로 자동 생성되었습니다.`);
-    }, 400);
+      alert(`[안내/로컬 로드 실패 대피] ${platform} 로그인 모듈 오류가 감지되어 가상 보안 로그인 세션으로 자동 대피 하였습니다.\n가명: ${generatedAlias}`);
+    }
   };
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (!authPhone.trim()) {
       setOtpError('휴대폰 번호를 입력해 주세요.');
       return;
@@ -1261,24 +1322,134 @@ export default function ClientRole({
       return;
     }
     setOtpError('');
-    setOtpSent(true);
-    setOtpCountdown(180);
-    alert('[가상 인증 번호 발송]\n본인인증을 위한 6자리 코드 [777777]이 화면에 임시 발송되었습니다. 입력란에 기입해 주세요.');
+    
+    try {
+      // Try real phone OTP using Supabase if possible
+      const cleanPhone = authPhone.replace(/[^0-9+]/g, '');
+      const formattedPhone = cleanPhone.startsWith('0') ? '+82' + cleanPhone.substring(1) : cleanPhone;
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone
+      });
+      if (error) throw error;
+
+      setOtpSent(true);
+      setOtpCountdown(180);
+      alert('[인증 번호 발송완료]\n입력하신 휴대폰 번호로 인증번호 6자리가 발송되었습니다.');
+    } catch (err: any) {
+      console.warn('Supabase SMS OTP 발송 실패 (SMS 공급자 미설정일 수 있음). 로컬 가상 모드로 전환합니다:', err.message);
+      // Fallback
+      setOtpSent(true);
+      setOtpCountdown(180);
+      alert('[안내 - 가상 인증번호 발송]\n현재 Supabase SMS Provider 인프라가 미설정 상태이거나 테스트용 로컬 모드입니다. 가상 인증번호 [777777]을 입력란에 기입해 주세요.');
+    }
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
+    if (!authOtp.trim()) {
+      setOtpError('인증번호를 입력해 주세요.');
+      return;
+    }
+    
+    // Attempt local verification first for mock code
     if (authOtp === '777777') {
-      setIsLoggedIn(true);
       const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+      setIsLoggedIn(true);
       setUserAlias(generatedAlias);
       setShowAuthModal(false);
       setOtpSent(false);
       setOtpError('');
       setAuthPhone('');
       setAuthOtp('');
-      alert(`[인증 성공] 안전하게 로그인이 활성화 완료되었습니다!\n배정된 가명: ${generatedAlias}`);
-    } else {
-      setOtpError('인증번호가 일치하지 않습니다. (가상 테스트용 코드: 777777)');
+      alert(`[인증 성공] 안전하게 가상 로그인이 완료되었습니다!\n배정된 가명: ${generatedAlias}`);
+      return;
+    }
+
+    try {
+      const cleanPhone = authPhone.replace(/[^0-9+]/g, '');
+      const formattedPhone = cleanPhone.startsWith('0') ? '+82' + cleanPhone.substring(1) : cleanPhone;
+      
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: formattedPhone,
+        token: authOtp,
+        type: 'sms'
+      });
+      if (error) throw error;
+
+      if (data.user) {
+        setIsLoggedIn(true);
+        const metaAlias = data.user.user_metadata?.alias;
+        const finalAlias = metaAlias || ("새출발_" + Math.floor(100 + Math.random() * 900));
+        setUserAlias(finalAlias);
+        if (!metaAlias) {
+          await supabase.auth.updateUser({
+            data: { alias: finalAlias }
+          });
+        }
+        setShowAuthModal(false);
+        setOtpSent(false);
+        setOtpError('');
+        setAuthPhone('');
+        setAuthOtp('');
+        alert(`[인증 성공] Supabase 실시간 로그인이 성공했습니다!\n배정된 가명: ${finalAlias}`);
+      }
+    } catch (err: any) {
+      setOtpError(err.message || '인증번호 검증 실패. (가상 테스트용 코드: 777777)');
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authConsent) {
+      alert('필수 개인정보 및 마이데이터 수집 이용 동의를 체크해 주세요.');
+      return;
+    }
+    if (!emailInput.trim() || !passwordInput.trim()) {
+      alert('이메일과 비밀번호를 모두 입력해 주세요.');
+      return;
+    }
+
+    try {
+      if (isRegisterMode) {
+        // Register (Sign up)
+        const finalAlias = userAlias.trim() || ("새출발_" + Math.floor(100 + Math.random() * 900));
+        const { data, error } = await supabase.auth.signUp({
+          email: emailInput,
+          password: passwordInput,
+          options: {
+            data: {
+              alias: finalAlias
+            }
+          }
+        });
+        if (error) throw error;
+        
+        alert(`[회원가입 완료] 스텔스 계정이 생성되었습니다! 이메일 인증 메일이 발송되었을 수 있습니다. 가명: ${finalAlias}`);
+        setIsLoggedIn(true);
+        setUserAlias(finalAlias);
+        setShowAuthModal(false);
+      } else {
+        // Login (Sign in)
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailInput,
+          password: passwordInput
+        });
+        if (error) throw error;
+
+        if (data.user) {
+          const finalAlias = data.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
+          setIsLoggedIn(true);
+          setUserAlias(finalAlias);
+          setShowAuthModal(false);
+          alert(`[로그인 성공] 이메일로 안전 로그인 되었습니다.\n가명: ${finalAlias}`);
+        }
+      }
+      
+      // Clear inputs
+      setEmailInput('');
+      setPasswordInput('');
+    } catch (err: any) {
+      alert(`인증 실패: ${err.message || err}`);
     }
   };
 
@@ -1394,7 +1565,8 @@ export default function ClientRole({
                   <Settings className="w-4 h-4" />
                 </button>
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
+                    await supabase.auth.signOut();
                     setIsLoggedIn(false);
                     setUserAlias('');
                   }}
@@ -3135,7 +3307,7 @@ export default function ClientRole({
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-full sm:max-w-md w-full shadow-2xl p-6 md:p-8 space-y-5 relative overflow-hidden text-left animate-slideUp sm:animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-full sm:max-w-md w-full shadow-2xl p-6 md:p-8 space-y-4 relative overflow-hidden text-left animate-slideUp sm:animate-fadeIn">
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
@@ -3159,92 +3331,180 @@ export default function ClientRole({
               </button>
             </div>
 
-            {/* Social Logins */}
-            <div className="space-y-2.5 pt-2">
-              <button 
-                onClick={() => handleSocialLogin('Google')}
-                className="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+            {/* Premium Tab Switcher */}
+            <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setAuthTab('phone')}
+                className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all ${
+                  authTab === 'phone'
+                    ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-850 dark:hover:text-slate-350'
+                }`}
               >
-                <span className="w-4 h-4 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full">G</span>
-                <span>Google로 간편 로그인</span>
+                휴대폰/SNS 로그인
               </button>
-
-              <button 
-                onClick={() => handleSocialLogin('카카오')}
-                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/95 text-[#191919] font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+              <button
+                type="button"
+                onClick={() => setAuthTab('email')}
+                className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all ${
+                  authTab === 'email'
+                    ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-850 dark:hover:text-slate-350'
+                }`}
               >
-                <span className="w-4 h-4 flex items-center justify-center font-extrabold text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full">K</span>
-                <span>카카오로 간편 로그인</span>
-              </button>
-
-              <button 
-                onClick={() => handleSocialLogin('네이버')}
-                className="w-full bg-[#03C75A] hover:bg-[#03C75A]/95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
-              >
-                <span className="w-4 h-4 flex items-center justify-center font-black text-xs bg-white text-[#03C75A] rounded-full">N</span>
-                <span>네이버로 간편 로그인</span>
+                이메일 로그인
               </button>
             </div>
 
-            {/* Divider */}
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-              <span className="flex-shrink mx-4 text-slate-400 text-xs font-semibold">또는 휴대폰 인증번호 로그인</span>
-              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-            </div>
-
-            {/* Phone Login Form */}
-            <div className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">휴대폰 번호</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="tel"
-                    placeholder="010-1234-5678"
-                    value={authPhone}
-                    onChange={(e) => setAuthPhone(e.target.value)}
-                    disabled={otpSent}
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-brand disabled:opacity-50"
-                  />
+            {authTab === 'phone' ? (
+              <div className="space-y-4 animate-fadeIn">
+                {/* Social Logins */}
+                <div className="space-y-2.5">
                   <button 
-                    onClick={handleSendOtp}
-                    disabled={otpSent}
-                    className="bg-brand hover:bg-brand-hover text-white font-bold px-4 py-3 rounded-xl text-xs transition-colors shrink-0 disabled:bg-slate-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+                    onClick={() => handleSocialLogin('Google')}
+                    className="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
                   >
-                    {otpSent ? '발송 완료' : '인증번호 발송'}
+                    <span className="w-4 h-4 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full">G</span>
+                    <span>Google로 간편 로그인</span>
+                  </button>
+
+                  <button 
+                    onClick={() => handleSocialLogin('카카오')}
+                    className="w-full bg-[#FEE500] hover:bg-[#FEE500]/95 text-[#191919] font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+                  >
+                    <span className="w-4 h-4 flex items-center justify-center font-extrabold text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full">K</span>
+                    <span>카카오로 간편 로그인</span>
+                  </button>
+
+                  <button 
+                    onClick={() => handleSocialLogin('네이버')}
+                    className="w-full bg-[#03C75A] hover:bg-[#03C75A]/95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+                  >
+                    <span className="w-4 h-4 flex items-center justify-center font-black text-xs bg-white text-[#03C75A] rounded-full">N</span>
+                    <span>네이버로 간편 로그인</span>
                   </button>
                 </div>
-              </div>
 
-              {otpSent && (
-                <div className="space-y-2 animate-slideDown">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">인증번호 6자리</label>
-                    <span className="text-[11px] text-red-500 font-bold">
-                      {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text"
-                      placeholder="인증번호 6자리 입력 (777777)"
-                      value={authOtp}
-                      onChange={(e) => setAuthOtp(e.target.value)}
-                      maxLength={6}
-                      className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-brand"
-                    />
-                    <button 
-                      onClick={handleVerifyOtp}
-                      className="bg-brand hover:bg-brand text-white font-bold px-4 py-3 rounded-xl text-xs transition-colors shrink-0"
-                    >
-                      인증 및 로그인
-                    </button>
-                  </div>
+                {/* Divider */}
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                  <span className="flex-shrink mx-4 text-slate-400 text-[10px] font-semibold">또는 휴대폰 인증번호 로그인</span>
+                  <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
                 </div>
-              )}
 
-              {otpError && <p className="text-xs text-red-500 font-semibold">{otpError}</p>}
-            </div>
+                {/* Phone Login Form */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">휴대폰 번호</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="tel"
+                        placeholder="010-1234-5678"
+                        value={authPhone}
+                        onChange={(e) => setAuthPhone(e.target.value)}
+                        disabled={otpSent}
+                        className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-brand disabled:opacity-50"
+                      />
+                      <button 
+                        onClick={handleSendOtp}
+                        disabled={otpSent}
+                        className="bg-brand hover:bg-brand-hover text-white font-bold px-4 py-3 rounded-xl text-xs transition-colors shrink-0 disabled:bg-slate-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+                      >
+                        {otpSent ? '발송 완료' : '인증번호 발송'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {otpSent && (
+                    <div className="space-y-2 animate-slideDown">
+                      <div className="flex justify-between items-center">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">인증번호 6자리</label>
+                        <span className="text-[11px] text-red-500 font-bold">
+                          {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text"
+                          placeholder="인증번호 6자리 입력 (777777)"
+                          value={authOtp}
+                          onChange={(e) => setAuthOtp(e.target.value)}
+                          maxLength={6}
+                          className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-brand"
+                        />
+                        <button 
+                          onClick={handleVerifyOtp}
+                          className="bg-brand hover:bg-brand text-white font-bold px-4 py-3 rounded-xl text-xs transition-colors shrink-0"
+                        >
+                          인증 및 로그인
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {otpError && <p className="text-xs text-red-500 font-semibold">{otpError}</p>}
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleEmailAuth} className="space-y-3.5 animate-fadeIn">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">이메일 주소</label>
+                  <input
+                    type="email"
+                    placeholder="example@email.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    required
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">비밀번호</label>
+                  <input
+                    type="password"
+                    placeholder="비밀번호 입력 (6자리 이상)"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-brand focus:outline-none"
+                  />
+                </div>
+
+                {isRegisterMode && (
+                  <div className="animate-slideDown">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">의뢰인 가명 지정 (생략 시 자동 부여)</label>
+                    <input
+                      type="text"
+                      placeholder="예: 새출발_777"
+                      value={userAlias}
+                      onChange={(e) => setUserAlias(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-sm focus:ring-1 focus:ring-brand focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full text-center py-3 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{isRegisterMode ? '스텔스 회원가입 및 로그인' : '이메일 안전 로그인'}</span>
+                </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsRegisterMode(!isRegisterMode)}
+                    className="text-[11px] text-slate-450 hover:text-brand transition-colors font-semibold underline cursor-pointer"
+                  >
+                    {isRegisterMode ? '이미 계정이 있으신가요? 로그인하기' : '처음 방문하셨나요? 3초 회원가입하기'}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Terms Consent */}
             <div className="flex items-start gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -3253,7 +3513,7 @@ export default function ClientRole({
                 id="authConsent" 
                 checked={authConsent}
                 onChange={(e) => setAuthConsent(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand w-4 h-4 shrink-0"
+                className="mt-0.5 rounded border-slate-300 dark:border-slate-750 text-brand focus:ring-brand w-4 h-4 shrink-0"
               />
               <label htmlFor="authConsent" className="text-[11px] text-slate-600 dark:text-slate-400 select-none cursor-pointer leading-normal">
                 <strong>(필수)</strong> 개인정보 제3자 제공 및 신용정보원 마이데이터 대출/연체 정보 조회 동의서에 동의합니다.
