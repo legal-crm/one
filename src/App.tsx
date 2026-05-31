@@ -168,42 +168,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Developer Role Switcher Floating Panel */}
-      <div className="fixed bottom-4 right-4 z-50 bg-slate-950/85 backdrop-blur border border-[#1F2937]/80 rounded-[200px] p-1.5 flex gap-1 shadow-2xl">
-        <button 
-          onClick={() => {
-            setCurrentRole('client');
-            window.history.replaceState({}, '', '?role=client');
-          }}
-          className={`px-3 py-1 text-[10px] font-extrabold rounded-[200px] transition-colors ${
-            currentRole === 'client' ? 'bg-[#7264FF] text-white' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          의뢰인 뷰
-        </button>
-        <button 
-          onClick={() => {
-            setCurrentRole('lawyer');
-            window.history.replaceState({}, '', '?role=lawyer');
-          }}
-          className={`px-3 py-1 text-[10px] font-extrabold rounded-[200px] transition-colors ${
-            currentRole === 'lawyer' ? 'bg-[#7264FF] text-white' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          변호사 CRM 뷰
-        </button>
-        <button 
-          onClick={() => {
-            setCurrentRole('admin');
-            window.history.replaceState({}, '', '?role=admin');
-          }}
-          className={`px-3 py-1 text-[10px] font-extrabold rounded-[200px] transition-colors ${
-            currentRole === 'admin' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          통합 어드민 뷰
-        </button>
-      </div>
+
 
     </div>
   );
