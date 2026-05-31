@@ -307,6 +307,8 @@ export default function ClientRole({
   const [homeSearchQuery, setHomeSearchQuery] = useState<string>('');
   const [qnaSearchQuery, setQnaSearchQuery] = useState<string>('');
   const [qnaCategoryFilter, setQnaCategoryFilter] = useState<string>('전체');
+  const [qnaPage, setQnaPage] = useState<number>(1);
+
 
   // User Auth & Privacy States
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -943,6 +945,28 @@ export default function ClientRole({
   const paginatedReviews = filteredReviews.slice(
     (activeReviewPage - 1) * itemsPerPage,
     activeReviewPage * itemsPerPage
+  );
+
+  // Slicing Q&A for pagination (10 items per page)
+  const filteredQAs = mockQAs.filter(qa => {
+    // Category Filter
+    if (qnaCategoryFilter !== '전체' && qa.category !== qnaCategoryFilter) return false;
+    
+    // Text Search Query
+    if (!qnaSearchQuery) return true;
+    const query = qnaSearchQuery.toLowerCase();
+    return qa.question.toLowerCase().includes(query) || 
+           qa.category.toLowerCase().includes(query) || 
+           qa.answer.toLowerCase().includes(query) || 
+           qa.lawyerName.toLowerCase().includes(query);
+  });
+
+  const qnaItemsPerPage = 10;
+  const totalQnaPages = Math.ceil(filteredQAs.length / qnaItemsPerPage);
+  const activeQnaPage = Math.min(qnaPage, Math.max(1, totalQnaPages));
+  const paginatedQAs = filteredQAs.slice(
+    (activeQnaPage - 1) * qnaItemsPerPage,
+    activeQnaPage * qnaItemsPerPage
   );
 
 
@@ -2608,7 +2632,10 @@ export default function ClientRole({
                       type="text"
                       placeholder="사례 키워드 또는 변호사 검색..."
                       value={qnaSearchQuery}
-                      onChange={(e) => setQnaSearchQuery(e.target.value)}
+                      onChange={(e) => {
+                        setQnaSearchQuery(e.target.value);
+                        setQnaPage(1);
+                      }}
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-250/20 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-brand focus:outline-none"
                     />
                   </div>
@@ -2617,7 +2644,7 @@ export default function ClientRole({
                 <div className="text-right">
                   <span className="text-xs font-bold text-slate-400 block uppercase mb-1">총 매칭 사례</span>
                   <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-250/20">
-                    {mockQAs.length}개 검색 가능
+                    {filteredQAs.length}개 검색됨 (총 {mockQAs.length}개)
                   </span>
                 </div>
               </div>
@@ -2627,7 +2654,10 @@ export default function ClientRole({
                 {['전체', '코인/주식 손실', '급여 압류', '프리랜서 회생', '배우자 재산', '전세사기 피해', '최근 대출 회생', '자영업자 회생', '전문직 면허보존', '추심 차단', '개인파산 면책', '일용직 소득증빙', '보정권고 지연', '해외선물/주식'].map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setQnaCategoryFilter(cat)}
+                    onClick={() => {
+                      setQnaCategoryFilter(cat);
+                      setQnaPage(1);
+                    }}
                     className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-xl transition-all border cursor-pointer ${
                       qnaCategoryFilter === cat
                         ? 'bg-brand border-brand text-white shadow-sm'
@@ -2641,92 +2671,155 @@ export default function ClientRole({
             </div>
 
             {/* Q&A List */}
-            <div className="space-y-4">
-              {mockQAs
-                .filter(qa => {
-                  // Category Filter
-                  if (qnaCategoryFilter !== '전체' && qa.category !== qnaCategoryFilter) return false;
-                  
-                  // Text Search Query
-                  if (!qnaSearchQuery) return true;
-                  const query = qnaSearchQuery.toLowerCase();
-                  return qa.question.toLowerCase().includes(query) || qa.category.toLowerCase().includes(query) || qa.answer.toLowerCase().includes(query) || qa.lawyerName.toLowerCase().includes(query);
-                })
-                .map(qa => {
-                  const isOpen = openedQaId === qa.id;
-                  return (
-                    <div
-                      key={qa.id}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm"
-                    >
-                      {/* Header */}
+            {filteredQAs.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 rounded-2xl text-center space-y-3">
+                <AlertTriangle className="w-10 h-10 text-indigo-500 mx-auto" />
+                <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">일치하는 상담사례가 없습니다.</h4>
+                <p className="text-xs text-slate-500">다른 검색어를 입력하시거나 카테고리 필터를 변경해 주세요.</p>
+                <button
+                  onClick={() => {
+                    setQnaCategoryFilter('전체');
+                    setQnaSearchQuery('');
+                    setQnaPage(1);
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  필터 초기화
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  {paginatedQAs.map(qa => {
+                    const isOpen = openedQaId === qa.id;
+                    return (
                       <div
-                        onClick={() => setOpenedQaId(isOpen ? null : qa.id)}
-                        className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4"
+                        key={qa.id}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm"
                       >
-                        <div className="space-y-2 text-left">
-                          <div className="flex items-center gap-2.5">
-                            <span className="bg-brand-light text-brand dark:bg-brand/10 dark:text-blue-450 text-[9px] font-extrabold px-2.5 py-0.5 rounded-md">
-                              {qa.category}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-semibold">
-                              {qa.author}
-                            </span>
-                            <div className="flex items-center gap-1.5 ml-auto">
-                              <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-800 bg-slate-100 shrink-0" />
-                              <span className="text-[10px] font-bold text-slate-650 dark:text-slate-400">{qa.lawyerName} 답변</span>
-                            </div>
-                          </div>
-                          <h4 className="font-extrabold text-sm sm:text-base text-slate-850 dark:text-slate-200 pr-4 leading-snug">
-                            Q. {qa.question}
-                          </h4>
-                        </div>
-                        
-                        <span className="text-xs font-bold text-brand shrink-0 select-none pt-1">
-                          {isOpen ? '닫기 ▲' : '답변보기 ▼'}
-                        </span>
-                      </div>
-
-                      {/* Answer Details */}
-                      {isOpen && (
-                        <div className="px-5 pb-5 border-t border-slate-100 dark:border-slate-800 pt-4 bg-slate-50/50 dark:bg-slate-950/20 text-left space-y-4 animate-slideDown">
-                          <div className="flex items-start gap-3">
-                            <img
-                              src={qa.lawyerAvatar}
-                              alt={qa.lawyerName}
-                              className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0"
-                            />
-                            <div className="space-y-1 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-extrabold text-xs text-slate-850 dark:text-white">{qa.lawyerName}</span>
-                                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold px-2 py-0.5 rounded-md">전문가 답변</span>
+                        {/* Header */}
+                        <div
+                          onClick={() => setOpenedQaId(isOpen ? null : qa.id)}
+                          className="p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-start justify-between gap-4"
+                        >
+                          <div className="space-y-2 text-left">
+                            <div className="flex items-center gap-2.5">
+                              <span className="bg-brand-light text-brand dark:bg-brand/10 dark:text-blue-450 text-[9px] font-extrabold px-2.5 py-0.5 rounded-md">
+                                {qa.category}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-semibold">
+                                {qa.author}
+                              </span>
+                              <div className="flex items-center gap-1.5 ml-auto">
+                                <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-800 bg-slate-100 shrink-0" />
+                                <span className="text-[10px] font-bold text-slate-650 dark:text-slate-400">{qa.lawyerName} 답변</span>
                               </div>
-                              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
-                                {qa.answer}
-                              </p>
+                            </div>
+                            <h4 className="font-extrabold text-sm sm:text-base text-slate-850 dark:text-slate-200 pr-4 leading-snug">
+                              Q. {qa.question}
+                            </h4>
+                          </div>
+                          
+                          <span className="text-xs font-bold text-brand shrink-0 select-none pt-1">
+                            {isOpen ? '닫기 ▲' : '답변보기 ▼'}
+                          </span>
+                        </div>
+
+                        {/* Answer Details */}
+                        {isOpen && (
+                          <div className="px-5 pb-5 border-t border-slate-100 dark:border-slate-800 pt-4 bg-slate-50/50 dark:bg-slate-950/20 text-left space-y-4 animate-slideDown">
+                            <div className="flex items-start gap-3">
+                              <img
+                                src={qa.lawyerAvatar}
+                                alt={qa.lawyerName}
+                                className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0"
+                              />
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-extrabold text-xs text-slate-850 dark:text-white">{qa.lawyerName}</span>
+                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold px-2 py-0.5 rounded-md">전문가 답변</span>
+                                </div>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
+                                  {qa.answer}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <button
+                                onClick={() => {
+                                  // Pre-fill question context
+                                  setTitle(`${qa.category} 관련 법률 상담 신청`);
+                                  setContent(`고민 사례 질문:\nQ. ${qa.question}\n\n위의 Q&A 고민 사례를 확인하고 저에게 동일하게 적용될 수 있는 법리적 가능성을 상담받고 싶습니다. 변호사님의 정밀 가이드가 필요합니다.`);
+                                  setRequestStep(3); // Go directly to submit step
+                                  setActiveTab('request');
+                                }}
+                                className="bg-brand hover:bg-brand text-white font-bold px-4 py-2 rounded-xl text-[10px] transition-colors cursor-pointer"
+                              >
+                                이 변호사에게 유사건 즉시 상담 신청
+                              </button>
                             </div>
                           </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
-                          <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <button
-                              onClick={() => {
-                                // Pre-fill question context
-                                setTitle(`${qa.category} 관련 법률 상담 신청`);
-                                setContent(`고민 사례 질문:\nQ. ${qa.question}\n\n위의 Q&A 고민 사례를 확인하고 저에게 동일하게 적용될 수 있는 법리적 가능성을 상담받고 싶습니다. 변호사님의 정밀 가이드가 필요합니다.`);
-                                setRequestStep(3); // Go directly to submit step
-                                setActiveTab('request');
-                              }}
-                              className="bg-brand hover:bg-brand text-white font-bold px-4 py-2 rounded-xl text-[10px] transition-colors cursor-pointer"
-                            >
-                              이 변호사에게 유사건 즉시 상담 신청
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                {/* Q&A Pagination Controls */}
+                {totalQnaPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-8 border-t border-slate-100 dark:border-slate-800/80 mt-8">
+                    <button
+                      type="button"
+                      disabled={activeQnaPage === 1}
+                      onClick={() => {
+                        setQnaPage(prev => Math.max(1, prev - 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="px-4 py-2 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      이전
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: totalQnaPages }, (_, i) => i + 1).map(p => {
+                        const isCurrent = activeQnaPage === p;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              setQnaPage(p);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className={`w-9 h-9 text-xs font-black rounded-xl transition-all cursor-pointer border ${
+                              isCurrent
+                                ? 'bg-brand border-brand text-white shadow-sm shadow-brand/20 scale-105 font-bold'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-            </div>
+
+                    <button
+                      type="button"
+                      disabled={activeQnaPage === totalQnaPages}
+                      onClick={() => {
+                        setQnaPage(prev => Math.min(totalQnaPages, prev + 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="px-4 py-2 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      다음
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
 
