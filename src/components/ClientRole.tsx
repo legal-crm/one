@@ -1544,6 +1544,16 @@ export default function ClientRole({
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand"></span>
                 </span>
               </button>
+              {isLoggedIn && (
+                <button 
+                  onClick={() => setActiveTab('mypage')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === 'mypage' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  마이페이지
+                </button>
+              )}
             </div>
  
             {/* Auth section */}
@@ -2290,9 +2300,236 @@ export default function ClientRole({
 
           </div>
         )}
+ 
+ 
+        {/* TAB: 마이페이지 (실시간 채무 주도형 스마트 대시보드) */}
+        {activeTab === 'mypage' && (
+          <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left">
+            {/* Header / Stealth Badge & Assigned Lawyer */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                    스텔스 가명 암호화 보호중
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">
+                    상담 매칭 세션 활성
+                  </span>
+                </div>
+                <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white">
+                  👤 <span className="text-brand dark:text-brand-light">{userAlias || '새출발'}</span> 님의 안심 마이페이지
+                </h2>
+                <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
+                  채무 사실 노출 방지를 위해 의뢰인 정보는 암호화 가명으로 처리되며, 변호사단과의 1:1 비밀 매칭 대화방이 실시간 보호받고 있습니다.
+                </p>
+              </div>
 
+              <div className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-2xl p-4 shrink-0 flex flex-col justify-between gap-3 w-full md:w-[280px]">
+                <div className="space-y-1">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">전담 지정 변호인</span>
+                  <div className="flex items-center gap-2">
+                    <img 
+                      src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256" 
+                      alt="이소민 변호사" 
+                      className="w-8 h-8 rounded-lg object-cover" 
+                    />
+                    <div className="text-left">
+                      <span className="text-xs font-bold text-slate-800 dark:text-white block">이소민 변호사</span>
+                      <span className="text-[9px] text-[#7e7e8f] font-semibold block">서울/경기 도산 전문</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const req = requests[0];
+                    if (req) {
+                      setActiveChatReqId(req.id);
+                    }
+                    setActiveTab('chat');
+                  }}
+                  className="w-full text-center py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>1:1 비공개 상담방 입장</span>
+                </button>
+              </div>
+            </div>
 
+            {/* LIVE DIAGNOSTICS DASHBOARD */}
+            {(() => {
+              const totalDebtValue = debtBanks + debtCards + debtPersonals;
+              const minLivingCost = dependents === 0 ? 133 : dependents === 1 ? 221 : dependents === 2 ? 282 : 343;
+              const monthlyRepayment = Math.max(0, income - minLivingCost);
+              const totalRepayment = Math.min(totalDebtValue, monthlyRepayment * 36);
+              const totalReduction = Math.max(0, totalDebtValue - totalRepayment);
+              const reductionRate = totalDebtValue > 0 ? Math.round((totalReduction / totalDebtValue) * 100) : 0;
 
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                  {/* Left Column: Recalculated live metrics */}
+                  <div className="lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-850 space-y-6">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider block">
+                        ⚙️ 실시간 AI 변제 진단 결과
+                      </span>
+                      <h3 className="font-extrabold text-lg">나의 실시간 채무 포트폴리오</h3>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        아래의 채무 입력 양식 수정 시, 탕감율과 월 예상 변제금이 0.1초 내로 라이브 동적 재산정됩니다.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Metric 1 */}
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+                        <div className="text-left space-y-0.5">
+                          <span className="text-[9px] text-slate-400 font-bold block">실시간 총 채무액</span>
+                          <span className="text-xs text-slate-300 font-medium">부채 원금 합계</span>
+                        </div>
+                        <span className="font-black text-amber-400 text-lg">
+                          {totalDebtValue.toLocaleString()}만 원
+                        </span>
+                      </div>
+
+                      {/* Metric 2 */}
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+                        <div className="text-left space-y-0.5">
+                          <span className="text-[9px] text-slate-400 font-bold block">예상 월 변제금</span>
+                          <span className="text-xs text-slate-300 font-medium">최저생계비 차감 후 납입금</span>
+                        </div>
+                        <span className="font-black text-brand-light text-lg">
+                          월 {monthlyRepayment.toLocaleString()}만 원
+                        </span>
+                      </div>
+
+                      {/* Metric 3 */}
+                      <div className="bg-brand/10 border border-brand/20 rounded-2xl p-4 flex items-center justify-between">
+                        <div className="text-left space-y-0.5">
+                          <span className="text-[9px] text-brand-light font-bold block">예상 총 탕감액</span>
+                          <span className="text-xs text-slate-300 font-medium">면책 및 부채 청산액</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-black text-emerald-400 text-lg block">
+                            ★ {totalReduction.toLocaleString()}만 원
+                          </span>
+                          <span className="text-[10px] text-emerald-300/80 font-bold">
+                            원금의 {reductionRate}% 전격 감면!
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-slate-400 leading-normal text-left pt-2 border-t border-white/5">
+                      ※ 본 결과는 서울/수원회생법원의 2026년 가용소득 산출 생계비 준칙을 기초로 가계산되었으며, 실제 법정 탕감액은 변호인단의 정교한 보정서 작성을 통해 상향 조정될 수 있습니다.
+                    </div>
+                  </div>
+
+                  {/* Right Column: Live Debt Editor Input Form */}
+                  <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-5 text-left">
+                    <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
+                      <div>
+                        <h3 className="font-black text-base text-slate-800 dark:text-white">⚖️ 내 채무 리포트 및 조절 인풋 폼</h3>
+                        <p className="text-[10px] text-slate-500 mt-0.5">금액을 터치하여 수정하면 좌측의 탕감 지표가 즉시 변동됩니다.</p>
+                      </div>
+                      <span className="text-[9px] bg-slate-100 text-slate-600 dark:bg-slate-950 dark:text-slate-400 px-2 py-0.5 rounded font-bold">
+                        단위: 만 원
+                      </span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Income Row */}
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">월 세후 실수령 소득 (만 원)</label>
+                        <input
+                          type="number"
+                          value={income}
+                          onChange={(e) => setIncome(Math.max(0, Number(e.target.value)))}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Dependents Row */}
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">부양 가족 수 (본인 제외, 명)</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[0, 1, 2, 3].map(num => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() => setDependents(num)}
+                              className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                                dependents === num
+                                ? 'bg-brand border-brand text-white shadow-md'
+                                : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850'
+                              }`}
+                            >
+                              {num}명 ({num + 1}인 가구)
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="border-t border-slate-150 dark:border-slate-800 my-4 pt-4">
+                        <span className="text-[10px] text-slate-400 font-bold block mb-3 uppercase tracking-wider">개별 채무 리스크 & 대응 방패</span>
+                      </div>
+
+                      {/* Debt Bank Input */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">시중은행 신용대출 (만 원)</label>
+                          <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
+                            🛡️ 급여 상계 차단 솔루션 매칭
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          value={debtBanks}
+                          onChange={(e) => setDebtBanks(Math.max(0, Number(e.target.value)))}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Debt Card Input */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">신용카드 / 카드론 (만 원)</label>
+                          <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
+                            🛡️ 이자 면제 및 통합 탕감 매칭
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          value={debtCards}
+                          onChange={(e) => setDebtCards(Math.max(0, Number(e.target.value)))}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Debt Personal Input */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">대부업 / 사채 채무 (만 원)</label>
+                          <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
+                            🛡️ 채무자대리인 추심 차단 매칭
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          value={debtPersonals}
+                          onChange={(e) => setDebtPersonals(Math.max(0, Number(e.target.value)))}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+ 
+ 
         {/* TAB: 탕감액 계산기 */}
         {activeTab === 'calculator' && (
           <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-left">
