@@ -2465,30 +2465,54 @@ export default function ClientRole({
         {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
         {activeTab === 'lawyers' && (
           <div className="space-y-6 animate-fadeIn">
-            {/* Filter Bar */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex-1">
-                <input 
-                  type="text" 
-                  placeholder="특정 변호사 명칭 또는 전문 키워드 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-brand"
-                />
-              </div>
+            {/* Filter & Search Bar */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+              <input 
+                type="text" 
+                placeholder="특정 변호사 명칭 또는 전문 키워드 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-750 rounded-xl p-3 text-xs focus:ring-1 focus:ring-brand focus:outline-none"
+              />
+            </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">지역 필터:</span>
-                <select 
-                  value={selectedRegion}
-                  onChange={(e) => setSelectedRegion(e.target.value)}
-                  className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs focus:ring-1"
-                >
-                  <option value="전체">전국 대응</option>
-                  <option value="서울">서울</option>
-                  <option value="서울/경기">서울/경기</option>
-                  <option value="경기/수원">경기/수원</option>
-                </select>
+            {/* 어떤 지역의 변호사를 찾으시나요? (Region Selection Grid) */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 text-left">
+              <h3 className="font-extrabold text-sm sm:text-base text-slate-850 dark:text-white">
+                어떤 지역의 변호사를 찾으시나요?
+              </h3>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {[
+                  { value: '서울', label: '서울' },
+                  { value: '경기', label: '경기' },
+                  { value: '춘천/강원', label: '춘천/강원' },
+                  { value: '제주', label: '제주' },
+                  { value: '인천/부천', label: '인천/부천' },
+                  { value: '대구/경북', label: '대구/경북' },
+                  { value: '청주/충북', label: '청주/충북' },
+                  { value: '대전/충남/세종', label: '대전/충남/세종' },
+                  { value: '전주/전북', label: '전주/전북' },
+                  { value: '부산/울산/경남', label: '부산/울산/경남' },
+                  { value: '광주/전남', label: '광주/전남' },
+                  { value: '전체', label: '+ 전체보기' }
+                ].map((reg) => {
+                  const isSelected = selectedRegion === reg.value;
+                  return (
+                    <button
+                      key={reg.value}
+                      type="button"
+                      onClick={() => setSelectedRegion(reg.value)}
+                      className={`py-3 text-xs font-bold rounded-xl text-center transition-all cursor-pointer border ${
+                        isSelected
+                          ? 'bg-brand border-brand text-white shadow-sm shadow-brand/20 scale-105'
+                          : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-850 border-slate-150/40 dark:border-slate-800 text-slate-700 dark:text-slate-350'
+                      }`}
+                    >
+                      {reg.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
