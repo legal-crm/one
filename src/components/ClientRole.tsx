@@ -385,6 +385,8 @@ export default function ClientRole({
   // Reviews page state
   const [reviewCategoryFilter, setReviewCategoryFilter] = useState<string>('전체');
   const [reviewSearchQuery, setReviewSearchQuery] = useState<string>('');
+  const [reviewPage, setReviewPage] = useState<number>(1);
+
 
 
   // Banner Carousel Data
@@ -635,8 +637,204 @@ export default function ClientRole({
       lawyerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256",
       content: "프리랜서 라이더라 매달 수입이 들쑥날쑥해서 개인회생이 될까 조마조마했습니다. 수입 입증 서류를 혼자 준비하기가 너무 막막했는데, 변호사님이 계좌 입출금 내역과 배달 정산 내역을 깔끔하게 정리해 소득을 증명해 주셨습니다. 탕감율 80% 수준으로 원금 760만 원만 나눠 갚게 되었습니다. 소득 증빙이 어려운 프리랜서분들도 겁먹지 마시고 도전하시길 권합니다.",
       tags: ["#프리랜서소득소명", "#라이더회생", "#원금80%감면"]
+    },
+    {
+      id: 'rev-6',
+      title: "해외주식 마진콜 빚 1억 5천만 원, 변제율 25% 인가 결정!",
+      category: "코인/주식 손실",
+      author: "정*훈 님 (30대 직장인)",
+      originalDebt: 15000,
+      remainingDebt: 3750,
+      lawyerId: "lawyer-9",
+      lawyerName: "권다인 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256",
+      content: "해외 주식 마진콜과 신용 융자 실패로 1억 5천만 원의 빚을 졌습니다. 권다인 변호사님께서 청산가치 강제 반영 보정에 대해 강력한 반박 의견서를 제출해 주셔서 변제율 25% 수준인 월 104만 원으로 인가 결정을 받았습니다. 생명의 은인이십니다.",
+      tags: ["#마진콜회생", "#변제율25%", "#권다인변호사"]
+    },
+    {
+      id: 'rev-7',
+      title: "비트코인 레버리지 실패 채무 1억 2천, 수원지법 28% 변제 결정",
+      category: "코인/주식 손실",
+      author: "송*민 님 (30대 연구원)",
+      originalDebt: 12000,
+      remainingDebt: 3360,
+      lawyerId: "lawyer-9",
+      lawyerName: "권다인 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256",
+      content: "무리한 비트코인 투자 실패로 최근 대출 비중이 높아 수원지방법원에서 기각 위기였습니다. 권다인 변호사님의 정교한 보정 명령 즉각 대응 전략으로 수원지방법원에서 이례적으로 원금 72% 감면이라는 최선의 결과를 이끌어 냈습니다.",
+      tags: ["#수원회생", "#비트코인투자실패", "#청산가치소명"]
+    },
+    {
+      id: 'rev-8',
+      title: "코인 선물 빚 돌려막기 8천만 원, 서울회생법원 변제율 18% 인가",
+      category: "코인/주식 손실",
+      author: "강*진 님 (20대 IT 프리랜서)",
+      originalDebt: 8000,
+      remainingDebt: 1440,
+      lawyerId: "lawyer-2",
+      lawyerName: "이소민 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256",
+      content: "코인 선물 거래로 8천만 원 채무를 지고 돌려막기 중이었습니다. 이소민 변호사님이 서울회생법원의 가상자산 평가손실 보정 준칙을 철저하게 활용하여 변제율 18%인 총 1,440만 원 납부 조건으로 최종 개시 결정을 받았습니다.",
+      tags: ["#서울회생준칙", "#코인선물", "#변제율18%"]
+    },
+    {
+      id: 'rev-9',
+      title: "신용카드 돌려막기 연체 직전, 긴급 회생 신청으로 압류 방어",
+      category: "신용카드 연체",
+      author: "한*영 님 (40대 주부)",
+      originalDebt: 5200,
+      remainingDebt: 1300,
+      lawyerId: "lawyer-5",
+      lawyerName: "한지민 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256",
+      content: "가족 생활비를 신용카드로 충당하다 연체가 시작되어 채무 추심 연락이 쏟아지기 직전이었습니다. 한지민 변호사님께서 가족들 모르게 진행할 수 있도록 서류를 세심하게 챙겨 주셨고, 신청 3일 만에 금지명령을 받아 안전하게 방어했습니다.",
+      tags: ["#가족모르게회생", "#여성비밀보장", "#신용카드연체"]
+    },
+    {
+      id: 'rev-10',
+      title: "카드론 및 연체 채무 6천만 원, 한달 만에 개시결정",
+      category: "신용카드 연체",
+      author: "민*우 님 (30대 영업직)",
+      originalDebt: 6000,
+      remainingDebt: 1500,
+      lawyerId: "lawyer-12",
+      lawyerName: "임태오 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=256",
+      content: "카드론 돌려막기와 카드 연체 독촉으로 정상적인 일상생활이 불가능했습니다. 보정기동단 임태오 변호사님이 사건 수임 즉시 법원에 금지명령을 송달시키고 48시간 내 완벽 보정서 제출을 진행해 한 달 만에 완벽한 개시 결정을 받았습니다.",
+      tags: ["#카드론대환", "#보정속결대응", "#추심차단"]
+    },
+    {
+      id: 'rev-11',
+      title: "다중 카드 연체 및 대출 독촉, 신속하게 원금 70% 탕감받았습니다",
+      category: "신용카드 연체",
+      author: "윤*자 님 (50대 자영업자)",
+      originalDebt: 7200,
+      remainingDebt: 2160,
+      lawyerId: "lawyer-1",
+      lawyerName: "김우진 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256",
+      content: "식당을 운영하며 밀린 카드 대금 독촉으로 매일 밤을 지새웠습니다. 김우진 변호사님께서 도산 전문 노하우를 발휘하여 영업 소득에서 공제받을 수 있는 최대 생계비를 인정받아 주셔서, 최종적으로 원금의 70%를 감면받는 결정을 받아내셨습니다.",
+      tags: ["#자영업자카드연체", "#원금70%감면", "#도산법전문"]
+    },
+    {
+      id: 'rev-12',
+      title: "70대 기초생활수급자 부모님 채무 7천만 원 전액 면책 성공",
+      category: "개인파산",
+      author: "서*진 님 (자녀 대리 신청)",
+      originalDebt: 7000,
+      remainingDebt: 0,
+      lawyerId: "lawyer-10",
+      lawyerName: "서준호 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=256",
+      content: "부모님이 오래전 지게 된 빚이 7천만 원까지 불어나 자녀인 저에게까지 독촉 연락이 오고 있었습니다. 서준호 변호사님께서 고령이자 기초생활수급자이신 부모님의 상황을 법원에 완벽히 입증하여 파산 신청 4개월 만에 100% 면책 결정을 받아 주셨습니다.",
+      tags: ["#고령자파산", "#기초생활수급자", "#채무면제100%"]
+    },
+    {
+      id: 'rev-13',
+      title: "상가 폐업 후 남은 채무 2억 5천만 원 파산 면책 인용",
+      category: "개인파산",
+      author: "임*호 님 (50대 전직 자영업)",
+      originalDebt: 25000,
+      remainingDebt: 0,
+      lawyerId: "lawyer-7",
+      lawyerName: "오윤아 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256",
+      content: "수년간 해오던 대형 프랜차이즈 식당을 폐업한 후 남은 임대차 분쟁과 2억 5천만 원의 거액 채무로 파산 지경에 이르렀습니다. 오윤아 변호사님이 상가 권리금 분쟁과 사업 소득 구조를 정교하게 풀어서 파산 재산 면제 신청을 성공시켰고, 채무 전액을 면책받았습니다.",
+      tags: ["#상가폐업파산", "#면책성공", "#오윤아변호사"]
+    },
+    {
+      id: 'rev-14',
+      title: "장기 투병으로 생긴 대부업 사채 빚 9천만 원 파산 성공",
+      category: "개인파산",
+      author: "정*희 님 (40대 무직)",
+      originalDebt: 9000,
+      remainingDebt: 0,
+      lawyerId: "lawyer-3",
+      lawyerName: "최덕중 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256",
+      content: "장기 투병으로 병원비와 생활비를 대부업 사채로 해결하다 보니 더 이상 갚을 수 없는 지경에 이르렀습니다. 최덕중 변호사님이 면책 불허가 사유가 전혀 없음을 정교하게 소명해주시고 적극 변론해주신 결과, 채무액 9천만 원 전액을 일시 면책받는 쾌거를 얻었습니다.",
+      tags: ["#투병중개인파산", "#사채전액탕감", "#수원파산전문"]
+    },
+    {
+      id: 'rev-15',
+      title: "동업 사기로 인한 2억 원의 보증 채무, 개인회생으로 80% 감면",
+      category: "연대보증 채무",
+      author: "박*호 님 (40대 회사원)",
+      originalDebt: 20000,
+      remainingDebt: 4000,
+      lawyerId: "lawyer-8",
+      lawyerName: "윤성호 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256",
+      content: "믿었던 동업자 친구에게 연대보증을 섰다가 친구가 야반도주하여 제가 2억 원의 보증 채무를 떠안게 되었습니다. 윤성호 변호사님께서 고액 채무 구조임에도 불구하고 의뢰인의 생계 사정을 참작하도록 법원을 집요하게 설득하여 원금 80%를 감면받는 기적을 보았습니다.",
+      tags: ["#연대보증채무", "#동업사기피해", "#원금80%감면"]
+    },
+    {
+      id: 'rev-16',
+      title: "가족 연대보증 채무 1억 3천, 월 40만 원 변제로 기적적 구제",
+      category: "연대보증 채무",
+      author: "신*아 님 (30대 교사)",
+      originalDebt: 13000,
+      remainingDebt: 1440,
+      lawyerId: "lawyer-5",
+      lawyerName: "한지민 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256",
+      content: "가족의 사업 자금 조달에 연대보증을 섰다가 채무 이행 독촉장을 받았습니다. 직장에 알려질까 봐 숨이 막혔는데 한지민 변호사님께서 직장 비밀 보장을 최우선으로 하여 신속하게 회생을 진행해 주셨고, 월 40만 원의 낮은 변제금으로 최종 통과시켜 주셨습니다.",
+      tags: ["#교사회생비밀", "#가족보증해결", "#한지민변호사"]
+    },
+    {
+      id: 'rev-17',
+      title: "법인 대표이사 연대보증 채무 3억 원, 개인회생으로 재기 성공",
+      category: "연대보증 채무",
+      author: "고*원 님 (40대 대표)",
+      originalDebt: 30000,
+      remainingDebt: 6000,
+      lawyerId: "lawyer-4",
+      lawyerName: "박성현 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=256",
+      content: "법인 운영 중 대표이사 연대보증으로 3억 원의 채무를 떠안아 폐업 위기에 있었습니다. 서울회생법원에 특화된 박성현 변호사님의 밀착 변론과 맞춤형 소명으로, 변제율 20%로 인가를 받아 사업체 라이센스를 유지하며 무사히 재기할 수 있는 기반을 다졌습니다.",
+      tags: ["#대표이사연대보증", "#서울회생법원", "#재기성공"]
+    },
+    {
+      id: 'rev-18',
+      title: "3년 차 IT 개발 프리랜서, 불규칙 소득 소명하여 변제율 30% 완료",
+      category: "프리랜서 회생",
+      author: "최*우 님 (30대 개발자)",
+      originalDebt: 9500,
+      remainingDebt: 2850,
+      lawyerId: "lawyer-11",
+      lawyerName: "강지영 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256",
+      content: "프리랜서 개발자라 프로젝트 계약 기간에 따라 소득 편차가 너무 컸습니다. 강지영 변호사님께서 통장 입금 내역과 원천징수 영수증을 분석하여 법원이 납득할 수 있는 평균 실소득을 산정해 주셨고, 불필요한 청산가치 반영 없이 변제율 30%로 깔끔히 종결되었습니다.",
+      tags: ["#IT개발자회생", "#프리랜서평균소득", "#강지영변호사"]
+    },
+    {
+      id: 'rev-19',
+      title: "학원 강사 프리랜서, 탕감율 75%로 신속하게 인가 결정",
+      category: "프리랜서 회생",
+      author: "김*진 님 (30대 학원강사)",
+      originalDebt: 6400,
+      remainingDebt: 1600,
+      lawyerId: "lawyer-11",
+      lawyerName: "강지영 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256",
+      content: "학원에서 비율제로 수당을 받는 강사라 소득 증명이 까다로웠습니다. 강지영 변호사님의 도움으로 필요한 프리랜서 위촉 계약서 및 해촉 증명 등 복잡한 소명 서류들을 완벽히 대리 준비해주셔서, 탕감율 75% 수준의 원금 분할 납부로 신속 통과되었습니다.",
+      tags: ["#학원강사회생", "#프리랜서서류대리", "#원금75%탕감"]
+    },
+    {
+      id: 'rev-20',
+      title: "유튜브 크리에이터 및 프리랜서 소득 소명, 기각 위기 극복",
+      category: "프리랜서 회생",
+      author: "이*찬 님 (20대 유튜버)",
+      originalDebt: 5800,
+      remainingDebt: 1450,
+      lawyerId: "lawyer-2",
+      lawyerName: "이소민 변호사",
+      lawyerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256",
+      content: "유튜브 채널 운영 소득과 간이 영수증 프리랜서 일당 수입을 합산 소명하는 과정에서 보정권고가 나와 기각 위기였습니다. 이소민 변호사님이 크리에이터의 계좌 입출금 흐름과 경비를 논리적으로 입증해 주신 덕분에 원금 75% 탕감으로 기적적으로 기각을 모면했습니다.",
+      tags: ["#유튜버회생", "#크리에이터소득소명", "#이소민변호사"]
     }
   ];
+
 
   // Routing and pre-filling request form from category grid
   const handleCategoryClick = (category: string) => {
@@ -737,6 +935,16 @@ export default function ClientRole({
       
     return categoryMatches && searchMatches;
   });
+
+  // Slicing reviews for pagination (9 items per page)
+  const itemsPerPage = 9;
+  const totalReviewPages = Math.ceil(filteredReviews.length / itemsPerPage);
+  const activeReviewPage = Math.min(reviewPage, Math.max(1, totalReviewPages));
+  const paginatedReviews = filteredReviews.slice(
+    (activeReviewPage - 1) * itemsPerPage,
+    activeReviewPage * itemsPerPage
+  );
+
 
 
 
@@ -2142,12 +2350,18 @@ export default function ClientRole({
                     type="text"
                     placeholder="검색어 입력 (예: 코인, 독촉, 이소민...)"
                     value={reviewSearchQuery}
-                    onChange={(e) => setReviewSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setReviewSearchQuery(e.target.value);
+                      setReviewPage(1);
+                    }}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs focus:ring-1 focus:ring-brand"
                   />
                   {reviewSearchQuery && (
                     <button
-                      onClick={() => setReviewSearchQuery('')}
+                      onClick={() => {
+                        setReviewSearchQuery('');
+                        setReviewPage(1);
+                      }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -2166,7 +2380,10 @@ export default function ClientRole({
                 {['전체', '코인/주식 손실', '신용카드 연체', '개인파산', '연대보증 채무', '프리랜서 회생'].map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setReviewCategoryFilter(cat)}
+                    onClick={() => {
+                      setReviewCategoryFilter(cat);
+                      setReviewPage(1);
+                    }}
                     className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all border ${
                       reviewCategoryFilter === cat
                         ? 'bg-brand border-brand text-white shadow-sm'
@@ -2189,6 +2406,7 @@ export default function ClientRole({
                   onClick={() => {
                     setReviewCategoryFilter('전체');
                     setReviewSearchQuery('');
+                    setReviewPage(1);
                   }}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold rounded-xl transition-colors"
                 >
@@ -2196,106 +2414,164 @@ export default function ClientRole({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredReviews.map(rev => {
-                  // Calculate debt savings
-                  const saved = rev.originalDebt - rev.remainingDebt;
-                  const reductionRate = Math.round((saved / rev.originalDebt) * 100);
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedReviews.map(rev => {
+                    // Calculate debt savings
+                    const saved = rev.originalDebt - rev.remainingDebt;
+                    const reductionRate = Math.round((saved / rev.originalDebt) * 100);
 
-                  return (
-                    <div
-                      key={rev.id}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm hover:shadow-lg transition-all p-5 flex flex-col justify-between space-y-5 group"
-                    >
-                      <div className="space-y-4">
-                        {/* Badges & Rating */}
-                        <div className="flex items-center justify-between">
-                          <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[10px] font-extrabold px-2.5 py-1 rounded-lg">
-                            {rev.category}
-                          </span>
-                          <div className="flex text-amber-400 text-xs">★★★★★</div>
-                        </div>
-
-                        {/* Title */}
-                        <h3 className="font-extrabold text-xs sm:text-sm text-slate-850 dark:text-white leading-snug group-hover:text-brand dark:group-hover:text-brand-light transition-colors line-clamp-2">
-                          "{rev.title}"
-                        </h3>
-
-                        {/* Before / After Debt Box */}
-                        <div className="bg-gradient-to-br from-slate-50 to-indigo-50/20 dark:from-slate-950/40 dark:to-slate-950/20 p-3 rounded-2xl border border-slate-100 dark:border-slate-850/80 space-y-2 text-xs font-bold">
-                          <div className="flex justify-between items-center text-slate-500">
-                            <span>기존 채무액</span>
-                            <span className="line-through">{rev.originalDebt.toLocaleString()}만원</span>
-                          </div>
-                          <div className="flex justify-between items-center text-slate-850 dark:text-white">
-                            <span>조정 후 채무</span>
-                            <span className="text-indigo-600 dark:text-indigo-450">
-                              {rev.remainingDebt === 0 ? "전액 탕감 (0원)" : `${rev.remainingDebt.toLocaleString()}만원`}
+                    return (
+                      <div
+                        key={rev.id}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm hover:shadow-lg transition-all p-5 flex flex-col justify-between space-y-5 group"
+                      >
+                        <div className="space-y-4">
+                          {/* Badges & Rating */}
+                          <div className="flex items-center justify-between">
+                            <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[10px] font-extrabold px-2.5 py-1 rounded-lg">
+                              {rev.category}
                             </span>
+                            <div className="flex text-amber-400 text-xs">★★★★★</div>
                           </div>
-                          <div className="flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-slate-800/50 text-[10px]">
-                            <span className="text-emerald-600 dark:text-emerald-450">총 감면 혜택</span>
-                            <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 px-2 py-0.5 rounded font-extrabold">
-                              {reductionRate}% 감면 (-{saved.toLocaleString()}만원)
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* Content text */}
-                        <p className="text-[11px] text-slate-550 dark:text-slate-400 leading-relaxed font-normal line-clamp-3 md:line-clamp-none">
-                          {rev.content}
-                        </p>
+                          {/* Title */}
+                          <h3 className="font-extrabold text-xs sm:text-sm text-slate-850 dark:text-white leading-snug group-hover:text-brand dark:group-hover:text-brand-light transition-colors line-clamp-2">
+                            "{rev.title}"
+                          </h3>
 
-                        {/* Tags list */}
-                        <div className="flex flex-wrap gap-1">
-                          {rev.tags.map(t => (
-                            <button
-                              key={t}
-                              onClick={() => setReviewSearchQuery(t)}
-                              className="text-[10px] text-slate-500 dark:text-slate-450 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded-md hover:text-brand-hover dark:hover:text-brand-light transition-colors font-medium"
-                            >
-                              {t}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Footer & CTA */}
-                      <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
-                        {/* Author & Lawyer */}
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-400 font-semibold">{rev.author}</span>
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={rev.lawyerAvatar}
-                              alt={rev.lawyerName}
-                              className="w-5.5 h-5.5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100"
-                            />
-                            <div>
-                              <span className="block font-bold text-slate-700 dark:text-slate-350 text-[11px] leading-none">
-                                {rev.lawyerName}
+                          {/* Before / After Debt Box */}
+                          <div className="bg-gradient-to-br from-slate-50 to-indigo-50/20 dark:from-slate-950/40 dark:to-slate-950/20 p-3 rounded-2xl border border-slate-100 dark:border-slate-850/80 space-y-2 text-xs font-bold">
+                            <div className="flex justify-between items-center text-slate-500">
+                              <span>기존 채무액</span>
+                              <span className="line-through">{rev.originalDebt.toLocaleString()}만원</span>
+                            </div>
+                            <div className="flex justify-between items-center text-slate-850 dark:text-white">
+                              <span>조정 후 채무</span>
+                              <span className="text-indigo-600 dark:text-indigo-450">
+                                {rev.remainingDebt === 0 ? "전액 탕감 (0원)" : `${rev.remainingDebt.toLocaleString()}만원`}
                               </span>
-                              <span className="text-[9px] text-slate-400 font-semibold">도산 전담 변호사</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-slate-800/50 text-[10px]">
+                              <span className="text-emerald-600 dark:text-emerald-450">총 감면 혜택</span>
+                              <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 px-2 py-0.5 rounded font-extrabold">
+                                {reductionRate}% 감면 (-{saved.toLocaleString()}만원)
+                              </span>
                             </div>
                           </div>
+
+                          {/* Content text */}
+                          <p className="text-[11px] text-slate-550 dark:text-slate-400 leading-relaxed font-normal line-clamp-3 md:line-clamp-none">
+                            {rev.content}
+                          </p>
+
+                          {/* Tags list */}
+                          <div className="flex flex-wrap gap-1">
+                            {rev.tags.map(t => (
+                              <button
+                                key={t}
+                                onClick={() => {
+                                  setReviewSearchQuery(t);
+                                  setReviewPage(1);
+                                }}
+                                className="text-[10px] text-slate-500 dark:text-slate-450 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded-md hover:text-brand-hover dark:hover:text-brand-light transition-colors font-medium cursor-pointer"
+                              >
+                                {t}
+                              </button>
+                            ))}
+                          </div>
                         </div>
 
-                        {/* CTA button */}
-                        <button
-                          onClick={() => handleReviewClick(rev)}
-                          className="w-full text-center py-2.5 bg-brand hover:bg-brand dark:bg-blue-650 dark:hover:bg-brand text-white text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md"
-                        >
-                          <HeartHandshake className="w-3.5 h-3.5" />
-                          <span>이 변호사에게 동일 사건 상담 신청</span>
-                        </button>
+                        {/* Footer & CTA */}
+                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                          {/* Author & Lawyer */}
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400 font-semibold">{rev.author}</span>
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={rev.lawyerAvatar}
+                                alt={rev.lawyerName}
+                                className="w-5.5 h-5.5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100"
+                              />
+                              <div>
+                                <span className="block font-bold text-slate-700 dark:text-slate-350 text-[11px] leading-none">
+                                  {rev.lawyerName}
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-semibold">도산 전담 변호사</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* CTA button */}
+                          <button
+                            onClick={() => handleReviewClick(rev)}
+                            className="w-full text-center py-2.5 bg-brand hover:bg-brand dark:bg-blue-650 dark:hover:bg-brand text-white text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md cursor-pointer"
+                          >
+                            <HeartHandshake className="w-3.5 h-3.5" />
+                            <span>이 변호사에게 동일 사건 상담 신청</span>
+                          </button>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                {/* Success Reviews Pagination Controls */}
+                {totalReviewPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-8 border-t border-slate-100 dark:border-slate-800/80 mt-8">
+                    <button
+                      type="button"
+                      disabled={activeReviewPage === 1}
+                      onClick={() => {
+                        setReviewPage(prev => Math.max(1, prev - 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="px-4 py-2 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      이전
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: totalReviewPages }, (_, i) => i + 1).map(p => {
+                        const isCurrent = activeReviewPage === p;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              setReviewPage(p);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className={`w-9 h-9 text-xs font-black rounded-xl transition-all cursor-pointer border ${
+                              isCurrent
+                                ? 'bg-brand border-brand text-white shadow-sm shadow-brand/20 scale-105 font-bold'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+
+                    <button
+                      type="button"
+                      disabled={activeReviewPage === totalReviewPages}
+                      onClick={() => {
+                        setReviewPage(prev => Math.min(totalReviewPages, prev + 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="px-4 py-2 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      다음
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
+
 
         {/* TAB: LIVE Q&A CASE STUDIES */}
         {activeTab === 'qna' && (
