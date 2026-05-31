@@ -1542,7 +1542,9 @@ export default function ClientRole({
                     );
                   }
 
-                  return filtered.map(l => {
+                  const limited = filtered.slice(0, 6);
+
+                  return limited.map(l => {
                     const rating = l.id === 'lawyer-1' ? '4.9' : l.id === 'lawyer-2' ? '4.8' : '4.9';
                     const reviewsCount = l.id === 'lawyer-1' ? '184' : l.id === 'lawyer-2' ? '129' : '94';
                     
@@ -1624,6 +1626,20 @@ export default function ClientRole({
                     );
                   })
                 })()}
+              </div>
+
+              {/* View More Lawyers Button */}
+              <div className="pt-4 text-center">
+                <button 
+                  onClick={() => {
+                    setActiveTab('lawyers');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-brand-light font-extrabold rounded-xl text-xs transition-all shadow-md group cursor-pointer"
+                >
+                  <span>👥 도산 전문 변호사 전체보기 (더보기)</span>
+                  <span className="transition-transform group-hover:translate-x-1">→</span>
+                </button>
               </div>
             </div>
 
