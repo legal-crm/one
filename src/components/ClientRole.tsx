@@ -1482,11 +1482,11 @@ export default function ClientRole({
               </div>
             </div>
 
-          <nav className="flex items-center gap-1.5">
-            <div className="hidden md:flex items-center gap-1.5">
+          <nav className="flex items-center gap-1 lg:gap-1.5">
+            <div className="hidden md:flex items-center gap-1 lg:gap-1.5">
               <button 
                 onClick={() => setActiveTab('landing')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'landing' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1494,7 +1494,7 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => setActiveTab('calculator')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'calculator' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1502,7 +1502,7 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => setActiveTab('reviews')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'reviews' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1510,7 +1510,7 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => setActiveTab('qna')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'qna' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1518,7 +1518,7 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => setActiveTab('request')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'request' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1526,7 +1526,7 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => setActiveTab('lawyers')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'lawyers' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1534,7 +1534,7 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => setActiveTab('chat')}
-                className={`relative px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'chat' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1547,7 +1547,7 @@ export default function ClientRole({
               {isLoggedIn && (
                 <button 
                   onClick={() => setActiveTab('mypage')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                     activeTab === 'mypage' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
@@ -1558,10 +1558,10 @@ export default function ClientRole({
  
             {/* Auth section */}
             {isLoggedIn ? (
-              <div className="flex items-center gap-2.5 ml-2 pl-3 border-l border-slate-200 dark:border-slate-800">
-                <div className="flex flex-col items-end hidden md:flex">
-                  <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                    👤 <span className="text-brand dark:text-brand-light">{userAlias}</span>님
+              <div className="flex items-center gap-1.5 lg:gap-2.5 ml-1 lg:ml-2 pl-2 lg:pl-3 border-l border-slate-200 dark:border-slate-800">
+                <div className="flex flex-col items-end hidden lg:flex whitespace-nowrap shrink-0">
+                  <span className="text-[10px] lg:text-[11px] font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                    👤 <span className="text-brand dark:text-brand-light whitespace-nowrap">{userAlias}</span>님
                   </span>
                   <span className="text-[8px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1 py-0.2 rounded font-semibold leading-none">
                     스텔스 보호중
@@ -1569,7 +1569,7 @@ export default function ClientRole({
                 </div>
                 <button 
                   onClick={() => setShowSettingsModal(true)}
-                  className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                   title="스텔스 & 보안 설정"
                 >
                   <Settings className="w-4 h-4" />
@@ -1580,7 +1580,7 @@ export default function ClientRole({
                     setIsLoggedIn(false);
                     setUserAlias('');
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold transition-colors"
+                  className="whitespace-nowrap flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold transition-all shrink-0 cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">로그아웃</span>
@@ -1589,7 +1589,7 @@ export default function ClientRole({
             ) : (
               <button 
                 onClick={() => setShowAuthModal(true)}
-                className="ml-2 flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-[200px] text-xs font-bold transition-all shadow-sm hover:shadow-md"
+                className="ml-2 flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-[200px] text-xs font-bold transition-all shadow-sm hover:shadow-md whitespace-nowrap shrink-0"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>로그인 및 회원가입</span>
