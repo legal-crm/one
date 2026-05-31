@@ -3,7 +3,7 @@ import {
   PlusCircle, Users, Scale, FileText, ChevronRight, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
-  Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin
+  Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData } from '../types';
 import { CustomerIntake } from './CustomerIntake';
@@ -314,6 +314,8 @@ export default function ClientRole({
   // User Auth & Privacy States
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userAlias, setUserAlias] = useState<string>('');
+  const [isEditingAlias, setIsEditingAlias] = useState<boolean>(false);
+  const [tempAlias, setTempAlias] = useState<string>('');
   const [alertMode, setAlertMode] = useState<'NORMAL' | 'STEALTH' | 'SECRET'>('STEALTH');
   const [senderNameOverride, setSenderNameOverride] = useState<string>('회생톡');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
@@ -2309,9 +2311,59 @@ export default function ClientRole({
                     상담 매칭 세션 활성
                   </span>
                 </div>
-                <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white">
-                  👤 <span className="text-brand dark:text-brand-light">{userAlias || '새출발'}</span> 님의 안심 마이페이지
-                </h2>
+                {isEditingAlias ? (
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (tempAlias.trim()) {
+                        setUserAlias(tempAlias.trim());
+                      }
+                      setIsEditingAlias(false);
+                    }}
+                    className="flex items-center gap-2 pt-1 animate-fadeIn"
+                  >
+                    <span className="text-xl md:text-2xl">👤</span>
+                    <input 
+                      type="text" 
+                      value={tempAlias}
+                      onChange={(e) => setTempAlias(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-base md:text-lg font-bold focus:ring-1 focus:ring-brand focus:outline-none w-44 md:w-52 text-slate-850 dark:text-white"
+                      placeholder="새 가명 입력"
+                      maxLength={12}
+                      autoFocus
+                    />
+                    <button 
+                      type="submit"
+                      className="bg-brand text-white font-bold p-2.5 rounded-xl text-xs hover:bg-brand-hover transition-colors shrink-0 flex items-center justify-center cursor-pointer shadow-sm"
+                      title="저장"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setIsEditingAlias(false)}
+                      className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-2.5 rounded-xl text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0 flex items-center justify-center cursor-pointer border border-slate-200 dark:border-slate-700"
+                      title="취소"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </form>
+                ) : (
+                  <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2 flex-wrap">
+                    <span>👤 <span className="text-brand dark:text-brand-light">{userAlias || '새출발'}</span> 님의 안심 마이페이지</span>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setTempAlias(userAlias || '새출발');
+                        setIsEditingAlias(true);
+                      }}
+                      className="text-slate-400 hover:text-brand dark:hover:text-brand-light p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0 cursor-pointer"
+                      title="가명(이름) 수정"
+                    >
+                      <Edit2 className="w-4.5 h-4.5" />
+                    </button>
+                  </h2>
+                )}
                 <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
                   채무 사실 노출 방지를 위해 의뢰인 정보는 암호화 가명으로 처리되며, 변호사단과의 1:1 비밀 매칭 대화방이 실시간 보호받고 있습니다.
                 </p>
