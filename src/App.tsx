@@ -56,7 +56,7 @@ export default function App() {
       setCases(initialCases);
     }
 
-    if (savedLawyers) {
+    if (savedLawyers && JSON.parse(savedLawyers).length >= mockLawyers.length) {
       setLawyers(JSON.parse(savedLawyers));
     } else {
       // Set initial passwords to '1234' for easy mockup login
@@ -124,6 +124,7 @@ export default function App() {
       localStorage.removeItem('legal_crm_requests');
       localStorage.removeItem('legal_crm_messages');
       localStorage.removeItem('legal_crm_cases');
+      localStorage.removeItem('legal_crm_lawyers');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
       setCases(initialCases);
