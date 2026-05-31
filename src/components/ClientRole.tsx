@@ -2305,10 +2305,10 @@ export default function ClientRole({
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                    스텔스 가명 암호화 보호중
+                    안전한 가명 보호 적용 중
                   </span>
                   <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">
-                    상담 매칭 세션 활성
+                    변호사 실시간 연결됨
                   </span>
                 </div>
                 {isEditingAlias ? (
@@ -2416,11 +2416,11 @@ export default function ClientRole({
                   <div className="lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-850 space-y-6">
                     <div className="space-y-1">
                       <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider block">
-                        ⚙️ 실시간 AI 변제 진단 결과
+                        ⚙️ 나의 예상 감면액 분석
                       </span>
-                      <h3 className="font-extrabold text-lg">나의 실시간 채무 포트폴리오</h3>
+                      <h3 className="font-extrabold text-lg">한눈에 보는 나의 부채 상황</h3>
                       <p className="text-[10px] text-slate-400 leading-relaxed">
-                        아래의 채무 입력 양식 수정 시, 탕감율과 월 예상 변제금이 0.1초 내로 라이브 동적 재산정됩니다.
+                        아래에서 소득이나 채무를 바꾸면, 감면 비율과 한 달 납부액이 즉시 다시 계산됩니다.
                       </p>
                     </div>
 
@@ -2428,8 +2428,8 @@ export default function ClientRole({
                       {/* Metric 1 */}
                       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
                         <div className="text-left space-y-0.5">
-                          <span className="text-[9px] text-slate-400 font-bold block">실시간 총 채무액</span>
-                          <span className="text-xs text-slate-300 font-medium">부채 원금 합계</span>
+                          <span className="text-[9px] text-slate-400 font-bold block">나의 총 빚(채무액)</span>
+                          <span className="text-xs text-slate-300 font-medium">빌린 돈의 원금 합계</span>
                         </div>
                         <span className="font-black text-amber-400 text-lg">
                           {totalDebtValue.toLocaleString()}만 원
@@ -2439,8 +2439,8 @@ export default function ClientRole({
                       {/* Metric 2 */}
                       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
                         <div className="text-left space-y-0.5">
-                          <span className="text-[9px] text-slate-400 font-bold block">예상 월 변제금</span>
-                          <span className="text-xs text-slate-300 font-medium">최저생계비 차감 후 납입금</span>
+                          <span className="text-[9px] text-slate-400 font-bold block">한 달에 갚을 돈(예상)</span>
+                          <span className="text-xs text-slate-300 font-medium">생계비 제외 후 한 달 납부액</span>
                         </div>
                         <span className="font-black text-brand-light text-lg">
                           월 {monthlyRepayment.toLocaleString()}만 원
@@ -2450,22 +2450,22 @@ export default function ClientRole({
                       {/* Metric 3 */}
                       <div className="bg-brand/10 border border-brand/20 rounded-2xl p-4 flex items-center justify-between">
                         <div className="text-left space-y-0.5">
-                          <span className="text-[9px] text-brand-light font-bold block">예상 총 탕감액</span>
-                          <span className="text-xs text-slate-300 font-medium">면책 및 부채 청산액</span>
+                          <span className="text-[9px] text-brand-light font-bold block">최종 감면받을 금액</span>
+                          <span className="text-xs text-slate-300 font-medium">법적으로 없어지는 빚의 액수</span>
                         </div>
                         <div className="text-right">
                           <span className="font-black text-emerald-400 text-lg block">
                             ★ {totalReduction.toLocaleString()}만 원
                           </span>
                           <span className="text-[10px] text-emerald-300/80 font-bold">
-                            원금의 {reductionRate}% 전격 감면!
+                            원금의 {reductionRate}% 없어집니다!
                           </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="text-[10px] text-slate-400 leading-normal text-left pt-2 border-t border-white/5">
-                      ※ 본 결과는 서울/수원회생법원의 2026년 가용소득 산출 생계비 준칙을 기초로 가계산되었으며, 실제 법정 탕감액은 변호인단의 정교한 보정서 작성을 통해 상향 조정될 수 있습니다.
+                      ※ 이 결과는 법원의 생계비 기준을 바탕으로 계산해 본 수치이며, 변호사가 서류를 꼼꼼히 보강해 주면 실제로 감면되는 액수가 더 늘어날 수 있습니다.
                     </div>
                   </div>
 
@@ -2473,8 +2473,8 @@ export default function ClientRole({
                   <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-5 text-left">
                     <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
                       <div>
-                        <h3 className="font-black text-base text-slate-800 dark:text-white">⚖️ 내 채무 리포트 및 조절 인풋 폼</h3>
-                        <p className="text-[10px] text-slate-500 mt-0.5">금액을 터치하여 수정하면 좌측의 탕감 지표가 즉시 변동됩니다.</p>
+                        <h3 className="font-black text-base text-slate-800 dark:text-white">⚖️ 나의 빚 현황 & 직접 조정해보기</h3>
+                        <p className="text-[10px] text-slate-500 mt-0.5">금액을 직접 변경해 보시면 왼쪽의 감면 금액이 실시간으로 바뀝니다.</p>
                       </div>
                       <span className="text-[9px] bg-slate-100 text-slate-600 dark:bg-slate-950 dark:text-slate-400 px-2 py-0.5 rounded font-bold">
                         단위: 만 원
@@ -2484,7 +2484,7 @@ export default function ClientRole({
                     <div className="space-y-4">
                       {/* Income Row */}
                       <div className="space-y-1">
-                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">월 세후 실수령 소득 (만 원)</label>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">매달 실제로 통장에 들어오는 세후 월급 (만 원)</label>
                         <input
                           type="number"
                           value={income}
@@ -2495,7 +2495,7 @@ export default function ClientRole({
 
                       {/* Dependents Row */}
                       <div className="space-y-1">
-                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">부양 가족 수 (본인 제외, 명)</label>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">내가 책임져야 하는 부양 가족 수 (나를 제외한 가족 수, 명)</label>
                         <div className="grid grid-cols-4 gap-2">
                           {[0, 1, 2, 3].map(num => (
                             <button
@@ -2516,15 +2516,15 @@ export default function ClientRole({
 
                       {/* Divider */}
                       <div className="border-t border-slate-150 dark:border-slate-800 my-4 pt-4">
-                        <span className="text-[10px] text-slate-400 font-bold block mb-3 uppercase tracking-wider">개별 채무 리스크 & 대응 방패</span>
+                        <span className="text-[10px] text-slate-400 font-bold block mb-3 uppercase tracking-wider">나의 부채 내역 & 해결 방안</span>
                       </div>
 
                       {/* Debt Bank Input */}
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
-                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">시중은행 신용대출 (만 원)</label>
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">은행 신용대출 (만 원)</label>
                           <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
-                            🛡️ 급여 상계 차단 솔루션 매칭
+                            🛡️ 월급 압류 & 강제 인출 즉시 차단
                           </span>
                         </div>
                         <input
@@ -2538,9 +2538,9 @@ export default function ClientRole({
                       {/* Debt Card Input */}
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
-                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">신용카드 / 카드론 (만 원)</label>
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">신용카드 대금 및 카드론 (만 원)</label>
                           <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
-                            🛡️ 이자 면제 및 통합 탕감 매칭
+                            🛡️ 밀린 이자 100% 면제 및 원금 감면
                           </span>
                         </div>
                         <input
@@ -2556,7 +2556,7 @@ export default function ClientRole({
                         <div className="flex justify-between items-center">
                           <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">대부업 / 사채 채무 (만 원)</label>
                           <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
-                            🛡️ 채무자대리인 추심 차단 매칭
+                            🛡️ 불법 대부업/사채 빚 독촉 및 전화 강제 금지
                           </span>
                         </div>
                         <input
