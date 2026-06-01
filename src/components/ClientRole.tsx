@@ -439,6 +439,8 @@ export default function ClientRole({
   // Currently opened Chat consultation request ID
   const [activeChatReqId, setActiveChatReqId] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>('');
+  const [phoneConsultNum, setPhoneConsultNum] = useState<string>('');
+  const [useSafeNumber050, setUseSafeNumber050] = useState<boolean>(true);
   const [activeRemedyCategory, setActiveRemedyCategory] = useState<string | null>(null);
 
   // Reviews page state
@@ -3710,6 +3712,75 @@ export default function ClientRole({
                           ))}
                         </div>
                       )}
+                    </div>
+
+                    {/* 실시간 안심 전화상담 신청 패널 */}
+                    <div className="bg-slate-50 dark:bg-slate-950/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400 text-[11px] flex items-center gap-1">
+                          📞 실시간 안심 전화상담 신청
+                        </span>
+                        <span className="text-[9px] bg-emerald-500/10 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">
+                          변호사 직통 번호 지원
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 font-bold block">전화 상담 받으실 연락처</label>
+                          <input 
+                            type="text"
+                            placeholder="예: 010-1234-5678"
+                            value={phoneConsultNum}
+                            onChange={(e) => setPhoneConsultNum(e.target.value)}
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs focus:ring-1 focus:ring-brand focus:outline-none"
+                          />
+                        </div>
+                        <div className="flex flex-col justify-end space-y-1">
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] text-slate-650 dark:text-slate-400 py-1.5">
+                            <input 
+                              type="checkbox"
+                              checked={useSafeNumber050}
+                              onChange={(e) => setUseSafeNumber050(e.target.checked)}
+                              className="rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
+                            />
+                            <span>🛡️ 050 안심번호 서비스 사용 (실제 연락처 암호화 보호)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!phoneConsultNum.trim()) {
+                                alert('전화상담을 받으실 연락처를 입력해 주세요!');
+                                return;
+                              }
+                              let displayNum = phoneConsultNum.trim();
+                              if (useSafeNumber050) {
+                                const cleanNum = displayNum.replace(/[^0-9]/g, '');
+                                const lastFour = cleanNum.slice(-4) || '7777';
+                                displayNum = `0507-1428-${lastFour} (안심번호 활성화)`;
+                              }
+                              
+                              const systemMsg = `[System] 📞 의뢰인님이 실시간 전화 상담을 신청하셨습니다.\n• 연락 요청처: ${displayNum}\n• 변호사님은 이 번호로 의뢰인님에게 즉각 연락해 주시기 바랍니다.`;
+                              onAddMessage(activeChatReqId, systemMsg, 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)');
+                              
+                              setTimeout(() => {
+                                onAddMessage(
+                                  activeChatReqId,
+                                  `안녕하세요, ${isLoggedIn && userAlias ? userAlias : '의뢰인'}님. 신청해 주신 연락처(${displayNum})를 확인했습니다. 가입하신 사건 요약 문서를 신속하게 검토한 뒤 5분 내로 즉시 전화를 드려 개인회생 가능 여부를 직접 브리핑해 드리겠습니다. 잠시만 대기해 주세요!`,
+                                  'lawyer',
+                                  'lawyer-2',
+                                  '이소민 변호사'
+                                );
+                              }, 1500);
+                              
+                              alert('변호사에게 전화상담 요청이 안전하게 발송되었습니다!');
+                            }}
+                            className="w-full text-center py-2 bg-brand hover:bg-brand text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <span>📞 전화상담 요청 안전 전달</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     {activeChatMessages.length === 0 ? (
