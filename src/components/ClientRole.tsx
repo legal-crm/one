@@ -3625,7 +3625,7 @@ export default function ClientRole({
             <div id="chat-workspace-grid" className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-800 min-h-[500px] h-[calc(100vh-14rem)] lg:h-[650px]">
               
               {/* LEFT RAIL: ACTIVE REQUESTS */}
-              <div className="lg:col-span-4 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="lg:col-span-4 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full min-h-0 bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800">
                   <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">생성된 나의 상담 요청방</h3>
                   <p className="text-slate-500 text-xs mt-0.5">상담 종류 및 매칭 여부를 확인할 수 있습니다.</p>
@@ -3685,7 +3685,7 @@ export default function ClientRole({
 
               {/* CHAT BOARD & RIGHT WINDOW */}
               {currentRequest ? (
-                <div className="lg:col-span-8 flex flex-col h-full bg-white dark:bg-slate-900">
+                <div className="lg:col-span-8 flex flex-col h-full min-h-0 bg-white dark:bg-slate-900">
                   {/* Header of Chat */}
                   <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-4">
                     <div>
