@@ -2550,6 +2550,136 @@ export default function ClientRole({
                 </div>
               );
             })()}
+
+            {/* Rebirth Bid: 3-Lawyer Estimate Comparison Dashboard */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                    Rebirth Bid
+                  </span>
+                  <span className="text-[10px] bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light px-2 py-0.5 rounded-full font-bold">
+                    실시간 3인 안심 제안서 도달
+                  </span>
+                </div>
+                <h3 className="font-black text-lg text-slate-800 dark:text-white mt-1">⚖️ 나를 위해 도착한 도산 변호사 3인의 안심 제안서</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  의뢰인님의 소득과 채무 상황을 바탕으로 도산 전문 변호사 3명이 산정한 맞춤 조건입니다. 마음에 드는 변호사와 즉시 1:1 상담을 나눌 수 있습니다.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  {
+                    id: 'lawyer-1',
+                    name: '김우진 변호사',
+                    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256',
+                    firm: '법무법인 한빛',
+                    feasibility: '진행 가능 (성공률 98%)',
+                    monthlyPayment: 45,
+                    duration: 36,
+                    reductionRate: 82,
+                    totalReduction: Math.round((debtBanks + debtCards + debtPersonals) * 0.82),
+                    fee: 180,
+                    installment: '최대 6개월 분할 가능 (월 30만 원)',
+                    remark: '급여 가압류를 금지명령으로 신속히 방어하고, 채권 추심 및 독촉을 3일 이내에 원천 차단해 드립니다.'
+                  },
+                  {
+                    id: 'lawyer-2',
+                    name: '이소민 변호사',
+                    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256',
+                    firm: '법무법인 한빛',
+                    feasibility: '진행 가능 (사행성 채무 특화)',
+                    monthlyPayment: 42,
+                    duration: 36,
+                    reductionRate: 85,
+                    totalReduction: Math.round((debtBanks + debtCards + debtPersonals) * 0.85),
+                    fee: 200,
+                    installment: '최대 12개월 장기 분할 납부 가능!',
+                    remark: '자녀 교육비를 특별 생계비로 법원에 추가 주장 소명하여 월 변제금을 최소한으로 낮춰드리겠습니다.'
+                  },
+                  {
+                    id: 'lawyer-3',
+                    name: '최덕중 변호사',
+                    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256',
+                    firm: '하늘 법률사무소',
+                    feasibility: '진행 가능 (수원 전문 15년)',
+                    monthlyPayment: 48,
+                    duration: 36,
+                    reductionRate: 80,
+                    totalReduction: Math.round((debtBanks + debtCards + debtPersonals) * 0.80),
+                    fee: 170,
+                    installment: '최대 3회 분할 납부 가능',
+                    remark: '복잡한 보정서류 일체를 대행 발급해 드리며, 법원의 까다로운 재산 검증 심사를 완벽히 방어합니다.'
+                  }
+                ].map((bid) => (
+                  <div key={bid.id} className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850 rounded-2xl p-5 flex flex-col justify-between gap-4 transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-800">
+                    <div className="space-y-3">
+                      {/* Lawyer Header */}
+                      <div className="flex items-center gap-3">
+                        <img src={bid.avatar} alt={bid.name} className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[9px] text-[#7e7e8f] dark:text-slate-500 font-bold block">{bid.firm}</span>
+                          <strong className="text-xs font-black text-slate-800 dark:text-white block">{bid.name}</strong>
+                        </div>
+                      </div>
+
+                      {/* Diagnostic Specs */}
+                      <div className="space-y-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/50">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-400 font-medium">진행 가능 여부</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{bid.feasibility}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-400 font-medium">월 예상 변제금</span>
+                          <span className="text-slate-800 dark:text-slate-200 font-bold">월 {bid.monthlyPayment}만 원 ({bid.duration}개월)</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-400 font-medium">예상 총 감면액</span>
+                          <span className="text-indigo-600 dark:text-indigo-400 font-extrabold text-[9px] sm:text-[10px]">원금의 {bid.reductionRate}% 감면 (★{bid.totalReduction.toLocaleString()}만 원)</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-200/30 dark:border-slate-800/30">
+                          <span className="text-slate-400 font-medium">제시 수임료</span>
+                          <span className="text-slate-800 dark:text-slate-200 font-bold">{bid.fee}만 원</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-400 font-medium">수임료 분납 조건</span>
+                          <span className="text-indigo-600 dark:text-indigo-400 font-extrabold text-[9px] bg-indigo-500/5 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full">{bid.installment}</span>
+                        </div>
+                      </div>
+
+                      {/* Remark */}
+                      <div className="bg-white dark:bg-slate-900/60 border border-slate-150 dark:border-slate-850 p-3 rounded-xl text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed text-left">
+                        <strong>변호사 특별 솔루션:</strong><br/>
+                        "{bid.remark}"
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const matchedRequest = requests.find(r => r.selectedLawyerId === bid.id || r.requestType === 'open');
+                        if (matchedRequest) {
+                          setActiveChatReqId(matchedRequest.id);
+                        } else if (requests.length > 0) {
+                          setActiveChatReqId(requests[0].id);
+                        }
+                        setActiveTab('chat');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-full text-center py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>💬 {bid.name}와 1:1 비밀 상담 시작</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="text-[10px] text-slate-400 leading-normal text-left pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                ※ Rebirthtalk은 변호사들이 제시한 수임조건(분납 조건 등)을 비교 매칭해줄 뿐, 수임 계약 및 선임 비용 결제 등 모든 거래는 의뢰인과 변호인 간에 플랫폼 외부에서 100% 직접 안전하게 거래됩니다.
+              </div>
+            </div>
           </div>
         )}
  
