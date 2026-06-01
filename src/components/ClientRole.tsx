@@ -2229,32 +2229,6 @@ export default function ClientRole({
               </div>
             </div>
 
-            {/* Babitalk-style App Promotion Banner */}
-            <div className="pt-8 w-full">
-              <div className="cursor-pointer w-full flex justify-end items-center pl-6 pr-4 py-6 md:py-8 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-950/20 dark:to-indigo-950/20 rounded-3xl border border-brand/10">
-                <div className="grow shrink basis-0 justify-between items-center gap-2.5 flex">
-                  <div className="grow shrink basis-0 flex-col justify-center items-start gap-2 inline-flex">
-                    <div className="text-[#313142] dark:text-white font-extrabold leading-[1.4] text-base md:text-xl">
-                      더 쉽고 빠른 채무 해결<br/>회생톡 앱에서 확인하기
-                    </div>
-                    <div className="text-brand font-bold leading-relaxed text-xs md:text-sm">
-                      <span className="hidden md:block">QR코드를 스캔하여 바로 앱을 다운로드 받으세요</span>
-                      <span className="md:hidden block">구글 플레이 / 앱스토어에서 다운받기</span>
-                    </div>
-                  </div>
-                  
-                  {/* QR code and app store badges */}
-                  <div className="hidden md:flex justify-center items-center bg-white dark:bg-slate-800 rounded-2xl p-2 w-[90px] h-[90px] shadow-sm shrink-0">
-                    <img alt="qr" className="object-contain w-full h-full" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://web.babitalk.com/" />
-                  </div>
-                  
-                  <div className="md:hidden flex flex-col gap-1.5">
-                    <div className="px-3 py-1.5 bg-[#313142] dark:bg-slate-800 text-white rounded-lg text-[10px] font-extrabold text-center">App Store</div>
-                    <div className="px-3 py-1.5 bg-[#313142] dark:bg-slate-800 text-white rounded-lg text-[10px] font-extrabold text-center">Google Play</div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Babitalk-style Footer */}
             <div className="flex flex-col w-full pt-10 pb-6 justify-start items-start gap-6 border-t border-slate-100 dark:border-slate-850 mt-10">
