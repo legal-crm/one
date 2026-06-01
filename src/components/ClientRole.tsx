@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   PlusCircle, Users, Scale, FileText, ChevronRight, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
@@ -441,6 +441,7 @@ export default function ClientRole({
   const [chatInput, setChatInput] = useState<string>('');
   const [phoneConsultNum, setPhoneConsultNum] = useState<string>('');
   const [useSafeNumber050, setUseSafeNumber050] = useState<boolean>(true);
+  const chatFeedRef = useRef<HTMLDivElement>(null);
   const [activeRemedyCategory, setActiveRemedyCategory] = useState<string | null>(null);
 
   // Reviews page state
@@ -1470,6 +1471,13 @@ export default function ClientRole({
   // Helper values
   const currentRequest = requests.find(r => r.id === activeChatReqId);
   const activeChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
+
+  // Auto scroll to bottom of chat feed when new messages arrive or when channel updates
+  useEffect(() => {
+    if (chatFeedRef.current) {
+      chatFeedRef.current.scrollTop = chatFeedRef.current.scrollHeight;
+    }
+  }, [activeChatMessages]);
 
   // Formatted calculation
   const totalCalculatedDebt = debtBanks + debtCards + debtPersonals + recentLoans + coinCrypto;
@@ -3623,7 +3631,7 @@ export default function ClientRole({
                   <p className="text-slate-500 text-xs mt-0.5">상담 종류 및 매칭 여부를 확인할 수 있습니다.</p>
                 </div>
 
-                <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800_90 h-[400px]">
+                <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/90">
                   {requests.length === 0 ? (
                     <div className="p-8 text-center space-y-2">
                       <p className="text-slate-500 text-xs">작성 완료된 상담 요청 건이 현재 존재하지 않습니다.</p>
@@ -3696,7 +3704,7 @@ export default function ClientRole({
                   </div>
 
                   {/* Messages feed */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[350px]">
+                  <div ref={chatFeedRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
                     {/* Embedded Client Profile details summary for Lawyers to see, and client to review */}
                     <div className="bg-slate-50 dark:bg-slate-950/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-2">
                       <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px] text-brand dark:text-brand-light">
