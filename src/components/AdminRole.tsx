@@ -4,7 +4,7 @@ import {
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock 
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner } from '../types';
 import { platformPlans } from '../data';
 
 interface AdminRoleProps {
@@ -14,6 +14,12 @@ interface AdminRoleProps {
   setLawyers: React.Dispatch<React.SetStateAction<User[]>>;
   newsArticles: NewsArticle[];
   setNewsArticles: React.Dispatch<React.SetStateAction<NewsArticle[]>>;
+  qas: ClientQA[];
+  setQas: React.Dispatch<React.SetStateAction<ClientQA[]>>;
+  reviews: SuccessReview[];
+  setReviews: React.Dispatch<React.SetStateAction<SuccessReview[]>>;
+  banners: MainBanner[];
+  setBanners: React.Dispatch<React.SetStateAction<MainBanner[]>>;
 }
 
 export default function AdminRole({
@@ -22,7 +28,13 @@ export default function AdminRole({
   lawyers,
   setLawyers,
   newsArticles,
-  setNewsArticles
+  setNewsArticles,
+  qas,
+  setQas,
+  reviews,
+  setReviews,
+  banners,
+  setBanners
 }: AdminRoleProps) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents'>('dashboard');
 
@@ -36,6 +48,40 @@ export default function AdminRole({
   const [formBadge, setFormBadge] = useState<'HOT' | 'NEW' | 'BEST' | null>(null);
   const [formAuthorId, setFormAuthorId] = useState<string>('lawyer-1');
   const [formImageUrl, setFormImageUrl] = useState<string>('');
+
+  // Site Content sub-navigation state
+  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner'>('news');
+
+  // CRUD states for Q&A (고민 상담사례)
+  const [editingQa, setEditingQa] = useState<ClientQA | null>(null);
+  const [isQaCreateMode, setIsQaCreateMode] = useState<boolean>(false);
+  const [qaQuestion, setQaQuestion] = useState<string>('');
+  const [qaAnswer, setQaAnswer] = useState<string>('');
+  const [qaCategory, setQaCategory] = useState<string>('코인/주식 손실');
+  const [qaAuthor, setQaAuthor] = useState<string>('');
+  const [qaLawyerId, setQaLawyerId] = useState<string>('lawyer-1');
+  const [qaBadge, setQaBadge] = useState<string>('실시간 답변');
+
+  // CRUD states for Success Reviews (채무 해결 성공후기)
+  const [editingReview, setEditingReview] = useState<SuccessReview | null>(null);
+  const [isReviewCreateMode, setIsReviewCreateMode] = useState<boolean>(false);
+  const [reviewTitle, setReviewTitle] = useState<string>('');
+  const [reviewCategory, setReviewCategory] = useState<string>('코인/주식 손실');
+  const [reviewAuthor, setReviewAuthor] = useState<string>('');
+  const [reviewOriginalDebt, setReviewOriginalDebt] = useState<number>(5000);
+  const [reviewRemainingDebt, setReviewRemainingDebt] = useState<number>(1000);
+  const [reviewLawyerId, setReviewLawyerId] = useState<string>('lawyer-1');
+  const [reviewContent, setReviewContent] = useState<string>('');
+  const [reviewTagsText, setReviewTagsText] = useState<string>('');
+
+  // CRUD states for Main Banners (메인 배너)
+  const [editingBanner, setEditingBanner] = useState<MainBanner | null>(null);
+  const [isBannerCreateMode, setIsBannerCreateMode] = useState<boolean>(false);
+  const [bannerTitle, setBannerTitle] = useState<string>('');
+  const [bannerSubtitle, setBannerSubtitle] = useState<string>('');
+  const [bannerBadge, setBannerBadge] = useState<string>('');
+  const [bannerColor, setBannerColor] = useState<string>('rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)');
+  const [bannerImage, setBannerImage] = useState<string>('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200');
 
   // Auth states
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -929,75 +975,76 @@ export default function AdminRole({
               <div className="bg-gradient-to-r from-indigo-950/40 to-slate-900/40 p-6 rounded-2xl border border-indigo-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md">
                 <div className="space-y-1.5">
                   <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">MONTHLY PLATFORM REVENUE SUMMARY</span>
-                  <h2 className="text-xl font-black text-white">이달 멤버십 구독 매출 합산: <span className="text-indigo-400">{estimateMRR.toLocaleString()} 원</span></h2>
-                  <p className="text-xs text-slate-400">회생톡 플랫폼은 변호사법을 완벽히 이행하여 정액 광고 구독 수입 모델로만 매출을 창출합니다.</p>
+                  <h2 className="text-xl font-black text-white">이달 멤버십 구독 매출 정산: <span className="text-indigo-400">{estimateMRR.toLocaleString()} 원</span></h2>
+                    <p className="text-xs text-slate-400">회생파산 플랫폼은 변호사법을 완벽히 준수하여 정액 광고 구독 수입 모델로만 매출을 창출합니다.</p>
+                  </div>
+                </div>
+  
+                {/* Transactions grid */}
+                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
+                  <h3 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">구독료 징수 현황 명세 (실시간 업데이트)</h3>
+                  
+                  <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                          <th className="p-3">정산 대상 변호사</th>
+                          <th className="p-3">구독료 멤버십</th>
+                          <th className="p-3">월 고정 징수액</th>
+                          <th className="p-3">수납 상태</th>
+                          <th className="p-3 text-right">플랫폼 실적</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1E293B]/30">
+                        {lawyers.map(l => {
+                          let planName = 'Basic';
+                          let planPrice = '300,000 원';
+                          if (l.matchedCount > 120) {
+                            planName = 'Team / Enterprise';
+                            planPrice = '1,500,000 원';
+                          } else if (l.matchedCount > 80) {
+                            planName = 'Pro';
+                            planPrice = '800,000 원';
+                          }
+                          return (
+                            <tr key={l.id} className="hover:bg-[#0B0F19]/20">
+                              <td className="p-3 font-bold text-white flex items-center gap-1.5">
+                                <img src={l.avatar} alt={l.name} className="w-5 h-5 rounded-full object-cover" />
+                                <span>{l.name}</span>
+                              </td>
+                              <td className="p-3">{planName}</td>
+                              <td className="p-3 font-semibold text-indigo-400">{planPrice}</td>
+                              <td className="p-3">
+                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-2 py-0.5 rounded flex items-center gap-1 w-max">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  <span>정상수납</span>
+                                </span>
+                              </td>
+                              <td className="p-3 text-right text-slate-350">{l.matchedCount}회 매칭참여</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-
-              {/* Transactions grid */}
-              <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                <h3 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">구독료 징수 현황 명세 (실시간 시뮬레이션)</h3>
-                
-                <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
-                        <th className="p-3">정산 대상 변호사</th>
-                        <th className="p-3">구독중 멤버십</th>
-                        <th className="p-3">월 고정 징수액</th>
-                        <th className="p-3">수납 상태</th>
-                        <th className="p-3 text-right">누적 실적</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#1E293B]/30">
-                      {lawyers.map(l => {
-                        let planName = 'Basic';
-                        let planPrice = '300,000 원';
-                        if (l.matchedCount > 120) {
-                          planName = 'Team / Enterprise';
-                          planPrice = '1,500,000 원';
-                        } else if (l.matchedCount > 80) {
-                          planName = 'Pro';
-                          planPrice = '800,000 원';
-                        }
-                        return (
-                          <tr key={l.id} className="hover:bg-[#0B0F19]/20">
-                            <td className="p-3 font-bold text-white flex items-center gap-1.5">
-                              <img src={l.avatar} alt={l.name} className="w-5 h-5 rounded-full object-cover" />
-                              <span>{l.name}</span>
-                            </td>
-                            <td className="p-3">{planName}</td>
-                            <td className="p-3 font-semibold text-indigo-400">{planPrice}</td>
-                            <td className="p-3">
-                              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-2 py-0.5 rounded flex items-center gap-1 w-max">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                <span>정상수납</span>
-                              </span>
-                            </td>
-                            <td className="p-3 text-right text-slate-350">{l.matchedCount}건 매칭참여</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: SITE CONTENT CRUD OPERATIONS */}
-          {activeTab === 'contents' && (
+            )}
+  
+            {/* TAB 5: SITE CONTENT CRUD OPERATIONS */}
+            {activeTab === 'contents' && (
             <div className="space-y-6 animate-fadeIn text-left">
               
               {/* Header card */}
               <div className="bg-gradient-to-r from-indigo-950/40 to-slate-900/40 p-6 rounded-2xl border border-indigo-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
                 <div className="space-y-1">
-                  <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">PLATFORM LEGAL COLUMN CONTENT CONTROL</span>
-                  <h2 className="text-xl font-black text-white">사이트 법률 정보 콘텐츠 CRUD 제어 센터</h2>
-                  <p className="text-xs text-slate-400">의뢰인에게 신뢰를 주는 법률 칼럼 기사를 실시간 추가, 수정, 삭제 제어할 수 있습니다.</p>
+                  <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">PLATFORM MULTI-CONTENT CONTROL PANEL</span>
+                  <h2 className="text-xl font-black text-white">통합 사이트 콘텐츠 CRUD 제어 센터</h2>
+                  <p className="text-xs text-slate-400">의뢰인 전용 페이지의 주요 칼럼 기사, 고민사례 Q&A, 실제 해결 성공후기, 메인 캐러셀 배너를 실시간 제어합니다.</p>
                 </div>
                 
-                {!isCreateMode && !editingArticle && (
+                {/* New Content Create Button tailored to active subtab */}
+                {contentSubTab === 'news' && !isCreateMode && !editingArticle && (
                   <button 
                     onClick={() => {
                       setIsCreateMode(true);
@@ -1010,274 +1057,1030 @@ export default function AdminRole({
                       setFormAuthorId(lawyers[0]?.id || 'lawyer-1');
                       setFormImageUrl('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>✍️ 새로운 법률 정보 등록</span>
+                    <span>✍️ 새로운 법률 칼럼 등록</span>
+                  </button>
+                )}
+
+                {contentSubTab === 'qna' && !isQaCreateMode && !editingQa && (
+                  <button 
+                    onClick={() => {
+                      setIsQaCreateMode(true);
+                      setEditingQa(null);
+                      setQaQuestion('');
+                      setQaAnswer('');
+                      setQaCategory('코인/주식 손실');
+                      setQaAuthor('');
+                      setQaLawyerId(lawyers[0]?.id || 'lawyer-1');
+                      setQaBadge('추천 답변');
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>✍️ 새로운 고민 상담사례 등록</span>
+                  </button>
+                )}
+
+                {contentSubTab === 'reviews' && !isReviewCreateMode && !editingReview && (
+                  <button 
+                    onClick={() => {
+                      setIsReviewCreateMode(true);
+                      setEditingReview(null);
+                      setReviewTitle('');
+                      setReviewCategory('코인/주식 손실');
+                      setReviewAuthor('');
+                      setReviewOriginalDebt(5000);
+                      setReviewRemainingDebt(1000);
+                      setReviewLawyerId(lawyers[0]?.id || 'lawyer-1');
+                      setReviewContent('');
+                      setReviewTagsText('');
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>✍️ 새로운 해결 성공후기 등록</span>
+                  </button>
+                )}
+
+                {contentSubTab === 'banner' && !isBannerCreateMode && !editingBanner && (
+                  <button 
+                    onClick={() => {
+                      setIsBannerCreateMode(true);
+                      setEditingBanner(null);
+                      setBannerTitle('');
+                      setBannerSubtitle('');
+                      setBannerBadge('');
+                      setBannerColor('rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)');
+                      setBannerImage('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200');
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>✍️ 새로운 메인 배너 등록</span>
                   </button>
                 )}
               </div>
 
-              {/* Creator / Editor Form Panel */}
-              {(isCreateMode || editingArticle) && (
-                <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
-                  <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4" />
-                    <span>{isCreateMode ? '신규 법률 정보 아티클 등록' : '법률 정보 아티클 수정'}</span>
-                  </h3>
+              {/* Sub-tab navigation */}
+              <div className="flex border-b border-[#1E293B]/60 pb-3 gap-6 text-xs font-bold text-slate-400">
+                <button 
+                  onClick={() => { setContentSubTab('news'); setIsCreateMode(false); setEditingArticle(null); }}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'news' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  📰 법률 칼럼 기사 관리
+                </button>
+                <button 
+                  onClick={() => { setContentSubTab('qna'); setIsQaCreateMode(false); setEditingQa(null); }}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'qna' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  💬 고민 상담사례 관리
+                </button>
+                <button 
+                  onClick={() => { setContentSubTab('reviews'); setIsReviewCreateMode(false); setEditingReview(null); }}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'reviews' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  🏆 해결 성공후기 관리
+                </button>
+                <button 
+                  onClick={() => { setContentSubTab('banner'); setIsBannerCreateMode(false); setEditingBanner(null); }}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'banner' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  🖼️ 메인 배너 캐러셀 관리
+                </button>
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    
-                    {/* Category Select */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-slate-450 block uppercase font-bold">카테고리 분야</label>
-                      <select 
-                        value={formCategory} 
-                        onChange={(e) => setFormCategory(e.target.value)}
-                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                      >
-                        <option value="개인회생">개인회생</option>
-                        <option value="개인파산">개인파산</option>
-                        <option value="금지명령/추심">금지명령/추심</option>
-                        <option value="변제금/생계비">변제금/생계비</option>
-                      </select>
+              {/* 1. NEWS ARTICLE CRUD SECTION */}
+              {contentSubTab === 'news' && (
+                <div className="space-y-6">
+                  {/* Creator / Editor Form Panel */}
+                  {(isCreateMode || editingArticle) && (
+                    <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
+                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" />
+                        <span>{isCreateMode ? '신규 법률 정보 아티클 등록' : '법률 정보 아티클 수정'}</span>
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">카테고리 분야</label>
+                          <select 
+                            value={formCategory} 
+                            onChange={(e) => setFormCategory(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            <option value="개인회생">개인회생</option>
+                            <option value="개인파산">개인파산</option>
+                            <option value="금지명령/추심">금지명령/추심</option>
+                            <option value="변제금/생계비">변제금/생계비</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">노출용 태그 배지</label>
+                          <select 
+                            value={formBadge || ''} 
+                            onChange={(e) => setFormBadge((e.target.value as any) || null)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            <option value="">배지 없음</option>
+                            <option value="HOT">HOT (오렌지)</option>
+                            <option value="NEW">NEW (인디고)</option>
+                            <option value="BEST">BEST (에메랄드)</option>
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">칼럼 제목</label>
+                          <input 
+                            type="text" 
+                            placeholder="이목을 끄는 굵직하고 신뢰감 높은 제목을 입력하세요"
+                            value={formTitle}
+                            onChange={(e) => setFormTitle(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-650"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">작성 변호사 지정</label>
+                          <select 
+                            value={formAuthorId} 
+                            onChange={(e) => setFormAuthorId(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            {lawyers.filter(l => l.role === 'LAWYER').map(l => (
+                              <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">대표 커버 이미지 URL</label>
+                          <input 
+                            type="text" 
+                            placeholder="대표 이미지 unsplash URL 입력"
+                            value={formImageUrl}
+                            onChange={(e) => setFormImageUrl(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">기사 요약 요약문 (Excerpt)</label>
+                          <input 
+                            type="text" 
+                            placeholder="목록 화면에 노출될 2줄 이내의 매력적인 한글 요약문을 작성하세요"
+                            value={formExcerpt}
+                            onChange={(e) => setFormExcerpt(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-655"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">칼럼 상세 법률 본문 (HTML/Markdown 줄 바꿈 지원)</label>
+                          <textarea 
+                            rows={8}
+                            placeholder="의뢰인에게 해결 방안을 명확히 안내하는 고품격 전문 법률 본문 원고를 작성하세요."
+                            value={formContent}
+                            onChange={(e) => setFormContent(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 placeholder-slate-655 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-2">
+                        <button 
+                          onClick={() => {
+                            setIsCreateMode(false);
+                            setEditingArticle(null);
+                          }}
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                        >
+                          취소하기
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!formTitle.trim() || !formContent.trim() || !formExcerpt.trim()) {
+                              alert('기사 제목, 요약문, 상세 본문 내용을 모두 기입해 주세요.');
+                              return;
+                            }
+                            const targetLawyer = lawyers.find(l => l.id === formAuthorId) || lawyers[0];
+                            if (isCreateMode) {
+                              const newArt: NewsArticle = {
+                                id: `news-${Date.now()}`,
+                                title: formTitle.trim(),
+                                excerpt: formExcerpt.trim(),
+                                content: formContent.trim(),
+                                category: formCategory,
+                                badge: formBadge,
+                                authorId: formAuthorId,
+                                authorName: targetLawyer.name,
+                                authorAvatar: targetLawyer.avatar,
+                                views: 0,
+                                date: new Date().toISOString().split('T')[0],
+                                imageUrl: formImageUrl.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600'
+                              };
+                              setNewsArticles(prev => [newArt, ...prev]);
+                              alert('신규 법률 기사가 성공적으로 게재 등록되었습니다!');
+                            } else if (editingArticle) {
+                              setNewsArticles(prev => prev.map(a => a.id === editingArticle.id ? {
+                                ...a,
+                                title: formTitle.trim(),
+                                excerpt: formExcerpt.trim(),
+                                content: formContent.trim(),
+                                category: formCategory,
+                                badge: formBadge,
+                                authorId: formAuthorId,
+                                authorName: targetLawyer.name,
+                                authorAvatar: targetLawyer.avatar,
+                                imageUrl: formImageUrl.trim() || a.imageUrl
+                              } : a));
+                              alert('법률 아티클 정보가 정상적으로 수정 반영되었습니다!');
+                            }
+                            setIsCreateMode(false);
+                            setEditingArticle(null);
+                          }}
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                        >
+                          {isCreateMode ? '✍️ 기사 영구 발행' : '💾 변경 사항 저장'}
+                        </button>
+                      </div>
                     </div>
+                  )}
 
-                    {/* Badge Select */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-slate-450 block uppercase font-bold">노출용 태그 배지</label>
-                      <select 
-                        value={formBadge || ''} 
-                        onChange={(e) => setFormBadge((e.target.value as any) || null)}
-                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                      >
-                        <option value="">배지 없음</option>
-                        <option value="HOT">HOT (오렌지)</option>
-                        <option value="NEW">NEW (인디고)</option>
-                        <option value="BEST">BEST (에메랄드)</option>
-                      </select>
+                  {/* Contents Table Data Grid */}
+                  <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">커버</th>
+                            <th className="p-3">기사 분류</th>
+                            <th className="p-3">법률 아티클 기사명</th>
+                            <th className="p-3">집필 대리인</th>
+                            <th className="p-3">조회수</th>
+                            <th className="p-3">게재일</th>
+                            <th className="p-3 text-right">콘텐츠 조율</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {newsArticles.map(art => (
+                            <tr key={art.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3">
+                                <img 
+                                  src={art.imageUrl} 
+                                  alt={art.title} 
+                                  className="w-10 h-6 object-cover rounded-md border border-[#1E293B]/45" 
+                                />
+                              </td>
+                              <td className="p-3">
+                                <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded border ${
+                                  art.category === '개인회생' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                  art.category === '개인파산' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                  art.category === '금지명령/추심' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                  'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                }`}>
+                                  {art.category}
+                                </span>
+                              </td>
+                              <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate leading-normal">
+                                <div className="flex items-center gap-1.5">
+                                  {art.badge && (
+                                    <span className={`text-[7px] font-black px-1 rounded-sm text-white ${
+                                      art.badge === 'HOT' ? 'bg-orange-500' :
+                                      art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
+                                    }`}>
+                                      {art.badge}
+                                    </span>
+                                  )}
+                                  <span>{art.title}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 font-bold text-slate-300">By {art.authorName}</td>
+                              <td className="p-3 text-slate-400">{art.views.toLocaleString()}회</td>
+                              <td className="p-3 font-mono text-slate-450">{art.date}</td>
+                              <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                                <button 
+                                  onClick={() => {
+                                    setEditingArticle(art);
+                                    setIsCreateMode(false);
+                                    setFormTitle(art.title);
+                                    setFormExcerpt(art.excerpt);
+                                    setFormContent(art.content);
+                                    setFormCategory(art.category);
+                                    setFormBadge(art.badge);
+                                    setFormAuthorId(art.authorId);
+                                    setFormImageUrl(art.imageUrl);
+                                  }}
+                                  className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  수정
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (confirm(`[${art.title}] 법률 기사를 영구 삭제 처리하시겠습니까?`)) {
+                                      setNewsArticles(prev => prev.filter(a => a.id !== art.id));
+                                      alert('해당 아티클 기사가 플랫폼에서 전면 영구 삭제 처리되었습니다.');
+                                    }
+                                  }}
+                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {newsArticles.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
+                                게재된 법률 기사 정보가 존재하지 않습니다. 새로운 기사를 작성하여 게시해 보십시오.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-
-                    {/* Title Input */}
-                    <div className="md:col-span-2 space-y-1.5">
-                      <label className="text-[10px] text-slate-450 block uppercase font-bold">칼럼 제목</label>
-                      <input 
-                        type="text" 
-                        placeholder="이목을 끄는 굵직하고 신뢰감 높은 제목을 입력하세요"
-                        value={formTitle}
-                        onChange={(e) => setFormTitle(e.target.value)}
-                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-650"
-                      />
-                    </div>
-
-                    {/* Author Lawyer Select */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-slate-450 block uppercase font-bold">작성 변호사 지정</label>
-                      <select 
-                        value={formAuthorId} 
-                        onChange={(e) => setFormAuthorId(e.target.value)}
-                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                      >
-                        {lawyers.filter(l => l.role === 'LAWYER').map(l => (
-                          <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Cover Image URL */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-slate-450 block uppercase font-bold">대표 커버 이미지 URL</label>
-                      <input 
-                        type="text" 
-                        placeholder="대표 이미지 unsplash URL 입력"
-                        value={formImageUrl}
-                        onChange={(e) => setFormImageUrl(e.target.value)}
-                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                      />
-                    </div>
-
-                    {/* Excerpt Input */}
-                    <div className="md:col-span-2 space-y-1.5">
-                      <label className="text-[10px] text-slate-450 block uppercase font-bold">기사 요약 요약문 (Excerpt)</label>
-                      <input 
-                        type="text" 
-                        placeholder="목록 화면에 노출될 2줄 이내의 매력적인 한글 요약문을 작성하세요"
-                        value={formExcerpt}
-                        onChange={(e) => setFormExcerpt(e.target.value)}
-                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-655"
-                      />
-                    </div>
-
-                    {/* Main Content Body */}
-                    <div className="md:col-span-2 space-y-1.5">
-                      <label className="text-[10px] text-slate-450 block uppercase font-bold">칼럼 상세 법률 본문 (HTML/Markdown 줄 바꿈 지원)</label>
-                      <textarea 
-                        rows={10}
-                        placeholder="의뢰인에게 해결 방안을 명확히 안내하는 고품격 전문 법률 본문 원고를 작성하세요."
-                        value={formContent}
-                        onChange={(e) => setFormContent(e.target.value)}
-                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 placeholder-slate-655 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 justify-end pt-2">
-                    <button 
-                      onClick={() => {
-                        setIsCreateMode(false);
-                        setEditingArticle(null);
-                      }}
-                      className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
-                    >
-                      취소하기
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (!formTitle.trim() || !formContent.trim() || !formExcerpt.trim()) {
-                          alert('기사 제목, 요약문, 상세 본문 내용을 모두 기입해 주세요.');
-                          return;
-                        }
-
-                        const targetLawyer = lawyers.find(l => l.id === formAuthorId) || lawyers[0];
-
-                        if (isCreateMode) {
-                          const newArt: NewsArticle = {
-                            id: `news-${Date.now()}`,
-                            title: formTitle.trim(),
-                            excerpt: formExcerpt.trim(),
-                            content: formContent.trim(),
-                            category: formCategory,
-                            badge: formBadge,
-                            authorId: formAuthorId,
-                            authorName: targetLawyer.name,
-                            authorAvatar: targetLawyer.avatar,
-                            views: 0,
-                            date: new Date().toISOString().split('T')[0],
-                            imageUrl: formImageUrl.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600'
-                          };
-                          setNewsArticles(prev => [newArt, ...prev]);
-                          alert('신규 법률 기사가 성공적으로 게재 등록되었습니다!');
-                        } else if (editingArticle) {
-                          setNewsArticles(prev => prev.map(a => a.id === editingArticle.id ? {
-                            ...a,
-                            title: formTitle.trim(),
-                            excerpt: formExcerpt.trim(),
-                            content: formContent.trim(),
-                            category: formCategory,
-                            badge: formBadge,
-                            authorId: formAuthorId,
-                            authorName: targetLawyer.name,
-                            authorAvatar: targetLawyer.avatar,
-                            imageUrl: formImageUrl.trim() || a.imageUrl
-                          } : a));
-                          alert('법률 아티클 정보가 정상적으로 수정 반영되었습니다!');
-                        }
-
-                        setIsCreateMode(false);
-                        setEditingArticle(null);
-                      }}
-                      className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
-                    >
-                      {isCreateMode ? '✍️ 기사 영구 발행' : '💾 변경 사항 저장'}
-                    </button>
                   </div>
                 </div>
               )}
 
-              {/* Contents Table Data Grid */}
-              <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
-                        <th className="p-3">커버</th>
-                        <th className="p-3">기사 분류</th>
-                        <th className="p-3">법률 아티클 기사명</th>
-                        <th className="p-3">집필 대리인</th>
-                        <th className="p-3">조회수</th>
-                        <th className="p-3">게재일</th>
-                        <th className="p-3 text-right">콘텐츠 조율</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#1E293B]/30">
-                      {newsArticles.map(art => (
-                        <tr key={art.id} className="hover:bg-[#0B0F19]/25 transition-colors">
-                          <td className="p-3">
-                            <img 
-                              src={art.imageUrl} 
-                              alt={art.title} 
-                              className="w-10 h-6 object-cover rounded-md border border-[#1E293B]/45" 
-                            />
-                          </td>
-                          <td className="p-3">
-                            <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded border ${
-                              art.category === '개인회생' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                              art.category === '개인파산' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                              art.category === '금지명령/추심' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                              'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            }`}>
-                              {art.category}
-                            </span>
-                          </td>
-                          <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate leading-normal">
-                            <div className="flex items-center gap-1.5">
-                              {art.badge && (
-                                <span className={`text-[7px] font-black px-1 rounded-sm text-white ${
-                                  art.badge === 'HOT' ? 'bg-orange-500' :
-                                  art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
-                                }`}>
-                                  {art.badge}
-                                </span>
-                              )}
-                              <span>{art.title}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 font-bold text-slate-300">By {art.authorName}</td>
-                          <td className="p-3 text-slate-400">{art.views.toLocaleString()}회</td>
-                          <td className="p-3 font-mono text-slate-450">{art.date}</td>
-                          <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
-                            <button 
-                              onClick={() => {
-                                setEditingArticle(art);
-                                setIsCreateMode(false);
-                                setFormTitle(art.title);
-                                setFormExcerpt(art.excerpt);
-                                setFormContent(art.content);
-                                setFormCategory(art.category);
-                                setFormBadge(art.badge);
-                                setFormAuthorId(art.authorId);
-                                setFormImageUrl(art.imageUrl);
-                              }}
-                              className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all"
-                            >
-                              수정
-                            </button>
-                            <button 
-                              onClick={() => {
-                                if (confirm(`[${art.title}] 법률 기사를 영구 삭제 처리하시겠습니까?`)) {
-                                  setNewsArticles(prev => prev.filter(a => a.id !== art.id));
-                                  alert('해당 아티클 기사가 플랫폼에서 전면 영구 삭제 처리되었습니다.');
-                                }
-                              }}
-                              className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all"
-                            >
-                              삭제
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+              {/* 2. CLIENT Q&A CRUD SECTION */}
+              {contentSubTab === 'qna' && (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Creator / Editor Form Panel */}
+                  {(isQaCreateMode || editingQa) && (
+                    <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
+                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" />
+                        <span>{isQaCreateMode ? '신규 고민 상담사례 등록' : '고민 상담사례 수정'}</span>
+                      </h3>
 
-                      {newsArticles.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
-                            게재된 법률 기사 정보가 존재하지 않습니다. 새로운 기사를 작성하여 게시해 보십시오.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">카테고리 분야</label>
+                          <select 
+                            value={qaCategory} 
+                            onChange={(e) => setQaCategory(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            <option value="코인/주식 손실">코인/주식 손실</option>
+                            <option value="급여 압류">급여 압류</option>
+                            <option value="프리랜서 회생">프리랜서 회생</option>
+                            <option value="배우자 재산">배우자 재산</option>
+                            <option value="전세사기 피해">전세사기 피해</option>
+                            <option value="최근 대출 회생">최근 대출 회생</option>
+                            <option value="자영업자 회생">자영업자 회생</option>
+                            <option value="전문직 면허보존">전문직 면허보존</option>
+                            <option value="추심 차단">추심 차단</option>
+                            <option value="개인파산 면책">개인파산 면책</option>
+                            <option value="일용직 소득증빙">일용직 소득증빙</option>
+                            <option value="보정권고 지연">보정권고 지연</option>
+                            <option value="해외선물/주식">해외선물/주식</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">노출용 상담사례 배지</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: 추천 답변, 실시간 답변, 전문가 소견 등"
+                            value={qaBadge}
+                            onChange={(e) => setQaBadge(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">의뢰 가명 작성자</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: 김*현 (직장인)"
+                            value={qaAuthor}
+                            onChange={(e) => setQaAuthor(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">대표 집필 변호사</label>
+                          <select 
+                            value={qaLawyerId} 
+                            onChange={(e) => setQaLawyerId(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            {lawyers.filter(l => l.role === 'LAWYER').map(l => (
+                              <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">의뢰인 질문 (Question)</label>
+                          <input 
+                            type="text" 
+                            placeholder="의뢰인의 핵심 고민 질문 내용을 입력하세요"
+                            value={qaQuestion}
+                            onChange={(e) => setQaQuestion(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">변호사 답변 상세 (Answer)</label>
+                          <textarea 
+                            rows={6}
+                            placeholder="변호사의 친절하고 논리정연한 법률 검토 답변을 입력하세요."
+                            value={qaAnswer}
+                            onChange={(e) => setQaAnswer(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 leading-relaxed"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-2">
+                        <button 
+                          onClick={() => {
+                            setIsQaCreateMode(false);
+                            setEditingQa(null);
+                          }}
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                        >
+                          취소하기
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!qaQuestion.trim() || !qaAnswer.trim() || !qaAuthor.trim()) {
+                              alert('질문, 답변 및 의뢰인 작성자 가명을 모두 기입해 주세요.');
+                              return;
+                            }
+                            const targetLawyer = lawyers.find(l => l.id === qaLawyerId) || lawyers[0];
+                            if (isQaCreateMode) {
+                              const newQa: ClientQA = {
+                                id: `qa-${Date.now()}`,
+                                category: qaCategory,
+                                question: qaQuestion.trim(),
+                                author: qaAuthor.trim(),
+                                answer: qaAnswer.trim(),
+                                lawyerName: targetLawyer.name,
+                                lawyerAvatar: targetLawyer.avatar,
+                                badge: qaBadge.trim() || '실시간 답변'
+                              };
+                              setQas(prev => [newQa, ...prev]);
+                              alert('새로운 상담사례 Q&A가 정상 등록되었습니다!');
+                            } else if (editingQa) {
+                              setQas(prev => prev.map(q => q.id === editingQa.id ? {
+                                ...q,
+                                category: qaCategory,
+                                question: qaQuestion.trim(),
+                                author: qaAuthor.trim(),
+                                answer: qaAnswer.trim(),
+                                lawyerName: targetLawyer.name,
+                                lawyerAvatar: targetLawyer.avatar,
+                                badge: qaBadge.trim() || q.badge
+                              } : q));
+                              alert('상담사례 정보가 성공적으로 변경되었습니다!');
+                            }
+                            setIsQaCreateMode(false);
+                            setEditingQa(null);
+                          }}
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                        >
+                          {isQaCreateMode ? '✍️ 상담사례 발행' : '💾 변경 사항 저장'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Q&A Data Grid */}
+                  <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">분류</th>
+                            <th className="p-3">질문 헤드라인</th>
+                            <th className="p-3">의뢰 가명</th>
+                            <th className="p-3">답변인</th>
+                            <th className="p-3">배지</th>
+                            <th className="p-3 text-right">콘텐츠 조율</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {qas.map(qa => (
+                            <tr key={qa.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3 shrink-0 whitespace-nowrap">
+                                <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[8px] font-extrabold px-2 py-0.5 rounded">
+                                  {qa.category}
+                                </span>
+                              </td>
+                              <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate">{qa.question}</td>
+                              <td className="p-3 text-slate-400">{qa.author}</td>
+                              <td className="p-3 text-slate-300 font-bold">{qa.lawyerName}</td>
+                              <td className="p-3">
+                                <span className="bg-slate-800 text-slate-400 text-[8px] px-1.5 py-0.2 rounded font-semibold border border-slate-700">
+                                  {qa.badge}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                                <button 
+                                  onClick={() => {
+                                    setEditingQa(qa);
+                                    setIsQaCreateMode(false);
+                                    setQaQuestion(qa.question);
+                                    setQaAnswer(qa.answer);
+                                    setQaCategory(qa.category);
+                                    setQaAuthor(qa.author);
+                                    setQaBadge(qa.badge);
+                                    const matchingLawyer = lawyers.find(l => l.name === qa.lawyerName);
+                                    setQaLawyerId(matchingLawyer ? matchingLawyer.id : (lawyers[0]?.id || 'lawyer-1'));
+                                  }}
+                                  className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  수정
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (confirm(`고민사례 [${qa.question}] 건을 영구 삭제 처리하시겠습니까?`)) {
+                                      setQas(prev => prev.filter(q => q.id !== qa.id));
+                                      alert('해당 상담사례 데이터가 플랫폼에서 영구 배제 삭제되었습니다.');
+                                    }
+                                  }}
+                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {qas.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
+                                등록된 실시간 고민 Q&A 데이터가 없습니다. 새로운 상담사례를 등록해 주세요.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* 3. SUCCESS REVIEWS CRUD SECTION */}
+              {contentSubTab === 'reviews' && (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Creator / Editor Form Panel */}
+                  {(isReviewCreateMode || editingReview) && (
+                    <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
+                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" />
+                        <span>{isReviewCreateMode ? '신규 채무 해결 성공후기 등록' : '채무 해결 성공후기 수정'}</span>
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">후기 대리인 변호사</label>
+                          <select 
+                            value={reviewLawyerId} 
+                            onChange={(e) => setReviewLawyerId(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            {lawyers.filter(l => l.role === 'LAWYER').map(l => (
+                              <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">의뢰 분야 카테고리</label>
+                          <select 
+                            value={reviewCategory} 
+                            onChange={(e) => setReviewCategory(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            <option value="코인/주식 손실">코인/주식 손실</option>
+                            <option value="신용카드 연체">신용카드 연체</option>
+                            <option value="개인파산">개인파산</option>
+                            <option value="연대보증 채무">연대보증 채무</option>
+                            <option value="프리랜서 회생">프리랜서 회생</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">의뢰인 가명 및 인적 (Author)</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: 홍*동 님 (30대 직장인)"
+                            value={reviewAuthor}
+                            onChange={(e) => setReviewAuthor(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">기존 채무총액 (원금, 만 원 단위)</label>
+                          <input 
+                            type="number" 
+                            placeholder="예: 8000"
+                            value={reviewOriginalDebt}
+                            onChange={(e) => setReviewOriginalDebt(parseInt(e.target.value) || 0)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">조정 후 갚을 원금 (만 원 단위, 파산 면책은 0)</label>
+                          <input 
+                            type="number" 
+                            placeholder="예: 1200"
+                            value={reviewRemainingDebt}
+                            onChange={(e) => setReviewRemainingDebt(parseInt(e.target.value) || 0)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">해시태그 키워드들 (쉼표로 구분 입력)</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: #코인실패, #추심동결, #탕감율85%"
+                            value={reviewTagsText}
+                            onChange={(e) => setReviewTagsText(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-600"
+                          />
+                        </div>
+
+                        <div className="md:col-span-3 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">성공후기 매력적인 제목</label>
+                          <input 
+                            type="text" 
+                            placeholder="의뢰인의 극적인 탕감 성과를 한눈에 보여주는 임팩트 있는 제목"
+                            value={reviewTitle}
+                            onChange={(e) => setReviewTitle(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="md:col-span-3 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">성공후기 상세 서술 원고 (Content)</label>
+                          <textarea 
+                            rows={6}
+                            placeholder="사건 수임 전 빚 독촉 상황, 소명 방향성, 탕감 성과 및 최종 대리인에 대한 감사 내용 등을 실감나게 서술하세요."
+                            value={reviewContent}
+                            onChange={(e) => setReviewContent(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 leading-relaxed"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-2">
+                        <button 
+                          onClick={() => {
+                            setIsReviewCreateMode(false);
+                            setEditingReview(null);
+                          }}
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                        >
+                          취소하기
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!reviewTitle.trim() || !reviewContent.trim() || !reviewAuthor.trim()) {
+                              alert('후기 제목, 내용 및 의뢰인 작성자명을 모두 기입해 주세요.');
+                              return;
+                            }
+                            const targetLawyer = lawyers.find(l => l.id === reviewLawyerId) || lawyers[0];
+                            const cleanTags = reviewTagsText.trim()
+                              ? reviewTagsText.split(/[,，\s]+/).map(t => t.startsWith('#') ? t.trim() : `#${t.trim()}`).filter(t => t !== '#')
+                              : ["#도산성공", "#부채탕감"];
+
+                            if (isReviewCreateMode) {
+                              const newRev: SuccessReview = {
+                                id: `rev-${Date.now()}`,
+                                title: reviewTitle.trim(),
+                                category: reviewCategory,
+                                author: reviewAuthor.trim(),
+                                originalDebt: reviewOriginalDebt,
+                                remainingDebt: reviewRemainingDebt,
+                                lawyerId: reviewLawyerId,
+                                lawyerName: targetLawyer.name,
+                                lawyerAvatar: targetLawyer.avatar,
+                                content: reviewContent.trim(),
+                                tags: cleanTags
+                              };
+                              setReviews(prev => [newRev, ...prev]);
+                              alert('새로운 도산 성공후기가 공식 게재되었습니다!');
+                            } else if (editingReview) {
+                              setReviews(prev => prev.map(r => r.id === editingReview.id ? {
+                                ...r,
+                                title: reviewTitle.trim(),
+                                category: reviewCategory,
+                                author: reviewAuthor.trim(),
+                                originalDebt: reviewOriginalDebt,
+                                remainingDebt: reviewRemainingDebt,
+                                lawyerId: reviewLawyerId,
+                                lawyerName: targetLawyer.name,
+                                lawyerAvatar: targetLawyer.avatar,
+                                content: reviewContent.trim(),
+                                tags: cleanTags
+                              } : r));
+                              alert('성공후기 정보가 성공적으로 수정되었습니다!');
+                            }
+                            setIsReviewCreateMode(false);
+                            setEditingReview(null);
+                          }}
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                        >
+                          {isReviewCreateMode ? '✍️ 성공후기 게재' : '💾 변경 사항 저장'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reviews Data Grid */}
+                  <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">후기 분류</th>
+                            <th className="p-3">성공후기 제목 헤드라인</th>
+                            <th className="p-3">채무 탕감 실적 (전/후)</th>
+                            <th className="p-3">수임 대리인</th>
+                            <th className="p-3">의뢰 가명</th>
+                            <th className="p-3">키워드 태그</th>
+                            <th className="p-3 text-right">콘텐츠 조율</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {reviews.map(rev => {
+                            const isTotalFree = rev.remainingDebt === 0;
+                            const cutPct = Math.round(((rev.originalDebt - rev.remainingDebt) / rev.originalDebt) * 100);
+                            return (
+                              <tr key={rev.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                                <td className="p-3 shrink-0 whitespace-nowrap">
+                                  <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[8px] font-extrabold px-2 py-0.5 rounded">
+                                    {rev.category}
+                                  </span>
+                                </td>
+                                <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span>{rev.title}</span>
+                                    <span className="text-[10px] text-emerald-400 font-bold font-mono">원금 {cutPct}% 면제</span>
+                                  </div>
+                                </td>
+                                <td className="p-3 font-bold text-slate-200 font-mono">
+                                  {rev.originalDebt.toLocaleString()}만 ➔ {isTotalFree ? '100% 탕감(전액면제)' : `${rev.remainingDebt.toLocaleString()}만`}
+                                </td>
+                                <td className="p-3 text-slate-350">{rev.lawyerName}</td>
+                                <td className="p-3 text-slate-450">{rev.author}</td>
+                                <td className="p-3 max-w-[120px] truncate text-[9px] text-slate-455">
+                                  {rev.tags.join(' ')}
+                                </td>
+                                <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                                  <button 
+                                    onClick={() => {
+                                      setEditingReview(rev);
+                                      setIsReviewCreateMode(false);
+                                      setReviewTitle(rev.title);
+                                      setReviewCategory(rev.category);
+                                      setReviewAuthor(rev.author);
+                                      setReviewOriginalDebt(rev.originalDebt);
+                                      setReviewRemainingDebt(rev.remainingDebt);
+                                      setReviewLawyerId(rev.lawyerId);
+                                      setReviewContent(rev.content);
+                                      setReviewTagsText(rev.tags.join(', '));
+                                    }}
+                                    className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                  >
+                                    수정
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (confirm(`성공후기 [${rev.title}] 건을 영구 삭제 처리하시겠습니까?`)) {
+                                        setReviews(prev => prev.filter(r => r.id !== rev.id));
+                                        alert('해당 성공후기 포스트가 영구 삭제 처리되었습니다.');
+                                      }
+                                    }}
+                                    className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                  >
+                                    삭제
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {reviews.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
+                                등록된 채무 해결 성공후기 콘텐츠가 없습니다. 새로운 리얼 후기를 등록해 보세요.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. MAIN BANNER CRUD SECTION */}
+              {contentSubTab === 'banner' && (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Creator / Editor Form Panel */}
+                  {(isBannerCreateMode || editingBanner) && (
+                    <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
+                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" />
+                        <span>{isBannerCreateMode ? '신규 메인배너 등록' : '메인배너 수정'}</span>
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">노출용 얇은 배지명</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: 신속한 독촉 차단, 투자 실패 전문 등"
+                            value={bannerBadge}
+                            onChange={(e) => setBannerBadge(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">배너 백그라운드 그라데이션 색상 (CSS gradient 값)</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)"
+                            value={bannerColor}
+                            onChange={(e) => setBannerColor(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-mono text-[11px]"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">배너 굵은 제목</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: 빚 독촉의 고통, 오늘 끊을 수 있습니다."
+                            value={bannerTitle}
+                            onChange={(e) => setBannerTitle(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">배너 커버 이미지 unsplash 주소</label>
+                          <input 
+                            type="text" 
+                            placeholder="예: https://images.unsplash.com/photo-1589829545856-d10d557cf95f?..."
+                            value={bannerImage}
+                            onChange={(e) => setBannerImage(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">배너 상세 설명 부제</label>
+                          <textarea 
+                            rows={3}
+                            placeholder="배너 타이틀 아래에 출력될 2줄 분량의 호소력 짙은 문장을 작성해 주세요."
+                            value={bannerSubtitle}
+                            onChange={(e) => setBannerSubtitle(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 leading-relaxed"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-2">
+                        <button 
+                          onClick={() => {
+                            setIsBannerCreateMode(false);
+                            setEditingBanner(null);
+                          }}
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                        >
+                          취소하기
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!bannerTitle.trim() || !bannerSubtitle.trim()) {
+                              alert('배너 제목과 부제 설명을 작성해 주세요.');
+                              return;
+                            }
+                            if (isBannerCreateMode) {
+                              const newBann: MainBanner = {
+                                id: `banner-${Date.now()}`,
+                                title: bannerTitle.trim(),
+                                subtitle: bannerSubtitle.trim(),
+                                badge: bannerBadge.trim() || '이벤트 배너',
+                                color: bannerColor.trim() || 'rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)',
+                                image: bannerImage.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200'
+                              };
+                              setBanners(prev => [...prev, newBann]);
+                              alert('새로운 메인 배너 캐러셀 슬라이드가 추가 등록되었습니다!');
+                            } else if (editingBanner) {
+                              setBanners(prev => prev.map(b => b.id === editingBanner.id ? {
+                                ...b,
+                                title: bannerTitle.trim(),
+                                subtitle: bannerSubtitle.trim(),
+                                badge: bannerBadge.trim() || b.badge,
+                                color: bannerColor.trim() || b.color,
+                                image: bannerImage.trim() || b.image
+                              } : b));
+                              alert('메인 배너 캐러셀 설정이 완료되었습니다!');
+                            }
+                            setIsBannerCreateMode(false);
+                            setEditingBanner(null);
+                          }}
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                        >
+                          {isBannerCreateMode ? '✍️ 배너 등록' : '💾 변경 사항 저장'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Banners Data Grid */}
+                  <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">배경 썸네일</th>
+                            <th className="p-3">태그</th>
+                            <th className="p-3">배너 헤드라인 대문구</th>
+                            <th className="p-3">설명 소문구</th>
+                            <th className="p-3">백그라운드 그라데이션 필터</th>
+                            <th className="p-3 text-right">콘텐츠 조율</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {banners.map(bann => (
+                            <tr key={bann.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3">
+                                <img 
+                                  src={bann.image} 
+                                  alt={bann.title} 
+                                  className="w-12 h-8 object-cover rounded-md border border-[#1E293B]/45" 
+                                />
+                              </td>
+                              <td className="p-3">
+                                <span className="bg-slate-800 text-slate-350 text-[9px] px-2 py-0.5 rounded border border-slate-700 font-semibold whitespace-nowrap">
+                                  {bann.badge}
+                                </span>
+                              </td>
+                              <td className="p-3 font-bold text-slate-100 max-w-[150px] truncate">{bann.title}</td>
+                              <td className="p-3 text-slate-400 max-w-[150px] truncate">{bann.subtitle}</td>
+                              <td className="p-3 font-mono text-[9px] text-slate-455 max-w-[120px] truncate">{bann.color}</td>
+                              <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                                <button 
+                                  onClick={() => {
+                                    setEditingBanner(bann);
+                                    setIsBannerCreateMode(false);
+                                    setBannerTitle(bann.title);
+                                    setBannerSubtitle(bann.subtitle);
+                                    setBannerBadge(bann.badge);
+                                    setBannerColor(bann.color);
+                                    setBannerImage(bann.image);
+                                  }}
+                                  className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  수정
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (confirm(`배너 [${bann.title}] 슬라이드를 영구 삭제하시겠습니까?`)) {
+                                      setBanners(prev => prev.filter(b => b.id !== bann.id));
+                                      alert('해당 배너 슬라이드가 캐러셀 회전에서 배제되었습니다.');
+                                    }
+                                  }}
+                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {banners.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
+                                게재된 캐러셀 배너가 존재하지 않습니다. 새로운 배너를 작성하여 활성화해 보십시오.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -1285,7 +2088,7 @@ export default function AdminRole({
 
         {/* Footer */}
         <footer className="bg-[#161B26] border-t border-[#1E293B]/60 text-center py-4 text-[10px] text-slate-500">
-          <p>© 2026 회생톡 도산 전문 어드민 관리 센터. All rights reserved.</p>
+          <p>© 2026 회생 및 파산 전문 어드민 관리센터. All rights reserved.</p>
         </footer>
 
       </div>

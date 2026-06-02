@@ -4,9 +4,12 @@ import {
   initialConsultRequests, 
   initialConsultMessages, 
   initialCases,
-  mockNewsArticles
+  mockNewsArticles,
+  initialQAs,
+  initialReviews,
+  initialBanners
 } from './data';
-import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle } from './types';
+import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner } from './types';
 import ClientRole from './components/ClientRole';
 import LawyerRole from './components/LawyerRole';
 import AdminRole from './components/AdminRole';
@@ -36,10 +39,37 @@ export default function App() {
     return savedNews ? JSON.parse(savedNews) : mockNewsArticles;
   });
 
-  // Sync news to localStorage
+  const [qas, setQas] = useState<ClientQA[]>(() => {
+    const saved = localStorage.getItem('legal_crm_qas');
+    return saved ? JSON.parse(saved) : initialQAs;
+  });
+
+  const [reviews, setReviews] = useState<SuccessReview[]>(() => {
+    const saved = localStorage.getItem('legal_crm_reviews');
+    return saved ? JSON.parse(saved) : initialReviews;
+  });
+
+  const [banners, setBanners] = useState<MainBanner[]>(() => {
+    const saved = localStorage.getItem('legal_crm_banners');
+    return saved ? JSON.parse(saved) : initialBanners;
+  });
+
+  // Sync states to localStorage
   useEffect(() => {
     localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
   }, [newsArticles]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_qas', JSON.stringify(qas));
+  }, [qas]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_reviews', JSON.stringify(reviews));
+  }, [reviews]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_banners', JSON.stringify(banners));
+  }, [banners]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -135,6 +165,10 @@ export default function App() {
       localStorage.removeItem('legal_crm_messages');
       localStorage.removeItem('legal_crm_cases');
       localStorage.removeItem('legal_crm_lawyers');
+      localStorage.removeItem('legal_crm_news');
+      localStorage.removeItem('legal_crm_qas');
+      localStorage.removeItem('legal_crm_reviews');
+      localStorage.removeItem('legal_crm_banners');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
       setCases(initialCases);
@@ -157,6 +191,12 @@ export default function App() {
             onAddMessage={handleAddMessage}
             newsArticles={newsArticles}
             setNewsArticles={setNewsArticles}
+            qas={qas}
+            setQas={setQas}
+            reviews={reviews}
+            setReviews={setReviews}
+            banners={banners}
+            setBanners={setBanners}
           />
         ) : currentRole === 'lawyer' ? (
           <LawyerRole 
@@ -178,6 +218,12 @@ export default function App() {
             setLawyers={setLawyers}
             newsArticles={newsArticles}
             setNewsArticles={setNewsArticles}
+            qas={qas}
+            setQas={setQas}
+            reviews={reviews}
+            setReviews={setReviews}
+            banners={banners}
+            setBanners={setBanners}
           />
         )}
       </div>

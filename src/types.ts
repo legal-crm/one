@@ -520,3 +520,38 @@ export interface NewsArticle {
   date: string;
   imageUrl: string;
 }
+
+export interface ClientQA {
+  id: string;
+  category: string;
+  question: string;
+  author: string;
+  answer: string;
+  lawyerName: string;
+  lawyerAvatar: string;
+  badge: string;
+}
+
+export interface SuccessReview {
+  id: string;
+  title: string;
+  category: string;
+  author: string;
+  originalDebt: number;
+  remainingDebt: number;
+  lawyerId: string;
+  lawyerName: string;
+  lawyerAvatar: string;
+  content: string;
+  tags: string[];
+}
+
+export interface MainBanner {
+  id: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  color: string;
+  image: string;
+}
+

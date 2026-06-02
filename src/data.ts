@@ -1,4 +1,4 @@
-import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle } from './types';
+import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner } from './types';
 
 export const mockLawFirms: LawFirm[] = [
   { id: 'firm-1', name: '법무법인 한빛', region: '서울 서초구' },
@@ -702,3 +702,425 @@ export const mockNewsArticles: NewsArticle[] = [
   }
 ];
 
+export const initialBanners: MainBanner[] = [
+  {
+    id: 'banner-1',
+    title: "빚 독촉의 고통, 오늘 끊을 수 있습니다.",
+    subtitle: "개인회생 신청 즉시 법원의 금지명령으로 빗발치는 독촉 전화, 추심 방문, 급여 압류가 전면 금지됩니다. 늦기 전에 골든타임을 확보하세요.",
+    badge: "신속한 독촉 차단",
+    color: "rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)",
+    image: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200"
+  },
+  {
+    id: 'banner-2',
+    title: "코인·주식 투자 실패도 최대 90% 탕감 가능",
+    subtitle: "단순 과장 광고가 아닙니다. 최근 개정된 회생 법원 실무 기준에 맞추어 투자 손실을 최소화하는 개인회생 계획안을 수립합니다.",
+    badge: "투자 실패 부채 전문",
+    color: "rgba(30, 27, 75, 0.93), rgba(15, 23, 42, 0.88)",
+    image: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&q=80&w=1200"
+  },
+  {
+    id: 'banner-3',
+    title: "알선료 수수료 0%! 투명한 도산 전문 변호사 매칭",
+    subtitle: "본 플랫폼은 불법 사무장 브로커를 철저히 배제하고 법률적 책임이 보장된 정식 변호사단으로만 투명하게 운영됩니다.",
+    badge: "변호사법 제34조 준수",
+    color: "rgba(15, 23, 42, 0.95), rgba(23, 37, 84, 0.9)",
+    image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=1200"
+  }
+];
+
+export const initialQAs: ClientQA[] = [
+  {
+    id: 'qa-1',
+    category: '코인/주식 손실',
+    question: '코인 투자 실패로 진 빚 8천만 원, 회생 진행 시 탕감이 가능할까요?',
+    author: '김*현 (직장인)',
+    answer: '주식이나 가상화폐 투자로 인한 손실도 개인회생 신청 대상이 됩니다. 특히 서울회생법원의 경우 실무준칙에 의거하여 투자 손실금 자체를 청산가치에 강제로 반영하지 않도록 유예해주고 있어 변제액을 낮추는 데 매우 유리합니다. 다만 추가 대출 시점이나 최근 채무 비율에 따라 변동 소지가 있으므로 전문 소명서 준비가 관건입니다.',
+    lawyerName: '이소민 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256',
+    badge: '추천 답변'
+  },
+  {
+    id: 'qa-2',
+    category: '급여 압류',
+    question: '회사를 다니는 도중 월급 가압류 예정 통지서를 받았습니다. 직장에 소문 안 나고 차단할 수 있나요?',
+    author: '박*수 (사무직)',
+    answer: '법률 대리인을 통해 개인회생 신청서와 동시에 "금지명령 및 중지명령"을 법원에 접수하면 대개 3~7일 내에 결정문이 발령됩니다. 금지명령이 채권자에게 송달되면 급여 압류 및 독촉 행위가 법적으로 일절 금지됩니다. 직장에 직접 압류 협박 전화가 오는 것도 원천 차단되므로 신속히 개입하셔야 합니다.',
+    lawyerName: '김우진 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256',
+    badge: '실시간 답변'
+  },
+  {
+    id: 'qa-3',
+    category: '프리랜서 회생',
+    question: '배달 대행 프리랜서인데 4대 보험이 안 되어도 개인회생 신청이 가능한가요?',
+    author: '이*우 (플랫폼 노동자)',
+    answer: '네, 가능합니다. 개인회생은 고용 형태(정규직, 계약직, 일용직, 프리랜서)에 상관없이 정기적이고 확실한 수입(최저생계비 이상)이 있음을 소득 서류로 입증할 수 있다면 신청이 가능합니다. 3.3% 원천징수 영수증이나 입금 계좌 내역, 플랫폼 활동 정산 내역 등을 토대로 평균 소득을 산출하여 개시를 받아낼 수 있습니다.',
+    lawyerName: '최덕중 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256',
+    badge: '전문가 소견'
+  },
+  {
+    id: 'qa-4',
+    category: '배우자 재산',
+    question: '배우자 명의의 아파트가 있으면 제 개인회생 진행 시 청산가치에 전액 반영되나요?',
+    author: '최*민 (자영업)',
+    answer: '과거에는 배우자 명의의 재산 형성에 본인의 기여 유무와 관계없이 무조건 50%를 신청인의 자산 청산가치로 가산하게 하였으나, 최근 서울/수원 등 도산전문법원의 실무준칙에 의거하여 배우자의 고유재산(특유재산)임이 입증되거나 신청인이 대금을 보탠 내역이 명백하지 않은 경우에는 청산가치 합산에서 전면 배제되는 것이 원칙입니다. 명확한 기여도 분석과 서면 소명이 관건입니다.',
+    lawyerName: '한지민 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256',
+    badge: '실시간 답변'
+  },
+  {
+    id: 'qa-5',
+    category: '전세사기 피해',
+    question: '빌라 전세사기를 당해 1억 5천만 원의 전세대출금을 갚을 수 없습니다. 신용유의자 등록을 막을 수 있나요?',
+    author: '장*영 (무직자)',
+    answer: '네, 정부의 전세사기 피해자 특별법 지원 대상으로 결정되시면 독촉 연체 이자가 유예되며, 개인회생 시 최단 24개월 변제안 등 파격적인 특례를 누릴 수 있습니다. 선임 즉시 독촉 전화 차단 및 법원의 금지명령을 신청하여 신용유의자 등록과 가압류 절차를 실시간 완벽히 차단하고, 반환 불가능한 보증금 대출을 안전하게 탕감 대상으로 포섭할 수 있습니다.',
+    lawyerName: '오윤아 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
+    badge: '긴급 지원'
+  },
+  {
+    id: 'qa-6',
+    category: '최근 대출 회생',
+    question: '최근 6개월 이내에 빌린 대출 비중이 전체 채무의 70%가 넘습니다. 회생 기각 사유가 되나요?',
+    author: '윤*현 (프리랜서)',
+    answer: '단순히 최근 대출이 많다고 기각되진 않으나, 법원은 대출 자금의 고의적인 은닉이나 불성실 신청을 강하게 의심합니다. 따라서 대출금 수령 시점부터의 계좌 흐름을 1원 단위까지 추적 분석하여 기존 채무 대환(대동소이 돌려막기), 긴급 치료비, 소상공인 사업장 임대료 등 불가피하게 사용했음을 정밀 서류로 완벽 소명해야 기각을 원천 방어하고 정상 인가를 도출할 수 있습니다.',
+    lawyerName: '박성현 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=256',
+    badge: '핵심 답변'
+  },
+  {
+    id: 'qa-7',
+    category: '자영업자 회생',
+    question: '식당 운영 중 코로나 시기 대출과 월세 연체로 3억 원의 빚이 생겼습니다. 폐업하지 않고 회생이 되나요?',
+    author: '김*호 (식당 운영)',
+    answer: '네, 영업을 계속 정상 영위하면서 빚만 나누어 갚는 자영업자 특화 영업소득자 개인회생 제도가 있습니다. 카드 단말기 매출, 현금영수증 발행 내역, 부가세 납부원장 등을 과학적으로 정리하여 미래 기대 매출을 입증하고, 월세 및 임직원 급여 등 필수 경영 경비를 제외한 실소득을 기준으로 3~5년간 성실 분납하는 변제 솔루션이 가동됩니다.',
+    lawyerName: '정민우 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=256',
+    badge: '영업 특화'
+  },
+  {
+    id: 'qa-8',
+    category: '전문직 면허보존',
+    question: '개원 중인 한의사인데 병원 자금난으로 신용대출 5억 원을 졌습니다. 한의사 면허가 취소되나요?',
+    author: '이*민 (한의사)',
+    answer: '전혀 염려하지 않으셔도 됩니다. 개인회생은 법률적으로 채무자 파산 면책 신청과 달리 의사, 약사, 변호사 등 전문직 자격 면허나 공무원 품위 유지 신분에 아무런 불이익을 주지 않습니다. 병원을 정상적으로 운영하시면서 발생하는 전문직 소득을 기반으로 법정 공제 생계비를 정밀 산정하여 채무의 최대 90% 이상 탕감 혜택을 온전히 보존받으실 수 있습니다.',
+    lawyerName: '윤성호 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256',
+    badge: '추천 소견'
+  },
+  {
+    id: 'qa-9',
+    category: '추심 차단',
+    question: '카드사 연체 3일째인데 직장으로 독촉 전화가 계속 와서 힘듭니다. 당장 전화를 막을 수 없나요?',
+    author: '송*현 (사무직)',
+    answer: '네, 연체가 시작되자마자 대리인을 선임해 법원에 신청 서류를 긴급 접수하고 "금지명령 결정"을 도출하면, 접수일 기준 대개 3일 내외에 결정문이 발송되어 각 금융사 채권팀의 유선 추심과 가택 방문 시도가 일절 법률상 불가능해집니다. 접수 이전에도 대리인 선임 완료 사실을 채권단에 정식 통보하여 무분별한 직장 전화 연락을 사전에 차단 조치하고 있습니다.',
+    lawyerName: '조현아 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=256',
+    badge: '긴급 구제'
+  },
+  {
+    id: 'qa-10',
+    category: '개인파산 면책',
+    question: '심한 당뇨 합병증으로 직장을 그만두고 치료 중입니다. 채무 5천만 원인데 파산이 나을까요?',
+    author: '황*진 (일시 무직)',
+    answer: '현재 심각한 건강 상태로 인해 장기적인 근로 능력을 사실상 상실하였거나, 부양가족 생계비 미달로 채무 변제가 불가능한 한계 상황이시라면 개인회생보다는 "개인파산 및 면책 신청" 절차가 백배 유리합니다. 병원의 정밀 진단서, 장기 입원 통원비 내역서 및 근로 무능력 입증 서류를 탄탄히 구비해 채무 원금 전액(100%)을 면제받는 면책 결정으로 단번에 이끌어 드립니다.',
+    lawyerName: '서준호 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=256',
+    badge: '파산 전문'
+  },
+  {
+    id: 'qa-11',
+    category: '일용직 소득증빙',
+    question: '현금으로 일당을 수령하는 건설 일용 노동자입니다. 급여 통장이 없어도 신청이 될까요?',
+    author: '정*태 (일용 노동)',
+    answer: '통장 수령이 아니시더라도 실소득을 소명할 수 있는 다각적인 증빙 자료(현장 근무 내역 일지, 소장 혹은 업체 명의의 임금 지급 확인서, 현금 입금 후 본인 주거래 은행 계좌에 즉시 예치한 자금 기록 사본 등)를 제출하면, 실무 재판부로부터 완벽하게 소득 가치로 인정받아 회생 개시 절차를 정상 완결할 수 있으니 부담 없이 도전하셔도 좋습니다.',
+    lawyerName: '강지영 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256',
+    badge: '소득 소명'
+  },
+  {
+    id: 'qa-12',
+    category: '보정권고 지연',
+    question: '개인회생 신청 후 3개월째 보정 권고만 계속 나오면서 지연되고 있어요. 해결 방법이 있나요?',
+    author: '임*서 (계약직)',
+    answer: '보정명령서에서 요구하는 자금 계좌의 사용 실태 분석표 및 소유 자산 처분 가치의 재산 누락 소명을 정확하게 작성하지 못했기 때문에 회생위원실에서 계속 보완 보정을 지시하는 상태입니다. 당사의 법률 보정 즉각 속결 전담팀이 개입하여 지적 사항을 100% 보완한 정밀 소명 의견서와 소명 내역표를 재작성해 3일 내 제출하면 바로 다음 단계인 개시 통보를 빠르게 유도할 수 있습니다.',
+    lawyerName: '임태오 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=256',
+    badge: '보정 속결'
+  },
+  {
+    id: 'qa-13',
+    category: '해외선물/주식',
+    question: '해외 선물 레버리지 및 신용 융자 투자 실패 빚 1억 원도 탕감받을 수 있나요?',
+    author: '오*우 (회사원)',
+    answer: '네, 선물 거래 청산 빚이나 고금리 주식 레버리지 손실 채무도 원칙상 탕감 대상 법적 채무에 전액 포함됩니다. 다만 일반적인 생활고 채무에 비해 투자 실행 목적과 경위를 아주 꼼꼼하게 따지기 때문에, 향후 투자 재발 근절 확약 연명서, 금융 계좌 폐쇄 증명서 등을 전략적으로 배치하여 보정 권고 과정에서 판사/회생위원에 대한 양형 소명을 극대화하여 탕감 변제율을 최저로 조정해 드립니다.',
+    lawyerName: '권다인 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256',
+    badge: '실시간 답변'
+  }
+];
+
+export const initialReviews: SuccessReview[] = [
+  {
+    id: 'rev-1',
+    title: "코인 선물거래 빚 9천만 원, 변제율 13%로 종결되었습니다",
+    category: "코인/주식 손실",
+    author: "이*호 님 (30대 직장인)",
+    originalDebt: 9200,
+    remainingDebt: 1200,
+    lawyerId: "lawyer-2",
+    lawyerName: "이소민 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256",
+    content: "무리한 빚투와 돌려막기로 이자만 매달 300만 원 가까이 나갔습니다. 가압류 예고장이 날아와서 피눈물 흘리며 이곳을 찾았습니다. 이소민 변호사님께서 서울회생법원 최근 준칙에 맞춰 가상자산 평가 손실 부분을 집요하게 소명해주신 덕분에, 청산가치에 과도하게 잡히지 않고 변제금 월 33만 원(총 1,200만 원)으로 최종 인가받았습니다. 평생의 은인입니다.",
+    tags: ["#코인실패", "#가압류중지", "#변제율13%"]
+  },
+  {
+    id: 'rev-2',
+    title: "생활비 신용카드 연체 독촉 하루 만에 차단 성공",
+    category: "신용카드 연체",
+    author: "김*정 님 (40대 자영업)",
+    originalDebt: 4500,
+    remainingDebt: 900,
+    lawyerId: "lawyer-1",
+    lawyerName: "김우진 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256",
+    content: "가게 매출이 급락하며 카드 대금 돌려막기를 하다가 결국 연체가 되자, 하루에 10통씩 독촉 전화가 왔습니다. 김우진 변호사님과 상담 후 즉시 개인회생을 접수했고, 법원에서 4일 만에 금지명령이 나와서 독촉이 완전히 끊겼습니다. 원금 80% 탕감에 이자는 전액 면제되어 이제 조금씩 숨통이 트입니다. 저처럼 연체 독촉으로 두려우신 분들은 무조건 바로 변호사 매칭 받으세요.",
+    tags: ["#신용카드연체", "#금지명령성공", "#자영업회생"]
+  },
+  {
+    id: 'rev-3',
+    title: "아픈 부모님 병원비로 지게 된 사채 빚, 전액 면제(파산) 받았습니다",
+    category: "개인파산",
+    author: "박*수 님 (50대 무직)",
+    originalDebt: 7500,
+    remainingDebt: 0,
+    lawyerId: "lawyer-3",
+    lawyerName: "최덕중 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256",
+    content: "부모님 긴급 수술비로 사채와 대부업체 대출까지 쓰게 되었습니다. 저 또한 당뇨 합병증으로 근로 능력을 상실하게 되어 빚을 갚을 방법이 없었습니다. 최덕중 변호사님께서 제 처지를 깊이 공감해주시고 꼼꼼하게 파산 면책 요건을 입증해주신 덕분에, 얼마 전 법원으로부터 채무 액수 전액 면제(면책 성공) 판결을 받았습니다. 새로운 삶을 살 수 있게 해 주셔서 진심으로 머리 숙여 감사드립니다.",
+    tags: ["#개인파산", "#면책성공", "#채무전액탕감"]
+  },
+  {
+    id: 'rev-4',
+    title: "보증 잘못 서서 날아온 급여 압류 딱지, 개인회생으로 해결",
+    category: "연대보증 채무",
+    author: "최*철 님 (45세 직장인)",
+    originalDebt: 8000,
+    remainingDebt: 2400,
+    lawyerId: "lawyer-1",
+    lawyerName: "김우진 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256",
+    content: "친척 연대보증을 섰다가 친척이 도망쳐 제 급여가 압류당하기 직전이었습니다. 매달 월급의 절반을 뺏길 위기에서 김우진 변호사님을 통해 긴급 중지명령을 신청하여 압류 집행을 막아냈습니다. 이후 회생 절차를 통해 보증 채무 원금의 70%를 탕감받았고, 36개월간 성실히 납부하는 것으로 계획안이 통과되었습니다. 법률 전문가의 대처 속도가 얼마나 중요한지 뼈저리게 느꼈습니다.",
+    tags: ["#연대보증", "#급여압류방어", "#압류중지성공"]
+  },
+  {
+    id: 'rev-5',
+    title: "부정기 소득 플랫폼 배달 라이더, 80% 감면 인가",
+    category: "프리랜서 회생",
+    author: "정*우 님 (20대 배달 프리랜서)",
+    originalDebt: 3800,
+    remainingDebt: 760,
+    lawyerId: "lawyer-2",
+    lawyerName: "이소민 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256",
+    content: "프리랜서 라이더라 매달 수입이 들쑥날쑥해서 개인회생이 될까 조마조마했습니다. 수입 입증 서류를 혼자 준비하기가 너무 막막했는데, 변호사님이 계좌 입출금 내역과 배달 정산 내역을 깔끔하게 정리해 소득을 증명해 주셨습니다. 탕감율 80% 수준으로 원금 760만 원만 나눠 갚게 되었습니다. 소득 증빙이 어려운 프리랜서분들도 겁먹지 마시고 도전하시길 권합니다.",
+    tags: ["#프리랜서소득소명", "#라이더회생", "#원금80%감면"]
+  },
+  {
+    id: 'rev-6',
+    title: "해외주식 마진콜 빚 1억 5천만 원, 변제율 25% 인가 결정!",
+    category: "코인/주식 손실",
+    author: "정*훈 님 (30대 직장인)",
+    originalDebt: 15000,
+    remainingDebt: 3750,
+    lawyerId: "lawyer-9",
+    lawyerName: "권다인 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256",
+    content: "해외 주식 마진콜과 신용 융자 실패로 1억 5천만 원의 빚을 졌습니다. 권다인 변호사님께서 청산가치 강제 반영 보정에 대해 강력한 반박 의견서를 제출해 주셔서 변제율 25% 수준인 월 104만 원으로 인가 결정을 받았습니다. 생명의 은인이십니다.",
+    tags: ["#마진콜회생", "#변제율25%", "#권다인변호사"]
+  },
+  {
+    id: 'rev-7',
+    title: "비트코인 레버리지 실패 채무 1억 2천, 수원지법 28% 변제 결정",
+    category: "코인/주식 손실",
+    author: "송*민 님 (30대 연구원)",
+    originalDebt: 12000,
+    remainingDebt: 3360,
+    lawyerId: "lawyer-9",
+    lawyerName: "권다인 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256",
+    content: "무리한 비트코인 투자 실패로 최근 대출 비중이 높아 수원지방법원에서 기각 위기였습니다. 권다인 변호사님의 정교한 보정 명령 즉각 대응 전략으로 수원지방법원에서 이례적으로 원금 72% 감면이라는 최선의 결과를 이끌어 냈습니다.",
+    tags: ["#수원회생", "#비트코인투자실패", "#청산가치소명"]
+  },
+  {
+    id: 'rev-8',
+    title: "코인 선물 빚 돌려막기 8천만 원, 서울회생법원 변제율 18% 인가",
+    category: "코인/주식 손실",
+    author: "강*진 님 (20대 IT 프리랜서)",
+    originalDebt: 8000,
+    remainingDebt: 1440,
+    lawyerId: "lawyer-2",
+    lawyerName: "이소민 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256",
+    content: "코인 선물 거래로 8천만 원 채무를 지고 돌려막기 중이었습니다. 이소민 변호사님이 서울회생법원의 가상자산 평가손실 보정 준칙을 철저하게 활용하여 변제율 18%인 총 1,440만 원 납부 조건으로 최종 개시 결정을 받았습니다.",
+    tags: ["#서울회생준칙", "#코인선물", "#변제율18%"]
+  },
+  {
+    id: 'rev-9',
+    title: "신용카드 돌려막기 연체 직전, 긴급 회생 신청으로 압류 방어",
+    category: "신용카드 연체",
+    author: "한*영 님 (40대 주부)",
+    originalDebt: 5200,
+    remainingDebt: 1300,
+    lawyerId: "lawyer-5",
+    lawyerName: "한지민 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256",
+    content: "가족 생활비를 신용카드로 충당하다 연체가 시작되어 채무 추심 연락이 쏟아지기 직전이었습니다. 한지민 변호사님께서 가족들 모르게 진행할 수 있도록 서류를 세심하게 챙겨 주셨고, 신청 3일 만에 금지명령을 받아 안전하게 방어했습니다.",
+    tags: ["#가족모르게회생", "#여성비밀보장", "#신용카드연체"]
+  },
+  {
+    id: 'rev-10',
+    title: "카드론 및 연체 채무 6천만 원, 한달 만에 개시결정",
+    category: "신용카드 연체",
+    author: "민*우 님 (30대 영업직)",
+    originalDebt: 6000,
+    remainingDebt: 1500,
+    lawyerId: "lawyer-12",
+    lawyerName: "임태오 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=256",
+    content: "카드론 돌려막기와 카드 연체 독촉으로 정상적인 일상생활이 불가능했습니다. 보정기동단 임태오 변호사님이 사건 수임 즉시 법원에 금지명령을 송달시키고 48시간 내 완벽 보정서 제출을 진행해 한 달 만에 완벽한 개시 결정을 받았습니다.",
+    tags: ["#카드론대환", "#보정속결대응", "#추심차단"]
+  },
+  {
+    id: 'rev-11',
+    title: "다중 카드 연체 및 대출 독촉, 신속하게 원금 70% 탕감받았습니다",
+    category: "신용카드 연체",
+    author: "윤*자 님 (50대 자영업자)",
+    originalDebt: 7200,
+    remainingDebt: 2160,
+    lawyerId: "lawyer-1",
+    lawyerName: "김우진 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256",
+    content: "식당을 운영하며 밀린 카드 대금 독촉으로 매일 밤을 지새웠습니다. 김우진 변호사님께서 도산 전문 노하우를 발휘하여 영업 소득에서 공제받을 수 있는 최대 생계비를 인정받아 주셔서, 최종적으로 원금의 70%를 감면받는 결정을 받아내셨습니다.",
+    tags: ["#자영업자카드연체", "#원금70%감면", "#도산법전문"]
+  },
+  {
+    id: 'rev-12',
+    title: "70대 기초생활수급자 부모님 채무 7천만 원 전액 면책 성공",
+    category: "개인파산",
+    author: "서*진 님 (자녀 대리 신청)",
+    originalDebt: 7000,
+    remainingDebt: 0,
+    lawyerId: "lawyer-10",
+    lawyerName: "서준호 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=256",
+    content: "부모님이 오래전 지게 된 빚이 7천만 원까지 불어나 자녀인 저에게까지 독촉 연락이 오고 있었습니다. 서준호 변호사님께서 고령이자 기초생활수급자이신 부모님의 상황을 법원에 완벽히 입증하여 파산 신청 4개월 만에 100% 면책 결정을 받아 주셨습니다.",
+    tags: ["#고령자파산", "#기초생활수급자", "#채무면제100%"]
+  },
+  {
+    id: 'rev-13',
+    title: "상가 폐업 후 남은 채무 2억 5천만 원 파산 면책 인용",
+    category: "개인파산",
+    author: "임*호 님 (50대 전직 자영업)",
+    originalDebt: 25000,
+    remainingDebt: 0,
+    lawyerId: "lawyer-7",
+    lawyerName: "오윤아 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256",
+    content: "수년간 해오던 대형 프랜차이즈 식당을 폐업한 후 남은 임대차 분쟁과 2억 5천만 원의 거액 채무로 파산 지경에 이르렀습니다. 오윤아 변호사님이 상가 권리금 분쟁과 사업 소득 구조를 정교하게 풀어서 파산 재산 면제 신청을 성공시켰고, 채무 전액을 면책받았습니다.",
+    tags: ["#상가폐업파산", "#면책성공", "#오윤아변호사"]
+  },
+  {
+    id: 'rev-14',
+    title: "장기 투병으로 생긴 대부업 사채 빚 9천만 원 파산 성공",
+    category: "개인파산",
+    author: "정*희 님 (40대 무직)",
+    originalDebt: 9000,
+    remainingDebt: 0,
+    lawyerId: "lawyer-3",
+    lawyerName: "최덕중 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256",
+    content: "장기 투병으로 병원비와 생활비를 대부업 사채로 해결하다 보니 더 이상 갚을 수 없는 지경에 이르렀습니다. 최덕중 변호사님이 면책 불허가 사유가 전혀 없음을 정교하게 소명해주시고 적극 변론해주신 결과, 채무액 9천만 원 전액을 일시 면책받는 쾌거를 얻었습니다.",
+    tags: ["#투병중개인파산", "#사채전액탕감", "#수원파산전문"]
+  },
+  {
+    id: 'rev-15',
+    title: "동업 사기로 인한 2억 원의 보증 채무, 개인회생으로 80% 감면",
+    category: "연대보증 채무",
+    author: "박*호 님 (40대 회사원)",
+    originalDebt: 20000,
+    remainingDebt: 4000,
+    lawyerId: "lawyer-8",
+    lawyerName: "윤성호 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256",
+    content: "믿었던 동업자 친구에게 연대보증을 섰다가 친구가 야반도주하여 제가 2억 원의 보증 채무를 떠안게 되었습니다. 윤성호 변호사님께서 고액 채무 구조임에도 불구하고 의뢰인의 생계 사정을 참작하도록 법원을 집요하게 설득하여 원금 80%를 감면받는 기적을 보았습니다.",
+    tags: ["#연대보증채무", "#동업사기피해", "#원금80%감면"]
+  },
+  {
+    id: 'rev-16',
+    title: "가족 연대보증 채무 1억 3천, 월 40만 원 변제로 기적적 구제",
+    category: "연대보증 채무",
+    author: "신*아 님 (30대 교사)",
+    originalDebt: 13000,
+    remainingDebt: 1440,
+    lawyerId: "lawyer-5",
+    lawyerName: "한지민 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256",
+    content: "가족의 사업 자금 조달에 연대보증을 섰다가 채무 이행 독촉장을 받았습니다. 직장에 알려질까 봐 숨이 막혔는데 한지민 변호사님께서 직장 비밀 보장을 최우선으로 하여 신속하게 회생을 진행해 주셨고, 월 40만 원의 낮은 변제금으로 최종 통과시켜 주셨습니다.",
+    tags: ["#교사회생비밀", "#가족보증해결", "#한지민변호사"]
+  },
+  {
+    id: 'rev-17',
+    title: "법인 대표이사 연대보증 채무 3억 원, 개인회생으로 재기 성공",
+    category: "연대보증 채무",
+    author: "고*원 님 (40대 대표)",
+    originalDebt: 30000,
+    remainingDebt: 6000,
+    lawyerId: "lawyer-4",
+    lawyerName: "박성현 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=256",
+    content: "법인 운영 중 대표이사 연대보증으로 3억 원의 채무를 떠안아 폐업 위기에 있었습니다. 서울회생법원에 특화된 박성현 변호사님의 밀착 변론과 맞춤형 소명으로, 변제율 20%로 인가를 받아 사업체 라이센스를 유지하며 무사히 재기할 수 있는 기반을 다졌습니다.",
+    tags: ["#대표이사연대보증", "#서울회생법원", "#재기성공"]
+  },
+  {
+    id: 'rev-18',
+    title: "3년 차 IT 개발 프리랜서, 불규칙 소득 소명하여 변제율 30% 완료",
+    category: "프리랜서 회생",
+    author: "최*우 님 (30대 개발자)",
+    originalDebt: 9500,
+    remainingDebt: 2850,
+    lawyerId: "lawyer-11",
+    lawyerName: "강지영 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256",
+    content: "프리랜서 개발자라 프로젝트 계약 기간에 따라 소득 편차가 너무 컸습니다. 강지영 변호사님께서 통장 입금 내역과 원천징수 영수증을 분석하여 법원이 납득할 수 있는 평균 실소득을 산정해 주셨고, 불필요한 청산가치 반영 없이 변제율 30%로 깔끔히 종결되었습니다.",
+    tags: ["#IT개발자회생", "#프리랜서평균소득", "#강지영변호사"]
+  },
+  {
+    id: 'rev-19',
+    title: "학원 강사 프리랜서, 탕감율 75%로 신속하게 인가 결정",
+    category: "프리랜서 회생",
+    author: "김*진 님 (30대 학원강사)",
+    originalDebt: 6400,
+    remainingDebt: 1600,
+    lawyerId: "lawyer-11",
+    lawyerName: "강지영 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256",
+    content: "학원에서 비율제로 수당을 받는 강사라 소득 증명이 까다로웠습니다. 강지영 변호사님의 도움으로 필요한 프리랜서 위촉 계약서 및 해촉 증명 등 복잡한 소명 서류들을 완벽히 대리 준비해주셔서, 탕감율 75% 수준의 원금 분할 납부로 신속 통과되었습니다.",
+    tags: ["#학원강사회생", "#프리랜서서류대리", "#원금75%탕감"]
+  },
+  {
+    id: 'rev-20',
+    title: "유튜브 크리에이터 및 프리랜서 소득 소명, 기각 위기 극복",
+    category: "프리랜서 회생",
+    author: "이*찬 님 (20대 유튜버)",
+    originalDebt: 5800,
+    remainingDebt: 1450,
+    lawyerId: "lawyer-2",
+    lawyerName: "이소민 변호사",
+    lawyerAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256",
+    content: "유튜브 채널 운영 소득 and 간이 영수증 프리랜서 일당 수입을 합산 소명하는 과정에서 보정권고가 나와 기각 위기였습니다. 이소민 변호사님이 크리에이터의 계좌 입출금 흐름과 경비를 논리적으로 입증해 주신 덕분에 원금 75% 탕감으로 기적적으로 기각을 모면했습니다.",
+    tags: ["#유튜버회생", "#크리에이터소득소명", "#이소민변호사"]
+  }
+];
