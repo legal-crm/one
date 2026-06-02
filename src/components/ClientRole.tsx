@@ -5,7 +5,7 @@ import {
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
 } from 'lucide-react';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
 import { DEFAULT_SETTINGS } from '../constants';
@@ -215,7 +215,7 @@ const remedyData: Record<string, RemedyInfo> = {
     remedyTitle: '개인회생 신청 즉시 법원 중지명령 송달 및 인가 후 가압류 즉시 취소/말소',
     remedyDesc: '이미 급여나 은행 예금 통장이 압류되어 생계 위협에 직면한 경우, 개인회생 접수와 동시에 강력한 법원 중지명령 신청을 병행합니다. 법원의 중지 결정을 도출해 내어 압류 추심을 동결시키고, 이후 회생 계획안 인가 결정을 받아 가압류를 영구적으로 해제·말소시킬 수 있습니다.',
     guideTitle: '압류 진행 시 직장 내 노출 방어 기법',
-    guideDesc: '급여 압류가 들어올 경우 직장 급여담당자에게 강제 압류 결정문이 송달되어 심각한 신용 저하 소문이 직장 내 퍼질 수 있습니다. 연체 시작 후 지급명령 결정문이나 소장 수령 즉시 법원 접수를 진행해야 파국을 피할 수 있습니다. 만약 압류가 개시되었다면 법원 중지 결정을 통해 회사 급여담당자가 임금을 채권자에게 양도하지 못하도록 차단하고 압류 적립금을 법원에 예치 처리해야 합니다.',
+    guideDesc: '급여 압류가 들어올 경우 직장 급여담당자에게 강제 압류 결정문이 송달되어 심각한 신용 저하 소문이 직장 내 퍼질 수 있습니다. 연체 시작 후 지급명령 결정문이나 소장 수령 즉시 법원 접수를 진행해야 파국을 피할 수 있습니다. 만약 압류가 개시되었다면 법원 중지 결정을 통해 회사 급여담당자가 임금을 채권자에게 양도하지 못하도록 차단하고 압류 적립금(법원 공탁금)을 예치 처리해야 합니다.',
     iconName: 'ShieldCheck',
     badgeText: '압류금 적립 및 영구해제',
     themeColor: 'rose',
@@ -286,6 +286,8 @@ interface ClientRoleProps {
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: LawyerType[];
   onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string) => void;
+  newsArticles: NewsArticle[];
+  setNewsArticles: React.Dispatch<React.SetStateAction<NewsArticle[]>>;
 }
 
 export default function ClientRole({
@@ -294,10 +296,12 @@ export default function ClientRole({
   messages,
   setMessages,
   lawyers,
-  onAddMessage
+  onAddMessage,
+  newsArticles,
+  setNewsArticles
 }: ClientRoleProps) {
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news'>('landing');
   
   // Home Landing States
   const [calcIncome, setCalcIncome] = useState<number>(250);
@@ -309,6 +313,12 @@ export default function ClientRole({
   const [qnaSearchQuery, setQnaSearchQuery] = useState<string>('');
   const [qnaCategoryFilter, setQnaCategoryFilter] = useState<string>('전체');
   const [qnaPage, setQnaPage] = useState<number>(1);
+
+  // News States
+  const [newsSearchQuery, setNewsSearchQuery] = useState<string>('');
+  const [newsCategoryFilter, setNewsCategoryFilter] = useState<string>('전체');
+  const [newsPage, setNewsPage] = useState<number>(1);
+  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
 
 
   // User Auth & Privacy States
@@ -2239,8 +2249,87 @@ export default function ClientRole({
               </div>
             </div>
 
+            {/* 6. Legal News & Tips Section */}
+            <div className="space-y-4 pt-4 text-left animate-fadeIn">
+              <div 
+                onClick={() => {
+                  setActiveTab('news');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="flex items-center justify-between gap-1 text-left cursor-pointer group"
+              >
+                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-brand" />
+                  <span>알아두면 좋을 법률 정보</span>
+                  <ChevronRight className="w-4 h-4 text-[#7e7e8f] transition-transform group-hover:translate-x-1" />
+                </h3>
+                <span className="text-xs text-brand dark:text-brand-light font-bold hover:underline shrink-0">
+                  더 많은 정보 보기 →
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {newsArticles.slice(0, 3).map(art => (
+                  <div 
+                    key={art.id} 
+                    onClick={() => {
+                      setSelectedArticle(art);
+                      // Increment view count locally
+                      setNewsArticles(prev => prev.map(a => a.id === art.id ? { ...a, views: a.views + 1 } : a));
+                    }}
+                    className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between overflow-hidden cursor-pointer group"
+                  >
+                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-950 shrink-0">
+                      <img 
+                        src={art.imageUrl} 
+                        alt={art.title} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      {art.badge && (
+                        <span className={`absolute top-3.5 left-3.5 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
+                          art.badge === 'HOT' ? 'bg-orange-500' :
+                          art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
+                        }`}>
+                          {art.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
+                          <span>{art.category}</span>
+                          <span>•</span>
+                          <span>조회 {art.views}</span>
+                        </div>
+                        <h4 className="font-extrabold text-xs sm:text-sm text-slate-850 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">
+                          {art.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
+                          {art.excerpt}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-auto">
+                        <div className="flex items-center gap-2">
+                          <img 
+                            src={art.authorAvatar} 
+                            alt={art.authorName} 
+                            className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" 
+                          />
+                          <span className="text-[10px] font-extrabold text-[#484760] dark:text-slate-400">By {art.authorName}</span>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-350 dark:text-slate-655 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
 
             {/* Babitalk-style Footer */}
+
             <div className="flex flex-col w-full pt-10 pb-6 justify-start items-start gap-6 border-t border-slate-100 dark:border-slate-850 mt-10">
               <div className="self-stretch flex-col justify-start items-start gap-2.5 flex">
                 <div className="flex items-center gap-2">
@@ -3036,6 +3125,224 @@ export default function ClientRole({
                 )}
               </div>
             )}
+          </div>
+        )}
+
+
+        {/* TAB: LEGAL NEWS & TIPS BOARD */}
+        {activeTab === 'news' && (
+          <div className="space-y-8 animate-fadeIn text-left">
+            {/* Page Header */}
+            <div className="bg-[#0F172A] border border-slate-800 rounded-3xl p-6 md:p-10 text-white shadow-xl relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+              <div className="absolute left-1/3 bottom-0 w-80 h-80 bg-brand/10 rounded-full blur-3xl -ml-20 -mb-20"></div>
+              
+              <div className="max-w-2xl relative z-10 space-y-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-200 text-xs font-extrabold rounded-full border border-indigo-500/30">
+                  <BookOpen className="w-3.5 h-3.5 text-brand" />
+                  <span>알아두면 좋을 법률 정보</span>
+                </span>
+                
+                <h1 className="text-2xl md:text-3.5xl font-black tracking-tight leading-tight">
+                  회생톡 법률 정보 & 뉴스 센터
+                </h1>
+                
+                <p className="text-slate-350 text-xs md:text-sm leading-relaxed">
+                  대한변협 등록 도산 전문 변호인단이 집필한 고품격 법률 칼럼과 뉴스입니다.<br/>
+                  최신 회생 실무 기준과 탕감 노하우를 확인하고 빚 독촉 위기를 신속하게 해결해 보세요.
+                </p>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="relative w-full md:max-w-md">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="관심 있는 키워드나 제목을 입력해 검색하세요 (예: 코인, 압류)" 
+                    value={newsSearchQuery}
+                    onChange={(e) => {
+                      setNewsSearchQuery(e.target.value);
+                      setNewsPage(1);
+                    }}
+                    className="w-full bg-[#F8FAFC] dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full py-2 pl-9 pr-4 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 text-slate-800 dark:text-slate-100 placeholder:text-slate-450"
+                  />
+                  {newsSearchQuery && (
+                    <button
+                      onClick={() => setNewsSearchQuery('')}
+                      className="absolute right-3.5 top-2.5 text-xs text-slate-405 hover:text-slate-700 font-bold"
+                    >
+                      초기화
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {['전체', '개인회생', '개인파산', '금지명령/추심', '변제금/생계비'].map(cat => {
+                    const isSelected = newsCategoryFilter === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setNewsCategoryFilter(cat);
+                          setNewsPage(1);
+                        }}
+                        className={`text-xs px-3.5 py-1.5 rounded-full font-bold transition-all ${
+                          isSelected
+                            ? 'bg-brand text-white border-brand shadow-sm shadow-brand/10'
+                            : 'bg-[#F8FAFC] dark:bg-slate-950 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* News Grid */}
+            {(() => {
+              const filtered = newsArticles.filter(art => {
+                const matchesSearch = 
+                  art.title.toLowerCase().includes(newsSearchQuery.toLowerCase()) || 
+                  art.excerpt.toLowerCase().includes(newsSearchQuery.toLowerCase()) || 
+                  art.content.toLowerCase().includes(newsSearchQuery.toLowerCase());
+                const matchesCategory = newsCategoryFilter === '전체' || art.category === newsCategoryFilter;
+                return matchesSearch && matchesCategory;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="py-16 text-center text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 space-y-2">
+                    <BookOpen className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 opacity-55 animate-pulse" />
+                    <p className="text-sm">검색 결과에 맞는 법률 칼럼이 존재하지 않습니다.</p>
+                    <p className="text-xs font-semibold text-[#7e7e8f]">다른 단어로 검색하시거나 카테고리를 변경해 보세요.</p>
+                  </div>
+                );
+              }
+
+              const itemsPerPage = 6;
+              const totalPages = Math.ceil(filtered.length / itemsPerPage);
+              const sliced = filtered.slice((newsPage - 1) * itemsPerPage, newsPage * itemsPerPage);
+
+              return (
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sliced.map(art => (
+                      <div 
+                        key={art.id} 
+                        onClick={() => {
+                          setSelectedArticle(art);
+                          setNewsArticles(prev => prev.map(a => a.id === art.id ? { ...a, views: a.views + 1 } : a));
+                        }}
+                        className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between overflow-hidden cursor-pointer group text-left"
+                      >
+                        <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-950 shrink-0">
+                          <img 
+                            src={art.imageUrl} 
+                            alt={art.title} 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          {art.badge && (
+                            <span className={`absolute top-3.5 left-3.5 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
+                              art.badge === 'HOT' ? 'bg-orange-500' :
+                              art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
+                            }`}>
+                              {art.badge}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
+                              <span>{art.category}</span>
+                              <span>•</span>
+                              <span>조회 {art.views}</span>
+                            </div>
+                            <h4 className="font-extrabold text-xs sm:text-sm text-slate-850 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">
+                              {art.title}
+                            </h4>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-405 leading-relaxed line-clamp-2 text-left">
+                              {art.excerpt}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-auto">
+                            <div className="flex items-center gap-2">
+                              <img 
+                                src={art.authorAvatar} 
+                                alt={art.authorName} 
+                                className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" 
+                              />
+                              <span className="text-[10px] font-extrabold text-[#484760] dark:text-slate-400">By {art.authorName}</span>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-350 dark:text-slate-655 transition-transform group-hover:translate-x-1" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 pt-4">
+                      <button
+                        type="button"
+                        disabled={newsPage === 1}
+                        onClick={() => {
+                          setNewsPage(prev => Math.max(1, prev - 1));
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="px-4 py-2 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-305 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        이전
+                      </button>
+
+                      <div className="flex gap-1">
+                        {Array.from({ length: totalPages }).map((_, idx) => {
+                          const pageNum = idx + 1;
+                          const isCurrent = newsPage === pageNum;
+                          return (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              onClick={() => {
+                                setNewsPage(pageNum);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                isCurrent
+                                  ? 'bg-brand text-white border-brand shadow-sm shadow-brand/10'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={newsPage === totalPages}
+                        onClick={() => {
+                          setNewsPage(prev => Math.min(totalPages, prev + 1));
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="px-4 py-2 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-305 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        다음
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -4258,6 +4565,125 @@ export default function ClientRole({
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
+
+          </div>
+        </div>
+      )}
+      {/* 9. Global Legal News Detail Modal */}
+      {selectedArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative max-w-3xl w-full bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800/80 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Header / Cover Image */}
+            <div className="relative h-48 md:h-64 w-full bg-slate-150 dark:bg-slate-950 shrink-0">
+              <img 
+                src={selectedArticle.imageUrl} 
+                alt={selectedArticle.title} 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+              
+              <button 
+                onClick={() => setSelectedArticle(null)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white border border-white/10 transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="absolute bottom-6 left-6 right-6 text-white text-left space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="bg-brand text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                    {selectedArticle.category}
+                  </span>
+                  {selectedArticle.badge && (
+                    <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
+                      selectedArticle.badge === 'HOT' ? 'bg-orange-500' :
+                      selectedArticle.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
+                    }`}>
+                      {selectedArticle.badge}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-slate-300 font-bold">
+                    조회 {selectedArticle.views} • {selectedArticle.date}
+                  </span>
+                </div>
+                <h3 className="text-lg md:text-2xl font-black tracking-tight leading-snug drop-shadow-md">
+                  {selectedArticle.title}
+                </h3>
+              </div>
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div className="p-6 md:p-8 space-y-6 overflow-y-auto text-left flex-1 min-h-0">
+              {/* Excerpt */}
+              <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border-l-4 border-brand text-slate-600 dark:text-slate-400 text-xs sm:text-sm italic leading-relaxed font-semibold">
+                "{selectedArticle.excerpt}"
+              </div>
+
+              {/* Main Content */}
+              <div className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed space-y-4 font-normal whitespace-pre-wrap">
+                {selectedArticle.content}
+              </div>
+            </div>
+
+            {/* Premium Lawyer Match Footer */}
+            {(() => {
+              const matchingLawyer = lawyers.find(l => l.id === selectedArticle.authorId) || lawyers[0];
+              const rating = matchingLawyer.id === 'lawyer-1' ? '4.9' : matchingLawyer.id === 'lawyer-2' ? '4.8' : '4.9';
+              const reviewsCount = matchingLawyer.id === 'lawyer-1' ? '184' : matchingLawyer.id === 'lawyer-2' ? '129' : '94';
+
+              return (
+                <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+                  <div className="flex items-center gap-3.5 text-left w-full sm:w-auto">
+                    <img 
+                      src={matchingLawyer.avatar} 
+                      alt={matchingLawyer.name} 
+                      className="w-12 h-12 rounded-full object-cover border border-slate-205 bg-slate-100 shrink-0" 
+                    />
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 leading-none">
+                        <span className="font-extrabold text-sm text-slate-850 dark:text-white">{matchingLawyer.name}</span>
+                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold px-1.5 py-0.2 rounded-md">도산 전문 변호사</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block">
+                        ★ {rating} · 후기 {reviewsCount}건 · 매칭 {matchingLawyer.matchedCount}건
+                      </span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-505 font-normal line-clamp-1 block">
+                        {matchingLawyer.bio}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
+                    <button 
+                      onClick={() => setSelectedArticle(null)}
+                      className="px-5 py-3 rounded-2xl text-xs font-extrabold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      닫기
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setRequestType('direct');
+                        setSelectedLawyerId(matchingLawyer.id);
+                        setIncome(230);
+                        setDebtTotal(6500);
+                        setTitle(`[법률칼럼 지정상담] ${matchingLawyer.name}`);
+                        setContent(`안녕하세요, ${matchingLawyer.name} 변호사님이 집필하신 법률 칼럼 [${selectedArticle.title}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`);
+                        setRequestStep(2);
+                        setActiveTab('request');
+                        setSelectedArticle(null);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="flex-1 sm:flex-none px-6 py-3 bg-brand hover:bg-brand-hover text-white font-extrabold rounded-2xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>📞 {matchingLawyer.name} 변호사에게 1:1 상담 예약</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
           </div>
         </div>

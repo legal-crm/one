@@ -506,3 +506,17 @@ export interface AppSettings {
   statusConfig: StatusConfig;
 }
 
+export interface NewsArticle {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  badge: 'HOT' | 'NEW' | 'BEST' | null;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  views: number;
+  date: string;
+  imageUrl: string;
+}

@@ -3,9 +3,10 @@ import {
   mockLawyers, 
   initialConsultRequests, 
   initialConsultMessages, 
-  initialCases 
+  initialCases,
+  mockNewsArticles
 } from './data';
-import { ConsultRequest, ConsultMessage, Case, User as LawyerType } from './types';
+import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle } from './types';
 import ClientRole from './components/ClientRole';
 import LawyerRole from './components/LawyerRole';
 import AdminRole from './components/AdminRole';
@@ -30,6 +31,15 @@ export default function App() {
   const [messages, setMessages] = useState<ConsultMessage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [lawyers, setLawyers] = useState<LawyerType[]>([]);
+  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(() => {
+    const savedNews = localStorage.getItem('legal_crm_news');
+    return savedNews ? JSON.parse(savedNews) : mockNewsArticles;
+  });
+
+  // Sync news to localStorage
+  useEffect(() => {
+    localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
+  }, [newsArticles]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -145,6 +155,8 @@ export default function App() {
             setMessages={setMessages}
             lawyers={lawyers}
             onAddMessage={handleAddMessage}
+            newsArticles={newsArticles}
+            setNewsArticles={setNewsArticles}
           />
         ) : currentRole === 'lawyer' ? (
           <LawyerRole 
@@ -164,6 +176,8 @@ export default function App() {
             setRequests={setRequests}
             lawyers={lawyers}
             setLawyers={setLawyers}
+            newsArticles={newsArticles}
+            setNewsArticles={setNewsArticles}
           />
         )}
       </div>

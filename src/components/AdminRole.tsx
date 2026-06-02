@@ -4,7 +4,7 @@ import {
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock 
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle } from '../types';
 import { platformPlans } from '../data';
 
 interface AdminRoleProps {
@@ -12,15 +12,30 @@ interface AdminRoleProps {
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
   lawyers: User[];
   setLawyers: React.Dispatch<React.SetStateAction<User[]>>;
+  newsArticles: NewsArticle[];
+  setNewsArticles: React.Dispatch<React.SetStateAction<NewsArticle[]>>;
 }
 
 export default function AdminRole({
   requests,
   setRequests,
   lawyers,
-  setLawyers
+  setLawyers,
+  newsArticles,
+  setNewsArticles
 }: AdminRoleProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents'>('dashboard');
+
+  // CRUD states for News Article Management
+  const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
+  const [isCreateMode, setIsCreateMode] = useState<boolean>(false);
+  const [formTitle, setFormTitle] = useState<string>('');
+  const [formExcerpt, setFormExcerpt] = useState<string>('');
+  const [formContent, setFormContent] = useState<string>('');
+  const [formCategory, setFormCategory] = useState<string>('개인회생');
+  const [formBadge, setFormBadge] = useState<'HOT' | 'NEW' | 'BEST' | null>(null);
+  const [formAuthorId, setFormAuthorId] = useState<string>('lawyer-1');
+  const [formImageUrl, setFormImageUrl] = useState<string>('');
 
   // Auth states
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -357,6 +372,16 @@ export default function AdminRole({
             >
               <CreditCard className="w-4 h-4" />
               <span>과금 분석 및 예상 정산</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('contents')}
+              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                activeTab === 'contents' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>사이트 콘텐츠 제어</span>
             </button>
           </div>
         </div>
@@ -953,6 +978,302 @@ export default function AdminRole({
                           </tr>
                         );
                       })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: SITE CONTENT CRUD OPERATIONS */}
+          {activeTab === 'contents' && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              
+              {/* Header card */}
+              <div className="bg-gradient-to-r from-indigo-950/40 to-slate-900/40 p-6 rounded-2xl border border-indigo-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+                <div className="space-y-1">
+                  <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">PLATFORM LEGAL COLUMN CONTENT CONTROL</span>
+                  <h2 className="text-xl font-black text-white">사이트 법률 정보 콘텐츠 CRUD 제어 센터</h2>
+                  <p className="text-xs text-slate-400">의뢰인에게 신뢰를 주는 법률 칼럼 기사를 실시간 추가, 수정, 삭제 제어할 수 있습니다.</p>
+                </div>
+                
+                {!isCreateMode && !editingArticle && (
+                  <button 
+                    onClick={() => {
+                      setIsCreateMode(true);
+                      setEditingArticle(null);
+                      setFormTitle('');
+                      setFormExcerpt('');
+                      setFormContent('');
+                      setFormCategory('개인회생');
+                      setFormBadge(null);
+                      setFormAuthorId(lawyers[0]?.id || 'lawyer-1');
+                      setFormImageUrl('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600');
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>✍️ 새로운 법률 정보 등록</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Creator / Editor Form Panel */}
+              {(isCreateMode || editingArticle) && (
+                <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
+                  <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
+                    <span>{isCreateMode ? '신규 법률 정보 아티클 등록' : '법률 정보 아티클 수정'}</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    
+                    {/* Category Select */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-slate-450 block uppercase font-bold">카테고리 분야</label>
+                      <select 
+                        value={formCategory} 
+                        onChange={(e) => setFormCategory(e.target.value)}
+                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                      >
+                        <option value="개인회생">개인회생</option>
+                        <option value="개인파산">개인파산</option>
+                        <option value="금지명령/추심">금지명령/추심</option>
+                        <option value="변제금/생계비">변제금/생계비</option>
+                      </select>
+                    </div>
+
+                    {/* Badge Select */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-slate-450 block uppercase font-bold">노출용 태그 배지</label>
+                      <select 
+                        value={formBadge || ''} 
+                        onChange={(e) => setFormBadge((e.target.value as any) || null)}
+                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                      >
+                        <option value="">배지 없음</option>
+                        <option value="HOT">HOT (오렌지)</option>
+                        <option value="NEW">NEW (인디고)</option>
+                        <option value="BEST">BEST (에메랄드)</option>
+                      </select>
+                    </div>
+
+                    {/* Title Input */}
+                    <div className="md:col-span-2 space-y-1.5">
+                      <label className="text-[10px] text-slate-450 block uppercase font-bold">칼럼 제목</label>
+                      <input 
+                        type="text" 
+                        placeholder="이목을 끄는 굵직하고 신뢰감 높은 제목을 입력하세요"
+                        value={formTitle}
+                        onChange={(e) => setFormTitle(e.target.value)}
+                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-650"
+                      />
+                    </div>
+
+                    {/* Author Lawyer Select */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-slate-450 block uppercase font-bold">작성 변호사 지정</label>
+                      <select 
+                        value={formAuthorId} 
+                        onChange={(e) => setFormAuthorId(e.target.value)}
+                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                      >
+                        {lawyers.filter(l => l.role === 'LAWYER').map(l => (
+                          <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Cover Image URL */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-slate-450 block uppercase font-bold">대표 커버 이미지 URL</label>
+                      <input 
+                        type="text" 
+                        placeholder="대표 이미지 unsplash URL 입력"
+                        value={formImageUrl}
+                        onChange={(e) => setFormImageUrl(e.target.value)}
+                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                      />
+                    </div>
+
+                    {/* Excerpt Input */}
+                    <div className="md:col-span-2 space-y-1.5">
+                      <label className="text-[10px] text-slate-450 block uppercase font-bold">기사 요약 요약문 (Excerpt)</label>
+                      <input 
+                        type="text" 
+                        placeholder="목록 화면에 노출될 2줄 이내의 매력적인 한글 요약문을 작성하세요"
+                        value={formExcerpt}
+                        onChange={(e) => setFormExcerpt(e.target.value)}
+                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-655"
+                      />
+                    </div>
+
+                    {/* Main Content Body */}
+                    <div className="md:col-span-2 space-y-1.5">
+                      <label className="text-[10px] text-slate-450 block uppercase font-bold">칼럼 상세 법률 본문 (HTML/Markdown 줄 바꿈 지원)</label>
+                      <textarea 
+                        rows={10}
+                        placeholder="의뢰인에게 해결 방안을 명확히 안내하는 고품격 전문 법률 본문 원고를 작성하세요."
+                        value={formContent}
+                        onChange={(e) => setFormContent(e.target.value)}
+                        className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 placeholder-slate-655 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button 
+                      onClick={() => {
+                        setIsCreateMode(false);
+                        setEditingArticle(null);
+                      }}
+                      className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                    >
+                      취소하기
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (!formTitle.trim() || !formContent.trim() || !formExcerpt.trim()) {
+                          alert('기사 제목, 요약문, 상세 본문 내용을 모두 기입해 주세요.');
+                          return;
+                        }
+
+                        const targetLawyer = lawyers.find(l => l.id === formAuthorId) || lawyers[0];
+
+                        if (isCreateMode) {
+                          const newArt: NewsArticle = {
+                            id: `news-${Date.now()}`,
+                            title: formTitle.trim(),
+                            excerpt: formExcerpt.trim(),
+                            content: formContent.trim(),
+                            category: formCategory,
+                            badge: formBadge,
+                            authorId: formAuthorId,
+                            authorName: targetLawyer.name,
+                            authorAvatar: targetLawyer.avatar,
+                            views: 0,
+                            date: new Date().toISOString().split('T')[0],
+                            imageUrl: formImageUrl.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600'
+                          };
+                          setNewsArticles(prev => [newArt, ...prev]);
+                          alert('신규 법률 기사가 성공적으로 게재 등록되었습니다!');
+                        } else if (editingArticle) {
+                          setNewsArticles(prev => prev.map(a => a.id === editingArticle.id ? {
+                            ...a,
+                            title: formTitle.trim(),
+                            excerpt: formExcerpt.trim(),
+                            content: formContent.trim(),
+                            category: formCategory,
+                            badge: formBadge,
+                            authorId: formAuthorId,
+                            authorName: targetLawyer.name,
+                            authorAvatar: targetLawyer.avatar,
+                            imageUrl: formImageUrl.trim() || a.imageUrl
+                          } : a));
+                          alert('법률 아티클 정보가 정상적으로 수정 반영되었습니다!');
+                        }
+
+                        setIsCreateMode(false);
+                        setEditingArticle(null);
+                      }}
+                      className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                    >
+                      {isCreateMode ? '✍️ 기사 영구 발행' : '💾 변경 사항 저장'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Contents Table Data Grid */}
+              <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                        <th className="p-3">커버</th>
+                        <th className="p-3">기사 분류</th>
+                        <th className="p-3">법률 아티클 기사명</th>
+                        <th className="p-3">집필 대리인</th>
+                        <th className="p-3">조회수</th>
+                        <th className="p-3">게재일</th>
+                        <th className="p-3 text-right">콘텐츠 조율</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1E293B]/30">
+                      {newsArticles.map(art => (
+                        <tr key={art.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                          <td className="p-3">
+                            <img 
+                              src={art.imageUrl} 
+                              alt={art.title} 
+                              className="w-10 h-6 object-cover rounded-md border border-[#1E293B]/45" 
+                            />
+                          </td>
+                          <td className="p-3">
+                            <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded border ${
+                              art.category === '개인회생' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                              art.category === '개인파산' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                              art.category === '금지명령/추심' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                              'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            }`}>
+                              {art.category}
+                            </span>
+                          </td>
+                          <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate leading-normal">
+                            <div className="flex items-center gap-1.5">
+                              {art.badge && (
+                                <span className={`text-[7px] font-black px-1 rounded-sm text-white ${
+                                  art.badge === 'HOT' ? 'bg-orange-500' :
+                                  art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
+                                }`}>
+                                  {art.badge}
+                                </span>
+                              )}
+                              <span>{art.title}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 font-bold text-slate-300">By {art.authorName}</td>
+                          <td className="p-3 text-slate-400">{art.views.toLocaleString()}회</td>
+                          <td className="p-3 font-mono text-slate-450">{art.date}</td>
+                          <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                            <button 
+                              onClick={() => {
+                                setEditingArticle(art);
+                                setIsCreateMode(false);
+                                setFormTitle(art.title);
+                                setFormExcerpt(art.excerpt);
+                                setFormContent(art.content);
+                                setFormCategory(art.category);
+                                setFormBadge(art.badge);
+                                setFormAuthorId(art.authorId);
+                                setFormImageUrl(art.imageUrl);
+                              }}
+                              className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all"
+                            >
+                              수정
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (confirm(`[${art.title}] 법률 기사를 영구 삭제 처리하시겠습니까?`)) {
+                                  setNewsArticles(prev => prev.filter(a => a.id !== art.id));
+                                  alert('해당 아티클 기사가 플랫폼에서 전면 영구 삭제 처리되었습니다.');
+                                }
+                              }}
+                              className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all"
+                            >
+                              삭제
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {newsArticles.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
+                            게재된 법률 기사 정보가 존재하지 않습니다. 새로운 기사를 작성하여 게시해 보십시오.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
