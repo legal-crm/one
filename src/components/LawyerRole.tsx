@@ -10,6 +10,21 @@ import {
 import { platformPlans, mockLawyers } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 
+const getDisplayPhoneNumber = (req: ConsultRequest): string => {
+  if (req.phoneConsultationRequested) {
+    if (req.safeNumber) {
+      const now = Date.now();
+      const expires = req.safeNumberExpiresAt ? new Date(req.safeNumberExpiresAt).getTime() : 0;
+      if (now > expires) {
+        return "050 안심번호 만료됨 (72시간 초과)";
+      }
+      return `${req.safeNumber} (050 안심번호)`;
+    }
+    return `${req.phone} (일반 번호)`;
+  }
+  return "050 미배정 (전화 상담 요청 시 자동 연동)";
+};
+
 interface LawyerRoleProps {
   requests: ConsultRequest[];
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
@@ -1256,7 +1271,7 @@ export default function LawyerRole({
                     
                     <div className="bg-[#111827] p-3 rounded-xl border border-[#1F2937]/80 space-y-2 text-[11px] text-slate-300">
                       <div className="flex justify-between"><span>의뢰인명:</span> <span className="font-bold text-white">{currentChatRequest.clientName}</span></div>
-                      <div className="flex justify-between"><span>비상 연락처:</span> <span className="font-mono text-white">{currentChatRequest.phone}</span></div>
+                      <div className="flex justify-between"><span>비상 연락처:</span> <span className="font-mono text-white">{getDisplayPhoneNumber(currentChatRequest)}</span></div>
                       <div className="flex justify-between"><span>월 소득계산:</span> <span className="font-bold text-brand-light">{currentChatRequest.financialProfile.income}만 원</span></div>
                       <div className="flex justify-between table-auto"><span>총 채무진단:</span> <span className="font-bold text-red-400">{currentChatRequest.financialProfile.debtTotal.toLocaleString()}만 원</span></div>
                       <div className="flex justify-between"><span>자산수준합산:</span> <span className="text-slate-200">{currentChatRequest.financialProfile.assetsTotal.toLocaleString()}만 원</span></div>
@@ -1714,7 +1729,7 @@ export default function LawyerRole({
                             }`}
                           >
                             <td className="p-3 font-bold text-white">{r.clientName}</td>
-                            <td className="p-3 font-mono text-slate-300">{r.phone}</td>
+                            <td className="p-3 font-mono text-slate-300">{getDisplayPhoneNumber(r)}</td>
                             <td className="p-3">
                               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800">
                                 {r.requestType === 'direct' ? '단독지명' : '오픈형'}

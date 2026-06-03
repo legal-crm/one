@@ -3754,11 +3754,31 @@ export default function ClientRole({
                                 return;
                               }
                               let displayNum = phoneConsultNum.trim();
+                              let safeNumberValue: string | undefined = undefined;
+                              let safeNumberAssignedAtValue: string | undefined = undefined;
+                              let safeNumberExpiresAtValue: string | undefined = undefined;
+
                               if (useSafeNumber050) {
-                                const cleanNum = displayNum.replace(/[^0-9]/g, '');
-                                const lastFour = cleanNum.slice(-4) || '7777';
-                                displayNum = `0507-1428-${lastFour} (안심번호 활성화)`;
+                                const generated050 = `0507-1428-${Math.floor(1000 + Math.random() * 9000)}`;
+                                displayNum = `${generated050} (안심번호 활성화)`;
+                                safeNumberValue = generated050;
+                                safeNumberAssignedAtValue = new Date().toISOString();
+                                safeNumberExpiresAtValue = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
                               }
+
+                              setRequests(prev => prev.map(req => {
+                                if (req.id === activeChatReqId) {
+                                  return {
+                                    ...req,
+                                    phone: phoneConsultNum.trim(),
+                                    phoneConsultationRequested: true,
+                                    safeNumber: safeNumberValue,
+                                    safeNumberAssignedAt: safeNumberAssignedAtValue,
+                                    safeNumberExpiresAt: safeNumberExpiresAtValue
+                                  };
+                                }
+                                return req;
+                              }));
                               
                               const systemMsg = `[System] 📞 의뢰인님이 실시간 전화 상담을 신청하셨습니다.\n• 연락 요청처: ${displayNum}\n• 변호사님은 이 번호로 의뢰인님에게 즉각 연락해 주시기 바랍니다.`;
                               onAddMessage(activeChatReqId, systemMsg, 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)');

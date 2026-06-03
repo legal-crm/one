@@ -53,6 +53,10 @@ export interface ConsultRequest {
   title: string;
   content: string;
   financialProfile: FinancialProfile;
+  phoneConsultationRequested?: boolean;
+  safeNumber?: string;
+  safeNumberAssignedAt?: string;
+  safeNumberExpiresAt?: string;
 }
 
 export interface ConsultParticipant {
