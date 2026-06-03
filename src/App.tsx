@@ -7,9 +7,10 @@ import {
   mockNewsArticles,
   initialQAs,
   initialReviews,
-  initialBanners
+  initialBanners,
+  initialNotices
 } from './data';
-import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner } from './types';
+import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice } from './types';
 import ClientRole from './components/ClientRole';
 import LawyerRole from './components/LawyerRole';
 import AdminRole from './components/AdminRole';
@@ -54,6 +55,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialBanners;
   });
 
+  const [notices, setNotices] = useState<Notice[]>(() => {
+    const saved = localStorage.getItem('legal_crm_notices');
+    return saved ? JSON.parse(saved) : initialNotices;
+  });
+
   // Sync states to localStorage
   useEffect(() => {
     localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
@@ -70,6 +76,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('legal_crm_banners', JSON.stringify(banners));
   }, [banners]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_notices', JSON.stringify(notices));
+  }, [notices]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -169,6 +179,7 @@ export default function App() {
       localStorage.removeItem('legal_crm_qas');
       localStorage.removeItem('legal_crm_reviews');
       localStorage.removeItem('legal_crm_banners');
+      localStorage.removeItem('legal_crm_notices');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
       setCases(initialCases);
@@ -197,6 +208,8 @@ export default function App() {
             setReviews={setReviews}
             banners={banners}
             setBanners={setBanners}
+            notices={notices}
+            setNotices={setNotices}
           />
         ) : currentRole === 'lawyer' ? (
           <LawyerRole 
@@ -224,6 +237,8 @@ export default function App() {
             setReviews={setReviews}
             banners={banners}
             setBanners={setBanners}
+            notices={notices}
+            setNotices={setNotices}
           />
         )}
       </div>

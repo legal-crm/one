@@ -5,7 +5,7 @@ import {
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
 } from 'lucide-react';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
 import { DEFAULT_SETTINGS } from '../constants';
@@ -294,6 +294,8 @@ interface ClientRoleProps {
   setReviews: React.Dispatch<React.SetStateAction<SuccessReview[]>>;
   banners: MainBanner[];
   setBanners: React.Dispatch<React.SetStateAction<MainBanner[]>>;
+  notices: Notice[];
+  setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
 }
 
 export default function ClientRole({
@@ -310,10 +312,13 @@ export default function ClientRole({
   reviews,
   setReviews,
   banners,
-  setBanners
+  setBanners,
+  notices,
+  setNotices
 }: ClientRoleProps) {
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices'>('landing');
+  const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   
   // Home Landing States
   const [calcIncome, setCalcIncome] = useState<number>(250);
@@ -1118,6 +1123,14 @@ export default function ClientRole({
                 }`}
               >
                 상담 사례
+              </button>
+              <button 
+                onClick={() => { setActiveTab('notices'); setSelectedNoticeId(null); }}
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
+                  activeTab === 'notices' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                공지사항
               </button>
               <button 
                 onClick={() => setActiveTab('request')}
@@ -3149,6 +3162,107 @@ export default function ClientRole({
           </div>
         )}
 
+        {/* TAB 1-B: NOTICES TAB */}
+        {activeTab === 'notices' && (
+          <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 text-left animate-fadeIn">
+            {/* Breadcrumb / Go back */}
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <button 
+                onClick={() => {
+                  setActiveTab('landing');
+                }}
+                className="hover:text-brand transition-colors font-bold cursor-pointer"
+              >
+                홈
+              </button>
+              <span>&gt;</span>
+              <button 
+                onClick={() => {
+                  setSelectedNoticeId(null);
+                }}
+                className="hover:text-brand transition-colors font-bold cursor-pointer"
+              >
+                공지사항
+              </button>
+              {selectedNoticeId && (
+                <>
+                  <span>&gt;</span>
+                  <span className="text-slate-700 dark:text-slate-350 font-medium">상세보기</span>
+                </>
+              )}
+            </div>
+
+            {selectedNoticeId && notices.find(n => n.id === selectedNoticeId) ? (
+              // NOTICE DETAIL VIEW
+              (() => {
+                const notice = notices.find(n => n.id === selectedNoticeId)!;
+                return (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+                    <div className="space-y-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                      <div className="flex items-center gap-2">
+                        {notice.isImportant && (
+                          <span className="bg-red-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded">중요 공지</span>
+                        )}
+                        <span className="text-xs text-slate-400 font-mono">{notice.date}</span>
+                      </div>
+                      <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-snug">
+                        {notice.title}
+                      </h2>
+                    </div>
+
+                    <div className="text-sm text-slate-650 dark:text-slate-300 whitespace-pre-line leading-relaxed font-normal">
+                      {notice.content}
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                      <button
+                        onClick={() => setSelectedNoticeId(null)}
+                        className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-600 dark:text-slate-400 cursor-pointer"
+                      >
+                        목록으로 돌아가기
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              // NOTICE LIST VIEW
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    <span>📢</span> 공지사항
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">회생톡의 새로운 알림 및 정책 변경 사항을 안내해 드립니다.</p>
+                </div>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  {notices.map(notice => (
+                    <div 
+                      key={notice.id}
+                      onClick={() => setSelectedNoticeId(notice.id)}
+                      className="py-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors flex items-center gap-3 text-left"
+                    >
+                      {notice.isImportant && (
+                        <span className="bg-red-500 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded shrink-0">중요</span>
+                      )}
+                      <h3 className="font-bold text-sm text-slate-700 dark:text-slate-200 flex-1 truncate hover:underline">
+                        {notice.title}
+                      </h3>
+                      <span className="text-xs text-slate-400 font-mono shrink-0">{notice.date}</span>
+                    </div>
+                  ))}
+                  
+                  {notices.length === 0 && (
+                    <div className="py-12 text-center text-slate-400 text-xs">
+                      등록된 공지사항이 아직 존재하지 않습니다.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
 
         {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
         {activeTab === 'request' && (
@@ -3752,9 +3866,66 @@ export default function ClientRole({
       </main>
 
       {/* Subtle Bottom legal status line */}
-      <footer className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 text-center py-4 text-[10px] text-slate-500 space-y-1">
-        <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼. All rights reserved.</p>
-        <p>본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
+      <footer className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 space-y-6 text-left">
+        {/* Notice Section */}
+        <div className="space-y-2 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-250 flex items-center gap-1.5">
+              <span>📋</span> 공지사항
+            </h4>
+            <button 
+              onClick={() => {
+                setActiveTab('notices');
+                setSelectedNoticeId(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-[10px] text-slate-450 hover:text-slate-650 dark:hover:text-slate-200 font-bold transition-colors cursor-pointer"
+            >
+              전체보기 &rarr;
+            </button>
+          </div>
+          <div className="space-y-2 text-[11px]">
+            {notices.slice(0, 3).map(notice => (
+              <div 
+                key={notice.id} 
+                onClick={() => {
+                  setActiveTab('notices');
+                  setSelectedNoticeId(notice.id);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="flex items-center gap-2 cursor-pointer hover:text-brand dark:hover:text-brand-light group transition-colors"
+              >
+                {notice.isImportant && (
+                  <span className="bg-red-500 text-white font-extrabold text-[8px] px-1 rounded-sm shrink-0">중요</span>
+                )}
+                <span className="text-slate-650 dark:text-slate-350 truncate flex-1 group-hover:underline">
+                  {notice.title}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono shrink-0">{notice.date}</span>
+              </div>
+            ))}
+            {notices.length === 0 && (
+              <p className="text-[10px] text-slate-450 py-1">등록된 공지사항이 없습니다.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Policy & Legal disclaimer */}
+        <div className="space-y-2.5 text-[10px] leading-relaxed text-slate-450 dark:text-slate-500">
+          <p className="font-bold text-slate-600 dark:text-slate-400">회생톡 정책 설명 및 법적 고지</p>
+          <p>
+            (주)회생톡컴퍼니는 대한민국 법률시장의 정보비대칭과 불법 법조브로커를 해소하여 투명하고 공정한 법률시장을 만들기 위해 회생톡 서비스를 제공하고 있습니다. 회생톡은 의뢰인회원의 법률상담 내용 및 상담 여부, 법률사건 내용 및 수임 여부, 변호사회원의 선택 등에 대해 일절 관여하지 않아 변호사법 및 기타 관련규정을 준수하고 있으며, 변호사회원이 의뢰인회원에게 제공하는 서비스의 내용과 질에 대해 어떠한 법적책임도 부담하지 않습니다. 또한 회원간의 예약 및 결제정보의 중개서비스 또는 통신판매중개 시스템을 제공할 뿐, 통신판매의 당사자가 아닙니다.
+          </p>
+          <p>
+            모든 법률상담은 각 변호사회원이 직접 수행하며, 모든 변호사회원은 각 소속 법률사무소, 로펌에서 독립적으로 법률업무를 수행합니다. 그리고 회생톡에 가입한 변호사들 상호간에는 어떠한 조직적인 관계가 없음을 밝힙니다. 회생톡에 표시된 변호사회원의 정보는 해당 변호사가 직접 제공한 것이며 무단으로 복제, 편집, 전시, 전송, 배포, 판매, 방송, 공연 등에 이용할 수 없습니다.
+          </p>
+        </div>
+
+        {/* Copyright */}
+        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-[10px] text-center text-slate-400">
+          <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 회생톡. All rights reserved.</p>
+          <p className="mt-1">본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
+        </div>
       </footer>
 
       {/* Auth Modal (로그인 / 회원가입) */}

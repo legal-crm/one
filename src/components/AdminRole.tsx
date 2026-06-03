@@ -4,7 +4,7 @@ import {
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock 
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice } from '../types';
 import { platformPlans } from '../data';
 
 interface AdminRoleProps {
@@ -20,6 +20,8 @@ interface AdminRoleProps {
   setReviews: React.Dispatch<React.SetStateAction<SuccessReview[]>>;
   banners: MainBanner[];
   setBanners: React.Dispatch<React.SetStateAction<MainBanner[]>>;
+  notices: Notice[];
+  setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
 }
 
 export default function AdminRole({
@@ -34,7 +36,9 @@ export default function AdminRole({
   reviews,
   setReviews,
   banners,
-  setBanners
+  setBanners,
+  notices,
+  setNotices
 }: AdminRoleProps) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents'>('dashboard');
 
@@ -50,7 +54,14 @@ export default function AdminRole({
   const [formImageUrl, setFormImageUrl] = useState<string>('');
 
   // Site Content sub-navigation state
-  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner'>('news');
+  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice'>('news');
+
+  // CRUD states for Notices
+  const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
+  const [isNoticeCreateMode, setIsNoticeCreateMode] = useState<boolean>(false);
+  const [noticeTitle, setNoticeTitle] = useState<string>('');
+  const [noticeContent, setNoticeContent] = useState<string>('');
+  const [noticeIsImportant, setNoticeIsImportant] = useState<boolean>(false);
 
   // CRUD states for Q&A (고민 상담사례)
   const [editingQa, setEditingQa] = useState<ClientQA | null>(null);
@@ -1121,6 +1132,22 @@ export default function AdminRole({
                     <span>✍️ 새로운 메인 배너 등록</span>
                   </button>
                 )}
+
+                {contentSubTab === 'notice' && !isNoticeCreateMode && !editingNotice && (
+                  <button 
+                    onClick={() => {
+                      setIsNoticeCreateMode(true);
+                      setEditingNotice(null);
+                      setNoticeTitle('');
+                      setNoticeContent('');
+                      setNoticeIsImportant(false);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>✍️ 새로운 공지사항 등록</span>
+                  </button>
+                )}
               </div>
 
               {/* Sub-tab navigation */}
@@ -1148,6 +1175,12 @@ export default function AdminRole({
                   className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'banner' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
                 >
                   🖼️ 메인 배너 캐러셀 관리
+                </button>
+                <button 
+                  onClick={() => { setContentSubTab('notice'); setIsNoticeCreateMode(false); setEditingNotice(null); }}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'notice' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  📢 공지사항 관리
                 </button>
               </div>
 
@@ -2071,6 +2104,173 @@ export default function AdminRole({
                             <tr>
                               <td colSpan={6} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
                                 게재된 캐러셀 배너가 존재하지 않습니다. 새로운 배너를 작성하여 활성화해 보십시오.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. NOTICE CRUD SECTION */}
+              {contentSubTab === 'notice' && (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Creator / Editor Form Panel */}
+                  {(isNoticeCreateMode || editingNotice) && (
+                    <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
+                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" />
+                        <span>{isNoticeCreateMode ? '신규 공지사항 등록' : '공지사항 수정'}</span>
+                      </h3>
+
+                      <div className="grid grid-cols-1 gap-4 text-xs">
+                        <div className="flex items-center gap-2 py-1">
+                          <input 
+                            type="checkbox" 
+                            id="noticeIsImportant" 
+                            checked={noticeIsImportant}
+                            onChange={(e) => setNoticeIsImportant(e.target.checked)}
+                            className="rounded border-[#1E293B] bg-[#07090E] text-[#6366f1] focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                          />
+                          <label htmlFor="noticeIsImportant" className="text-slate-350 select-none cursor-pointer font-bold">
+                            🚨 중요 공지로 설정 (리스트 상단 중요 표시)
+                          </label>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">공지사항 제목</label>
+                          <input 
+                            type="text" 
+                            placeholder="공지사항 제목을 입력하세요"
+                            value={noticeTitle}
+                            onChange={(e) => setNoticeTitle(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-450 block uppercase font-bold">공지사항 상세 본문 (줄 바꿈 지원)</label>
+                          <textarea 
+                            rows={8}
+                            placeholder="공지사항 상세 본문을 작성해 주세요."
+                            value={noticeContent}
+                            onChange={(e) => setNoticeContent(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-2">
+                        <button 
+                          onClick={() => {
+                            setIsNoticeCreateMode(false);
+                            setEditingNotice(null);
+                          }}
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-400 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                        >
+                          취소하기
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!noticeTitle.trim() || !noticeContent.trim()) {
+                              alert('공지사항 제목과 상세 본문을 모두 입력해 주세요.');
+                              return;
+                            }
+                            if (isNoticeCreateMode) {
+                              const newNotice: Notice = {
+                                id: `notice-${Date.now()}`,
+                                title: noticeTitle.trim(),
+                                content: noticeContent.trim(),
+                                date: new Date().toISOString().split('T')[0],
+                                isImportant: noticeIsImportant,
+                                views: 0
+                              };
+                              setNotices(prev => [newNotice, ...prev]);
+                              alert('신규 공지사항이 성공적으로 등록되었습니다!');
+                            } else if (editingNotice) {
+                              setNotices(prev => prev.map(n => n.id === editingNotice.id ? {
+                                ...n,
+                                title: noticeTitle.trim(),
+                                content: noticeContent.trim(),
+                                isImportant: noticeIsImportant
+                              } : n));
+                              alert('공지사항이 성공적으로 수정되었습니다!');
+                            }
+                            setIsNoticeCreateMode(false);
+                            setEditingNotice(null);
+                          }}
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                        >
+                          {isNoticeCreateMode ? '✍️ 공지 발행' : '💾 변경 사항 저장'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notices Table Data Grid */}
+                  <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">중요 여부</th>
+                            <th className="p-3">공지사항 제목</th>
+                            <th className="p-3">조회수</th>
+                            <th className="p-3">등록일</th>
+                            <th className="p-3 text-right">콘텐츠 조율</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {notices.map(notice => (
+                            <tr key={notice.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3">
+                                <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded border ${
+                                  notice.isImportant 
+                                  ? 'bg-red-500/10 text-red-400 border-red-500/20' 
+                                  : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                }`}>
+                                  {notice.isImportant ? '중요' : '일반'}
+                                </span>
+                              </td>
+                              <td className="p-3 font-bold text-slate-100 max-w-[300px] truncate leading-normal">
+                                {notice.title}
+                              </td>
+                              <td className="p-3 text-slate-400">{notice.views.toLocaleString()}회</td>
+                              <td className="p-3 font-mono text-slate-450">{notice.date}</td>
+                              <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                                <button 
+                                  onClick={() => {
+                                    setEditingNotice(notice);
+                                    setIsNoticeCreateMode(false);
+                                    setNoticeTitle(notice.title);
+                                    setNoticeContent(notice.content);
+                                    setNoticeIsImportant(notice.isImportant || false);
+                                  }}
+                                  className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  수정
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (confirm(`[${notice.title}] 공지사항을 영구 삭제 처리하시겠습니까?`)) {
+                                      setNotices(prev => prev.filter(n => n.id !== notice.id));
+                                      alert('해당 공지사항이 영구 삭제되었습니다.');
+                                    }
+                                  }}
+                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {notices.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="p-8 text-center text-slate-500 font-semibold bg-[#111622]">
+                                등록된 공지사항이 없습니다. 신규 공지사항을 작성해 보십시오.
                               </td>
                             </tr>
                           )}
