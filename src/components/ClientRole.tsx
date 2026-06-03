@@ -3822,7 +3822,7 @@ export default function ClientRole({
       </main>
 
       {/* Subtle Bottom legal status line */}
-      <div className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 space-y-6 text-left">
+      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 space-y-6 text-left">
         {/* Notice Section */}
         <div className="space-y-2 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between">
@@ -3879,7 +3879,7 @@ export default function ClientRole({
       </div>
 
       {/* Babitalk-style Footer (Company Info) */}
-      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 text-left space-y-6">
+      <div className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 text-left space-y-6">
         <div className="flex items-center gap-2">
           <img src="./logo.png" alt="회생톡 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
           <span className="font-extrabold text-sm text-[#484760] dark:text-slate-400">주식회사 회생톡</span>
