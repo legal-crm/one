@@ -3866,7 +3866,7 @@ export default function ClientRole({
       </main>
 
       {/* Subtle Bottom legal status line */}
-      <footer className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 space-y-6 text-left">
+      <div className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 space-y-6 text-left">
         {/* Notice Section */}
         <div className="space-y-2 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between">
@@ -3920,12 +3920,12 @@ export default function ClientRole({
             모든 법률상담은 각 변호사회원이 직접 수행하며, 모든 변호사회원은 각 소속 법률사무소, 로펌에서 독립적으로 법률업무를 수행합니다. 그리고 회생톡에 가입한 변호사들 상호간에는 어떠한 조직적인 관계가 없음을 밝힙니다. 회생톡에 표시된 변호사회원의 정보는 해당 변호사가 직접 제공한 것이며 무단으로 복제, 편집, 전시, 전송, 배포, 판매, 방송, 공연 등에 이용할 수 없습니다.
           </p>
         </div>
+      </div>
 
-        {/* Copyright */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-[10px] text-center text-slate-400">
-          <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 회생톡. All rights reserved.</p>
-          <p className="mt-1">본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
-        </div>
+      {/* Footer */}
+      <footer className="bg-slate-200 dark:bg-slate-950/80 border-t border-slate-300 dark:border-slate-900 py-6 px-4 text-[10px] text-center text-slate-500 space-y-1">
+        <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 회생톡. All rights reserved.</p>
+        <p className="mt-1">본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
       </footer>
 
       {/* Auth Modal (로그인 / 회원가입) */}
