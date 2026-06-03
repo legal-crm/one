@@ -22,6 +22,8 @@ interface AdminRoleProps {
   setBanners: React.Dispatch<React.SetStateAction<MainBanner[]>>;
   notices: Notice[];
   setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
+  matchingPolicy: 'daily' | 'weekly' | 'unlimited';
+  setMatchingPolicy: React.Dispatch<React.SetStateAction<'daily' | 'weekly' | 'unlimited'>>;
 }
 
 export default function AdminRole({
@@ -38,9 +40,12 @@ export default function AdminRole({
   banners,
   setBanners,
   notices,
-  setNotices
+  setNotices,
+  matchingPolicy,
+  setMatchingPolicy
 }: AdminRoleProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents'>('dashboard');
+  // Triple tab state
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings'>('dashboard');
 
   // CRUD states for News Article Management
   const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
@@ -439,6 +444,16 @@ export default function AdminRole({
             >
               <Sparkles className="w-4 h-4" />
               <span>사이트 콘텐츠 제어</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                activeTab === 'settings' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+              }`}
+            >
+              <Lock className="w-4 h-4" />
+              <span>⚖️ 매칭 정책 설정</span>
             </button>
           </div>
         </div>
@@ -2281,6 +2296,89 @@ export default function AdminRole({
                 </div>
               )}
 
+            </div>
+          )}
+
+          {/* TAB 5: MATCHING POLICY SETTINGS */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6">
+                <div>
+                  <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-indigo-400" />
+                    <span>상담 매칭 및 견적 제한 정책 설정</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    의뢰인이 상담 신청 후 최대 3명의 변호사로부터 견적/상담을 받을 수 있는 주기 정책을 구성합니다.<br />
+                    과도한 연속 신청으로 인한 플랫폼 스패밍 및 변호사단 피로도를 예방합니다.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                  {[
+                    {
+                      id: 'daily',
+                      title: '매일 최대 3인 매칭 정책 (권장)',
+                      desc: '의뢰인은 하루(24시간)에 최대 3명의 변호사에게만 상담 신청 및 제안서 매칭이 가능합니다.',
+                      badge: '일일 제한'
+                    },
+                    {
+                      id: 'weekly',
+                      title: '매주 최대 3인 매칭 정책',
+                      desc: '의뢰인은 일주일(7일)에 최대 3명의 변호사에게만 상담 신청 및 제안서 매칭이 가능합니다.',
+                      badge: '주간 제한'
+                    },
+                    {
+                      id: 'unlimited',
+                      title: '매칭 제한 없음',
+                      desc: '제한 없이 원할 때마다 언제든지 상담을 신청하여 3인 제안서를 받아볼 수 있습니다.',
+                      badge: '무제한'
+                    }
+                  ].map((policy) => (
+                    <button
+                      key={policy.id}
+                      type="button"
+                      onClick={() => {
+                        setMatchingPolicy(policy.id as 'daily' | 'weekly' | 'unlimited');
+                        alert(`매칭 정책이 [${policy.title}]으로 변경되었습니다.`);
+                      }}
+                      className={`p-5 rounded-xl border text-left flex flex-col justify-between gap-4 transition-all cursor-pointer ${
+                        matchingPolicy === policy.id
+                          ? 'bg-indigo-600/10 border-indigo-500 text-white shadow-lg'
+                          : 'bg-[#161B26]/50 border-[#1E293B]/60 text-slate-355 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-extrabold ${
+                            matchingPolicy === policy.id
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            {policy.badge}
+                          </span>
+                          {matchingPolicy === policy.id && (
+                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                          )}
+                        </div>
+                        <h4 className="font-extrabold text-sm text-white">{policy.title}</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">{policy.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="bg-[#161B26] p-4 rounded-xl border border-indigo-500/10 flex items-start gap-3 mt-4 text-xs text-slate-400">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <strong className="text-slate-300">정책 변경 시 주의사항</strong>
+                    <p>
+                      - 정책 변경 시, 의뢰인 포털에서 실시간으로 신규 상담 신청 접수에 대한 시간 검증이 활성화됩니다.<br />
+                      - 이미 등록된 과거 상담 및 활성화된 대화방 매칭 건은 소급 제한되지 않습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

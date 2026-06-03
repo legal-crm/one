@@ -60,6 +60,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialNotices;
   });
 
+  const [matchingPolicy, setMatchingPolicy] = useState<'daily' | 'weekly' | 'unlimited'>(() => {
+    const saved = localStorage.getItem('legal_crm_matching_policy');
+    return (saved as 'daily' | 'weekly' | 'unlimited') || 'daily';
+  });
+
   // Sync states to localStorage
   useEffect(() => {
     localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
@@ -80,6 +85,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('legal_crm_notices', JSON.stringify(notices));
   }, [notices]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_matching_policy', matchingPolicy);
+  }, [matchingPolicy]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -180,6 +189,7 @@ export default function App() {
       localStorage.removeItem('legal_crm_reviews');
       localStorage.removeItem('legal_crm_banners');
       localStorage.removeItem('legal_crm_notices');
+      localStorage.removeItem('legal_crm_matching_policy');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
       setCases(initialCases);
@@ -210,6 +220,7 @@ export default function App() {
             setBanners={setBanners}
             notices={notices}
             setNotices={setNotices}
+            matchingPolicy={matchingPolicy}
           />
         ) : currentRole === 'lawyer' ? (
           <LawyerRole 
@@ -239,6 +250,8 @@ export default function App() {
             setBanners={setBanners}
             notices={notices}
             setNotices={setNotices}
+            matchingPolicy={matchingPolicy}
+            setMatchingPolicy={setMatchingPolicy}
           />
         )}
       </div>

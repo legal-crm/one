@@ -296,6 +296,7 @@ interface ClientRoleProps {
   setBanners: React.Dispatch<React.SetStateAction<MainBanner[]>>;
   notices: Notice[];
   setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
+  matchingPolicy: 'daily' | 'weekly' | 'unlimited';
 }
 
 export default function ClientRole({
@@ -314,11 +315,42 @@ export default function ClientRole({
   banners,
   setBanners,
   notices,
-  setNotices
+  setNotices,
+  matchingPolicy
 }: ClientRoleProps) {
   // Sub-navigation for user
   const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices'>('landing');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
+
+  const checkMatchingLimit = (): boolean => {
+    if (matchingPolicy === 'unlimited') return true;
+
+    const clientRequests = requests.filter(r => r.clientId === 'client-temp');
+    if (clientRequests.length === 0) return true;
+
+    const sorted = [...clientRequests].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const latestRequest = sorted[0];
+
+    const latestTime = new Date(latestRequest.createdAt).getTime();
+    const currentTime = Date.now();
+    const diffMs = currentTime - latestTime;
+
+    if (matchingPolicy === 'daily') {
+      if (diffMs < 24 * 60 * 60 * 1000) {
+        const remainingHours = Math.ceil((24 * 60 * 60 * 1000 - diffMs) / (60 * 60 * 1000));
+        alert(`[매칭 제한 정책 안내]\n현재 플랫폼 정책(매일 최대 3인 매칭)에 따라 새로운 상담 신청을 하실 수 없습니다.\n마지막 신청으로부터 24시간이 경과해야 합니다. (남은 시간: 약 ${remainingHours}시간)`);
+        return false;
+      }
+    } else if (matchingPolicy === 'weekly') {
+      if (diffMs < 7 * 24 * 60 * 60 * 1000) {
+        const remainingDays = Math.ceil((7 * 24 * 60 * 60 * 1000 - diffMs) / (24 * 60 * 60 * 1000));
+        alert(`[매칭 제한 정책 안내]\n현재 플랫폼 정책(매주 최대 3인 매칭)에 따라 새로운 상담 신청을 하실 수 없습니다.\n마지막 신청으로부터 7일이 경과해야 합니다. (남은 시간: 약 ${remainingDays}일)`);
+        return false;
+      }
+    }
+
+    return true;
+  };
   
   // Home Landing States
   const [calcIncome, setCalcIncome] = useState<number>(250);
@@ -675,6 +707,7 @@ export default function ClientRole({
 
   // Submit Handler
   const handleRequestSubmit = () => {
+    if (!checkMatchingLimit()) return;
     if (!title || !content) {
       alert('상담 요청 제목과 내용을 입력 후 제출해 주세요.');
       return;
@@ -770,6 +803,7 @@ export default function ClientRole({
   };
 
   const handleIntakeSubmit = (intakeData: IntakeData) => {
+    if (!checkMatchingLimit()) return;
     const result = calculateRehabPlan(intakeData, DEFAULT_SETTINGS);
     
     // Convert Won units to Man-won (10,000 KRW) units
