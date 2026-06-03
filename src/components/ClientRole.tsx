@@ -1916,50 +1916,6 @@ export default function ClientRole({
               </div>
             </div>
 
-
-            {/* Babitalk-style Footer */}
-
-            <div className="flex flex-col w-full pt-10 pb-6 justify-start items-start gap-6 border-t border-slate-100 dark:border-slate-850 mt-10">
-              <div className="self-stretch flex-col justify-start items-start gap-2.5 flex">
-                <div className="flex items-center gap-2">
-                  <img src="./logo.png" alt="회생톡 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
-                  <span className="font-extrabold text-sm text-[#484760] dark:text-slate-400">주식회사 회생톡</span>
-                </div>
-              </div>
-              <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-xs text-[#7e7e8f] dark:text-slate-500">
-                <div className="flex-1 flex-col justify-start items-start gap-2 inline-flex">
-                  <div className="self-stretch justify-start items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400">
-                    <span>주식회사 회생톡</span>
-                    <span className="text-slate-200">|</span>
-                    <span>대표이사 안심인</span>
-                    <span className="text-slate-200">|</span>
-                    <span>개인정보 관리책임자 안심인</span>
-                  </div>
-                  <p className="leading-relaxed">
-                    사업자등록번호 120-00-00000<br/>
-                    통신판매업신고번호 제 2026-서울강남-0000호
-                  </p>
-                  <p className="leading-relaxed">
-                    서울특별시 서초구 강남대로 363 강남타워 11층<br/>
-                    이메일 help@rebirthtalk.com
-                  </p>
-                </div>
-                <div className="flex-1 flex-col justify-start items-start md:items-end gap-2 inline-flex">
-                  <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400 underline">
-                    <span className="cursor-pointer hover:text-[#313142]">서비스 이용약관</span>
-                    <span className="text-slate-200">|</span>
-                    <span className="cursor-pointer hover:text-[#313142]">개인정보 처리방침</span>
-                    <span className="text-slate-200">|</span>
-                    <span className="cursor-pointer hover:text-[#313142]">법적 고지사항</span>
-                  </div>
-                  <p className="leading-relaxed text-left md:text-right">
-                    회생톡은 채무 해결 매칭 플랫폼으로서 통신판매의 당사자가 아니며,<br/>
-                    제휴 법률사무소가 제공하는 법률 서비스에 대해 어떠한 법적 책임도 지지 않습니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-
           </div>
         )}
  
@@ -3919,6 +3875,46 @@ export default function ClientRole({
           <p>
             모든 법률상담은 각 변호사회원이 직접 수행하며, 모든 변호사회원은 각 소속 법률사무소, 로펌에서 독립적으로 법률업무를 수행합니다. 그리고 회생톡에 가입한 변호사들 상호간에는 어떠한 조직적인 관계가 없음을 밝힙니다. 회생톡에 표시된 변호사회원의 정보는 해당 변호사가 직접 제공한 것이며 무단으로 복제, 편집, 전시, 전송, 배포, 판매, 방송, 공연 등에 이용할 수 없습니다.
           </p>
+        </div>
+      </div>
+
+      {/* Babitalk-style Footer (Company Info) */}
+      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 text-left space-y-6">
+        <div className="flex items-center gap-2">
+          <img src="./logo.png" alt="회생톡 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
+          <span className="font-extrabold text-sm text-[#484760] dark:text-slate-400">주식회사 회생톡</span>
+        </div>
+        <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-xs text-[#7e7e8f] dark:text-slate-500">
+          <div className="flex-1 flex-col justify-start items-start gap-2 inline-flex">
+            <div className="self-stretch justify-start items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400">
+              <span>주식회사 회생톡</span>
+              <span className="text-slate-200">|</span>
+              <span>대표이사 안심인</span>
+              <span className="text-slate-200">|</span>
+              <span>개인정보 관리책임자 안심인</span>
+            </div>
+            <p className="leading-relaxed">
+              사업자등록번호 120-00-00000<br/>
+              통신판매업신고번호 제 2026-서울강남-0000호
+            </p>
+            <p className="leading-relaxed">
+              서울특별시 서초구 강남대로 363 강남타워 11층<br/>
+              이메일 help@rebirthtalk.com
+            </p>
+          </div>
+          <div className="flex-1 flex-col justify-start items-start md:items-end gap-2 inline-flex">
+            <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400 underline">
+              <span className="cursor-pointer hover:text-[#313142]">서비스 이용약관</span>
+              <span className="text-slate-200">|</span>
+              <span className="cursor-pointer hover:text-[#313142]">개인정보 처리방침</span>
+              <span className="text-slate-200">|</span>
+              <span className="cursor-pointer hover:text-[#313142]">법적 고지사항</span>
+            </div>
+            <p className="leading-relaxed text-left md:text-right">
+              회생톡은 채무 해결 매칭 플랫폼으로서 통신판매의 당사자가 아니며,<br/>
+              제휴 법률사무소가 제공하는 법률 서비스에 대해 어떠한 법적 책임도 지지 않습니다.
+            </p>
+          </div>
         </div>
       </div>
 
