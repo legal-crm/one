@@ -170,6 +170,19 @@ export default function AdminRole({
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedLawyerId, setSelectedLawyerId] = useState<string>('');
 
+  // Pagination states
+  const [clientPage, setClientPage] = useState<number>(1);
+  const [lawyerPage, setLawyerPage] = useState<number>(1);
+
+  // Reset pagination to page 1 on search or filter changes
+  useEffect(() => {
+    setClientPage(1);
+  }, [clientSearch, clientStatusFilter]);
+
+  useEffect(() => {
+    setLawyerPage(1);
+  }, [lawyerSearch, lawyerApprovalFilter]);
+
   // Dashboard sort type state
   const [dashboardSortType, setDashboardSortType] = useState<'weekly' | 'monthly'>('weekly');
 
@@ -257,6 +270,21 @@ export default function AdminRole({
   });
 
   const selectedLawyer = lawyers.find(l => l.id === selectedLawyerId);
+
+  // Pagination constants & calculation
+  const ITEMS_PER_PAGE = 8;
+
+  // Paginated Clients
+  const totalClientPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE) || 1;
+  const currentClientPage = Math.min(clientPage, totalClientPages);
+  const startIndexClient = (currentClientPage - 1) * ITEMS_PER_PAGE;
+  const paginatedClients = filteredClients.slice(startIndexClient, startIndexClient + ITEMS_PER_PAGE);
+
+  // Paginated Lawyers
+  const totalLawyerPages = Math.ceil(filteredLawyers.length / ITEMS_PER_PAGE) || 1;
+  const currentLawyerPage = Math.min(lawyerPage, totalLawyerPages);
+  const startIndexLawyer = (currentLawyerPage - 1) * ITEMS_PER_PAGE;
+  const paginatedLawyers = filteredLawyers.slice(startIndexLawyer, startIndexLawyer + ITEMS_PER_PAGE);
 
   // Handlers
   const handleToggleBlockRequest = (reqId: string) => {
@@ -960,7 +988,7 @@ export default function AdminRole({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/30">
-                        {filteredClients.map(c => {
+                        {paginatedClients.map(c => {
                           const isSelected = c.id === selectedClientId;
                           const isSpamBlocked = c.title.includes('[노출 차단]');
                           return (
@@ -1007,6 +1035,47 @@ export default function AdminRole({
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Client Pagination Controls */}
+                  {totalClientPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-xs">
+                      <span className="text-slate-400 font-mono">
+                        Page {currentClientPage} of {totalClientPages}
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          disabled={currentClientPage === 1}
+                          onClick={() => setClientPage(prev => Math.max(1, prev - 1))}
+                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        >
+                          이전
+                        </button>
+                        {Array.from({ length: totalClientPages }).map((_, i) => {
+                          const p = i + 1;
+                          return (
+                            <button
+                              key={p}
+                              onClick={() => setClientPage(p)}
+                              className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                                currentClientPage === p
+                                  ? 'bg-indigo-600 text-white shadow-sm'
+                                  : 'bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          );
+                        })}
+                        <button
+                          disabled={currentClientPage === totalClientPages}
+                          onClick={() => setClientPage(prev => Math.min(totalClientPages, prev + 1))}
+                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        >
+                          다음
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Details view */}
@@ -1173,7 +1242,7 @@ export default function AdminRole({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/30">
-                        {filteredLawyers.map(l => {
+                        {paginatedLawyers.map(l => {
                           const isSelected = l.id === selectedLawyerId;
                           const isApproved = l.approved !== false;
                           return (
@@ -1222,6 +1291,47 @@ export default function AdminRole({
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Lawyer Pagination Controls */}
+                  {totalLawyerPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-xs">
+                      <span className="text-slate-400 font-mono">
+                        Page {currentLawyerPage} of {totalLawyerPages}
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          disabled={currentLawyerPage === 1}
+                          onClick={() => setLawyerPage(prev => Math.max(1, prev - 1))}
+                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        >
+                          이전
+                        </button>
+                        {Array.from({ length: totalLawyerPages }).map((_, i) => {
+                          const p = i + 1;
+                          return (
+                            <button
+                              key={p}
+                              onClick={() => setLawyerPage(p)}
+                              className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                                currentLawyerPage === p
+                                  ? 'bg-indigo-600 text-white shadow-sm'
+                                  : 'bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          );
+                        })}
+                        <button
+                          disabled={currentLawyerPage === totalLawyerPages}
+                          onClick={() => setLawyerPage(prev => Math.min(totalLawyerPages, prev + 1))}
+                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        >
+                          다음
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Detail card */}
