@@ -8,9 +8,11 @@ import {
   initialQAs,
   initialReviews,
   initialBanners,
-  initialNotices
+  initialNotices,
+  initialMembers,
+  initialActivityLogs
 } from './data';
-import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice } from './types';
+import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole } from './types';
 import ClientRole from './components/ClientRole';
 import LawyerRole from './components/LawyerRole';
 import AdminRole from './components/AdminRole';
@@ -35,6 +37,8 @@ export default function App() {
   const [messages, setMessages] = useState<ConsultMessage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [lawyers, setLawyers] = useState<LawyerType[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(() => {
     const savedNews = localStorage.getItem('legal_crm_news');
     return savedNews ? JSON.parse(savedNews) : mockNewsArticles;
@@ -96,6 +100,8 @@ export default function App() {
     const savedMessages = localStorage.getItem('legal_crm_messages');
     const savedCases = localStorage.getItem('legal_crm_cases');
     const savedLawyers = localStorage.getItem('legal_crm_lawyers');
+    const savedMembers = localStorage.getItem('legal_crm_members');
+    const savedLogs = localStorage.getItem('legal_crm_activity_logs');
 
     if (savedRequests) {
       setRequests(JSON.parse(savedRequests));
@@ -121,6 +127,18 @@ export default function App() {
       // Set initial passwords to '1234' for easy mockup login
       const lawyersWithPass = mockLawyers.map(l => ({ ...l, password: '1234' }));
       setLawyers(lawyersWithPass);
+    }
+
+    if (savedMembers) {
+      setMembers(JSON.parse(savedMembers));
+    } else {
+      setMembers(initialMembers);
+    }
+
+    if (savedLogs) {
+      setActivityLogs(JSON.parse(savedLogs));
+    } else {
+      setActivityLogs(initialActivityLogs);
     }
   }, []);
 
@@ -148,6 +166,18 @@ export default function App() {
       localStorage.setItem('legal_crm_lawyers', JSON.stringify(lawyers));
     }
   }, [lawyers]);
+
+  useEffect(() => {
+    if (members.length > 0) {
+      localStorage.setItem('legal_crm_members', JSON.stringify(members));
+    }
+  }, [members]);
+
+  useEffect(() => {
+    if (activityLogs.length > 0) {
+      localStorage.setItem('legal_crm_activity_logs', JSON.stringify(activityLogs));
+    }
+  }, [activityLogs]);
 
   // Method to add customized chat messages
   const handleAddMessage = (
@@ -177,6 +207,27 @@ export default function App() {
     }));
   };
 
+  // Log activity helper
+  const handleLogActivity = (
+    memberId: string,
+    memberName: string,
+    role: MemberRole,
+    action: ActivityLog['action'],
+    details: string
+  ) => {
+    const newLog: ActivityLog = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      memberId,
+      memberName,
+      role,
+      action,
+      details,
+      ipAddress: `121.138.45.${Math.floor(10 + Math.random() * 200)}`,
+      createdAt: new Date().toISOString()
+    };
+    setActivityLogs(prev => [newLog, ...prev.slice(0, 199)]); // Keep up to 200 logs
+  };
+
   // Reset entire database to default mock
   const handleResetData = () => {
     if (confirm('모든 입력 데이터를 기동 초기값으로 리셋하시겠습니까?')) {
@@ -190,9 +241,13 @@ export default function App() {
       localStorage.removeItem('legal_crm_banners');
       localStorage.removeItem('legal_crm_notices');
       localStorage.removeItem('legal_crm_matching_policy');
+      localStorage.removeItem('legal_crm_members');
+      localStorage.removeItem('legal_crm_activity_logs');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
       setCases(initialCases);
+      setMembers(initialMembers);
+      setActivityLogs(initialActivityLogs);
       window.location.reload();
     }
   };
@@ -221,6 +276,9 @@ export default function App() {
             notices={notices}
             setNotices={setNotices}
             matchingPolicy={matchingPolicy}
+            members={members}
+            setMembers={setMembers}
+            onLogActivity={handleLogActivity}
           />
         ) : currentRole === 'lawyer' ? (
           <LawyerRole 
@@ -233,6 +291,9 @@ export default function App() {
             onAddMessage={handleAddMessage}
             cases={cases}
             setCases={setCases}
+            members={members}
+            setMembers={setMembers}
+            onLogActivity={handleLogActivity}
           />
         ) : (
           <AdminRole 
@@ -252,6 +313,11 @@ export default function App() {
             setNotices={setNotices}
             matchingPolicy={matchingPolicy}
             setMatchingPolicy={setMatchingPolicy}
+            members={members}
+            setMembers={setMembers}
+            activityLogs={activityLogs}
+            setActivityLogs={setActivityLogs}
+            onLogActivity={handleLogActivity}
           />
         )}
       </div>

@@ -5,7 +5,7 @@ import {
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
 } from 'lucide-react';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
 import { DEFAULT_SETTINGS } from '../constants';
@@ -297,6 +297,9 @@ interface ClientRoleProps {
   notices: Notice[];
   setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
   matchingPolicy: 'daily' | 'weekly' | 'unlimited';
+  members: Member[];
+  setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
+  onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
 }
 
 export default function ClientRole({
@@ -316,7 +319,10 @@ export default function ClientRole({
   setBanners,
   notices,
   setNotices,
-  matchingPolicy
+  matchingPolicy,
+  members,
+  setMembers,
+  onLogActivity
 }: ClientRoleProps) {
   // Sub-navigation for user
   const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices'>('landing');
@@ -385,6 +391,75 @@ export default function ClientRole({
   const [emailInput, setEmailInput] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
+
+  // Helper: Record client login/signup activity
+  const recordClientLogin = (alias: string, emailOrPhone: string, channel: 'email' | 'google' | 'kakao' | 'naver' | 'sms') => {
+    let targetId = localStorage.getItem('legal_crm_client_id');
+    if (!targetId) {
+      targetId = `client-${Date.now()}`;
+      localStorage.setItem('legal_crm_client_id', targetId);
+    }
+    
+    setMembers(prev => {
+      const exists = prev.find(m => m.id === targetId || m.alias === alias);
+      if (exists) {
+        onLogActivity(exists.id, exists.alias, 'CLIENT', 'LOGIN', `${channel.toUpperCase()} 계정 안전 로그인 성공`);
+        return prev.map(m => m.id === exists.id ? { ...m, lastActiveAt: new Date().toISOString(), loginChannel: channel } : m);
+      } else {
+        const newMember: Member = {
+          id: targetId!,
+          alias: alias,
+          email: emailOrPhone.includes('@') ? emailOrPhone : undefined,
+          phone: !emailOrPhone.includes('@') ? emailOrPhone : undefined,
+          role: 'CLIENT',
+          createdAt: new Date().toISOString(),
+          loginChannel: channel,
+          status: 'active',
+          lastActiveAt: new Date().toISOString()
+        };
+        onLogActivity(newMember.id, newMember.alias, 'CLIENT', 'SIGNUP', `${channel.toUpperCase()} 간편 회원가입 완료 (스텔스 가명: ${alias})`);
+        onLogActivity(newMember.id, newMember.alias, 'CLIENT', 'LOGIN', `${channel.toUpperCase()} 첫 로그인 성공`);
+        return [...prev, newMember];
+      }
+    });
+  };
+
+  // Suspended check hook
+  useEffect(() => {
+    if (isLoggedIn && userAlias) {
+      const currentMember = members.find(m => m.alias === userAlias);
+      if (currentMember && currentMember.status === 'suspended') {
+        alert('이 계정은 운영정책 위반 또는 스팸으로 인해 일시 정지 처리되었습니다. 고객센터에 문의하십시오.');
+        supabase.auth.signOut().then(() => {
+          setIsLoggedIn(false);
+          setUserAlias('');
+        });
+      }
+    }
+  }, [isLoggedIn, userAlias, members]);
+
+  // Debounced effect to log calculator parameter adjustments
+  useEffect(() => {
+    if (activeTab !== 'calculator') return;
+    const timer = setTimeout(() => {
+      const minLivingCost = calcDependents === 0 ? 133 : calcDependents === 1 ? 221 : calcDependents === 2 ? 282 : 343;
+      const monthlyRepayment = Math.max(0, calcIncome - minLivingCost);
+      const totalRepayment = Math.min(calcDebt, monthlyRepayment * 36);
+      const totalReduction = Math.max(0, calcDebt - totalRepayment);
+      const reductionRate = calcDebt > 0 ? Math.round((totalReduction / calcDebt) * 100) : 0;
+      
+      const clientName = isLoggedIn ? userAlias : '익명 의뢰인';
+      const clientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+      onLogActivity(
+        clientId,
+        clientName,
+        'CLIENT',
+        'CALCULATE',
+        `자가진단 실행: 월 소득 ${calcIncome}만원, 채무 ${calcDebt}만원, 부양가족 ${calcDependents}명 -> 예상 탕감액: ${totalReduction.toLocaleString()}만원 (탕감률 ${reductionRate}%)`
+      );
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [calcIncome, calcDebt, calcDependents, activeTab]);
 
   // OTP and Verification Simulation States
   const [authPhone, setAuthPhone] = useState<string>('');
@@ -794,6 +869,16 @@ export default function ClientRole({
       );
     }, 1500);
 
+    // Log consult request activity
+    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+    onLogActivity(
+      finalClientId,
+      isLoggedIn ? userAlias : '익명 의뢰인',
+      'CLIENT',
+      'CONSULT_REQUEST',
+      `상담 신청 제출: "${title}" (채무 규모: ${finalDebtTotal.toLocaleString()}만원)`
+    );
+
     // Reset Form
     setRequestStep(1);
     setTitle('');
@@ -885,6 +970,23 @@ export default function ClientRole({
     // Save to requests and navigate to active chat
     setRequests(prev => [newRequest, ...prev]);
     setActiveChatReqId(newRequest.id);
+
+    // Log calculation and request activity
+    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+    onLogActivity(
+      finalClientId,
+      isLoggedIn ? userAlias : '익명 의뢰인',
+      'CLIENT',
+      'CALCULATE',
+      `정밀 자가진단 실행 (총 채무: ${formatKoreanCurrency(result.base.debtTotal)}, 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원)`
+    );
+    onLogActivity(
+      finalClientId,
+      isLoggedIn ? userAlias : '익명 의뢰인',
+      'CLIENT',
+      'CONSULT_REQUEST',
+      `정밀 개인회생 상담 신청 제출: "${intakeData.clientName}님의 정밀 분석 신청"`
+    );
     
     // Auto-respond simulation
     setTimeout(() => {
@@ -903,6 +1005,16 @@ export default function ClientRole({
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
     onAddMessage(activeChatReqId, chatInput.trim(), 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)');
+    
+    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+    onLogActivity(
+      finalClientId,
+      isLoggedIn ? userAlias : '의뢰인',
+      'CLIENT',
+      'CHAT_SEND',
+      `채팅 메시지 전송: "${chatInput.trim().substring(0, 30)}${chatInput.trim().length > 30 ? '...' : ''}"`
+    );
+
     setChatInput('');
 
     // Simulate lawyer responding back
@@ -944,6 +1056,7 @@ export default function ClientRole({
       setUserAlias(generatedAlias);
       setShowAuthModal(false);
       alert(`[안내/로컬 로드 실패 대피] ${platform} 로그인 모듈 오류가 감지되어 가상 보안 로그인 세션으로 자동 대피 하였습니다.\n가명: ${generatedAlias}`);
+      recordClientLogin(generatedAlias, `${platform}@social.com`, platform === '카카오' ? 'kakao' : platform === '네이버' ? 'naver' : 'google');
     }
   };
 
@@ -997,6 +1110,7 @@ export default function ClientRole({
       setAuthPhone('');
       setAuthOtp('');
       alert(`[인증 성공] 안전하게 가상 로그인이 완료되었습니다!\n배정된 가명: ${generatedAlias}`);
+      recordClientLogin(generatedAlias, authPhone || '010-0000-0000', 'sms');
       return;
     }
 
@@ -1027,6 +1141,7 @@ export default function ClientRole({
         setAuthPhone('');
         setAuthOtp('');
         alert(`[인증 성공] Supabase 실시간 로그인이 성공했습니다!\n배정된 가명: ${finalAlias}`);
+        recordClientLogin(finalAlias, cleanPhone || '010-0000-0000', 'sms');
       }
     } catch (err: any) {
       setOtpError(err.message || '인증번호 검증 실패. (가상 테스트용 코드: 777777)');
@@ -1063,6 +1178,7 @@ export default function ClientRole({
         setIsLoggedIn(true);
         setUserAlias(finalAlias);
         setShowAuthModal(false);
+        recordClientLogin(finalAlias, emailInput, 'email');
       } else {
         // Login (Sign in)
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -1077,6 +1193,7 @@ export default function ClientRole({
           setUserAlias(finalAlias);
           setShowAuthModal(false);
           alert(`[로그인 성공] 이메일로 안전 로그인 되었습니다.\n가명: ${finalAlias}`);
+          recordClientLogin(finalAlias, emailInput, 'email');
         }
       }
       

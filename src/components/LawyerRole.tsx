@@ -5,7 +5,7 @@ import {
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole 
 } from '../types';
 import { platformPlans, mockLawyers } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
@@ -35,6 +35,9 @@ interface LawyerRoleProps {
   onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string) => void;
   cases: Case[];
   setCases: React.Dispatch<React.SetStateAction<Case[]>>;
+  members: Member[];
+  setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
+  onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
 }
 
 export default function LawyerRole({
@@ -46,7 +49,10 @@ export default function LawyerRole({
   setLawyers,
   onAddMessage,
   cases,
-  setCases
+  setCases,
+  members,
+  setMembers,
+  onLogActivity
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'active-chats' | 'cases' | 'billing' | 'client-crm' | 'settings'>('dashboard');
@@ -82,6 +88,18 @@ export default function LawyerRole({
   }, [lawyers, isLoggedIn]);
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  // Suspended check hook for logged-in lawyers
+  useEffect(() => {
+    if (isLoggedIn && activeLawyer) {
+      const currentMember = members.find(m => m.id === activeLawyer.id);
+      if (currentMember && currentMember.status === 'suspended') {
+        alert('이 대리인 계정은 운영정책 위반으로 인해 임시 정지 처리되었습니다. 관리자에게 문의하십시오.');
+        localStorage.removeItem('legal_crm_lawyer_session');
+        setIsLoggedIn(false);
+      }
+    }
+  }, [isLoggedIn, activeLawyer, members]);
   
   // Login form state
   const [loginId, setLoginId] = useState<string>('');
@@ -263,12 +281,22 @@ export default function LawyerRole({
       return;
     }
 
+    // Suspended check before logging in
+    const currentMember = members.find(m => m.id === found.id);
+    if (currentMember && currentMember.status === 'suspended') {
+      setLoginError('이 계정은 관리자에 의해 임시 정지 처리되었습니다. 어드민 포털에 문의하십시오.');
+      return;
+    }
+
     localStorage.setItem('legal_crm_lawyer_session', found.id);
     setActiveLawyer(found);
     setIsLoggedIn(true);
     setLoginError('');
     setLoginId('');
     setLoginPassword('');
+
+    onLogActivity(found.id, found.name, found.role as MemberRole, 'LOGIN', '로펌 CRM 파트너 로그인 성공');
+    setMembers(prev => prev.map(m => m.id === found.id ? { ...m, lastActiveAt: new Date().toISOString() } : m));
   };
 
   const handleSignup = (e: React.FormEvent) => {
@@ -306,6 +334,21 @@ export default function LawyerRole({
     };
 
     setLawyers(prev => [...prev, newLawyer]);
+
+    // Create a new Member for admin tracking
+    const newMember: Member = {
+      id: signupId.trim(),
+      email: signupId.trim() + '@rehablaw.com',
+      alias: signupName.trim() + (signupRole === 'LAWYER' ? ' 변호사' : ' 실장'),
+      role: signupRole as MemberRole,
+      createdAt: new Date().toISOString(),
+      loginChannel: 'email',
+      status: 'pending', // Awaiting admin approval
+      lastActiveAt: new Date().toISOString()
+    };
+    setMembers(prev => [...prev, newMember]);
+    onLogActivity(newMember.id, newMember.alias, newMember.role, 'SIGNUP', '로펌 CRM 파트너 신규 가입 신청 완료 (자격 심사 대기)');
+
     alert('회원가입이 완료되었습니다. 로그인 해주세요!');
     setAuthMode('login');
     setLoginId(newLawyer.id);
@@ -409,7 +452,6 @@ export default function LawyerRole({
   const handleJoinConsult = (reqId: string) => {
     setRequests(prev => prev.map(req => {
       if (req.id === reqId) {
-        // Change state to respond/counsel
         return { 
           ...req, 
           status: 'counseling',
@@ -419,13 +461,20 @@ export default function LawyerRole({
       return req;
     }));
 
-    // Auto greetings inside chat feed
     onAddMessage(
       reqId,
       `안녕하십니까, ${activeLawyer.name}입니다. 요청해 주신 가계 소득 및 채무 위기 명세를 긴급 송달 검토하였습니다. 압류 예고 및 보정 대응 등 즉시 효력이 발생하는 법적 대응에 대하여 세부 법리 검토를 도와드리겠습니다.`,
       'lawyer',
       activeLawyer.id,
       activeLawyer.name
+    );
+
+    onLogActivity(
+      activeLawyer.id,
+      activeLawyer.name,
+      activeLawyer.role as MemberRole,
+      'CONSULT_REQUEST',
+      `의뢰인 상담 요청 참여 수락 (요청 ID: ${reqId})`
     );
 
     setActiveChatReqId(reqId);
@@ -469,6 +518,17 @@ export default function LawyerRole({
 
   const handleUpdateCaseStatus = (caseId: string, nextStatus: CaseStatus) => {
     setCases(prev => prev.map(c => c.id === caseId ? { ...c, status: nextStatus, updatedAt: new Date().toISOString() } : c));
+    
+    // Log case status update
+    const targetCase = cases.find(c => c.id === caseId);
+    const clientName = targetCase ? targetCase.clientName : '의뢰인';
+    onLogActivity(
+      activeLawyer.id,
+      activeLawyer.name,
+      activeLawyer.role as MemberRole,
+      'STATUS_CHANGE',
+      `사건 진행 단계 수정: ${clientName} 의뢰인 -> [${nextStatus}]`
+    );
   };
 
   const handleAddCaseNote = (caseId: string) => {
@@ -489,6 +549,16 @@ export default function LawyerRole({
   const handleSendChat = () => {
     if (!chatInput.trim() || !activeChatReqId) return;
     onAddMessage(activeChatReqId, chatInput.trim(), 'lawyer', activeLawyer.id, activeLawyer.name);
+    
+    // Log message sent
+    onLogActivity(
+      activeLawyer.id,
+      activeLawyer.name,
+      activeLawyer.role as MemberRole,
+      'CHAT_SEND',
+      `의뢰인 상담 대화 작성: "${chatInput.trim().substring(0, 30)}${chatInput.trim().length > 30 ? '...' : ''}"`
+    );
+
     setChatInput('');
   };
 

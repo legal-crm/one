@@ -568,4 +568,31 @@ export interface Notice {
   views: number;
 }
 
+// --- Member & Activity Monitoring Types ---
+export type MemberStatus = 'active' | 'suspended' | 'pending';
+export type MemberRole = 'CLIENT' | 'LAWYER' | 'STAFF' | 'ADMIN';
+
+export interface Member {
+  id: string;
+  email?: string;
+  phone?: string;
+  alias: string;
+  role: MemberRole;
+  createdAt: string;
+  loginChannel: 'email' | 'google' | 'kakao' | 'naver' | 'sms';
+  status: MemberStatus;
+  lastActiveAt: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  memberId: string;
+  memberName: string;
+  role: MemberRole;
+  action: 'SIGNUP' | 'LOGIN' | 'CALCULATE' | 'CONSULT_REQUEST' | 'CHAT_SEND' | 'STATUS_CHANGE' | 'ADMIN_ACTION';
+  details: string;
+  ipAddress: string;
+  createdAt: string;
+}
+
 

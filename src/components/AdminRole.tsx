@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
-  LogOut, Lock 
+  LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus } from '../types';
 import { platformPlans } from '../data';
 
 interface AdminRoleProps {
@@ -24,6 +24,11 @@ interface AdminRoleProps {
   setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
   matchingPolicy: 'daily' | 'weekly' | 'unlimited';
   setMatchingPolicy: React.Dispatch<React.SetStateAction<'daily' | 'weekly' | 'unlimited'>>;
+  members: Member[];
+  setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
+  activityLogs: ActivityLog[];
+  setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>;
+  onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
 }
 
 export default function AdminRole({
@@ -42,10 +47,22 @@ export default function AdminRole({
   notices,
   setNotices,
   matchingPolicy,
-  setMatchingPolicy
+  setMatchingPolicy,
+  members,
+  setMembers,
+  activityLogs,
+  setActivityLogs,
+  onLogActivity
 }: AdminRoleProps) {
   // Triple tab state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
+
+  // Members tab states
+  const [memberSearch, setMemberSearch] = useState<string>('');
+  const [memberRoleFilter, setMemberRoleFilter] = useState<string>('all');
+  const [memberStatusFilter, setMemberStatusFilter] = useState<string>('all');
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [activityActionFilter, setActivityActionFilter] = useState<string>('all');
 
   // CRUD states for News Article Management
   const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
@@ -232,6 +249,8 @@ export default function AdminRole({
       }
       return l;
     }));
+    setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'active' } : m));
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 자격 승인 완료: ${lawyerId}`);
     alert('해당 대리인의 자격 심사가 승인되었습니다. 즉시 포털 이용 및 상담 참여가 가능합니다.');
   };
 
@@ -247,6 +266,8 @@ export default function AdminRole({
         }
         return l;
       }));
+      setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'suspended' } : m));
+      onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 라이선스 강제 정지 처리: ${lawyerId}`);
       alert('대리인 라이선스 정지 처리가 완료되었습니다.');
     }
   };
@@ -454,6 +475,16 @@ export default function AdminRole({
             >
               <Lock className="w-4 h-4" />
               <span>⚖️ 매칭 정책 설정</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('members')}
+              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                activeTab === 'members' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>회원 및 활동 모니터링</span>
             </button>
           </div>
         </div>
@@ -2465,6 +2496,522 @@ export default function AdminRole({
               </div>
             </div>
           )}
+
+          {/* TAB 7: MEMBER MANAGEMENT & ACTIVITY MONITORING */}
+          {activeTab === 'members' && (() => {
+            const totalClientsCount = members.filter(m => m.role === 'CLIENT').length;
+            const totalPartnersCount = members.filter(m => m.role === 'LAWYER' || m.role === 'STAFF').length;
+            const totalActiveCount = members.filter(m => m.status === 'active').length;
+            const totalSuspendedCount = members.filter(m => m.status === 'suspended').length;
+            const totalPendingCount = members.filter(m => m.status === 'pending').length;
+
+            const channelCounts = members.reduce((acc, m) => {
+              acc[m.loginChannel] = (acc[m.loginChannel] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+
+            const pctGoogle = members.length > 0 ? Math.round(((channelCounts['google'] || 0) / members.length) * 100) : 0;
+            const pctKakao = members.length > 0 ? Math.round(((channelCounts['kakao'] || 0) / members.length) * 100) : 0;
+            const pctNaver = members.length > 0 ? Math.round(((channelCounts['naver'] || 0) / members.length) * 100) : 0;
+            const pctEmail = members.length > 0 ? Math.round(((channelCounts['email'] || 0) / members.length) * 100) : 0;
+            const pctSms = members.length > 0 ? Math.round(((channelCounts['sms'] || 0) / members.length) * 100) : 0;
+
+            const getSignupCountForDateOffset = (offset: number) => {
+              const d = new Date();
+              d.setDate(d.getDate() - offset);
+              const dateStr = d.toISOString().split('T')[0];
+              return members.filter(m => m.createdAt.startsWith(dateStr)).length;
+            };
+
+            const signupData = [6, 5, 4, 3, 2, 1, 0].map(offset => {
+              const d = new Date();
+              d.setDate(d.getDate() - offset);
+              const label = `${d.getMonth() + 1}/${d.getDate()}`;
+              const count = getSignupCountForDateOffset(offset);
+              return { label, count };
+            });
+
+            const maxSignupCount = Math.max(...signupData.map(s => s.count), 1);
+
+            const filteredMembersList = members.filter(m => {
+              const matchesSearch = 
+                m.alias.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                m.id.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                (m.email && m.email.toLowerCase().includes(memberSearch.toLowerCase())) ||
+                (m.phone && m.phone.includes(memberSearch));
+              const matchesRole = memberRoleFilter === 'all' || m.role === memberRoleFilter;
+              const matchesStatus = memberStatusFilter === 'all' || m.status === memberStatusFilter;
+              return matchesSearch && matchesRole && matchesStatus;
+            });
+
+            const selectedMember = members.find(m => m.id === selectedMemberId);
+            const selectedMemberLogs = selectedMemberId 
+              ? activityLogs.filter(log => log.memberId === selectedMemberId)
+              : [];
+
+            const filteredGlobalLogs = activityLogs.filter(log => {
+              const matchesAction = activityActionFilter === 'all' || log.action === activityActionFilter;
+              return matchesAction;
+            });
+
+            const handleToggleMemberStatus = (memberId: string) => {
+              const current = members.find(m => m.id === memberId);
+              if (!current) return;
+              const newStatus = current.status === 'active' ? 'suspended' : 'active';
+              const statusText = newStatus === 'active' ? '활성화' : '임시 정지';
+              if (confirm(`이 회원의 계정 상태를 [${statusText}]로 변경하시겠습니까?`)) {
+                setMembers(prev => prev.map(m => m.id === memberId ? { ...m, status: newStatus } : m));
+                
+                // If it is a lawyer/staff, also sync approved flag in lawyers state
+                if (current.role === 'LAWYER' || current.role === 'STAFF') {
+                  setLawyers(prev => prev.map(l => l.id === memberId ? { ...l, approved: newStatus === 'active' } : l));
+                }
+
+                onLogActivity(
+                  'admin',
+                  '최고관리자',
+                  'ADMIN',
+                  'ADMIN_ACTION',
+                  `회원 계정 상태 수동 조절: ${current.alias} (${current.role}) -> [${newStatus.toUpperCase()}]`
+                );
+                alert(`해당 계정이 성공적으로 ${statusText} 처리되었습니다.`);
+              }
+            };
+
+            const maskEmail = (email?: string) => {
+              if (!email) return '-';
+              const parts = email.split('@');
+              if (parts.length !== 2) return email;
+              const name = parts[0];
+              const domain = parts[1];
+              return `${name.substring(0, Math.min(3, name.length))}****@${domain}`;
+            };
+
+            const maskPhone = (phone?: string) => {
+              if (!phone) return '-';
+              return phone.replace(/(\d{3})-(\d{3,4})-(\d{4})/, '$1-****-$3');
+            };
+
+            return (
+              <div className="space-y-6 animate-fadeIn text-left">
+                {/* 1. Stats and Charts Header Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Stats breakdown card */}
+                  <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3.5 flex flex-col justify-between">
+                    <span className="text-[10px] text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>전체 회원 지표</span>
+                    </span>
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="bg-[#07090E]/60 p-2.5 rounded-xl border border-[#1E293B]/30">
+                        <span className="text-[10px] text-slate-500 block font-bold">의뢰인 회원</span>
+                        <strong className="text-xl font-black text-indigo-400">{totalClientsCount}명</strong>
+                      </div>
+                      <div className="bg-[#07090E]/60 p-2.5 rounded-xl border border-[#1E293B]/30">
+                        <span className="text-[10px] text-slate-500 block font-bold">대리인 파트너</span>
+                        <strong className="text-xl font-black text-sky-400">{totalPartnersCount}명</strong>
+                      </div>
+                      <div className="bg-[#07090E]/65 p-2.5 rounded-xl border border-[#1E293B]/30 col-span-2 flex justify-around text-xs">
+                        <div>정상: <strong className="text-emerald-400 font-bold">{totalActiveCount}</strong></div>
+                        <div className="border-r border-[#1E293B]/30 h-4 my-auto"></div>
+                        <div>정지: <strong className="text-red-400 font-bold">{totalSuspendedCount}</strong></div>
+                        <div className="border-r border-[#1E293B]/30 h-4 my-auto"></div>
+                        <div>대기: <strong className="text-amber-400 font-bold">{totalPendingCount}</strong></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Channel chart card */}
+                  <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
+                    <span className="text-[10px] text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>가입 채널 분포</span>
+                    </span>
+                    <div className="space-y-2 text-xs text-slate-400">
+                      {/* Naver */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px]">
+                          <span>네이버 간편가입 ({channelCounts['naver'] || 0}명)</span>
+                          <strong className="text-slate-200">{pctNaver}%</strong>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div style={{ width: `${pctNaver}%` }} className="bg-emerald-500 h-full rounded-full" />
+                        </div>
+                      </div>
+                      {/* Kakao */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px]">
+                          <span>카카오 간편가입 ({channelCounts['kakao'] || 0}명)</span>
+                          <strong className="text-slate-200">{pctKakao}%</strong>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div style={{ width: `${pctKakao}%` }} className="bg-yellow-550 h-full rounded-full" />
+                        </div>
+                      </div>
+                      {/* Google */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px]">
+                          <span>구글 간편가입 ({channelCounts['google'] || 0}명)</span>
+                          <strong className="text-slate-200">{pctGoogle}%</strong>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div style={{ width: `${pctGoogle}%` }} className="bg-indigo-500 h-full rounded-full" />
+                        </div>
+                      </div>
+                      {/* SMS & Email combined */}
+                      <div className="flex gap-4 text-[10px] pt-1">
+                        <div>SMS OTP: <strong className="text-slate-200">{pctSms}%</strong> ({channelCounts['sms'] || 0}명)</div>
+                        <div>일반 이메일: <strong className="text-slate-200">{pctEmail}%</strong> ({channelCounts['email'] || 0}명)</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Daily signups sparkline chart */}
+                  <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2.5">
+                    <span className="text-[10px] text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>최근 7일 가입 추이</span>
+                    </span>
+                    {/* Vertical bars chart */}
+                    <div className="h-24 flex items-end justify-between gap-2.5 pt-2">
+                      {signupData.map((d, i) => {
+                        const heightPct = Math.round((d.count / maxSignupCount) * 100);
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group cursor-default">
+                            <span className="text-[9px] text-slate-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity leading-none">
+                              {d.count}명
+                            </span>
+                            <div 
+                              style={{ height: `${Math.max(5, heightPct)}%` }} 
+                              className="w-full bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-md transition-all duration-300 hover:from-indigo-400 hover:to-indigo-300"
+                            />
+                            <span className="text-[9px] text-slate-500 font-bold">{d.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Split Screen View */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Left Column: Member List Table */}
+                  <div className="lg:col-span-7 bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden flex flex-col">
+                    {/* Table Filters */}
+                    <div className="p-4 bg-[#161B26] border-b border-[#1E293B]/60 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                      <div className="relative w-full sm:max-w-xs">
+                        <input 
+                          type="text" 
+                          placeholder="성명, 가명, 연락처, ID 검색..." 
+                          value={memberSearch}
+                          onChange={(e) => setMemberSearch(e.target.value)}
+                          className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                        />
+                        <Search className="absolute left-3 top-2.5 text-slate-500 w-3.5 h-3.5" />
+                      </div>
+
+                      <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
+                        <select 
+                          value={memberRoleFilter} 
+                          onChange={(e) => setMemberRoleFilter(e.target.value)}
+                          className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-350 focus:outline-none"
+                        >
+                          <option value="all">전체 역할</option>
+                          <option value="CLIENT">의뢰인 (CLIENT)</option>
+                          <option value="LAWYER">변호사 (LAWYER)</option>
+                          <option value="STAFF">실장 (STAFF)</option>
+                        </select>
+
+                        <select 
+                          value={memberStatusFilter} 
+                          onChange={(e) => setMemberStatusFilter(e.target.value)}
+                          className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-350 focus:outline-none"
+                        >
+                          <option value="all">전체 상태</option>
+                          <option value="active">정상 (Active)</option>
+                          <option value="suspended">정지 (Suspended)</option>
+                          <option value="pending">대기 (Pending)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Table View */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26]/30 text-slate-400 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">회원명/가명</th>
+                            <th className="p-3">역할</th>
+                            <th className="p-3">가입 경로</th>
+                            <th className="p-3">상태</th>
+                            <th className="p-3 text-right">최근 접속 시각</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {filteredMembersList.map(m => {
+                            const isSelected = m.id === selectedMemberId;
+                            return (
+                              <tr 
+                                key={m.id}
+                                onClick={() => setSelectedMemberId(m.id)}
+                                className={`cursor-pointer transition-colors ${
+                                  isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/45'
+                                }`}
+                              >
+                                <td className="p-3">
+                                  <div className="flex flex-col">
+                                    <span className="font-extrabold text-slate-100">{m.alias}</span>
+                                    <span className="text-[10px] text-slate-500 font-mono">{m.id}</span>
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-black tracking-wider uppercase border ${
+                                    m.role === 'CLIENT' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                    m.role === 'LAWYER' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
+                                    m.role === 'STAFF' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                    'bg-red-500/10 text-red-400 border-red-500/20'
+                                  }`}>
+                                    {m.role}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  <span className="text-slate-350 capitalize font-medium text-[11px] flex items-center gap-1">
+                                    {m.loginChannel === 'google' || m.loginChannel === 'kakao' || m.loginChannel === 'naver' ? (
+                                      <span>💬 소셜 ({m.loginChannel})</span>
+                                    ) : m.loginChannel === 'sms' ? (
+                                      <span>📱 휴대폰 (SMS)</span>
+                                    ) : (
+                                      <span>✉️ 이메일 (Direct)</span>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  <span className={`text-[9px] px-2 py-0.5 rounded border font-bold ${
+                                    m.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                    m.status === 'suspended' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                    'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                  }`}>
+                                    {m.status === 'active' ? '정상 활동' : m.status === 'suspended' ? '이용 정지' : '승인 대기'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right text-slate-400 font-mono text-[10px]">
+                                  {new Date(m.lastActiveAt).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {filteredMembersList.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="p-12 text-center text-slate-500 font-semibold bg-[#111622]/50">
+                                조건에 부합하는 가입 회원 데이터가 존재하지 않습니다.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Member Details Timeline OR Global Stream */}
+                  <div className="lg:col-span-5 bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5 flex flex-col space-y-4">
+                    {selectedMember ? (
+                      /* Individual Member Detail and Activity Timeline View */
+                      <div className="space-y-4 animate-fadeIn">
+                        {/* Member Identity Details Card */}
+                        <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
+                          <div className="space-y-1">
+                            <span className="text-[9px] text-indigo-400 font-black block uppercase tracking-wider">MEMBER ACCOUNT DETAIL</span>
+                            <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                              <span>{selectedMember.alias}</span>
+                              <span className="text-[9px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.2 rounded font-mono">
+                                {selectedMember.role}
+                              </span>
+                            </h3>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedMemberId('')}
+                            className="text-slate-400 hover:text-white text-xs font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
+                          >
+                            닫기 (전체 로그)
+                          </button>
+                        </div>
+
+                        {/* Masked Data sheet */}
+                        <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-xs">
+                          <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                            <span>계정 식별 ID:</span>
+                            <strong className="text-white font-mono text-[11px]">{selectedMember.id}</strong>
+                          </div>
+                          <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                            <span>연락처 (개인정보 마스킹):</span>
+                            <strong className="text-white font-mono">{maskPhone(selectedMember.phone)}</strong>
+                          </div>
+                          <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                            <span>가입 이메일 주소:</span>
+                            <strong className="text-white font-mono">{maskEmail(selectedMember.email)}</strong>
+                          </div>
+                          <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                            <span>가입 경로 / 가입 시점:</span>
+                            <strong className="text-white">
+                              {selectedMember.loginChannel.toUpperCase()} / {new Date(selectedMember.createdAt).toLocaleDateString()}
+                            </strong>
+                          </div>
+                          <div className="flex justify-between text-indigo-400">
+                            <span>현재 계정 상태:</span>
+                            <strong className="font-extrabold capitalize">{selectedMember.status}</strong>
+                          </div>
+                        </div>
+
+                        {/* Account Controls */}
+                        <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-2.5">
+                          <span className="text-[10px] font-black text-indigo-400 block uppercase tracking-wider">🔒 관리자 계정 활동 제어 조치</span>
+                          <p className="text-[10px] leading-relaxed text-slate-400">
+                            불량 의뢰 등록, 스팸성 계산기 조작, 혹은 허위 자격 정보 기입이 감지되면 이 계정을 즉각 일시정지 조치할 수 있습니다. 즉시 모든 포털의 로그인 세션이 끊기고 활동이 차단됩니다.
+                          </p>
+                          <div className="flex gap-2">
+                            {selectedMember.status === 'pending' ? (
+                              <button 
+                                onClick={() => handleApproveLawyer(selectedMember.id)}
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>대리인 자격 승인</span>
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleToggleMemberStatus(selectedMember.id)}
+                                className={`flex-1 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  selectedMember.status === 'active'
+                                  ? 'bg-red-650 hover:bg-red-600 text-white'
+                                  : 'bg-emerald-650 hover:bg-emerald-600 text-white'
+                                }`}
+                              >
+                                {selectedMember.status === 'active' ? (
+                                  <>
+                                    <EyeOff className="w-3.5 h-3.5" />
+                                    <span>계정 임시 정지 (Block)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>계정 차단 해제 (Activate)</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Chronological Activity Timeline */}
+                        <div className="space-y-3 pt-1">
+                          <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">⏱️ 회원 개별 활동 타임라인</span>
+                          <div className="border-l-2 border-[#1E293B]/60 ml-2.5 pl-4 space-y-4 py-1 text-xs">
+                            {selectedMemberLogs.map(log => (
+                              <div key={log.id} className="relative space-y-1">
+                                {/* Chronology dot */}
+                                <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full border-2 border-[#0F121C] bg-indigo-500" />
+                                <div className="flex items-center justify-between text-[10px] text-slate-500">
+                                  <span className="bg-[#161B26] border border-[#1E293B]/65 px-1.5 py-0.2 rounded font-bold text-[9px] text-indigo-400">
+                                    {log.action}
+                                  </span>
+                                  <span className="font-mono">{new Date(log.createdAt).toLocaleTimeString()}</span>
+                                </div>
+                                <p className="text-slate-200 text-xs font-semibold leading-normal">{log.details}</p>
+                                <span className="text-[10px] text-slate-500 block font-mono">IP: {log.ipAddress}</span>
+                              </div>
+                            ))}
+
+                            {selectedMemberLogs.length === 0 && (
+                              <div className="text-center py-6 text-slate-600 text-xs pl-0">
+                                타임라인에 수집된 가입자 활동 내역이 아직 없습니다.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Platform Global Live Activity Log Stream View */
+                      <div className="space-y-4 animate-fadeIn">
+                        <div className="flex justify-between items-center border-b border-[#1E293B]/60 pb-3">
+                          <div className="space-y-1 text-left">
+                            <span className="text-[9px] text-indigo-400 font-black block uppercase tracking-wider">PLATFORM AUDIT TRAIL MONITOR</span>
+                            <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5">
+                              <Activity className="w-4 h-4 text-indigo-500 animate-pulse" />
+                              <span>실시간 통합 플랫폼 활동 피드</span>
+                            </h3>
+                          </div>
+
+                          <select 
+                            value={activityActionFilter}
+                            onChange={(e) => setActivityActionFilter(e.target.value)}
+                            className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2 py-1 text-[9px] font-black text-slate-400 focus:outline-none"
+                          >
+                            <option value="all">모든 액션</option>
+                            <option value="SIGNUP">가입 (SIGNUP)</option>
+                            <option value="LOGIN">로그인 (LOGIN)</option>
+                            <option value="CALCULATE">계산기 (CALCULATE)</option>
+                            <option value="CONSULT_REQUEST">의뢰 (CONSULT)</option>
+                            <option value="CHAT_SEND">채팅 (CHAT)</option>
+                            <option value="STATUS_CHANGE">상태변경 (STATUS)</option>
+                            <option value="ADMIN_ACTION">관리자조치 (ADMIN)</option>
+                          </select>
+                        </div>
+
+                        {/* Scrolling live feed */}
+                        <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1 text-xs">
+                          {filteredGlobalLogs.slice(0, 25).map(log => {
+                            const isClient = log.role === 'CLIENT';
+                            return (
+                              <div key={log.id} className="bg-[#0B0F19]/45 border border-[#1E293B]/30 hover:border-slate-800 p-3 rounded-xl space-y-1.5 transition-all">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`text-[8px] font-black px-1 rounded-sm text-white ${
+                                      log.action === 'SIGNUP' ? 'bg-orange-650' :
+                                      log.action === 'LOGIN' ? 'bg-blue-650' :
+                                      log.action === 'CALCULATE' ? 'bg-purple-650' :
+                                      log.action === 'CONSULT_REQUEST' ? 'bg-indigo-650' :
+                                      log.action === 'CHAT_SEND' ? 'bg-slate-655' :
+                                      log.action === 'STATUS_CHANGE' ? 'bg-emerald-650' :
+                                      'bg-red-650'
+                                    }`}>
+                                      {log.action}
+                                    </span>
+                                    <strong className="text-slate-200 text-[11px]">{log.memberName}</strong>
+                                    <span className={`text-[8px] font-extrabold px-1 rounded-md border ${
+                                      isClient ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                                    }`}>
+                                      {log.role}
+                                    </span>
+                                  </div>
+                                  <span className="font-mono text-slate-500 text-[9px]">
+                                    {new Date(log.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                  </span>
+                                </div>
+                                <p className="text-slate-350 leading-normal text-[11px] font-medium">{log.details}</p>
+                                <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono">
+                                  <span>ID: {log.memberId}</span>
+                                  <span>IP: {log.ipAddress}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {filteredGlobalLogs.length === 0 && (
+                            <div className="text-center py-12 text-slate-600 text-xs">
+                              수집된 실시간 활동 로그 내역이 존재하지 않습니다.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
 
         </main>
 
