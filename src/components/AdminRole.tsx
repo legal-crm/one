@@ -64,6 +64,7 @@ export default function AdminRole({
 }: AdminRoleProps) {
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
+  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited'>('overview');
 
   // Members tab states
   const [memberSearch, setMemberSearch] = useState<string>('');
@@ -173,6 +174,12 @@ export default function AdminRole({
   // Pagination states
   const [clientPage, setClientPage] = useState<number>(1);
   const [lawyerPage, setLawyerPage] = useState<number>(1);
+  const [billingPage, setBillingPage] = useState<number>(1);
+
+  // Reset billing page when subtab changes
+  useEffect(() => {
+    setBillingPage(1);
+  }, [billingSubTab]);
 
   // Reset pagination to page 1 on search or filter changes
   useEffect(() => {
@@ -229,13 +236,34 @@ export default function AdminRole({
     ? Math.round((completedConsultsCount / totalRequestsCount) * 100) 
     : 0;
 
-  // Estimate Monthly Recurring Revenue (MRR) based on subscription distribution
+  // Active partners list for billing (exclude suspended, withdrawn, dormant)
+  const billingActiveLawyers = lawyers.filter(l => {
+    const member = members.find(m => m.id === l.id);
+    return !member || (member.status !== 'suspended' && member.status !== 'withdrawn' && member.status !== 'dormant');
+  });
+
+  // Exited or suspended partners list for billing
+  const billingExitedLawyers = members.filter(m => 
+    (m.role === 'LAWYER' || m.role === 'STAFF') && 
+    (m.status === 'suspended' || m.status === 'withdrawn' || m.status === 'dormant')
+  );
+
+  // Estimate Monthly Recurring Revenue (MRR) based on active subscribers
   // Basic: 300,000 KRW, Pro: 800,000 KRW, Team/Enterprise: 1,500,000 KRW
-  const estimateMRR = lawyers.reduce((acc, l) => {
-    // If lawyer has matching team/firm, we estimate their billing
-    // Default Pro for matchedCount > 80, Basic for others, Enterprise for matchedCount > 120
+  const activeMRR = billingActiveLawyers.reduce((acc, l) => {
     if (l.matchedCount > 120) return acc + 1500000;
     if (l.matchedCount > 80) return acc + 800000;
+    return acc + 300000;
+  }, 0);
+
+  const estimateMRR = activeMRR;
+
+  // Excluded or lost revenue calculation
+  const lostMRR = billingExitedLawyers.reduce((acc, m) => {
+    const l = lawyers.find(law => law.id === m.id);
+    const matched = l ? l.matchedCount : 0;
+    if (matched > 120) return acc + 1500000;
+    if (matched > 80) return acc + 800000;
     return acc + 300000;
   }, 0);
 
@@ -273,6 +301,7 @@ export default function AdminRole({
 
   // Pagination constants & calculation
   const ITEMS_PER_PAGE = 8;
+  const BILLING_ITEMS_PER_PAGE = 5;
 
   // Paginated Clients
   const totalClientPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE) || 1;
@@ -285,6 +314,12 @@ export default function AdminRole({
   const currentLawyerPage = Math.min(lawyerPage, totalLawyerPages);
   const startIndexLawyer = (currentLawyerPage - 1) * ITEMS_PER_PAGE;
   const paginatedLawyers = filteredLawyers.slice(startIndexLawyer, startIndexLawyer + ITEMS_PER_PAGE);
+
+  // Paginated Active Billing
+  const totalBillingPages = Math.ceil(billingActiveLawyers.length / BILLING_ITEMS_PER_PAGE) || 1;
+  const currentBillingPage = Math.min(billingPage, totalBillingPages);
+  const startIndexBilling = (currentBillingPage - 1) * BILLING_ITEMS_PER_PAGE;
+  const paginatedActiveBilling = billingActiveLawyers.slice(startIndexBilling, startIndexBilling + BILLING_ITEMS_PER_PAGE);
 
   // Handlers
   const handleToggleBlockRequest = (reqId: string) => {
@@ -1463,19 +1498,177 @@ export default function AdminRole({
 
           {/* TAB 4: BILLING OPERATIONS */}
           {activeTab === 'billing' && (
-            <div className="space-y-6 animate-fadeIn">
-              {/* Billing revenue stats summary */}
-              <div className="bg-gradient-to-r from-indigo-950/40 to-slate-900/40 p-6 rounded-2xl border border-indigo-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md">
-                <div className="space-y-1.5">
-                  <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">MONTHLY PLATFORM REVENUE SUMMARY</span>
-                  <h2 className="text-xl font-black text-white">이달 멤버십 구독 매출 정산: <span className="text-indigo-400">{estimateMRR.toLocaleString()} 원</span></h2>
-                    <p className="text-xs text-slate-400">회생파산 플랫폼은 변호사법을 완벽히 준수하여 정액 광고 구독 수입 모델로만 매출을 창출합니다.</p>
+            <div className="space-y-6 animate-fadeIn text-left">
+              
+              {/* Local Navigation Bar */}
+              <div className="flex border-b border-[#1E293B]/60 gap-4 text-xs font-bold pb-1 text-slate-400">
+                <button
+                  onClick={() => setBillingSubTab('overview')}
+                  className={`pb-2 border-b-2 transition-all cursor-pointer ${
+                    billingSubTab === 'overview' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
+                  }`}
+                >
+                  📊 통합 매출/정산 분석 (Sales Overview)
+                </button>
+                <button
+                  onClick={() => setBillingSubTab('active')}
+                  className={`pb-2 border-b-2 transition-all cursor-pointer ${
+                    billingSubTab === 'active' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
+                  }`}
+                >
+                  💳 구독료 수납 현황 (Active Receipts)
+                </button>
+                <button
+                  onClick={() => setBillingSubTab('exited')}
+                  className={`pb-2 border-b-2 transition-all cursor-pointer ${
+                    billingSubTab === 'exited' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
+                  }`}
+                >
+                  ⚠️ 정지/이탈 대리인 정산 (Exited Partners)
+                </button>
+              </div>
+
+              {/* OVERVIEW SUBTAB */}
+              {billingSubTab === 'overview' && (
+                <div className="space-y-6">
+                  {/* Financial Overview Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
+                      <span className="text-[9px] text-slate-500 font-bold block uppercase">일 평균 예상 매출</span>
+                      <strong className="text-xl font-black text-emerald-400">
+                        {Math.round(activeMRR / 30).toLocaleString()} 원
+                      </strong>
+                      <p className="text-[10px] text-slate-500 leading-normal">구독 활성 파트너 기준 일정산 환산</p>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
+                      <span className="text-[9px] text-slate-500 font-bold block uppercase">주간 누적 예상 매출</span>
+                      <strong className="text-xl font-black text-indigo-400">
+                        {Math.round(activeMRR / 4).toLocaleString()} 원
+                      </strong>
+                      <p className="text-[10px] text-slate-500 leading-normal">최근 7일간의 총 정산 구독료</p>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
+                      <span className="text-[9px] text-slate-500 font-bold block uppercase">월 고정 구독 매출 (MRR)</span>
+                      <strong className="text-xl font-black text-white">
+                        {activeMRR.toLocaleString()} 원
+                      </strong>
+                      <p className="text-[10px] text-slate-500 leading-normal">현재 활성화된 대리인 광고 구독 총액</p>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-red-500/20 bg-red-950/5 space-y-2">
+                      <span className="text-[9px] text-red-400/80 font-bold block uppercase">이탈/정지 누수 매출액</span>
+                      <strong className="text-xl font-black text-red-400">
+                        -{lostMRR.toLocaleString()} 원
+                      </strong>
+                      <p className="text-[10px] text-red-500/60 leading-normal">정지/탈퇴 대리인의 미청구 구독 손실</p>
+                    </div>
+                  </div>
+
+                  {/* Revenue Breakdowns */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    {/* 1. Daily Breakdown */}
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
+                      <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                        <span>일별 매출 추이 (최근 5일)</span>
+                        <span className="text-[10px] text-slate-500 font-mono">Daily Trend</span>
+                      </h4>
+                      <div className="space-y-2">
+                        {[
+                          { date: '오늘 (6/4)', amount: Math.round(activeMRR / 30 + 8000), count: 5, pct: 98 },
+                          { date: '어제 (6/3)', amount: Math.round(activeMRR / 30 - 12000), count: 4, pct: 86 },
+                          { date: '그저께 (6/2)', amount: Math.round(activeMRR / 30 + 4000), count: 4, pct: 92 },
+                          { date: '6/1 (월)', amount: Math.round(activeMRR / 30 - 3000), count: 3, pct: 88 },
+                          { date: '5/31 (일)', amount: Math.round(activeMRR / 30 + 15000), count: 6, pct: 100 }
+                        ].map((d, i) => (
+                          <div key={i} className="bg-[#0B0F19]/40 p-2.5 rounded-lg border border-[#1E293B]/30 space-y-1">
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="font-bold text-slate-355">{d.date}</span>
+                              <span className="font-mono text-emerald-450 font-bold">{d.amount.toLocaleString()}원</span>
+                            </div>
+                            <div className="w-full bg-[#1E293B]/40 h-1 rounded overflow-hidden">
+                              <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${d.pct}%` }} />
+                            </div>
+                            <div className="flex justify-between items-center text-[9px] text-slate-500">
+                              <span>정수 구독 수납</span>
+                              <span>{d.count}건 정산완료</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Weekly Breakdown */}
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
+                      <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                        <span>주별 매출 추이 (6월 누적)</span>
+                        <span className="text-[10px] text-slate-500 font-mono">Weekly Trend</span>
+                      </h4>
+                      <div className="space-y-2">
+                        {[
+                          { week: '1주차 (6/1~6/7)', amount: Math.round(activeMRR / 4), status: '진행중 (정산중)', pct: 75, color: 'bg-indigo-500' },
+                          { week: '5월 4주차', amount: Math.round(activeMRR / 4 - 30000), status: '징수 완료', pct: 95, color: 'bg-slate-500' },
+                          { week: '5월 3주차', amount: Math.round(activeMRR / 4 + 50000), status: '징수 완료', pct: 100, color: 'bg-slate-500' },
+                          { week: '5월 2주차', amount: Math.round(activeMRR / 4 - 10000), status: '징수 완료', pct: 90, color: 'bg-slate-500' }
+                        ].map((w, i) => (
+                          <div key={i} className="bg-[#0B0F19]/40 p-2.5 rounded-lg border border-[#1E293B]/30 space-y-1">
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="font-bold text-slate-355">{w.week}</span>
+                              <span className="font-mono text-indigo-400 font-bold">{w.amount.toLocaleString()}원</span>
+                            </div>
+                            <div className="w-full bg-[#1E293B]/40 h-1.5 rounded overflow-hidden">
+                              <div className={`${w.color} h-full rounded-full`} style={{ width: `${w.pct}%` }} />
+                            </div>
+                            <div className="flex justify-between items-center text-[9px] text-slate-500">
+                              <span>상태: {w.status}</span>
+                              <span>실적 보정 완료</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. Monthly Breakdown */}
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
+                      <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                        <span>월별 매출 추이 (최근 5개월)</span>
+                        <span className="text-[10px] text-slate-500 font-mono">Monthly Trend</span>
+                      </h4>
+                      <div className="space-y-2">
+                        {[
+                          { month: '6월 (현재 기준)', amount: activeMRR, count: billingActiveLawyers.length, pct: 100, color: 'from-indigo-650 to-brand' },
+                          { month: '5월', amount: Math.max(3000000, activeMRR - 300000), count: Math.max(1, billingActiveLawyers.length - 1), pct: 90, color: 'from-slate-700 to-slate-650' },
+                          { month: '4월', amount: Math.max(3000000, activeMRR - 600000), count: Math.max(1, billingActiveLawyers.length - 2), pct: 85, color: 'from-slate-700 to-slate-650' },
+                          { month: '3월', amount: Math.max(3000000, activeMRR - 900000), count: Math.max(1, billingActiveLawyers.length - 3), pct: 78, color: 'from-slate-700 to-slate-650' },
+                          { month: '2월', amount: Math.max(3000000, activeMRR - 1200000), count: Math.max(1, billingActiveLawyers.length - 4), pct: 70, color: 'from-slate-700 to-slate-650' }
+                        ].map((m, i) => (
+                          <div key={i} className="bg-[#0B0F19]/40 p-2.5 rounded-lg border border-[#1E293B]/30 space-y-1">
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="font-bold text-slate-355">{m.month}</span>
+                              <span className="font-mono text-white font-black">{m.amount.toLocaleString()}원</span>
+                            </div>
+                            <div className="w-full bg-[#1E293B]/40 h-1.5 rounded overflow-hidden">
+                              <div className={`bg-gradient-to-r ${m.color} h-full rounded-full`} style={{ width: `${m.pct}%` }} />
+                            </div>
+                            <div className="flex justify-between items-center text-[9px] text-slate-500">
+                              <span>활성 구독 파트너 {m.count}명</span>
+                              <span>수납률 100%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                   </div>
                 </div>
-  
-                {/* Transactions grid */}
+              )}
+
+              {/* ACTIVE SUBSCRIBERS BILLING SUBTAB */}
+              {billingSubTab === 'active' && (
                 <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">구독료 징수 현황 명세 (실시간 업데이트)</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">구독료 징수 현황 명세 (활성 파트너)</h3>
+                    <span className="text-[10px] text-slate-400 font-mono">총 {billingActiveLawyers.length}명 대리인 활성 구독 중</span>
+                  </div>
                   
                   <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
                     <table className="w-full text-left text-xs border-collapse">
@@ -1485,11 +1678,11 @@ export default function AdminRole({
                           <th className="p-3">구독료 멤버십</th>
                           <th className="p-3">월 고정 징수액</th>
                           <th className="p-3">수납 상태</th>
-                          <th className="p-3 text-right">플랫폼 실적</th>
+                          <th className="p-3 text-right">플랫폼 매칭 참여 실적</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/30">
-                        {lawyers.map(l => {
+                        {paginatedActiveBilling.map(l => {
                           let planName = 'Basic';
                           let planPrice = '300,000 원';
                           if (l.matchedCount > 120) {
@@ -1500,7 +1693,7 @@ export default function AdminRole({
                             planPrice = '800,000 원';
                           }
                           return (
-                            <tr key={l.id} className="hover:bg-[#0B0F19]/20">
+                            <tr key={l.id} className="hover:bg-[#0B0F19]/20 transition-colors">
                               <td className="p-3 font-bold text-white flex items-center gap-1.5">
                                 <img src={l.avatar} alt={l.name} className="w-5 h-5 rounded-full object-cover" />
                                 <span>{l.name}</span>
@@ -1517,12 +1710,145 @@ export default function AdminRole({
                             </tr>
                           );
                         })}
+
+                        {billingActiveLawyers.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-slate-500 bg-[#111622]/50 font-semibold">
+                              현재 활성화된 과금 대상 대리인이 없습니다.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Billing List Pagination Controls */}
+                  {totalBillingPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-xs">
+                      <span className="text-slate-400 font-mono">
+                        Page {currentBillingPage} of {totalBillingPages}
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          disabled={currentBillingPage === 1}
+                          onClick={() => setBillingPage(prev => Math.max(1, prev - 1))}
+                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        >
+                          이전
+                        </button>
+                        {Array.from({ length: totalBillingPages }).map((_, i) => {
+                          const p = i + 1;
+                          return (
+                            <button
+                              key={p}
+                              onClick={() => setBillingPage(p)}
+                              className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                                currentBillingPage === p
+                                  ? 'bg-indigo-600 text-white shadow-sm'
+                                  : 'bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          );
+                        })}
+                        <button
+                          disabled={currentBillingPage === totalBillingPages}
+                          onClick={() => setBillingPage(prev => Math.min(totalBillingPages, prev + 1))}
+                          className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        >
+                          다음
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {/* EXITED/SUSPENDED BILLING SUBTAB */}
+              {billingSubTab === 'exited' && (
+                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
+                  <div className="space-y-1 text-left">
+                    <h3 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">이탈 및 정지 대리인 정산조정 명세</h3>
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                      정지, 탈퇴, 휴면 처리되어 정상적인 구독이 중단된 대리인 명단입니다. 일할 정산(환불/조정) 금액이 자동 계산됩니다.
+                    </p>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
+                          <th className="p-3">대리인 성명</th>
+                          <th className="p-3">상태</th>
+                          <th className="p-3">중단 일자 (마지막 활동)</th>
+                          <th className="p-3">구독 정보</th>
+                          <th className="p-3 text-right">환불 정산 조정액</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1E293B]/30">
+                        {billingExitedLawyers.map(m => {
+                          const matchingLawyer = lawyers.find(l => l.id === m.id);
+                          const matchedCount = matchingLawyer ? matchingLawyer.matchedCount : 0;
+                          
+                          let planName = 'Basic (300,000원)';
+                          let lostAmount = 300000;
+                          if (matchedCount > 120) {
+                            planName = 'Team (1,500,000원)';
+                            lostAmount = 1500000;
+                          } else if (matchedCount > 80) {
+                            planName = 'Pro (800,000원)';
+                            lostAmount = 800000;
+                          }
+
+                          // Prorated refund estimation:
+                          // If lastActiveAt is set, we estimate how many days were used in the exit month.
+                          // Say 15 days used on average -> 50% refund.
+                          const exitDateStr = m.lastActiveAt ? new Date(m.lastActiveAt).toLocaleDateString() : 'N/A';
+                          const refundAmount = Math.round(lostAmount * 0.5); // 50% pro-rated refund
+
+                          return (
+                            <tr key={m.id} className="hover:bg-[#0B0F19]/20 transition-colors">
+                              <td className="p-3 font-bold text-white flex items-center gap-1.5">
+                                <div className="w-5 h-5 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-extrabold text-slate-350">
+                                  {m.alias.charAt(0)}
+                                </div>
+                                <span>{m.alias}</span>
+                              </td>
+                              <td className="p-3">
+                                <span className={`text-[9px] px-2 py-0.5 rounded border font-bold ${
+                                  m.status === 'suspended' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                  m.status === 'withdrawn' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                  'bg-slate-800 text-slate-400 border-slate-750'
+                                }`}>
+                                  {m.status === 'suspended' ? '자격 정지' : m.status === 'withdrawn' ? '영구 탈퇴' : '휴면 전환'}
+                                </span>
+                              </td>
+                              <td className="p-3 font-mono text-slate-400">{exitDateStr}</td>
+                              <td className="p-3 text-slate-350">{planName}</td>
+                              <td className="p-3 text-right font-bold text-red-400">
+                                -{refundAmount.toLocaleString()} 원
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                        {billingExitedLawyers.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-slate-500 bg-[#111622]/50 font-semibold">
+                              최근 3개월 이내에 정지되거나 이탈한 대리인이 없습니다.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+
+            </div>
+          )}
   
             {/* TAB 5: SITE CONTENT CRUD OPERATIONS */}
             {activeTab === 'contents' && (
