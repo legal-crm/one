@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
-  LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity
+  LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry } from '../types';
 import { platformPlans } from '../data';
 
 interface AdminRoleProps {
@@ -29,6 +29,10 @@ interface AdminRoleProps {
   activityLogs: ActivityLog[];
   setActivityLogs: React.Dispatch<React.SetStateAction<ActivityLog[]>>;
   onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
+  platformConfig: PlatformConfig;
+  setPlatformConfig: React.Dispatch<React.SetStateAction<PlatformConfig>>;
+  inquiries: ClientInquiry[];
+  setInquiries: React.Dispatch<React.SetStateAction<ClientInquiry[]>>;
 }
 
 export default function AdminRole({
@@ -52,7 +56,11 @@ export default function AdminRole({
   setMembers,
   activityLogs,
   setActivityLogs,
-  onLogActivity
+  onLogActivity,
+  platformConfig,
+  setPlatformConfig,
+  inquiries,
+  setInquiries
 }: AdminRoleProps) {
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
@@ -76,7 +84,7 @@ export default function AdminRole({
   const [formImageUrl, setFormImageUrl] = useState<string>('');
 
   // Site Content sub-navigation state
-  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice'>('news');
+  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry'>('news');
 
   // CRUD states for Notices
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
@@ -161,6 +169,37 @@ export default function AdminRole({
   // Selected entities for detail panels
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedLawyerId, setSelectedLawyerId] = useState<string>('');
+
+  // Dashboard sort type state
+  const [dashboardSortType, setDashboardSortType] = useState<'weekly' | 'monthly'>('weekly');
+
+  // Client inquiry states
+  const [selectedInquiryId, setSelectedInquiryId] = useState<string>('');
+  const [replyText, setReplyText] = useState<string>('');
+
+  // Global platform configuration states (form fields)
+  const [formSiteTitle, setFormSiteTitle] = useState<string>(platformConfig ? platformConfig.siteTitle : '');
+  const [formSiteLogoText, setFormSiteLogoText] = useState<string>(platformConfig ? platformConfig.siteLogoText : '');
+  const [formSiteLogoUrl, setFormSiteLogoUrl] = useState<string>(platformConfig ? platformConfig.siteLogoUrl || '' : '');
+  const [formCompanyAddress, setFormCompanyAddress] = useState<string>(platformConfig ? platformConfig.companyAddress : '');
+  const [formCompanyBusinessNumber, setFormCompanyBusinessNumber] = useState<string>(platformConfig ? platformConfig.companyBusinessNumber : '');
+  const [formCompanyRepresentative, setFormCompanyRepresentative] = useState<string>(platformConfig ? platformConfig.companyRepresentative : '');
+  const [formTermsOfService, setFormTermsOfService] = useState<string>(platformConfig ? platformConfig.termsOfService : '');
+  const [formPrivacyPolicy, setFormPrivacyPolicy] = useState<string>(platformConfig ? platformConfig.privacyPolicy : '');
+
+  // Synchronize configuration form fields when platformConfig prop updates
+  useEffect(() => {
+    if (platformConfig) {
+      setFormSiteTitle(platformConfig.siteTitle);
+      setFormSiteLogoText(platformConfig.siteLogoText);
+      setFormSiteLogoUrl(platformConfig.siteLogoUrl || '');
+      setFormCompanyAddress(platformConfig.companyAddress);
+      setFormCompanyBusinessNumber(platformConfig.companyBusinessNumber);
+      setFormCompanyRepresentative(platformConfig.companyRepresentative);
+      setFormTermsOfService(platformConfig.termsOfService);
+      setFormPrivacyPolicy(platformConfig.privacyPolicy);
+    }
+  }, [platformConfig]);
 
   // 1. Calculations for Dashboard Stats
   const totalRequestsCount = requests.length;
@@ -496,7 +535,7 @@ export default function AdminRole({
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-fadeIn">
               {/* Stat grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">누적 상담 신청 건수</span>
@@ -531,11 +570,42 @@ export default function AdminRole({
 
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-[10px] text-slate-500 block uppercase font-bold">총 처리 위임 채무액</span>
-                    <span className="text-xl font-black text-rose-400">{(totalDebtProcessed / 10000).toFixed(1)}억 원</span>
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold">일일 방문자수</span>
+                    <span className="text-2xl font-black text-rose-400">248명</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/10">
-                    <AlertTriangle className="w-5 h-5" />
+                    <Activity className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold">오늘 신규 가입자</span>
+                    <span className="text-2xl font-black text-indigo-400">
+                      {members.filter(m => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        return m.createdAt.startsWith(todayStr);
+                      }).length}명
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
+                    <UserPlus className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold">시스템 서버 상태</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-xs font-black text-emerald-400 uppercase tracking-wider">ONLINE</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
+                    <Server className="w-5 h-5" />
                   </div>
                 </div>
               </div>
@@ -585,6 +655,118 @@ export default function AdminRole({
                   </div>
                 </div>
 
+              </div>
+
+              {/* SignUp & Traffic Analytics Chart Panel */}
+              <div className="bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-[#1E293B]/50 pb-3 gap-3">
+                  <h3 className="font-bold text-sm text-slate-200 flex items-center gap-1.5">
+                    <BarChart2 className="w-4 h-4 text-indigo-400" />
+                    <span>가입자 추이 및 방문자(유입량) 분석</span>
+                  </h3>
+                  <div className="flex bg-[#0B0F19] p-0.5 rounded-lg border border-[#1E293B]/60">
+                    <button
+                      onClick={() => setDashboardSortType('weekly')}
+                      className={`text-[10px] font-black px-2.5 py-1 rounded-md transition-all ${
+                        dashboardSortType === 'weekly' 
+                          ? 'bg-indigo-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      주별 보기 (최근 4주)
+                    </button>
+                    <button
+                      onClick={() => setDashboardSortType('monthly')}
+                      className={`text-[10px] font-black px-2.5 py-1 rounded-md transition-all ${
+                        dashboardSortType === 'monthly' 
+                          ? 'bg-indigo-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      월별 보기 (최근 6개월)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Chart Visualization */}
+                <div className="space-y-6">
+                  <div className="flex items-end justify-between h-48 pt-4 px-2 sm:px-6 bg-[#0B0F19]/40 rounded-xl border border-[#1E293B]/30 gap-3 sm:gap-6">
+                    {/* Y-axis Labels */}
+                    <div className="flex flex-col justify-between h-full text-[9px] text-slate-500 font-mono pr-2 border-r border-[#1E293B]/30 pb-4">
+                      <span>{dashboardSortType === 'weekly' ? '250명' : '1000명'}</span>
+                      <span>{dashboardSortType === 'weekly' ? '125명' : '500명'}</span>
+                      <span>0명</span>
+                    </div>
+
+                    {/* Chart Bars */}
+                    {(dashboardSortType === 'weekly' ? [
+                      { label: '1주차', signups: 8, traffic: 120 },
+                      { label: '2주차', signups: 12, traffic: 160 },
+                      { label: '3주차', signups: 15, traffic: 190 },
+                      { label: '4주차 (현재)', signups: 19, traffic: 248 }
+                    ] : [
+                      { label: '1월', signups: 30, traffic: 450 },
+                      { label: '2월', signups: 35, traffic: 510 },
+                      { label: '3월', signups: 42, traffic: 600 },
+                      { label: '4월', signups: 48, traffic: 720 },
+                      { label: '5월', signups: 55, traffic: 850 },
+                      { label: '6월 (현재)', signups: 64, traffic: 980 }
+                    ]).map((data, index) => {
+                      const maxTraffic = dashboardSortType === 'weekly' ? 250 : 1000;
+                      const maxSignups = dashboardSortType === 'weekly' ? 25 : 80;
+                      const trafficHeight = Math.min((data.traffic / maxTraffic) * 100, 100);
+                      const signupHeight = Math.min((data.signups / maxSignups) * 100, 100);
+
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer">
+                          <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-32 relative">
+                            
+                            {/* Tooltip */}
+                            <div className="absolute -top-10 scale-0 group-hover:scale-100 bg-slate-900 border border-[#1E293B] rounded-lg p-2 text-[10px] text-slate-200 z-10 transition-all shadow-xl pointer-events-none whitespace-nowrap">
+                              <div className="font-bold text-slate-100 mb-0.5">{data.label}</div>
+                              <div className="flex items-center gap-1.5 text-indigo-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                가입자: {data.signups}명
+                              </div>
+                              <div className="flex items-center gap-1.5 text-rose-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                유입량: {data.traffic}명
+                              </div>
+                            </div>
+
+                            {/* Traffic Bar (Background/Taller) */}
+                            <div 
+                              style={{ height: `${trafficHeight}%` }} 
+                              className="w-3 sm:w-5 bg-gradient-to-t from-rose-500/20 to-rose-500/80 rounded-t-sm sm:rounded-t transition-all duration-500 group-hover:brightness-125"
+                            />
+                            {/* Signup Bar (Foreground/Shorter) */}
+                            <div 
+                              style={{ height: `${signupHeight}%` }} 
+                              className="w-3 sm:w-5 bg-gradient-to-t from-indigo-500/20 to-indigo-500/80 rounded-t-sm sm:rounded-t transition-all duration-500 group-hover:brightness-125"
+                            />
+                          </div>
+                          
+                          {/* Label */}
+                          <span className="text-[10px] text-slate-400 mt-2 font-medium truncate max-w-full text-center">
+                            {data.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Chart Legend */}
+                  <div className="flex items-center justify-center gap-6 text-xs border-t border-[#1E293B]/20 pt-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm bg-gradient-to-t from-indigo-500/20 to-indigo-500/80" />
+                      <span className="text-slate-400">신규 가입자수</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm bg-gradient-to-t from-rose-500/20 to-rose-500/80" />
+                      <span className="text-slate-400">일일 방문자수 (유입량)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* 마케팅 유입 채널별 효과 및 회원가입 종합 현황 분석 */}
@@ -1371,6 +1553,12 @@ export default function AdminRole({
                   className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'notice' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
                 >
                   📢 공지사항 관리
+                </button>
+                <button 
+                  onClick={() => { setContentSubTab('inquiry'); setSelectedInquiryId(''); setReplyText(''); }}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'inquiry' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  🙋 1:1 문의 내역 관리
                 </button>
               </div>
 
@@ -2471,6 +2659,200 @@ export default function AdminRole({
                 </div>
               )}
 
+              {/* 6. CLIENT 1:1 INQUIRY BOARD SECTION */}
+              {contentSubTab === 'inquiry' && (() => {
+                const selectedInq = inquiries.find(inq => inq.id === selectedInquiryId);
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-fadeIn">
+                    
+                    {/* Left Column: Inquiry List */}
+                    <div className="lg:col-span-7 bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden flex flex-col">
+                      <div className="p-4 bg-[#161B26] border-b border-[#1E293B]/60 flex items-center justify-between">
+                        <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">의뢰인 1:1 문의 내역</h4>
+                        <span className="text-[10px] text-slate-400">총 {inquiries.length}건</span>
+                      </div>
+                      
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-[#161B26]/30 text-slate-400 font-bold border-b border-[#1E293B]/60">
+                              <th className="p-3">작성자</th>
+                              <th className="p-3">문의 제목</th>
+                              <th className="p-3">상태</th>
+                              <th className="p-3 text-right">등록일</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#1E293B]/30">
+                            {inquiries.map(inq => {
+                              const isSelected = inq.id === selectedInquiryId;
+                              return (
+                                <tr
+                                  key={inq.id}
+                                  onClick={() => {
+                                    setSelectedInquiryId(inq.id);
+                                    setReplyText(inq.replyContent || '');
+                                  }}
+                                  className={`cursor-pointer transition-colors ${
+                                    isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/45'
+                                  }`}
+                                >
+                                  <td className="p-3">
+                                    <div className="flex flex-col">
+                                      <span className="font-extrabold text-slate-100">{inq.clientName}</span>
+                                      <span className="text-[9px] text-slate-500 font-mono">{inq.clientId}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 font-semibold text-slate-200 max-w-[200px] truncate">
+                                    {inq.title}
+                                  </td>
+                                  <td className="p-3">
+                                    <span className={`text-[9px] px-2 py-0.5 rounded border font-bold ${
+                                      inq.status === 'replied' 
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                      : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    }`}>
+                                      {inq.status === 'replied' ? '답변 완료' : '답변 대기'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right font-mono text-slate-450">
+                                    {new Date(inq.createdAt).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+
+                            {inquiries.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="p-12 text-center text-slate-500 font-semibold bg-[#111622]/50">
+                                  등록된 1:1 문의 사항이 없습니다.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Inquiry Details & Answer Editor */}
+                    <div className="lg:col-span-5 bg-[#111622] rounded-xl border border-[#1E293B]/60 p-5 flex flex-col space-y-4">
+                      {selectedInq ? (
+                        <div className="space-y-4 animate-fadeIn">
+                          <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
+                            <div className="space-y-1">
+                              <span className="text-[9px] text-indigo-400 font-black block uppercase tracking-wider">INQUIRY DETAIL VIEW</span>
+                              <h3 className="text-sm font-extrabold text-white">
+                                {selectedInq.clientName} 의뢰인의 문의
+                              </h3>
+                            </div>
+                            <button
+                              onClick={() => setSelectedInquiryId('')}
+                              className="text-slate-400 hover:text-white text-xs font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
+                            >
+                              닫기
+                            </button>
+                          </div>
+
+                          {/* Inquiry Content box */}
+                          <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-xs">
+                            <div className="text-[10px] text-slate-500 font-mono">
+                              등록일시: {new Date(selectedInq.createdAt).toLocaleString()}
+                            </div>
+                            <h4 className="text-slate-100 font-extrabold text-xs mb-1">
+                              Q. {selectedInq.title}
+                            </h4>
+                            <p className="text-slate-350 leading-relaxed font-normal whitespace-pre-wrap">
+                              {selectedInq.content}
+                            </p>
+                          </div>
+
+                          {/* Answer Editor Section */}
+                          <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-3">
+                            <span className="text-[10px] font-black text-indigo-400 block uppercase tracking-wider">✍️ 관리자 답변 작성 에디터</span>
+                            
+                            <textarea
+                              rows={6}
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              placeholder="의뢰인의 문의사항에 대한 답변을 작성하십시오. 등록 즉시 의뢰인의 마이페이지에서 확인이 가능합니다."
+                              className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                            />
+
+                            <div className="flex gap-2">
+                              {selectedInq.status === 'replied' && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm('등록된 답변을 삭제하시겠습니까?')) {
+                                      setInquiries(prev => prev.map(inq => {
+                                        if (inq.id === selectedInq.id) {
+                                          return {
+                                            ...inq,
+                                            replyContent: undefined,
+                                            repliedAt: undefined,
+                                            status: 'pending'
+                                          };
+                                        }
+                                        return inq;
+                                      }));
+                                      setReplyText('');
+                                      onLogActivity(
+                                        'admin',
+                                        '최고관리자',
+                                        'ADMIN',
+                                        'ADMIN_ACTION',
+                                        `1:1 문의 답변 삭제: 문의 ID ${selectedInq.id}`
+                                      );
+                                      alert('답변이 삭제되었습니다.');
+                                    }
+                                  }}
+                                  className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-[200px] text-xs font-extrabold transition-all text-center cursor-pointer"
+                                >
+                                  답변 삭제
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  if (!replyText.trim()) {
+                                    alert('답변 내용을 입력해 주세요.');
+                                    return;
+                                  }
+                                  setInquiries(prev => prev.map(inq => {
+                                    if (inq.id === selectedInq.id) {
+                                      return {
+                                        ...inq,
+                                        replyContent: replyText.trim(),
+                                        repliedAt: new Date().toISOString(),
+                                        status: 'replied'
+                                      };
+                                    }
+                                    return inq;
+                                  }));
+                                  onLogActivity(
+                                    'admin',
+                                    '최고관리자',
+                                    'ADMIN',
+                                    'ADMIN_ACTION',
+                                    `1:1 문의 답변 등록/수정: 문의 ID ${selectedInq.id} (의뢰인: ${selectedInq.clientName})`
+                                  );
+                                  alert('답변이 성공적으로 등록되었습니다.');
+                                }}
+                                className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all text-center cursor-pointer"
+                              >
+                                {selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-slate-600 text-xs">
+                          상세 조회 및 답변 작성을 위해 왼쪽의 1:1 문의 건을 클릭하십시오.
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                );
+              })()}
+
             </div>
           )}
 
@@ -2637,6 +3019,146 @@ export default function AdminRole({
                     </table>
                   </div>
                 </div>
+
+                {/* 📋 기본 홈페이지 설정 및 약관/법률 관리 패널 */}
+                <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6 mt-6">
+                  <div>
+                    <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
+                      <span>⚙️</span>
+                      <span>기본 홈페이지 설정 및 법률 약관 관리</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      플랫폼 전역(의뢰인/변호사 포털)에 적용되는 공통 브랜딩 정보 및 이용약관 내용을 실시간 변경/저장합니다.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-left">
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">홈페이지 브라우저 타이틀</label>
+                        <input 
+                          type="text" 
+                          value={formSiteTitle}
+                          onChange={(e) => setFormSiteTitle(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="홈페이지 브라우저 상단 타이틀을 입력하세요"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">네비게이션 로고 텍스트 (CI/BI)</label>
+                        <input 
+                          type="text" 
+                          value={formSiteLogoText}
+                          onChange={(e) => setFormSiteLogoText(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="로고 텍스트를 입력하세요"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">회사 공식 주소</label>
+                        <input 
+                          type="text" 
+                          value={formCompanyAddress}
+                          onChange={(e) => setFormCompanyAddress(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="회사 주소를 입력하세요"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">사업자 등록 번호</label>
+                        <input 
+                          type="text" 
+                          value={formCompanyBusinessNumber}
+                          onChange={(e) => setFormCompanyBusinessNumber(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="사업자 등록 번호를 입력하세요"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">대표자명</label>
+                        <input 
+                          type="text" 
+                          value={formCompanyRepresentative}
+                          onChange={(e) => setFormCompanyRepresentative(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="대표자명을 입력하세요"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">로고 이미지 URL (선택)</label>
+                        <input 
+                          type="text" 
+                          value={formSiteLogoUrl}
+                          onChange={(e) => setFormSiteLogoUrl(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="http:// 로 시작하는 로고 이미지 경로"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2 space-y-4 pt-2">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">이용약관 본문 (가입 동의 약관)</label>
+                        <textarea 
+                          rows={6}
+                          value={formTermsOfService}
+                          onChange={(e) => setFormTermsOfService(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          placeholder="이용약관 내용을 입력하세요"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-slate-455 block uppercase font-bold">개인정보처리방침 본문</label>
+                        <textarea 
+                          rows={6}
+                          value={formPrivacyPolicy}
+                          onChange={(e) => setFormPrivacyPolicy(e.target.value)}
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          placeholder="개인정보처리방침 내용을 입력하세요"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t border-[#1E293B]/30">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPlatformConfig({
+                          siteTitle: formSiteTitle.trim(),
+                          siteLogoText: formSiteLogoText.trim(),
+                          siteLogoUrl: formSiteLogoUrl.trim() || undefined,
+                          companyAddress: formCompanyAddress.trim(),
+                          companyBusinessNumber: formCompanyBusinessNumber.trim(),
+                          companyRepresentative: formCompanyRepresentative.trim(),
+                          termsOfService: formTermsOfService,
+                          privacyPolicy: formPrivacyPolicy
+                        });
+                        onLogActivity(
+                          'admin',
+                          '최고관리자',
+                          'ADMIN',
+                          'ADMIN_ACTION',
+                          `기본 홈페이지 환경설정 및 법률약관 정보 갱신 적용 완료`
+                        );
+                        alert('기본 환경 설정 및 약관이 성공적으로 저장 및 전역 반영되었습니다!');
+                      }}
+                      className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-8 py-3 rounded-[200px] text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>기본 설정 저장 및 전역 적용</span>
+                    </button>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
@@ -2649,6 +3171,7 @@ export default function AdminRole({
             const totalSuspendedCount = members.filter(m => m.status === 'suspended').length;
             const totalPendingCount = members.filter(m => m.status === 'pending').length;
             const totalWithdrawnCount = members.filter(m => m.status === 'withdrawn').length;
+            const totalDormantCount = members.filter(m => m.status === 'dormant').length;
             const todaySignupsCount = members.filter(m => m.createdAt.startsWith(new Date().toISOString().split('T')[0])).length;
 
 
@@ -2720,6 +3243,25 @@ export default function AdminRole({
                   'ADMIN',
                   'ADMIN_ACTION',
                   `회원 계정 상태 수동 조절: ${current.alias} (${current.role}) -> [${newStatus.toUpperCase()}]`
+                );
+                alert(`해당 계정이 성공적으로 ${statusText} 처리되었습니다.`);
+              }
+            };
+
+            const handleToggleDormantStatus = (memberId: string) => {
+              const current = members.find(m => m.id === memberId);
+              if (!current) return;
+              const newStatus = current.status === 'dormant' ? 'active' : 'dormant';
+              const statusText = newStatus === 'active' ? '휴면 해제 (활성화)' : '휴면 계정 전환';
+              if (confirm(`이 회원의 계정 상태를 [${statusText}]로 변경하시겠습니까?`)) {
+                setMembers(prev => prev.map(m => m.id === memberId ? { ...m, status: newStatus, lastActiveAt: new Date().toISOString() } : m));
+                
+                onLogActivity(
+                  'admin',
+                  '최고관리자',
+                  'ADMIN',
+                  'ADMIN_ACTION',
+                  `회원 계정 휴면 상태 수동 조절: ${current.alias} (${current.role}) -> [${newStatus.toUpperCase()}]`
                 );
                 alert(`해당 계정이 성공적으로 ${statusText} 처리되었습니다.`);
               }
@@ -2817,12 +3359,14 @@ export default function AdminRole({
                         <strong className="text-xl font-black text-sky-400">{totalPartnersCount}명</strong>
                       </div>
                       <div className="bg-[#07090E]/65 p-2.5 rounded-xl border border-[#1E293B]/30 col-span-2 flex flex-col gap-2 text-[10px] text-left">
-                        <div className="flex justify-around text-center border-b border-[#1E293B]/20 pb-1.5">
+                        <div className="flex justify-around text-center border-b border-[#1E293B]/20 pb-1.5 flex-wrap gap-y-1">
                           <div>정상: <strong className="text-emerald-400 font-bold">{totalActiveCount}명</strong></div>
                           <div className="border-r border-[#1E293B]/30 h-3 my-auto"></div>
                           <div>정지: <strong className="text-red-400 font-bold">{totalSuspendedCount}명</strong></div>
                           <div className="border-r border-[#1E293B]/30 h-3 my-auto"></div>
-                          <div>대기: <strong className="text-amber-400 font-bold">{totalPendingCount}</strong></div>
+                          <div>휴면: <strong className="text-amber-500 font-bold">{totalDormantCount}명</strong></div>
+                          <div className="border-r border-[#1E293B]/30 h-3 my-auto"></div>
+                          <div>대기: <strong className="text-slate-400 font-bold">{totalPendingCount}명</strong></div>
                         </div>
                         <div className="flex justify-around text-center text-slate-400">
                           <div>오늘 가입: <strong className="text-indigo-400 font-bold">{todaySignupsCount}명</strong></div>
@@ -2944,6 +3488,7 @@ export default function AdminRole({
                           <option value="active">정상 (Active)</option>
                           <option value="suspended">정지 (Suspended)</option>
                           <option value="pending">대기 (Pending)</option>
+                          <option value="dormant">휴면 (Dormant)</option>
                           <option value="withdrawn">탈퇴 (Withdrawn)</option>
                         </select>
                       </div>
@@ -2970,7 +3515,9 @@ export default function AdminRole({
                                 onClick={() => setSelectedMemberId(m.id)}
                                 className={`cursor-pointer transition-colors ${
                                   isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/45'
-                                } ${m.status === 'withdrawn' ? 'opacity-60 line-through text-slate-500' : ''}`}
+                                } ${m.status === 'withdrawn' ? 'opacity-60 line-through text-slate-500' : ''} ${
+                                  m.status === 'dormant' ? 'border-l-2 border-amber-500/80 bg-amber-500/5' : ''
+                                }`}
                               >
                                 <td className="p-3">
                                   <div className="flex flex-col">
@@ -3004,9 +3551,10 @@ export default function AdminRole({
                                     m.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                     m.status === 'suspended' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                                     m.status === 'withdrawn' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
+                                    m.status === 'dormant' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                                     'bg-amber-500/10 text-amber-400 border-amber-500/20'
                                   }`}>
-                                    {m.status === 'active' ? '정상 활동' : m.status === 'suspended' ? '이용 정지' : m.status === 'withdrawn' ? '탈퇴 완료' : '승인 대기'}
+                                    {m.status === 'active' ? '정상 활동' : m.status === 'suspended' ? '이용 정지' : m.status === 'withdrawn' ? '탈퇴 완료' : m.status === 'dormant' ? '휴면 계정' : '승인 대기'}
                                   </span>
                                 </td>
                                 <td className="p-3 text-right text-slate-400 font-mono text-[10px]">
@@ -3098,27 +3646,46 @@ export default function AdminRole({
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>대리인 자격 승인</span>
                                 </button>
-                              ) : (
+                              ) : selectedMember.status === 'dormant' ? (
                                 <button 
-                                  onClick={() => handleToggleMemberStatus(selectedMember.id)}
-                                  className={`flex-1 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                    selectedMember.status === 'active'
-                                    ? 'bg-[#1E293B]/20 hover:bg-red-950/20 border border-red-500/30 text-red-400'
-                                    : 'bg-emerald-650 hover:bg-emerald-600 text-white'
-                                  }`}
+                                  onClick={() => handleToggleDormantStatus(selectedMember.id)}
+                                  className="flex-1 bg-emerald-650 hover:bg-emerald-600 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
-                                  {selectedMember.status === 'active' ? (
-                                    <>
-                                      <EyeOff className="w-3.5 h-3.5" />
-                                      <span>계정 임시 정지 (Block)</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle2 className="w-3.5 h-3.5" />
-                                      <span>계정 차단 해제 (Activate)</span>
-                                    </>
-                                  )}
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>휴면 해제 (활성화)</span>
                                 </button>
+                              ) : (
+                                <div className="flex-1 flex flex-col sm:flex-row gap-2 w-full">
+                                  <button 
+                                    onClick={() => handleToggleMemberStatus(selectedMember.id)}
+                                    className={`flex-1 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                      selectedMember.status === 'active'
+                                      ? 'bg-[#1E293B]/20 hover:bg-red-950/20 border border-red-500/30 text-red-400'
+                                      : 'bg-emerald-650 hover:bg-emerald-600 text-white'
+                                    }`}
+                                  >
+                                    {selectedMember.status === 'active' ? (
+                                      <>
+                                        <EyeOff className="w-3.5 h-3.5" />
+                                        <span>계정 임시 정지 (Block)</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        <span>계정 차단 해제 (Activate)</span>
+                                      </>
+                                    )}
+                                  </button>
+                                  {selectedMember.status === 'active' && (
+                                    <button 
+                                      onClick={() => handleToggleDormantStatus(selectedMember.id)}
+                                      className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/30 text-amber-400 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Lock className="w-3.5 h-3.5" />
+                                      <span>휴면 계정 수동 전환</span>
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
 

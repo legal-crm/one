@@ -1,4 +1,5 @@
-import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog } from './types';
+import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, PlatformConfig } from './types';
+
 
 
 export const mockLawFirms: LawFirm[] = [
@@ -1314,6 +1315,17 @@ export const initialMembers: Member[] = [
     loginChannel: 'google',
     status: 'withdrawn',
     lastActiveAt: '2026-05-22T14:30:00Z',
+  },
+  {
+    id: 'client-dormant-1',
+    alias: '휴면회원_202',
+    role: 'CLIENT',
+    createdAt: '2025-04-01T09:00:00Z',
+    loginChannel: 'sms',
+    status: 'dormant',
+    email: 'dormant_user@naver.com',
+    phone: '010-8888-7777',
+    lastActiveAt: '2025-06-03T18:00:00Z',
   }
 ];
 
@@ -1479,4 +1491,39 @@ export const initialActivityLogs: ActivityLog[] = [
     createdAt: '2026-05-20T11:00:00Z',
   }
 ];
+
+export const initialInquiries: ClientInquiry[] = [
+  {
+    id: 'inquiry-1',
+    clientId: 'client-1',
+    clientName: '새출발_385',
+    title: '개인회생 변제금 산정 기준 문의',
+    content: '추가 생계비로 부양가족 1명을 인정받으려면 어떤 서류를 준비해야 하나요? 현재 따로 사는 고령의 부모님이 계십니다.',
+    createdAt: '2026-06-02T10:00:00Z',
+    status: 'replied',
+    replyContent: '고령의 부모님을 부양가족으로 인정받기 위해서는 기본증명서, 가족관계증명서와 함께 부모님의 소득 및 재산이 없음을 증명하는 지방세 세목별 과세증명서, 그리고 정기적인 생활비 송금 이력 등을 제출하셔야 합니다.',
+    repliedAt: '2026-06-02T15:00:00Z'
+  },
+  {
+    id: 'inquiry-2',
+    clientId: 'client-4',
+    clientName: '새출발_590',
+    title: '채무 독촉전화 금지명령 관련 질문',
+    content: '개인회생 신청을 하면 채권추심 독촉전화가 언제쯤 금지되는 건가요? 하루에 수십 번씩 전화가 와서 일상생활이 불가능합니다.',
+    createdAt: '2026-06-03T11:00:00Z',
+    status: 'pending'
+  }
+];
+
+export const initialPlatformConfig: PlatformConfig = {
+  siteTitle: '회생톡 - 쉽고 빠른 개인회생 자가진단 및 법률 매칭 서비스',
+  siteLogoText: 'RebirthTalk',
+  siteLogoUrl: '',
+  companyAddress: '서울특별시 서초구 서초대로 123 서초빌딩 5층 (주)리버스톡',
+  companyBusinessNumber: '120-88-12345',
+  companyRepresentative: '홍길동',
+  termsOfService: '제 1 조 (목적)\n본 약관은 (주)리버스톡(이하 "회사")이 제공하는 RebirthTalk 및 관련 제반 서비스의 이용에 관한 조건 및 절차, 회사와 회원 간의 권리, 의무 및 책임 사항을 규정함을 목적으로 합니다.\n\n제 2 조 (이용계약의 체결)\n1. 이용계약은 회원이 되고자 하는 자가 약관의 내용에 동의하여 회원가입 신청을 하고 회사가 이를 승낙함으로써 체결됩니다.',
+  privacyPolicy: '1. 개인정보 수집 목적 및 항목\n회사는 개인회생 자가진단, 변호사 매칭 및 상담, 고객 지원 제공을 위해 필요한 최소한의 개인정보(식별가명, 휴대전화 번호, 채무 내역)를 수집합니다.\n\n2. 개인정보의 보존 기간\n수집된 정보는 이용 목적이 달성되면 지체 없이 파기하며, 회원이 탈퇴할 경우 법적 의무 사항이 없는 한 즉시 영구 삭제합니다.'
+};
+
 

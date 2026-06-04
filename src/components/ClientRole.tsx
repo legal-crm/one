@@ -5,7 +5,7 @@ import {
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
 } from 'lucide-react';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
 import { DEFAULT_SETTINGS } from '../constants';
@@ -300,6 +300,9 @@ interface ClientRoleProps {
   members: Member[];
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
   onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
+  platformConfig: PlatformConfig;
+  inquiries: ClientInquiry[];
+  setInquiries: React.Dispatch<React.SetStateAction<ClientInquiry[]>>;
 }
 
 export default function ClientRole({
@@ -322,11 +325,22 @@ export default function ClientRole({
   matchingPolicy,
   members,
   setMembers,
-  onLogActivity
+  onLogActivity,
+  platformConfig,
+  inquiries,
+  setInquiries
 }: ClientRoleProps) {
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry'>('landing');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
+
+  // Terms and Privacy popup states
+  const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const [termsModalType, setTermsModalType] = useState<'tos' | 'privacy'>('tos');
+
+  // Client 1:1 Inquiry state
+  const [inquiryTitle, setInquiryTitle] = useState<string>('');
+  const [inquiryContent, setInquiryContent] = useState<string>('');
 
   const checkMatchingLimit = (): boolean => {
     if (matchingPolicy === 'unlimited') return true;
@@ -424,19 +438,35 @@ export default function ClientRole({
     });
   };
 
-  // Suspended or Withdrawn check hook
+  // Suspended, Withdrawn, or Dormant check hook
   useEffect(() => {
     if (isLoggedIn && userAlias) {
       const currentMember = members.find(m => m.alias === userAlias);
-      if (currentMember && (currentMember.status === 'suspended' || currentMember.status === 'withdrawn')) {
-        const msg = currentMember.status === 'withdrawn'
-          ? '탈퇴 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
-          : '이 계정은 운영정책 위반 또는 스팸으로 인해 일시 정지 처리되었습니다. 고객센터에 문의하십시오.';
-        alert(msg);
-        supabase.auth.signOut().then(() => {
+      if (currentMember) {
+        if (currentMember.status === 'suspended' || currentMember.status === 'withdrawn') {
+          const msg = currentMember.status === 'withdrawn'
+            ? '탈퇴 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
+            : '이 계정은 운영정책 위반 또는 스팸으로 인해 일시 정지 처리되었습니다. 고객센터에 문의하십시오.';
+          alert(msg);
           setIsLoggedIn(false);
           setUserAlias('');
-        });
+          localStorage.removeItem('legal_crm_client_alias');
+        } else if (currentMember.status === 'dormant') {
+          if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
+            setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
+            onLogActivity(
+              currentMember.id,
+              currentMember.alias,
+              'CLIENT',
+              'LOGIN',
+              `휴면 계정 본인 확인 및 수동 휴면 해제 성공`
+            );
+          } else {
+            setIsLoggedIn(false);
+            setUserAlias('');
+            localStorage.removeItem('legal_crm_client_alias');
+          }
+        }
       }
     }
   }, [isLoggedIn, userAlias, members]);
@@ -1237,9 +1267,9 @@ export default function ClientRole({
         <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 w-full">
           <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
-              <img src="./logo.png" alt="회생톡 로고" className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-brand/20" />
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt={platformConfig.siteLogoText || "회생톡 로고"} className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-brand/20" />
               <div className="flex flex-col text-left">
-                <span className="font-black text-lg tracking-tight text-[#313142] dark:text-white leading-none">회생톡</span>
+                <span className="font-black text-lg tracking-tight text-[#313142] dark:text-white leading-none">{platformConfig.siteLogoText || "회생톡"}</span>
                 <span className="text-[9px] text-[#7e7e8f] dark:text-slate-500 font-bold tracking-wide mt-0.5">안심 채무 해결 센터</span>
               </div>
             </div>
@@ -1324,6 +1354,14 @@ export default function ClientRole({
                   마이페이지
                 </button>
               )}
+              <button 
+                onClick={() => setActiveTab('inquiry')}
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
+                  activeTab === 'inquiry' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                1:1 문의
+              </button>
             </div>
  
             {/* Auth section */}
@@ -2827,6 +2865,154 @@ export default function ClientRole({
           </div>
         )}
 
+        {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
+        {activeTab === 'inquiry' && (() => {
+          const clientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+          const myInquiries = inquiries.filter(inq => inq.clientId === clientId);
+          
+          const handleCreateInquiry = (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!inquiryTitle.trim() || !inquiryContent.trim()) {
+              alert('제목과 내용을 모두 입력해 주세요.');
+              return;
+            }
+            const newInq: ClientInquiry = {
+              id: `inquiry-${Date.now()}`,
+              clientId,
+              clientName: userAlias || '의뢰인',
+              title: inquiryTitle.trim(),
+              content: inquiryContent.trim(),
+              createdAt: new Date().toISOString(),
+              status: 'pending'
+            };
+            setInquiries(prev => [newInq, ...prev]);
+            setInquiryTitle('');
+            setInquiryContent('');
+            onLogActivity(clientId, userAlias || '의뢰인', 'CLIENT', 'ADMIN_ACTION', `1:1 문의 등록 완료: 제목 [${newInq.title}]`);
+            alert('1:1 문의가 정상적으로 등록되었습니다. 관리자 확인 후 빠른 시일 내에 답변드리겠습니다.');
+          };
+
+          return (
+            <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn text-left pb-12">
+              {/* Page Header */}
+              <div className="bg-[#0F172A] border border-slate-800 rounded-3xl p-6 md:p-10 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                <div className="space-y-3 relative z-10">
+                  <span className="text-[10px] bg-brand/20 text-brand-light px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                    의뢰인 전용 1:1 안심 상담 창구
+                  </span>
+                  <h2 className="text-xl md:text-3xl font-black">관리자 1:1 문의 게시판</h2>
+                  <p className="text-xs md:text-sm text-slate-400 max-w-xl leading-relaxed">
+                    개인회생/파산 절차 및 변호사 매칭 정책에 대해 궁금한 점을 문의하십시오. 정보는 오직 본인과 관리자만 볼 수 있도록 철저하게 비공개 보호됩니다.
+                  </p>
+                </div>
+              </div>
+
+              {!isLoggedIn ? (
+                <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-8 text-center space-y-4">
+                  <div className="text-4xl">🔒</div>
+                  <h3 className="font-extrabold text-lg text-slate-800 dark:text-white">1:1 문의를 이용하려면 로그인이 필요합니다</h3>
+                  <p className="text-xs text-slate-500">가명 계정 로그인을 진행하여 질문을 등록하고 실시간 관리자 답변을 받아보실 수 있습니다.</p>
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="bg-brand hover:bg-brand-dark text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-md cursor-pointer"
+                  >
+                    간편 가명 로그인 진행하기
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: Create Inquiry Form */}
+                  <form onSubmit={handleCreateInquiry} className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <h3 className="font-extrabold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <span>🙋</span>
+                      <span>새로운 문의 등록하기</span>
+                    </h3>
+
+                    <div className="space-y-1.5 text-xs">
+                      <label className="text-[10px] text-slate-500 font-bold block">문의 제목</label>
+                      <input 
+                        type="text" 
+                        value={inquiryTitle}
+                        onChange={(e) => setInquiryTitle(e.target.value)}
+                        placeholder="문의 제목을 입력하세요"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 text-xs">
+                      <label className="text-[10px] text-slate-500 font-bold block">상세 문의 본문</label>
+                      <textarea 
+                        rows={6}
+                        value={inquiryContent}
+                        onChange={(e) => setInquiryContent(e.target.value)}
+                        placeholder="질문 내용을 자세히 기재해 주시면 관리자가 성심성의껏 답변드리겠습니다."
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 text-slate-700 dark:text-slate-200 font-normal leading-relaxed text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-brand hover:bg-brand-dark text-white font-extrabold py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer text-center"
+                    >
+                      문의 제출하기 (Stealth 전송)
+                    </button>
+                  </form>
+
+                  {/* Right Column: Inquiry List & Reply View */}
+                  <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <h3 className="font-extrabold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <span>📋</span>
+                      <span>나의 문의 내역 및 관리자 답변</span>
+                    </h3>
+
+                    <div className="space-y-4">
+                      {myInquiries.map(inq => (
+                        <div key={inq.id} className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-150 dark:border-slate-855 space-y-3.5">
+                          <div className="flex justify-between items-center">
+                            <span className={`text-[9px] px-2 py-0.5 rounded border font-extrabold ${
+                              inq.status === 'replied' 
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                            }`}>
+                              {inq.status === 'replied' ? '답변 완료' : '답변 대기'}
+                            </span>
+                            <span className="text-[10px] text-slate-450 font-mono">{new Date(inq.createdAt).toLocaleDateString()}</span>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <h4 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">Q. {inq.title}</h4>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal whitespace-pre-wrap">{inq.content}</p>
+                          </div>
+
+                          {inq.replyContent ? (
+                            <div className="bg-indigo-500/5 dark:bg-indigo-950/10 p-4 rounded-xl border border-indigo-500/10 space-y-1.5 text-xs">
+                              <div className="flex justify-between items-center text-[10px] text-indigo-400 font-extrabold mb-1">
+                                <span>A. 운영자 공식 답변</span>
+                                {inq.repliedAt && <span className="font-mono text-slate-500 font-normal">{new Date(inq.repliedAt).toLocaleDateString()}</span>}
+                              </div>
+                              <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-semibold whitespace-pre-wrap">{inq.replyContent}</p>
+                            </div>
+                          ) : (
+                            <div className="text-center py-2 text-[10px] text-slate-400 font-bold bg-slate-100/50 dark:bg-slate-900/30 rounded-xl">
+                              ⏰ 관리자가 질문을 확인하고 답변을 작성 중입니다. 잠시만 기다려 주세요.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {myInquiries.length === 0 && (
+                        <div className="text-center py-12 text-slate-400 text-xs">
+                          등록한 1:1 문의 내역이 없습니다. 왼쪽 양식을 통해 질문을 등록해 보십시오.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* TAB: LEGAL NEWS & TIPS BOARD */}
         {activeTab === 'news' && (
@@ -4055,38 +4241,48 @@ export default function ClientRole({
       {/* Babitalk-style Footer (Company Info) */}
       <div className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 text-left space-y-6">
         <div className="flex items-center gap-2">
-          <img src="./logo.png" alt="회생톡 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
-          <span className="font-extrabold text-sm text-[#484760] dark:text-slate-400">주식회사 회생톡</span>
+          <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="회생톡 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
+          <span className="font-extrabold text-sm text-[#484760] dark:text-slate-400">{platformConfig.siteLogoText || "주식회사 회생톡"}</span>
         </div>
         <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-xs text-[#7e7e8f] dark:text-slate-500">
           <div className="flex-1 flex-col justify-start items-start gap-2 inline-flex">
             <div className="self-stretch justify-start items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400">
-              <span>주식회사 회생톡</span>
+              <span>{platformConfig.siteLogoText || "주식회사 회생톡"}</span>
               <span className="text-slate-200">|</span>
-              <span>대표이사 안심인</span>
+              <span>대표이사 {platformConfig.companyRepresentative}</span>
               <span className="text-slate-200">|</span>
-              <span>개인정보 관리책임자 안심인</span>
+              <span>개인정보 관리책임자 {platformConfig.companyRepresentative}</span>
             </div>
             <p className="leading-relaxed">
-              사업자등록번호 120-00-00000<br/>
+              사업자등록번호 {platformConfig.companyBusinessNumber}<br/>
               통신판매업신고번호 제 2026-서울강남-0000호
             </p>
             <p className="leading-relaxed">
-              서울특별시 서초구 강남대로 363 강남타워 11층<br/>
+              {platformConfig.companyAddress}<br/>
               이메일 help@rebirthtalk.com
             </p>
           </div>
           <div className="flex-1 flex-col justify-start items-start md:items-end gap-2 inline-flex">
             <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400 underline">
-              <span className="cursor-pointer hover:text-[#313142]">서비스 이용약관</span>
+              <span 
+                onClick={() => { setTermsModalType('tos'); setShowTermsModal(true); }}
+                className="cursor-pointer hover:text-[#313142] dark:hover:text-white"
+              >
+                서비스 이용약관
+              </span>
               <span className="text-slate-200">|</span>
-              <span className="cursor-pointer hover:text-[#313142]">개인정보 처리방침</span>
+              <span 
+                onClick={() => { setTermsModalType('privacy'); setShowTermsModal(true); }}
+                className="cursor-pointer hover:text-[#313142] dark:hover:text-white"
+              >
+                개인정보 처리방침
+              </span>
               <span className="text-slate-200">|</span>
-              <span className="cursor-pointer hover:text-[#313142]">법적 고지사항</span>
+              <span className="cursor-pointer hover:text-[#313142] dark:hover:text-white">법적 고지사항</span>
             </div>
             <p className="leading-relaxed text-left md:text-right">
-              회생톡은 채무 해결 매칭 플랫폼으로서 통신판매의 당사자가 아니며,<br/>
-              제휴 법률사무소가 제공하는 법률 서비스에 대해 어떠한 법적 책임도 지지 않습니다.
+              {platformConfig.siteLogoText || "회생톡"}은 채무 해결 매칭 플랫폼으로서 통신판매의 당사자가 아니며,<br/>
+              제휴 법률사무소가 제공하는 법률 서비스에 대해 어써한 법적 책임도 지지 않습니다.
             </p>
           </div>
         </div>
@@ -4097,6 +4293,36 @@ export default function ClientRole({
         <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 회생톡. All rights reserved.</p>
         <p className="mt-1">본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
       </footer>
+
+      {/* 이용약관 및 개인정보처리방침 공통 모달 팝업 */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-55 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full shadow-2xl p-6 md:p-8 space-y-4 relative overflow-hidden text-left animate-fadeIn">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-extrabold text-lg text-slate-800 dark:text-white">
+                {termsModalType === 'tos' ? '서비스 이용약관' : '개인정보 처리방침'}
+              </h3>
+              <button 
+                onClick={() => setShowTermsModal(false)}
+                className="text-slate-400 hover:text-slate-200 text-sm font-bold bg-[#F2F4F7] dark:bg-slate-800 p-1.5 rounded-full transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto text-xs text-slate-655 dark:text-slate-400 leading-relaxed font-normal whitespace-pre-wrap bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-850">
+              {termsModalType === 'tos' ? platformConfig.termsOfService : platformConfig.privacyPolicy}
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="bg-brand hover:bg-brand-dark text-white font-extrabold px-6 py-2 rounded-[200px] text-xs transition-all cursor-pointer"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (

@@ -569,7 +569,7 @@ export interface Notice {
 }
 
 // --- Member & Activity Monitoring Types ---
-export type MemberStatus = 'active' | 'suspended' | 'pending' | 'withdrawn';
+export type MemberStatus = 'active' | 'suspended' | 'pending' | 'withdrawn' | 'dormant';
 export type MemberRole = 'CLIENT' | 'LAWYER' | 'STAFF' | 'ADMIN';
 
 export interface Member {
@@ -593,6 +593,30 @@ export interface ActivityLog {
   details: string;
   ipAddress: string;
   createdAt: string;
+}
+
+// --- 1:1 Inquiries & Basic Config Types ---
+export interface ClientInquiry {
+  id: string;
+  clientId: string;
+  clientName: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  replyContent?: string;
+  repliedAt?: string;
+  status: 'pending' | 'replied';
+}
+
+export interface PlatformConfig {
+  siteTitle: string;
+  siteLogoText: string;
+  siteLogoUrl?: string;
+  companyAddress: string;
+  companyBusinessNumber: string;
+  companyRepresentative: string;
+  termsOfService: string;
+  privacyPolicy: string;
 }
 
 

@@ -5,7 +5,7 @@ import {
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig 
 } from '../types';
 import { platformPlans, mockLawyers } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
@@ -38,6 +38,7 @@ interface LawyerRoleProps {
   members: Member[];
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
   onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
+  platformConfig: PlatformConfig;
 }
 
 export default function LawyerRole({
@@ -52,7 +53,8 @@ export default function LawyerRole({
   setCases,
   members,
   setMembers,
-  onLogActivity
+  onLogActivity,
+  platformConfig
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'active-chats' | 'cases' | 'billing' | 'client-crm' | 'settings'>('dashboard');
@@ -89,17 +91,40 @@ export default function LawyerRole({
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
-  // Suspended or Withdrawn check hook for logged-in lawyers
+  // Dynamically sync document title
+  useEffect(() => {
+    if (platformConfig.siteTitle) {
+      document.title = platformConfig.siteTitle;
+    }
+  }, [platformConfig.siteTitle]);
+
+  // Suspended, Withdrawn, or Dormant check hook for logged-in lawyers
   useEffect(() => {
     if (isLoggedIn && activeLawyer) {
       const currentMember = members.find(m => m.id === activeLawyer.id);
-      if (currentMember && (currentMember.status === 'suspended' || currentMember.status === 'withdrawn')) {
-        const msg = currentMember.status === 'withdrawn'
-          ? '탈퇴 처리 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
-          : '이 대리인 계정은 운영정책 위반으로 인해 임시 정지 처리되었습니다. 관리자에게 문의하십시오.';
-        alert(msg);
-        localStorage.removeItem('legal_crm_lawyer_session');
-        setIsLoggedIn(false);
+      if (currentMember) {
+        if (currentMember.status === 'suspended' || currentMember.status === 'withdrawn') {
+          const msg = currentMember.status === 'withdrawn'
+            ? '탈퇴 처리 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
+            : '이 대리인 계정은 운영정책 위반으로 인해 임시 정지 처리되었습니다. 관리자에게 문의하십시오.';
+          alert(msg);
+          localStorage.removeItem('legal_crm_lawyer_session');
+          setIsLoggedIn(false);
+        } else if (currentMember.status === 'dormant') {
+          if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
+            setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
+            onLogActivity(
+              currentMember.id,
+              currentMember.alias,
+              'LAWYER',
+              'LOGIN',
+              `변호사 휴면 계정 수동 휴면 해제 성공`
+            );
+          } else {
+            localStorage.removeItem('legal_crm_lawyer_session');
+            setIsLoggedIn(false);
+          }
+        }
       }
     }
   }, [isLoggedIn, activeLawyer, members]);
@@ -284,14 +309,29 @@ export default function LawyerRole({
       return;
     }
 
-    // Suspended or Withdrawn check before logging in
+    // Suspended, Withdrawn, or Dormant check before logging in
     const currentMember = members.find(m => m.id === found.id);
-    if (currentMember && (currentMember.status === 'suspended' || currentMember.status === 'withdrawn')) {
-      const errorMsg = currentMember.status === 'withdrawn'
-        ? '탈퇴 완료된 계정입니다. 해당 계정은 더 이상 사용할 수 없습니다.'
-        : '이 계정은 관리자에 의해 임시 정지 처리되었습니다. 어드민 포털에 문의하십시오.';
-      setLoginError(errorMsg);
-      return;
+    if (currentMember) {
+      if (currentMember.status === 'suspended' || currentMember.status === 'withdrawn') {
+        const errorMsg = currentMember.status === 'withdrawn'
+          ? '탈퇴 완료된 계정입니다. 해당 계정은 더 이상 사용할 수 없습니다.'
+          : '이 계정은 관리자에 의해 임시 정지 처리되었습니다. 어드민 포털에 문의하십시오.';
+        setLoginError(errorMsg);
+        return;
+      } else if (currentMember.status === 'dormant') {
+        if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
+          setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
+          onLogActivity(
+            currentMember.id,
+            currentMember.alias,
+            'LAWYER',
+            'LOGIN',
+            `변호사 휴면 계정 수동 휴면 해제 성공`
+          );
+        } else {
+          return;
+        }
+      }
     }
 
     localStorage.setItem('legal_crm_lawyer_session', found.id);
@@ -584,8 +624,8 @@ export default function LawyerRole({
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <img src="./logo.png" alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
-              <span className="font-black text-xl tracking-tight text-white">회생톡 변호사 CRM</span>
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
+              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "회생톡")} 변호사 CRM</span>
             </div>
             <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
@@ -778,8 +818,8 @@ export default function LawyerRole({
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <img src="./logo.png" alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
-              <span className="font-black text-xl tracking-tight text-white">회생톡 변호사 CRM</span>
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
+              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "회생톡")} 변호사 CRM</span>
             </div>
             <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
@@ -788,7 +828,7 @@ export default function LawyerRole({
             <h4 className="font-bold text-sm text-center">⏳ 계정 승인 심사 대기 중</h4>
             <p>안녕하세요, <strong>{activeLawyer.name}</strong> 님.</p>
             <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
-            <p>회생톡 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
+            <p>{platformConfig.siteLogoText || "회생톡"} 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
             <p className="text-[11px] text-slate-400">* 어드민 페이지(Admin Portal)에서 본 계정의 승인 처리를 하실 수 있습니다.</p>
           </div>
 
@@ -811,10 +851,10 @@ export default function LawyerRole({
         <header className="sticky top-0 z-40 bg-[#0F1626]/90 backdrop-blur-md border-b border-[#1F2937]/80 shadow-xl px-4 py-3">
           <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <img src="./logo.png" alt="회생톡 로고" className="w-8 h-8 rounded-lg object-cover" />
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="회생톡 로고" className="w-8 h-8 rounded-lg object-cover" />
               <div className="flex flex-col text-left">
                 <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-black text-sm tracking-tight text-white">회생톡 변호사 CRM</span>
+                  <span className="font-black text-sm tracking-tight text-white">{(platformConfig.siteLogoText || "회생톡")} 변호사 CRM</span>
                   <span className="bg-brand/10 text-brand border border-brand/20 px-1.5 py-0.5 rounded font-extrabold text-[9px] tracking-wider uppercase">SaaS</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-0.5">도산 전문 법률 대리인 지부</span>
@@ -2363,9 +2403,27 @@ export default function LawyerRole({
       </main>
 
       {/* Sub status footer */}
-      <footer className="bg-[#0F1626] border-t border-[#1F2937]/80 text-center py-4 text-[10px] text-slate-500 space-y-1">
-        <p>© 2026 회생톡 도산 전문 변호사 CRM. All rights reserved.</p>
-        <p>본 플랫폼의 매출 구조는 변호사법 제34조 정식 원칙 가이드(활동 기반 월 고정 구독료 책정)를 철저하게 이행합니다.</p>
+      <footer className="bg-[#0F1626] border-t border-[#1F2937]/80 px-6 py-6 text-left text-[10px] text-slate-500 space-y-3">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-slate-400">
+              <span>{platformConfig.siteLogoText || "주식회사 회생톡"}</span>
+              <span>|</span>
+              <span>대표이사 {platformConfig.companyRepresentative}</span>
+              <span>|</span>
+              <span>사업자등록번호 {platformConfig.companyBusinessNumber}</span>
+            </div>
+            <p className="leading-relaxed">
+              주소: {platformConfig.companyAddress} | 이메일: partners@rebirthtalk.com
+            </p>
+            <p className="leading-relaxed">
+              본 플랫폼의 매출 구조는 변호사법 제34조 정식 원칙 가이드(활동 기반 월 고정 구독료 책정)를 철저하게 이행합니다.
+            </p>
+          </div>
+          <div className="md:text-right shrink-0">
+            <p>© 2026 {platformConfig.siteLogoText || "회생톡"} 도산 전문 변호사 CRM. All rights reserved.</p>
+          </div>
+        </div>
       </footer>
 
       </div>

@@ -10,9 +10,11 @@ import {
   initialBanners,
   initialNotices,
   initialMembers,
-  initialActivityLogs
+  initialActivityLogs,
+  initialInquiries,
+  initialPlatformConfig
 } from './data';
-import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole } from './types';
+import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, PlatformConfig } from './types';
 import ClientRole from './components/ClientRole';
 import LawyerRole from './components/LawyerRole';
 import AdminRole from './components/AdminRole';
@@ -69,6 +71,12 @@ export default function App() {
     return (saved as 'daily' | 'weekly' | 'unlimited') || 'daily';
   });
 
+  const [inquiries, setInquiries] = useState<ClientInquiry[]>([]);
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(() => {
+    const saved = localStorage.getItem('legal_crm_platform_config');
+    return saved ? JSON.parse(saved) : initialPlatformConfig;
+  });
+
   // Sync states to localStorage
   useEffect(() => {
     localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
@@ -93,6 +101,16 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('legal_crm_matching_policy', matchingPolicy);
   }, [matchingPolicy]);
+
+  useEffect(() => {
+    if (inquiries.length > 0) {
+      localStorage.setItem('legal_crm_inquiries', JSON.stringify(inquiries));
+    }
+  }, [inquiries]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_platform_config', JSON.stringify(platformConfig));
+  }, [platformConfig]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -139,6 +157,13 @@ export default function App() {
       setActivityLogs(JSON.parse(savedLogs));
     } else {
       setActivityLogs(initialActivityLogs);
+    }
+
+    const savedInquiries = localStorage.getItem('legal_crm_inquiries');
+    if (savedInquiries) {
+      setInquiries(JSON.parse(savedInquiries));
+    } else {
+      setInquiries(initialInquiries);
     }
   }, []);
 
@@ -243,6 +268,8 @@ export default function App() {
       localStorage.removeItem('legal_crm_matching_policy');
       localStorage.removeItem('legal_crm_members');
       localStorage.removeItem('legal_crm_activity_logs');
+      localStorage.removeItem('legal_crm_inquiries');
+      localStorage.removeItem('legal_crm_platform_config');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
       setCases(initialCases);
@@ -279,6 +306,9 @@ export default function App() {
             members={members}
             setMembers={setMembers}
             onLogActivity={handleLogActivity}
+            platformConfig={platformConfig}
+            inquiries={inquiries}
+            setInquiries={setInquiries}
           />
         ) : currentRole === 'lawyer' ? (
           <LawyerRole 
@@ -294,6 +324,7 @@ export default function App() {
             members={members}
             setMembers={setMembers}
             onLogActivity={handleLogActivity}
+            platformConfig={platformConfig}
           />
         ) : (
           <AdminRole 
@@ -318,6 +349,10 @@ export default function App() {
             activityLogs={activityLogs}
             setActivityLogs={setActivityLogs}
             onLogActivity={handleLogActivity}
+            platformConfig={platformConfig}
+            setPlatformConfig={setPlatformConfig}
+            inquiries={inquiries}
+            setInquiries={setInquiries}
           />
         )}
       </div>
