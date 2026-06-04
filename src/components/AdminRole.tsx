@@ -586,6 +586,150 @@ export default function AdminRole({
                 </div>
 
               </div>
+
+              {/* 마케팅 유입 채널별 효과 및 회원가입 종합 현황 분석 */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* 1) 회원가입 종합 요약 지표 */}
+                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
+                  <h3 className="font-bold text-sm text-slate-200 border-b border-[#1E293B]/50 pb-3 flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-indigo-400" />
+                    <span>실시간 가입 및 회원 종합 지표</span>
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
+                      <span className="text-slate-500 font-bold block mb-1">전체 회원수</span>
+                      <strong className="text-lg font-black text-slate-200">{members.length}명</strong>
+                    </div>
+                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
+                      <span className="text-slate-500 font-bold block mb-1">오늘 신규 가입</span>
+                      <strong className="text-lg font-black text-indigo-400">
+                        {members.filter(m => {
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          return m.createdAt.startsWith(todayStr);
+                        }).length}명
+                      </strong>
+                    </div>
+                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
+                      <span className="text-slate-500 font-bold block mb-1">정상 활동 회원</span>
+                      <strong className="text-lg font-black text-emerald-400">
+                        {members.filter(m => m.status === 'active').length}명
+                      </strong>
+                    </div>
+                    <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
+                      <span className="text-slate-500 font-bold block mb-1">정지 회원 / 대기</span>
+                      <strong className="text-lg font-black text-red-400">
+                        {members.filter(m => m.status === 'suspended').length}명
+                        <span className="text-slate-500 text-[10px] font-normal"> / {members.filter(m => m.status === 'pending').length}명</span>
+                      </strong>
+                    </div>
+                    <div className="bg-[#07090E]/65 p-3 rounded-xl border border-[#1E293B]/30 col-span-2 flex flex-col justify-between">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 font-bold">탈퇴 회원수</span>
+                        <strong className="text-lg font-black text-slate-400">
+                          {members.filter(m => m.status === 'withdrawn').length}명
+                        </strong>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mt-1.5">
+                        <div 
+                          style={{ 
+                            width: `${members.length > 0 ? Math.round((members.filter(m => m.status === 'withdrawn').length / members.length) * 100) : 0}%` 
+                          }} 
+                          className="bg-slate-500 h-full rounded-full" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2) 마케팅 유입 채널별 전환 효과 분석 (Funnel Analytics) */}
+                <div className="lg:col-span-2 bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#1E293B]/50 pb-3">
+                    <h3 className="font-bold text-sm text-slate-200 flex items-center gap-1.5">
+                      <TrendingUp className="w-4 h-4 text-indigo-400" />
+                      <span>마케팅 유입 경로별 전환율 (Funnel)</span>
+                    </h3>
+                    
+                    {/* 최우수 마케팅 채널 계산 */}
+                    {(() => {
+                      const channels: ('email' | 'google' | 'kakao' | 'naver' | 'sms')[] = ['naver', 'kakao', 'google', 'sms', 'email'];
+                      let bestChannel = '없음';
+                      let maxConv = -1;
+
+                      channels.forEach(ch => {
+                        const chUsers = members.filter(m => m.loginChannel === ch);
+                        if (chUsers.length > 0) {
+                          const chUserIds = chUsers.map(u => u.id);
+                          const chConsults = activityLogs.filter(log => log.action === 'CONSULT_REQUEST' && chUserIds.includes(log.memberId)).length;
+                          const convRate = (chConsults / chUsers.length) * 100;
+                          if (convRate > maxConv) {
+                            maxConv = convRate;
+                            bestChannel = ch === 'naver' ? '네이버' : ch === 'kakao' ? '카카오' : ch === 'google' ? '구글' : ch === 'sms' ? 'SMS인증' : '이메일';
+                          }
+                        }
+                      });
+
+                      return maxConv > 0 ? (
+                        <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[9px] px-2 py-0.5 rounded font-black tracking-wider uppercase flex items-center gap-1">
+                          🏆 최우수 채널: {bestChannel} ({Math.round(maxConv)}% 전환)
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
+
+                  {/* 채널 테이블 및 상세 마케팅 성과 매트릭스 */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="text-slate-500 font-bold border-b border-[#1E293B]/30 pb-2">
+                          <th className="pb-2">가입 채널</th>
+                          <th className="pb-2 text-center">가입수</th>
+                          <th className="pb-2 text-center">상담 신청수</th>
+                          <th className="pb-2 text-center">상담 전환율</th>
+                          <th className="pb-2 text-right">인당 계산기 실행수</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1E293B]/20">
+                        {['naver', 'kakao', 'google', 'sms', 'email'].map(ch => {
+                          const chUsers = members.filter(m => m.loginChannel === ch);
+                          const chUserIds = chUsers.map(u => u.id);
+                          const chConsults = activityLogs.filter(log => log.action === 'CONSULT_REQUEST' && chUserIds.includes(log.memberId)).length;
+                          const chCalculates = activityLogs.filter(log => log.action === 'CALCULATE' && chUserIds.includes(log.memberId)).length;
+                          const convRate = chUsers.length > 0 ? Math.round((chConsults / chUsers.length) * 100) : 0;
+                          const avgCalculates = chUsers.length > 0 ? (chCalculates / chUsers.length).toFixed(1) : '0.0';
+                          
+                          const label = ch === 'naver' ? '💬 네이버 간편' : ch === 'kakao' ? '💬 카카오 간편' : ch === 'google' ? '💬 구글 간편' : ch === 'sms' ? '📱 휴대폰인증' : '✉️ 일반이메일';
+                          const color = ch === 'naver' ? 'text-emerald-400' : ch === 'kakao' ? 'text-yellow-400' : ch === 'google' ? 'text-indigo-400' : ch === 'sms' ? 'text-sky-400' : 'text-slate-350';
+
+                          return (
+                            <tr key={ch} className="hover:bg-[#0B0F19]/20 transition-colors">
+                              <td className={`py-2.5 font-bold ${color}`}>{label}</td>
+                              <td className="py-2.5 text-center font-semibold text-slate-100">{chUsers.length}명</td>
+                              <td className="py-2.5 text-center font-semibold text-slate-100">{chConsults}건</td>
+                              <td className="py-2.5 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <strong className="text-emerald-400 font-extrabold">{convRate}%</strong>
+                                  <div className="w-12 bg-slate-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                    <div style={{ width: `${convRate}%` }} className="bg-emerald-500 h-full rounded-full" />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-2.5 text-right font-mono text-slate-300">{avgCalculates}회/인</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <p className="text-[10px] text-slate-500 leading-normal">
+                    * 상담 전환율 = (해당 유입 채널 가입자의 총 상담신청 건수 / 총 가입자 수) × 100 <br />
+                    * 인당 계산기 실행수 = (해당 채널 가입자의 자가진단 계산 실행 횟수 / 총 가입자 수). 수치가 높을수록 서비스 적극 관여 고객입니다.
+                  </p>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -2504,6 +2648,9 @@ export default function AdminRole({
             const totalActiveCount = members.filter(m => m.status === 'active').length;
             const totalSuspendedCount = members.filter(m => m.status === 'suspended').length;
             const totalPendingCount = members.filter(m => m.status === 'pending').length;
+            const totalWithdrawnCount = members.filter(m => m.status === 'withdrawn').length;
+            const todaySignupsCount = members.filter(m => m.createdAt.startsWith(new Date().toISOString().split('T')[0])).length;
+
 
             const channelCounts = members.reduce((acc, m) => {
               acc[m.loginChannel] = (acc[m.loginChannel] || 0) + 1;
@@ -2578,6 +2725,64 @@ export default function AdminRole({
               }
             };
 
+            const handleWithdrawMember = (memberId: string) => {
+              const current = members.find(m => m.id === memberId);
+              if (!current) return;
+              if (current.status === 'withdrawn') {
+                alert('이미 탈퇴 처리된 회원입니다.');
+                return;
+              }
+              if (confirm(`정말로 회원 [${current.alias}]을 강제 탈퇴 처리하시겠습니까?\n이메일, 연락처 등 모든 개인 식별 정보가 즉시 완전 파기되며 복구할 수 없습니다.`)) {
+                setMembers(prev => prev.map(m => {
+                  if (m.id === memberId) {
+                    return {
+                      ...m,
+                      alias: '(탈퇴한 회원)',
+                      email: undefined,
+                      phone: undefined,
+                      status: 'withdrawn',
+                      lastActiveAt: new Date().toISOString()
+                    };
+                  }
+                  return m;
+                }));
+
+                // If it is a lawyer/staff, also sync with lawyers array
+                if (current.role === 'LAWYER' || current.role === 'STAFF') {
+                  setLawyers(prev => prev.map(l => {
+                    if (l.id === memberId) {
+                      return {
+                        ...l,
+                        name: '(탈퇴한 대리인)',
+                        approved: false
+                      };
+                    }
+                    return l;
+                  }));
+                }
+
+                // Add withdrawal log
+                onLogActivity(
+                  memberId,
+                  '(탈퇴한 회원)',
+                  current.role,
+                  'WITHDRAWAL',
+                  `관리자 수동 조치에 의한 계정 강제 탈퇴 및 개인정보 파기 완료`
+                );
+
+                // Add admin log
+                onLogActivity(
+                  'admin',
+                  '최고관리자',
+                  'ADMIN',
+                  'ADMIN_ACTION',
+                  `회원 강제 탈퇴 실행: ID ${memberId} (${current.role})`
+                );
+
+                alert('회원 강제 탈퇴 및 개인정보 파기가 완료되었습니다.');
+              }
+            };
+
             const maskEmail = (email?: string) => {
               if (!email) return '-';
               const parts = email.split('@');
@@ -2611,12 +2816,19 @@ export default function AdminRole({
                         <span className="text-[10px] text-slate-500 block font-bold">대리인 파트너</span>
                         <strong className="text-xl font-black text-sky-400">{totalPartnersCount}명</strong>
                       </div>
-                      <div className="bg-[#07090E]/65 p-2.5 rounded-xl border border-[#1E293B]/30 col-span-2 flex justify-around text-xs">
-                        <div>정상: <strong className="text-emerald-400 font-bold">{totalActiveCount}</strong></div>
-                        <div className="border-r border-[#1E293B]/30 h-4 my-auto"></div>
-                        <div>정지: <strong className="text-red-400 font-bold">{totalSuspendedCount}</strong></div>
-                        <div className="border-r border-[#1E293B]/30 h-4 my-auto"></div>
-                        <div>대기: <strong className="text-amber-400 font-bold">{totalPendingCount}</strong></div>
+                      <div className="bg-[#07090E]/65 p-2.5 rounded-xl border border-[#1E293B]/30 col-span-2 flex flex-col gap-2 text-[10px] text-left">
+                        <div className="flex justify-around text-center border-b border-[#1E293B]/20 pb-1.5">
+                          <div>정상: <strong className="text-emerald-400 font-bold">{totalActiveCount}명</strong></div>
+                          <div className="border-r border-[#1E293B]/30 h-3 my-auto"></div>
+                          <div>정지: <strong className="text-red-400 font-bold">{totalSuspendedCount}명</strong></div>
+                          <div className="border-r border-[#1E293B]/30 h-3 my-auto"></div>
+                          <div>대기: <strong className="text-amber-400 font-bold">{totalPendingCount}</strong></div>
+                        </div>
+                        <div className="flex justify-around text-center text-slate-400">
+                          <div>오늘 가입: <strong className="text-indigo-400 font-bold">{todaySignupsCount}명</strong></div>
+                          <div className="border-r border-[#1E293B]/30 h-3 my-auto"></div>
+                          <div>탈퇴 회원: <strong className="text-slate-400 font-bold">{totalWithdrawnCount}명</strong></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2732,6 +2944,7 @@ export default function AdminRole({
                           <option value="active">정상 (Active)</option>
                           <option value="suspended">정지 (Suspended)</option>
                           <option value="pending">대기 (Pending)</option>
+                          <option value="withdrawn">탈퇴 (Withdrawn)</option>
                         </select>
                       </div>
                     </div>
@@ -2757,7 +2970,7 @@ export default function AdminRole({
                                 onClick={() => setSelectedMemberId(m.id)}
                                 className={`cursor-pointer transition-colors ${
                                   isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/45'
-                                }`}
+                                } ${m.status === 'withdrawn' ? 'opacity-60 line-through text-slate-500' : ''}`}
                               >
                                 <td className="p-3">
                                   <div className="flex flex-col">
@@ -2790,9 +3003,10 @@ export default function AdminRole({
                                   <span className={`text-[9px] px-2 py-0.5 rounded border font-bold ${
                                     m.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                     m.status === 'suspended' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                    m.status === 'withdrawn' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
                                     'bg-amber-500/10 text-amber-400 border-amber-500/20'
                                   }`}>
-                                    {m.status === 'active' ? '정상 활동' : m.status === 'suspended' ? '이용 정지' : '승인 대기'}
+                                    {m.status === 'active' ? '정상 활동' : m.status === 'suspended' ? '이용 정지' : m.status === 'withdrawn' ? '탈퇴 완료' : '승인 대기'}
                                   </span>
                                 </td>
                                 <td className="p-3 text-right text-slate-400 font-mono text-[10px]">
@@ -2870,35 +3084,51 @@ export default function AdminRole({
                           <p className="text-[10px] leading-relaxed text-slate-400">
                             불량 의뢰 등록, 스팸성 계산기 조작, 혹은 허위 자격 정보 기입이 감지되면 이 계정을 즉각 일시정지 조치할 수 있습니다. 즉시 모든 포털의 로그인 세션이 끊기고 활동이 차단됩니다.
                           </p>
-                          <div className="flex gap-2">
-                            {selectedMember.status === 'pending' ? (
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              {selectedMember.status === 'withdrawn' ? (
+                                <div className="flex-1 bg-[#0F121C] text-slate-500 py-2 rounded-[200px] text-xs font-extrabold text-center border border-slate-800">
+                                  🔒 이미 탈퇴가 완료된 회원 계정입니다.
+                                </div>
+                              ) : selectedMember.status === 'pending' ? (
+                                <button 
+                                  onClick={() => handleApproveLawyer(selectedMember.id)}
+                                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>대리인 자격 승인</span>
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => handleToggleMemberStatus(selectedMember.id)}
+                                  className={`flex-1 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    selectedMember.status === 'active'
+                                    ? 'bg-[#1E293B]/20 hover:bg-red-950/20 border border-red-500/30 text-red-400'
+                                    : 'bg-emerald-650 hover:bg-emerald-600 text-white'
+                                  }`}
+                                >
+                                  {selectedMember.status === 'active' ? (
+                                    <>
+                                      <EyeOff className="w-3.5 h-3.5" />
+                                      <span>계정 임시 정지 (Block)</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>계정 차단 해제 (Activate)</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+
+                            {selectedMember.status !== 'withdrawn' && (
                               <button 
-                                onClick={() => handleApproveLawyer(selectedMember.id)}
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                onClick={() => handleWithdrawMember(selectedMember.id)}
+                                className="w-full bg-[#1E293B]/10 hover:bg-red-650 text-slate-400 hover:text-white border border-red-500/20 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>대리인 자격 승인</span>
-                              </button>
-                            ) : (
-                              <button 
-                                onClick={() => handleToggleMemberStatus(selectedMember.id)}
-                                className={`flex-1 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  selectedMember.status === 'active'
-                                  ? 'bg-red-650 hover:bg-red-600 text-white'
-                                  : 'bg-emerald-650 hover:bg-emerald-600 text-white'
-                                }`}
-                              >
-                                {selectedMember.status === 'active' ? (
-                                  <>
-                                    <EyeOff className="w-3.5 h-3.5" />
-                                    <span>계정 임시 정지 (Block)</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>계정 차단 해제 (Activate)</span>
-                                  </>
-                                )}
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>회원 강제 탈퇴 처리 (Withdraw)</span>
                               </button>
                             )}
                           </div>

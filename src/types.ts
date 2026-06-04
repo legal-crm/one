@@ -569,7 +569,7 @@ export interface Notice {
 }
 
 // --- Member & Activity Monitoring Types ---
-export type MemberStatus = 'active' | 'suspended' | 'pending';
+export type MemberStatus = 'active' | 'suspended' | 'pending' | 'withdrawn';
 export type MemberRole = 'CLIENT' | 'LAWYER' | 'STAFF' | 'ADMIN';
 
 export interface Member {
@@ -589,7 +589,7 @@ export interface ActivityLog {
   memberId: string;
   memberName: string;
   role: MemberRole;
-  action: 'SIGNUP' | 'LOGIN' | 'CALCULATE' | 'CONSULT_REQUEST' | 'CHAT_SEND' | 'STATUS_CHANGE' | 'ADMIN_ACTION';
+  action: 'SIGNUP' | 'LOGIN' | 'CALCULATE' | 'CONSULT_REQUEST' | 'CHAT_SEND' | 'STATUS_CHANGE' | 'ADMIN_ACTION' | 'WITHDRAWAL';
   details: string;
   ipAddress: string;
   createdAt: string;

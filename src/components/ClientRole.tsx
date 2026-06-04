@@ -424,12 +424,15 @@ export default function ClientRole({
     });
   };
 
-  // Suspended check hook
+  // Suspended or Withdrawn check hook
   useEffect(() => {
     if (isLoggedIn && userAlias) {
       const currentMember = members.find(m => m.alias === userAlias);
-      if (currentMember && currentMember.status === 'suspended') {
-        alert('이 계정은 운영정책 위반 또는 스팸으로 인해 일시 정지 처리되었습니다. 고객센터에 문의하십시오.');
+      if (currentMember && (currentMember.status === 'suspended' || currentMember.status === 'withdrawn')) {
+        const msg = currentMember.status === 'withdrawn'
+          ? '탈퇴 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
+          : '이 계정은 운영정책 위반 또는 스팸으로 인해 일시 정지 처리되었습니다. 고객센터에 문의하십시오.';
+        alert(msg);
         supabase.auth.signOut().then(() => {
           setIsLoggedIn(false);
           setUserAlias('');

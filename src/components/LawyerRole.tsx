@@ -89,12 +89,15 @@ export default function LawyerRole({
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
-  // Suspended check hook for logged-in lawyers
+  // Suspended or Withdrawn check hook for logged-in lawyers
   useEffect(() => {
     if (isLoggedIn && activeLawyer) {
       const currentMember = members.find(m => m.id === activeLawyer.id);
-      if (currentMember && currentMember.status === 'suspended') {
-        alert('이 대리인 계정은 운영정책 위반으로 인해 임시 정지 처리되었습니다. 관리자에게 문의하십시오.');
+      if (currentMember && (currentMember.status === 'suspended' || currentMember.status === 'withdrawn')) {
+        const msg = currentMember.status === 'withdrawn'
+          ? '탈퇴 처리 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
+          : '이 대리인 계정은 운영정책 위반으로 인해 임시 정지 처리되었습니다. 관리자에게 문의하십시오.';
+        alert(msg);
         localStorage.removeItem('legal_crm_lawyer_session');
         setIsLoggedIn(false);
       }
@@ -281,10 +284,13 @@ export default function LawyerRole({
       return;
     }
 
-    // Suspended check before logging in
+    // Suspended or Withdrawn check before logging in
     const currentMember = members.find(m => m.id === found.id);
-    if (currentMember && currentMember.status === 'suspended') {
-      setLoginError('이 계정은 관리자에 의해 임시 정지 처리되었습니다. 어드민 포털에 문의하십시오.');
+    if (currentMember && (currentMember.status === 'suspended' || currentMember.status === 'withdrawn')) {
+      const errorMsg = currentMember.status === 'withdrawn'
+        ? '탈퇴 완료된 계정입니다. 해당 계정은 더 이상 사용할 수 없습니다.'
+        : '이 계정은 관리자에 의해 임시 정지 처리되었습니다. 어드민 포털에 문의하십시오.';
+      setLoginError(errorMsg);
       return;
     }
 
