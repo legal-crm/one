@@ -744,9 +744,9 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         <div>
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <FileText className="text-blue-500" size={24} />
-            <span>신규 개인회생 상담 접수 (Customer Intake)</span>
+            <span>정밀 채무 분석 (상세 재정 데이터 입력)</span>
           </h2>
-          <p className="text-slate-500 text-xs mt-0.5">정밀한 재정 데이터 기입을 통해 즉각적인 AI 변제 솔루션이 가동됩니다.</p>
+          <p className="text-slate-500 text-xs mt-0.5">정밀한 재정 데이터 기입을 통해 법원 기준 AI 변제 전략이 즉시 산출됩니다.</p>
         </div>
         {onCancel && (
           <button 
@@ -812,7 +812,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
                 className="px-6 py-2.5 bg-emerald-600 text-white text-xs font-extrabold rounded-xl hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-950/20"
               > 
                 <CheckSquare size={14} /> 
-                <span>상담 접수 등록 및 분석 완료</span> 
+                <span>정밀 분석 완료 및 결과 확인</span> 
               </button>
             )}
           </div>

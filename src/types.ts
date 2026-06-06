@@ -619,4 +619,73 @@ export interface PlatformConfig {
   privacyPolicy: string;
 }
 
+// --- Diagnosis (진단) Types ---
+
+export type StrategyType =
+  | 'REHABILITATION'   // 개인회생
+  | 'BANKRUPTCY'       // 파산·면책
+  | 'NEGOTIATION'      // 채무조정/대리인
+  | 'FRESH_START'      // 새출발기금
+  | 'WAIT_AND_SEE';    // 대기·시간 확보
+
+export type UrgencyLevel = 'immediate' | 'soon' | 'can_wait';
+
+export interface DiagnosisOption {
+  id: string;
+  label: string;
+  description?: string;
+  icon?: string;
+}
+
+export interface DiagnosisQuestion {
+  id: string;
+  step: number;
+  title: string;
+  subtitle?: string;
+  options: DiagnosisOption[];
+}
+
+export interface DiagnosisAnswers {
+  q1_status: string;      // 현재 채무 상태
+  q2_debtScale: string;   // 총 채무 규모
+  q3_income: string;      // 소득 여부
+  q4_urgentNeed: string;  // 가장 급한 문제
+  q5_goal: string;        // 원하는 방향
+}
+
+export interface StrategyRecommendation {
+  type: StrategyType;
+  label: string;
+  confidence: 'high' | 'medium' | 'low';
+  description: string;
+  pros: string[];
+  cons: string[];
+}
+
+export interface DiagnosisResult {
+  id: string;
+  createdAt: string;
+  answers: DiagnosisAnswers;
+  primaryStrategy: StrategyRecommendation;
+  secondaryStrategy?: StrategyRecommendation;
+  allStrategies: StrategyRecommendation[];
+  urgencyLevel: UrgencyLevel;
+  urgencyMessage: string;
+  estimatedSavingsAmount: number;      // 추정 탕감 금액 (만원)
+  estimatedSavingsRate: number;        // 추정 탕감률 (0~1)
+  estimatedMonthlyPayment: number;     // 추정 월 변제금 (만원)
+  estimatedDebtTotal: number;          // 추정 총 채무 (만원)
+  actionItems: string[];               // "지금 당장 해야 할 것"
+  warnings: string[];                  // 주의사항
+  rehabEngineUsed: boolean;            // rehabEngine 실제 사용 여부
+  computeResponse?: ComputeResponse;   // rehabEngine 원본 결과 (있을 때)
+}
+
+export interface DiagnosisConfig {
+  questions: DiagnosisQuestion[];
+  isActive: boolean;
+  lastUpdatedAt: string;
+  lastUpdatedBy: string;
+}
+
 

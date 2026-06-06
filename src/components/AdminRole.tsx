@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
-  LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server
+  LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server,
+  Edit2, Plus, Save, RotateCcw
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion } from '../types';
 import { platformPlans } from '../data';
+import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
+import { saveDiagnosisConfig } from '../services/diagnosisService';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -85,7 +88,12 @@ export default function AdminRole({
   const [formImageUrl, setFormImageUrl] = useState<string>('');
 
   // Site Content sub-navigation state
-  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry'>('news');
+  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry' | 'diagnosis'>('news');
+
+  // CRUD states for Diagnosis Config
+  const [diagQuestions, setDiagQuestions] = useState<DiagnosisQuestion[]>(DEFAULT_DIAGNOSIS_QUESTIONS);
+  const [editingDiagIdx, setEditingDiagIdx] = useState<number | null>(null);
+  const [diagSaving, setDiagSaving] = useState(false);
 
   // CRUD states for Notices
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
@@ -1996,6 +2004,12 @@ export default function AdminRole({
                 >
                   🙋 1:1 문의 내역 관리
                 </button>
+                <button 
+                  onClick={() => setContentSubTab('diagnosis')}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'diagnosis' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  🧪 진단 문항 관리
+                </button>
               </div>
 
               {/* 1. NEWS ARTICLE CRUD SECTION */}
@@ -3288,6 +3302,72 @@ export default function AdminRole({
                   </div>
                 );
               })()}
+
+              {/* 7. DIAGNOSIS CONFIG CRUD SECTION */}
+              {contentSubTab === 'diagnosis' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">🧪 간이 진단 문항 편집</h3>
+                      <p className="text-[11px] text-slate-500 mt-1">고객 랜딩 페이지의 5문항 진단 퀴즈를 편집합니다. 변경 후 저장하면 즉시 반영됩니다.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { if (confirm('모든 문항을 기본값으로 초기화하시겠습니까?')) { setDiagQuestions(DEFAULT_DIAGNOSIS_QUESTIONS); setEditingDiagIdx(null); } }} className="flex items-center gap-1 px-3 py-1.5 bg-[#111622] border border-[#1E293B]/60 rounded-lg text-xs text-slate-400 hover:text-white transition-colors">
+                        <RotateCcw className="w-3.5 h-3.5" /> 기본값 복원
+                      </button>
+                      <button onClick={async () => { setDiagSaving(true); try { await saveDiagnosisConfig({ questions: diagQuestions, isActive: true, lastUpdatedAt: new Date().toISOString(), lastUpdatedBy: 'admin' }); alert('진단 문항이 저장되었습니다.'); } catch { alert('저장에 실패했습니다.'); } finally { setDiagSaving(false); } }} disabled={diagSaving} className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50">
+                        <Save className="w-3.5 h-3.5" /> {diagSaving ? '저장 중...' : '전체 저장'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {diagQuestions.map((q, qIdx) => (
+                    <div key={q.id} className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden">
+                      <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#161B26] transition-colors" onClick={() => setEditingDiagIdx(editingDiagIdx === qIdx ? null : qIdx)}>
+                        <div className="flex items-center gap-3">
+                          <span className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-black text-sm">{q.step}</span>
+                          <div>
+                            <p className="text-sm font-bold text-slate-200">{q.title}</p>
+                            <p className="text-[11px] text-slate-500">{q.subtitle} · 옵션 {q.options.length}개</p>
+                          </div>
+                        </div>
+                        <Edit2 className={`w-4 h-4 transition-colors ${editingDiagIdx === qIdx ? 'text-indigo-400' : 'text-slate-600'}`} />
+                      </div>
+
+                      {editingDiagIdx === qIdx && (
+                        <div className="px-4 pb-4 pt-2 border-t border-[#1E293B]/40 space-y-4 animate-fadeIn">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] text-slate-500 block mb-1 font-bold uppercase">질문 제목</label>
+                              <input type="text" value={q.title} onChange={(e) => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], title: e.target.value }; setDiagQuestions(u); }} className="w-full bg-[#0B0F19] border border-[#1E293B]/60 rounded-lg p-2.5 text-xs text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 block mb-1 font-bold uppercase">질문 부제</label>
+                              <input type="text" value={q.subtitle || ''} onChange={(e) => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], subtitle: e.target.value }; setDiagQuestions(u); }} className="w-full bg-[#0B0F19] border border-[#1E293B]/60 rounded-lg p-2.5 text-xs text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-[10px] text-slate-500 font-bold uppercase">선택지 옵션</label>
+                              <button type="button" onClick={() => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], options: [...u[qIdx].options, { id: `opt-${Date.now()}`, label: '새 옵션', icon: '❓' }] }; setDiagQuestions(u); }} className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 font-bold"><Plus className="w-3 h-3" /> 옵션 추가</button>
+                            </div>
+                            <div className="space-y-2">
+                              {q.options.map((opt, optIdx) => (
+                                <div key={opt.id} className="flex items-center gap-2 bg-[#0B0F19] p-2.5 rounded-lg border border-[#1E293B]/40">
+                                  <input type="text" value={opt.icon} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], icon: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="w-12 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-center text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none" title="아이콘" />
+                                  <input type="text" value={opt.label} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], label: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="flex-1 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="옵션 텍스트" />
+                                  <input type="text" value={opt.description || ''} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], description: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="w-40 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-xs text-slate-400 focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="설명 (선택)" />
+                                  {q.options.length > 2 && (<button type="button" onClick={() => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], options: u[qIdx].options.filter((_, i) => i !== optIdx) }; setDiagQuestions(u); }} className="p-1 text-slate-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
             </div>
           )}
