@@ -10,6 +10,7 @@
  */
 
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { X, Check, AlertTriangle, TrendingDown, Building2, Shield, ArrowRight, Download, Share2, Users, DollarSign, Percent, BarChart3, Sparkles, Zap, Clock, Home, CreditCard, Calculator } from 'lucide-react';
@@ -142,7 +143,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         return value.toLocaleString();
     };
 
-    return (
+    return createPortal(
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }}
@@ -825,7 +826,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     </div>
                 </motion.div>
             </motion.div >
-        </AnimatePresence >
+        </AnimatePresence >,
+        document.body
     );
 };
 

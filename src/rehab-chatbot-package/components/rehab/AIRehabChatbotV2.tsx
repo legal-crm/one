@@ -96,8 +96,6 @@ type ChatStep =
     | 'special_24_months'    // 24개월 특례 적용 여부 (기초수급자, 장애 등)
     | 'elderly_parent_check'  // 고령 부모님 부양가족 확인
     | 'elderly_parent_count'  // 고령 부모님 인원수
-    | 'contact_name'
-    | 'contact_phone'
     | 'result';
 
 // 재산 항목 타입
@@ -1370,51 +1368,13 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'special_24_months':
                 // 24개월 특례 조건 저장
-                setUserInput(prev => ({ ...prev, specialCondition: value as any }));
-                setCurrentStep('contact_name');
-                addBotMessage(
-                    shouldUseBlock('form')
-                        ? '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 정보를 입력해주세요.'
-                        : '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 **성함**을 입력해주세요.',
-                    undefined,
-                    'text',
-                    undefined,
-                    shouldUseBlock('form') ? {
-                        type: 'contact_input',
-                        title: '연락처 입력',
-                        description: '정확한 분석 결과를 위해 성함과 연락처를 입력해주세요.',
-                        contactType: 'phone',
-                        includeName: true,
-                        placeholder: '010-0000-0000',
-                        buttonLabel: '결과 확인하기',
-                        required: true
-                    } : undefined,
-                    'contact_name'
-                );
+                const updatedInputWithSpecial = { ...userInput, specialCondition: value as any };
+                setUserInput(updatedInputWithSpecial);
+                calculateResult(updatedInputWithSpecial);
                 break;
 
             case 'prior_rehab_detail':
-                // 면책 년월 저장 (문자열로)
-                setCurrentStep('contact_name');
-                addBotMessage(
-                    shouldUseBlock('form')
-                        ? '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 정보를 입력해주세요.'
-                        : '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 **성함**을 입력해주세요.',
-                    undefined,
-                    'text',
-                    undefined,
-                    shouldUseBlock('form') ? {
-                        type: 'contact_input',
-                        title: '연락처 입력',
-                        description: '정확한 분석 결과를 위해 성함과 연락처를 입력해주세요.',
-                        contactType: 'phone',
-                        includeName: true,
-                        placeholder: '010-0000-0000',
-                        buttonLabel: '결과 확인하기',
-                        required: true
-                    } : undefined,
-                    'contact_name'
-                );
+                calculateResult(userInput);
                 break;
 
             case 'prior_credit_recovery':
@@ -1426,67 +1386,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                     setCurrentStep('prior_credit_recovery_amount');
                 } else {
-                    setCurrentStep('contact_name');
-                    addBotMessage(
-                        shouldUseBlock('form')
-                            ? '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 정보를 입력해주세요.'
-                            : '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 **성함**을 입력해주세요.',
-                        undefined,
-                        'text',
-                        undefined,
-                        shouldUseBlock('form') ? {
-                            type: 'contact_input',
-                            title: '연락처 입력',
-                            description: '정확한 분석 결과를 위해 성함과 연락처를 입력해주세요.',
-                            contactType: 'phone',
-                            includeName: true,
-                            placeholder: '010-0000-0000',
-                            buttonLabel: '결과 확인하기',
-                            required: true
-                        } : undefined,
-                        'contact_name'
-                    );
+                    calculateResult(userInput);
                 }
                 break;
 
             case 'prior_credit_recovery_amount':
-                // 신용회복 잔액 저장 (일단 totalDebt에 합산하거나 별도 저장 - 현재 로직상 입력값만 받고 넘어감)
-                setCurrentStep('contact_name');
-                addBotMessage(
-                    shouldUseBlock('form')
-                        ? '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 정보를 입력해주세요.'
-                        : '분석이 거의 끝났습니다! 🎉\n\n정확한 진단 결과를 받으실 **성함**을 입력해주세요.',
-                    undefined,
-                    'text',
-                    undefined,
-                    shouldUseBlock('form') ? {
-                        type: 'contact_input',
-                        title: '연락처 입력',
-                        description: '정확한 분석 결과를 위해 성함과 연락처를 입력해주세요.',
-                        contactType: 'phone',
-                        includeName: true,
-                        placeholder: '010-0000-0000',
-                        buttonLabel: '결과 확인하기',
-                        required: true
-                    } : undefined,
-                    'contact_name'
-                );
+                calculateResult(userInput);
                 break;
 
-            case 'contact_name':
-                setUserInput(prev => ({ ...prev, name: value as string }));
-                setCurrentStep('contact_phone');
-                addBotMessage(
-                    '감사합니다! 이제 **연락처**를 입력해주세요.\n\n(예: 010-1234-5678)',
-                    undefined,
-                    'text'
-                );
-                break;
 
-            case 'contact_phone':
-                setUserInput(prev => ({ ...prev, phone: value as string }));
-                calculateResult({ ...userInput, phone: value as string } as RehabUserInput);
-                break;
         }
     }, [userInput, addBotMessage, selectedAssets, currentAssetIndex, assetValues, spouseSelectedAssets, currentSpouseAssetIndex, spouseAssetValues, shouldUseBlock]);
 
@@ -1502,7 +1410,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 calculationResult.status === 'DIFFICULT' ? '🟡' : '🔴';
 
             // 무직자 안내 메시지
-            let resultMessage = `${statusEmoji} **분석이 완료되었습니다!**\n\n${input.name}님은 빚을 최대 **${calculationResult.debtReductionRate}%**까지 탕감받을 수 있어요.`;
+            let resultMessage = `${statusEmoji} **분석이 완료되었습니다!**\n\n${input.name || '의뢰인'}님은 빚을 최대 **${calculationResult.debtReductionRate}%**까지 탕감받을 수 있어요.`;
 
             if (input.employmentType === 'none') {
                 resultMessage += '\n\n💡 현재 무직이시지만 월 200만원 수입 기준으로 계산한 결과입니다.\n\n어렵게 생각하지 마세요! 아르바이트 하루만 나가시거나 일용직 하루만 출근하셔도 수입이 인정되어 개인회생 진행이 가능합니다.';
@@ -1515,12 +1423,13 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             );
 
             setCurrentStep('result');
+            setShowResult(true);
 
             if (onComplete) {
                 onComplete(calculationResult, input);
             }
         }, 1500);
-    }, [addBotMessage, onComplete]);
+    }, [addBotMessage, onComplete, policyConfig]);
 
     // 입력 처리
     const handleSubmit = useCallback(() => {
@@ -1626,8 +1535,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'priority_debt_amount': 90, 'prior_rehab': 91, 'prior_rehab_detail': 92,
             'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95,
             'special_24_months': 95.5, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
-            'contact_name': 96,
-            'contact_phone': 98, 'result': 100
+            'result': 100
         };
         return stepOrder[currentStep] || 0;
     }, [currentStep]);
@@ -1639,30 +1547,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             msg.id === messageId ? { ...msg, blockState: { status: 'completed', value, summary: '입력 완료' } } : msg
         ));
 
-        // Contact Form 처리 (이름+전화번호)
-        if (currentStep === 'contact_name') {
-            try {
-                const data = typeof value === 'string' ? JSON.parse(value) : value;
-                const nextInput = { ...userInput };
 
-                if (data.name) nextInput.name = data.name;
-                if (data.phone) nextInput.phone = data.phone;
-
-                setUserInput(nextInput);
-
-                // 이름과 전화번호가 모두 있으면 완료 처리
-                if (nextInput.name && nextInput.phone) {
-                    calculateResult(nextInput as RehabUserInput);
-                } else if (nextInput.name) {
-                    // 전화번호만 없는 경우 (거의 없겠지만)
-                    setCurrentStep('contact_phone');
-                    addBotMessage('전화번호를 입력해주세요.', undefined, 'text');
-                }
-            } catch (e) {
-                console.error('Contact data parse error', e);
-            }
-            return;
-        }
 
         // Multi Select 처리 (자산)
         if (currentStep === 'assets_select' || currentStep === 'spouse_assets_select') {
@@ -1844,7 +1729,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 <RehabResultReport
                     result={result}
                     userInput={userInput as RehabUserInput}
-                    onClose={() => setShowResult(false)}
+                    onClose={() => {
+                        setShowResult(false);
+                        onClose();
+                    }}
+                    onConsultation={() => {
+                        setShowResult(false);
+                        onClose();
+                    }}
                 />
             )}
         </>

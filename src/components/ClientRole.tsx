@@ -355,6 +355,7 @@ export default function ClientRole({
   // Sub-navigation for user
   const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry'>('landing');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
+  const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
 
   // Terms and Privacy popup states
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
@@ -2198,10 +2199,17 @@ export default function ClientRole({
             <AIRehabChatbotV2
               isOpen={true}
               disablePortal={true}
-              onClose={() => setActiveTab('landing')}
+              onClose={() => {
+                if (pendingChatbotData) {
+                  const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
+                  setPendingChatbotData(null); // Reset pending state
+                  handleIntakeSubmit(mappedData);
+                } else {
+                  setActiveTab('landing');
+                }
+              }}
               onComplete={(res, input) => {
-                const mappedData = mapChatbotDataToIntakeData(res, input);
-                handleIntakeSubmit(mappedData);
+                setPendingChatbotData({ res, input });
               }}
               templateId="gradient"
               themeMode="dark"
