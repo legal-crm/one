@@ -8,6 +8,9 @@ import {
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
+import AIRehabChatbotV2 from '../rehab-chatbot-package/components/rehab/AIRehabChatbotV2';
+import { RehabUserInput, RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
+import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances, ExtraLivingCost, ConsultationLog } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { formatKoreanCurrency, formatNumber } from '../utils';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
@@ -924,6 +927,211 @@ export default function ClientRole({
     setContent('');
     setConsentCheck(false);
     setActiveTab('chat');
+  };
+
+  const mapChatbotDataToIntakeData = (
+    result: RehabCalculationResult,
+    input: RehabUserInput
+  ): IntakeData => {
+    const age = input.age || 35;
+    const birthYear = 2026 - age;
+    const birthDate = `${birthYear}-01-01`;
+
+    let maritalStatus: IntakeData['maritalStatus'] = 'single';
+    if (input.maritalStatus === 'married') {
+      maritalStatus = 'married';
+    } else if (input.maritalStatus === 'divorced') {
+      if (input.childSupportReceived && input.childSupportReceived > 0) {
+        maritalStatus = 'divorced_receiving';
+      } else if (input.childSupportPaid && input.childSupportPaid > 0) {
+        maritalStatus = 'divorced_sending';
+      } else {
+        maritalStatus = 'divorced';
+      }
+    }
+
+    const incomeSources: IncomeSource[] = [];
+    const monthlyIncome = input.monthlyIncome || 0;
+    if (input.employmentType === 'salary' || input.employmentType === 'both') {
+      incomeSources.push({
+        id: `inc-salary-${Date.now()}`,
+        type: 'worker',
+        amount: input.salaryIncome || monthlyIncome,
+        tenureYears: 1,
+        payType: 'bank'
+      });
+    }
+    if (input.employmentType === 'business' || input.employmentType === 'both') {
+      incomeSources.push({
+        id: `inc-business-${Date.now()}`,
+        type: 'business',
+        amount: input.businessIncome || monthlyIncome,
+        tenureYears: 1,
+        payType: 'bank'
+      });
+    }
+    if (input.employmentType === 'freelancer') {
+      incomeSources.push({
+        id: `inc-freelancer-${Date.now()}`,
+        type: 'freelancer',
+        amount: monthlyIncome,
+        tenureYears: 1,
+        payType: 'bank'
+      });
+    }
+    if (input.employmentType === 'none' || incomeSources.length === 0) {
+      incomeSources.push({
+        id: `inc-none-${Date.now()}`,
+        type: 'unemployed',
+        amount: monthlyIncome,
+        tenureYears: 0,
+        payType: 'bank'
+      });
+    }
+
+    const assets: AssetDetail[] = [];
+    if (input.myAssets && input.myAssets > 0) {
+      assets.push({
+        id: `asset-my-${Date.now()}`,
+        owner: 'self',
+        type: 'other',
+        description: '본인 보유 자산',
+        marketValue: input.myAssets,
+        loanBalance: 0,
+        hasPledge: false,
+        isExempt: false
+      });
+    }
+
+    if (input.spouseAssets && input.spouseAssets > 0) {
+      assets.push({
+        id: `asset-spouse-${Date.now()}`,
+        owner: 'spouse',
+        type: 'other',
+        description: '배우자 보유 자산',
+        marketValue: input.spouseAssets,
+        loanBalance: 0,
+        hasPledge: false,
+        isExempt: false
+      });
+    }
+
+    if (input.deposit && input.deposit > 0) {
+      assets.push({
+        id: `asset-deposit-${Date.now()}`,
+        owner: 'self',
+        type: 'deposit',
+        description: input.housingType === 'jeonse' ? '전세 보증금' : '월세 보증금',
+        marketValue: input.deposit,
+        loanBalance: input.depositLoan || 0,
+        hasPledge: !!(input.depositLoan && input.depositLoan > 0),
+        isExempt: false
+      });
+    }
+
+    const debts: DebtItem[] = [];
+    const totalDebt = input.totalDebt || 0;
+    const creditCardDebt = input.creditCardDebt || 0;
+    const priorityDebt = input.priorityDebt || 0;
+    const unsecuredDebt = Math.max(0, totalDebt - creditCardDebt - priorityDebt);
+
+    if (creditCardDebt > 0) {
+      debts.push({
+        id: `debt-card-${Date.now()}`,
+        creditor: '신용카드/카드론 채무',
+        principal: creditCardDebt,
+        interest: 0,
+        type: 'unsecured',
+        isGamblingOrLuxury: input.riskFactor === 'gambling' || input.riskFactor === 'investment',
+        isRecent: input.riskFactor === 'recent_loan'
+      });
+    }
+
+    if (priorityDebt > 0) {
+      debts.push({
+        id: `debt-tax-${Date.now()}`,
+        creditor: '세금/국세 체납 채무',
+        principal: priorityDebt,
+        interest: 0,
+        type: 'tax',
+        isGamblingOrLuxury: false,
+        isRecent: false
+      });
+    }
+
+    if (unsecuredDebt > 0 || debts.length === 0) {
+      debts.push({
+        id: `debt-unsecured-${Date.now()}`,
+        creditor: '신용대출 및 기타채무',
+        principal: unsecuredDebt > 0 ? unsecuredDebt : totalDebt,
+        interest: 0,
+        type: 'unsecured',
+        isGamblingOrLuxury: input.riskFactor === 'gambling' || input.riskFactor === 'investment',
+        isRecent: input.riskFactor === 'recent_loan'
+      });
+    }
+
+    const prevHistory: PrevHistory = {
+      exists: false
+    };
+
+    const specialCircumstances: SpecialCircumstances = {
+      singleParent: false,
+      basicLivelihood: input.specialCondition === 'basic_recipient',
+      rentFraud: false,
+      severeDisability: input.specialCondition === 'severe_disability'
+    };
+
+    const extraLivingCost: ExtraLivingCost = {
+      utilities: 0,
+      education: input.educationCost || 0,
+      specialEducation: input.hasSpecialEducation ? (input.educationCost || 0) : 0,
+      medical: input.medicalCost || 0,
+      other: 0,
+      highIncomeExtraLimit: 0
+    };
+
+    const consultationLogs: ConsultationLog[] = [
+      {
+        id: `chat-log-${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        consultantId: 'client',
+        consultantName: input.name || '의뢰인',
+        content: `챗봇 자가진단 실행완료.\n주요 조언:\n${result.aiAdvice ? result.aiAdvice.join('\n') : ''}`
+      }
+    ];
+
+    const minorChildren = input.minorChildren || 0;
+    const familySize = input.familySize || 1;
+
+    return {
+      clientName: input.name || '익명 의뢰인',
+      phoneNumber: input.phone || '010-0000-0000',
+      birthDate,
+      consultDate: new Date().toISOString().split('T')[0],
+      applyYear: 2026,
+      dbVendor: '온라인광고',
+      caseType: 'individual_rehab',
+      residence: input.address || '',
+      workplace: input.workLocation || '',
+      selectedCourt: result.courtName || '서울회생법원',
+      prevHistory,
+      maritalStatus,
+      spouseIncome: input.spouseIncome || 0,
+      childSupportCost: input.childSupportPaid || 0,
+      minorChildren,
+      minorChildrenFullRecognition: false,
+      otherDependents: Math.max(0, familySize - 1 - minorChildren),
+      incomeSources,
+      monthlyLivingCost: result.baseLivingCost || 0,
+      monthlyRent: input.rentCost || 0,
+      monthlyInsurance: 0,
+      extraLivingCost,
+      specialCircumstances,
+      assets,
+      debts,
+      consultationLogs
+    };
   };
 
   const handleIntakeSubmit = (intakeData: IntakeData) => {
@@ -1986,8 +2194,19 @@ export default function ClientRole({
 
         {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
         {activeTab === 'request' && (
-          <div className="animate-fadeIn">
-            <CustomerIntake onSubmit={handleIntakeSubmit} />
+          <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[600px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden relative shadow-2xl">
+            <AIRehabChatbotV2
+              isOpen={true}
+              disablePortal={true}
+              onClose={() => setActiveTab('landing')}
+              onComplete={(res, input) => {
+                const mappedData = mapChatbotDataToIntakeData(res, input);
+                handleIntakeSubmit(mappedData);
+              }}
+              templateId="gradient"
+              themeMode="dark"
+              characterName="로이"
+            />
           </div>
         )}
 
