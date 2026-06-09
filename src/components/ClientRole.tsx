@@ -1449,22 +1449,7 @@ export default function ClientRole({
                   </button>
                 )}
               </div>
-              
-              {/* Lawtalk Style Metric Bar */}
-              <div className="grid grid-cols-3 gap-2 py-3.5 px-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm text-center">
-                <div className="space-y-0.5 border-r border-slate-100 dark:border-slate-800/60">
-                  <span className="text-[10px] sm:text-xs text-[#7e7e8f] dark:text-slate-500 font-semibold block">누적 상담 신청</span>
-                  <span className="text-sm sm:text-lg font-extrabold text-brand dark:text-brand-light">8,421건</span>
-                </div>
-                <div className="space-y-0.5 border-r border-slate-100 dark:border-slate-800/60">
-                  <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-semibold block">의뢰인 만족도</span>
-                  <span className="text-sm sm:text-lg font-extrabold text-slate-850 dark:text-slate-100">98.7%</span>
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-semibold block">평균 답변 시간</span>
-                  <span className="text-sm sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400">10분 내</span>
-                </div>
-              </div>
+
               
               <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] sm:text-xs text-slate-500">
                 <span className="font-semibold text-slate-700 dark:text-slate-400">인기 키워드:</span>
