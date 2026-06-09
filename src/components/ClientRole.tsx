@@ -1184,7 +1184,36 @@ export default function ClientRole({
       status: 'requested',
       createdAt: new Date().toISOString(),
       title: `${intakeData.clientName}님의 정밀 개인회생 상담 분석 신청`,
-      content: `정밀 자가진단 분석 결과:\n- 월 소득: ${formatKoreanCurrency(result.client.monthlyIncome)}\n- 인정 생계비: ${formatKoreanCurrency(result.base.living)}\n- 예상 월 가용소득: ${formatKoreanCurrency(result.base.disposable)}\n- 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원 (${result.preferred?.m || 36}개월)\n- 총 채무액: ${formatKoreanCurrency(result.base.debtTotal)}\n- 총 청산가치(자산): ${formatKoreanCurrency(result.base.liq)}\n\n[의뢰인 소명 요지]\n과거 개인회생 이력: ${intakeData.prevHistory.exists ? '있음 (' + intakeData.prevHistory.caseNumber + ')' : '없음'}\n현재 거주 지역: ${intakeData.residence}\n주된 직업 유형: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : '영업 소득자'}\n\n[의뢰인 요청 및 특이사항]\n${intakeData.consultationLogs[0]?.content || '없음'}`,
+      content: `==================================
+📋 의뢰인 종합 사전 자가진단 리포트
+==================================
+
+[1. 가계 및 부양가족 현황]
+• 거주지역 / 관할법원: ${intakeData.residence} / ${intakeData.selectedCourt}
+• 혼인 상태: ${intakeData.maritalStatus === 'single' ? '미혼' : intakeData.maritalStatus === 'married' ? '기혼' : intakeData.maritalStatus === 'divorced' ? '이혼' : '기타'}
+• 부양가족 구성: 미성년 자녀 ${intakeData.minorChildren}명 / 기타 부양가족 ${intakeData.otherDependents}명 (가구원 수: ${intakeData.minorChildren + intakeData.otherDependents + 1}인 가구)
+
+[2. 소득 및 자산 현황]
+• 직업 분류: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : intakeData.incomeSources[0]?.type === 'business' ? '자영업/개인사업자' : intakeData.incomeSources[0]?.type === 'freelancer' ? '프리랜서' : '무직'}
+• 월 평균 실수령액: ${formatKoreanCurrency(result.client.monthlyIncome)}
+• 인정 생계비: ${formatKoreanCurrency(result.base.living)}
+• 가용 소득 (예상 월납입금): ${formatKoreanCurrency(result.base.disposable)}
+• 총 자산가치 (청산가치): ${formatKoreanCurrency(result.base.liq)}
+  - 임대보증금: ${formatKoreanCurrency((intakeData.assets.find(a => a.type === 'deposit')?.marketValue || 0))}
+  - 배우자 자산: ${formatKoreanCurrency((intakeData.assets.find(a => a.owner === 'spouse')?.marketValue || 0))}
+
+[3. 채무 구성 및 특이사항]
+• 총 채무액: ${formatKoreanCurrency(result.base.debtTotal)} (채권자 수: ${intakeData.debts.length}곳)
+  - 세금/체납 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.type === 'tax')?.principal || 0))}
+  - 신용카드 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.creditor.includes('카드'))?.principal || 0))}
+• 회생/조정 이력: ${intakeData.prevHistory.exists ? '있음' : '없음'}
+• 주의 위험 지표: ${riskFlags.join(', ') || '없음'}
+
+----------------------------------
+💡 변호사 실무 검토 요지:
+- 가용 소득 상환 능력 검토 완료.
+- 자산 청산가치 충족 여부 사전 확인.
+==================================`,
       financialProfile: {
         clientId: 'client-temp',
         income: incomeManWon,
@@ -2173,6 +2202,14 @@ export default function ClientRole({
               templateId="gradient"
               themeMode="dark"
               characterName="로이"
+              customColors={{
+                primary: '#7264FF',
+                secondary: '#1e293b',
+                accent: '#5b4cf5',
+                headerText: '#ffffff',
+                userText: '#ffffff',
+                botText: '#f1f5f9'
+              }}
             />
           </div>
         )}

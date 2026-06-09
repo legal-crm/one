@@ -1,24 +1,22 @@
 /**
- * AI 변제금 진단 결과 리포트 V2 - 프리미엄 에디션
+ * 의뢰인 종합 채무·자산 분석 리포트 - 프리미엄 에디션
  * 
- * 최첨단 디자인 + 프리미엄 애니메이션
- * - 글래스모피즘 카드
- * - 카운트업 애니메이션
- * - 도넛 차트 시각화
- * - 웨이브 프로그레스 바
- * - 스태거드 등장 효과
+ * - 브랜드 퍼플 (#7264FF) 중심의 고급 글래스모피즘 UI
+ * - 4개 멀티 탭 (종합 분석 / 재산 및 가구 / 소득 및 채무 / 변호사 핵심 가이드)
+ * - 제도별 적합도 진단 시각화 (개인회생, 개인파산, 신용회복)
+ * - 변호사 즉시 자문용 실무 체크리스트 및 관할 법원 가이드 연동
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
-import { X, Check, AlertTriangle, TrendingDown, Building2, Shield, ArrowRight, Download, Share2, Users, DollarSign, Percent, BarChart3, Sparkles, Zap, Clock, Home, CreditCard, Calculator } from 'lucide-react';
+import { X, Check, AlertTriangle, Building2, Shield, ArrowRight, Download, Share2, Users, DollarSign, Percent, BarChart3, Sparkles, Zap, Home, CreditCard, Calculator, FileText, ChevronRight } from 'lucide-react';
 import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../services/calculationService';
-import { StatComparisonCard, DistributionBar, PercentileBadge } from './StatisticalComparison';
-import { calculateIncomePercentile, calculateDebtPercentile, calculateReductionRatePercentile, getAgeComparison, getFamilySizeComparison, generateStatisticalInsights } from '../../utils/statisticsUtils';
+import { StatComparisonCard, DistributionBar } from './StatisticalComparison';
+import { calculateIncomePercentile, calculateDebtPercentile, calculateReductionRatePercentile, generateStatisticalInsights } from '../../utils/statisticsUtils';
 import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../config/rehabStatistics2025';
-import { CountUp, GlowingCard, AnimatedProgress, DonutChart, PulsingBadge, GradientButton, StaggerContainer, StaggerItem } from './animations/ReportAnimations';
+import { CountUp, GlowingCard, AnimatedProgress, DonutChart, PulsingBadge } from './animations/ReportAnimations';
 import { ProcedureTimeline } from './ProcedureTimeline';
 
 interface RehabResultReportProps {
@@ -35,6 +33,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     onConsultation
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
+    const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'checklist'>('overview');
 
     // 이미지 저장 기능
     const handleSaveReport = async () => {
@@ -42,7 +41,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
         try {
             const canvas = await html2canvas(reportRef.current, {
-                backgroundColor: '#ffffff',
+                backgroundColor: '#101828', // 다크 테마 배경 유지
                 scale: 2,
                 useCORS: true,
                 logging: false
@@ -50,7 +49,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
             const link = document.createElement('a');
             const date = new Date().toISOString().split('T')[0];
-            link.download = `변제금진단_${userInput.name}_${date}.png`;
+            link.download = `종합채무진단_${userInput.name || '의뢰인'}_${date}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
         } catch (error) {
@@ -64,10 +63,9 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         if (!reportRef.current) return;
 
         try {
-            // Web Share API 지원 확인
             if (navigator.share && navigator.canShare) {
                 const canvas = await html2canvas(reportRef.current, {
-                    backgroundColor: '#ffffff',
+                    backgroundColor: '#101828',
                     scale: 2,
                     useCORS: true,
                     logging: false
@@ -76,64 +74,114 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                 canvas.toBlob(async (blob) => {
                     if (!blob) return;
 
-                    const file = new File([blob], `변제금진단_${userInput.name}.png`, { type: 'image/png' });
+                    const file = new File([blob], `종합채무진단_${userInput.name || '의뢰인'}.png`, { type: 'image/png' });
 
                     if (navigator.canShare({ files: [file] })) {
                         await navigator.share({
-                            title: 'AI 변제금 진단 리포트',
-                            text: `${userInput.name}님의 개인회생 변제금 진단 결과입니다.`,
+                            title: '의뢰인 종합 채무·자산 분석 리포트',
+                            text: `${userInput.name || '의뢰인'}님의 채무 진단 결과입니다.`,
                             files: [file]
                         });
                     } else {
-                        // 파일 공유 불가시 링크로 대체
                         await navigator.share({
-                            title: 'AI 변제금 진단 리포트',
-                            text: `${userInput.name}님의 개인회생 변제금 진단 결과입니다.`,
+                            title: '의뢰인 종합 채무·자산 분석 리포트',
+                            text: `${userInput.name || '의뢰인'}님의 채무 진단 결과입니다.`,
                         });
                     }
                 }, 'image/png');
             } else {
-                // Web Share API 미지원시 이미지 저장으로 대체
                 alert('이 브라우저에서는 직접 공유가 지원되지 않습니다.\n이미지를 저장한 후 공유해주세요.');
                 handleSaveReport();
             }
         } catch (error) {
             console.error('공유 실패:', error);
-            // 사용자가 공유 취소한 경우는 에러 표시하지 않음
             if ((error as Error).name !== 'AbortError') {
                 alert('공유에 실패했습니다. 이미지를 저장 후 공유해주세요.');
             }
         }
     };
 
-    // 상태별 설정
-    const statusConfig = {
-        POSSIBLE: {
-            badge: '개인회생 가능',
-            icon: <Check className="w-5 h-5" />,
-            color: 'green' as const,
-            bgGradient: 'from-emerald-50 to-white',
-            accentColor: '#059669',
-        },
-        DIFFICULT: {
-            badge: '검토 필요',
-            icon: <AlertTriangle className="w-5 h-5" />,
-            color: 'yellow' as const,
-            bgGradient: 'from-amber-50 to-white',
-            accentColor: '#d97706',
-        },
-        IMPOSSIBLE: {
-            badge: '신청 어려움',
-            icon: <X className="w-5 h-5" />,
-            color: 'red' as const,
-            bgGradient: 'from-red-50 to-white',
-            accentColor: '#dc2626',
+    // 1. 제도별 적합도 평가 연동
+    const suitabilities = useMemo(() => {
+        const debt = userInput.totalDebt || 0;
+        const assets = (userInput.myAssets || 0) + (userInput.spouseAssets || 0) * 0.5 + (userInput.deposit || 0);
+        const income = userInput.monthlyIncome || 0;
+        
+        // 최저생계비 기준 설정 (2026년 기준 1인 생계비 약 133만원 등)
+        const livingCost = result.recognizedLivingCost || 1330000;
+        
+        // [개인회생]
+        let rehabScore = 0;
+        let rehabReason = '';
+        if (debt > assets && income > livingCost && debt >= 10000000) {
+            rehabScore = 95;
+            rehabReason = '월 소득이 법정 최저생계비 이상이고 채무액이 자산보다 크므로, 개인회생 진행 시 최대 원금 탕감 효과를 크게 볼 수 있는 가장 이상적인 조건입니다.';
+        } else if (debt > assets && income > livingCost * 0.8) {
+            rehabScore = 80;
+            rehabReason = '소득이 다소 경계선에 있으나, 추가 생계비 조정 및 가구원 수 소명을 통해 가용소득을 다듬으면 충분히 승인 가능성이 큽니다.';
+        } else if (debt <= assets) {
+            rehabScore = 40;
+            rehabReason = '보유 자산 평가액이 총 채무보다 많아 기각 위험 또는 월 변제금 상승 위험이 있습니다. 자산 저평가 사유 소명 대책을 변호사와 의논해야 합니다.';
+        } else {
+            rehabScore = 30;
+            rehabReason = '정기적인 월 소득이 최저생계비에 다소 미달하여 매달 고정 변제금을 납부하기 어렵습니다. 소득 증빙 보강이 우선 필요합니다.';
         }
-    };
 
-    const config = statusConfig[result.status];
+        // [개인파산]
+        let bankruptcyScore = 0;
+        let bankruptcyReason = '';
+        if (income <= livingCost && assets < 25000000 && debt >= 20000000) {
+            bankruptcyScore = 92;
+            bankruptcyReason = '월 소득이 최저생계비 이하로 상환 능력이 없으며, 보유 자산 가치도 면제재산 한도 내로 매우 낮아 법적으로 원금 100% 면책을 받는 파산 신청이 매우 유력합니다.';
+        } else if (income > livingCost) {
+            bankruptcyScore = 15;
+            bankruptcyReason = '안정적이고 반복적인 직업 소득이 최저생계비를 상당 폭 상회하므로 파산이 기각되고 개인회생 절차로 유도될 것입니다.';
+        } else if (assets >= debt) {
+            bankruptcyScore = 10;
+            bankruptcyReason = '채무보다 청산 가능한 재산이 많으므로 법적인 파산 원인(지급불능 상태)으로 판단되기 어렵습니다.';
+        } else {
+            bankruptcyScore = 50;
+            bankruptcyReason = '소득은 낮으나 처분 가치가 큰 자산이 있어 자산 환가 배당 절차와 면책 제한 리스크를 면밀하게 사전 법리 검토해야 합니다.';
+        }
 
-    // 통화 포맷터 (카운트업용)
+        // [신용회복 (워크아웃)]
+        let workoutScore = 0;
+        let workoutReason = '';
+        if (debt < 25000000 && income > livingCost) {
+            workoutScore = 85;
+            workoutReason = '채무 규모가 비교적 소액이고 소득이 확실하므로, 법원 절차의 복잡한 서류와 공적 기록 보존 리스크를 피해 신용회복위원회의 협약 채무 조정을 우선 검토하는 것이 효율적입니다.';
+        } else if (debt >= 150000000) {
+            workoutScore = 30;
+            workoutReason = '채무액이 매우 커 사적 조정(연체 유예 및 이자 감면)을 거쳐도 매달 납부할 원금 분할 상환액이 지나치게 높으므로 원금 감면이 가능한 개인회생이 정답입니다.';
+        } else {
+            workoutScore = 60;
+            workoutReason = '주요 채권사 비율과 연체 개월 수에 따라 이자 감면 및 장기 분할 상환을 목적으로 하는 프리워크아웃 또는 개인워크아웃 신청을 고려할 수 있습니다.';
+        }
+
+        return {
+            rehab: { status: rehabScore >= 85 ? '강력 추천' : rehabScore >= 65 ? '적합' : rehabScore >= 40 ? '검토 필요' : '부적합', score: rehabScore, reason: rehabReason, color: rehabScore >= 80 ? 'green' as const : rehabScore >= 60 ? 'cyan' as const : rehabScore >= 40 ? 'yellow' as const : 'red' as const },
+            bankruptcy: { status: bankruptcyScore >= 85 ? '강력 추천' : bankruptcyScore >= 65 ? '적합' : bankruptcyScore >= 40 ? '검토 필요' : '부적합', score: bankruptcyScore, reason: bankruptcyReason, color: bankruptcyScore >= 80 ? 'green' as const : bankruptcyScore >= 60 ? 'cyan' as const : bankruptcyScore >= 40 ? 'yellow' as const : 'red' as const },
+            workout: { status: workoutScore >= 85 ? '강력 추천' : workoutScore >= 65 ? '적합' : workoutScore >= 40 ? '검토 필요' : '부적합', score: workoutScore, reason: workoutReason, color: workoutScore >= 80 ? 'green' as const : workoutScore >= 60 ? 'cyan' as const : workoutScore >= 40 ? 'yellow' as const : 'red' as const }
+        };
+    }, [userInput, result]);
+
+    // 2. 상담 위급성 진단
+    const urgency = useMemo(() => {
+        const hasRecentLoan = userInput.riskFactor === 'recent_loan';
+        const hasSpeculative = userInput.riskFactor === 'gambling' || userInput.riskFactor === 'investment';
+        const hasPriority = (userInput.priorityDebt || 0) > 0;
+
+        if (hasPriority) {
+            return { level: '매우 위급 (상)', color: '#EF4444', desc: '국세/세금 체납이 존재하여 즉시 재산 압류가 예상되는 위급 상태입니다.', bg: 'bg-red-500/10 text-red-400 border border-red-500/20' };
+        } else if (hasRecentLoan) {
+            return { level: '위급 (중상)', color: '#F97316', desc: '최근 1년 이내 신규 대출 비율이 높아 금융사 집중 독촉이 우려되는 상태입니다.', bg: 'bg-orange-500/10 text-orange-400 border border-orange-500/20' };
+        } else if (hasSpeculative) {
+            return { level: '주의 (중)', color: '#F59E0B', desc: '주식/코인/사행성 손실 채무가 있어 법정 청산가치 소명이 필수적인 상태입니다.', bg: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' };
+        }
+        return { level: '보통 (하)', color: '#10B981', desc: '일반 신용 채무 상태로 가용소득 기반 조정 절차를 순차 진행하기에 적절합니다.', bg: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' };
+    }, [userInput]);
+
+    // 3. 통화 포맷터 (만원 단위 변환 요약용)
     const currencyFormatter = (value: number) => {
         if (value >= 100000000) {
             return `${(value / 100000000).toFixed(1)}억`;
@@ -152,9 +200,9 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                 className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
                 onClick={(e) => e.target === e.currentTarget && onClose()}
             >
-                {/* Background - Clean Executive Style */}
+                {/* Background Overlay */}
                 <motion.div
-                    className="absolute inset-0 bg-[#F7F9FC]"
+                    className="absolute inset-0 bg-[#0B0F19]/90 backdrop-blur-sm"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                 />
@@ -165,663 +213,560 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     initial={{ opacity: 0, y: 40, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 40, scale: 0.98 }}
-                    transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
-                    className="relative w-full max-w-lg my-4 bg-white rounded-xl overflow-hidden max-h-[92vh] overflow-y-auto"
-                    style={{ boxShadow: '0 6px 18px rgba(16,24,40,0.10)' }}
+                    transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+                    className="relative w-full max-w-xl my-4 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden max-h-[92vh] flex flex-col shadow-2xl text-slate-100"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* ========== DARK HEADER BAR ========== */}
-                    <div className="bg-[#101828] text-white px-5 py-4">
+                    <div className="bg-[#101828] border-b border-slate-800 px-5 py-4 shrink-0">
                         <div className="flex items-start justify-between">
                             <div>
                                 <motion.h1
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.1 }}
-                                    className="text-lg font-bold text-[#F2F4F7]"
+                                    className="text-base sm:text-lg font-bold text-white flex items-center gap-2"
                                 >
-                                    AI 변제금 진단 리포트
+                                    <Shield className="w-5 h-5 text-[#7264FF]" />
+                                    의뢰인 종합 채무·자산 분석 리포트
                                 </motion.h1>
                                 <motion.p
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: 0.2 }}
-                                    className="text-xs text-gray-400 mt-1"
+                                    className="text-xs text-slate-400 mt-1"
                                 >
-                                    {userInput.name}님 · 산정 기준: 2025.01 서울회생법원
+                                    {userInput.name || '의뢰인'}님 진단서 · 기준: 2026.01 전국 회생법원 실무준칙
                                 </motion.p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <motion.button
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.3 }}
                                     onClick={handleSaveReport}
-                                    className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
                                     title="저장"
                                 >
                                     <Download className="w-4 h-4" />
                                 </motion.button>
                                 <motion.button
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.35 }}
                                     onClick={handleShareReport}
-                                    className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
                                     title="공유"
                                 >
                                     <Share2 className="w-4 h-4" />
                                 </motion.button>
                                 <motion.button
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.4 }}
                                     onClick={onClose}
-                                    className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
                                     title="닫기"
                                 >
-                                    <X className="w-4 h-4" />
+                                    <X className="w-4.5 h-4.5" />
                                 </motion.button>
                             </div>
                         </div>
-
-                        {/* Status Badge in Header */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="mt-4"
-                        >
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${result.status === 'POSSIBLE' ? 'bg-emerald-500/20 text-emerald-300' :
-                                result.status === 'DIFFICULT' ? 'bg-amber-500/20 text-amber-300' :
-                                    'bg-red-500/20 text-red-300'
-                                }`}>
-                                {config.icon}
-                                {config.badge}
-                            </span>
-                        </motion.div>
                     </div>
 
-                    {/* ========== KPI SUMMARY STRIP ========== */}
-                    <div className="bg-[#F7F9FC] border-b border-[#E6EAF0] px-5 py-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {/* Monthly Payment */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.4 }}
-                                className="text-center"
+                    {/* ========== TABS NAVIGATION ========== */}
+                    <div className="flex bg-[#0f172a] border-b border-slate-800 sticky top-0 z-50 shrink-0">
+                        {(['overview', 'assets', 'debts', 'checklist'] as const).map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveReportTab(tab)}
+                                className={`flex-1 py-3.5 text-xs font-semibold border-b-2 transition-all text-center ${
+                                    activeReportTab === tab
+                                        ? 'border-[#7264FF] text-[#7264FF] bg-[#7264FF]/5 font-bold'
+                                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                                }`}
                             >
-                                <div className="text-[10px] text-[#5B677A] mb-1">월 변제금</div>
-                                <div className="text-base font-bold text-[#0B1220]">
-                                    <CountUp
-                                        end={result.monthlyPayment}
-                                        delay={0.5}
-                                        formatter={currencyFormatter}
-                                        suffix="원"
-                                    />
-                                </div>
-                            </motion.div>
-
-                            {/* Debt Reduction */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.45 }}
-                                className="text-center"
-                            >
-                                <div className="text-[10px] text-[#5B677A] mb-1">총 탕감액</div>
-                                <div className="text-base font-bold text-[#16A34A]">
-                                    <CountUp
-                                        end={result.totalDebtReduction}
-                                        delay={0.55}
-                                        formatter={currencyFormatter}
-                                        suffix="원"
-                                    />
-                                </div>
-                            </motion.div>
-
-                            {/* Reduction Rate */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.5 }}
-                                className="text-center"
-                            >
-                                <div className="text-[10px] text-[#5B677A] mb-1">탕감률</div>
-                                <div className="text-base font-bold text-[#2563EB]">
-                                    <CountUp end={result.debtReductionRate} delay={0.6} suffix="%" />
-                                </div>
-                            </motion.div>
-
-                            {/* Duration */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.55 }}
-                                className="text-center"
-                            >
-                                <div className="text-[10px] text-[#5B677A] mb-1">변제기간</div>
-                                <div className="text-base font-bold text-[#0B1220]">{result.repaymentMonths}개월</div>
-                            </motion.div>
-                        </div>
+                                {tab === 'overview' && '종합 분석'}
+                                {tab === 'assets' && '재산 및 가구'}
+                                {tab === 'debts' && '소득 및 채무'}
+                                {tab === 'checklist' && '변호사용 가이드'}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* ========== MAIN CONTENT ========== */}
-                    <div className="px-5 py-5 space-y-4 bg-white">
-
-                        {/* ===== DEBT VISUALIZATION ===== */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
-                            className="report-card p-4"
-                        >
-                            <h3 className="text-sm font-semibold text-[#0B1220] mb-4 flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4 text-[#2563EB]" />
-                                채무 감면 현황
-                            </h3>
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <DonutChart
-                                    percentage={result.debtReductionRate}
-                                    size={90}
-                                    strokeWidth={8}
-                                    colorFrom="#2563EB"
-                                    colorTo="#16A34A"
-                                    delay={0.7}
-                                    label="탕감률"
-                                />
-                                <div className="space-y-3 flex-1 sm:ml-6 w-full sm:w-auto">
-                                    <div className="flex justify-between items-center py-2 border-b border-[#E6EAF0]">
-                                        <span className="text-xs text-[#5B677A]">현재 총 채무</span>
-                                        <span className="text-sm font-medium text-[#DC2626] line-through opacity-70">
-                                            {formatCurrency(userInput.totalDebt)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-xs text-[#5B677A]">실제 변제 금액</span>
-                                        <span className="text-sm font-bold text-[#16A34A]">
-                                            {formatCurrency(result.totalRepayment)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* ===== DEBT COMPARISON BARS ===== */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.7 }}
-                            className="report-card p-4"
-                        >
-                            <h3 className="text-sm font-semibold text-[#0B1220] mb-4 flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-[#2563EB]" />
-                                채무 비교
-                            </h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1.5">
-                                        <span className="text-[#5B677A]">현재 총 채무</span>
-                                        <span className="text-[#0B1220]">{formatCurrency(userInput.totalDebt)}</span>
-                                    </div>
-                                    <AnimatedProgress
-                                        value={100}
-                                        colorFrom="#DC2626"
-                                        colorTo="#F59E0B"
-                                        delay={0.8}
-                                        height={8}
-                                    />
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1.5">
-                                        <span className="text-[#5B677A]">실제 갚을 금액</span>
-                                        <span className="text-[#16A34A] font-medium">{formatCurrency(result.totalRepayment)}</span>
-                                    </div>
-                                    <AnimatedProgress
-                                        value={100 - result.debtReductionRate}
-                                        colorFrom="#16A34A"
-                                        colorTo="#2563EB"
-                                        delay={0.9}
-                                        height={8}
-                                    />
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* ===== STATISTICS COMPARISON SECTION ===== */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.9 }}
-                            className="report-card p-4"
-                        >
-                            <h3 className="text-sm font-semibold text-[#0B1220] mb-4 flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4 text-[#2563EB]" />
-                                2025년 개인회생 신청자 통계 비교
-                                <span className="text-[10px] text-[#5B677A] font-normal ml-auto">서울회생법원 기준</span>
-                            </h3>
-
-                            {/* Percentile Comparison Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                                <StatComparisonCard
-                                    title="월 소득"
-                                    userValue={userInput.monthlyIncome}
-                                    averageValue={AVERAGE_VALUES.monthlyIncome}
-                                    percentile={calculateIncomePercentile(userInput.monthlyIncome)}
-                                    icon={<DollarSign className="w-4 h-4" />}
-                                />
-                                <StatComparisonCard
-                                    title="총 채무"
-                                    userValue={userInput.totalDebt}
-                                    averageValue={AVERAGE_VALUES.totalDebt}
-                                    percentile={calculateDebtPercentile(userInput.totalDebt)}
-                                    icon={<CreditCard className="w-4 h-4" />}
-                                />
-                            </div>
-
-                            {/* Reduction Rate Comparison */}
-                            <div className="mb-4">
-                                <StatComparisonCard
-                                    title="예상 탕감률"
-                                    userValue={`${result.debtReductionRate}%`}
-                                    averageValue={`${AVERAGE_VALUES.debtReductionRate}%`}
-                                    percentile={calculateReductionRatePercentile(result.debtReductionRate)}
-                                    icon={<Percent className="w-4 h-4" />}
-                                />
-                            </div>
-
-                            {/* Distribution Chart */}
-                            <DistributionBar
-                                title="채무 총액"
-                                userValue={userInput.totalDebt}
-                                distribution={REHAB_STATISTICS_2025.debtAmountDistribution}
-                                highlightRange={
-                                    userInput.totalDebt <= 50000000 ? '5천만원 이하' :
-                                        userInput.totalDebt <= 100000000 ? '5천만원 초과 1억 이하' :
-                                            userInput.totalDebt <= 200000000 ? '1억 초과 2억 이하' :
-                                                userInput.totalDebt <= 300000000 ? '2억 초과 3억 이하' :
-                                                    userInput.totalDebt <= 400000000 ? '3억 초과 4억 이하' : '4억 초과'
-                                }
-                            />
-
-                            {/* Statistical Insights */}
-                            {(() => {
-                                const insights = generateStatisticalInsights({
-                                    monthlyIncome: userInput.monthlyIncome,
-                                    totalDebt: userInput.totalDebt,
-                                    debtReductionRate: result.debtReductionRate,
-                                    familySize: userInput.familySize,
-                                });
-
-                                return insights.length > 0 ? (
-                                    <div className="mt-4 pt-4 border-t border-[#E6EAF0]">
-                                        <p className="text-[10px] text-[#5B677A] uppercase tracking-wider mb-2">AI 통계 인사이트</p>
-                                        <div className="space-y-1.5">
-                                            {insights.map((insight, idx) => (
-                                                <motion.p
-                                                    key={idx}
-                                                    initial={{ opacity: 0, x: -10 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ delay: 1.0 + idx * 0.1 }}
-                                                    className="text-xs text-[#2563EB] flex items-start gap-1.5"
-                                                >
-                                                    <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                                    {insight}
-                                                </motion.p>
-                                            ))}
+                    {/* ========== SCROLLABLE CONTENT AREA ========== */}
+                    <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#0b0f19]">
+                        <AnimatePresence mode="wait">
+                            
+                            {/* TAB 1: 종합 분석 (Overview) */}
+                            {activeReportTab === 'overview' && (
+                                <motion.div
+                                    key="overview"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-4"
+                                >
+                                    {/* 위급성 경보 */}
+                                    <div className={`p-4 rounded-xl flex items-start gap-3 ${urgency.bg}`}>
+                                        <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+                                        <div>
+                                            <div className="text-xs font-bold">상담 시급성: {urgency.level}</div>
+                                            <div className="text-[11px] opacity-85 mt-0.5">{urgency.desc}</div>
                                         </div>
                                     </div>
-                                ) : null;
-                            })()}
-                        </motion.div>
 
-                        {/* ===== PROCEDURE TIMELINE SECTION ===== */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 1.0 }}
-                            className="report-card p-4"
-                        >
-                            <ProcedureTimeline processingMonths={result.processingMonths} />
-                        </motion.div>
-
-                        {/* ===== DETAILED INFO SECTIONS ===== */}
-                        <div className="space-y-3">
-
-                            {/* Court & Jurisdiction */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.1 }}
-                                className="report-card p-4"
-                            >
-                                <h3 className="text-sm font-semibold text-[#0B1220] mb-3 flex items-center gap-2">
-                                    <Building2 className="w-4 h-4 text-[#2563EB]" />
-                                    관할 법원
-                                </h3>
-                                <dl className="space-y-2 text-xs">
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">법원</dt>
-                                        <dd className="text-[#0B1220] font-medium">{result.courtName}</dd>
-                                    </div>
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">지역 그룹</dt>
-                                        <dd className="text-[#0B1220]">{result.regionGroup}</dd>
-                                    </div>
-                                    <div className="flex justify-between items-center py-1.5">
-                                        <dt className="text-[#5B677A]">개시결정 소요기간</dt>
-                                        <dd className="text-[#2563EB] font-bold">약 {result.processingMonths}개월</dd>
-                                    </div>
-                                </dl>
-                            </motion.div>
-
-                            {/* Assets */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.15 }}
-                                className="report-card p-4"
-                            >
-                                <h3 className="text-sm font-semibold text-[#0B1220] mb-3 flex items-center gap-2">
-                                    <CreditCard className="w-4 h-4 text-[#2563EB]" />
-                                    자산 구성
-                                </h3>
-                                <dl className="space-y-2 text-xs">
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">본인 재산</dt>
-                                        <dd className="text-[#0B1220]">{formatCurrency(userInput.myAssets)}</dd>
-                                    </div>
-                                    {userInput.isMarried && (
-                                        <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                            <dt className="text-[#5B677A]">배우자 재산 (50%)</dt>
-                                            <dd className="text-[#0B1220]">{formatCurrency(userInput.spouseAssets)}</dd>
+                                    {/* 예상 탕감률 & 주요 요약 지표 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                                        <div className="flex items-center justify-center py-2 border-b md:border-b-0 md:border-r border-slate-800 pr-0 md:pr-4">
+                                            <DonutChart
+                                                percentage={result.debtReductionRate}
+                                                size={110}
+                                                strokeWidth={9}
+                                                colorFrom="#7264FF"
+                                                colorTo="#10B981"
+                                                delay={0.1}
+                                                label="AI 예상 탕감률"
+                                            />
                                         </div>
-                                    )}
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">보증금/전세금</dt>
-                                        <dd className="text-[#0B1220]">{formatCurrency(userInput.deposit)}</dd>
-                                    </div>
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">면제 보증금</dt>
-                                        <dd className="text-[#16A34A]">-{formatCurrency(result.exemptDeposit)}</dd>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 font-semibold">
-                                        <dt className="text-[#0B1220]">청산가치</dt>
-                                        <dd className="text-[#2563EB]">{formatCurrency(result.liquidationValue)}</dd>
-                                    </div>
-                                </dl>
-                            </motion.div>
-
-                            {/* Family & Dependents */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.2 }}
-                                className="report-card p-4"
-                            >
-                                <h3 className="text-sm font-semibold text-[#0B1220] mb-3 flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-[#2563EB]" />
-                                    부양가족 구성
-                                </h3>
-                                <dl className="space-y-2 text-xs">
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">적용 가구원 수</dt>
-                                        <dd className="text-[#2563EB] font-bold text-base">{userInput.familySize}인</dd>
-                                    </div>
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">혼인 상태</dt>
-                                        <dd className="text-[#0B1220]">{userInput.isMarried ? '기혼' : '미혼/이혼/사별'}</dd>
-                                    </div>
-                                    {userInput.minorChildren !== undefined && userInput.minorChildren > 0 && (
-                                        <>
-                                            <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                                <dt className="text-[#5B677A]">미성년 자녀</dt>
-                                                <dd className="text-[#0B1220]">{userInput.minorChildren}명</dd>
+                                        <div className="flex flex-col justify-center space-y-2.5 pl-0 md:pl-2">
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-slate-400">총 채무액</span>
+                                                <span className="font-semibold text-white">{formatCurrency(userInput.totalDebt)}</span>
                                             </div>
-                                            {userInput.recognizedChildDependents !== undefined && (
-                                                <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                                    <dt className="text-[#5B677A]">인정 부양가족</dt>
-                                                    <dd className="text-[#2563EB] font-medium">
-                                                        {userInput.recognizedChildDependents === Math.floor(userInput.recognizedChildDependents)
-                                                            ? `${userInput.recognizedChildDependents}명`
-                                                            : `${userInput.recognizedChildDependents}명 (중간값)`}
-                                                    </dd>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                    {userInput.elderlyParentDependents !== undefined && userInput.elderlyParentDependents > 0 && (
-                                        <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                            <dt className="text-[#5B677A]">고령 부모님</dt>
-                                            <dd className="text-[#2563EB] font-medium">{userInput.elderlyParentDependents}분</dd>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-slate-400">예상 실상환액</span>
+                                                <span className="font-semibold text-[#10B981]">{formatCurrency(result.totalRepayment)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs border-t border-slate-800/60 pt-2.5">
+                                                <span className="text-slate-400">예상 월 변제금</span>
+                                                <span className="font-bold text-[#7264FF] text-sm">
+                                                    <CountUp end={result.monthlyPayment} delay={0.2} formatter={currencyFormatter} suffix="원" />
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-slate-400">변제 기간</span>
+                                                <span className="font-semibold text-white">{result.repaymentMonths}개월</span>
+                                            </div>
                                         </div>
-                                    )}
-                                </dl>
-                                {userInput.dependentReason && (
-                                    <p className="text-[#2563EB] mt-3 pt-2 border-t border-[#E6EAF0] text-[11px]">
-                                        💡 {userInput.dependentReason}
-                                    </p>
-                                )}
-                                {userInput.isMarried && (
-                                    <p className="text-[#F59E0B] text-[10px] mt-1">
-                                        ※ 배우자가 양육/장애/질병 등으로 경제활동 불가 시 추가 인정 가능
-                                    </p>
-                                )}
-                            </motion.div>
-
-                            {/* Living Cost */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.25 }}
-                                className="report-card p-4"
-                            >
-                                <h3 className="text-sm font-semibold text-[#0B1220] mb-3 flex items-center gap-2">
-                                    <Home className="w-4 h-4 text-[#16A34A]" />
-                                    생계비 내역
-                                </h3>
-                                <dl className="space-y-2 text-xs">
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">기본 생계비 ({userInput.familySize}인)</dt>
-                                        <dd className="text-[#0B1220]">{formatCurrency(result.baseLivingCost)}</dd>
                                     </div>
-                                    {result.additionalLivingCost > 0 && (
-                                        <>
-                                            {userInput.rentCost && userInput.rentCost > 0 && (
-                                                <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                                    <dt className="text-[#5B677A]">• 월세</dt>
-                                                    <dd className="text-[#0B1220]">
-                                                        {result.housingCostBreakdown
-                                                            ? formatCurrency(result.housingCostBreakdown.recognized)
-                                                            : formatCurrency(userInput.rentCost)}
-                                                    </dd>
+
+                                    {/* 조정 제도별 적합도 진단 */}
+                                    <div className="space-y-3">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Zap className="w-3.5 h-3.5 text-[#7264FF]" />
+                                            제도별 최적 적합도 진단
+                                        </h3>
+
+                                        {/* 개인회생 적합도 카드 */}
+                                        <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                                    <FileText className="w-4 h-4 text-[#7264FF]" />
+                                                    법원 개인회생 (채무자 회생법)
+                                                </span>
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                                    suitabilities.rehab.color === 'green' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                    suitabilities.rehab.color === 'cyan' ? 'bg-sky-500/10 text-sky-400' :
+                                                    'bg-amber-500/10 text-amber-400'
+                                                }`}>
+                                                    {suitabilities.rehab.status}
+                                                </span>
+                                            </div>
+                                            <AnimatedProgress
+                                                value={suitabilities.rehab.score}
+                                                colorFrom="#7264FF"
+                                                colorTo="#10B981"
+                                                height={6}
+                                            />
+                                            <p className="text-[11px] text-slate-350 leading-relaxed pt-1">
+                                                {suitabilities.rehab.reason}
+                                            </p>
+                                        </div>
+
+                                        {/* 개인파산 적합도 카드 */}
+                                        <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                                    <Shield className="w-4 h-4 text-emerald-400" />
+                                                    개인파산 면책 (전액 탕감)
+                                                </span>
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                                    suitabilities.bankruptcy.color === 'green' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                    suitabilities.bankruptcy.color === 'cyan' ? 'bg-sky-500/10 text-sky-400' :
+                                                    'bg-slate-800 text-slate-400'
+                                                }`}>
+                                                    {suitabilities.bankruptcy.status}
+                                                </span>
+                                            </div>
+                                            <AnimatedProgress
+                                                value={suitabilities.bankruptcy.score}
+                                                colorFrom="#10B981"
+                                                colorTo="#64748B"
+                                                height={6}
+                                            />
+                                            <p className="text-[11px] text-slate-350 leading-relaxed pt-1">
+                                                {suitabilities.bankruptcy.reason}
+                                            </p>
+                                        </div>
+
+                                        {/* 신용회복 적합도 카드 */}
+                                        <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                                    <Users className="w-4 h-4 text-sky-400" />
+                                                    신용회복위원회 워크아웃
+                                                </span>
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                                    suitabilities.workout.color === 'green' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                    suitabilities.workout.color === 'cyan' ? 'bg-sky-500/10 text-sky-400' :
+                                                    'bg-amber-500/10 text-amber-400'
+                                                }`}>
+                                                    {suitabilities.workout.status}
+                                                </span>
+                                            </div>
+                                            <AnimatedProgress
+                                                value={suitabilities.workout.score}
+                                                colorFrom="#38BDF8"
+                                                colorTo="#475569"
+                                                height={6}
+                                            />
+                                            <p className="text-[11px] text-slate-350 leading-relaxed pt-1">
+                                                {suitabilities.workout.reason}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* TAB 2: 재산 및 가구 명세 (Assets & Family) */}
+                            {activeReportTab === 'assets' && (
+                                <motion.div
+                                    key="assets"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-4"
+                                >
+                                    {/* 가구 구성 */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                            <Users className="w-4 h-4 text-[#7264FF]" />
+                                            가계 및 부양가족
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-4 text-xs">
+                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                                <span className="text-slate-400 block mb-1">인정 부양 가구원수</span>
+                                                <span className="text-base font-bold text-white">{userInput.familySize}인</span>
+                                            </div>
+                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                                <span className="text-slate-400 block mb-1">혼인 여부</span>
+                                                <span className="text-base font-bold text-white">
+                                                    {userInput.maritalStatus === 'married' ? '기혼' :
+                                                     userInput.maritalStatus === 'divorced' ? '이혼' : '미혼'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {userInput.dependentReason && (
+                                            <div className="text-[11px] text-[#7264FF] bg-[#7264FF]/5 p-2 rounded-lg border border-[#7264FF]/10">
+                                                💡 {userInput.dependentReason}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 자산 목록 및 법원 청산가치 평가 */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                            <Home className="w-4 h-4 text-[#10B981]" />
+                                            보유 자산 및 법상 청산가치 명세
+                                        </h4>
+                                        
+                                        <div className="border border-slate-800 rounded-lg overflow-hidden text-xs">
+                                            <div className="grid grid-cols-3 bg-[#0f172a] p-2.5 font-semibold text-slate-450 border-b border-slate-800">
+                                                <span>자산 구분</span>
+                                                <span className="text-right">실제 신고 자산액</span>
+                                                <span className="text-right text-[#7264FF]">법원 청산가치 반영액</span>
+                                            </div>
+                                            <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center">
+                                                <span>본인 자산 (차량, 예금 등)</span>
+                                                <span className="text-right text-slate-300">{formatCurrency(userInput.myAssets)}</span>
+                                                <span className="text-right font-medium text-white">{formatCurrency(userInput.myAssets)}</span>
+                                            </div>
+                                            {userInput.spouseAssets !== undefined && userInput.spouseAssets > 0 && (
+                                                <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center">
+                                                    <span>배우자 자산 (50% 반영)</span>
+                                                    <span className="text-right text-slate-400">{formatCurrency(userInput.spouseAssets)}</span>
+                                                    <span className="text-right font-medium text-[#F59E0B]">{formatCurrency(userInput.spouseAssets * 0.5)}</span>
                                                 </div>
                                             )}
-                                            {userInput.medicalCost && userInput.medicalCost > 0 && (
-                                                <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                                    <dt className="text-[#5B677A]">• 의료비</dt>
-                                                    <dd className="text-[#0B1220]">
-                                                        {result.medicalCostBreakdown
-                                                            ? formatCurrency(result.medicalCostBreakdown.recognized)
-                                                            : formatCurrency(userInput.medicalCost)}
-                                                    </dd>
+                                            {userInput.deposit !== undefined && userInput.deposit > 0 && (
+                                                <>
+                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center">
+                                                        <span>임차 보증금 ({userInput.housingType === 'jeonse' ? '전세' : '월세'})</span>
+                                                        <span className="text-right text-slate-300">{formatCurrency(userInput.deposit)}</span>
+                                                        <span className="text-right font-medium text-white">{formatCurrency(userInput.deposit)}</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center text-emerald-400 bg-emerald-500/5">
+                                                        <span className="font-medium">법원 소액임차 면제재산</span>
+                                                        <span className="text-right">최대 공제</span>
+                                                        <span className="text-right font-semibold">-{formatCurrency(result.exemptDeposit)}</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="grid grid-cols-3 bg-[#0f172a] p-3 font-bold text-sm items-center border-t border-slate-850">
+                                                <span className="text-white">최종 청산가치 합계</span>
+                                                <span></span>
+                                                <span className="text-right text-[#7264FF]">{formatCurrency(result.liquidationValue)}</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                                            ※ 청산가치 보장 원칙: 개인회생 진행 시 총 변제금의 합계는 반드시 본 리포트의 최종 청산가치 합계({formatCurrency(result.liquidationValue)})보다 많아야 개시결정이 내려집니다.
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* TAB 3: 소득 및 채무 명세 (Income & Debts) */}
+                            {activeReportTab === 'debts' && (
+                                <motion.div
+                                    key="debts"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-4"
+                                >
+                                    {/* 소득 상세 명세 */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                            <DollarSign className="w-4 h-4 text-[#7264FF]" />
+                                            소득 및 법정 생계비 분석
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-4 text-xs">
+                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                                <span className="text-slate-400 block mb-1">직업 형태</span>
+                                                <span className="text-base font-bold text-white">
+                                                    {userInput.employmentType === 'salary' ? '급여 소득자' :
+                                                     userInput.employmentType === 'business' ? '영업 소득자' :
+                                                     userInput.employmentType === 'freelancer' ? '프리랜서' : '무직'}
+                                                </span>
+                                            </div>
+                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                                <span className="text-slate-400 block mb-1">월 평균 실수령액</span>
+                                                <span className="text-base font-bold text-[#7264FF]">{formatCurrency(userInput.monthlyIncome)}</span>
+                                            </div>
+                                        </div>
+                                        <dl className="space-y-2 text-xs border-t border-slate-800/50 pt-2.5">
+                                            <div className="flex justify-between items-center py-1">
+                                                <dt className="text-slate-400">• 법원 기본 인정 생계비</dt>
+                                                <dd className="text-slate-200">{formatCurrency(result.baseLivingCost)}</dd>
+                                            </div>
+                                            {result.additionalLivingCost > 0 && (
+                                                <div className="flex justify-between items-center py-1">
+                                                    <dt className="text-slate-400">• 가중 추가 생계비 (주거/의료/교육)</dt>
+                                                    <dd className="text-[#10B981] font-semibold">+{formatCurrency(result.additionalLivingCost)}</dd>
                                                 </div>
                                             )}
-                                            {userInput.educationCost && userInput.educationCost > 0 && (
-                                                <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                                    <dt className="text-[#5B677A]">• 교육비</dt>
-                                                    <dd className="text-[#0B1220]">
-                                                        {result.educationCostBreakdown
-                                                            ? formatCurrency(result.educationCostBreakdown.recognized)
-                                                            : formatCurrency(userInput.educationCost)}
-                                                    </dd>
+                                            <div className="flex justify-between items-center py-2 border-t border-slate-850 font-bold text-sm">
+                                                <dt className="text-white">최종 인정 생계비</dt>
+                                                <dd className="text-emerald-400">{formatCurrency(result.recognizedLivingCost)}</dd>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 font-bold text-sm text-white bg-slate-950/40 px-2 rounded">
+                                                <dt>가용 소득 (월 납입금 기준액)</dt>
+                                                <dd className="text-[#7264FF]">{formatCurrency(result.availableIncome)}</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+
+                                    {/* 채무 명세 및 위험 채무 검토 */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                            <CreditCard className="w-4 h-4 text-[#EF4444]" />
+                                            채무 세부 구성 분석
+                                        </h4>
+                                        <div className="border border-slate-800 rounded-lg overflow-hidden text-xs">
+                                            <div className="grid grid-cols-2 bg-[#0f172a] p-2.5 font-semibold text-slate-450 border-b border-slate-800">
+                                                <span>채무 분류</span>
+                                                <span className="text-right">채무 금액</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 p-2.5 border-b border-slate-800/60">
+                                                <span>신용대출 및 일반 금융권 채무</span>
+                                                <span className="text-right text-slate-200">
+                                                    {formatCurrency(Math.max(0, (userInput.totalDebt || 0) - (userInput.creditCardDebt || 0) - (userInput.priorityDebt || 0)))}
+                                                </span>
+                                            </div>
+                                            {userInput.creditCardDebt !== undefined && userInput.creditCardDebt > 0 && (
+                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-800/60">
+                                                    <span>신용카드 결제대금 및 카드론</span>
+                                                    <span className="text-right text-slate-200">{formatCurrency(userInput.creditCardDebt)}</span>
                                                 </div>
                                             )}
-                                        </>
-                                    )}
-                                    <div className="flex justify-between items-center py-2 font-semibold">
-                                        <dt className="text-[#0B1220]">총 인정 생계비</dt>
-                                        <dd className="text-[#16A34A]">{formatCurrency(result.recognizedLivingCost)}</dd>
-                                    </div>
-                                </dl>
-                            </motion.div>
+                                            {userInput.priorityDebt !== undefined && userInput.priorityDebt > 0 && (
+                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-800/60 bg-red-950/10 text-red-300">
+                                                    <span className="font-semibold">우선 변제 채권 (체납 국세/지방세/4대보험)</span>
+                                                    <span className="text-right font-bold">{formatCurrency(userInput.priorityDebt)}</span>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-2 bg-[#0f172a] p-3 font-bold text-sm border-t border-slate-850">
+                                                <span className="text-white">총 채무 합계</span>
+                                                <span className="text-right text-white">{formatCurrency(userInput.totalDebt)}</span>
+                                            </div>
+                                        </div>
 
-                            {/* Available Income Calculation */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.3 }}
-                                className="report-card p-4"
-                            >
-                                <h3 className="text-sm font-semibold text-[#0B1220] mb-3 flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4 text-[#2563EB]" />
-                                    가용 소득 계산
-                                </h3>
-                                <dl className="space-y-2 text-xs">
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">월 소득</dt>
-                                        <dd className="text-[#0B1220]">{formatCurrency(userInput.monthlyIncome)}</dd>
+                                        {/* 위험채무 경고문구 */}
+                                        {userInput.riskFactor !== 'none' && (
+                                            <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg text-xs flex items-start gap-2 text-amber-400">
+                                                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                                                <div>
+                                                    {userInput.riskFactor === 'recent_loan' && (
+                                                        <p><strong>최근 채무 의심 경고</strong>: 최근 1년 내에 발생한 채무 비중이 높은 경우, 법원에서는 사용처 소명을 매우 까다롭게 요구하며 고의적 대출 유발 여부를 심사하므로 철저한 법률 준비가 요구됩니다.</p>
+                                                    )}
+                                                    {userInput.riskFactor === 'investment' && (
+                                                        <p><strong>주식/코인 투자 손실 경고</strong>: 투자성 손실 채무는 거주 법원에 따라 청산가치에 반영되거나 제외되는 실무준칙 차이가 큽니다. 기각 없이 안전하게 개시결정을 받기 위해 법리 검토가 필요합니다.</p>
+                                                    )}
+                                                    {userInput.riskFactor === 'gambling' && (
+                                                        <p><strong>사행성 채무 경고</strong>: 도박 채무는 파산 시 면책 불허가 사유에 해당하나 개인회생에서는 진행이 가능합니다. 다만 탕감률 보정 권고 수위가 높으므로 적극적인 소명이 수반되어야 합니다.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#E6EAF0]">
-                                        <dt className="text-[#5B677A]">총 인정 생계비</dt>
-                                        <dd className="text-[#DC2626]">-{formatCurrency(result.recognizedLivingCost)}</dd>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 font-semibold">
-                                        <dt className="text-[#0B1220]">가용 소득</dt>
-                                        <dd className="text-[#2563EB] text-base">{formatCurrency(result.availableIncome)}</dd>
-                                    </div>
-                                </dl>
-                            </motion.div>
+                                </motion.div>
+                            )}
 
-                            {/* Repayment Calculation Method */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.35 }}
-                                className="report-card p-4"
-                            >
-                                <h3 className="text-sm font-semibold text-[#0B1220] mb-3 flex items-center gap-2">
-                                    <Calculator className="w-4 h-4 text-[#2563EB]" />
-                                    변제금 산출 방식
-                                </h3>
-                                <div className="space-y-2 text-xs text-[#5B677A]">
-                                    <p>• <span className="text-[#2563EB] font-medium">청산가치 기준</span>: {formatCurrency(result.liquidationValue)} ÷ {result.repaymentMonths}개월 = <span className="text-[#0B1220]">{formatCurrency(Math.floor(result.liquidationValue / result.repaymentMonths))}/월</span></p>
-                                    <p>• <span className="text-[#2563EB] font-medium">가용소득 기준</span>: <span className="text-[#0B1220]">{formatCurrency(result.availableIncome)}/월</span></p>
-                                    <p className="pt-2 border-t border-[#E6EAF0] text-[#2563EB] font-medium">
-                                        → 두 금액 중 <span className="text-[#2563EB] font-bold">큰 금액</span> = 월 변제금
-                                    </p>
+                            {/* TAB 4: 변호사 핵심 가이드 (Lawyer Checklist) */}
+                            {activeReportTab === 'checklist' && (
+                                <motion.div
+                                    key="checklist"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-4"
+                                >
+                                    {/* 독촉 정지/금지명령 예측 */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
+                                        <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                            <Shield className="w-4 h-4 text-[#7264FF]" />
+                                            금지명령/중지명령 인용 가능성
+                                        </h4>
+                                        <div className="flex justify-between items-center py-2.5">
+                                            <span className="text-sm font-semibold text-white">독촉 차단 금지명령 예상 인용도</span>
+                                            <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${
+                                                userInput.riskFactor === 'recent_loan' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
+                                            }`}>
+                                                {userInput.riskFactor === 'recent_loan' ? '주의 (법원 보정 가능)' : '양호 (즉시 인용 기대)'}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                                            ※ 과거 회생 면책 5년 이내 이력이 없고 최근 채무 남용이 아닌 경우, 법원 접수 후 평균 3~7일 내 금지명령이 인용되어 일체의 추심 및 압류 행위가 즉시 금지됩니다.
+                                        </p>
+                                    </div>
+
+                                    {/* 변호사 검토 checklist */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                            <FileText className="w-4 h-4 text-[#10B981]" />
+                                            변호사용 실무 쟁점 체크리스트
+                                        </h4>
+                                        <ul className="space-y-2.5 text-xs text-slate-300">
+                                            <li className="flex gap-2 items-start">
+                                                <Check className="w-4 h-4 text-[#7264FF] mt-0.5 shrink-0" />
+                                                <span>청산가치 보장 원칙 충족 여부 확인 필요: 가용소득 기반 변제액이 청산가치 {formatCurrency(result.liquidationValue)}보다 많은지 계산 검토</span>
+                                            </li>
+                                            {userInput.spouseAssets !== undefined && userInput.spouseAssets > 0 && (
+                                                <li className="flex gap-2 items-start">
+                                                    <Check className="w-4 h-4 text-[#7264FF] mt-0.5 shrink-0" />
+                                                    <span>배우자 재산 소명: 배우자 명의 재산 반등({formatCurrency(userInput.spouseAssets * 0.5)})에 대한 가계 기여도 예외 사유(상속, 결혼 전 형성 등) 조력 준비</span>
+                                                </li>
+                                            )}
+                                            {userInput.riskFactor === 'recent_loan' && (
+                                                <li className="flex gap-2 items-start">
+                                                    <Check className="w-4 h-4 text-[#7264FF] mt-0.5 shrink-0" />
+                                                    <span>최근 채무 소명 대책: 신규 대출금의 기존 채무 상환(대환) 사용 내역 및 실질 생활비 소요 내역 증빙 준비</span>
+                                                </li>
+                                            )}
+                                            {userInput.riskFactor === 'investment' && (
+                                                <li className="flex gap-2 items-start">
+                                                    <Check className="w-4 h-4 text-[#7264FF] mt-0.5 shrink-0" />
+                                                    <span>투자 손실 준칙 적용: 관할 법원({result.courtName})의 서울/수원/부산 준칙 적용 및 투자 손실금의 청산가치 제외 법리 구성 검토</span>
+                                                </li>
+                                            )}
+                                            {userInput.priorityDebt !== undefined && userInput.priorityDebt > 0 && (
+                                                <li className="flex gap-2 items-start">
+                                                    <Check className="w-4 h-4 text-[#7264FF] mt-0.5 shrink-0" />
+                                                    <span>세금 체납 체납 조정: 우선권 채무액({formatCurrency(userInput.priorityDebt)})에 대한 변제 개월 수(최대 18개월 이내 우선 변제) 및 가용 소득 배정 밸런스 점검</span>
+                                                </li>
+                                            )}
+                                            <li className="flex gap-2 items-start">
+                                                <Check className="w-4 h-4 text-[#7264FF] mt-0.5 shrink-0" />
+                                                <span>추가 생계비 소명: {userInput.rentCost && userInput.rentCost > 0 ? '추가 주거비' : ''} {userInput.medicalCost && userInput.medicalCost > 0 ? '정기 의료비' : ''} {userInput.educationCost && userInput.educationCost > 0 ? '추가 교육비' : ''} 증빙(임대차 계약서, 의료 처방전, 학비 영수증) 제출 대기</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    {/* 법원 절차 타임라인 */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
+                                        <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                            <Building2 className="w-4 h-4 text-[#2563EB]" />
+                                            예상 진행 절차 소요 시간 ({result.courtName} 기준)
+                                        </h4>
+                                        <ProcedureTimeline processingMonths={result.processingMonths} />
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* 챗봇 리포트 원 의견 코멘트 */}
+                            {activeReportTab !== 'checklist' && (result.aiAdvice.length > 0 || result.riskWarnings.length > 0) && (
+                                <div className="p-4 bg-slate-900/40 border border-slate-850 rounded-xl space-y-3">
+                                    <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                        <Shield className="w-4 h-4 text-[#7264FF]" />
+                                        AI 정밀 분석 핵심 소견
+                                    </h4>
+                                    <div className="space-y-1.5">
+                                        {result.aiAdvice.slice(0, 3).map((advice, idx) => (
+                                            <p key={idx} className="text-xs text-slate-300 flex items-start gap-1.5">
+                                                <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                                                {advice}
+                                            </p>
+                                        ))}
+                                    </div>
                                 </div>
-                            </motion.div>
-                        </div>
+                            )}
 
-                        {/* ===== AI ADVICE SECTION ===== */}
-                        {(result.aiAdvice.length > 0 || result.riskWarnings.length > 0) && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.4 }}
-                                className="report-card p-4"
-                            >
-                                <h3 className="text-sm font-semibold text-[#0B1220] mb-3 flex items-center gap-2">
-                                    <Shield className="w-4 h-4 text-[#2563EB]" />
-                                    AI 분석 의견
-                                </h3>
-
-                                {/* Findings */}
-                                {result.aiAdvice.length > 0 && (
-                                    <div className="mb-3">
-                                        <p className="text-[10px] text-[#5B677A] uppercase tracking-wider mb-2">주요 소견</p>
-                                        <div className="space-y-2">
-                                            {result.aiAdvice.map((advice, idx) => (
-                                                <motion.div
-                                                    key={idx}
-                                                    initial={{ opacity: 0, x: -10 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ delay: 1.5 + idx * 0.05 }}
-                                                    className="flex items-start gap-2"
-                                                >
-                                                    <Check className="w-4 h-4 text-[#16A34A] mt-0.5 flex-shrink-0" />
-                                                    <p className="text-xs text-[#5B677A]">{advice}</p>
-                                                </motion.div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Risks */}
-                                {result.riskWarnings.length > 0 && (
-                                    <div className="pt-3 border-t border-[#E6EAF0]">
-                                        <p className="text-[10px] text-[#5B677A] uppercase tracking-wider mb-2">주의 사항</p>
-                                        <div className="space-y-2">
-                                            {result.riskWarnings.map((warning, idx) => (
-                                                <motion.div
-                                                    key={idx}
-                                                    initial={{ opacity: 0, x: -10 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ delay: 1.6 + idx * 0.05 }}
-                                                    className="flex items-start gap-2"
-                                                >
-                                                    <AlertTriangle className="w-4 h-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
-                                                    <p className="text-xs text-[#F59E0B]">{warning}</p>
-                                                </motion.div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </motion.div>
-                        )}
+                        </AnimatePresence>
 
                         {/* Status Reason & Disclaimer */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 1.5 }}
-                            className="text-center space-y-2 px-2 py-3"
-                        >
-                            <p className="text-xs text-[#5B677A]">{result.statusReason}</p>
-                            <p className="text-[10px] text-[#5B677A]/70">
-                                ※ 본 결과는 AI 추정치이며, 실제 법원 판단과 다를 수 있습니다.
+                        <div className="text-center space-y-2 px-2 py-1">
+                            <p className="text-[10px] text-slate-500 leading-relaxed">{result.statusReason}</p>
+                            <p className="text-[9px] text-slate-600">
+                                ※ 본 리포트의 진단 내용은 기재하신 답변을 근거로 도출되었으며, 정밀 판정을 위해 변호사 서류 상담이 필요합니다.
                             </p>
-                        </motion.div>
+                        </div>
                     </div>
 
                     {/* ========== CTA FOOTER ========== */}
-                    <div className="sticky bottom-0 p-4 bg-white border-t border-[#E6EAF0]">
+                    <div className="sticky bottom-0 p-4 bg-[#0f172a] border-t border-slate-850 shrink-0 z-50">
                         <motion.button
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 1.6 }}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
                             onClick={onConsultation}
-                            className="w-full py-3.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-sm"
+                            className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#7264FF]/20"
                         >
-                            <Sparkles className="w-4 h-4" />
-                            즉시 전문 상담 신청
-                            <ArrowRight className="w-4 h-4" />
+                            <Sparkles className="w-4 h-4 text-white" />
+                            즉시 전문 상담 신청 (다수 변호사 동시 배정)
+                            <ArrowRight className="w-4 h-4 text-white" />
                         </motion.button>
 
                         {/* Save & Share Buttons */}
-                        <div className="flex gap-2 mt-3">
-                            <motion.button
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.7 }}
+                        <div className="flex gap-2 mt-3 text-xs font-semibold">
+                            <button
                                 onClick={handleSaveReport}
-                                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 border border-gray-200"
+                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-750"
                             >
-                                <Download className="w-4 h-4" />
-                                보고서 저장
-                            </motion.button>
-                            <motion.button
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 1.75 }}
+                                <Download className="w-3.5 h-3.5" />
+                                보고서 이미지 저장
+                            </button>
+                            <button
                                 onClick={handleShareReport}
-                                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 border border-gray-200"
+                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-750"
                             >
-                                <Share2 className="w-4 h-4" />
-                                공유
-                            </motion.button>
+                                <Share2 className="w-3.5 h-3.5" />
+                                카카오톡/보내기 공유
+                            </button>
                         </div>
                     </div>
                 </motion.div>
