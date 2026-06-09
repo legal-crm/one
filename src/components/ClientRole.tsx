@@ -1323,7 +1323,7 @@ export default function ClientRole({
                   activeTab === 'landing' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                홈 / 안내
+                홈
               </button>
               <button 
                 onClick={() => setActiveTab('reviews')}
@@ -1341,14 +1341,7 @@ export default function ClientRole({
               >
                 상담 사례
               </button>
-              <button 
-                onClick={() => { setActiveTab('notices'); setSelectedNoticeId(null); }}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'notices' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                공지사항
-              </button>
+
               <button 
                 onClick={() => setActiveTab('request')}
                 className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
@@ -2267,7 +2260,13 @@ export default function ClientRole({
       <ClientFooter 
         platformConfig={platformConfig} 
         onShowTerms={(type) => { setTermsModalType(type); setShowTermsModal(true); }} 
-        onNavigate={(tab) => { setActiveTab(tab as any); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        onNavigate={(tab) => { 
+          setActiveTab(tab as any); 
+          if (tab === 'notices') {
+            setSelectedNoticeId(null);
+          }
+          window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        }}
       />
 
       {showTermsModal && (<TermsModal termsModalType={termsModalType} platformConfig={platformConfig} onClose={() => setShowTermsModal(false)} />)}

@@ -39,6 +39,13 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
               {onNavigate && (
                 <>
                   <span 
+                    onClick={() => onNavigate('notices')}
+                    className="cursor-pointer hover:text-[#313142] dark:hover:text-white"
+                  >
+                    공지사항
+                  </span>
+                  <span className="text-slate-200">|</span>
+                  <span 
                     onClick={() => onNavigate('calculator')}
                     className="cursor-pointer hover:text-[#313142] dark:hover:text-white"
                   >
