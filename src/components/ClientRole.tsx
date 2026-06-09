@@ -1453,9 +1453,6 @@ export default function ClientRole({
               <h2 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
                 어떤 채무 고민을 겪고 계신가요?
               </h2>
-              <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
-                대한변협 등록 도산 전문 변호사와 즉시 매칭되는 안심 회생·파산 센터
-              </p>
               
               <div className="relative flex items-center bg-white dark:bg-slate-900 border border-brand/60 dark:border-brand/40 rounded-[30px] shadow-md px-5 py-2 focus-within:ring-4 focus-within:ring-brand/15 transition-all">
                 <Search className="w-5.5 h-5.5 text-brand mr-2.5 shrink-0" />
