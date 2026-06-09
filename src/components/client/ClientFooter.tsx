@@ -4,9 +4,10 @@ import { PlatformConfig } from '../../types';
 interface ClientFooterProps {
   platformConfig: PlatformConfig;
   onShowTerms: (type: 'tos' | 'privacy') => void;
+  onNavigate?: (tab: string) => void;
 }
 
-export default function ClientFooter({ platformConfig, onShowTerms }: ClientFooterProps) {
+export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }: ClientFooterProps) {
   return (
     <>
       {/* Babitalk-style Footer (Company Info) */}
@@ -34,7 +35,25 @@ export default function ClientFooter({ platformConfig, onShowTerms }: ClientFoot
             </p>
           </div>
           <div className="flex-1 flex-col justify-start items-start md:items-end gap-2 inline-flex">
-            <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400 underline">
+            <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-[#484760] dark:text-slate-400 underline text-[11px] sm:text-xs">
+              {onNavigate && (
+                <>
+                  <span 
+                    onClick={() => onNavigate('calculator')}
+                    className="cursor-pointer hover:text-[#313142] dark:hover:text-white"
+                  >
+                    탕감액 계산기
+                  </span>
+                  <span className="text-slate-200">|</span>
+                  <span 
+                    onClick={() => onNavigate('inquiry')}
+                    className="cursor-pointer hover:text-[#313142] dark:hover:text-white"
+                  >
+                    1:1 문의
+                  </span>
+                  <span className="text-slate-200">|</span>
+                </>
+              )}
               <span 
                 onClick={() => onShowTerms('tos')}
                 className="cursor-pointer hover:text-[#313142] dark:hover:text-white"

@@ -22,16 +22,7 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult 
         <span className="text-[10px] tracking-tight">홈</span>
       </button>
 
-      {/* 계산기 */}
-      <button
-        onClick={() => onSetActiveTab('calculator')}
-        className={`flex flex-col items-center gap-1 flex-1 text-center transition-colors ${
-          activeTab === 'calculator' ? 'text-brand font-extrabold' : 'text-[#7e7e8f] dark:text-slate-500 hover:text-[#484760]'
-        }`}
-      >
-        <Activity className="w-5 h-5" />
-        <span className="text-[10px] tracking-tight">탕감 계산기</span>
-      </button>
+
 
       {/* 성공후기 */}
       <button

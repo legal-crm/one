@@ -1326,14 +1326,6 @@ export default function ClientRole({
                 홈 / 안내
               </button>
               <button 
-                onClick={() => setActiveTab('calculator')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'calculator' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                탕감액 계산기
-              </button>
-              <button 
                 onClick={() => setActiveTab('reviews')}
                 className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'reviews' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1395,14 +1387,6 @@ export default function ClientRole({
                   마이페이지
                 </button>
               )}
-              <button 
-                onClick={() => setActiveTab('inquiry')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'inquiry' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                1:1 문의
-              </button>
             </div>
  
             {/* Auth section */}
@@ -2280,7 +2264,11 @@ export default function ClientRole({
         </div>
       </div>
 
-      <ClientFooter platformConfig={platformConfig} onShowTerms={(type) => { setTermsModalType(type); setShowTermsModal(true); }} />
+      <ClientFooter 
+        platformConfig={platformConfig} 
+        onShowTerms={(type) => { setTermsModalType(type); setShowTermsModal(true); }} 
+        onNavigate={(tab) => { setActiveTab(tab as any); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+      />
 
       {showTermsModal && (<TermsModal termsModalType={termsModalType} platformConfig={platformConfig} onClose={() => setShowTermsModal(false)} />)}
 
