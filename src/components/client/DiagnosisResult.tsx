@@ -501,6 +501,54 @@ function WarningsSection({ warnings }: { warnings: string[] }) {
   );
 }
 
+function MatchingGuidanceCard() {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.9, duration: 0.5 }}
+      className="px-4 pb-8 max-w-2xl mx-auto"
+    >
+      <div className="rounded-2xl bg-indigo-500/10 border border-indigo-500/30 p-6 space-y-4 text-left">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
+          <div className="space-y-1.5 text-left">
+            <h4 className="font-bold text-white text-sm sm:text-base">⚠️ 중요 안내: 분석 정보의 한계 고지</h4>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              본 결과는 입력하신 5가지 기초 항목만을 토대로 분석한 <strong>단순 예상치(간이 진단)</strong>입니다.
+              현재 단계에서는 변호사가 고객님의 구체적인 연체 정보, 최근 대출금의 사용처, 재산 보유 상태 등을 알지 못하므로 정확한 대책 수립이 어렵습니다.
+            </p>
+          </div>
+        </div>
+        
+        <div className="border-t border-indigo-500/20 pt-4 text-left">
+          <h4 className="font-bold text-white text-xs mb-3 flex items-center gap-1.5">
+            <span>📊</span> 나만을 위한 1:1 전담 파트너 케어 범위:
+          </h4>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-400">
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>불법 추심/독촉 즉시 대리 대응 (대리인 제도)</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>채무 및 가용 소득 상황 실시간 관리</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>기각 없는 안전한 법원 사건 타이밍 설계</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>최종 면책 결정 이후 신용 회복 관리 안내</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
 function CTASection({
   onStartDetailedDiagnosis,
   onViewLawyers,
@@ -524,11 +572,11 @@ function CTASection({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onStartDetailedDiagnosis}
-          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow"
+          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow cursor-pointer"
         >
           <span className="absolute inset-0 rounded-xl bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <FileSearch className="w-5 h-5" />
-          <span>📋 더 정밀하게 분석받기</span>
+          <Users className="w-5 h-5 text-indigo-300" />
+          <span>⚖️ 내 전담 변호사 지정받고 1:1 매칭 시작하기</span>
           <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
         </motion.button>
 
@@ -537,10 +585,10 @@ function CTASection({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onViewLawyers}
-          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-semibold text-white border border-white/20 bg-white/5 backdrop-blur hover:bg-white/10 transition-colors"
+          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-semibold text-white border border-white/20 bg-white/5 backdrop-blur hover:bg-white/10 transition-colors cursor-pointer"
         >
           <Users className="w-5 h-5 text-indigo-400" />
-          <span>⚖️ 맞춤 전문가 바로 보기</span>
+          <span>⚖️ 맞춤 전문가 목록 보기</span>
           <ArrowRight className="w-4 h-4 ml-1 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
         </motion.button>
       </div>
@@ -636,6 +684,9 @@ export default function DiagnosisResultPage({
 
       {/* Section 5: Warnings */}
       <WarningsSection warnings={result.warnings} />
+
+      {/* Section 5.5: Matching Guidance Card */}
+      <MatchingGuidanceCard />
 
       {/* Section 6: CTA */}
       <CTASection

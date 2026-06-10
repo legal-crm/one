@@ -76,7 +76,7 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
       {/* Grid of Lawyers */}
       <div className="space-y-6">
         <div className="text-left text-xs text-slate-500 dark:text-slate-400 font-medium">
-          총 <span className="text-brand dark:text-brand-light font-bold">{filtered.length}</span>명의 도산 전문 변호사가 활동 중입니다.
+          이 변호사들이 당신의 채무 상황을 끝까지 함께 관리해주는 <span className="text-brand dark:text-brand-light font-extrabold">전담 파트너</span>가 됩니다. (총 {filtered.length}명 활동 중)
         </div>
 
         {filtered.length === 0 ? (
@@ -109,12 +109,21 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
                         <span key={f} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] px-2 py-0.5 rounded">#{f}</span>
                       ))}
                     </div>
+                    
+                    {/* 4 Dedicated Care Pillars */}
+                    <div className="grid grid-cols-2 gap-1.5 py-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/80">
+                      <span className="flex items-center gap-1">💬 상황 밀착 상담</span>
+                      <span className="flex items-center gap-1">📈 채무 전략 관리</span>
+                      <span className="flex items-center gap-1">⚖️ 사건 신속 진행</span>
+                      <span className="flex items-center gap-1">🌱 면책 후 신용 케어</span>
+                    </div>
+
                     <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100 dark:border-slate-800">
                       <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px]">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span>{l.recentActivity}</span>
                       </span>
-                      <button onClick={() => onSelectLawyer(l.id)} className="bg-brand hover:bg-brand text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-[11px] cursor-pointer">상담 신청하기</button>
+                      <button onClick={() => onSelectLawyer(l.id)} className="bg-brand hover:bg-brand text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-[11px] cursor-pointer">전담 변호사 시작하기</button>
                     </div>
                   </div>
                 </div>

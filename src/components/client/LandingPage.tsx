@@ -209,17 +209,17 @@ export default function LandingPage({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.7 }}
-            className="text-lg sm:text-xl text-slate-400 mb-3 max-w-2xl mx-auto"
+            className="text-lg sm:text-xl text-slate-300 mb-3 max-w-2xl mx-auto font-medium"
           >
-            지금 당신에게 맞는 선택부터 확인하세요
+            내 채무 상황을 분석하고, 끝까지 관리해줄 전담 변호사를 만나세요.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.85 }}
-            className="text-sm text-slate-500 mb-10 tracking-wide"
+            className="text-sm text-indigo-400 mb-10 tracking-wide font-semibold"
           >
-            노출 없이 · 1분 소요 · 개인정보 불필요
+            ※ 지금 단계에서는 일체의 비용 없이 상황 진단 및 초기 관리 상담이 시작됩니다.
           </motion.p>
 
           {/* Primary CTA */}
@@ -439,6 +439,70 @@ export default function LandingPage({
       </section>
 
       {/* ════════════════════════════════════════════════════════════════════════
+          SECTION 3.5 — DEDICATED PARTNER CARDS
+          ═══════════════════════════════════════════════════════════════════════ */}
+      <section className="relative py-20 sm:py-28 px-6">
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900/40 to-slate-950 pointer-events-none" />
+        <div className="relative max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+              🤝 든든한 파트너와 함께하는{' '}
+              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-violet-400 bg-clip-text text-transparent font-extrabold">
+                전담 채무 케어
+              </span>
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
+              회생톡의 전담 변호사는 일회성 상담에 그치지 않고, 해결의 순간까지 의뢰인과 동행하며 채무 상황을 관리합니다.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              {
+                icon: Shield,
+                title: '채무 상황 지속 모니터링',
+                desc: '소득 변동, 연체 상태, 채무 구성 비율을 전담 변호사가 실시간으로 추적하여 대응책을 마련합니다.',
+                gradient: 'from-blue-600/10 to-indigo-600/10 border-blue-500/20 hover:border-blue-500/40'
+              },
+              {
+                icon: Clock,
+                title: '가장 적절한 타이밍 안내',
+                desc: '최근 대출금 비율과 법원 기각 동향을 분석하여, 불이익을 보지 않는 최적의 시점에 신청을 진행합니다.',
+                gradient: 'from-purple-600/10 to-violet-600/10 border-purple-500/20 hover:border-purple-500/40'
+              },
+              {
+                icon: HeartHandshake,
+                title: '추심 및 독촉 즉시 대행',
+                desc: '채무자대리인 제도를 발동하여 일상생활을 위협하는 불법 추심과 독촉 전화를 변호사가 전부 대행 방어합니다.',
+                gradient: 'from-violet-600/10 to-fuchsia-600/10 border-violet-500/20 hover:border-violet-500/40'
+              },
+              {
+                icon: MessageSquare,
+                title: '반복되는 상황 설명 없음',
+                desc: '여기저기 전화를 돌리며 매번 채무 역사를 설명할 필요가 없습니다. 내 진단 정보를 기반으로 일관된 관리 서비스를 제공합니다.',
+                gradient: 'from-emerald-600/10 to-teal-600/10 border-emerald-500/20 hover:border-emerald-500/40'
+              }
+            ].map((item, i) => (
+              <div
+                key={i}
+                className={`group relative p-7 rounded-2xl border bg-slate-900/50 backdrop-blur-xl ${item.gradient} transition-all duration-300 hover:translate-y-[-2px]`}
+              >
+                <div className="flex gap-4 items-start">
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                    <item.icon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════════
           SECTION 4 — FLOW EXPLAINER
           ═══════════════════════════════════════════════════════════════════════ */}
       <section className="relative py-24 sm:py-32 px-6" ref={flowRef}>
@@ -478,23 +542,23 @@ export default function LandingPage({
               {
                 step: '①',
                 icon: Search,
-                title: '상황 입력',
-                desc: '5문항, 익명',
-                detail: '개인정보 없이 현재 채무 상황만 간단히 입력하세요.',
+                title: '익명 진단',
+                desc: '5문항, 1분 소요',
+                detail: '개인정보 없이 간단하게 자가진단을 거쳐 예상 탕감 범위를 계산해 봅니다.',
               },
               {
                 step: '②',
                 icon: Sparkles,
-                title: '전략 분석',
-                desc: 'AI 기반 분석',
-                detail: '3만 건 데이터와 법원 기준으로 최적 전략을 도출합니다.',
+                title: '전담 변호사 배정',
+                desc: '1:1 매칭 & 상세 분석',
+                detail: '상세 챗봇 대화방을 거치며 금융사별 연체 내역 및 사용 흐름을 전담 변호사에게 전달합니다.',
               },
               {
                 step: '③',
                 icon: Users,
-                title: '전문가 선택',
-                desc: '비교 후 선택',
-                detail: '결과에 맞는 전문가를 추천받고 직접 선택하세요.',
+                title: '실시간 제안 & 케어',
+                desc: '수임조건 비교 & 모니터링',
+                detail: '배정된 3인 변호사의 실시간 제안서 조건을 비교하고, 최적 접수 시점 조율과 대리 케어를 받습니다.',
               },
             ].map((item, i) => (
               <StaggerChild key={i} index={i} isInView={flowInView}>

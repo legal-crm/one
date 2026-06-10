@@ -43,7 +43,7 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult 
         }`}
       >
         <PlusCircle className="w-5 h-5" />
-        <span className="text-[10px] tracking-tight">상담 신청</span>
+        <span className="text-[10px] tracking-tight">전담 매칭</span>
       </button>
 
       {/* 내상담 */}
@@ -54,7 +54,7 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult 
         }`}
       >
         <MessageSquare className="w-5 h-5" />
-        <span className="text-[10px] tracking-tight">내 상담방</span>
+        <span className="text-[10px] tracking-tight">전담 관리방</span>
         <span className="absolute top-1.5 right-4.5 flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>

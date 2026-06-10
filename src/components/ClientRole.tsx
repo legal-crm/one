@@ -1377,7 +1377,7 @@ export default function ClientRole({
                   activeTab === 'request' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                상담 신청
+                전담 매칭
               </button>
               <button 
                 onClick={() => setActiveTab('lawyers')}
@@ -1393,7 +1393,7 @@ export default function ClientRole({
                   activeTab === 'chat' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                내 상담방
+                전담 관리방
                 <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand"></span>
@@ -2215,7 +2215,7 @@ export default function ClientRole({
         )}
 
         {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
-        {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 상담 신청'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} />)}
+        {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} />)}
 
         {/* TAB 4: ACTIVE COUNSELING/CHAT WORKSPACE */}
         {activeTab === 'chat' && (<ChatView requests={requests} messages={messages} activeChatReqId={activeChatReqId} chatInput={chatInput} phoneConsultNum={phoneConsultNum} useSafeNumber050={useSafeNumber050} isLoggedIn={isLoggedIn} userAlias={userAlias} debtBanks={debtBanks} debtCards={debtCards} debtPersonals={debtPersonals} onSetActiveChatReqId={setActiveChatReqId} onSetChatInput={setChatInput} onSetPhoneConsultNum={setPhoneConsultNum} onSetUseSafeNumber050={setUseSafeNumber050} onSetActiveTab={setActiveTab} onSetRequests={setRequests} onSendChat={handleSendChat} onAddMessage={onAddMessage} />)}
@@ -2298,7 +2298,7 @@ export default function ClientRole({
 
       {diagnosisPhase === 'flow' && (<DiagnosisFlow onComplete={async (r) => { setDiagnosisResult(r); setDiagnosisPhase('result'); await saveDiagnosisResult(r); }} onBack={() => setDiagnosisPhase('idle')} diagnosisConfig={diagnosisConfig||undefined} />)}
 
-      {diagnosisPhase === 'result' && diagnosisResult && (<DiagnosisResultView result={diagnosisResult} onGoHome={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); }} onStartDetailedDiagnosis={() => { setDiagnosisPhase('idle'); setActiveTab('calculator'); }} onViewLawyers={() => { setDiagnosisPhase('idle'); setActiveTab('lawyers'); }} onRetakeDiagnosis={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); setDiagnosisPhase('flow'); }} />)}
+      {diagnosisPhase === 'result' && diagnosisResult && (<DiagnosisResultView result={diagnosisResult} onGoHome={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); }} onStartDetailedDiagnosis={() => { setDiagnosisPhase('idle'); setActiveTab('request'); }} onViewLawyers={() => { setDiagnosisPhase('idle'); setActiveTab('lawyers'); }} onRetakeDiagnosis={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); setDiagnosisPhase('flow'); }} />)}
 
       <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />
 
