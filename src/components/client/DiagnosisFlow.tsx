@@ -11,6 +11,7 @@ interface DiagnosisFlowProps {
   onComplete: (result: DiagnosisResult) => void;
   onBack: () => void;
   diagnosisConfig?: DiagnosisConfig;
+  initialAnswers?: Partial<DiagnosisAnswers>;
 }
 
 // ─────────────────────────────────────────────
@@ -37,13 +38,15 @@ const CALC_STEPS = [
 // Component
 // ─────────────────────────────────────────────
 export default function DiagnosisFlow(props: DiagnosisFlowProps) {
-  const { onComplete, onBack, diagnosisConfig } = props;
+  const { onComplete, onBack, diagnosisConfig, initialAnswers } = props;
 
   const questions: DiagnosisQuestion[] =
     diagnosisConfig?.questions ?? DEFAULT_DIAGNOSIS_QUESTIONS;
 
-  const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<Partial<DiagnosisAnswers>>({});
+  // If Q1 is pre-answered from state checker, start at Q2
+  const startStep = (initialAnswers?.q1_status) ? 1 : 0;
+  const [currentStep, setCurrentStep] = useState(startStep);
+  const [answers, setAnswers] = useState<Partial<DiagnosisAnswers>>(initialAnswers ?? {});
   const [isCalculating, setIsCalculating] = useState(false);
   const [calcPhase, setCalcPhase] = useState(-1);
   const [direction, setDirection] = useState<1 | -1>(1);

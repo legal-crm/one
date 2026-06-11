@@ -458,6 +458,7 @@ export default function ClientRole({
   const [diagnosisPhase, setDiagnosisPhase] = useState<'idle' | 'flow' | 'result'>('idle');
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResultType | null>(null);
   const [diagnosisConfig, setDiagnosisConfig] = useState<DiagnosisConfig | null>(null);
+  const [checkerQ1, setCheckerQ1] = useState<string | null>(null);
 
 
   // Helper: Record client login/signup activity
@@ -1568,7 +1569,73 @@ export default function ClientRole({
                 </div>
               </div>
 
-              {/* Right Column: Interactive State Checker Card */}
+              {/* Right Column: Interactive State Checker OR Result Banner */}
+              {diagnosisResult ? (
+                /* ── 진단 완료 배너 ── */
+                <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-slate-700/50 rounded-3xl p-6 shadow-md space-y-4 text-white animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-slate-700/50 pb-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-1.5">
+                      ✅ 자가진단 완료
+                    </h4>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      diagnosisResult.urgencyLevel === 'immediate' ? 'bg-red-500/15 border-red-500/30 text-red-400' :
+                      diagnosisResult.urgencyLevel === 'soon' ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' :
+                      'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                    }`}>
+                      {diagnosisResult.urgencyLevel === 'immediate' ? '🔴 긴급' : diagnosisResult.urgencyLevel === 'soon' ? '🟠 주의' : '🟢 여유'}
+                    </span>
+                  </div>
+
+                  <div className="text-center space-y-1">
+                    <span className="text-[10px] text-slate-400 font-medium">예상 탕감 금액</span>
+                    <p className="text-2xl font-bold text-indigo-300 tracking-tight">
+                      약 {diagnosisResult.estimatedSavingsAmount >= 10000 
+                        ? `${Math.floor(diagnosisResult.estimatedSavingsAmount / 10000)}억 ${(diagnosisResult.estimatedSavingsAmount % 10000).toLocaleString()}만원`
+                        : `${diagnosisResult.estimatedSavingsAmount.toLocaleString()}만원`
+                      }
+                    </p>
+                    <span className="text-xs text-indigo-400 font-medium">
+                      원금의 {Math.round(diagnosisResult.estimatedSavingsRate * 100)}% 면책 · 추천 전략: {diagnosisResult.primaryStrategy.label}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <button
+                      onClick={() => setDiagnosisPhase('result')}
+                      className="py-2.5 rounded-xl border border-slate-600 text-xs font-bold text-slate-300 hover:bg-slate-800 transition-all cursor-pointer active:scale-[0.98]"
+                    >
+                      결과 자세히 보기
+                    </button>
+                    <button
+                      onClick={() => {
+                        // 개선 2: 진단 결과 → 상담 신청 자동 입력
+                        const r = diagnosisResult;
+                        const incomeMap: Record<string, number> = { employed: 300, unstable: 180, business: 250, none: 0 };
+                        const debtMap: Record<string, number> = { under_1000: 700, '1000_to_5000': 3000, '5000_to_10000': 7500, '10000_to_50000': 25000, over_50000: 60000 };
+                        setIncome(incomeMap[r.answers.q3_income] ?? 200);
+                        setDebtTotal(debtMap[r.answers.q2_debtScale] ?? 5000);
+                        setTitle(`[자가진단 연동] ${r.primaryStrategy.label} 전문 상담 신청`);
+                        setContent(`[자가진단 연동 상담 신청]\n\n■ 진단 결과 요약\n- 추천 전략: ${r.primaryStrategy.label} (적합도: ${r.primaryStrategy.confidence === 'high' ? '높음' : r.primaryStrategy.confidence === 'medium' ? '보통' : '참고'})\n- 예상 탕감액: 약 ${r.estimatedSavingsAmount.toLocaleString()}만원 (${Math.round(r.estimatedSavingsRate * 100)}% 면책)\n- 긴급도: ${r.urgencyLevel === 'immediate' ? '🔴 긴급' : r.urgencyLevel === 'soon' ? '🟠 주의' : '🟢 여유'} — ${r.urgencyMessage}\n- 예상 월 변제금: 약 ${r.estimatedMonthlyPayment.toLocaleString()}만원\n\n■ 자가진단 응답 데이터\n- 현재 상태: ${r.answers.q1_status}\n- 총 채무: ${r.answers.q2_debtScale}\n- 소득 형태: ${r.answers.q3_income}\n- 시급 사항: ${r.answers.q4_urgentNeed}\n- 희망 방향: ${r.answers.q5_goal}\n\n상기 진단 결과를 바탕으로, 전담 변호사의 정밀 검토를 요청합니다.`);
+                        setRequestType('open');
+                        setRequestStep(3);
+                        setActiveTab('request');
+                        setDiagnosisPhase('idle');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="py-2.5 rounded-xl bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-xs font-bold text-white shadow-sm hover:shadow-brand-sm transition-all cursor-pointer active:scale-[0.98]"
+                    >
+                      이 결과로 상담 신청 →
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => { setDiagnosisResult(null); setCheckedStatuses([false, false, false, false, false]); }}
+                    className="w-full text-center text-[10px] text-slate-500 hover:text-slate-300 font-medium pt-1 cursor-pointer transition-colors"
+                  >
+                    진단 초기화하고 다시 체크하기
+                  </button>
+                </div>
+              ) : (
               <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -1655,6 +1722,16 @@ export default function ClientRole({
                     recommendation = '연체 전 단계에서 채무 구조조정을 시작하면 신용등급 하락을 최소화할 수 있습니다.';
                   }
 
+                  // 개선 1: 상태체크 → Q1 자동 매핑
+                  const computeQ1FromChecks = (): string => {
+                    if (hasSeizure) return 'seizure';
+                    if (hasTax) return 'collection';
+                    if (hasOverdue) return 'severe_delinquency';
+                    if (hasLegal) return 'early_delinquency';
+                    if (hasPreOverdue) return 'no_delinquency';
+                    return 'no_delinquency';
+                  };
+
                   return (
                     <div className={`bg-gradient-to-br ${riskColor} p-4 rounded-2xl border text-left space-y-2.5 animate-fadeIn`}>
                       <div className="flex items-center justify-between">
@@ -1674,7 +1751,10 @@ export default function ClientRole({
                       <button
                         onClick={() => {
                           setDiagnosisPhase('flow');
-                          onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', `상태체크 카드에서 진단 시작 (선택: ${selectedCount}개, 위험도: ${riskLevel})`);
+                          // 상태체크 → Q1 자동 매핑 (checkedStatuses를 initialAnswers로 전달)
+                          const q1 = computeQ1FromChecks();
+                          setCheckerQ1(q1);
+                          onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', `상태체크 카드에서 진단 시작 (선택: ${selectedCount}개, Q1 자동선택: ${q1})`);
                         }}
                         className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer mt-1"
                       >
@@ -1684,6 +1764,7 @@ export default function ClientRole({
                   );
                 })()}
               </div>
+              )}
             </div>
 
             {/* 2. Secondary Search Box (Demoted) */}
@@ -2426,9 +2507,9 @@ export default function ClientRole({
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (<AuthModal onClose={() => setShowAuthModal(false)} onLoginSuccess={(alias,ep,ch) => { setIsLoggedIn(true); setUserAlias(alias); setShowAuthModal(false); recordClientLogin(alias,ep,ch); }} />)}
 
-      {diagnosisPhase === 'flow' && (<DiagnosisFlow onComplete={async (r) => { setDiagnosisResult(r); setDiagnosisPhase('result'); await saveDiagnosisResult(r); }} onBack={() => setDiagnosisPhase('idle')} diagnosisConfig={diagnosisConfig||undefined} />)}
+      {diagnosisPhase === 'flow' && (<DiagnosisFlow onComplete={async (r) => { setDiagnosisResult(r); setDiagnosisPhase('result'); await saveDiagnosisResult(r); }} onBack={() => setDiagnosisPhase('idle')} diagnosisConfig={diagnosisConfig||undefined} initialAnswers={checkerQ1 ? { q1_status: checkerQ1 } : undefined} />)}
 
-      {diagnosisPhase === 'result' && diagnosisResult && (<DiagnosisResultView result={diagnosisResult} onGoHome={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); }} onStartDetailedDiagnosis={() => { setDiagnosisPhase('idle'); setActiveTab('request'); }} onViewLawyers={() => { setDiagnosisPhase('idle'); setActiveTab('lawyers'); }} onRetakeDiagnosis={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); setDiagnosisPhase('flow'); }} />)}
+      {diagnosisPhase === 'result' && diagnosisResult && (<DiagnosisResultView result={diagnosisResult} onGoHome={() => { setDiagnosisPhase('idle'); }} onStartDetailedDiagnosis={() => { const r = diagnosisResult; const incomeMap: Record<string, number> = { employed: 300, unstable: 180, business: 250, none: 0 }; const debtMap: Record<string, number> = { under_1000: 700, '1000_to_5000': 3000, '5000_to_10000': 7500, '10000_to_50000': 25000, over_50000: 60000 }; setIncome(incomeMap[r.answers.q3_income] ?? 200); setDebtTotal(debtMap[r.answers.q2_debtScale] ?? 5000); setTitle(`[자가진단 연동] ${r.primaryStrategy.label} 전문 상담 신청`); setContent(`[자가진단 연동 상담 신청]\n\n■ 진단 결과 요약\n- 추천 전략: ${r.primaryStrategy.label}\n- 예상 탕감액: 약 ${r.estimatedSavingsAmount.toLocaleString()}만원 (${Math.round(r.estimatedSavingsRate * 100)}% 면책)\n- 긴급도: ${r.urgencyMessage}\n- 예상 월 변제금: 약 ${r.estimatedMonthlyPayment.toLocaleString()}만원\n\n상기 진단 결과를 바탕으로, 전담 변호사의 정밀 검토를 요청합니다.`); setRequestType('open'); setRequestStep(3); setDiagnosisPhase('idle'); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onViewLawyers={() => { setDiagnosisPhase('idle'); setActiveTab('lawyers'); }} onRetakeDiagnosis={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); setCheckerQ1(null); setDiagnosisPhase('flow'); }} />)}
 
       <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setDiagnosisPhase('flow'); }} />
 
