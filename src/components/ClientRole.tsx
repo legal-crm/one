@@ -430,6 +430,7 @@ export default function ClientRole({
   const [bannerIndex, setBannerIndex] = useState<number>(0);
   const [openedQaId, setOpenedQaId] = useState<string | null>(null);
   const [homeSearchQuery, setHomeSearchQuery] = useState<string>('');
+  const [checkedStatuses, setCheckedStatuses] = useState<boolean[]>([false, false, false, false, false]);
   const [qnaSearchQuery, setQnaSearchQuery] = useState<string>('');
   const [qnaCategoryFilter, setQnaCategoryFilter] = useState<string>('전체');
   const [qnaPage, setQnaPage] = useState<number>(1);
@@ -1579,25 +1580,109 @@ export default function ClientRole({
                 <div className="space-y-2.5">
                   <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block mb-1">현재 상태 (다중 선택 가능)</span>
                   {[
-                    { label: '연체 전 (대출 만기 연장 불가, 돌려막기 한계)', color: 'bg-emerald-500' },
-                    { label: '연체 중 (카드사/은행 독촉 연락 수신 중)', color: 'bg-amber-500' },
-                    { label: '추심/압류 위기 (지급명령, 법원 등기, 통장 압류)', color: 'bg-rose-500' },
-                    { label: '세금 체납 (국세, 지방세, 4대보험 밀림)', color: 'bg-purple-500' },
-                    { label: '회생/파산 법리 가능성 검토 필요', color: 'bg-brand' }
+                    { label: '연체 전 (대출 만기 연장 불가, 돌려막기 한계)', color: 'bg-emerald-500', risk: 1 },
+                    { label: '연체 중 (카드사/은행 독촉 연락 수신 중)', color: 'bg-amber-500', risk: 2 },
+                    { label: '추심/압류 위기 (지급명령, 법원 등기, 통장 압류)', color: 'bg-rose-500', risk: 3 },
+                    { label: '세금 체납 (국세, 지방세, 4대보험 밀림)', color: 'bg-purple-500', risk: 3 },
+                    { label: '회생/파산 법리 가능성 검토 필요', color: 'bg-brand', risk: 2 }
                   ].map((item, idx) => (
-                    <label key={idx} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-all">
-                      <input type="checkbox" className="rounded text-brand focus:ring-brand w-4 h-4 border-slate-300 dark:border-slate-700" />
-                      <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{item.label}</span>
+                    <label 
+                      key={idx} 
+                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                        checkedStatuses[idx] 
+                          ? 'border-brand/40 bg-brand/5 dark:bg-brand/10 shadow-sm' 
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={checkedStatuses[idx]}
+                        onChange={() => {
+                          setCheckedStatuses(prev => {
+                            const next = [...prev];
+                            next[idx] = !next[idx];
+                            return next;
+                          });
+                        }}
+                        className="rounded text-brand focus:ring-brand w-4 h-4 border-slate-300 dark:border-slate-700 cursor-pointer" 
+                      />
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className={`w-2 h-2 rounded-full ${item.color} shrink-0 ${checkedStatuses[idx] ? 'scale-125' : 'opacity-50'} transition-all`}></span>
+                        <span className={`text-xs font-medium transition-colors ${checkedStatuses[idx] ? 'text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{item.label}</span>
+                      </div>
                     </label>
                   ))}
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-850 text-center">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold block">추천 관리 방향</span>
-                  <p className="text-xs text-slate-400 font-medium mt-1">
-                    🔓 익명 진단 또는 변호사 배정 후 표시됩니다.
-                  </p>
-                </div>
+                {/* 추천 관리 방향 — 동적 */}
+                {(() => {
+                  const selectedCount = checkedStatuses.filter(Boolean).length;
+                  const hasSeizure = checkedStatuses[2]; // 추심/압류
+                  const hasTax = checkedStatuses[3]; // 세금 체납
+                  const hasLegal = checkedStatuses[4]; // 회생/파산
+                  const hasOverdue = checkedStatuses[1]; // 연체 중
+                  const hasPreOverdue = checkedStatuses[0]; // 연체 전
+
+                  if (selectedCount === 0) {
+                    return (
+                      <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold block">추천 관리 방향</span>
+                        <p className="text-xs text-slate-400 font-medium mt-1">
+                          ☝️ 위 항목을 체크하면 맞춤 분석 결과가 표시됩니다.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  // 위험도 계산
+                  const riskLevel = (hasSeizure || hasTax) ? '🔴 긴급' : (hasOverdue || hasLegal) ? '🟠 주의' : '🟡 관심';
+                  const riskColor = (hasSeizure || hasTax) ? 'from-rose-500/10 to-red-500/5 border-rose-500/30' : (hasOverdue || hasLegal) ? 'from-amber-500/10 to-orange-500/5 border-amber-500/30' : 'from-emerald-500/10 to-green-500/5 border-emerald-500/30';
+                  const riskTextColor = (hasSeizure || hasTax) ? 'text-rose-600 dark:text-rose-400' : (hasOverdue || hasLegal) ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+
+                  // 추천 방향 결정
+                  let recommendation = '';
+                  if (hasSeizure && hasTax) {
+                    recommendation = '세금 소멸시효 검토 + 긴급 채무자대리 선임 + 개인회생/파산 동시 검토가 필요합니다.';
+                  } else if (hasSeizure) {
+                    recommendation = '긴급 채무자대리 선임으로 추심 차단 후, 개인회생 골든타임 내 신청이 권장됩니다.';
+                  } else if (hasTax) {
+                    recommendation = '세금 소멸시효(5/10년) 검토 + 압류금지 소액금융재산 심사 청구가 필요합니다.';
+                  } else if (hasLegal) {
+                    recommendation = '채무 규모와 소득 대비 변제 가능성을 분석하여 회생/파산 적격 여부를 판단합니다.';
+                  } else if (hasOverdue) {
+                    recommendation = '연체 장기화 방지를 위해 채무조정(워크아웃) 또는 개인회생 선제 검토가 권장됩니다.';
+                  } else if (hasPreOverdue) {
+                    recommendation = '연체 전 단계에서 채무 구조조정을 시작하면 신용등급 하락을 최소화할 수 있습니다.';
+                  }
+
+                  return (
+                    <div className={`bg-gradient-to-br ${riskColor} p-4 rounded-2xl border text-left space-y-2.5 animate-fadeIn`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">AI 분석 결과</span>
+                        <span className={`text-xs font-bold ${riskTextColor}`}>{riskLevel}</span>
+                      </div>
+                      <p className="text-xs text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
+                        {recommendation}
+                      </p>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-slate-400">선택 항목 {selectedCount}개</span>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <span className={`text-[10px] font-semibold ${riskTextColor}`}>
+                          {(hasSeizure || hasTax) ? '즉시 변호사 상담 권장' : '전문가 진단 권장'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDiagnosisPhase('flow');
+                          onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', `상태체크 카드에서 진단 시작 (선택: ${selectedCount}개, 위험도: ${riskLevel})`);
+                        }}
+                        className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer mt-1"
+                      >
+                        <span>맞춤 채무관리 진단 시작하기 →</span>
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
