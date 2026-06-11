@@ -20,20 +20,20 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-left">
-      <div className="dark bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white rounded-[32px] shadow-2xl border border-slate-800 p-6 sm:p-8 md:p-10 space-y-8 shadow-glow relative overflow-hidden transition-all duration-300">
+      <div className="dark bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white rounded-3xl shadow-2xl border border-slate-800 p-6 sm:p-8 md:p-10 space-y-8 shadow-glow relative overflow-hidden transition-all duration-300">
         {/* Background glow effects */}
         <div className="absolute left-1/3 top-1/4 w-[350px] h-[350px] bg-brand/5 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute right-1/4 bottom-1/4 w-[300px] h-[300px] bg-indigo-500/5 rounded-full blur-[90px] pointer-events-none"></div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6 relative z-10">
           <div className="space-y-1.5">
-            <span className="text-[10px] text-brand-light font-extrabold uppercase tracking-widest flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-brand-light animate-pulse" />
+            <span className="text-[10px] text-brand-light font-bold uppercase tracking-widest flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-brand-light" />
               실시간 자가진단 계산기
             </span>
-            <h3 className="text-xl md:text-2xl font-black tracking-tight">나의 예상 개인회생 탕감액 조회</h3>
+            <h3 className="text-xl md:text-2xl font-bold tracking-tight">나의 예상 개인회생 탕감액 조회</h3>
           </div>
-          <p className="text-xs text-slate-450 leading-relaxed max-w-sm font-medium">
+          <p className="text-xs text-slate-400 leading-relaxed max-w-sm font-medium">
             소득과 채무, 부양가족 수에 따른 최저생계비를 대입하여 법원에서 인정받을 수 있는 최적의 예상 탕감액과 변제율을 가계산합니다.
           </p>
         </div>
@@ -45,7 +45,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-300 font-semibold">월 평균 세후 실수령 소득</span>
-                <span className="font-extrabold text-brand-light text-base bg-brand/10 px-3 py-1 rounded-lg border border-brand/20 shadow-sm">{calcIncome}만 원</span>
+                <span className="font-bold text-brand-light text-base bg-brand/10 px-3 py-1 rounded-lg border border-brand/20 shadow-sm">{calcIncome}만 원</span>
               </div>
               <input 
                 type="range" 
@@ -65,7 +65,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-300 font-semibold">총 채무액 (대출, 카드론, 주식/코인 손실 등)</span>
-                <span className="font-extrabold text-amber-400 text-base bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20 shadow-sm">
+                <span className="font-bold text-amber-400 text-base bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20 shadow-sm">
                   {calcDebt >= 10000 ? `${(calcDebt / 10000).toFixed(2)}억 원` : ''} ({calcDebt.toLocaleString()}만 원)
                 </span>
               </div>
@@ -92,7 +92,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                     key={num} 
                     type="button" 
                     onClick={() => setCalcDependents(num)} 
-                    className={`py-3 rounded-2xl border text-xs font-black transition-all duration-200 cursor-pointer ${
+                    className={`py-3 rounded-2xl border text-xs font-bold transition-all duration-200 cursor-pointer ${
                       calcDependents === num 
                         ? 'bg-brand border-brand text-white shadow-[0_4px_15px_rgba(114,100,255,0.3)] scale-[1.03]' 
                         : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
@@ -121,13 +121,13 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
               return (
                 <>
                   <div className="space-y-4 text-left relative z-10">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-brand-light block border-b border-white/10 pb-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-brand-light block border-b border-white/10 pb-2">
                       🔍 1차 자격 진단 리포트
                     </span>
                     <div className="space-y-3.5 text-xs text-slate-300 font-medium">
                       <div className="flex justify-between items-center">
                         <span>보건복지부 고시 최저생계비:</span>
-                        <strong className="text-white text-sm">{minLivingCost}만 원</strong>
+                        <strong className="text-white text-sm">{ minLivingCost}만 원</strong>
                       </div>
                       {isBankruptcyApplicable ? (
                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-[11px] text-red-300 font-semibold leading-relaxed shadow-sm">
@@ -150,12 +150,12 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
                   {!isBankruptcyApplicable && (
                     <div className="bg-gradient-to-r from-brand/10 to-indigo-600/15 border border-brand/35 p-5 rounded-2xl text-center space-y-1.5 shadow-sm relative z-10">
-                      <span className="text-[10px] text-brand-light uppercase tracking-widest font-black">법적 예상 탕감 비율</span>
-                      <div className="text-3xl font-black text-brand-light tracking-tight">
+                      <span className="text-[10px] text-brand-light uppercase tracking-widest font-bold">법적 예상 탕감 비율</span>
+                      <div className="text-3xl font-bold text-brand-light tracking-tight">
                         약 {reductionRate}% 탕감 예정
                       </div>
                       <p className="text-[11px] text-slate-400 font-medium">
-                        (총 채무 중 약 <strong className="text-white font-extrabold">{Math.round(totalReduction).toLocaleString()}만 원</strong> 감면)
+                        (총 채무 중 약 <strong className="text-white font-bold">{Math.round(totalReduction).toLocaleString()}만 원</strong> 감면)
                       </p>
                     </div>
                   )}
@@ -170,7 +170,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                         content: `탕감액 계산기 실행 결과:\n- 월 세후 소득: ${calcIncome}만 원\n- 총 부채액: ${calcDebt}만 원\n- 부양가족 수: ${calcDependents}명 (${calcDependents + 1}인 가구)\n\n상기 수치 데이터를 기반으로 법정 개시가 안전하게 가능한 구조인지, 추가적인 탕감율 극대화 전략에 대한 도산 전문 변호사의 상담을 신청합니다.`,
                         step: 3
                       })}
-                      className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-black py-3.5 rounded-2xl text-xs transition-all duration-300 flex items-center justify-center gap-1.5 shadow-[0_4px_20px_rgba(114,100,255,0.3)] hover:shadow-[0_4px_30px_rgba(114,100,255,0.5)] transform hover:-translate-y-0.5 cursor-pointer"
+                      className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-3.5 rounded-2xl text-xs transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 cursor-pointer active:scale-[0.98]"
                     >
                       <FileText className="w-4 h-4" />
                       <span>이 계산 결과로 바로 상담 신청하기</span>
@@ -185,11 +185,11 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
       {/* Banner Notice */}
       <div className="bg-amber-500/5 dark:bg-amber-500/5 border border-amber-500/20 p-5 rounded-3xl text-xs space-y-3 shadow-premium">
-        <h4 className="font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-2 text-sm">
-          <AlertTriangle className="w-4 h-4 animate-bounce" />
+        <h4 className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2 text-sm">
+          <AlertTriangle className="w-4 h-4" />
           <span>탕감액 계산기 이용 시 유의사항 (변호사 전문 소명의 중요성)</span>
         </h4>
-        <div className="text-[#7e7e8f] dark:text-slate-400 leading-relaxed font-semibold space-y-2">
+        <div className="text-slate-400 dark:text-slate-400 leading-relaxed font-medium space-y-2">
           <p>
             위 계산기는 보건복지부 기준 최저생계비를 대입한 <strong>가계산(가상 결과)</strong>입니다. 
             실제 법원 접수 시에는 채무 형성 경로(최근 대출 비율, 사행성 투자 손실 유무) 및 의뢰인의 개별 소득 형태, 재산 가치(청산가치)에 따라 법원이 인정해주는 생계비의 보정 폭이 매우 크게 달라집니다.
@@ -209,7 +209,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
               step: 1,
               requestType: 'open'
             })}
-            className="text-xs bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-5 py-2.5 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer transform hover:-translate-y-0.5"
+            className="text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer transform hover:-translate-y-0.5"
           >
             내 조건으로 전문 변호사 매칭받기 &rarr;
           </button>

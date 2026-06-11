@@ -1,52 +1,166 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════
+   DESIGN TOKEN SYSTEM
+   ═══════════════════════════════════════════════ */
+
 @theme {
+  /* ── Typography ── */
   --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
-  
+
+  /* ── Brand Colors ── */
   --color-brand: #7264FF;
   --color-brand-hover: #5b4cf5;
   --color-brand-light: #f0efff;
-  
-  --color-charcoal-dark: #313142;
-  --color-charcoal-medium: #484760;
-  --color-charcoal-light: #7e7e8f;
+  --color-brand-deep: #4338ca;
 
+  /* ── Semantic Text Colors (mapped to valid Tailwind slate) ── */
+  --color-text-primary: #1e293b;     /* slate-800 */
+  --color-text-secondary: #475569;   /* slate-600 */
+  --color-text-muted: #94a3b8;       /* slate-400 */
+  --color-text-subtle: #cbd5e1;      /* slate-300 */
+
+  /* ── Semantic Border Colors ── */
+  --color-border-default: #e2e8f0;   /* slate-200 */
+  --color-border-subtle: #f1f5f9;    /* slate-100 */
+  --color-border-strong: #cbd5e1;    /* slate-300 */
+
+  /* ── Shadow System (4 tiers) ── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04);
+
+  /* ── Premium / Glow Shadows ── */
   --shadow-premium: 0 8px 30px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.02);
   --shadow-glow: 0 0 20px rgba(114, 100, 255, 0.15);
   --shadow-glow-hover: 0 0 30px rgba(114, 100, 255, 0.3);
+  --shadow-brand-sm: 0 2px 12px rgba(114, 100, 255, 0.12);
+  --shadow-brand-md: 0 4px 20px rgba(114, 100, 255, 0.2);
 }
 
+
+/* ═══════════════════════════════════════════════
+   GLOBAL BASE STYLES
+   ═══════════════════════════════════════════════ */
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    letter-spacing: -0.01em;
+    word-break: keep-all;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════
+   ANIMATION KEYFRAMES
+   ═══════════════════════════════════════════════ */
+
 @layer utilities {
+
+  /* ── Fade In Up (primary entrance) ── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Fade In (simple) ── */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── Fade In Scale ── */
+  @keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* ── Slide Down (accordion expand) ── */
+  @keyframes slideDown {
+    from { opacity: 0; max-height: 0; }
+    to   { opacity: 1; max-height: 1000px; }
+  }
+
+  /* ── Slide Up (modal entrance) ── */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Animation utility classes ── */
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out both;
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.5s ease-out both;
+  }
+
+  .animate-fadeInScale {
+    animation: fadeInScale 0.35s ease-out both;
+  }
+
+  .animate-slideDown {
+    animation: slideDown 0.3s ease-out both;
+  }
+
+  .animate-slideUp {
+    animation: slideUp 0.4s ease-out both;
+  }
+
+  /* ── Stagger delay system (use with style="--i: N") ── */
+  .stagger-item {
+    animation: fadeInUp 0.45s ease-out both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+
+
+  /* ═══════════════════════════════════════════════
+     SCROLLBAR
+     ═══════════════════════════════════════════════ */
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  /* Custom Range Slider Styling */
+
+  /* ═══════════════════════════════════════════════
+     CUSTOM RANGE SLIDER
+     ═══════════════════════════════════════════════ */
+
   input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
     cursor: pointer;
   }
-  
+
   input[type="range"]::-webkit-slider-runnable-track {
-    background: #e2e8f0; /* Default light mode track */
+    background: #e2e8f0;
     height: 6px;
     border-radius: 9999px;
+    transition: background 0.2s;
   }
 
   .dark input[type="range"]::-webkit-slider-runnable-track {
-    background: #334155; /* Dark mode track */
+    background: #334155;
   }
-  
+
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    margin-top: -5px; /* Centers thumb on the track */
+    margin-top: -5px;
     background-color: #7264FF;
     height: 16px;
     width: 16px;
@@ -55,14 +169,14 @@
     box-shadow: 0 4px 10px rgba(114, 100, 255, 0.4);
     transition: all 0.15s ease-in-out;
   }
-  
+
   input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.25);
     background-color: #5b4cf5;
     box-shadow: 0 4px 15px rgba(114, 100, 255, 0.7);
   }
 
-  /* Slider theme variants */
+  /* Slider color variants */
   .slider-amber::-webkit-slider-thumb {
     background-color: #f59e0b !important;
     box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4) !important;
@@ -70,5 +184,26 @@
   .slider-amber::-webkit-slider-thumb:hover {
     background-color: #d97706 !important;
     box-shadow: 0 4px 15px rgba(245, 158, 11, 0.7) !important;
+  }
+
+
+  /* ═══════════════════════════════════════════════
+     GLOBAL TRANSITION HELPERS
+     ═══════════════════════════════════════════════ */
+
+  .transition-card {
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .hover-lift-sm:hover {
+    transform: translateY(-1px);
+  }
+
+  .press-scale:active {
+    transform: scale(0.98);
   }
 }

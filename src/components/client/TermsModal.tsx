@@ -10,26 +10,26 @@ interface TermsModalProps {
 
 export default function TermsModal({ termsModalType, platformConfig, onClose }: TermsModalProps) {
   return (
-    <div className="fixed inset-0 z-55 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full shadow-2xl p-6 md:p-8 space-y-4 relative overflow-hidden text-left animate-fadeIn">
         <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h3 className="font-extrabold text-lg text-slate-800 dark:text-white">
+          <h3 className="font-bold text-lg text-slate-800 dark:text-white">
             {termsModalType === 'tos' ? '서비스 이용약관' : '개인정보 처리방침'}
           </h3>
           <button 
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 text-sm font-bold bg-[#F2F4F7] dark:bg-slate-800 p-1.5 rounded-full transition-all"
+            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="max-h-[300px] overflow-y-auto text-xs text-slate-655 dark:text-slate-400 leading-relaxed font-normal whitespace-pre-wrap bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-850">
+        <div className="max-h-[300px] overflow-y-auto text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal whitespace-pre-wrap bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
           {termsModalType === 'tos' ? platformConfig.termsOfService : platformConfig.privacyPolicy}
         </div>
         <div className="flex justify-end pt-2">
           <button
             onClick={onClose}
-            className="bg-brand hover:bg-brand-dark text-white font-extrabold px-6 py-2 rounded-[200px] text-xs transition-all cursor-pointer"
+            className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-6 py-2 rounded-2xl text-xs transition-all shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer"
           >
             확인
           </button>

@@ -26,7 +26,7 @@ export default function NoticesView({ notices, selectedNoticeId, onSetSelectedNo
         {selectedNoticeId && (
           <>
             <span>&gt;</span>
-            <span className="text-slate-700 dark:text-slate-350 font-medium">상세보기</span>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">상세보기</span>
           </>
         )}
       </div>
@@ -40,13 +40,13 @@ export default function NoticesView({ notices, selectedNoticeId, onSetSelectedNo
               <div className="space-y-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-2">
                   {notice.isImportant && (
-                    <span className="bg-red-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded">중요 공지</span>
+                    <span className="bg-red-500 text-white font-bold text-[10px] px-2 py-0.5 rounded">중요 공지</span>
                   )}
                   <span className="text-xs text-slate-400 font-mono">{notice.date}</span>
                 </div>
-                <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-snug">{notice.title}</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white leading-snug">{notice.title}</h2>
               </div>
-              <div className="text-sm text-slate-650 dark:text-slate-300 whitespace-pre-line leading-relaxed font-normal">{notice.content}</div>
+              <div className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed font-normal">{notice.content}</div>
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
                 <button onClick={() => onSetSelectedNoticeId(null)} className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all text-slate-600 dark:text-slate-400 cursor-pointer">목록으로 돌아가기</button>
               </div>
@@ -57,14 +57,14 @@ export default function NoticesView({ notices, selectedNoticeId, onSetSelectedNo
         // NOTICE LIST VIEW
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-            <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2"><span>📢</span> 공지사항</h2>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2"><span>📢</span> 공지사항</h2>
             <p className="text-xs text-slate-500 mt-1">회생톡의 새로운 알림 및 정책 변경 사항을 안내해 드립니다.</p>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {notices.map(notice => (
               <div key={notice.id} onClick={() => onSetSelectedNoticeId(notice.id)} className="py-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors flex items-center gap-3 text-left">
                 {notice.isImportant && (
-                  <span className="bg-red-500 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded shrink-0">중요</span>
+                  <span className="bg-red-500 text-white font-bold text-[10px] px-1.5 py-0.5 rounded shrink-0">중요</span>
                 )}
                 <h3 className="font-bold text-sm text-slate-700 dark:text-slate-200 flex-1 truncate hover:underline">{notice.title}</h3>
                 <span className="text-xs text-slate-400 font-mono shrink-0">{notice.date}</span>
