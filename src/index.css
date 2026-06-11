@@ -10,6 +10,10 @@
   --color-charcoal-dark: #313142;
   --color-charcoal-medium: #484760;
   --color-charcoal-light: #7e7e8f;
+
+  --shadow-premium: 0 8px 30px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.02);
+  --shadow-glow: 0 0 20px rgba(114, 100, 255, 0.15);
+  --shadow-glow-hover: 0 0 30px rgba(114, 100, 255, 0.3);
 }
 
 @layer utilities {
@@ -19,5 +23,52 @@
   .scrollbar-hide {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Custom Range Slider Styling */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  
+  input[type="range"]::-webkit-slider-runnable-track {
+    background: #e2e8f0; /* Default light mode track */
+    height: 6px;
+    border-radius: 9999px;
+  }
+
+  .dark input[type="range"]::-webkit-slider-runnable-track {
+    background: #334155; /* Dark mode track */
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -5px; /* Centers thumb on the track */
+    background-color: #7264FF;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 4px 10px rgba(114, 100, 255, 0.4);
+    transition: all 0.15s ease-in-out;
+  }
+  
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+    background-color: #5b4cf5;
+    box-shadow: 0 4px 15px rgba(114, 100, 255, 0.7);
+  }
+
+  /* Slider theme variants */
+  .slider-amber::-webkit-slider-thumb {
+    background-color: #f59e0b !important;
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4) !important;
+  }
+  .slider-amber::-webkit-slider-thumb:hover {
+    background-color: #d97706 !important;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.7) !important;
   }
 }

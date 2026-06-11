@@ -1362,13 +1362,13 @@ export default function ClientRole({
       <div className="w-full max-w-[1024px] min-h-screen mx-auto bg-white dark:bg-slate-900 border-x border-slate-100 dark:border-slate-800 shadow-sm flex flex-col relative">
       
         {/* Dynamic Client Header */}
-        <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 w-full">
+        <header className="sticky top-0 z-40 bg-white/70 dark:bg-slate-900/75 backdrop-blur-md border-b border-slate-100/80 dark:border-slate-800/80 w-full transition-all duration-300">
           <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
-              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt={platformConfig.siteLogoText || "회생톡 로고"} className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-brand/20" />
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt={platformConfig.siteLogoText || "회생톡 로고"} className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-brand/20 animate-pulse hover:animate-none" />
               <div className="flex flex-col text-left">
                 <span className="font-black text-lg tracking-tight text-[#313142] dark:text-white leading-none">{platformConfig.siteLogoText || "회생톡"}</span>
-                <span className="text-[9px] text-[#7e7e8f] dark:text-slate-500 font-bold tracking-wide mt-0.5">안심 채무 해결 센터</span>
+                <span className="text-[9px] text-brand dark:text-brand-light font-bold tracking-wide mt-0.5">안심 채무 해결 센터</span>
               </div>
             </div>
 
@@ -1376,8 +1376,10 @@ export default function ClientRole({
             <div className="hidden md:flex items-center gap-1 lg:gap-1.5">
               <button 
                 onClick={() => setActiveTab('landing')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'landing' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  activeTab === 'landing' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 홈
@@ -1387,8 +1389,10 @@ export default function ClientRole({
                   setDiagnosisPhase('flow');
                   onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', 'GNB [채무관리 시작] 메뉴 클릭');
                 }}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  diagnosisPhase === 'flow' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  diagnosisPhase === 'flow' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 채무관리 시작
@@ -1400,44 +1404,54 @@ export default function ClientRole({
                   setActiveTab('request');
                   onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [무료 전담 배정] 메뉴 클릭');
                 }}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'request' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  activeTab === 'request' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 무료 전담 배정
               </button>
               <button 
                 onClick={() => setActiveTab('chat')}
-                className={`relative whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'chat' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                className={`relative whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  activeTab === 'chat' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 내 관리방
-                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
                 </span>
               </button>
               <button 
                 onClick={() => setActiveTab('calculator')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'calculator' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  activeTab === 'calculator' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 해결전략
               </button>
               <button 
                 onClick={() => setActiveTab('lawyers')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'lawyers' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  activeTab === 'lawyers' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 변호사 찾기
               </button>
               <button 
                 onClick={() => setActiveTab('reviews')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'reviews' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  activeTab === 'reviews' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 성공사례
@@ -1445,8 +1459,10 @@ export default function ClientRole({
               {isLoggedIn && (
                 <button 
                   onClick={() => setActiveTab('mypage')}
-                  className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                    activeTab === 'mypage' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                    activeTab === 'mypage' 
+                      ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-extrabold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                   }`}
                 >
                   마이페이지
