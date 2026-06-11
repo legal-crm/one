@@ -70,8 +70,8 @@ interface RemedyInfo {
 const remedyData: Record<string, RemedyInfo> = {
   card_loan: {
     id: 'card_loan',
-    title: '신용카드/카드론 연체',
-    subtitle: '리볼빙·돌려막기 한계 도달',
+    title: '카드론·리볼빙 연체',
+    subtitle: '관리 방향: 신용회복 / 회생 / 대리 대응 확인',
     remedyTitle: '이자 100% 면제 및 고금리 채무 개인회생 흡수 탕감',
     remedyDesc: '신용카드 대금, 리볼빙, 카드론은 이자율이 15%~20%에 육박하는 초고금리 채무입니다. 이를 개인회생 채권 목록에 포함시켜 이자 전액을 면제받고, 소득 수준 및 부양가족에 따라 원금의 최대 90%까지 법적으로 감면받을 수 있습니다.',
     guideTitle: '골든타임 절대 금지 행동 지침',
@@ -97,10 +97,10 @@ const remedyData: Record<string, RemedyInfo> = {
   },
   bank_loan: {
     id: 'bank_loan',
-    title: '은행 신용대출 연체',
-    subtitle: '기한이익 상실 및 원금상환 압박',
+    title: '은행·저축은행 연체',
+    subtitle: '관리 방향: 신용회복 / 금지명령 가능성 검토',
     remedyTitle: '법원 금지명령으로 예금·급여 압류 및 채권 상계 원천 차단',
-    remedyDesc: '시중은행 신용대출 연체 발생 시 1~2개월 내 기한이익상실(만기연장 거절 및 원금 전액 일시상환 청구)이 발생합니다. 법원의 금지명령을 즉각 이끌어내어 직장 급여 가압류 및 거래 은행 계좌 동결을 사전에 법적으로 완벽하게 방어합니다.',
+    remedyDesc: '시중은행 및 저축은행 신용대출 연체 발생 시 1~2개월 내 기한이익상실(만기연장 거절 및 원금 전액 일시상환 청구)이 발생합니다. 법원의 금지명령을 즉각 이끌어내어 직장 급여 가압류 및 거래 은행 계좌 동결을 사전에 법적으로 완벽하게 방어합니다.',
     guideTitle: '예금 및 급여 통장 강제 상계 주의보',
     guideDesc: '대출을 보유 중인 시중은행 계좌에 돈이 남아있거나 해당 은행으로 월급이 수령될 경우, 은행은 연체 즉시 별도의 법원 판결 없이도 채무자의 돈을 강제로 상계(강제 인출)할 수 있습니다. 법적 구제 절차를 준비하는 즉시 주거래 은행과 급여 수납 계좌를 대출 채무가 전혀 없는 제3금융권(카카오뱅크, 토스뱅크 혹은 새마을금고 등)으로 가장 먼저 변경하셔야 소중한 생계비를 보존할 수 있습니다.',
     iconName: 'TrendingDown',
@@ -124,8 +124,8 @@ const remedyData: Record<string, RemedyInfo> = {
   },
   high_interest: {
     id: 'high_interest',
-    title: '대부업/고금리 사채',
-    subtitle: '가혹한 추심 행위 즉시 방어',
+    title: '대부업·사채 독촉',
+    subtitle: '관리 방향: 채무자대리인 즉시 선임 및 추심 차단',
     remedyTitle: '변호사 채무자대리인 제도 선임 및 불법 야간추심 형사고소',
     remedyDesc: '대부업 및 사채 채무는 가혹한 추심을 동반하는 경우가 많습니다. 채무자대리인 제도를 발동하여 변호사가 대리인단으로 선임된 즉시, 채권자는 채무자 본인에게 문자, 전화, 직장 및 자택 방문 등 일체의 직접적 추심 행위를 법적으로 할 수 없게 되며 모든 협의는 변호사 사무실로만 단일화됩니다.',
     guideTitle: '불법 고금리(연 20% 초과) 및 불법 추심 방어전략',
@@ -152,7 +152,7 @@ const remedyData: Record<string, RemedyInfo> = {
   guarantee: {
     id: 'guarantee',
     title: '연대보증 채무 위기',
-    subtitle: '지인 채무 전가 완벽 대처',
+    subtitle: '관리 방향: 보증채무 흡수 조정 및 단독 회생',
     remedyTitle: '보증인 단독 개인회생 신청으로 구상권 청구 및 채무 상속 방어',
     remedyDesc: '주채무자가 면책 신청을 하거나 잠적할 경우, 연대보증인은 주채무자와 상관없이 채무 전액을 갚아야 할 민사상 연대 책무를 집니다. 이때 주채무자의 회복 여부와 상관없이 보증인 본인 명의로 단독 개인회생을 신청하여 주채무가 넘어온 것을 상쇄하고 탕감율을 인정받을 수 있습니다.',
     guideTitle: '주채무자 면책 시의 오해와 대처법',
@@ -178,8 +178,8 @@ const remedyData: Record<string, RemedyInfo> = {
   },
   investment: {
     id: 'investment',
-    title: '주식/코인 투자 손실',
-    subtitle: '탕감률 극대화 실무준칙 설계',
+    title: '주식·코인 손실',
+    subtitle: '관리 방향: 회생 실무준칙 적용 청산가치 불산입',
     remedyTitle: '회생법원 실무준칙 적용으로 투자 손실액 청산가치 제외 특례 개시',
     remedyDesc: '서울/수원/부산회생법원의 핵심 실무준칙(주식 및 가상자산 손실액 청산가치 불산입)을 적극 활용합니다. 투자 실패로 날아간 빚은 재산으로 잡지 않고 오직 보유하고 있는 현재의 잔고만을 청산가치로 산정함으로써, 원금의 최대 90%까지 극적인 법정 탕감률을 달성해 드립니다.',
     guideTitle: '최근 대출금 사용처 집중 소명 기법',
@@ -205,8 +205,8 @@ const remedyData: Record<string, RemedyInfo> = {
   },
   freelancer: {
     id: 'freelancer',
-    title: '일용직/프리랜서 회생',
-    subtitle: '불규칙한 월소득 적법 소명',
+    title: '일용직·프리랜서 채무',
+    subtitle: '관리 방향: 플랫폼 정산 내역 및 부정기 소득 소명',
     remedyTitle: '플랫폼 정산 및 다각적 계좌 입출금 거래 분석을 통한 가용소득 맞춤 입증',
     remedyDesc: '고정 월급제가 아닌 일용직, 특수고용형태, 프리랜서, 배달 라이더 분들도 회생 신청이 100% 가능합니다. 최근 6~12개월간의 소득 증빙 입금 내역, 플랫폼 정산 원장, 노무 확인서 등을 종합적으로 체계화하여 법원이 승인할 수 있는 가장 합리적인 "평균 소득"을 합법 소명하여 변제금을 낮춰 드립니다.',
     guideTitle: '들쑥날쑥한 프리랜서 소득 소명 가이드',
@@ -232,8 +232,8 @@ const remedyData: Record<string, RemedyInfo> = {
   },
   seizure: {
     id: 'seizure',
-    title: '급여/재산 압류 해제',
-    subtitle: '압류 중지·해제명령 긴급신청',
+    title: '급여·통장 압류',
+    subtitle: '관리 방향: 압류 중지명령 신청 및 인가 후 취소',
     remedyTitle: '개인회생 신청 즉시 법원 중지명령 송달 및 인가 후 가압류 즉시 취소/말소',
     remedyDesc: '이미 급여나 은행 예금 통장이 압류되어 생계 위협에 직면한 경우, 개인회생 접수와 동시에 강력한 법원 중지명령 신청을 병행합니다. 법원의 중지 결정을 도출해 내어 압류 추심을 동결시키고, 이후 회생 계획안 인가 결정을 받아 가압류를 영구적으로 해제·말소시킬 수 있습니다.',
     guideTitle: '압류 진행 시 직장 내 노출 방어 기법',
@@ -259,8 +259,8 @@ const remedyData: Record<string, RemedyInfo> = {
   },
   bankruptcy: {
     id: 'bankruptcy',
-    title: '개인파산/면책 신청',
-    subtitle: '무직·고령·질병 전액 탕감',
+    title: '개인회생/파산 검토',
+    subtitle: '관리 방향: 무직·고령·질병 면책 전액 탕감 자격 판정',
     remedyTitle: '법적 자격 심사 후 빚 100% 일시 탕감 및 신용 정보 기록 전면 면책 청구',
     remedyDesc: '만 60세 이상의 고령자, 중증 장애 혹은 중증 질병으로 근로 활동을 아예 수행할 수 없어 최저생계비 이하로 거주하는 상태라면, 매달 나눠 갚는 개인회생 대신 채무 전액을 일시에 지워버리는 개인파산 및 면책을 청구하는 것이 최고의 솔루션입니다.',
     guideTitle: '개인회생 vs 개인파산 선택 가이드라인',
@@ -283,6 +283,34 @@ const remedyData: Record<string, RemedyInfo> = {
       assetsTotal: 100,
       title: '고령/폐업 자영업자 개인파산 및 면책 신청',
       content: '질병 및 건강 악화, 혹은 사업 실패로 인해 앞으로 전혀 소득 활동을 할 수 없는 상황입니다. 보유 재산보다 빚이 훨씬 많아 더 이상 생계 및 상환을 지속할 수 없기에 개인파산을 통한 전액 면책을 희망합니다.'
+    }
+  },
+  tax_delinquency: {
+    id: 'tax_delinquency',
+    title: '세금 체납',
+    subtitle: '관리 방향: 압류 적법성 분석 & 소멸시효 권리 구제',
+    remedyTitle: '국세·지방세 압류 적법성 검토 및 소멸시효 완료 권리 구제',
+    remedyDesc: '세금 체납은 국세기본법 및 지방세징수법상 징수권 소멸시효(5억 원 미만 5년, 5억 원 이상 10년)가 적용됩니다. 다만 압류나 독촉 등으로 시효가 중단될 수 있습니다. 특히 압류금지 소액금융재산(잔액 185만 원 이하의 소액 예금)만 존재함에도 은행 계좌를 압류하여 소멸시효를 부당하게 중단시킨 이력이 있다면, 압류해제 및 시효 완성을 주장하여 체납 세금 채무를 영구 면제받을 수 있습니다.',
+    guideTitle: '체납세금 소멸시효 및 압류 적법성 관리 대응책',
+    guideDesc: '세금 체납은 개인회생 신청 시 일반 신용채무와 달리 "우선권 있는 채권"으로 처리되어 변제기간 내 전액 납부를 요구하거나 기각을 내리며, 파산 시에도 "비면책 채권"에 해당하여 면책이 안 됩니다. 따라서 국세/지방세 해결의 실무 핵심은 징수행위의 적법성과 소멸시효가 실제로 중단되었는지 여부를 분석하는 것입니다. 전담 법률 대리인을 통해 국세청 유권해석에 기반한 계좌 압류 해제 및 소멸시효 권리 구제 절차를 밟아야 해결할 수 있습니다.',
+    iconName: 'Scale',
+    badgeText: '세금 소멸시효/압류 검토',
+    themeColor: 'amber',
+    preset: {
+      jobType: 'FREELANCER',
+      debtCause: 'BUSINESS',
+      harassmentLevel: 'LETTER',
+      creditorCount: 1,
+      debtBanks: 0,
+      debtCards: 0,
+      debtPersonals: 0,
+      recentLoans: 0,
+      coinCrypto: 0,
+      debtTotal: 3000,
+      income: 180,
+      assetsTotal: 50,
+      title: '국세/지방세 체납 세금 소멸시효 만료 및 계좌 압류 해제 신청',
+      content: '과거 개인 사업장의 경영 악화로 인해 폐업하면서 부가가치세 및 종합소득세 체납액 3,000만 원을 해결하지 못했습니다. 현재 세무서로부터 예금 계좌 압류가 설정되어 있는 상태인데, 압류금지 소액재산 기준 저촉 여부 및 징수권 소멸시효를 검토하여 면제 관리를 받고자 변호사 조력을 구합니다.'
     }
   }
 };
@@ -1355,29 +1383,48 @@ export default function ClientRole({
                 홈
               </button>
               <button 
-                onClick={() => setActiveTab('reviews')}
+                onClick={() => {
+                  setDiagnosisPhase('flow');
+                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', 'GNB [채무관리 시작] 메뉴 클릭');
+                }}
                 className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'reviews' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  diagnosisPhase === 'flow' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                성공 후기
+                채무관리 시작
               </button>
               <button 
-                onClick={() => setActiveTab('qna')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'qna' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                상담 사례
-              </button>
-
-              <button 
-                onClick={() => setActiveTab('request')}
+                onClick={() => {
+                  setRequestType('open');
+                  setRequestStep(1);
+                  setActiveTab('request');
+                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [무료 전담 배정] 메뉴 클릭');
+                }}
                 className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
                   activeTab === 'request' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                전담 매칭
+                무료 전담 배정
+              </button>
+              <button 
+                onClick={() => setActiveTab('chat')}
+                className={`relative whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
+                  activeTab === 'chat' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                내 관리방
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand"></span>
+                </span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('calculator')}
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
+                  activeTab === 'calculator' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                해결전략
               </button>
               <button 
                 onClick={() => setActiveTab('lawyers')}
@@ -1388,16 +1435,12 @@ export default function ClientRole({
                 변호사 찾기
               </button>
               <button 
-                onClick={() => setActiveTab('chat')}
-                className={`relative whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
-                  activeTab === 'chat' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                onClick={() => setActiveTab('reviews')}
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-bold transition-all ${
+                  activeTab === 'reviews' ? 'bg-brand-light dark:bg-brand/10 text-brand font-extrabold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                전담 관리방
-                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand"></span>
-                </span>
+                성공사례
               </button>
               {isLoggedIn && (
                 <button 
@@ -1452,460 +1495,446 @@ export default function ClientRole({
 
         {/* TAB 1: LANDING & INTRO */}
         {activeTab === 'landing' && (
-          <div className="space-y-10 animate-fadeIn text-left">
+          <div className="space-y-12 animate-fadeIn text-left pb-16">
             
-            {/* 1. Search Box (Lawtalk Search Bar Style) */}
-            <div className="text-center py-6 max-w-3xl mx-auto space-y-6">
-              <h2 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
-                어떤 채무 고민을 겪고 계신가요?
-              </h2>
-              
-              <div className="relative flex items-center bg-white dark:bg-slate-900 border border-brand/60 dark:border-brand/40 rounded-[30px] shadow-md px-5 py-2 focus-within:ring-4 focus-within:ring-brand/15 transition-all">
-                <Search className="w-5.5 h-5.5 text-brand mr-2.5 shrink-0" />
-                <input
-                  type="text"
-                  placeholder="의뢰 분야, 키워드 또는 변호사 이름을 검색하세요 (예: 코인, 압류, 김우진)"
-                  value={homeSearchQuery}
-                  onChange={(e) => setHomeSearchQuery(e.target.value)}
-                  className="w-full bg-transparent border-none outline-none text-sm md:text-base py-2 text-[#313142] dark:text-slate-100 placeholder:text-[#7e7e8f] font-medium"
-                />
-                {homeSearchQuery && (
-                  <button
-                    onClick={() => setHomeSearchQuery('')}
-                    className="text-xs text-[#7e7e8f] hover:text-[#313142] px-2 font-bold transition-colors"
-                  >
-                    초기화
-                  </button>
-                )}
-              </div>
-
-              
-              <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] sm:text-xs text-slate-500">
-                <span className="font-semibold text-slate-700 dark:text-slate-400">인기 키워드:</span>
-                <button onClick={() => handleCategoryClick('investment')} className="bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400 px-3 py-1 rounded-full border border-orange-200/50 dark:border-orange-900/30 transition-colors font-semibold">#코인실패</button>
-                <button onClick={() => handleCategoryClick('seizure')} className="bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 px-3 py-1 rounded-full border border-rose-200/50 dark:border-rose-900/30 transition-colors font-semibold">#급여압류</button>
-                <button onClick={() => handleCategoryClick('high_interest')} className="bg-amber-50 hover:bg-amber-100 text-amber-750 dark:bg-amber-950/20 dark:text-amber-400 px-3 py-1 rounded-full border border-amber-200/50 dark:border-amber-900/30 transition-colors font-semibold">#대부업채무</button>
-                <button onClick={() => handleCategoryClick('bankruptcy')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-200/50 dark:border-indigo-900/30 transition-colors font-semibold">#고령파산</button>
-              </div>
-            </div>
-
-            {/* 2. Hero Section: Sliding Banner & Quick Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              
-              {/* Banner Slider */}
-              <div 
-                style={{ 
-                  backgroundImage: `linear-gradient(to bottom right, ${banners[bannerIndex].color}), url(${banners[bannerIndex].image})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-                className="lg:col-span-8 text-white p-6 md:p-10 rounded-3xl shadow-lg border border-slate-800/40 flex flex-col justify-between relative overflow-hidden transition-all duration-700 ease-in-out min-h-[250px]"
-              >
-                <div className="absolute -top-12 -right-12 w-64 h-64 bg-brand/10 rounded-full blur-3xl"></div>
+            {/* 1. Hero Section (Platform Pitch & Identity) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-6 pb-4">
+              {/* Left Column: Core Value Proposition */}
+              <div className="lg:col-span-7 space-y-6 text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 dark:bg-brand/20 dark:border-brand/45">
+                  <ShieldCheck className="w-4 h-4 text-brand dark:text-brand-light" />
+                  <span className="text-xs text-brand dark:text-brand-light font-bold">안심 채무관리 플랫폼</span>
+                </div>
                 
-                <div className="space-y-3.5 z-10 text-left">
-                  <span className="bg-brand/90 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full border border-brand-light/20">
-                    {banners[bannerIndex].badge}
-                  </span>
-                  <h1 className="text-lg md:text-3xl font-black tracking-tight leading-snug">
-                    {banners[bannerIndex].title}
-                  </h1>
-                  <p className="text-slate-300 text-[11px] md:text-sm max-w-xl leading-relaxed hidden sm:block">
-                    {banners[bannerIndex].subtitle}
-                  </p>
+                <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
+                  개인회생이 정답이<br />
+                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">아닐 수도 있습니다</span>
+                </h1>
+                
+                <p className="text-slate-655 dark:text-slate-350 text-sm md:text-base font-semibold leading-relaxed max-w-xl">
+                  내 채무 상태를 먼저 정밀 진단하고,<br />
+                  무료 전담 채무 변호사와 최적의 관리 방향을 안전하게 확인하세요.
+                </p>
+
+                {/* Trust Metrics / Bullets */}
+                <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 dark:bg-slate-900/60 px-4 py-3 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 font-bold text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1">🔒 050 안심번호</span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span className="flex items-center gap-1">💬 익명 채팅</span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span className="flex items-center gap-1">🎁 초기 상담/관리 무료</span>
                 </div>
 
-                <div className="flex items-center justify-between pt-6 z-10">
-                  <div className="flex gap-1.5">
-                    {banners.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setBannerIndex(idx)}
-                        className={`w-2 h-2 rounded-full transition-all ${idx === bannerIndex ? 'bg-white w-6' : 'bg-white/40'}`}
-                        aria-label={`Slide ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
+                {/* Two-Track CTA Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3.5 pt-2">
+                  <button
+                    onClick={() => {
+                      setDiagnosisPhase('flow');
+                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', '메인 Hero [익명으로 채무관리 시작] 버튼 클릭');
+                    }}
+                    className="flex-1 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-black px-6 py-4 rounded-2xl shadow-md hover:shadow-lg transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-sm md:text-base"
+                  >
+                    <span>익명으로 채무관리 시작하기</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </button>
                   <button
                     onClick={() => {
                       setRequestType('open');
                       setRequestStep(1);
                       setActiveTab('request');
+                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [전담 변호사 무료 배정] 버튼 클릭');
                     }}
-                    className="text-xs text-white hover:text-brand-light font-semibold flex items-center gap-1 group"
+                    className="flex-1 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-250 dark:border-slate-750 text-slate-700 dark:text-slate-300 font-extrabold px-6 py-4 rounded-2xl shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer text-sm md:text-base"
                   >
-                    <span>신청 바로가기</span>
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                    <span>전담 변호사 무료 배정받기</span>
                   </button>
                 </div>
               </div>
 
-              {/* Quick Actions (Right Column) */}
-              <div className="lg:col-span-4 grid grid-cols-1 gap-3.5">
+              {/* Right Column: Interactive State Checker Card */}
+              <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-3xl p-6 shadow-md space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h4 className="font-extrabold text-sm text-slate-850 dark:text-slate-250 flex items-center gap-1.5">
+                    📊 내 채무관리 상태 체크
+                  </h4>
+                  <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">실시간 분석</span>
+                </div>
                 
-                {/* 간이 자가진단 */}
-                <button
-                  onClick={() => setDiagnosisPhase('flow')}
-                  className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white p-5 rounded-3xl shadow-lg hover:shadow-xl transition-all flex items-center justify-between group w-full text-left"
-                >
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">🧪 AI 간이 진단</span>
-                    <h4 className="font-extrabold text-sm text-white">1분 무료 채무 자가진단</h4>
-                    <p className="text-[11px] text-indigo-200/70">5문항 답변 → AI가 최적 전략 즉시 분석</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center group-hover:scale-110 transition-transform shrink-0 ml-2">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                </button>
+                <div className="space-y-2.5">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block mb-1">현재 상태 (다중 선택 가능)</span>
+                  {[
+                    { label: '연체 전 (대출 만기 연장 불가, 돌려막기 한계)', color: 'bg-emerald-500' },
+                    { label: '연체 중 (카드사/은행 독촉 연락 수신 중)', color: 'bg-amber-500' },
+                    { label: '추심/압류 위기 (지급명령, 법원 등기, 통장 압류)', color: 'bg-rose-500' },
+                    { label: '세금 체납 (국세, 지방세, 4대보험 밀림)', color: 'bg-purple-500' },
+                    { label: '회생/파산 법리 가능성 검토 필요', color: 'bg-brand' }
+                  ].map((item, idx) => (
+                    <label key={idx} className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-all">
+                      <input type="checkbox" className="rounded text-brand focus:ring-brand w-4 h-4 border-slate-350 dark:border-slate-700" />
+                      <span className="text-xs text-slate-650 dark:text-slate-300 font-medium">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
 
-                {/* 탕감액 계산기 */}
-                <button
-                  onClick={() => setActiveTab('calculator')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex items-center justify-between group w-full text-left"
-                >
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-brand dark:text-brand-light font-bold uppercase tracking-wider">정밀 계산</span>
-                    <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">내 빚 탕감액 계산기</h4>
-                    <p className="text-[11px] text-slate-500">소득, 채무만 입력하면 예상 변제금 계산</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-brand-light dark:bg-brand/10 text-brand dark:text-brand-light flex items-center justify-center group-hover:scale-110 transition-transform shrink-0 ml-2">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                </button>
-
-                {/* 1:1 지정 변호사 */}
-                <button
-                  onClick={() => setActiveTab('lawyers')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-all text-left flex items-center justify-between group"
-                >
-                  <div className="space-y-1 text-left">
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">변호사 프로필</span>
-                    <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">1:1 지정 변호사 상담</h4>
-                    <p className="text-[11px] text-slate-500">최근 법원별 성공 수임 사례 직접 확인</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0 ml-2">
-                    <User className="w-5 h-5" />
-                  </div>
-                </button>
-
-                {/* 3인 다중매칭 */}
-                <button
-                  onClick={() => {
-                    setRequestType('open');
-                    setRequestStep(1);
-                    setActiveTab('request');
-                  }}
-                  className="bg-gradient-to-r from-brand to-indigo-600 text-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all text-left flex items-center justify-between group"
-                >
-                  <div className="space-y-1 text-left">
-                    <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider">신속하고 편리하게</span>
-                    <h4 className="font-extrabold text-sm">참여형 3인 무료 매칭</h4>
-                    <p className="text-[11px] text-brand-light/90">최대 3인의 변호사 의견 동시에 진단</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center group-hover:scale-110 transition-transform shrink-0 ml-2">
-                    <Users className="w-5 h-5" />
-                  </div>
-                </button>
-
+                <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-850 text-center">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold block">추천 관리 방향</span>
+                  <p className="text-xs text-[#7e7e8f] font-bold mt-1">
+                    🔓 익명 진단 또는 변호사 배정 후 표시됩니다.
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* 3. Category Grid (Customized for Rehabilitation/Bankruptcy) */}
+            {/* 2. Secondary Search Box (Demoted) */}
+            <div className="max-w-3xl mx-auto py-2">
+              {/* PC View: Inline search */}
+              <div className="hidden md:block bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-4 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">직접 검색하기:</span>
+                  <div className="relative flex-1 flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand/20 transition-all">
+                    <Search className="w-4 h-4 text-brand mr-2" />
+                    <input
+                      type="text"
+                      placeholder="압류, 세금체납, 코인빚, 채무대리 등 키워드 또는 변호사 이름 검색"
+                      value={homeSearchQuery}
+                      onChange={(e) => setHomeSearchQuery(e.target.value)}
+                      className="w-full bg-transparent border-none outline-none text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-450 font-medium"
+                    />
+                    {homeSearchQuery && (
+                      <button onClick={() => setHomeSearchQuery('')} className="text-[10px] text-slate-400 hover:text-slate-650">초기화</button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-405 pl-16">
+                  <span className="font-semibold">추천 키워드:</span>
+                  <button onClick={() => handleCategoryClick('tax_delinquency')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-150 dark:border-slate-850 font-bold transition-colors">#세금체납</button>
+                  <button onClick={() => handleCategoryClick('high_interest')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-150 dark:border-slate-850 font-bold transition-colors">#채무대리</button>
+                  <button onClick={() => handleCategoryClick('investment')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-150 dark:border-slate-850 font-bold transition-colors">#코인손실</button>
+                  <button onClick={() => handleCategoryClick('seizure')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-150 dark:border-slate-850 font-bold transition-colors">#급여압류</button>
+                </div>
+              </div>
+
+              {/* Mobile View: Collapsible Search */}
+              <details className="md:hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3">
+                <summary className="text-xs font-extrabold text-slate-550 dark:text-slate-400 cursor-pointer list-none flex items-center justify-between">
+                  <span>🔍 궁금한 주제 직접 검색하기</span>
+                  <span className="text-[10px]">▼</span>
+                </summary>
+                <div className="mt-3 space-y-2.5">
+                  <div className="relative flex items-center bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2">
+                    <Search className="w-4 h-4 text-brand mr-2" />
+                    <input
+                      type="text"
+                      placeholder="압류, 세금체납, 코인빚, 채무대리 등 검색"
+                      value={homeSearchQuery}
+                      onChange={(e) => setHomeSearchQuery(e.target.value)}
+                      className="w-full bg-transparent border-none outline-none text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-450 font-medium"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1 text-[9px]">
+                    <button onClick={() => handleCategoryClick('tax_delinquency')} className="bg-white dark:bg-slate-950 px-2 py-1 rounded-full border border-slate-150 dark:border-slate-855 font-bold">#세금체납</button>
+                    <button onClick={() => handleCategoryClick('high_interest')} className="bg-white dark:bg-slate-955 px-2 py-1 rounded-full border border-slate-150 dark:border-slate-855 font-bold">#채무대리</button>
+                    <button onClick={() => handleCategoryClick('investment')} className="bg-white dark:bg-slate-955 px-2 py-1 rounded-full border border-slate-150 dark:border-slate-855 font-bold">#코인손실</button>
+                    <button onClick={() => handleCategoryClick('seizure')} className="bg-white dark:bg-slate-955 px-2 py-1 rounded-full border border-slate-150 dark:border-slate-855 font-bold">#급여압류</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
+            <div className="space-y-6 pt-4 text-center">
+              <div className="space-y-1">
+                <h3 className="text-xl md:text-2xl font-black text-slate-850 dark:text-white">
+                  상담 신청이 아니라, 채무관리를 시작하세요
+                </h3>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  단발성 전화를 유도하는 법률 광고가 아닙니다. 내 진단 정보를 전산에 등록해 변호사단의 평생 케어를 받습니다.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  {
+                    step: 'Step 1',
+                    title: '1. 익명 진단',
+                    desc: '채무·소득·압류·세금 체납 여부를 개인정보 노출 없이 1분 만에 신속하게 셀프 체크',
+                    icon: '🔍',
+                    action: () => setDiagnosisPhase('flow')
+                  },
+                  {
+                    step: 'Step 2',
+                    title: '2. 전담 변호사 무료 배정',
+                    desc: '도산 실무 경험이 풍부한 전문 변호사 3인 매칭으로 초기 진단서와 관리 방향 비용 부담 없이 확인',
+                    icon: '👥',
+                    action: () => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }
+                  },
+                  {
+                    step: 'Step 3',
+                    title: '3. 내 관리방 생성',
+                    desc: '개인회생·파산·신용회복·채무자대리 중 내 상황에 100% 최적화된 방향으로 실시간 1:1 채팅 관리 시작',
+                    icon: '💬',
+                    action: () => setActiveTab('chat')
+                  }
+                ].map((item, idx) => (
+                  <div key={idx} onClick={item.action} className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-5 rounded-3xl text-left hover:border-brand transition-all duration-305 cursor-pointer shadow-sm hover:shadow-md flex flex-col justify-between min-h-[160px] group">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-brand dark:text-brand-light font-black tracking-wider uppercase">{item.step}</span>
+                        <span className="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                      </div>
+                      <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-205">{item.title}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Section 3: 내 채무관리 대시보드 미리보기 (Dashboard Preview) */}
+            <div className="space-y-6 pt-4 text-center">
+              <div className="space-y-1">
+                <h3 className="text-xl md:text-2xl font-black text-slate-850 dark:text-white">
+                  내 채무 상태를 한곳에서 관리합니다
+                </h3>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  진단을 마치거나 변호사를 지정하면 나만의 비밀 대시보드 관리방이 실시간 개설됩니다.
+                </p>
+              </div>
+
+              <div className="max-w-xl mx-auto bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 text-left relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-brand/20 rounded-full blur-2xl"></div>
+                
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-450 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <h4 className="text-sm font-extrabold text-slate-205">내 채무관리방 (익명 데모)</h4>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold">Client ID: stealth-temp</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-slate-850 text-xs">
+                    <span className="text-slate-500 font-bold">전담 변호사</span>
+                    <span className="col-span-2 text-slate-200 font-extrabold flex items-center gap-1">
+                      배정 대기 <span className="text-[10px] text-brand font-bold bg-brand/10 px-1.5 py-0.2 rounded border border-brand/20">(무료 배정 신청 필요)</span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-slate-850 text-xs">
+                    <span className="text-slate-500 font-bold">현재 위험도</span>
+                    <span className="col-span-2 text-rose-400 font-extrabold">위험 (연체 3일차 도래, 가압류 위험 감지)</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-slate-850 text-xs">
+                    <span className="text-slate-500 font-bold">추천 해결 방향</span>
+                    <span className="col-span-2 text-emerald-400 font-extrabold">채무자대리 선임 + 개인회생 골든타임 검토</span>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <span className="text-[10px] text-slate-500 font-bold block mb-1.5">🗒️ 내 전담 관리방 다음 할 일:</span>
+                    <div className="space-y-1.5 text-xs text-slate-350">
+                      <div className="flex items-center gap-2">
+                        <span className="w-4 h-4 rounded border border-rose-500/40 bg-rose-955/20 text-rose-400 flex items-center justify-center text-[9px] font-bold">1</span>
+                        <span>최근 추심 연락 여부 및 가혹 추심 빈도 확인하기</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-4 h-4 rounded border border-slate-700 bg-slate-800 text-slate-400 flex items-center justify-center text-[9px] font-bold">2</span>
+                        <span>소득 증빙 서류 준비 (플랫폼 정산 및 급여 입출금 1년원장)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-4 h-4 rounded border border-slate-700 bg-slate-800 text-slate-400 flex items-center justify-center text-[9px] font-bold">3</span>
+                        <span>국세/지방세 세금 체납 여부 및 계좌 압류 일시 확인</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setDiagnosisPhase('flow')}
+                  className="w-full mt-5 bg-brand hover:bg-brand-hover text-white text-center font-extrabold py-3 rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  위 대시보드로 실시간 채무관리 시작하기 →
+                </button>
+              </div>
+            </div>
+
+            {/* 5. Section 4: 상황별 빠른 진단 카드 (Situation-based Cards) */}
             <div className="space-y-4 pt-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="font-extrabold text-lg text-slate-850 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
-                  <span>채무 상황별 자격 진단 & 상담</span>
+                  <span>상황별 채무관리 방향성 진단</span>
                 </h3>
-                <span className="text-xs text-[#7e7e8f]">채무 유형을 선택하시면 변호사가 즉각 검토 가능한 상태가 구성됩니다</span>
+                <span className="text-xs text-[#7e7e8f]">처한 채무 형태에 따라 전담 변호사가 즉각 진단 및 구제 관리를 시작합니다.</span>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                
-                {/* 1. 신용카드 */}
-                <div
-                  onClick={() => handleCategoryClick('card_loan')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-red-50 dark:bg-red-950/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Landmark className="w-5 h-5" />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {Object.values(remedyData).map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleCategoryClick(item.id)}
+                    className={`bg-white dark:bg-slate-900 border p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3 ${
+                      item.id === 'tax_delinquency' 
+                        ? 'border-amber-250/50 dark:border-amber-900/30 bg-gradient-to-br from-amber-500/5 to-yellow-500/5 dark:from-amber-950/10 dark:to-yellow-950/10' 
+                        : 'border-slate-150 dark:border-slate-800/80'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center group-hover:scale-110 transition-transform ${
+                      item.id === 'tax_delinquency' ? 'bg-amber-100 dark:bg-amber-955 text-amber-600' :
+                      item.themeColor === 'red' ? 'bg-red-50 dark:bg-red-950/20 text-red-500' :
+                      item.themeColor === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500' :
+                      item.themeColor === 'amber' ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-500' :
+                      item.themeColor === 'purple' ? 'bg-purple-50 dark:bg-purple-950/20 text-purple-500' :
+                      item.themeColor === 'orange' ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-550' :
+                      item.themeColor === 'emerald' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500' :
+                      item.themeColor === 'rose' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-500' :
+                      'bg-brand-light dark:bg-brand/10 text-brand'
+                    }`}>
+                      {renderRemedyIcon(item.iconName, 'w-5.5 h-5.5')}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-center gap-1">
+                        <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-205">{item.title}</h5>
+                        {item.id === 'tax_delinquency' && (
+                          <span className="text-[8px] bg-amber-500 text-white font-extrabold px-1 py-0.2 rounded">중요</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-[#7e7e8f] dark:text-slate-400 font-semibold line-clamp-2 leading-relaxed">
+                        {item.subtitle}
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">신용카드/카드론 연체</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">리볼빙·돌려막기 한계 도달</p>
-                  </div>
-                </div>
-
-                {/* 2. 은행 대출 */}
-                <div
-                  onClick={() => handleCategoryClick('bank_loan')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-brand-light dark:bg-brand/10 text-brand flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <TrendingDown className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">은행 신용대출 연체</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">기한이익 상실 및 원금상환</p>
-                  </div>
-                </div>
-
-                {/* 3. 대부업 */}
-                <div
-                  onClick={() => handleCategoryClick('high_interest')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-amber-50 dark:bg-amber-950/20 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <DollarSign className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">대부업/고금리 사채</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">가혹한 추심 행위 즉시 방어</p>
-                  </div>
-                </div>
-
-                {/* 4. 연대보증 */}
-                <div
-                  onClick={() => handleCategoryClick('guarantee')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-purple-50 dark:bg-purple-950/20 text-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Users className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">연대보증 채무 위기</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">지인 채무 전가 완벽 대처</p>
-                  </div>
-                </div>
-
-                {/* 5. 주식 코인 */}
-                <div
-                  onClick={() => handleCategoryClick('investment')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-orange-50 dark:bg-orange-950/20 text-orange-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">주식/코인 투자 손실</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">탕감률 극대화 실무준칙 설계</p>
-                  </div>
-                </div>
-
-                {/* 6. 일용직/프리랜서 */}
-                <div
-                  onClick={() => handleCategoryClick('freelancer')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Smartphone className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">일용직/프리랜서 회생</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">불규칙한 월소득 적법 소명</p>
-                  </div>
-                </div>
-
-                {/* 7. 급여 압류 */}
-                <div
-                  onClick={() => handleCategoryClick('seizure')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">급여/재산 압류 해제</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">압류 중지·해제명령 긴급신청</p>
-                  </div>
-                </div>
-
-                {/* 8. 개인파산 */}
-                <div
-                  onClick={() => handleCategoryClick('bankruptcy')}
-                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-3xl hover:border-brand hover:shadow-md transition-all cursor-pointer group text-center space-y-3"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-full bg-indigo-50 dark:bg-indigo-950/20 text-indigo-505 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Scale className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-200">개인파산/면책 신청</h5>
-                    <p className="text-[10px] text-[#7e7e8f]">무직·고령·질병 전액 탕감</p>
-                  </div>
-                </div>
-
+                ))}
               </div>
             </div>
 
-
-
-            {/* 4. Active Lawyers Grid Section (Lawtalk Style) */}
-            <div className="space-y-4 pt-4 text-left">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2">
-                  <Users className="w-5 h-5 text-brand" />
-                  <span>이 시간 활동 중인 도산 전문 변호사</span>
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
+            {/* 6. Section 5: 전담 변호사 무료 관리 범위 (Free Care Scope) */}
+            <div className="space-y-6 pt-4 text-center">
+              <div className="space-y-1">
+                <h3 className="text-xl md:text-2xl font-black text-slate-850 dark:text-white">
+                  전담 채무 변호사가 무료로 먼저 확인합니다
                 </h3>
-                <span className="text-xs text-[#7e7e8f]">원하시는 변호사를 지정하거나 맞춤형 상담 예약을 진행할 수 있습니다</span>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  사건을 바로 수임하기 전, 내 상황에 딱 맞는 해결 경로와 관리 방향부터 비용 부담 없이 체크하세요.
+                </p>
               </div>
 
-              {/* Region Selector Pills */}
-              <div className="flex flex-wrap items-center gap-2 pb-2">
-                <span className="text-xs text-slate-500 font-bold dark:text-slate-400 mr-2 flex items-center gap-1.5 shrink-0">
-                  <MapPin className="w-3.5 h-3.5 text-brand" />
-                  지역별 변호사 찾기:
-                </span>
-                {[
-                  { value: '전체', label: '전체 🌍' },
-                  { value: '서울', label: '서울 법원 🏛️' },
-                  { value: '서울/경기', label: '서울/경기 🚇' },
-                  { value: '경기/수원', label: '수원/경기 ⚖️' }
-                ].map(regionOption => {
-                  const isSelected = selectedRegion === regionOption.value;
-                  return (
-                    <button
-                      key={regionOption.value}
-                      type="button"
-                      onClick={() => setSelectedRegion(regionOption.value)}
-                      className={`text-xs px-3.5 py-1.5 rounded-full font-bold transition-all duration-200 border ${
-                        isSelected
-                          ? 'bg-brand text-white border-brand shadow-sm shadow-brand/20 scale-105'
-                          : 'bg-white dark:bg-slate-900 text-slate-650 dark:text-slate-350 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-55 dark:hover:bg-slate-850'
-                      }`}
-                    >
-                      {regionOption.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
+                {/* Free Column */}
+                <div className="bg-emerald-500/5 dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-900/30 rounded-3xl p-6 space-y-4">
+                  <h4 className="font-black text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                    🎁 일체 비용 부담이 없는 무료 관리 범위
+                  </h4>
+                  <ul className="space-y-2.5 text-xs text-slate-655 dark:text-slate-300 font-medium">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-500">✔</span>
+                      <span>현재 채무 총액 및 연체 기간에 따른 위험 등급 점검</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-500">✔</span>
+                      <span>회생·파산·신용회복·채무대리 적격 자격 1차 검토</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-500">✔</span>
+                      <span>거래 금융사별 추심 강도 및 통장/급여 압류 위험 예측</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-500">✔</span>
+                      <span>나에게 유리한 법정 공제 생계비 기준 및 준비 필요 서류 가이드</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-500">✔</span>
+                      <span>최근 대출금 사용처 분석을 통한 회생 기각률 사전 판정</span>
+                    </li>
+                  </ul>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {(() => {
-                  const filtered = lawyers.filter(l => {
-                    const isLawyer = l.role === 'LAWYER';
-                    const matchesRegion = selectedRegion === '전체' || l.region.includes(selectedRegion);
-                    return isLawyer && matchesRegion;
-                  });
-
-                  if (filtered.length === 0) {
-                    return (
-                      <div className="col-span-1 md:col-span-3 py-12 text-center text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 space-y-2">
-                        <Users className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 opacity-55 animate-pulse" />
-                        <p className="text-sm">선택하신 지역에 배정된 도산 전문 변호사가 없습니다.</p>
-                        <p className="text-xs font-semibold text-[#7e7e8f] font-normal">전체 지역 탭을 이용해 전국 대응 변호사를 확인해 보세요.</p>
-                      </div>
-                    );
-                  }
-
-                  const limited = filtered.slice(0, 6);
-
-                  return limited.map(l => {
-                    const rating = l.id === 'lawyer-1' ? '4.9' : l.id === 'lawyer-2' ? '4.8' : '4.9';
-                    const reviewsCount = l.id === 'lawyer-1' ? '184' : l.id === 'lawyer-2' ? '129' : '94';
-                    
-                    return (
-                      <div key={l.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between overflow-hidden">
-                        <div className="p-5 space-y-3.5">
-                          <div className="flex items-center gap-3">
-                            <div className="relative shrink-0">
-                              <img 
-                                src={l.avatar} 
-                                alt={l.name}
-                                className="w-12 h-12 rounded-full object-cover border border-slate-100 dark:border-slate-850"
-                              />
-                              <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 animate-pulse"></span>
-                            </div>
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <h4 className="font-extrabold text-sm text-slate-850 dark:text-white">{l.name}</h4>
-                                <span className="text-[9px] bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light font-extrabold px-1.5 py-0.2 rounded-md">도산 전문</span>
-                              </div>
-                              <span className="text-[10px] text-[#7e7e8f] font-medium block">법무법인 한빛 · 서울/인천/수원 대응</span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-[#7e7e8f] bg-slate-50 dark:bg-slate-950/50 p-2 rounded-xl">
-                            <span className="text-amber-500 font-bold">★ {rating}</span>
-                            <span className="text-slate-300">|</span>
-                            <span>후기 {reviewsCount}건</span>
-                            <span className="text-slate-300">|</span>
-                            <span className="text-brand">매칭 {l.matchedCount}건</span>
-                          </div>
-
-                          <p className="text-[11px] text-[#484760] dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
-                            "{l.bio}"
-                          </p>
-
-                          <div className="flex flex-wrap gap-1">
-                            {l.fields.map(f => (
-                              <span key={f} className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md font-semibold">
-                                #{f}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/80 p-3 grid grid-cols-2 gap-2 text-center text-[10px] font-bold">
-                          <button
-                            onClick={() => {
-                              setRequestType('direct');
-                              setSelectedLawyerId(l.id);
-                              setIncome(230);
-                              setDebtTotal(6500);
-                              setTitle(`[15분 전화상담 예약] ${l.name}`);
-                              setContent(`[전화상담 신청] ${l.name} 변호사님과의 15분 긴급 전화 매칭 상담을 요청합니다. 신용카드 연체 독촉 중단 및 최저생계비 보정을 위한 법률 소명 가이드를 구합니다.`);
-                              setRequestStep(3);
-                              setActiveTab('request');
-                            }}
-                            className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-900 dark:border-slate-850 dark:text-slate-300 dark:hover:bg-slate-800 py-2 rounded-[200px] transition-all"
-                          >
-                            📞 전화상담 (2만원)
-                          </button>
-                          <button
-                            onClick={() => {
-                              setRequestType('direct');
-                              setSelectedLawyerId(l.id);
-                              setIncome(230);
-                              setDebtTotal(6500);
-                              setTitle(`[1:1 대면/지정상담] ${l.name} 변호`);
-                              setContent(`[1:1 서류검토 상담] ${l.name} 변호사님과의 정밀 서류 검토 및 1:1 회생 성공 가용자금 계획안 수립을 신청합니다.`);
-                              setRequestStep(2);
-                              setActiveTab('request');
-                            }}
-                            className="bg-brand hover:bg-brand-hover text-white py-2 rounded-[200px] transition-all shadow-sm"
-                          >
-                            ✍️ 1:1 상담 예약
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                })()}
-              </div>
-
-              {/* View More Lawyers Button */}
-              <div className="pt-4 text-center">
-                <button 
-                  onClick={() => {
-                    setActiveTab('lawyers');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-brand-light font-extrabold rounded-xl text-xs transition-all shadow-md group cursor-pointer"
-                >
-                  <span>👥 도산 전문 변호사 전체보기 (더보기)</span>
-                  <span className="transition-transform group-hover:translate-x-1">→</span>
-                </button>
+                {/* Paid Column */}
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4">
+                  <h4 className="font-black text-sm text-slate-700 dark:text-slate-350 flex items-center gap-1.5">
+                    ⚖️ 정식 선임 시 비용이 발생할 수 있는 범위
+                  </h4>
+                  <ul className="space-y-2.5 text-xs text-slate-500 dark:text-slate-405 font-medium">
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400">•</span>
+                      <span>법원 개인회생/파산 정식 신청 대행 및 법원 서류 제출</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400">•</span>
+                      <span>채무자대리인 선임을 통한 금융사 추심 직접 변호 중재</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400">•</span>
+                      <span>법원 보정명령에 따른 의견서 작성 및 법률 소명서 법원 송고</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400">•</span>
+                      <span>체납 세금(국세/지방세) 조세 고충 민원 신청 및 세금 압류 불복 대리</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400">•</span>
+                      <span>36~60개월 동안 매달 변제금이 잘 납입되도록 보장하는 연중 모니터링</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
-            {/* Real Success Reviews Section */}
+            {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
+            <div className="space-y-6 pt-4 text-center">
+              <div className="space-y-1">
+                <h3 className="text-xl md:text-2xl font-black text-slate-850 dark:text-white">
+                  채무 해결 방법은 하나가 아닙니다
+                </h3>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  나의 연체 기간, 채권 성격, 소득 지속성에 맞게 다섯 가지 경로를 비교 설계합니다.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-left">
+                {[
+                  {
+                    title: '개인회생',
+                    sub: '소득이 있고 변제 능력이 있는 자',
+                    desc: '법정 생계비를 제외한 가용 소득을 36~60개월간 나누어 갚은 후 남은 원금의 최대 90% 법정 감면'
+                  },
+                  {
+                    title: '개인파산',
+                    sub: '상환 능력이 아예 없는 자',
+                    desc: '무직, 고령, 질병으로 최저생계비 미만 소득 시 보유한 최소 재산만 청산 후 채무 원금 100% 즉시 탕감'
+                  },
+                  {
+                    title: '신용회복',
+                    sub: '금융기관 채무 조정 희망자',
+                    desc: '신용회복위원회의 협약 기관 채무에 대해 이자 감면 및 상환 기간 최장 10년 연장 (신청 다음 날 독촉 정지)'
+                  },
+                  {
+                    title: '채무자대리',
+                    sub: '추심 및 대부업 독촉 방어가 우선인 자',
+                    desc: '변호사를 대리인으로 선임하여 대부업/사채업자의 전화, 문자, 가택 방문 등 일체의 직접 독촉을 차단'
+                  },
+                  {
+                    title: '세금체납 관리',
+                    sub: '국세·지방세 압류 해결 필요자',
+                    desc: '세금 소멸시효(5/10년) 완성 여부와 압류 금지 소액금융재산 대상 불법 압류 적법성 심사 청구'
+                  }
+                ].map((item, idx) => (
+                  <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-5 rounded-3xl flex flex-col justify-between space-y-3 shadow-sm hover:shadow transition-shadow">
+                    <div className="space-y-1">
+                      <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-205">{item.title}</h4>
+                      <span className="text-[10px] text-brand dark:text-brand-light font-bold block">{item.sub}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 8. Section 7: 실제 사례/콘텐츠 (Success reviews & News) */}
             <div className="space-y-4 pt-4 text-left">
               <div className="flex items-center justify-between gap-1 text-left">
-                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="font-extrabold text-lg text-slate-850 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
                   <span>실제 채무 해결 성공 후기</span>
                   <span className="text-[10px] bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light font-extrabold px-2 py-0.5 rounded-md">
@@ -1922,7 +1951,7 @@ export default function ClientRole({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {reviews.slice(0, 3).map(rev => (
-                  <div key={rev.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+                  <div key={rev.id} className="bg-white dark:bg-slate-900 border border-slate-105 dark:border-slate-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[9px] font-extrabold px-2 py-0.5 rounded-md">
@@ -1931,7 +1960,7 @@ export default function ClientRole({
                         <div className="flex text-amber-400 text-xs">★★★★★</div>
                       </div>
                       
-                      <h4 className="font-extrabold text-xs sm:text-sm text-slate-850 dark:text-white leading-snug line-clamp-1">
+                      <h4 className="font-extrabold text-xs sm:text-sm text-slate-855 dark:text-white leading-snug line-clamp-1">
                         {rev.title}
                       </h4>
 
@@ -1940,7 +1969,7 @@ export default function ClientRole({
                         <div className="text-indigo-600 dark:text-indigo-450">조정 후: {rev.remainingDebt === 0 ? "전액 탕감" : `${rev.remainingDebt.toLocaleString()}만원`}</div>
                       </div>
 
-                      <p className="text-[11px] text-slate-500 dark:text-slate-405 leading-relaxed line-clamp-3">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
                         "{rev.content}"
                       </p>
                     </div>
@@ -1950,7 +1979,7 @@ export default function ClientRole({
                         <span className="text-slate-400 font-semibold">{rev.author}</span>
                         <div className="flex items-center gap-1.5">
                           <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" />
-                          <span className="font-bold text-slate-650 dark:text-slate-400">{rev.lawyerName}</span>
+                          <span className="font-bold text-slate-655 dark:text-slate-405">{rev.lawyerName}</span>
                         </div>
                       </div>
                       <button
@@ -2300,7 +2329,7 @@ export default function ClientRole({
 
       {diagnosisPhase === 'result' && diagnosisResult && (<DiagnosisResultView result={diagnosisResult} onGoHome={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); }} onStartDetailedDiagnosis={() => { setDiagnosisPhase('idle'); setActiveTab('request'); }} onViewLawyers={() => { setDiagnosisPhase('idle'); setActiveTab('lawyers'); }} onRetakeDiagnosis={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); setDiagnosisPhase('flow'); }} />)}
 
-      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />
+      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setDiagnosisPhase('flow'); }} />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (<RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />)}
       {selectedArticle && (<NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setIncome(230); setDebtTotal(6500); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}

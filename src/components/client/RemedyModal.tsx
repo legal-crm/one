@@ -33,6 +33,7 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
     investment: 'bg-orange-50 text-orange-500 dark:bg-orange-950/20',
     freelancer: 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/20',
     seizure: 'bg-rose-50 text-rose-500 dark:bg-rose-950/20',
+    tax_delinquency: 'bg-amber-50 text-amber-500 dark:bg-amber-950/20',
   };
   const iconColor = colorMap[activeRemedyCategory] || 'bg-indigo-50 text-indigo-500 dark:bg-indigo-950/20';
 
