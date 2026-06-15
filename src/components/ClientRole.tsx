@@ -33,6 +33,7 @@ import TermsModal from './client/TermsModal';
 import MobileGNB from './client/MobileGNB';
 import RemedyModal from './client/RemedyModal';
 import NewsDetailModal from './client/NewsDetailModal';
+import SolutionDetailModal, { SolutionType } from './client/SolutionDetailModal';
 import { loadDiagnosisConfig, saveDiagnosisResult } from '../services/diagnosisService';
 import { DiagnosisResult as DiagnosisResultType, DiagnosisConfig } from '../types';
 
@@ -650,6 +651,7 @@ export default function ClientRole({
   const [useSafeNumber050, setUseSafeNumber050] = useState<boolean>(true);
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const [activeRemedyCategory, setActiveRemedyCategory] = useState<string | null>(null);
+  const [activeSolutionType, setActiveSolutionType] = useState<SolutionType | null>(null);
 
   // Reviews page state
   const [reviewCategoryFilter, setReviewCategoryFilter] = useState<string>('전체');
@@ -2075,39 +2077,47 @@ export default function ClientRole({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-left">
-                {[
+                {([
                   {
+                    type: 'rehab' as SolutionType,
                     title: '개인회생',
                     sub: '소득이 있고 변제 능력이 있는 자',
                     desc: '법정 생계비를 제외한 가용 소득을 36~60개월간 나누어 갚은 후 남은 원금의 최대 90% 법정 감면'
                   },
                   {
+                    type: 'bankruptcy' as SolutionType,
                     title: '개인파산',
                     sub: '상환 능력이 아예 없는 자',
                     desc: '무직, 고령, 질병으로 최저생계비 미만 소득 시 보유한 최소 재산만 청산 후 채무 원금 100% 즉시 탕감'
                   },
                   {
+                    type: 'credit' as SolutionType,
                     title: '신용회복',
                     sub: '금융기관 채무 조정 희망자',
                     desc: '신용회복위원회의 협약 기관 채무에 대해 이자 감면 및 상환 기간 최장 10년 연장 (신청 다음 날 독촉 정지)'
                   },
                   {
+                    type: 'representation' as SolutionType,
                     title: '채무자대리',
                     sub: '추심 및 대부업 독촉 방어가 우선인 자',
                     desc: '변호사를 대리인으로 선임하여 대부업/사채업자의 전화, 문자, 가택 방문 등 일체의 직접 독촉을 차단'
                   },
                   {
+                    type: 'tax' as SolutionType,
                     title: '세금체납 관리',
                     sub: '국세·지방세 압류 해결 필요자',
                     desc: '세금 소멸시효(5/10년) 완성 여부와 압류 금지 소액금융재산 대상 불법 압류 적법성 심사 청구'
                   }
-                ].map((item, idx) => (
-                  <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-3 shadow-sm hover:shadow-md transition-all hover-lift-sm transition-card">
+                ]).map((item, idx) => (
+                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-3 shadow-sm hover:shadow-md transition-all hover-lift-sm transition-card group">
                     <div className="space-y-1">
                       <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">{item.title}</h4>
                       <span className="text-[10px] text-brand dark:text-brand-light font-semibold block">{item.sub}</span>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                    <span className="text-[10px] font-bold text-brand/60 dark:text-brand-light/60 group-hover:text-brand dark:group-hover:text-brand-light transition-colors flex items-center gap-1 pt-1">
+                      자세히 보기 →
+                    </span>
                   </div>
                 ))}
               </div>
@@ -2514,6 +2524,7 @@ export default function ClientRole({
       <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setDiagnosisPhase('flow'); }} />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (<RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />)}
+      {activeSolutionType && (<SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setActiveSolutionType(null); setDiagnosisPhase('flow'); }} onApplyConsult={(ctaTitle, ctaContent) => { setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
       {selectedArticle && (<NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setIncome(230); setDebtTotal(6500); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
 
       </div>
