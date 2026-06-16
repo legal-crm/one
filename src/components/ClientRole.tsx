@@ -1521,9 +1521,19 @@ export default function ClientRole({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-6 pb-4">
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
+                {/* 로고 + 서비스명 */}
+                <div className="flex items-center gap-3">
+                  <img src="/mykim_logo.png" alt="마이김변 로고" className="w-12 h-12 rounded-2xl shadow-md" />
+                  <div>
+                    <h2 className="text-lg font-black bg-gradient-to-r from-brand to-indigo-600 bg-clip-text text-transparent tracking-tight">마이김변</h2>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">나의 김변호사</span>
+                  </div>
+                </div>
+
+                {/* 슬로건 배지 */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 dark:bg-brand/20 dark:border-brand/45">
                   <ShieldCheck className="w-4 h-4 text-brand dark:text-brand-light" />
-                  <span className="text-xs text-brand dark:text-brand-light font-bold">빚 걱정, 여기서 내려놓으세요</span>
+                  <span className="text-xs text-brand dark:text-brand-light font-bold">빚 걱정, 혼자 하지 마세요 — 김변호사가 대신 해결해드려요</span>
                 </div>
                 
                 <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
@@ -1533,7 +1543,7 @@ export default function ClientRole({
                 
                 <p className="text-slate-500 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
                   지금 내 상황이 어떤지 먼저 무료로 살펴보고,<br />
-                  어떻게 하면 좋을지 방향을 함께 찾아드려요.
+                  어떻게 하면 좋을지 김변호사가 함께 찾아드려요.
                 </p>
 
                 {/* Trust Metrics / Bullets */}
