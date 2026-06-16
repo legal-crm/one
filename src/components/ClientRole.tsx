@@ -1997,10 +1997,10 @@ export default function ClientRole({
             <div className="space-y-6 pt-4 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
-                  전담 채무 변호사가 무료로 먼저 확인합니다
+                  돈 한 푼 안 들어요, 먼저 상황부터 살펴볼게요
                 </h3>
                 <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                  사건을 바로 수임하기 전, 내 상황에 딱 맞는 해결 경로와 관리 방향부터 비용 부담 없이 체크하세요.
+                  바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
                 </p>
               </div>
 
@@ -2008,28 +2008,28 @@ export default function ClientRole({
                 {/* Free Column */}
                 <div className="bg-emerald-500/5 dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-900/30 rounded-3xl p-6 space-y-4">
                   <h4 className="font-bold text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                    🎁 일체 비용 부담이 없는 무료 관리 범위
+                    🎁 이건 전부 무료예요 — 부담 갖지 마세요
                   </h4>
                   <ul className="space-y-2.5 text-xs text-slate-655 dark:text-slate-300 font-medium">
                     <li className="flex items-start gap-2">
                       <span className="text-emerald-500">✔</span>
-                      <span>현재 채무 총액 및 연체 기간에 따른 위험 등급 점검</span>
+                      <span>지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-emerald-500">✔</span>
-                      <span>회생·파산·신용회복·채무대리 적격 자격 1차 검토</span>
+                      <span>나한테 맞는 해결 방법이 뭔지 첫 번째 확인</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-emerald-500">✔</span>
-                      <span>거래 금융사별 추심 강도 및 통장/급여 압류 위험 예측</span>
+                      <span>독촉이 얼마나 심해질지, 통장이나 월급이 묶일 수 있는지 미리 확인</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-emerald-500">✔</span>
-                      <span>나에게 유리한 법정 공제 생계비 기준 및 준비 필요 서류 가이드</span>
+                      <span>생활비를 얼마까지 지킬 수 있는지, 어떤 서류가 필요한지 안내</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-emerald-500">✔</span>
-                      <span>최근 대출금 사용처 분석을 통한 회생 기각률 사전 판정</span>
+                      <span>최근 빌린 돈을 어디에 썼는지 보고, 신청이 잘 통과될지 미리 점검</span>
                     </li>
                   </ul>
                 </div>
@@ -2037,28 +2037,28 @@ export default function ClientRole({
                 {/* Paid Column */}
                 <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4">
                   <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    ⚖️ 정식 선임 시 비용이 발생할 수 있는 범위
+                    🤝 본격적으로 도움받을 때 드는 비용이에요
                   </h4>
                   <ul className="space-y-2.5 text-xs text-slate-500 dark:text-slate-405 font-medium">
                     <li className="flex items-start gap-2">
                       <span className="text-slate-400">•</span>
-                      <span>법원 개인회생/파산 정식 신청 대행 및 법원 서류 제출</span>
+                      <span>법원에 회생이나 파산 신청서를 대신 내드려요</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-slate-400">•</span>
-                      <span>채무자대리인 선임을 통한 금융사 추심 직접 변호 중재</span>
+                      <span>카드사·대출회사 독촉, 저희가 직접 막아드려요</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-slate-400">•</span>
-                      <span>법원 보정명령에 따른 의견서 작성 및 법률 소명서 법원 송고</span>
+                      <span>법원에서 추가 서류 달라고 하면, 저희가 써서 보내드려요</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-slate-400">•</span>
-                      <span>체납 세금(국세/지방세) 조세 고충 민원 신청 및 세금 압류 불복 대리</span>
+                      <span>밀린 세금 때문에 재산이 묶이지 않게 도와드려요</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-slate-400">•</span>
-                      <span>36~60개월 동안 매달 변제금이 잘 납입되도록 보장하는 연중 모니터링</span>
+                      <span>3~5년 동안 매달 잘 갚아나갈 수 있게 끝까지 챙겨드려요</span>
                     </li>
                   </ul>
                 </div>
