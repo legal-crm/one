@@ -1938,41 +1938,41 @@ export default function ClientRole({
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-450 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                     </span>
-                    <h4 className="text-sm font-semibold text-slate-200">내 채무관리방 (익명 데모)</h4>
+                    <h4 className="text-sm font-semibold text-slate-200">내 관리방 (변호사가 직접 관리해요)</h4>
                   </div>
                   <span className="text-[10px] text-slate-500 font-bold">Client ID: stealth-temp</span>
                 </div>
 
                 <div className="space-y-3">
                   <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-slate-850 text-xs">
-                    <span className="text-slate-500 font-bold">전담 변호사</span>
+                    <span className="text-slate-500 font-bold">내 담당 변호사</span>
                     <span className="col-span-2 text-slate-200 font-semibold flex items-center gap-1">
-                      배정 대기 <span className="text-[10px] text-brand font-bold bg-brand/10 px-1.5 py-0.2 rounded border border-brand/20">(무료 배정 신청 필요)</span>
+                      아직 배정 전 <span className="text-[10px] text-brand font-bold bg-brand/10 px-1.5 py-0.2 rounded border border-brand/20">(무료로 배정받기)</span>
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-slate-850 text-xs">
-                    <span className="text-slate-500 font-bold">현재 위험도</span>
-                    <span className="col-span-2 text-rose-400 font-semibold">위험 (연체 3일차 도래, 가압류 위험 감지)</span>
+                    <span className="text-slate-500 font-bold">지금 상황</span>
+                    <span className="col-span-2 text-rose-400 font-semibold">위험 — 빚 밀린 지 3일째, 통장 묶일 수 있어요</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-slate-850 text-xs">
-                    <span className="text-slate-500 font-bold">추천 해결 방향</span>
-                    <span className="col-span-2 text-emerald-400 font-semibold">채무자대리 선임 + 개인회생 골든타임 검토</span>
+                    <span className="text-slate-500 font-bold">변호사 추천</span>
+                    <span className="col-span-2 text-emerald-400 font-semibold">독촉 먼저 막고 + 회생 신청 준비 시작</span>
                   </div>
                   
                   <div className="pt-2">
-                    <span className="text-[10px] text-slate-500 font-bold block mb-1.5">🗒️ 내 전담 관리방 다음 할 일:</span>
+                    <span className="text-[10px] text-slate-500 font-bold block mb-1.5">🗒️ 변호사가 알려준 다음 할 일:</span>
                     <div className="space-y-1.5 text-xs text-slate-350">
                       <div className="flex items-center gap-2">
                         <span className="w-4 h-4 rounded border border-rose-500/40 bg-rose-950/20 text-rose-400 flex items-center justify-center text-[10px] font-semibold">1</span>
-                        <span>최근 추심 연락 여부 및 가혹 추심 빈도 확인하기</span>
+                        <span>최근 독촉 전화나 문자가 왔는지 확인해주세요</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-4 h-4 rounded border border-slate-700 bg-slate-800 text-slate-400 flex items-center justify-center text-[9px] font-bold">2</span>
-                        <span>소득 증빙 서류 준비 (플랫폼 정산 및 급여 입출금 1년원장)</span>
+                        <span>월급이나 수입 증명 서류 준비해주세요 (최근 1년치)</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-4 h-4 rounded border border-slate-700 bg-slate-800 text-slate-400 flex items-center justify-center text-[9px] font-bold">3</span>
-                        <span>국세/지방세 세금 체납 여부 및 계좌 압류 일시 확인</span>
+                        <span>밀린 세금 있는지, 계좌가 묶인 적 있는지 확인해주세요</span>
                       </div>
                     </div>
                   </div>
@@ -1982,7 +1982,7 @@ export default function ClientRole({
                   onClick={() => setDiagnosisPhase('flow')}
                   className="w-full mt-5 bg-brand hover:bg-brand-hover text-white text-center font-bold py-3 rounded-xl text-xs transition-colors cursor-pointer active:scale-[0.98]"
                 >
-                  위 대시보드로 실시간 채무관리 시작하기 →
+                  나도 이렇게 관리받고 싶어요 →
                 </button>
               </div>
             </div>
