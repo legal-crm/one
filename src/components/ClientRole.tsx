@@ -1646,41 +1646,85 @@ export default function ClientRole({
                   <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">실시간 분석</span>
                 </div>
                 
-                <div className="space-y-2.5">
-                  <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block mb-1">현재 상태 (다중 선택 가능)</span>
-                  {[
-                    { label: '연체 전 (대출 만기 연장 불가, 돌려막기 한계)', color: 'bg-emerald-500', risk: 1 },
-                    { label: '연체 중 (카드사/은행 독촉 연락 수신 중)', color: 'bg-amber-500', risk: 2 },
-                    { label: '추심/압류 위기 (지급명령, 법원 등기, 통장 압류)', color: 'bg-rose-500', risk: 3 },
-                    { label: '세금 체납 (국세, 지방세, 4대보험 밀림)', color: 'bg-purple-500', risk: 3 },
-                    { label: '회생/파산 법리 가능성 검토 필요', color: 'bg-brand', risk: 2 }
-                  ].map((item, idx) => (
-                    <label 
-                      key={idx} 
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                        checkedStatuses[idx] 
-                          ? 'border-brand/40 bg-brand/5 dark:bg-brand/10 shadow-sm' 
-                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                      }`}
-                    >
-                      <input 
-                        type="checkbox" 
-                        checked={checkedStatuses[idx]}
-                        onChange={() => {
-                          setCheckedStatuses(prev => {
-                            const next = [...prev];
-                            next[idx] = !next[idx];
-                            return next;
-                          });
-                        }}
-                        className="rounded text-brand focus:ring-brand w-4 h-4 border-slate-300 dark:border-slate-700 cursor-pointer" 
-                      />
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className={`w-2 h-2 rounded-full ${item.color} shrink-0 ${checkedStatuses[idx] ? 'scale-125' : 'opacity-50'} transition-all`}></span>
-                        <span className={`text-xs font-medium transition-colors ${checkedStatuses[idx] ? 'text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{item.label}</span>
-                      </div>
-                    </label>
-                  ))}
+                <div className="space-y-3">
+                  {/* 그룹 1: 연체 단계 — 하나만 선택 가능 */}
+                  <div className="space-y-2">
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">현재 연체 단계 (하나만 선택)</span>
+                    {[
+                      { label: '연체 전 (대출 만기 연장 불가, 돌려막기 한계)', color: 'bg-emerald-500', risk: 1 },
+                      { label: '연체 중 (카드사/은행 독촉 연락 수신 중)', color: 'bg-amber-500', risk: 2 },
+                      { label: '추심/압류 위기 (지급명령, 법원 등기, 통장 압류)', color: 'bg-rose-500', risk: 3 },
+                    ].map((item, idx) => (
+                      <label 
+                        key={idx} 
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          checkedStatuses[idx] 
+                            ? 'border-brand/40 bg-brand/5 dark:bg-brand/10 shadow-sm' 
+                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                        }`}
+                      >
+                        <input 
+                          type="radio" 
+                          name="delinquency-stage"
+                          checked={checkedStatuses[idx]}
+                          onChange={() => {
+                            setCheckedStatuses(prev => {
+                              const next = [...prev];
+                              // 0~2번은 상호 배타: 나머지 해제
+                              next[0] = false;
+                              next[1] = false;
+                              next[2] = false;
+                              next[idx] = true;
+                              return next;
+                            });
+                          }}
+                          className="rounded-full text-brand focus:ring-brand w-4 h-4 border-slate-300 dark:border-slate-700 cursor-pointer" 
+                        />
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className={`w-2 h-2 rounded-full ${item.color} shrink-0 ${checkedStatuses[idx] ? 'scale-125' : 'opacity-50'} transition-all`}></span>
+                          <span className={`text-xs font-medium transition-colors ${checkedStatuses[idx] ? 'text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{item.label}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* 구분선 */}
+                  <div className="border-t border-slate-100 dark:border-slate-800"></div>
+
+                  {/* 그룹 2: 추가 상황 — 복수 선택 가능 */}
+                  <div className="space-y-2">
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">추가 해당 사항 (복수 선택 가능)</span>
+                    {[
+                      { label: '세금 체납 (국세, 지방세, 4대보험 밀림)', color: 'bg-purple-500', risk: 3, idx: 3 },
+                      { label: '회생/파산 법리 가능성 검토 필요', color: 'bg-brand', risk: 2, idx: 4 }
+                    ].map((item) => (
+                      <label 
+                        key={item.idx} 
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          checkedStatuses[item.idx] 
+                            ? 'border-brand/40 bg-brand/5 dark:bg-brand/10 shadow-sm' 
+                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                        }`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={checkedStatuses[item.idx]}
+                          onChange={() => {
+                            setCheckedStatuses(prev => {
+                              const next = [...prev];
+                              next[item.idx] = !next[item.idx];
+                              return next;
+                            });
+                          }}
+                          className="rounded text-brand focus:ring-brand w-4 h-4 border-slate-300 dark:border-slate-700 cursor-pointer" 
+                        />
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className={`w-2 h-2 rounded-full ${item.color} shrink-0 ${checkedStatuses[item.idx] ? 'scale-125' : 'opacity-50'} transition-all`}></span>
+                          <span className={`text-xs font-medium transition-colors ${checkedStatuses[item.idx] ? 'text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{item.label}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 {/* 추천 관리 방향 — 동적 */}
