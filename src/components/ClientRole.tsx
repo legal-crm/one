@@ -1873,10 +1873,10 @@ export default function ClientRole({
             <div className="space-y-6 pt-4 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
-                  상담 신청이 아니라, 채무관리를 시작하세요
+                  이렇게 3단계면 끝이에요
                 </h3>
                 <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                  단발성 전화를 유도하는 법률 광고가 아닙니다. 내 진단 정보를 전산에 등록해 변호사단의 평생 케어를 받습니다.
+                  전화 한 번으로 끝나는 광고가 아니에요. 내 정보를 등록하면 전문가가 계속 챙겨드려요.
                 </p>
               </div>
 
@@ -1884,22 +1884,22 @@ export default function ClientRole({
                 {[
                   {
                     step: 'Step 1',
-                    title: '1. 익명 진단',
-                    desc: '채무·소득·압류·세금 체납 여부를 개인정보 노출 없이 1분 만에 신속하게 셀프 체크',
+                    title: '1. 내 상황 체크',
+                    desc: '빚이 얼마나 있는지, 독촉이 오는지 — 이름 없이 1분 만에 확인해보세요',
                     icon: '🔍',
                     action: () => setDiagnosisPhase('flow')
                   },
                   {
                     step: 'Step 2',
-                    title: '2. 전담 변호사 무료 배정',
-                    desc: '도산 실무 경험이 풍부한 전문 변호사 3인 매칭으로 초기 진단서와 관리 방향 비용 부담 없이 확인',
+                    title: '2. 전문가 무료 연결',
+                    desc: '경험 많은 전문가 3명이 내 상황을 살펴보고, 어떻게 하면 좋을지 무료로 알려드려요',
                     icon: '👥',
                     action: () => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }
                   },
                   {
                     step: 'Step 3',
-                    title: '3. 내 관리방 생성',
-                    desc: '개인회생·파산·신용회복·채무자대리 중 내 상황에 100% 최적화된 방향으로 실시간 1:1 채팅 관리 시작',
+                    title: '3. 나만의 관리방',
+                    desc: '내 상황에 딱 맞는 방법으로, 전문가와 1:1 채팅으로 처음부터 끝까지 함께해요',
                     icon: '💬',
                     action: () => setActiveTab('chat')
                   }
