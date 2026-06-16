@@ -1533,9 +1533,9 @@ export const initialInquiries: ClientInquiry[] = [
 ];
 
 export const initialPlatformConfig: PlatformConfig = {
-  siteTitle: '회생톡 - 쉽고 빠른 개인회생 자가진단 및 법률 매칭 서비스',
-  siteLogoText: 'RebirthTalk',
-  siteLogoUrl: '',
+  siteTitle: '마이김변 - 나의 김변호사가 내 빚, 대신 관리해드려요',
+  siteLogoText: '마이김변',
+  siteLogoUrl: './mykim_logo.png',
   companyAddress: '서울특별시 서초구 서초대로 123 서초빌딩 5층 (주)리버스톡',
   companyBusinessNumber: '120-88-12345',
   companyRepresentative: '홍길동',

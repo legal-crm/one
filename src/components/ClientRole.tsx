@@ -1372,7 +1372,7 @@ export default function ClientRole({
               <img src={platformConfig.siteLogoUrl || "./logo.png"} alt={platformConfig.siteLogoText || "회생톡 로고"} className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
               <div className="flex flex-col text-left">
                 <span className="font-bold text-lg tracking-tight text-slate-800 dark:text-white leading-none">{platformConfig.siteLogoText || "회생톡"}</span>
-                <span className="text-[10px] text-brand dark:text-brand-light font-semibold tracking-wide mt-0.5">안심 채무 해결 센터</span>
+                <span className="text-[10px] text-brand dark:text-brand-light font-semibold tracking-wide mt-0.5">나의 김변호사</span>
               </div>
             </div>
 
@@ -1523,7 +1523,7 @@ export default function ClientRole({
               <div className="lg:col-span-7 space-y-6 text-left">
                 {/* 로고 + 서비스명 */}
                 <div className="flex items-center gap-3">
-                  <img src="/mykim_logo.png" alt="마이김변 로고" className="w-12 h-12 rounded-2xl shadow-md" />
+                  <img src="./mykim_logo.png" alt="마이김변 로고" className="w-12 h-12 rounded-2xl shadow-md" />
                   <div>
                     <h2 className="text-lg font-black bg-gradient-to-r from-brand to-indigo-600 bg-clip-text text-transparent tracking-tight">마이김변</h2>
                     <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">나의 김변호사</span>
