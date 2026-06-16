@@ -1523,26 +1523,26 @@ export default function ClientRole({
               <div className="lg:col-span-7 space-y-6 text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 dark:bg-brand/20 dark:border-brand/45">
                   <ShieldCheck className="w-4 h-4 text-brand dark:text-brand-light" />
-                  <span className="text-xs text-brand dark:text-brand-light font-bold">안심 채무관리 플랫폼</span>
+                  <span className="text-xs text-brand dark:text-brand-light font-bold">빚 걱정, 여기서 내려놓으세요</span>
                 </div>
                 
                 <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
-                  개인회생이 정답이<br />
-                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">아닐 수도 있습니다</span>
+                  나한테 맞는 방법,<br />
+                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">따로 있을 수 있어요</span>
                 </h1>
                 
                 <p className="text-slate-500 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
-                  내 채무 상태를 먼저 정밀 진단하고,<br />
-                  무료 전담 채무 변호사와 최적의 관리 방향을 안전하게 확인하세요.
+                  지금 내 상황이 어떤지 먼저 무료로 살펴보고,<br />
+                  어떻게 하면 좋을지 방향을 함께 찾아드려요.
                 </p>
 
                 {/* Trust Metrics / Bullets */}
                 <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 dark:bg-slate-900/60 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-400">
-                  <span className="flex items-center gap-1">🔒 050 안심번호</span>
+                  <span className="flex items-center gap-1">🔒 내 번호 안 보여요</span>
                   <span className="text-slate-300 dark:text-slate-700">•</span>
-                  <span className="flex items-center gap-1">💬 익명 채팅</span>
+                  <span className="flex items-center gap-1">💬 이름 없이 상담 OK</span>
                   <span className="text-slate-300 dark:text-slate-700">•</span>
-                  <span className="flex items-center gap-1">🎁 초기 상담/관리 무료</span>
+                  <span className="flex items-center gap-1">🎁 처음 상담은 무료</span>
                 </div>
 
                 {/* Two-Track CTA Buttons */}
@@ -1554,7 +1554,7 @@ export default function ClientRole({
                     }}
                     className="flex-1 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-6 py-4 rounded-2xl shadow-sm hover:shadow-brand-sm transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-sm md:text-base active:scale-[0.98]"
                   >
-                    <span>익명으로 채무관리 시작하기</span>
+                    <span>이름 없이 내 상황 알아보기</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </button>
                   <button
@@ -1566,7 +1566,7 @@ export default function ClientRole({
                     }}
                     className="flex-1 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-6 py-4 rounded-2xl shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer text-sm md:text-base"
                   >
-                    <span>전담 변호사 무료 배정받기</span>
+                    <span>무료로 전문가 연결받기</span>
                   </button>
                 </div>
               </div>
@@ -1641,7 +1641,7 @@ export default function ClientRole({
               <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    📊 내 채무관리 상태 체크
+                    📊 지금 내 상황은 어떤가요?
                   </h4>
                   <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">실시간 분석</span>
                 </div>
@@ -1649,11 +1649,11 @@ export default function ClientRole({
                 <div className="space-y-3">
                   {/* 그룹 1: 연체 단계 — 하나만 선택 가능 */}
                   <div className="space-y-2">
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">현재 연체 단계 (하나만 선택)</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">지금 어떤 상황인가요? (하나만 골라주세요)</span>
                     {[
-                      { label: '연체 전 (대출 만기 연장 불가, 돌려막기 한계)', color: 'bg-emerald-500', risk: 1 },
-                      { label: '연체 중 (카드사/은행 독촉 연락 수신 중)', color: 'bg-amber-500', risk: 2 },
-                      { label: '추심/압류 위기 (지급명령, 법원 등기, 통장 압류)', color: 'bg-rose-500', risk: 3 },
+                      { label: '아직 안 밀렸지만 곧 힘들 것 같아요', color: 'bg-emerald-500', risk: 1 },
+                      { label: '이미 밀리고 있고, 독촉 연락이 와요', color: 'bg-amber-500', risk: 2 },
+                      { label: '통장이 묶이거나 법원 서류가 왔어요', color: 'bg-rose-500', risk: 3 },
                     ].map((item, idx) => (
                       <label 
                         key={idx} 
@@ -1693,10 +1693,10 @@ export default function ClientRole({
 
                   {/* 그룹 2: 추가 상황 — 복수 선택 가능 */}
                   <div className="space-y-2">
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">추가 해당 사항 (복수 선택 가능)</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">이런 것도 해당되나요? (여러 개 선택 가능)</span>
                     {[
-                      { label: '세금 체납 (국세, 지방세, 4대보험 밀림)', color: 'bg-purple-500', risk: 3, idx: 3 },
-                      { label: '회생/파산 법리 가능성 검토 필요', color: 'bg-brand', risk: 2, idx: 4 }
+                      { label: '세금도 밀리고 있어요 (국세, 지방세, 4대보험)', color: 'bg-purple-500', risk: 3, idx: 3 },
+                      { label: '회생이나 파산도 알아보고 싶어요', color: 'bg-brand', risk: 2, idx: 4 }
                     ].map((item) => (
                       <label 
                         key={item.idx} 
