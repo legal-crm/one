@@ -1450,6 +1450,7 @@ export default function ClientRole({
               >
                 변호사 찾기
               </button>
+              {/* 성공사례 메뉴 숨김 처리
               <button 
                 onClick={() => setActiveTab('reviews')}
                 className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
@@ -1460,6 +1461,7 @@ export default function ClientRole({
               >
                 성공사례
               </button>
+              */}
               {isLoggedIn && (
                 <button 
                   onClick={() => setActiveTab('mypage')}
