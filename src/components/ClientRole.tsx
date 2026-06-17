@@ -1390,23 +1390,10 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => {
-                  setDiagnosisPhase('flow');
-                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', 'GNB [채무관리 시작] 메뉴 클릭');
-                }}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
-                  diagnosisPhase === 'flow' 
-                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
-                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
-                }`}
-              >
-                채무관리 시작
-              </button>
-              <button 
-                onClick={() => {
                   setRequestType('open');
                   setRequestStep(1);
                   setActiveTab('request');
-                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [무료 전담 배정] 메뉴 클릭');
+                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 진단하기] 메뉴 클릭');
                 }}
                 className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'request' 
@@ -1414,7 +1401,7 @@ export default function ClientRole({
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
-                무료 전담 배정
+                내 상황 진단하기
               </button>
               <button 
                 onClick={() => setActiveTab('chat')}
@@ -1552,12 +1539,14 @@ export default function ClientRole({
                 <div className="flex flex-col sm:flex-row gap-3.5 pt-2">
                   <button
                     onClick={() => {
-                      setDiagnosisPhase('flow');
-                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', '메인 Hero [익명으로 채무관리 시작] 버튼 클릭');
+                      setRequestType('open');
+                      setRequestStep(1);
+                      setActiveTab('request');
+                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [무료로 내 상황 진단하기] 버튼 클릭');
                     }}
                     className="flex-1 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-6 py-4 rounded-2xl shadow-sm hover:shadow-brand-sm transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-sm md:text-base active:scale-[0.98]"
                   >
-                    <span>이름 없이 내 상황 알아보기</span>
+                    <span>무료로 내 상황 진단하기</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </button>
                   <button
@@ -1799,11 +1788,10 @@ export default function ClientRole({
                       </div>
                       <button
                         onClick={() => {
-                          setDiagnosisPhase('flow');
-                          // 상태체크 → Q1 자동 매핑 (checkedStatuses를 initialAnswers로 전달)
-                          const q1 = computeQ1FromChecks();
-                          setCheckerQ1(q1);
-                          onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CALCULATE', `상태체크 카드에서 진단 시작 (선택: ${selectedCount}개, Q1 자동선택: ${q1})`);
+                          setRequestType('open');
+                          setRequestStep(1);
+                          setActiveTab('request');
+                          onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', `상태체크 카드에서 통합 진단 시작 (선택: ${selectedCount}개)`);
                         }}
                         className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer mt-1"
                       >
@@ -1890,7 +1878,7 @@ export default function ClientRole({
                     title: '1. 내 상황 체크',
                     desc: '빚이 얼마나 있는지, 독촉이 오는지 — 이름 없이 1분 만에 확인해보세요',
                     icon: '🔍',
-                    action: () => setDiagnosisPhase('flow')
+                    action: () => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }
                   },
                   {
                     step: 'Step 2',
@@ -2625,11 +2613,12 @@ export default function ClientRole({
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (<AuthModal onClose={() => setShowAuthModal(false)} onLoginSuccess={(alias,ep,ch) => { setIsLoggedIn(true); setUserAlias(alias); setShowAuthModal(false); recordClientLogin(alias,ep,ch); }} />)}
 
-      {diagnosisPhase === 'flow' && (<DiagnosisFlow onComplete={async (r) => { setDiagnosisResult(r); setDiagnosisPhase('result'); await saveDiagnosisResult(r); }} onBack={() => setDiagnosisPhase('idle')} diagnosisConfig={diagnosisConfig||undefined} initialAnswers={checkerQ1 ? { q1_status: checkerQ1 } : undefined} />)}
+      {/* DiagnosisFlow 통합: 로이 챗봇으로 흡수됨 */}
+      {/* diagnosisPhase === 'flow' && (<DiagnosisFlow onComplete={async (r) => { setDiagnosisResult(r); setDiagnosisPhase('result'); await saveDiagnosisResult(r); }} onBack={() => setDiagnosisPhase('idle')} diagnosisConfig={diagnosisConfig||undefined} initialAnswers={checkerQ1 ? { q1_status: checkerQ1 } : undefined} />) */}
 
       {diagnosisPhase === 'result' && diagnosisResult && (<DiagnosisResultView result={diagnosisResult} onGoHome={() => { setDiagnosisPhase('idle'); }} onStartDetailedDiagnosis={() => { const r = diagnosisResult; const incomeMap: Record<string, number> = { employed: 300, unstable: 180, business: 250, none: 0 }; const debtMap: Record<string, number> = { under_1000: 700, '1000_to_5000': 3000, '5000_to_10000': 7500, '10000_to_50000': 25000, over_50000: 60000 }; setIncome(incomeMap[r.answers.q3_income] ?? 200); setDebtTotal(debtMap[r.answers.q2_debtScale] ?? 5000); setTitle(`[자가진단 연동] ${r.primaryStrategy.label} 전문 상담 신청`); setContent(`[자가진단 연동 상담 신청]\n\n■ 진단 결과 요약\n- 추천 전략: ${r.primaryStrategy.label}\n- 예상 탕감액: 약 ${r.estimatedSavingsAmount.toLocaleString()}만원 (${Math.round(r.estimatedSavingsRate * 100)}% 면책)\n- 긴급도: ${r.urgencyMessage}\n- 예상 월 변제금: 약 ${r.estimatedMonthlyPayment.toLocaleString()}만원\n\n상기 진단 결과를 바탕으로, 전담 변호사의 정밀 검토를 요청합니다.`); setRequestType('open'); setRequestStep(3); setDiagnosisPhase('idle'); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onViewLawyers={() => { setDiagnosisPhase('idle'); setActiveTab('lawyers'); }} onRetakeDiagnosis={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); setCheckerQ1(null); setDiagnosisPhase('flow'); }} />)}
 
-      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setDiagnosisPhase('flow'); }} />
+      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (<RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />)}
       {activeSolutionType && (<SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setActiveSolutionType(null); setDiagnosisPhase('flow'); }} onApplyConsult={(ctaTitle, ctaContent) => { setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
