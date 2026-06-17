@@ -1369,9 +1369,9 @@ export default function ClientRole({
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 w-full transition-all duration-300">
           <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
-              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt={platformConfig.siteLogoText || "회생톡 로고"} className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
+              <img src="./mykim_logo.png" alt="마이김변 로고" className="w-9 h-9 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
               <div className="flex flex-col text-left">
-                <span className="font-bold text-lg tracking-tight text-slate-800 dark:text-white leading-none">{platformConfig.siteLogoText || "회생톡"}</span>
+                <span className="font-bold text-lg tracking-tight text-slate-800 dark:text-white leading-none">마이김변</span>
                 <span className="text-[10px] text-brand dark:text-brand-light font-semibold tracking-wide mt-0.5">나의 김변호사</span>
               </div>
             </div>
