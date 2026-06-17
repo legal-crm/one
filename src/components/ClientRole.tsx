@@ -1536,7 +1536,7 @@ export default function ClientRole({
                 
                 <p className="text-slate-500 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
                   지금 내 상황이 어떤지 먼저 무료로 살펴보고,<br />
-                  어떻게 하면 좋을지 김변호사가 함께 찾아드려요.
+                  어떻게 하면 좋을지 전담변호사가 함께 찾아드려요.
                 </p>
 
                 {/* Trust Metrics / Bullets */}
