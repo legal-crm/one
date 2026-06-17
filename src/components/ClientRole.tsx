@@ -1521,15 +1521,6 @@ export default function ClientRole({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-6 pb-4">
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
-                {/* 로고 + 서비스명 */}
-                <div className="flex items-center gap-3">
-                  <img src="./mykim_logo.png" alt="마이김변 로고" className="w-12 h-12 rounded-2xl shadow-md" />
-                  <div>
-                    <h2 className="text-lg font-black bg-gradient-to-r from-brand to-indigo-600 bg-clip-text text-transparent tracking-tight">마이김변</h2>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">나의 김변호사</span>
-                  </div>
-                </div>
-
                 {/* 슬로건 배지 */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 dark:bg-brand/20 dark:border-brand/45">
                   <ShieldCheck className="w-4 h-4 text-brand dark:text-brand-light" />
