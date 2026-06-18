@@ -1422,7 +1422,7 @@ export default function AdminRole({
                               <span>변호사 자격 승인 검토 요청</span>
                             </span>
                             <p className="text-[10px] leading-relaxed text-slate-400">
-                              가입 시 제출한 자격 확인서 및 소속 로펌 인증을 심사하십시오. 승인을 완료하면 대리인은 마이김변의 모든 상담 세션 및 실시간 채팅 매칭에 정식으로 참여할 권한을 부여받습니다.
+                              가입 시 제출한 자격 확인서 및 소속 로펌 인증을 심사하십시오. 승인을 완료하면 대리인은 my김변의 모든 상담 세션 및 실시간 채팅 매칭에 정식으로 참여할 권한을 부여받습니다.
                             </p>
                             <button 
                               onClick={() => handleApproveLawyer(selectedLawyer.id)}

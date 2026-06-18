@@ -1362,10 +1362,10 @@ export default function ClientRole({
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 w-full transition-all duration-300">
           <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
-              <img src="./mykim_logo.png" alt="마이김변 로고" className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
+              <img src="./mykim_logo.png" alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
               <div className="flex flex-col items-start leading-none">
                 <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
-                  마이김변
+                  my김변
                 </span>
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
                   나의 전담 채무관리 변호사
@@ -1556,7 +1556,7 @@ export default function ClientRole({
               <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-5">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    🤝 마이김변의 약속
+                    🤝 my김변의 약속
                   </h4>
                   <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">100% 무료</span>
                 </div>
