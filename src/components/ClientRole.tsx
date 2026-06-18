@@ -1572,18 +1572,6 @@ export default function ClientRole({
                     </div>
                   ))}
                 </div>
-
-                <button
-                  onClick={() => {
-                    setRequestType('open');
-                    setRequestStep(1);
-                    setActiveTab('request');
-                    onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '핵심 약속 카드에서 진단 시작');
-                  }}
-                  className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer"
-                >
-                  <span>무료로 내 상황 진단받기 →</span>
-                </button>
               </div>
             </div>
 
