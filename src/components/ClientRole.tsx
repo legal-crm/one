@@ -1552,15 +1552,15 @@ export default function ClientRole({
               <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-5">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    🤝 김변호사의 약속
+                    🤝 마이김변의 약속
                   </h4>
                   <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">100% 무료</span>
                 </div>
 
                 <div className="space-y-3">
                   {[
-                    { icon: '💬', title: '처음 상담은 무료', desc: '첫 상담부터 비용 걱정 없이, 변호사가 직접 상황을 분석해드려요.' },
-                    { icon: '🔒', title: '익명 상담 보장', desc: '실명 없이도 상담 가능. 내 번호도 변호사에게 노출되지 않아요.' },
+                    { icon: '💬', title: '상담은 무료', desc: '첫 상담부터 비용 걱정 없이, 변호사가 직접 상황을 분석해드려요.' },
+                    { icon: '🔒', title: '익명 상담 보장', desc: '실명 없이도 상담 가능. 내 이름,전화번호도 노출되지 않아요.' },
                     { icon: '⚖️', title: '전담 변호사 매칭', desc: '채무 유형에 맞는 전문 변호사가 1:1로 끝까지 함께합니다.' },
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all">
