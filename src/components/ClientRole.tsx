@@ -1524,31 +1524,27 @@ export default function ClientRole({
                 </p>
 
 
-                {/* Two-Track CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3.5 pt-2">
+                {/* Unified CTA Button */}
+                <div className="flex flex-col gap-3 pt-2 w-full max-w-md">
                   <button
                     onClick={() => {
                       setRequestType('open');
                       setRequestStep(1);
                       setActiveTab('request');
-                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [무료로 내 상황 진단하기] 버튼 클릭');
+                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [전담 변호사 무료 진단 시작하기] 버튼 클릭');
                     }}
-                    className="flex-1 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-6 py-4 rounded-2xl shadow-sm hover:shadow-brand-sm transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-sm md:text-base active:scale-[0.98]"
+                    className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold px-6 py-4.5 rounded-2xl shadow-lg shadow-brand/10 hover:shadow-brand/20 hover:scale-[1.01] active:scale-[0.99] transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-sm md:text-base"
                   >
-                    <span>무료로 내 상황 진단하기</span>
+                    <span>전담 변호사 무료 진단 시작하기</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </button>
-                  <button
-                    onClick={() => {
-                      setRequestType('open');
-                      setRequestStep(1);
-                      setActiveTab('request');
-                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [전담 변호사 무료 배정] 버튼 클릭');
-                    }}
-                    className="flex-1 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-6 py-4 rounded-2xl shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer text-sm md:text-base"
-                  >
-                    <span>무료로 전문가 연결받기</span>
-                  </button>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium flex items-center justify-center sm:justify-start gap-2">
+                    <span>🔒 번호 노출 없음</span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span>💬 이름 없이 익명 보장</span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span>🎁 100% 무료</span>
+                  </p>
                 </div>
               </div>
 
