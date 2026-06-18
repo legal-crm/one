@@ -1519,14 +1519,6 @@ export default function ClientRole({
                   어떻게 하면 좋을지 전담변호사가 함께 찾아드려요.
                 </p>
 
-                {/* Trust Metrics / Bullets */}
-                <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 dark:bg-slate-900/60 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-400">
-                  <span className="flex items-center gap-1">🔒 내 번호 안 보여요</span>
-                  <span className="text-slate-300 dark:text-slate-700">•</span>
-                  <span className="flex items-center gap-1">💬 이름 없이 상담 OK</span>
-                  <span className="text-slate-300 dark:text-slate-700">•</span>
-                  <span className="flex items-center gap-1">🎁 처음 상담은 무료</span>
-                </div>
 
                 {/* Two-Track CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3.5 pt-2">
