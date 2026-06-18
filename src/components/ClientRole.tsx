@@ -1362,7 +1362,15 @@ export default function ClientRole({
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 w-full transition-all duration-300">
           <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
-              <img src="./mykim_logo.png" alt="마이김변 로고" className="w-11 h-11 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
+              <img src="./mykim_logo.png" alt="마이김변 로고" className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
+              <div className="flex flex-col items-start leading-none">
+                <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
+                  마이김변
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
+                  나의 전담 채무관리 변호사
+                </span>
+              </div>
             </div>
 
           <nav className="flex items-center gap-1 lg:gap-1.5">
