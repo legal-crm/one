@@ -51,12 +51,6 @@ type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'mo
 // 대화 단계 (2026 고도화)
 type ChatStep =
     | 'intro'
-    | 'warmup_status'         // 워밍업: 연체 상태
-    | 'warmup_debt'           // 워밍업: 채무 규모
-    | 'warmup_income'         // 워밍업: 소득 형태
-    | 'warmup_urgent'         // 워밍업: 긴급 사항
-    | 'warmup_goal'           // 워밍업: 희망 방향
-    | 'warmup_result'         // 워밍업: 간이 결과 표시
     | 'address'
     | 'age'
     | 'employment'
@@ -292,9 +286,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     return;
                 }
 
-                // [DEFAULT] 기본 인트로 메시지 (워밍업 통합 플로우)
+                // [DEFAULT] 기본 인트로 메시지
                 addBotMessage(
-                    `안녕하세요! 저는 AI 법률비서 '${characterName}'예요 😊\n\n빚 걱정, 혼자 하지 마세요.\n지금부터 몇 가지만 여쭤보면 어떻게 하면 좋을지 같이 찾아볼게요!\n\n먼저 지금 상황을 간단히 확인해볼까요?`,
+                    `안녕하세요! 저는 AI 법률비서 '${characterName}'예요 😊\n\n빚 걱정, 혼자 하지 마세요.\n지금부터 몇 가지만 여쭤보면 법원 기준에 맞는 정확한 분석 결과를 알려드릴게요!\n\n3분이면 충분해요. 시작해볼까요?`,
                     [{ label: '좋아요, 시작할게요', value: 'start' }],
                     'buttons'
                 );
@@ -397,131 +391,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const processStep = useCallback((step: ChatStep, value?: string | number | string[]) => {
         switch (step) {
             case 'intro':
-                setCurrentStep('warmup_status');
-                addBotMessage(
-                    '지금 빚 갚는 상황이 어떠세요?\n\n가장 가까운 걸 하나만 골라주세요.',
-                    [
-                        { label: '아직 안 밀렸지만 곧 힘들 것 같아요', value: 'no_delinquency' },
-                        { label: '이미 밀리기 시작했어요', value: 'early_delinquency' },
-                        { label: '많이 밀려서 독촉이 와요', value: 'severe_delinquency' },
-                        { label: '추심 통지서가 왔어요', value: 'collection' },
-                        { label: '통장 압류나 법원 서류를 받았어요', value: 'seizure' }
-                    ],
-                    'buttons'
-                );
-                break;
-
-            case 'warmup_status':
-                setUserInput(prev => ({ ...prev, warmupStatus: value as string }));
-                setCurrentStep('warmup_debt');
-                addBotMessage(
-                    '전체적으로 빚이 얼마 정도 있으세요?\n\n정확하지 않아도 괜찮아요, 대략적인 범위만 알려주세요.',
-                    [
-                        { label: '1,000만원 미만', value: 'under_1000' },
-                        { label: '1,000만~5,000만원', value: '1000_to_5000' },
-                        { label: '5,000만~1억원', value: '5000_to_10000' },
-                        { label: '1억~5억원', value: '10000_to_50000' },
-                        { label: '5억원 이상', value: 'over_50000' }
-                    ],
-                    'buttons'
-                );
-                break;
-
-            case 'warmup_debt':
-                setUserInput(prev => ({ ...prev, warmupDebt: value as string }));
-                setCurrentStep('warmup_income');
-                addBotMessage(
-                    '현재 어떤 형태로 소득이 있으세요?',
-                    [
-                        { label: '💼 직장에 다니고 있어요', value: 'employed' },
-                        { label: '📋 일은 하지만 불안정해요', value: 'unstable' },
-                        { label: '🏪 사업/장사를 하고 있어요', value: 'business' },
-                        { label: '🔍 지금은 소득이 없어요', value: 'none' }
-                    ],
-                    'buttons'
-                );
-                break;
-
-            case 'warmup_income':
-                setUserInput(prev => ({ ...prev, warmupIncome: value as string }));
-                setCurrentStep('warmup_urgent');
-                addBotMessage(
-                    '지금 가장 급하게 해결해야 할 게 있나요?',
-                    [
-                        { label: '📞 독촉 전화/문자가 계속 와요', value: 'harassment' },
-                        { label: '💰 월급이나 통장이 묶였어요', value: 'seizure_wage' },
-                        { label: '🏛️ 세금이 많이 밀렸어요', value: 'tax' },
-                        { label: '😰 빚이 너무 많아 막막해요', value: 'overwhelmed' },
-                        { label: '🤔 뭘 해야 할지 모르겠어요', value: 'unsure' }
-                    ],
-                    'buttons'
-                );
-                break;
-
-            case 'warmup_urgent':
-                setUserInput(prev => ({ ...prev, warmupUrgent: value as string }));
-                setCurrentStep('warmup_goal');
-                addBotMessage(
-                    '어떤 방향으로 해결하고 싶으세요?',
-                    [
-                        { label: '⚡ 최대한 빨리 끝내고 싶어요', value: 'fast_resolution' },
-                        { label: '⏳ 시간을 벌면서 천천히', value: 'buy_time' },
-                        { label: '💸 갚을 금액을 줄이고 싶어요', value: 'reduce_burden' },
-                        { label: '📖 전문가 의견을 듣고 싶어요', value: 'need_guidance' }
-                    ],
-                    'buttons'
-                );
-                break;
-
-            case 'warmup_goal':
-                setUserInput(prev => ({ ...prev, warmupGoal: value as string }));
-                setCurrentStep('warmup_result');
-                {
-                    const statusLabels: Record<string, string> = {
-                        'no_delinquency': '연체 전', 'early_delinquency': '초기 연체',
-                        'severe_delinquency': '장기 연체', 'collection': '추심 단계', 'seizure': '압류 단계'
-                    };
-                    const debtLabels: Record<string, string> = {
-                        'under_1000': '1,000만원 미만', '1000_to_5000': '1,000만~5,000만원',
-                        '5000_to_10000': '5,000만~1억원', '10000_to_50000': '1억~5억원', 'over_50000': '5억원 이상'
-                    };
-                    const savingsRates: Record<string, number> = {
-                        'under_1000': 30, '1000_to_5000': 50, '5000_to_10000': 65, '10000_to_50000': 75, 'over_50000': 80
-                    };
-                    const urgencyLabels: Record<string, string> = {
-                        'no_delinquency': '🟢 여유', 'early_delinquency': '🟡 주의',
-                        'severe_delinquency': '🟠 경고', 'collection': '🔴 긴급', 'seizure': '🔴 매우 긴급'
-                    };
-                    const strategyLabels: Record<string, string> = {
-                        'no_delinquency': '채무조정(워크아웃)', 'early_delinquency': '개인회생',
-                        'severe_delinquency': '개인회생', 'collection': '개인회생 + 채무자대리',
-                        'seizure': '긴급 개인회생/파산'
-                    };
-                    const ws = (userInput as any).warmupStatus || '';
-                    const wd = (userInput as any).warmupDebt || '';
-                    const rate = savingsRates[wd] || 50;
-
-                    addBotMessage(
-                        `📊 **간이 진단 결과**\n\n` +
-                        `━━━━━━━━━━━━━━━\n` +
-                        `📌 현재 상태: ${statusLabels[ws] || '확인 중'}\n` +
-                        `💰 채무 규모: ${debtLabels[wd] || '확인 중'}\n` +
-                        `⚠️ 긴급도: ${urgencyLabels[ws] || '확인 중'}\n` +
-                        `🎯 추천 전략: ${strategyLabels[ws] || '전문가 상담 권장'}\n` +
-                        `📉 예상 탕감율: 원금의 약 ${rate}%\n` +
-                        `━━━━━━━━━━━━━━━\n\n` +
-                        `좋아요! 큰 그림은 이렇습니다.\n\n` +
-                        `이제 정확한 변제금을 계산해볼게요.\n몇 가지만 더 여쭤보면 법원 기준에 맞는 정밀 결과를 알려드릴 수 있어요! 💪`,
-                        [{ label: '좋아요, 계속할게요 →', value: 'continue' }],
-                        'buttons'
-                    );
-                }
-                break;
-
-            case 'warmup_result':
                 setCurrentStep('address');
                 addBotMessage(
-                    '그럼 정밀 진단을 시작할게요!\n\n정확한 진단을 위해 현재 **사시는 곳**이 어디신가요?\n\n(예: 서울 강남구, 수원시 영통구)',
+                    '정확한 진단을 위해 현재 **사시는 곳**이 어디신가요?\n\n(예: 서울 강남구, 수원시 영통구)',
                     undefined,
                     'address'
                 );

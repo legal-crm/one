@@ -26,16 +26,14 @@ import LawyersView from './client/LawyersView';
 import AuthModal from './client/AuthModal';
 import MyPageView from './client/MyPageView';
 import InquiryView from './client/InquiryView';
-import DiagnosisFlow from './client/DiagnosisFlow';
-import DiagnosisResultView from './client/DiagnosisResult';
+
 import ClientFooter from './client/ClientFooter';
 import TermsModal from './client/TermsModal';
 import MobileGNB from './client/MobileGNB';
 import RemedyModal from './client/RemedyModal';
 import NewsDetailModal from './client/NewsDetailModal';
 import SolutionDetailModal, { SolutionType } from './client/SolutionDetailModal';
-import { loadDiagnosisConfig, saveDiagnosisResult } from '../services/diagnosisService';
-import { DiagnosisResult as DiagnosisResultType, DiagnosisConfig } from '../types';
+
 
 interface RemedyPreset {
   jobType: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
@@ -431,7 +429,7 @@ export default function ClientRole({
   const [bannerIndex, setBannerIndex] = useState<number>(0);
   const [openedQaId, setOpenedQaId] = useState<string | null>(null);
   const [homeSearchQuery, setHomeSearchQuery] = useState<string>('');
-  const [checkedStatuses, setCheckedStatuses] = useState<boolean[]>([false, false, false, false, false]);
+
   const [qnaSearchQuery, setQnaSearchQuery] = useState<string>('');
   const [qnaCategoryFilter, setQnaCategoryFilter] = useState<string>('전체');
   const [qnaPage, setQnaPage] = useState<number>(1);
@@ -455,11 +453,7 @@ export default function ClientRole({
 
   // Email and Real Auth States
 
-  // Diagnosis States
-  const [diagnosisPhase, setDiagnosisPhase] = useState<'idle' | 'flow' | 'result'>('idle');
-  const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResultType | null>(null);
-  const [diagnosisConfig, setDiagnosisConfig] = useState<DiagnosisConfig | null>(null);
-  const [checkerQ1, setCheckerQ1] = useState<string | null>(null);
+
 
 
   // Helper: Record client login/signup activity
@@ -494,8 +488,7 @@ export default function ClientRole({
     });
   };
 
-  // Load Diagnosis Config
-  useEffect(() => { loadDiagnosisConfig().then(c => { if(c) setDiagnosisConfig(c); }); }, []);
+
 
   // Suspended, Withdrawn, or Dormant check hook
   useEffect(() => {
@@ -1563,245 +1556,43 @@ export default function ClientRole({
                 </div>
               </div>
 
-              {/* Right Column: Interactive State Checker OR Result Banner */}
-              {diagnosisResult ? (
-                /* ── 진단 완료 배너 ── */
-                <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-slate-700/50 rounded-3xl p-6 shadow-md space-y-4 text-white animate-fadeIn">
-                  <div className="flex items-center justify-between border-b border-slate-700/50 pb-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-1.5">
-                      ✅ 자가진단 완료
-                    </h4>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      diagnosisResult.urgencyLevel === 'immediate' ? 'bg-red-500/15 border-red-500/30 text-red-400' :
-                      diagnosisResult.urgencyLevel === 'soon' ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' :
-                      'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                    }`}>
-                      {diagnosisResult.urgencyLevel === 'immediate' ? '🔴 긴급' : diagnosisResult.urgencyLevel === 'soon' ? '🟠 주의' : '🟢 여유'}
-                    </span>
-                  </div>
-
-                  <div className="text-center space-y-1">
-                    <span className="text-[10px] text-slate-400 font-medium">예상 탕감 금액</span>
-                    <p className="text-2xl font-bold text-indigo-300 tracking-tight">
-                      약 {diagnosisResult.estimatedSavingsAmount >= 10000 
-                        ? `${Math.floor(diagnosisResult.estimatedSavingsAmount / 10000)}억 ${(diagnosisResult.estimatedSavingsAmount % 10000).toLocaleString()}만원`
-                        : `${diagnosisResult.estimatedSavingsAmount.toLocaleString()}만원`
-                      }
-                    </p>
-                    <span className="text-xs text-indigo-400 font-medium">
-                      원금의 {Math.round(diagnosisResult.estimatedSavingsRate * 100)}% 면책 · 추천 전략: {diagnosisResult.primaryStrategy.label}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-2">
-                    <button
-                      onClick={() => setDiagnosisPhase('result')}
-                      className="py-2.5 rounded-xl border border-slate-600 text-xs font-bold text-slate-300 hover:bg-slate-800 transition-all cursor-pointer active:scale-[0.98]"
-                    >
-                      결과 자세히 보기
-                    </button>
-                    <button
-                      onClick={() => {
-                        // 개선 2: 진단 결과 → 상담 신청 자동 입력
-                        const r = diagnosisResult;
-                        const incomeMap: Record<string, number> = { employed: 300, unstable: 180, business: 250, none: 0 };
-                        const debtMap: Record<string, number> = { under_1000: 700, '1000_to_5000': 3000, '5000_to_10000': 7500, '10000_to_50000': 25000, over_50000: 60000 };
-                        setIncome(incomeMap[r.answers.q3_income] ?? 200);
-                        setDebtTotal(debtMap[r.answers.q2_debtScale] ?? 5000);
-                        setTitle(`[자가진단 연동] ${r.primaryStrategy.label} 전문 상담 신청`);
-                        setContent(`[자가진단 연동 상담 신청]\n\n■ 진단 결과 요약\n- 추천 전략: ${r.primaryStrategy.label} (적합도: ${r.primaryStrategy.confidence === 'high' ? '높음' : r.primaryStrategy.confidence === 'medium' ? '보통' : '참고'})\n- 예상 탕감액: 약 ${r.estimatedSavingsAmount.toLocaleString()}만원 (${Math.round(r.estimatedSavingsRate * 100)}% 면책)\n- 긴급도: ${r.urgencyLevel === 'immediate' ? '🔴 긴급' : r.urgencyLevel === 'soon' ? '🟠 주의' : '🟢 여유'} — ${r.urgencyMessage}\n- 예상 월 변제금: 약 ${r.estimatedMonthlyPayment.toLocaleString()}만원\n\n■ 자가진단 응답 데이터\n- 현재 상태: ${r.answers.q1_status}\n- 총 채무: ${r.answers.q2_debtScale}\n- 소득 형태: ${r.answers.q3_income}\n- 시급 사항: ${r.answers.q4_urgentNeed}\n- 희망 방향: ${r.answers.q5_goal}\n\n상기 진단 결과를 바탕으로, 전담 변호사의 정밀 검토를 요청합니다.`);
-                        setRequestType('open');
-                        setRequestStep(3);
-                        setActiveTab('request');
-                        setDiagnosisPhase('idle');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="py-2.5 rounded-xl bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-xs font-bold text-white shadow-sm hover:shadow-brand-sm transition-all cursor-pointer active:scale-[0.98]"
-                    >
-                      이 결과로 상담 신청 →
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => { setDiagnosisResult(null); setCheckedStatuses([false, false, false, false, false]); }}
-                    className="w-full text-center text-[10px] text-slate-500 hover:text-slate-300 font-medium pt-1 cursor-pointer transition-colors"
-                  >
-                    진단 초기화하고 다시 체크하기
-                  </button>
-                </div>
-              ) : (
-              <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-4">
+              {/* Right Column: 핵심 약속 & 프로세스 안내 */}
+              <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-5">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    📊 지금 내 상황은 어떤가요?
+                    🤝 김변호사의 약속
                   </h4>
-                  <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">실시간 분석</span>
+                  <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">100% 무료</span>
                 </div>
-                
+
                 <div className="space-y-3">
-                  {/* 그룹 1: 연체 단계 — 하나만 선택 가능 */}
-                  <div className="space-y-2">
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">지금 어떤 상황인가요? (하나만 골라주세요)</span>
-                    {[
-                      { label: '아직 안 밀렸지만 곧 힘들 것 같아요', color: 'bg-emerald-500', risk: 1 },
-                      { label: '이미 밀리고 있고, 독촉 연락이 와요', color: 'bg-amber-500', risk: 2 },
-                      { label: '통장이 묶이거나 법원 서류가 왔어요', color: 'bg-rose-500', risk: 3 },
-                    ].map((item, idx) => (
-                      <label 
-                        key={idx} 
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                          checkedStatuses[idx] 
-                            ? 'border-brand/40 bg-brand/5 dark:bg-brand/10 shadow-sm' 
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          name="delinquency-stage"
-                          checked={checkedStatuses[idx]}
-                          onChange={() => {
-                            setCheckedStatuses(prev => {
-                              const next = [...prev];
-                              // 0~2번은 상호 배타: 나머지 해제
-                              next[0] = false;
-                              next[1] = false;
-                              next[2] = false;
-                              next[idx] = true;
-                              return next;
-                            });
-                          }}
-                          className="rounded-full text-brand focus:ring-brand w-4 h-4 border-slate-300 dark:border-slate-700 cursor-pointer" 
-                        />
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className={`w-2 h-2 rounded-full ${item.color} shrink-0 ${checkedStatuses[idx] ? 'scale-125' : 'opacity-50'} transition-all`}></span>
-                          <span className={`text-xs font-medium transition-colors ${checkedStatuses[idx] ? 'text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{item.label}</span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* 구분선 */}
-                  <div className="border-t border-slate-100 dark:border-slate-800"></div>
-
-                  {/* 그룹 2: 추가 상황 — 복수 선택 가능 */}
-                  <div className="space-y-2">
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold block">이런 것도 해당되나요? (여러 개 선택 가능)</span>
-                    {[
-                      { label: '세금도 밀리고 있어요 (국세, 지방세, 4대보험)', color: 'bg-purple-500', risk: 3, idx: 3 },
-                      { label: '회생이나 파산도 알아보고 싶어요', color: 'bg-brand', risk: 2, idx: 4 }
-                    ].map((item) => (
-                      <label 
-                        key={item.idx} 
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                          checkedStatuses[item.idx] 
-                            ? 'border-brand/40 bg-brand/5 dark:bg-brand/10 shadow-sm' 
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                        }`}
-                      >
-                        <input 
-                          type="checkbox" 
-                          checked={checkedStatuses[item.idx]}
-                          onChange={() => {
-                            setCheckedStatuses(prev => {
-                              const next = [...prev];
-                              next[item.idx] = !next[item.idx];
-                              return next;
-                            });
-                          }}
-                          className="rounded text-brand focus:ring-brand w-4 h-4 border-slate-300 dark:border-slate-700 cursor-pointer" 
-                        />
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className={`w-2 h-2 rounded-full ${item.color} shrink-0 ${checkedStatuses[item.idx] ? 'scale-125' : 'opacity-50'} transition-all`}></span>
-                          <span className={`text-xs font-medium transition-colors ${checkedStatuses[item.idx] ? 'text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{item.label}</span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+                  {[
+                    { icon: '💬', title: '처음 상담은 무료', desc: '첫 상담부터 비용 걱정 없이, 변호사가 직접 상황을 분석해드려요.' },
+                    { icon: '🔒', title: '익명 상담 보장', desc: '실명 없이도 상담 가능. 내 번호도 변호사에게 노출되지 않아요.' },
+                    { icon: '⚖️', title: '전담 변호사 매칭', desc: '채무 유형에 맞는 전문 변호사가 1:1로 끝까지 함께합니다.' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all">
+                      <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 dark:text-white block">{item.title}</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {/* 추천 관리 방향 — 동적 */}
-                {(() => {
-                  const selectedCount = checkedStatuses.filter(Boolean).length;
-                  const hasSeizure = checkedStatuses[2]; // 추심/압류
-                  const hasTax = checkedStatuses[3]; // 세금 체납
-                  const hasLegal = checkedStatuses[4]; // 회생/파산
-                  const hasOverdue = checkedStatuses[1]; // 연체 중
-                  const hasPreOverdue = checkedStatuses[0]; // 연체 전
-
-                  if (selectedCount === 0) {
-                    return (
-                      <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold block">추천 관리 방향</span>
-                        <p className="text-xs text-slate-400 font-medium mt-1">
-                          ☝️ 위 항목을 체크하면 맞춤 분석 결과가 표시됩니다.
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  // 위험도 계산
-                  const riskLevel = (hasSeizure || hasTax) ? '🔴 긴급' : (hasOverdue || hasLegal) ? '🟠 주의' : '🟡 관심';
-                  const riskColor = (hasSeizure || hasTax) ? 'from-rose-500/10 to-red-500/5 border-rose-500/30' : (hasOverdue || hasLegal) ? 'from-amber-500/10 to-orange-500/5 border-amber-500/30' : 'from-emerald-500/10 to-green-500/5 border-emerald-500/30';
-                  const riskTextColor = (hasSeizure || hasTax) ? 'text-rose-600 dark:text-rose-400' : (hasOverdue || hasLegal) ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
-
-                  // 추천 방향 결정
-                  let recommendation = '';
-                  if (hasSeizure && hasTax) {
-                    recommendation = '세금 소멸시효 검토 + 긴급 채무자대리 선임 + 개인회생/파산 동시 검토가 필요합니다.';
-                  } else if (hasSeizure) {
-                    recommendation = '긴급 채무자대리 선임으로 추심 차단 후, 개인회생 골든타임 내 신청이 권장됩니다.';
-                  } else if (hasTax) {
-                    recommendation = '세금 소멸시효(5/10년) 검토 + 압류금지 소액금융재산 심사 청구가 필요합니다.';
-                  } else if (hasLegal) {
-                    recommendation = '채무 규모와 소득 대비 변제 가능성을 분석하여 회생/파산 적격 여부를 판단합니다.';
-                  } else if (hasOverdue) {
-                    recommendation = '연체 장기화 방지를 위해 채무조정(워크아웃) 또는 개인회생 선제 검토가 권장됩니다.';
-                  } else if (hasPreOverdue) {
-                    recommendation = '연체 전 단계에서 채무 구조조정을 시작하면 신용등급 하락을 최소화할 수 있습니다.';
-                  }
-
-                  // 개선 1: 상태체크 → Q1 자동 매핑
-                  const computeQ1FromChecks = (): string => {
-                    if (hasSeizure) return 'seizure';
-                    if (hasTax) return 'collection';
-                    if (hasOverdue) return 'severe_delinquency';
-                    if (hasLegal) return 'early_delinquency';
-                    if (hasPreOverdue) return 'no_delinquency';
-                    return 'no_delinquency';
-                  };
-
-                  return (
-                    <div className={`bg-gradient-to-br ${riskColor} p-4 rounded-2xl border text-left space-y-2.5 animate-fadeIn`}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">AI 분석 결과</span>
-                        <span className={`text-xs font-bold ${riskTextColor}`}>{riskLevel}</span>
-                      </div>
-                      <p className="text-xs text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
-                        {recommendation}
-                      </p>
-                      <div className="flex items-center gap-1.5 pt-1">
-                        <span className="text-[10px] text-slate-400">선택 항목 {selectedCount}개</span>
-                        <span className="text-slate-300 dark:text-slate-700">•</span>
-                        <span className={`text-[10px] font-semibold ${riskTextColor}`}>
-                          {(hasSeizure || hasTax) ? '즉시 변호사 상담 권장' : '전문가 진단 권장'}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setRequestType('open');
-                          setRequestStep(1);
-                          setActiveTab('request');
-                          onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', `상태체크 카드에서 통합 진단 시작 (선택: ${selectedCount}개)`);
-                        }}
-                        className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer mt-1"
-                      >
-                        <span>맞춤 채무관리 진단 시작하기 →</span>
-                      </button>
-                    </div>
-                  );
-                })()}
+                <button
+                  onClick={() => {
+                    setRequestType('open');
+                    setRequestStep(1);
+                    setActiveTab('request');
+                    onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '핵심 약속 카드에서 진단 시작');
+                  }}
+                  className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer"
+                >
+                  <span>무료로 내 상황 진단받기 →</span>
+                </button>
               </div>
-              )}
             </div>
 
             {/* 2. Secondary Search Box (Demoted) */}
@@ -2613,15 +2404,12 @@ export default function ClientRole({
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (<AuthModal onClose={() => setShowAuthModal(false)} onLoginSuccess={(alias,ep,ch) => { setIsLoggedIn(true); setUserAlias(alias); setShowAuthModal(false); recordClientLogin(alias,ep,ch); }} />)}
 
-      {/* DiagnosisFlow 통합: 로이 챗봇으로 흡수됨 */}
-      {/* diagnosisPhase === 'flow' && (<DiagnosisFlow onComplete={async (r) => { setDiagnosisResult(r); setDiagnosisPhase('result'); await saveDiagnosisResult(r); }} onBack={() => setDiagnosisPhase('idle')} diagnosisConfig={diagnosisConfig||undefined} initialAnswers={checkerQ1 ? { q1_status: checkerQ1 } : undefined} />) */}
 
-      {diagnosisPhase === 'result' && diagnosisResult && (<DiagnosisResultView result={diagnosisResult} onGoHome={() => { setDiagnosisPhase('idle'); }} onStartDetailedDiagnosis={() => { const r = diagnosisResult; const incomeMap: Record<string, number> = { employed: 300, unstable: 180, business: 250, none: 0 }; const debtMap: Record<string, number> = { under_1000: 700, '1000_to_5000': 3000, '5000_to_10000': 7500, '10000_to_50000': 25000, over_50000: 60000 }; setIncome(incomeMap[r.answers.q3_income] ?? 200); setDebtTotal(debtMap[r.answers.q2_debtScale] ?? 5000); setTitle(`[자가진단 연동] ${r.primaryStrategy.label} 전문 상담 신청`); setContent(`[자가진단 연동 상담 신청]\n\n■ 진단 결과 요약\n- 추천 전략: ${r.primaryStrategy.label}\n- 예상 탕감액: 약 ${r.estimatedSavingsAmount.toLocaleString()}만원 (${Math.round(r.estimatedSavingsRate * 100)}% 면책)\n- 긴급도: ${r.urgencyMessage}\n- 예상 월 변제금: 약 ${r.estimatedMonthlyPayment.toLocaleString()}만원\n\n상기 진단 결과를 바탕으로, 전담 변호사의 정밀 검토를 요청합니다.`); setRequestType('open'); setRequestStep(3); setDiagnosisPhase('idle'); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onViewLawyers={() => { setDiagnosisPhase('idle'); setActiveTab('lawyers'); }} onRetakeDiagnosis={() => { setDiagnosisPhase('idle'); setDiagnosisResult(null); setCheckerQ1(null); setDiagnosisPhase('flow'); }} />)}
 
       <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (<RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />)}
-      {activeSolutionType && (<SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setActiveSolutionType(null); setDiagnosisPhase('flow'); }} onApplyConsult={(ctaTitle, ctaContent) => { setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
+      {activeSolutionType && (<SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setActiveSolutionType(null); setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onApplyConsult={(ctaTitle, ctaContent) => { setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
       {selectedArticle && (<NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setIncome(230); setDebtTotal(6500); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
 
       </div>
