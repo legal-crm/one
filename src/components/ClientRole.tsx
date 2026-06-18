@@ -1538,13 +1538,6 @@ export default function ClientRole({
                     <span>전담 변호사 무료 진단 시작하기</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </button>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium flex items-center justify-center sm:justify-start gap-2">
-                    <span>🔒 번호 노출 없음</span>
-                    <span className="text-slate-300 dark:text-slate-700">•</span>
-                    <span>💬 이름 없이 익명 보장</span>
-                    <span className="text-slate-300 dark:text-slate-700">•</span>
-                    <span>🎁 100% 무료</span>
-                  </p>
                 </div>
               </div>
 
