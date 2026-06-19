@@ -1576,9 +1576,6 @@ export default function ClientRole({
                 <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
                   이렇게 3단계면 끝이에요
                 </h3>
-                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                  전화 한 번으로 끝나는 광고가 아니에요. 내 정보를 등록하면 전문가가 계속 챙겨드려요.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
