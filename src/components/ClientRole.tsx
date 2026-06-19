@@ -1568,61 +1568,7 @@ export default function ClientRole({
               </div>
             </div>
 
-            {/* 2. Secondary Search Box (Demoted) */}
-            <div className="max-w-3xl mx-auto py-2">
-              {/* PC View: Inline search */}
-              <div className="hidden md:block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">직접 검색하기:</span>
-                  <div className="relative flex-1 flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand/20 transition-all">
-                    <Search className="w-4 h-4 text-brand mr-2" />
-                    <input
-                      type="text"
-                      placeholder="압류, 세금체납, 코인빚, 채무대리 등 키워드 또는 변호사 이름 검색"
-                      value={homeSearchQuery}
-                      onChange={(e) => setHomeSearchQuery(e.target.value)}
-                      className="w-full bg-transparent border-none outline-none text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-450 font-medium"
-                    />
-                    {homeSearchQuery && (
-                      <button onClick={() => setHomeSearchQuery('')} className="text-[10px] text-slate-400 hover:text-slate-650">초기화</button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 pl-16">
-                  <span className="font-medium">추천 키워드:</span>
-                  <button onClick={() => handleCategoryClick('tax_delinquency')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 font-semibold transition-colors">#세금체납</button>
-                  <button onClick={() => handleCategoryClick('high_interest')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 font-semibold transition-colors">#채무대리</button>
-                  <button onClick={() => handleCategoryClick('investment')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 font-semibold transition-colors">#코인손실</button>
-                  <button onClick={() => handleCategoryClick('seizure')} className="hover:text-brand bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 font-semibold transition-colors">#급여압류</button>
-                </div>
-              </div>
 
-              {/* Mobile View: Collapsible Search */}
-              <details className="md:hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3">
-                <summary className="text-xs font-semibold text-slate-500 dark:text-slate-400 cursor-pointer list-none flex items-center justify-between">
-                  <span>🔍 궁금한 주제 직접 검색하기</span>
-                  <span className="text-[10px]">▼</span>
-                </summary>
-                <div className="mt-3 space-y-2.5">
-                  <div className="relative flex items-center bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2">
-                    <Search className="w-4 h-4 text-brand mr-2" />
-                    <input
-                      type="text"
-                      placeholder="압류, 세금체납, 코인빚, 채무대리 등 검색"
-                      value={homeSearchQuery}
-                      onChange={(e) => setHomeSearchQuery(e.target.value)}
-                      className="w-full bg-transparent border-none outline-none text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-450 font-medium"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1 text-[9px]">
-                    <button onClick={() => handleCategoryClick('tax_delinquency')} className="bg-white dark:bg-slate-950 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-800 font-semibold">#세금체납</button>
-                    <button onClick={() => handleCategoryClick('high_interest')} className="bg-white dark:bg-slate-950 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-800 font-semibold">#채무대리</button>
-                    <button onClick={() => handleCategoryClick('investment')} className="bg-white dark:bg-slate-950 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-800 font-semibold">#코인손실</button>
-                    <button onClick={() => handleCategoryClick('seizure')} className="bg-white dark:bg-slate-950 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-800 font-semibold">#급여압류</button>
-                  </div>
-                </div>
-              </details>
-            </div>
 
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
             <div className="space-y-6 pt-4 text-center">
