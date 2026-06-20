@@ -2224,15 +2224,15 @@ export default function ClientRole({
                 setPendingChatbotData({ res, input });
               }}
               templateId="gradient"
-              themeMode="dark"
+              themeMode="light"
               characterName="로이"
               customColors={{
                 primary: '#7264FF',
-                secondary: '#1e293b',
+                secondary: '#f8f7ff',
                 accent: '#5b4cf5',
                 headerText: '#ffffff',
                 userText: '#ffffff',
-                botText: '#f1f5f9'
+                botText: '#334155'
               }}
             />
           </div>

@@ -122,12 +122,12 @@ export interface ChatbotTemplateConfig {
 
 // 기본 색상 팔레트 (라이트 모드)
 export const DEFAULT_LIGHT_PALETTE: ChatbotColorPalette = {
-    primary: '#2563eb',
-    secondary: '#f1f5f9',
-    accent: '#3b82f6',
+    primary: '#7264FF',
+    secondary: '#f8f7ff',
+    accent: '#5b4cf5',
     headerText: '#ffffff',
     userText: '#ffffff',
-    botText: '#1e293b'
+    botText: '#334155'
 };
 
 // 기본 색상 팔레트 (다크 모드)

@@ -100,7 +100,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                 default: return '#1e293b';
             }
         }
-        return '#ffffff';
+        return '#fafbff';
     };
 
     // 메시지 그룹화 (연속 메시지 묶기)
@@ -557,14 +557,16 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                             {msg.options.map((opt, optIdx) => (
                                                 <motion.button
                                                     key={optIdx}
-                                                    whileHover={{ scale: 1.02 }}
-                                                    whileTap={{ scale: 0.98 }}
+                                                    whileHover={{ scale: 1.03 }}
+                                                    whileTap={{ scale: 0.97 }}
                                                     onClick={() => onOptionSelect(opt, msg.id)}
-                                                    className="px-4 py-2 text-sm font-medium transition-all"
+                                                    className="px-4 py-2.5 text-sm font-semibold transition-all"
                                                     style={{
-                                                        backgroundColor: colors.accent,
-                                                        color: colors.headerText,
-                                                        borderRadius: `${(layout?.bubbleRadius || 14)}px`
+                                                        backgroundColor: isDark ? colors.accent : '#ffffff',
+                                                        color: isDark ? colors.headerText : colors.primary,
+                                                        borderRadius: `${(layout?.bubbleRadius || 14)}px`,
+                                                        border: isDark ? 'none' : `1.5px solid ${colors.primary}`,
+                                                        boxShadow: isDark ? 'none' : '0 2px 8px rgba(114, 100, 255, 0.1)'
                                                     }}
                                                 >
                                                     {opt.label}
@@ -944,10 +946,10 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
             {renderHeader()}
 
             {/* Progress Bar */}
-            <div className="h-1" style={{ backgroundColor: isDark ? '#374151' : '#e5e7eb' }}>
+            <div className="h-1" style={{ backgroundColor: isDark ? '#374151' : '#ede9fe' }}>
                 <motion.div
                     className="h-full"
-                    style={{ backgroundColor: colors.accent }}
+                    style={{ background: isDark ? colors.accent : `linear-gradient(90deg, ${colors.primary}, ${colors.accent})` }}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.3 }}

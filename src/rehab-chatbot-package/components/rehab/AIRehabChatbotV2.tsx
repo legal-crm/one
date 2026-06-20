@@ -153,7 +153,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     characterName = '로이',
     characterImage,
     templateId = 'classic' as ChatbotTemplateId,
-    themeMode = 'dark',
+    themeMode = 'light',
     customColors,
     chatFontFamily,
     enableFormBlocks = false,

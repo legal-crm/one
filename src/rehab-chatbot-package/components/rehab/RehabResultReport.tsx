@@ -41,7 +41,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
         try {
             const canvas = await html2canvas(reportRef.current, {
-                backgroundColor: '#101828', // 다크 테마 배경 유지
+                backgroundColor: '#ffffff',
                 scale: 2,
                 useCORS: true,
                 logging: false
@@ -65,7 +65,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         try {
             if (navigator.share && navigator.canShare) {
                 const canvas = await html2canvas(reportRef.current, {
-                    backgroundColor: '#101828',
+                    backgroundColor: '#ffffff',
                     scale: 2,
                     useCORS: true,
                     logging: false
@@ -202,7 +202,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             >
                 {/* Background Overlay */}
                 <motion.div
-                    className="absolute inset-0 bg-[#0B0F19]/90 backdrop-blur-sm"
+                    className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                 />
@@ -214,18 +214,18 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 40, scale: 0.98 }}
                     transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
-                    className="relative w-full max-w-xl my-4 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden max-h-[92vh] flex flex-col shadow-2xl text-slate-100"
+                    className="relative w-full max-w-xl my-4 bg-white border border-slate-200 rounded-2xl overflow-hidden max-h-[92vh] flex flex-col shadow-2xl text-slate-800"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* ========== DARK HEADER BAR ========== */}
-                    <div className="bg-[#101828] border-b border-slate-800 px-5 py-4 shrink-0">
+                    <div className="bg-white border-b border-slate-200 px-5 py-4 shrink-0">
                         <div className="flex items-start justify-between">
                             <div>
                                 <motion.h1
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.1 }}
-                                    className="text-base sm:text-lg font-bold text-white flex items-center gap-2"
+                                    className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2"
                                 >
                                     <Shield className="w-5 h-5 text-[#7264FF]" />
                                     의뢰인 종합 채무·자산 분석 리포트
@@ -234,7 +234,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: 0.2 }}
-                                    className="text-xs text-slate-400 mt-1"
+                                    className="text-xs text-slate-500 mt-1"
                                 >
                                     {userInput.name || '의뢰인'}님 진단서 · 기준: 2026.01 전국 회생법원 실무준칙
                                 </motion.p>
@@ -242,21 +242,21 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                             <div className="flex items-center gap-2">
                                 <motion.button
                                     onClick={handleSaveReport}
-                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                    className="p-1.5 text-slate-400 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors"
                                     title="저장"
                                 >
                                     <Download className="w-4 h-4" />
                                 </motion.button>
                                 <motion.button
                                     onClick={handleShareReport}
-                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                    className="p-1.5 text-slate-400 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors"
                                     title="공유"
                                 >
                                     <Share2 className="w-4 h-4" />
                                 </motion.button>
                                 <motion.button
                                     onClick={onClose}
-                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                    className="p-1.5 text-slate-400 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors"
                                     title="닫기"
                                 >
                                     <X className="w-4.5 h-4.5" />
@@ -266,7 +266,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     </div>
 
                     {/* ========== TABS NAVIGATION ========== */}
-                    <div className="flex bg-[#0f172a] border-b border-slate-800 sticky top-0 z-50 shrink-0 overflow-x-auto">
+                    <div className="flex bg-white border-b border-slate-200 sticky top-0 z-50 shrink-0 overflow-x-auto">
                         {(['overview', 'assets', 'debts', 'statistics', 'simulation', 'checklist'] as const).map((tab) => (
                             <button
                                 key={tab}
@@ -274,7 +274,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 className={`flex-1 min-w-[70px] py-3 text-[10px] sm:text-xs font-semibold border-b-2 transition-all text-center whitespace-nowrap ${
                                     activeReportTab === tab
                                         ? 'border-[#7264FF] text-[#7264FF] bg-[#7264FF]/5 font-bold'
-                                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                                        : 'border-transparent text-slate-400 hover:text-slate-600'
                                 }`}
                             >
                                 {tab === 'overview' && '종합 분석'}
@@ -288,7 +288,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     </div>
 
                     {/* ========== SCROLLABLE CONTENT AREA ========== */}
-                    <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#0b0f19]">
+                    <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-slate-50">
                         <AnimatePresence mode="wait">
                             
                             {/* TAB 1: 종합 분석 (Overview) */}
@@ -311,8 +311,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     </div>
 
                                     {/* 예상 탕감률 & 주요 요약 지표 */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                                        <div className="flex items-center justify-center py-2 border-b md:border-b-0 md:border-r border-slate-800 pr-0 md:pr-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white border border-slate-200 shadow-sm p-4 rounded-xl">
+                                        <div className="flex items-center justify-center py-2 border-b md:border-b-0 md:border-r border-slate-200 pr-0 md:pr-4">
                                             <DonutChart
                                                 percentage={result.debtReductionRate}
                                                 size={110}
@@ -326,13 +326,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         <div className="flex flex-col justify-center space-y-2.5 pl-0 md:pl-2">
                                             <div className="flex justify-between items-center text-xs">
                                                 <span className="text-slate-400">총 채무액</span>
-                                                <span className="font-semibold text-white">{formatCurrency(userInput.totalDebt)}</span>
+                                                <span className="font-semibold text-slate-800">{formatCurrency(userInput.totalDebt)}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
                                                 <span className="text-slate-400">예상 실상환액</span>
                                                 <span className="font-semibold text-[#10B981]">{formatCurrency(result.totalRepayment)}</span>
                                             </div>
-                                            <div className="flex justify-between items-center text-xs border-t border-slate-800/60 pt-2.5">
+                                            <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2.5">
                                                 <span className="text-slate-400">예상 월 변제금</span>
                                                 <span className="font-bold text-[#7264FF] text-sm">
                                                     <CountUp end={result.monthlyPayment} delay={0.2} formatter={currencyFormatter} suffix="원" />
@@ -340,7 +340,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
                                                 <span className="text-slate-400">변제 기간</span>
-                                                <span className="font-semibold text-white">{result.repaymentMonths}개월</span>
+                                                <span className="font-semibold text-slate-800">{result.repaymentMonths}개월</span>
                                             </div>
                                         </div>
                                     </div>
@@ -353,9 +353,9 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         </h3>
 
                                         {/* 개인회생 적합도 카드 */}
-                                        <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl space-y-2">
+                                        <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl space-y-2">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                                <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                                                     <FileText className="w-4 h-4 text-[#7264FF]" />
                                                     법원 개인회생 (채무자 회생법)
                                                 </span>
@@ -373,22 +373,22 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 colorTo="#10B981"
                                                 height={6}
                                             />
-                                            <p className="text-[11px] text-slate-350 leading-relaxed pt-1">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed pt-1">
                                                 {suitabilities.rehab.reason}
                                             </p>
                                         </div>
 
                                         {/* 개인파산 적합도 카드 */}
-                                        <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl space-y-2">
+                                        <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl space-y-2">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                                <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                                                     <Shield className="w-4 h-4 text-emerald-400" />
                                                     개인파산 면책 (전액 탕감)
                                                 </span>
                                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                                                     suitabilities.bankruptcy.color === 'green' ? 'bg-emerald-500/10 text-emerald-400' :
                                                     suitabilities.bankruptcy.color === 'cyan' ? 'bg-sky-500/10 text-sky-400' :
-                                                    'bg-slate-800 text-slate-400'
+                                                    'bg-slate-100 text-slate-500'
                                                 }`}>
                                                     {suitabilities.bankruptcy.status}
                                                 </span>
@@ -399,15 +399,15 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 colorTo="#64748B"
                                                 height={6}
                                             />
-                                            <p className="text-[11px] text-slate-350 leading-relaxed pt-1">
+                                            <p className="text-[11px] text-slate-500 leading-relaxed pt-1">
                                                 {suitabilities.bankruptcy.reason}
                                             </p>
                                         </div>
 
                                         {/* 신용회복 적합도 카드 */}
-                                        <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl space-y-2">
+                                        <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl space-y-2">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                                <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                                                     <Users className="w-4 h-4 text-sky-400" />
                                                     신용회복위원회 워크아웃
                                                 </span>
@@ -432,7 +432,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     </div>
 
                                     {/* V2.1: 회생 전/후 비교 */}
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                    <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-3">
                                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                                             <BarChart3 className="w-3.5 h-3.5 text-[#7264FF]" />
                                             회생 전/후 비교
@@ -498,19 +498,19 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     className="space-y-4"
                                 >
                                     {/* 가구 구성 */}
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                    <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-3">
                                         <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                                             <Users className="w-4 h-4 text-[#7264FF]" />
                                             가계 및 부양가족
                                         </h4>
                                         <div className="grid grid-cols-2 gap-4 text-xs">
-                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                            <div className="bg-white p-3 rounded-lg border border-slate-200">
                                                 <span className="text-slate-400 block mb-1">인정 부양 가구원수</span>
-                                                <span className="text-base font-bold text-white">{userInput.familySize}인</span>
+                                                <span className="text-base font-bold text-slate-800">{userInput.familySize}인</span>
                                             </div>
-                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                            <div className="bg-white p-3 rounded-lg border border-slate-200">
                                                 <span className="text-slate-400 block mb-1">혼인 여부</span>
-                                                <span className="text-base font-bold text-white">
+                                                <span className="text-base font-bold text-slate-800">
                                                     {userInput.maritalStatus === 'married' ? '기혼' :
                                                      userInput.maritalStatus === 'divorced' ? '이혼' : '미혼'}
                                                 </span>
@@ -524,25 +524,25 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     </div>
 
                                     {/* 자산 목록 및 법원 청산가치 평가 */}
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                    <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-3">
                                         <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                                             <Home className="w-4 h-4 text-[#10B981]" />
                                             보유 자산 및 법상 청산가치 명세
                                         </h4>
                                         
-                                        <div className="border border-slate-800 rounded-lg overflow-hidden text-xs">
-                                            <div className="grid grid-cols-3 bg-[#0f172a] p-2.5 font-semibold text-slate-450 border-b border-slate-800">
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
+                                            <div className="grid grid-cols-3 bg-white p-2.5 font-semibold text-slate-450 border-b border-slate-200">
                                                 <span>자산 구분</span>
                                                 <span className="text-right">실제 신고 자산액</span>
                                                 <span className="text-right text-[#7264FF]">법원 청산가치 반영액</span>
                                             </div>
-                                            <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center">
+                                            <div className="grid grid-cols-3 p-2.5 border-b border-slate-200/60 items-center">
                                                 <span>본인 자산 (차량, 예금 등)</span>
-                                                <span className="text-right text-slate-300">{formatCurrency(userInput.myAssets)}</span>
-                                                <span className="text-right font-medium text-white">{formatCurrency(userInput.myAssets)}</span>
+                                                <span className="text-right text-slate-500">{formatCurrency(userInput.myAssets)}</span>
+                                                <span className="text-right font-medium text-slate-800">{formatCurrency(userInput.myAssets)}</span>
                                             </div>
                                             {userInput.spouseAssets !== undefined && userInput.spouseAssets > 0 && (
-                                                <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center">
+                                                <div className="grid grid-cols-3 p-2.5 border-b border-slate-200/60 items-center">
                                                     <span>배우자 자산 (50% 반영)</span>
                                                     <span className="text-right text-slate-400">{formatCurrency(userInput.spouseAssets)}</span>
                                                     <span className="text-right font-medium text-[#F59E0B]">{formatCurrency(userInput.spouseAssets * 0.5)}</span>
@@ -550,20 +550,20 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             )}
                                             {userInput.deposit !== undefined && userInput.deposit > 0 && (
                                                 <>
-                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center">
+                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-200/60 items-center">
                                                         <span>임차 보증금 ({userInput.housingType === 'jeonse' ? '전세' : '월세'})</span>
-                                                        <span className="text-right text-slate-300">{formatCurrency(userInput.deposit)}</span>
-                                                        <span className="text-right font-medium text-white">{formatCurrency(userInput.deposit)}</span>
+                                                        <span className="text-right text-slate-500">{formatCurrency(userInput.deposit)}</span>
+                                                        <span className="text-right font-medium text-slate-800">{formatCurrency(userInput.deposit)}</span>
                                                     </div>
-                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-800/60 items-center text-emerald-400 bg-emerald-500/5">
+                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-200/60 items-center text-emerald-400 bg-emerald-500/5">
                                                         <span className="font-medium">법원 소액임차 면제재산</span>
                                                         <span className="text-right">최대 공제</span>
                                                         <span className="text-right font-semibold">-{formatCurrency(result.exemptDeposit)}</span>
                                                     </div>
                                                 </>
                                             )}
-                                            <div className="grid grid-cols-3 bg-[#0f172a] p-3 font-bold text-sm items-center border-t border-slate-850">
-                                                <span className="text-white">최종 청산가치 합계</span>
+                                            <div className="grid grid-cols-3 bg-white p-3 font-bold text-sm items-center border-t border-slate-200">
+                                                <span className="text-slate-800">최종 청산가치 합계</span>
                                                 <span></span>
                                                 <span className="text-right text-[#7264FF]">{formatCurrency(result.liquidationValue)}</span>
                                             </div>
@@ -586,29 +586,29 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     className="space-y-4"
                                 >
                                     {/* 소득 상세 명세 */}
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                    <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-3">
                                         <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                                             <DollarSign className="w-4 h-4 text-[#7264FF]" />
                                             소득 및 법정 생계비 분석
                                         </h4>
                                         <div className="grid grid-cols-2 gap-4 text-xs">
-                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                            <div className="bg-white p-3 rounded-lg border border-slate-200">
                                                 <span className="text-slate-400 block mb-1">직업 형태</span>
-                                                <span className="text-base font-bold text-white">
+                                                <span className="text-base font-bold text-slate-800">
                                                     {userInput.employmentType === 'salary' ? '급여 소득자' :
                                                      userInput.employmentType === 'business' ? '영업 소득자' :
                                                      userInput.employmentType === 'freelancer' ? '프리랜서' : '무직'}
                                                 </span>
                                             </div>
-                                            <div className="bg-[#0f172a] p-3 rounded-lg border border-slate-800/80">
+                                            <div className="bg-white p-3 rounded-lg border border-slate-200">
                                                 <span className="text-slate-400 block mb-1">월 평균 실수령액</span>
                                                 <span className="text-base font-bold text-[#7264FF]">{formatCurrency(userInput.monthlyIncome)}</span>
                                             </div>
                                         </div>
-                                        <dl className="space-y-2 text-xs border-t border-slate-800/50 pt-2.5">
+                                        <dl className="space-y-2 text-xs border-t border-slate-200/50 pt-2.5">
                                             <div className="flex justify-between items-center py-1">
                                                 <dt className="text-slate-400">• 법원 기본 인정 생계비</dt>
-                                                <dd className="text-slate-200">{formatCurrency(result.baseLivingCost)}</dd>
+                                                <dd className="text-slate-600">{formatCurrency(result.baseLivingCost)}</dd>
                                             </div>
                                             {result.additionalLivingCost > 0 && (
                                                 <div className="flex justify-between items-center py-1">
@@ -616,11 +616,11 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                     <dd className="text-[#10B981] font-semibold">+{formatCurrency(result.additionalLivingCost)}</dd>
                                                 </div>
                                             )}
-                                            <div className="flex justify-between items-center py-2 border-t border-slate-850 font-bold text-sm">
-                                                <dt className="text-white">최종 인정 생계비</dt>
+                                            <div className="flex justify-between items-center py-2 border-t border-slate-200 font-bold text-sm">
+                                                <dt className="text-slate-800">최종 인정 생계비</dt>
                                                 <dd className="text-emerald-400">{formatCurrency(result.recognizedLivingCost)}</dd>
                                             </div>
-                                            <div className="flex justify-between items-center py-2 font-bold text-sm text-white bg-slate-950/40 px-2 rounded">
+                                            <div className="flex justify-between items-center py-2 font-bold text-sm text-slate-800 bg-[#7264FF]/5 px-2 rounded">
                                                 <dt>가용 소득 (월 납입금 기준액)</dt>
                                                 <dd className="text-[#7264FF]">{formatCurrency(result.availableIncome)}</dd>
                                             </div>
@@ -628,37 +628,37 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     </div>
 
                                     {/* 채무 명세 및 위험 채무 검토 */}
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                    <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-3">
                                         <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                                             <CreditCard className="w-4 h-4 text-[#EF4444]" />
                                             채무 세부 구성 분석
                                         </h4>
-                                        <div className="border border-slate-800 rounded-lg overflow-hidden text-xs">
-                                            <div className="grid grid-cols-2 bg-[#0f172a] p-2.5 font-semibold text-slate-450 border-b border-slate-800">
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
+                                            <div className="grid grid-cols-2 bg-white p-2.5 font-semibold text-slate-450 border-b border-slate-200">
                                                 <span>채무 분류</span>
                                                 <span className="text-right">채무 금액</span>
                                             </div>
-                                            <div className="grid grid-cols-2 p-2.5 border-b border-slate-800/60">
+                                            <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60">
                                                 <span>신용대출 및 일반 금융권 채무</span>
-                                                <span className="text-right text-slate-200">
+                                                <span className="text-right text-slate-600">
                                                     {formatCurrency(Math.max(0, (userInput.totalDebt || 0) - (userInput.creditCardDebt || 0) - (userInput.priorityDebt || 0)))}
                                                 </span>
                                             </div>
                                             {userInput.creditCardDebt !== undefined && userInput.creditCardDebt > 0 && (
-                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-800/60">
+                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60">
                                                     <span>신용카드 결제대금 및 카드론</span>
-                                                    <span className="text-right text-slate-200">{formatCurrency(userInput.creditCardDebt)}</span>
+                                                    <span className="text-right text-slate-600">{formatCurrency(userInput.creditCardDebt)}</span>
                                                 </div>
                                             )}
                                             {userInput.priorityDebt !== undefined && userInput.priorityDebt > 0 && (
-                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-800/60 bg-red-950/10 text-red-300">
+                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60 bg-red-950/10 text-red-300">
                                                     <span className="font-semibold">우선 변제 채권 (체납 국세/지방세/4대보험)</span>
                                                     <span className="text-right font-bold">{formatCurrency(userInput.priorityDebt)}</span>
                                                 </div>
                                             )}
-                                            <div className="grid grid-cols-2 bg-[#0f172a] p-3 font-bold text-sm border-t border-slate-850">
-                                                <span className="text-white">총 채무 합계</span>
-                                                <span className="text-right text-white">{formatCurrency(userInput.totalDebt)}</span>
+                                            <div className="grid grid-cols-2 bg-white p-3 font-bold text-sm border-t border-slate-200">
+                                                <span className="text-slate-800">총 채무 합계</span>
+                                                <span className="text-right text-slate-800">{formatCurrency(userInput.totalDebt)}</span>
                                             </div>
                                         </div>
 
@@ -694,13 +694,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     className="space-y-4"
                                 >
                                     {/* 독촉 정지/금지명령 예측 */}
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
+                                    <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-2">
                                         <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                                             <Shield className="w-4 h-4 text-[#7264FF]" />
                                             금지명령/중지명령 인용 가능성
                                         </h4>
                                         <div className="flex justify-between items-center py-2.5">
-                                            <span className="text-sm font-semibold text-white">독촉 차단 금지명령 예상 인용도</span>
+                                            <span className="text-sm font-semibold text-slate-800">독촉 차단 금지명령 예상 인용도</span>
                                             <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${
                                                 userInput.riskFactor === 'recent_loan' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
                                             }`}>
@@ -718,7 +718,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             <FileText className="w-4 h-4 text-[#10B981]" />
                                             변호사용 실무 쟁점 체크리스트
                                         </h4>
-                                        <ul className="space-y-2.5 text-xs text-slate-300">
+                                        <ul className="space-y-2.5 text-xs text-slate-500">
                                             <li className="flex gap-2 items-start">
                                                 <Check className="w-4 h-4 text-[#7264FF] mt-0.5 shrink-0" />
                                                 <span>청산가치 보장 원칙 충족 여부 확인 필요: 가용소득 기반 변제액이 청산가치 {formatCurrency(result.liquidationValue)}보다 많은지 계산 검토</span>
@@ -838,7 +838,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                     AI 통계 인사이트
                                                 </h4>
                                                 {insights.map((insight, idx) => (
-                                                    <p key={idx} className="text-[11px] text-slate-300 flex items-start gap-1.5">
+                                                    <p key={idx} className="text-[11px] text-slate-500 flex items-start gap-1.5">
                                                         <Check className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
                                                         {insight}
                                                     </p>
@@ -865,7 +865,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                             factor.level === 'high' ? 'bg-red-400' :
                                                             factor.level === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'
                                                         }`} />
-                                                        <span className="text-xs font-bold text-white">{factor.title}</span>
+                                                        <span className="text-xs font-bold text-slate-800">{factor.title}</span>
                                                     </div>
                                                     <p className="text-[11px] text-slate-400 ml-4">{factor.description}</p>
                                                     <p className="text-[11px] text-emerald-400 ml-4 mt-1">💡 {factor.solution}</p>
@@ -903,14 +903,14 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         item.highlight ? 'bg-red-500/5' : ''
                                                     }`}>
                                                         <span className={`${
-                                                            item.type === 'total' ? 'font-bold text-white' :
-                                                            item.type === 'income' ? 'text-slate-300' : 'text-slate-400'
+                                                            item.type === 'total' ? 'font-bold text-slate-800' :
+                                                            item.type === 'income' ? 'text-slate-500' : 'text-slate-400'
                                                         }`}>{item.label}</span>
                                                         <span className={`font-semibold ${
-                                                            item.type === 'income' ? 'text-white' :
+                                                            item.type === 'income' ? 'text-slate-800' :
                                                             item.type === 'total' && item.amount < 0 ? 'text-red-400 font-bold' :
                                                             item.type === 'total' ? 'text-emerald-400' :
-                                                            item.highlight ? 'text-red-400' : 'text-slate-300'
+                                                            item.highlight ? 'text-red-400' : 'text-slate-500'
                                                         }`}>
                                                             {formatCurrency(Math.abs(item.amount))}
                                                             {item.type === 'total' && item.amount < 0 && ' ❌ 부족'}
@@ -946,13 +946,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         item.highlight ? 'bg-[#7264FF]/5' : ''
                                                     }`}>
                                                         <span className={`${
-                                                            item.type === 'total' ? 'font-bold text-white' :
-                                                            item.type === 'income' ? 'text-slate-300' : 'text-slate-400'
+                                                            item.type === 'total' ? 'font-bold text-slate-800' :
+                                                            item.type === 'income' ? 'text-slate-500' : 'text-slate-400'
                                                         }`}>{item.label}</span>
                                                         <span className={`font-semibold ${
-                                                            item.type === 'income' ? 'text-white' :
+                                                            item.type === 'income' ? 'text-slate-800' :
                                                             item.type === 'total' ? 'text-emerald-400 font-bold' :
-                                                            item.highlight ? 'text-[#7264FF]' : 'text-slate-300'
+                                                            item.highlight ? 'text-[#7264FF]' : 'text-slate-500'
                                                         }`}>
                                                             {formatCurrency(Math.abs(item.amount))}
                                                             {item.type === 'total' && ' ✅ 관리 가능'}
@@ -974,7 +974,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 {result.debtComposition.map((comp, idx) => (
                                                     <div key={idx}>
                                                         <div className="flex justify-between text-[11px] mb-1">
-                                                            <span className="text-slate-300 flex items-center gap-1">
+                                                            <span className="text-slate-500 flex items-center gap-1">
                                                                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: comp.color }} />
                                                                 {comp.label}
                                                             </span>
@@ -1008,9 +1008,9 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <div key={idx} className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg space-y-1.5">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-base">{guide.icon}</span>
-                                                        <span className="text-xs font-bold text-white">{guide.title}</span>
+                                                        <span className="text-xs font-bold text-slate-800">{guide.title}</span>
                                                     </div>
-                                                    <p className="text-[11px] text-slate-300 ml-7">{guide.response}</p>
+                                                    <p className="text-[11px] text-slate-500 ml-7">{guide.response}</p>
                                                     <p className="text-[10px] text-amber-400 ml-7">⏱ {guide.timeline}</p>
                                                 </div>
                                             ))}
@@ -1037,7 +1037,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     </h4>
                                     <div className="space-y-1.5">
                                         {result.aiAdvice.slice(0, 3).map((advice, idx) => (
-                                            <p key={idx} className="text-xs text-slate-300 flex items-start gap-1.5">
+                                            <p key={idx} className="text-xs text-slate-500 flex items-start gap-1.5">
                                                 <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
                                                 {advice}
                                             </p>
@@ -1058,7 +1058,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     </div>
 
                     {/* ========== CTA FOOTER ========== */}
-                    <div className="sticky bottom-0 p-4 bg-[#0f172a] border-t border-slate-850 shrink-0 z-50">
+                    <div className="sticky bottom-0 p-4 bg-white border-t border-slate-200 shrink-0 z-50">
                         <motion.button
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
@@ -1074,14 +1074,14 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                         <div className="flex gap-2 mt-3 text-xs font-semibold">
                             <button
                                 onClick={handleSaveReport}
-                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-750"
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
                             >
                                 <Download className="w-3.5 h-3.5" />
                                 보고서 이미지 저장
                             </button>
                             <button
                                 onClick={handleShareReport}
-                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-750"
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
                             >
                                 <Share2 className="w-3.5 h-3.5" />
                                 카카오톡/보내기 공유
