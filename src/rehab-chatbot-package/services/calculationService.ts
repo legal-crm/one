@@ -81,6 +81,11 @@ export interface RehabUserInput {
     recognizedChildDependents?: number;  // 인정된 자녀 부양가족 수
     elderlyParentDependents?: number;    // 인정된 고령 부모 부양가족 수
     dependentReason?: string;            // 부양가족 산정 근거
+
+    // ── 업그레이드 필드 (V2.1) ──
+    debtTypes?: string[];              // 채무 유형별 분류 (bank, capital, savings_bank, private 등)
+    legalActions?: string[];           // 현재 법적 조치 상황 (collection_call, court_order, seizure 등)
+    monthlyFixedExpenses?: number;     // 월 고정 지출 합계 (통신비, 보험료, 교통비 등)
 }
 
 /**
@@ -147,6 +152,46 @@ export interface RehabCalculationResult {
         recognized: number;        // 추가 인정액
         explanation: string;       // 계산 설명
     };
+
+    // ── 업그레이드 필드 (V2.1) ──
+    debtComposition?: DebtComposition[];    // 채무 구성 분석
+    riskFactors?: RiskFactor[];             // 위험 요인 분석
+    legalActionGuide?: LegalActionGuide[];  // 법적 조치 대응 가이드
+    monthlyBudgetBefore?: BudgetItem[];     // 회생 전 월 가계
+    monthlyBudgetAfter?: BudgetItem[];      // 회생 후 월 가계
+}
+
+// ── 업그레이드 인터페이스 (V2.1) ──
+
+export interface DebtComposition {
+    type: string;
+    label: string;
+    percentage: number;
+    amount: number;
+    color: string;
+    riskLevel: 'high' | 'medium' | 'low';
+}
+
+export interface RiskFactor {
+    level: 'high' | 'medium' | 'low';
+    title: string;
+    description: string;
+    solution: string;
+}
+
+export interface LegalActionGuide {
+    action: string;
+    icon: string;
+    title: string;
+    response: string;
+    timeline: string;
+}
+
+export interface BudgetItem {
+    label: string;
+    amount: number;
+    type: 'income' | 'expense' | 'total';
+    highlight?: boolean;
 }
 
 /**
@@ -635,6 +680,14 @@ export function calculateRepayment(
         riskWarnings.push('최근 1년 이내 대출이 많으면 추가 소명이 필요할 수 있습니다.');
     }
 
+    // ── V2.1 업그레이드 데이터 생성 ──
+    const totalAdditionalLivingCost = additionalHousingCost + additionalMedicalCost + additionalEducationCost;
+    const debtComposition = buildDebtComposition(input);
+    const riskFactors = buildRiskFactors(input);
+    const legalActionGuide = buildLegalActionGuide(input);
+    const monthlyBudgetBefore = buildMonthlyBudgetBefore(input);
+    const monthlyBudgetAfter = buildMonthlyBudgetAfter(input, recognizedLivingCost, monthlyPayment, totalAdditionalLivingCost, baseLivingCostRaw);
+
     return {
         status,
         statusReason,
@@ -644,7 +697,7 @@ export function calculateRepayment(
         totalDebtReduction,
         debtReductionRate,
         baseLivingCost: baseLivingCostRaw,
-        additionalLivingCost: additionalHousingCost + additionalMedicalCost + additionalEducationCost,
+        additionalLivingCost: totalAdditionalLivingCost,
         recognizedLivingCost,
         availableIncome,
         liquidationValue,
@@ -658,6 +711,11 @@ export function calculateRepayment(
         housingCostBreakdown,
         educationCostBreakdown,
         medicalCostBreakdown,
+        debtComposition,
+        riskFactors,
+        legalActionGuide,
+        monthlyBudgetBefore,
+        monthlyBudgetAfter,
     };
 }
 
@@ -695,4 +753,280 @@ export function formatTenThousandWon(amount: number): string {
     if (eok > 0) result += `${eok}억 `;
     if (man > 0) result += `${man.toLocaleString()}만 `;
     return result.trim() + '원';
+}
+
+// ══════════════════════════════════════════════════════════════
+// V2.1 업그레이드 — 보고서 데이터 빌더 함수
+// ══════════════════════════════════════════════════════════════
+
+const DEBT_TYPE_CONFIG: Record<string, { label: string; color: string; riskLevel: 'high' | 'medium' | 'low' }> = {
+    bank: { label: '은행 대출', color: '#3B82F6', riskLevel: 'low' },
+    capital: { label: '카드사/캐피탈', color: '#8B5CF6', riskLevel: 'medium' },
+    savings_bank: { label: '저축은행/대부업', color: '#F59E0B', riskLevel: 'medium' },
+    private: { label: '사금융/지인', color: '#EF4444', riskLevel: 'high' },
+    app_loan: { label: '앱/온라인 대출', color: '#F97316', riskLevel: 'medium' },
+    guarantee: { label: '보증채무', color: '#EC4899', riskLevel: 'high' },
+    credit_card: { label: '신용카드', color: '#6366F1', riskLevel: 'low' },
+    tax: { label: '세금 체납', color: '#DC2626', riskLevel: 'high' },
+    general: { label: '일반 채무', color: '#64748B', riskLevel: 'low' },
+};
+
+function buildDebtComposition(input: RehabUserInput): DebtComposition[] {
+    const totalDebt = input.totalDebt || 0;
+    if (totalDebt <= 0) return [];
+
+    const composition: DebtComposition[] = [];
+    let remaining = totalDebt;
+
+    // 우선변제채권 (세금)
+    if (input.priorityDebt && input.priorityDebt > 0) {
+        composition.push({
+            type: 'tax',
+            ...DEBT_TYPE_CONFIG.tax,
+            amount: input.priorityDebt,
+            percentage: Math.round((input.priorityDebt / totalDebt) * 100),
+        });
+        remaining -= input.priorityDebt;
+    }
+
+    // 신용카드
+    if (input.creditCardDebt && input.creditCardDebt > 0) {
+        composition.push({
+            type: 'credit_card',
+            ...DEBT_TYPE_CONFIG.credit_card,
+            amount: input.creditCardDebt,
+            percentage: Math.round((input.creditCardDebt / totalDebt) * 100),
+        });
+        remaining -= input.creditCardDebt;
+    }
+
+    // 채무 유형별 분류 (debtTypes가 있을 경우)
+    if (input.debtTypes && input.debtTypes.length > 0 && remaining > 0) {
+        const typeCount = input.debtTypes.length;
+        const perType = Math.floor(remaining / typeCount);
+        input.debtTypes.forEach((type, idx) => {
+            const config = DEBT_TYPE_CONFIG[type] || DEBT_TYPE_CONFIG.general;
+            const amount = idx === typeCount - 1 ? remaining - perType * (typeCount - 1) : perType;
+            composition.push({
+                type,
+                ...config,
+                amount,
+                percentage: Math.round((amount / totalDebt) * 100),
+            });
+        });
+    } else if (remaining > 0) {
+        composition.push({
+            type: 'general',
+            ...DEBT_TYPE_CONFIG.general,
+            amount: remaining,
+            percentage: Math.round((remaining / totalDebt) * 100),
+        });
+    }
+
+    return composition;
+}
+
+function buildRiskFactors(input: RehabUserInput): RiskFactor[] {
+    const factors: RiskFactor[] = [];
+
+    // 법적 조치 기반
+    if (input.legalActions?.includes('seizure')) {
+        factors.push({
+            level: 'high',
+            title: '급여/계좌 압류 진행 중',
+            description: '현재 압류가 진행되고 있어 즉시 조치가 필요합니다.',
+            solution: '개인회생 신청 시 포괄적 금지명령으로 즉시 압류 해제 가능 (평균 3~7일)',
+        });
+    }
+    if (input.legalActions?.includes('court_order')) {
+        factors.push({
+            level: 'high',
+            title: '지급명령/소장 수령',
+            description: '법적 소송이 진행 중입니다. 방치 시 강제집행으로 이어질 수 있습니다.',
+            solution: '개인회생 개시결정 시 기존 소송 자동 중지 (별도 이의신청 불요)',
+        });
+    }
+    if (input.legalActions?.includes('property_seizure')) {
+        factors.push({
+            level: 'high',
+            title: '부동산 가압류',
+            description: '부동산에 가압류가 설정되어 있어 재산 처분이 제한됩니다.',
+            solution: '개인회생 인가결정 시 가압류 효력 소멸',
+        });
+    }
+    if (input.legalActions?.includes('collection_call')) {
+        factors.push({
+            level: 'medium',
+            title: '독촉 전화/문자 수신 중',
+            description: '채권 추심이 활발히 진행되고 있습니다.',
+            solution: '대리인 선임 즉시 "채무자 대리 수임 통지" 발송으로 직접 연락 차단',
+        });
+    }
+    if (input.legalActions?.includes('credit_drop')) {
+        factors.push({
+            level: 'medium',
+            title: '신용등급 하락 통보',
+            description: '신용등급이 하락하여 추가 대출이 어려운 상태입니다.',
+            solution: '개인회생 면책 후 신용 회복 절차를 통해 등급 복원 가능',
+        });
+    }
+
+    // 채무 유형 기반
+    if (input.riskFactor === 'recent_loan') {
+        factors.push({
+            level: 'medium',
+            title: '최근 신규 대출 다수',
+            description: '최근 1년 내 대출이 많으면 법원에서 면책불허가를 검토할 수 있습니다.',
+            solution: '대출 경위서 작성 및 불가피한 사정 소명 자료 준비 필요',
+        });
+    }
+    if (input.riskFactor === 'gambling') {
+        factors.push({
+            level: 'high',
+            title: '사행성 채무 포함',
+            description: '도박으로 인한 채무는 면책불허가 사유에 해당할 수 있습니다.',
+            solution: '치료·반성 증거 준비, 전문 변호사 사전 법리 검토 필수',
+        });
+    }
+    if (input.riskFactor === 'investment') {
+        factors.push({
+            level: 'medium',
+            title: '주식/코인 투자 손실',
+            description: '투기성 손실은 일부 법원에서 불이익으로 작용할 수 있습니다.',
+            solution: '관할 법원 준칙 확인 후 투자 경위 소명 자료 준비',
+        });
+    }
+
+    // 사금융 채무
+    if (input.debtTypes?.includes('private')) {
+        factors.push({
+            level: 'high',
+            title: '사금융 채무 포함',
+            description: '불법 추심 및 과도한 이자 위험이 있습니다.',
+            solution: '대리인 선임 후 불법 추심 즉시 차단, 채무 원금 확인 절차 진행',
+        });
+    }
+    if (input.debtTypes?.includes('guarantee')) {
+        factors.push({
+            level: 'medium',
+            title: '보증채무 포함',
+            description: '구상권 행사 가능성이 있어 채무액이 변동될 수 있습니다.',
+            solution: '보증 계약서 확인 및 구상권 범위 사전 검토 필요',
+        });
+    }
+
+    // 소득 안정성
+    if (input.employmentType === 'none') {
+        factors.push({
+            level: 'medium',
+            title: '현재 무직 상태',
+            description: '안정적 소득 증빙이 없어 변제계획 인가가 어려울 수 있습니다.',
+            solution: '아르바이트·일용직 등 최소한의 소득 활동 증빙 확보 권장',
+        });
+    } else {
+        factors.push({
+            level: 'low',
+            title: '소득 안정적',
+            description: '정기적인 소득이 있어 변제계획 인가 가능성이 높습니다.',
+            solution: '현재 소득 수준 유지 시 변제 이행에 무리 없음',
+        });
+    }
+
+    // 레벨별 정렬: high → medium → low
+    const levelOrder = { high: 0, medium: 1, low: 2 };
+    factors.sort((a, b) => levelOrder[a.level] - levelOrder[b.level]);
+
+    return factors;
+}
+
+const LEGAL_ACTION_GUIDES: Record<string, LegalActionGuide> = {
+    collection_call: {
+        action: 'collection_call',
+        icon: '📞',
+        title: '독촉 전화/문자 수신 중',
+        response: '대리인 선임 즉시 "채무자 대리 수임 통지" 발송으로 직접 연락 차단 가능합니다. 이후 모든 연락은 대리인을 통해서만 가능합니다.',
+        timeline: '수임 통지 발송 후 즉시 효력',
+    },
+    court_order: {
+        action: 'court_order',
+        icon: '📄',
+        title: '지급명령/소장 수령',
+        response: '개인회생 개시결정 시 기존 소송이 자동으로 중지됩니다. 별도 이의신청이 불요하며, 변제계획 인가 시 기존 판결의 효력도 소멸합니다.',
+        timeline: '개시결정까지 약 1~2개월',
+    },
+    seizure: {
+        action: 'seizure',
+        icon: '🔒',
+        title: '급여/계좌 압류 진행 중',
+        response: '개인회생 신청과 동시에 "포괄적 금지명령"을 신청하면 압류가 즉시 해제됩니다. 압류된 금액의 회수도 가능합니다.',
+        timeline: '금지명령 인용까지 평균 3~7일',
+    },
+    property_seizure: {
+        action: 'property_seizure',
+        icon: '🏠',
+        title: '부동산 가압류',
+        response: '개인회생 인가결정 시 가압류 효력이 소멸합니다. 단, 담보권은 별도 처리가 필요할 수 있습니다.',
+        timeline: '인가결정까지 약 3~6개월',
+    },
+    credit_drop: {
+        action: 'credit_drop',
+        icon: '⚠️',
+        title: '신용등급 하락 통보',
+        response: '개인회생 면책 결정 후 신용회복위원회를 통해 신용등급 복원 절차를 진행할 수 있습니다.',
+        timeline: '면책 후 즉시 신청 가능, 복원까지 약 1~3개월',
+    },
+};
+
+function buildLegalActionGuide(input: RehabUserInput): LegalActionGuide[] {
+    if (!input.legalActions || input.legalActions.length === 0 || input.legalActions.includes('none')) {
+        return [];
+    }
+    return input.legalActions
+        .filter(action => LEGAL_ACTION_GUIDES[action])
+        .map(action => LEGAL_ACTION_GUIDES[action]);
+}
+
+function buildMonthlyBudgetBefore(input: RehabUserInput): BudgetItem[] {
+    const items: BudgetItem[] = [];
+    items.push({ label: '월 소득', amount: input.monthlyIncome, type: 'income' });
+
+    // 현재 채무 상환 부담 (총채무를 36개월로 나눈 가정치)
+    const currentMonthlyDebtBurden = Math.round(input.totalDebt / 36);
+    items.push({ label: '현재 빚 상환 부담 (36개월 기준)', amount: -currentMonthlyDebtBurden, type: 'expense', highlight: true });
+
+    if (input.rentCost && input.rentCost > 0) {
+        items.push({ label: '월세', amount: -input.rentCost, type: 'expense' });
+    }
+    if (input.monthlyFixedExpenses && input.monthlyFixedExpenses > 0) {
+        items.push({ label: '고정 지출 (통신/보험/교통 등)', amount: -input.monthlyFixedExpenses, type: 'expense' });
+    }
+
+    const totalExpense = items.filter(i => i.type === 'expense').reduce((sum, i) => sum + i.amount, 0);
+    const remaining = input.monthlyIncome + totalExpense;
+    items.push({ label: '잔여 생활비', amount: remaining, type: 'total', highlight: remaining < 0 });
+
+    return items;
+}
+
+function buildMonthlyBudgetAfter(
+    input: RehabUserInput,
+    recognizedLivingCost: number,
+    monthlyPayment: number,
+    additionalLivingCost: number,
+    baseLivingCost: number
+): BudgetItem[] {
+    const items: BudgetItem[] = [];
+    items.push({ label: '월 소득', amount: input.monthlyIncome, type: 'income' });
+    items.push({ label: '(-) 법정 기본 생계비', amount: -baseLivingCost, type: 'expense' });
+
+    if (additionalLivingCost > 0) {
+        items.push({ label: '(-) 추가 생계비 (주거/의료/교육)', amount: -additionalLivingCost, type: 'expense' });
+    }
+
+    items.push({ label: '(-) 월 변제금', amount: -monthlyPayment, type: 'expense', highlight: true });
+
+    const remaining = input.monthlyIncome - recognizedLivingCost - monthlyPayment;
+    items.push({ label: '잔여', amount: Math.max(0, remaining), type: 'total' });
+
+    return items;
 }

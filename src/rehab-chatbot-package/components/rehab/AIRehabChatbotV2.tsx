@@ -96,6 +96,9 @@ type ChatStep =
     | 'special_24_months'    // 24개월 특례 적용 여부 (기초수급자, 장애 등)
     | 'elderly_parent_check'  // 고령 부모님 부양가족 확인
     | 'elderly_parent_count'  // 고령 부모님 인원수
+    | 'debt_types'            // V2.1: 채무 유형 분류
+    | 'legal_actions'         // V2.1: 법적 조치 경험
+    | 'monthly_expenses'      // V2.1: 월 고정 지출
     | 'result';
 
 // 재산 항목 타입
@@ -949,29 +952,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     setUserInput(prev => ({ ...prev, educationCost: 0 }));
-                    setCurrentStep('assets_select');
+                    // V2.1: 월 고정 지출로 이동
+                    setCurrentStep('monthly_expenses');
                     addBotMessage(
-                        '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
-                        [
-                            { label: '🚗 자동차', value: 'car' },
-                            { label: '🏠 부동산', value: 'realEstate' },
-                            { label: '🏞️ 토지', value: 'land' },
-                            { label: '💰 예금/적금', value: 'savings' },
-                            { label: '🛡️ 보험', value: 'insurance' },
-                            { label: '📈 주식/코인', value: 'stocks' },
-                            { label: '✅ 선택완료', value: 'done' },
-                            { label: '❌ 없어요', value: 'none' }
-                        ],
-                        'buttons',
-                        true,
-                        interactiveBlockPreset !== 'none' ? {
-                            type: 'multi_select',
-                            title: '보유 재산 선택',
-                            description: '해당하는 항목을 모두 선택해주세요.',
-                            options: ASSET_BLOCK_OPTIONS,
-                            buttonLabel: '선택 완료',
-                            required: false
-                        } : undefined
+                        '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
+                        undefined,
+                        'money'
                     );
                 }
                 break;
@@ -991,29 +977,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'special_education':
                 setUserInput(prev => ({ ...prev, hasSpecialEducation: value === 'yes' }));
-                setCurrentStep('assets_select');
+                // V2.1: 월 고정 지출로 이동
+                setCurrentStep('monthly_expenses');
                 addBotMessage(
-                    '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
-                    [
-                        { label: '🚗 자동차', value: 'car' },
-                        { label: '🏠 부동산', value: 'realEstate' },
-                        { label: '🏞️ 토지', value: 'land' },
-                        { label: '💰 예금/적금', value: 'savings' },
-                        { label: '🛡️ 보험', value: 'insurance' },
-                        { label: '📈 주식/코인', value: 'stocks' },
-                        { label: '✅ 선택완료', value: 'done' },
-                        { label: '❌ 없어요', value: 'none' }
-                    ],
-                    'buttons',
-                    true,
-                    interactiveBlockPreset !== 'none' ? {
-                        type: 'multi_select',
-                        title: '보유 재산 선택',
-                        description: '해당하는 항목을 모두 선택해주세요.',
-                        options: ASSET_BLOCK_OPTIONS,
-                        buttonLabel: '선택 완료',
-                        required: false
-                    } : undefined
+                    '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
+                    undefined,
+                    'money'
                 );
                 break;
 
@@ -1108,11 +1077,21 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'credit_card_amount':
                 setUserInput(prev => ({ ...prev, creditCardDebt: (value as number) * 10000 }));
-                setCurrentStep('other_debt');
+                // V2.1: 채무 유형 분류로 이동
+                setCurrentStep('debt_types');
                 addBotMessage(
-                    '신용카드 외에 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
-                    undefined,
-                    'number'
+                    '많이 힘드셨을 거예요. 걸정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n빚의 종류를 좀 더 자세히 알려주시면 더 정확한 분석이 가능해요.',
+                    [
+                        { label: '🏦 은행 대출', value: 'bank' },
+                        { label: '💳 카드사/캐피탈', value: 'capital' },
+                        { label: '🏪 저축은행/대부업', value: 'savings_bank' },
+                        { label: '👤 사금융/지인', value: 'private' },
+                        { label: '📱 앱/온라인 대출', value: 'app_loan' },
+                        { label: '🏢 보증채무', value: 'guarantee' },
+                        { label: '✅ 선택완료', value: 'done' }
+                    ],
+                    'buttons',
+                    true
                 );
                 break;
 
@@ -1318,18 +1297,30 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'risk':
                 setUserInput(prev => ({ ...prev, riskFactor: value as RehabUserInput['riskFactor'] }));
-                setCurrentStep('prior_rehab');
-                addBotMessage(
-                    '기존에 개인회생, 파산, 신용회복, 새출발기금을 진행 중이거나 진행하신 적 있으신가요? (26년형)',
-                    [
-                        { label: '없어요', value: 'none' },
-                        { label: '개인회생', value: 'rehab' },
-                        { label: '파산', value: 'bankruptcy' },
-                        { label: '신용회복', value: 'credit_recovery' },
-                        { label: '새출발기금', value: 'fresh_start' }
-                    ],
-                    'buttons'
-                );
+                // V2.1: 공감 리액션 후 법적 조치 질문으로 이동
+                setTimeout(() => {
+                    addBotMessage(
+                        '솔직하게 말씀해주셔서 감사해요. 정확한 상황 파악이 좋은 결과의 첫걸음이에요 ✨',
+                        undefined,
+                        undefined
+                    );
+                }, 300);
+                setTimeout(() => {
+                    setCurrentStep('legal_actions');
+                    addBotMessage(
+                        '혼시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
+                        [
+                            { label: '📞 독촉 전화/문자', value: 'collection_call' },
+                            { label: '📄 지급명령/소장 수령', value: 'court_order' },
+                            { label: '🔒 급여/계좌 압류', value: 'seizure' },
+                            { label: '🏠 부동산 가압류', value: 'property_seizure' },
+                            { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
+                            { label: '✅ 해당 없음', value: 'none' }
+                        ],
+                        'buttons',
+                        true
+                    );
+                }, 1200);
                 break;
 
             case 'prior_rehab':
@@ -1394,15 +1385,116 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 calculateResult(userInput);
                 break;
 
+            // ── V2.1 신규 단계 ──
+
+            case 'debt_types': {
+                // 채무 유형 저장 후 other_debt로 이동
+                const rawDebtTypes = Array.isArray(value) ? value : [value];
+                const debtTypes = rawDebtTypes.filter(v => v !== 'done' && v !== 'none') as string[];
+                setUserInput(prev => ({ ...prev, debtTypes }));
+                setCurrentStep('other_debt');
+                addBotMessage(
+                    '신용카드 외에 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
+                    undefined,
+                    'money'
+                );
+                break;
+            }
+
+            case 'legal_actions': {
+                // 법적 조치 저장 후 prior_rehab으로 이동
+                const rawLegalActions = Array.isArray(value) ? value : [value];
+                const legalActions = rawLegalActions.filter(v => v !== 'done') as string[];
+                setUserInput(prev => ({ ...prev, legalActions }));
+
+                // 압류 경험자 특별 리액션
+                if (legalActions.includes('seizure')) {
+                    setTimeout(() => {
+                        addBotMessage(
+                            '⚡ 압류를 받고 계시군요. 개인회생 신청 시 **금지명령**으로 즉시 중단시킬 수 있어요!',
+                            undefined,
+                            undefined
+                        );
+                    }, 300);
+                }
+
+                setTimeout(() => {
+                    setCurrentStep('prior_rehab');
+                    addBotMessage(
+                        '기존에 개인회생, 파산, 신용회복, 새출발기금을 진행 중이거나 진행하신 적 있으신가요?',
+                        [
+                            { label: '없어요', value: 'none' },
+                            { label: '개인회생', value: 'rehab' },
+                            { label: '파산', value: 'bankruptcy' },
+                            { label: '신용회복', value: 'credit_recovery' },
+                            { label: '새출발기금', value: 'fresh_start' }
+                        ],
+                        'buttons'
+                    );
+                }, legalActions.includes('seizure') ? 1500 : 300);
+                break;
+            }
+
+            case 'monthly_expenses': {
+                // 월 고정 지출 저장 후 assets_select로 이동
+                const monthlyFixedExpenses = (value as number) * 10000;
+                setUserInput(prev => ({ ...prev, monthlyFixedExpenses }));
+                setCurrentStep('assets_select');
+                addBotMessage(
+                    '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                    [
+                        { label: '🚗 자동차', value: 'car' },
+                        { label: '🏠 부동산', value: 'realEstate' },
+                        { label: '🏞️ 토지', value: 'land' },
+                        { label: '💰 예금/적금', value: 'savings' },
+                        { label: '🛡️ 보험', value: 'insurance' },
+                        { label: '📈 주식/코인', value: 'stocks' },
+                        { label: '✅ 선택완료', value: 'done' },
+                        { label: '❌ 없어요', value: 'none' }
+                    ],
+                    'buttons',
+                    true,
+                    interactiveBlockPreset !== 'none' ? {
+                        type: 'multi_select',
+                        title: '보유 재산 선택',
+                        description: '해당하는 항목을 모두 선택해주세요.',
+                        options: ASSET_BLOCK_OPTIONS,
+                        buttonLabel: '선택 완료',
+                        required: false
+                    } : undefined
+                );
+                break;
+            }
+
 
         }
     }, [userInput, addBotMessage, selectedAssets, currentAssetIndex, assetValues, spouseSelectedAssets, currentSpouseAssetIndex, spouseAssetValues, shouldUseBlock]);
 
-    // 결과 계산
+    // 결과 계산 (V2.1 강화: 5단계 프로그레스 애니메이션)
     const calculateResult = useCallback((input: RehabUserInput) => {
         setIsTyping(true);
 
+        // V2.1: 5단계 분석 애니메이션
+        const phases = [
+            '모든 정보를 입력해주셨어요! 🎉 법원 기준에 맞춰 정밀 분석을 시작할게요.',
+            '✅ 입력 데이터 검증 완료',
+            '🏦 관할 법원 판별 중...',
+            '📊 2026년 생계비 기준 적용 중...',
+            '💰 월 변제금 시뮬레이션 중...',
+        ];
+
+        let phaseIndex = 0;
+        const phaseInterval = setInterval(() => {
+            if (phaseIndex < phases.length) {
+                addBotMessage(phases[phaseIndex], undefined, undefined);
+                phaseIndex++;
+            } else {
+                clearInterval(phaseInterval);
+            }
+        }, 700);
+
         setTimeout(() => {
+            clearInterval(phaseInterval);
             const calculationResult = calculateRepayment(input, policyConfig);
             setResult(calculationResult);
 
@@ -1414,6 +1506,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             if (input.employmentType === 'none') {
                 resultMessage += '\n\n💡 현재 무직이시지만 월 200만원 수입 기준으로 계산한 결과입니다.\n\n어렵게 생각하지 마세요! 아르바이트 하루만 나가시거나 일용직 하루만 출근하셔도 수입이 인정되어 개인회생 진행이 가능합니다.';
+            }
+
+            // V2.1: 압류 경험자 특별 메시지
+            if (input.legalActions?.includes('seizure')) {
+                resultMessage += '\n\n⚡ 압류를 받고 계시군요. 개인회생 신청 시 **금지명령**으로 즉시 중단시킬 수 있어요!';
             }
 
             addBotMessage(
@@ -1428,7 +1525,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             if (onComplete) {
                 onComplete(calculationResult, input);
             }
-        }, 1500);
+        }, 4000);
     }, [addBotMessage, onComplete, policyConfig]);
 
     // 입력 처리
@@ -1531,9 +1628,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'assets_select': 65,
             'asset_detail': 70, 'business_assets_deposit': 72, 'business_assets_facility': 74,
             'credit_card': 75, 'credit_card_amount': 78,
+            'debt_types': 79,
             'other_debt': 82, 'debt_confirm': 85, 'priority_debt': 88,
             'priority_debt_amount': 90, 'prior_rehab': 91, 'prior_rehab_detail': 92,
             'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95,
+            'legal_actions': 95.2, 'monthly_expenses': 62,
             'special_24_months': 95.5, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
             'result': 100
         };

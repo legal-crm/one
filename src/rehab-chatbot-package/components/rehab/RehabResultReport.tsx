@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { X, Check, AlertTriangle, Building2, Shield, ArrowRight, Download, Share2, Users, DollarSign, Percent, BarChart3, Sparkles, Zap, Home, CreditCard, Calculator, FileText, ChevronRight } from 'lucide-react';
-import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../services/calculationService';
+import { RehabCalculationResult, RehabUserInput, formatCurrency, DebtComposition, RiskFactor, LegalActionGuide, BudgetItem } from '../../services/calculationService';
 import { StatComparisonCard, DistributionBar } from './StatisticalComparison';
 import { calculateIncomePercentile, calculateDebtPercentile, calculateReductionRatePercentile, generateStatisticalInsights } from '../../utils/statisticsUtils';
 import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../config/rehabStatistics2025';
@@ -33,7 +33,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     onConsultation
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
-    const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'checklist'>('overview');
+    const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'statistics' | 'simulation' | 'checklist'>('overview');
 
     // 이미지 저장 기능
     const handleSaveReport = async () => {
@@ -266,21 +266,23 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     </div>
 
                     {/* ========== TABS NAVIGATION ========== */}
-                    <div className="flex bg-[#0f172a] border-b border-slate-800 sticky top-0 z-50 shrink-0">
-                        {(['overview', 'assets', 'debts', 'checklist'] as const).map((tab) => (
+                    <div className="flex bg-[#0f172a] border-b border-slate-800 sticky top-0 z-50 shrink-0 overflow-x-auto">
+                        {(['overview', 'assets', 'debts', 'statistics', 'simulation', 'checklist'] as const).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveReportTab(tab)}
-                                className={`flex-1 py-3.5 text-xs font-semibold border-b-2 transition-all text-center ${
+                                className={`flex-1 min-w-[70px] py-3 text-[10px] sm:text-xs font-semibold border-b-2 transition-all text-center whitespace-nowrap ${
                                     activeReportTab === tab
                                         ? 'border-[#7264FF] text-[#7264FF] bg-[#7264FF]/5 font-bold'
                                         : 'border-transparent text-slate-400 hover:text-slate-200'
                                 }`}
                             >
                                 {tab === 'overview' && '종합 분석'}
-                                {tab === 'assets' && '재산 및 가구'}
-                                {tab === 'debts' && '소득 및 채무'}
-                                {tab === 'checklist' && '변호사용 가이드'}
+                                {tab === 'assets' && '재산·가구'}
+                                {tab === 'debts' && '소득·채무'}
+                                {tab === 'statistics' && '📊 나의 위치'}
+                                {tab === 'simulation' && '💰 시뮬레이션'}
+                                {tab === 'checklist' && '변호사 가이드'}
                             </button>
                         ))}
                     </div>
@@ -426,6 +428,60 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             <p className="text-[11px] text-slate-350 leading-relaxed pt-1">
                                                 {suitabilities.workout.reason}
                                             </p>
+                                        </div>
+                                    </div>
+
+                                    {/* V2.1: 회생 전/후 비교 */}
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <BarChart3 className="w-3.5 h-3.5 text-[#7264FF]" />
+                                            회생 전/후 비교
+                                        </h3>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <div className="flex justify-between text-[11px] mb-1">
+                                                    <span className="text-slate-400">현재 월 부담 (36개월 기준)</span>
+                                                    <span className="text-red-400 font-bold">{formatCurrency(Math.round(userInput.totalDebt / 36))}</span>
+                                                </div>
+                                                <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: '100%' }}
+                                                        transition={{ duration: 0.8, delay: 0.2 }}
+                                                        className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-[11px] mb-1">
+                                                    <span className="text-slate-400">회생 후 월 변제금</span>
+                                                    <span className="text-emerald-400 font-bold">{formatCurrency(result.monthlyPayment)}</span>
+                                                </div>
+                                                <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${Math.min(100, Math.round((result.monthlyPayment / Math.max(1, userInput.totalDebt / 36)) * 100))}%` }}
+                                                        transition={{ duration: 0.8, delay: 0.5 }}
+                                                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2 mt-2">
+                                                <div className="bg-slate-800/60 p-2.5 rounded-lg text-center">
+                                                    <div className="text-[10px] text-slate-400">월 절약액</div>
+                                                    <div className="text-xs font-bold text-emerald-400 mt-0.5">
+                                                        {formatCurrency(Math.max(0, Math.round(userInput.totalDebt / 36) - result.monthlyPayment))}
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-800/60 p-2.5 rounded-lg text-center">
+                                                    <div className="text-[10px] text-slate-400">총 탕감액</div>
+                                                    <div className="text-xs font-bold text-[#7264FF] mt-0.5">{formatCurrency(result.totalDebtReduction)}</div>
+                                                </div>
+                                                <div className="bg-slate-800/60 p-2.5 rounded-lg text-center">
+                                                    <div className="text-[10px] text-slate-400">감소율</div>
+                                                    <div className="text-xs font-bold text-amber-400 mt-0.5">{result.debtReductionRate}%</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -709,8 +765,271 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 </motion.div>
                             )}
 
+                            {/* TAB 5: 통계 비교 (나의 위치) - V2.1 신규 */}
+                            {activeReportTab === 'statistics' && (
+                                <motion.div
+                                    key="statistics"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-4"
+                                >
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                        2025년 서울회생법원 통계 기준 나의 위치
+                                    </h3>
+
+                                    {/* 소득 비교 */}
+                                    <StatComparisonCard
+                                        title="월 소득 비교"
+                                        userValue={userInput.monthlyIncome}
+                                        averageValue={AVERAGE_VALUES.monthlyIncome}
+                                        percentile={calculateIncomePercentile(userInput.monthlyIncome)}
+                                        icon={<DollarSign className="w-4 h-4" />}
+                                        unit="원"
+                                    />
+
+                                    {/* 채무 비교 */}
+                                    <StatComparisonCard
+                                        title="총 채무 비교"
+                                        userValue={userInput.totalDebt}
+                                        averageValue={AVERAGE_VALUES.totalDebt}
+                                        percentile={calculateDebtPercentile(userInput.totalDebt)}
+                                        icon={<CreditCard className="w-4 h-4" />}
+                                        unit="원"
+                                    />
+
+                                    {/* 탕감율 비교 */}
+                                    <StatComparisonCard
+                                        title="예상 탕감율 비교"
+                                        userValue={result.debtReductionRate}
+                                        averageValue={AVERAGE_VALUES.debtReductionRate}
+                                        percentile={calculateReductionRatePercentile(result.debtReductionRate)}
+                                        icon={<Percent className="w-4 h-4" />}
+                                        unit="%"
+                                    />
+
+                                    {/* 채무 금액대 분포 */}
+                                    <DistributionBar
+                                        title="채무 금액대 분포"
+                                        userValue={userInput.totalDebt}
+                                        distribution={REHAB_STATISTICS_2025.debtAmountDistribution}
+                                        highlightRange={(() => {
+                                            const debt = userInput.totalDebt;
+                                            if (debt < 50000000) return '5천만원 이하';
+                                            if (debt < 100000000) return '5천만원 초과 1억원 이하';
+                                            if (debt < 200000000) return '1억원 초과 2억원 이하';
+                                            return '2억원 초과';
+                                        })()}
+                                    />
+
+                                    {/* AI 통계 인사이트 */}
+                                    {(() => {
+                                        const insights = generateStatisticalInsights({
+                                            monthlyIncome: userInput.monthlyIncome,
+                                            totalDebt: userInput.totalDebt,
+                                            debtReductionRate: result.debtReductionRate,
+                                            familySize: userInput.familySize || 1
+                                        });
+                                        return insights.length > 0 ? (
+                                            <div className="bg-[#7264FF]/5 border border-[#7264FF]/20 p-4 rounded-xl space-y-2">
+                                                <h4 className="text-xs font-bold text-[#7264FF] flex items-center gap-1.5">
+                                                    <Sparkles className="w-3.5 h-3.5" />
+                                                    AI 통계 인사이트
+                                                </h4>
+                                                {insights.map((insight, idx) => (
+                                                    <p key={idx} className="text-[11px] text-slate-300 flex items-start gap-1.5">
+                                                        <Check className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
+                                                        {insight}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        ) : null;
+                                    })()}
+
+                                    {/* 위험 요인 분석 (V2.1) */}
+                                    {result.riskFactors && result.riskFactors.length > 0 && (
+                                        <div className="space-y-2">
+                                            <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                                                위험 요인 분석
+                                            </h4>
+                                            {result.riskFactors.map((factor, idx) => (
+                                                <div key={idx} className={`p-3 rounded-xl border ${
+                                                    factor.level === 'high' ? 'bg-red-500/5 border-red-500/20' :
+                                                    factor.level === 'medium' ? 'bg-amber-500/5 border-amber-500/20' :
+                                                    'bg-emerald-500/5 border-emerald-500/20'
+                                                }`}>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className={`w-2 h-2 rounded-full ${
+                                                            factor.level === 'high' ? 'bg-red-400' :
+                                                            factor.level === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'
+                                                        }`} />
+                                                        <span className="text-xs font-bold text-white">{factor.title}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-400 ml-4">{factor.description}</p>
+                                                    <p className="text-[11px] text-emerald-400 ml-4 mt-1">💡 {factor.solution}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+
+                            {/* TAB 6: 월 가계 시뮬레이션 - V2.1 신규 */}
+                            {activeReportTab === 'simulation' && (
+                                <motion.div
+                                    key="simulation"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-4"
+                                >
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                        회생 전/후 월 가계 시뮬레이션
+                                    </h3>
+
+                                    {/* 회생 전 */}
+                                    {result.monthlyBudgetBefore && result.monthlyBudgetBefore.length > 0 && (
+                                        <div className="bg-red-500/5 border border-red-500/20 p-4 rounded-xl space-y-2">
+                                            <h4 className="text-xs font-bold text-red-400 flex items-center gap-1.5">
+                                                ❌ 현재 (회생 전)
+                                            </h4>
+                                            <div className="space-y-1.5">
+                                                {result.monthlyBudgetBefore.map((item, idx) => (
+                                                    <div key={idx} className={`flex justify-between items-center text-xs px-2 py-1.5 rounded-lg ${
+                                                        item.type === 'total' ? 'bg-slate-800/60 border border-slate-700 mt-2' :
+                                                        item.highlight ? 'bg-red-500/5' : ''
+                                                    }`}>
+                                                        <span className={`${
+                                                            item.type === 'total' ? 'font-bold text-white' :
+                                                            item.type === 'income' ? 'text-slate-300' : 'text-slate-400'
+                                                        }`}>{item.label}</span>
+                                                        <span className={`font-semibold ${
+                                                            item.type === 'income' ? 'text-white' :
+                                                            item.type === 'total' && item.amount < 0 ? 'text-red-400 font-bold' :
+                                                            item.type === 'total' ? 'text-emerald-400' :
+                                                            item.highlight ? 'text-red-400' : 'text-slate-300'
+                                                        }`}>
+                                                            {formatCurrency(Math.abs(item.amount))}
+                                                            {item.type === 'total' && item.amount < 0 && ' ❌ 부족'}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 화살표 */}
+                                    <div className="flex justify-center">
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.3 }}
+                                            className="bg-[#7264FF] text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5"
+                                        >
+                                            ⬇ 개인회생 신청 후 ⬇
+                                        </motion.div>
+                                    </div>
+
+                                    {/* 회생 후 */}
+                                    {result.monthlyBudgetAfter && result.monthlyBudgetAfter.length > 0 && (
+                                        <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl space-y-2">
+                                            <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                                ✅ 회생 후
+                                            </h4>
+                                            <div className="space-y-1.5">
+                                                {result.monthlyBudgetAfter.map((item, idx) => (
+                                                    <div key={idx} className={`flex justify-between items-center text-xs px-2 py-1.5 rounded-lg ${
+                                                        item.type === 'total' ? 'bg-slate-800/60 border border-emerald-500/20 mt-2' :
+                                                        item.highlight ? 'bg-[#7264FF]/5' : ''
+                                                    }`}>
+                                                        <span className={`${
+                                                            item.type === 'total' ? 'font-bold text-white' :
+                                                            item.type === 'income' ? 'text-slate-300' : 'text-slate-400'
+                                                        }`}>{item.label}</span>
+                                                        <span className={`font-semibold ${
+                                                            item.type === 'income' ? 'text-white' :
+                                                            item.type === 'total' ? 'text-emerald-400 font-bold' :
+                                                            item.highlight ? 'text-[#7264FF]' : 'text-slate-300'
+                                                        }`}>
+                                                            {formatCurrency(Math.abs(item.amount))}
+                                                            {item.type === 'total' && ' ✅ 관리 가능'}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 채무 구성 분석 (V2.1) */}
+                                    {result.debtComposition && result.debtComposition.length > 0 && (
+                                        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                                <BarChart3 className="w-3.5 h-3.5 text-[#7264FF]" />
+                                                채무 구성 분석
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {result.debtComposition.map((comp, idx) => (
+                                                    <div key={idx}>
+                                                        <div className="flex justify-between text-[11px] mb-1">
+                                                            <span className="text-slate-300 flex items-center gap-1">
+                                                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: comp.color }} />
+                                                                {comp.label}
+                                                            </span>
+                                                            <span className="text-slate-400">
+                                                                {formatCurrency(comp.amount)} ({comp.percentage}%)
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                                            <motion.div
+                                                                initial={{ width: 0 }}
+                                                                animate={{ width: `${comp.percentage}%` }}
+                                                                transition={{ duration: 0.6, delay: idx * 0.1 }}
+                                                                className="h-full rounded-full"
+                                                                style={{ backgroundColor: comp.color }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 법적 조치 대응 가이드 (V2.1) */}
+                                    {result.legalActionGuide && result.legalActionGuide.length > 0 && (
+                                        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                                                법적 조치 대응 가이드
+                                            </h4>
+                                            {result.legalActionGuide.map((guide, idx) => (
+                                                <div key={idx} className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg space-y-1.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-base">{guide.icon}</span>
+                                                        <span className="text-xs font-bold text-white">{guide.title}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-300 ml-7">{guide.response}</p>
+                                                    <p className="text-[10px] text-amber-400 ml-7">⏱ {guide.timeline}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* 요약 절약 카드 */}
+                                    <div className="bg-[#7264FF]/10 border border-[#7264FF]/20 p-4 rounded-xl text-center">
+                                        <div className="text-[10px] text-slate-400 mb-1">{result.repaymentMonths}개월 후 잔여 채무</div>
+                                        <div className="text-lg font-bold text-[#7264FF]">전액 면책 🎉</div>
+                                        <div className="text-[11px] text-slate-400 mt-1">
+                                            총 {formatCurrency(result.totalDebtReduction)} 탕감 · 월 {formatCurrency(Math.max(0, Math.round(userInput.totalDebt / 36) - result.monthlyPayment))} 절약
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
                             {/* 챗봇 리포트 원 의견 코멘트 */}
-                            {activeReportTab !== 'checklist' && (result.aiAdvice.length > 0 || result.riskWarnings.length > 0) && (
+                            {activeReportTab !== 'checklist' && activeReportTab !== 'statistics' && activeReportTab !== 'simulation' && (result.aiAdvice.length > 0 || result.riskWarnings.length > 0) && (
                                 <div className="p-4 bg-slate-900/40 border border-slate-850 rounded-xl space-y-3">
                                     <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                                         <Shield className="w-4 h-4 text-[#7264FF]" />
