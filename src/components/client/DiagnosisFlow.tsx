@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight, Shield, Lock, Clock, CheckCircle2, Sparkles } from 'lucide-react';
-import { DiagnosisAnswers, DiagnosisResult, DiagnosisConfig, DiagnosisQuestion } from '../../types';
+import { DiagnosisAnswers, DiagnosisResult, DiagnosisConfig, DiagnosisQuestion, AppSettings } from '../../types';
 import { runDiagnosis, DEFAULT_DIAGNOSIS_QUESTIONS } from '../../engines/diagnosisEngine';
+import { fetchSettings } from '../../services/settingsService';
 
 // ─────────────────────────────────────────────
 // Props
@@ -50,6 +51,12 @@ export default function DiagnosisFlow(props: DiagnosisFlowProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [calcPhase, setCalcPhase] = useState(-1);
   const [direction, setDirection] = useState<1 | -1>(1);
+  const [loadedSettings, setLoadedSettings] = useState<AppSettings | undefined>(undefined);
+
+  // 관리자 환경설정 로드
+  useEffect(() => {
+    fetchSettings().then(s => setLoadedSettings(s)).catch(() => {});
+  }, []);
 
   // ── Select an option ──────────────────────
   const handleSelect = useCallback(
@@ -72,7 +79,7 @@ export default function DiagnosisFlow(props: DiagnosisFlowProps) {
           setTimeout(() => setCalcPhase(1), 500);
           setTimeout(() => setCalcPhase(2), 1000);
           setTimeout(() => {
-            const result = runDiagnosis(updated as DiagnosisAnswers);
+            const result = runDiagnosis(updated as DiagnosisAnswers, loadedSettings);
             onComplete(result);
           }, 1500);
         }

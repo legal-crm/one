@@ -11,6 +11,7 @@ import {
   DebtType, FeeLoanInfo, ConsultationLog
 } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
+import { fetchSettings } from '../services/settingsService';
 import { 
   formatNumber, calculateManAge, detectJurisdiction, 
   generateDateOptions, formatKoreanCurrency 
@@ -74,7 +75,13 @@ interface CustomerIntakeProps {
 export const CustomerIntake: React.FC<CustomerIntakeProps> = ({ 
   onSubmit, onCancel, initialData 
 }) => {
-  const settings: AppSettings = DEFAULT_SETTINGS;
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+
+  // 관리자 환경설정 로드 (localStorage → AppSettings)
+  useEffect(() => {
+    fetchSettings().then(s => setSettings(s)).catch(() => {});
+  }, []);
+
   const [activeSection, setActiveSection] = useState<number>(1);
   const [residenceSuggestions, setResidenceSuggestions] = useState<string[]>([]);
   const [workplaceSuggestions, setWorkplaceSuggestions] = useState<string[]>([]);

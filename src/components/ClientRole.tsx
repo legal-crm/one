@@ -5,13 +5,14 @@ import {
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
 } from 'lucide-react';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
 import AIRehabChatbotV2 from '../rehab-chatbot-package/components/rehab/AIRehabChatbotV2';
 import { RehabUserInput, RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
 import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances, ExtraLivingCost, ConsultationLog } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
+import { fetchSettings } from '../services/settingsService';
 import { formatKoreanCurrency, formatNumber } from '../utils';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
@@ -387,6 +388,12 @@ export default function ClientRole({
   // Terms and Privacy popup states
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [termsModalType, setTermsModalType] = useState<'tos' | 'privacy'>('tos');
+
+  // 관리자 환경설정 로드 (localStorage → AppSettings)
+  const [effectiveSettings, setEffectiveSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  useEffect(() => {
+    fetchSettings().then(s => setEffectiveSettings(s)).catch(() => {});
+  }, []);
 
   // Client 1:1 Inquiry state
   const [inquiryTitle, setInquiryTitle] = useState<string>('');
@@ -1162,7 +1169,7 @@ export default function ClientRole({
 
   const handleIntakeSubmit = (intakeData: IntakeData) => {
     if (!checkMatchingLimit()) return;
-    const result = calculateRehabPlan(intakeData, DEFAULT_SETTINGS);
+    const result = calculateRehabPlan(intakeData, effectiveSettings);
     
     // Convert Won units to Man-won (10,000 KRW) units
     const incomeManWon = Math.round(result.client.monthlyIncome / 10000);
