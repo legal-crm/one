@@ -9,6 +9,7 @@ import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessRevi
 import { platformPlans } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
+import RehabSettingsPanel from './RehabSettingsPanel';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -3673,6 +3674,11 @@ export default function AdminRole({
                       <span>기본 설정 저장 및 전역 적용</span>
                     </button>
                   </div>
+                </div>
+
+                {/* 🏛️ 회생/파산 정책 및 계산 기준 설정 (관리자 전용) */}
+                <div className="mt-6">
+                  <RehabSettingsPanel />
                 </div>
 
               </div>
