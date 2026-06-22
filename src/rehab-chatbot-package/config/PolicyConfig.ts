@@ -462,6 +462,110 @@ export function getRegionGroup(region: string, config: RehabPolicyConfig): strin
 }
 
 /**
+ * 주소에서 관할 법원 검출 (통합 어드민 설정 키워드 매핑 매칭)
+ */
+export function getCourtNameForAddress(address: string, config: RehabPolicyConfig): string {
+    if (!address || !config.regionToCourtMap) return 'Default';
+
+    // 1. 우선순위 매칭: 키워드 길이 역순 정렬 (더 구체적인 키워드 우선 매칭)
+    const keywords = Object.keys(config.regionToCourtMap).sort((a, b) => b.length - a.length);
+    for (const keyword of keywords) {
+        if (address.includes(keyword)) {
+            return config.regionToCourtMap[keyword];
+        }
+    }
+
+    // 2. 정규화 폴백 매칭 (예: 사용자가 '수원'만 입력했으나 키워드에 '수원시'만 있을 때 지원)
+    const normalize = (str: string) => {
+        return str
+            .replace(/특별시|광역시|특별자치시|특별자치도|지방법원|회생법원/g, '')
+            .replace(/[시군구]$/g, '')
+            .trim();
+    };
+
+    const normalizedAddress = normalize(address);
+    if (normalizedAddress.length >= 2) {
+        for (const keyword of keywords) {
+            const normalizedKeyword = normalize(keyword);
+            if (normalizedKeyword.length >= 2 && 
+                (normalizedAddress.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedAddress))) {
+                return config.regionToCourtMap[keyword];
+            }
+        }
+    }
+
+    return 'Default';
+}
+
+/**
+ * 주소에서 보증금 지역그룹 검출 (통합 어드민 설정 키워드 매핑 매칭)
+ */
+export function getRegionGroupForAddress(address: string, config: RehabPolicyConfig): string {
+    if (!address || !config.regionToGroupMap) return '그외';
+
+    const keywords = Object.keys(config.regionToGroupMap).sort((a, b) => b.length - a.length);
+    for (const keyword of keywords) {
+        if (address.includes(keyword)) {
+            return config.regionToGroupMap[keyword];
+        }
+    }
+
+    const normalize = (str: string) => {
+        return str
+            .replace(/특별시|광역시|특별자치시|특별자치도/g, '')
+            .replace(/[시군구]$/g, '')
+            .trim();
+    };
+
+    const normalizedAddress = normalize(address);
+    if (normalizedAddress.length >= 2) {
+        for (const keyword of keywords) {
+            const normalizedKeyword = normalize(keyword);
+            if (normalizedKeyword.length >= 2 && 
+                (normalizedAddress.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedAddress))) {
+                return config.regionToGroupMap[keyword];
+            }
+        }
+    }
+
+    return '그외';
+}
+
+/**
+ * 주거지 관할 법원과 직장 관할 법원 중 의뢰인에게 가장 유리한 법원 선택
+ */
+export function chooseFavorableCourt(courtA: string, courtB: string, config: RehabPolicyConfig): string {
+    if (courtA === courtB) return courtA;
+    if (courtA === 'Default') return courtB;
+    if (courtB === 'Default') return courtA;
+
+    const traitA = config.courtTraits[courtA];
+    const traitB = config.courtTraits[courtB];
+
+    if (!traitA) return courtB;
+    if (!traitB) return courtA;
+
+    // 1순위: 투자 손실금 청산가치 제외 혜택 여부 (investLossInclude: false가 유리)
+    if (traitA.investLossInclude !== traitB.investLossInclude) {
+        return !traitA.investLossInclude ? courtA : courtB;
+    }
+
+    // 2순위: 배우자 재산 반영 비율이 낮은 곳 (spousePropertyRate가 낮을수록 유리)
+    if (traitA.spousePropertyRate !== traitB.spousePropertyRate) {
+        return traitA.spousePropertyRate < traitB.spousePropertyRate ? courtA : courtB;
+    }
+
+    // 3순위: 24개월 청년 단축제도 지원 여부 (allow24Months: true가 유리)
+    if (traitA.allow24Months !== traitB.allow24Months) {
+        return traitA.allow24Months ? courtA : courtB;
+    }
+
+    // 기본값: 주거지 관할 법원 우선
+    return courtA;
+}
+
+
+/**
  * 가구원수에 따른 중위소득 계산
  */
 export function getMedianIncome(familySize: number, config: RehabPolicyConfig): number {

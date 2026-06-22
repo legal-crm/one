@@ -11,6 +11,9 @@ import {
     extractRegionFromAddress,
     getCourtForRegion,
     getRegionGroup,
+    getCourtNameForAddress,
+    getRegionGroupForAddress,
+    chooseFavorableCourt,
     getMedianIncome,
     getRecognizedLivingCost,
 } from '../config/PolicyConfig';
@@ -204,10 +207,19 @@ export function calculateRepayment(
     // config가 없으면 현재 날짜 기준으로 자동 선택
     const effectiveConfig = config || getPolicyForDate(new Date());
 
-    // 1. 지역/법원 판별
-    const region = extractRegionFromAddress(input.address);
-    const courtName = getCourtForRegion(region, effectiveConfig);
-    const regionGroup = getRegionGroup(region, effectiveConfig);
+    // 1. 지역/법원 판별 (주거지와 직장을 모두 검출하여 가장 유리한 법원을 자동 선택)
+    const residenceCourt = getCourtNameForAddress(input.address, effectiveConfig);
+    const residenceGroup = getRegionGroupForAddress(input.address, effectiveConfig);
+
+    let workplaceCourt = 'Default';
+    let workplaceGroup = '그외';
+    if (input.workLocation) {
+        workplaceCourt = getCourtNameForAddress(input.workLocation, effectiveConfig);
+        workplaceGroup = getRegionGroupForAddress(input.workLocation, effectiveConfig);
+    }
+
+    const courtName = chooseFavorableCourt(residenceCourt, workplaceCourt, effectiveConfig);
+    const regionGroup = residenceGroup; // 보증금 및 월세 한도는 주거지 기준 적용
     const courtTrait = effectiveConfig.courtTraits[courtName] || effectiveConfig.courtTraits['Default'];
 
     // 상태 변수 초기화
@@ -215,6 +227,11 @@ export function calculateRepayment(
     let statusReason = '';
     const aiAdvice: string[] = [];
     const riskWarnings: string[] = [];
+
+    // 직장 관할 법원이 주거지 관할보다 유리하여 선택된 경우 어드바이스 추가
+    if (input.workLocation && workplaceCourt !== 'Default' && courtName === workplaceCourt && residenceCourt !== workplaceCourt) {
+        aiAdvice.push(`💡 주거지 관할(${residenceCourt})보다 직장 소재지 관할(${workplaceCourt})의 회생 심사 기준이 의뢰인님께 훨씬 유리하여, 직장 관할 법원 기준으로 정밀 분석을 진행했습니다. 실제 신청 시 직장 관할 법원으로 접수할 것을 권장합니다.`);
+    }
 
     // 3. 월 가용소득 (변제금) 계산 및 생계비 자동 조정
     const baseLivingCostRaw = getRecognizedLivingCost(input.familySize, effectiveConfig);
