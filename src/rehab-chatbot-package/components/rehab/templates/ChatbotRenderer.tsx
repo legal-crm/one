@@ -16,7 +16,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Bot, MessageCircle, User, Sparkles, Zap, Building2, ChevronDown, Search, Paperclip, Smile, Image, Clock, Users } from 'lucide-react';
+import { X, Send, Bot, MessageCircle, User, Sparkles, Zap, Building2, ChevronDown, ChevronLeft, Search, Paperclip, Smile, Image, Clock, Users } from 'lucide-react';
 import { ChatbotTemplateId, ChatbotColorPalette, ThemeMode, getTemplateById, TemplateLayoutConfig, InteractiveBlockConfig, InteractiveBlockState } from './ChatbotTemplateConfig';
 import InteractiveBlock from './InteractiveBlock';
 
@@ -59,6 +59,9 @@ interface ChatbotRendererProps {
     onBlockSubmit?: (messageId: string, value: string | string[] | Date) => void;
     onBlockCancel?: (messageId: string) => void;
     enableFormBlocks?: boolean; // NEW: 모든 템플릿에서 Interactive Block 활성화
+    // 뒤로 가기 기능
+    onGoBack?: () => void;
+    canGoBack?: boolean;
 }
 
 const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
@@ -80,7 +83,9 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
     isComposerLocked,
     onBlockSubmit,
     onBlockCancel,
-    enableFormBlocks = false
+    enableFormBlocks = false,
+    onGoBack,
+    canGoBack = false
 }) => {
     const isDark = mode === 'dark';
     const template = getTemplateById(templateId);
@@ -739,6 +744,22 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
 
                     {/* 입력 영역 */}
                     <div className="flex items-center gap-2 p-3">
+                        {/* 뒤로 가기 버튼 */}
+                        {canGoBack && onGoBack && (
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={onGoBack}
+                                className="p-2.5 rounded-xl transition-all flex-shrink-0"
+                                style={{
+                                    backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                                    color: isDark ? '#d1d5db' : '#6b7280'
+                                }}
+                                title="이전 질문으로"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </motion.button>
+                        )}
                         <input
                             ref={inputRef}
                             type="text"
@@ -863,6 +884,22 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                 })()}
 
                 <div className="flex items-center gap-2">
+                    {/* 뒤로 가기 버튼 */}
+                    {canGoBack && onGoBack && (
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={onGoBack}
+                            className="p-2.5 rounded-xl transition-all flex-shrink-0"
+                            style={{
+                                backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                                color: isDark ? '#d1d5db' : '#6b7280'
+                            }}
+                            title="이전 질문으로"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </motion.button>
+                    )}
                     <input
                         ref={inputRef}
                         type="text"

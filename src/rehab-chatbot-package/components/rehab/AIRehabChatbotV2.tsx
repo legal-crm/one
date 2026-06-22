@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AI 변제금 진단 챗봇 V2 - 2026년 고도화 버전
  * 
  * 20+ 단계 조건부 분기 대화형 인터페이스
@@ -44,6 +44,19 @@ interface ChatOption {
     label: string;
     value: string | number;
     selected?: boolean;
+}
+
+// 단계별 상태 스냅샷 (뒤로 가기/답변 수정용)
+interface StepSnapshot {
+    step: ChatStep;
+    userInput: Partial<RehabUserInput>;
+    selectedAssets: AssetType[];
+    currentAssetIndex: number;
+    assetValues: Record<AssetType, number>;
+    spouseSelectedAssets: AssetType[];
+    currentSpouseAssetIndex: number;
+    spouseAssetValues: Record<AssetType, number>;
+    messageCount: number;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -254,9 +267,19 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0
     });
 
+    // 뒤로 가기: 단계 히스토리 스택
+    const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const hasInitialized = useRef(false);
+
+    // stepId 자동 태깅용 ref (goToStep에서 동기적으로 갱신)
+    const nextStepRef = useRef<ChatStep>('intro');
+    const goToStep = useCallback((step: ChatStep) => {
+        nextStepRef.current = step;
+        setCurrentStep(step);
+    }, []);
 
     // 스크롤 자동 이동
     useEffect(() => {
@@ -351,7 +374,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     multiSelect,
                     interactiveBlock,
                     blockState: interactiveBlock ? { status: 'active' } : undefined,
-                    stepId: stepId,
+                    stepId: stepId || nextStepRef.current,
                     isAnswered: false
                 };
                 return [...updated, newMessage];
@@ -392,9 +415,27 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
     // 다음 단계로 진행
     const processStep = useCallback((step: ChatStep, value?: string | number | string[]) => {
+        // 뒤로 가기: 현재 상태 스냅샷 저장 (intro와 result 제외)
+        if (step !== 'intro' && step !== 'result') {
+            setStepHistory(prev => {
+                // 동일 단계 중복 방지
+                if (prev.length > 0 && prev[prev.length - 1].step === step) return prev;
+                return [...prev, {
+                    step,
+                    userInput: JSON.parse(JSON.stringify(userInput)),
+                    selectedAssets: [...selectedAssets],
+                    currentAssetIndex,
+                    assetValues: { ...assetValues },
+                    spouseSelectedAssets: [...spouseSelectedAssets],
+                    currentSpouseAssetIndex,
+                    spouseAssetValues: { ...spouseAssetValues },
+                    messageCount: messages.length
+                }];
+            });
+        }
         switch (step) {
             case 'intro':
-                setCurrentStep('address');
+                goToStep('address');
                 addBotMessage(
                     '정확한 진단을 위해 현재 **사시는 곳**이 어디신가요?\n\n(예: 서울 강남구, 수원시 영통구)',
                     undefined,
@@ -404,7 +445,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'address':
                 setUserInput(prev => ({ ...prev, address: value as string }));
-                setCurrentStep('age');
+                goToStep('age');
                 addBotMessage(
                     '만 나이가 어떻게 되시나요?\n\n(모르시면 태어난 연도를 입력해주셔도 돼요. 예: 1990)',
                     undefined,
@@ -424,7 +465,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     }
                 }
                 setUserInput(prev => ({ ...prev, age }));
-                setCurrentStep('employment');
+                goToStep('employment');
                 addBotMessage(
                     '현재 어떤 형태로 소득을 얻고 계신가요?',
                     [
@@ -445,7 +486,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (employmentType === 'none') {
                     // 무직: 200만원 기준으로 자동 설정, 근무지역 질문 스킵
                     setUserInput(prev => ({ ...prev, monthlyIncome: 2000000 }));
-                    setCurrentStep('marital_status');
+                    goToStep('marital_status');
                     addBotMessage(
                         '현재 결혼 상태는 어떻게 되시나요?',
                         [
@@ -461,7 +502,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     // 직장인/사업자/프리랜서: 근무지역 질문으로 이동
-                    setCurrentStep('work_location');
+                    goToStep('work_location');
                     const locationQuestion = employmentType === 'business'
                         ? '사업장이 위치한 지역(구/시)을 입력해주세요.\n\n(예: 서울 강남구, 부산 해운대구)'
                         : employmentType === 'freelancer'
@@ -477,14 +518,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const empType = userInput.employmentType;
 
                 if (empType === 'both') {
-                    setCurrentStep('income_salary');
+                    goToStep('income_salary');
                     addBotMessage(
                         '먼저, 직장에서 받는 월 실수령액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
                         'money'
                     );
                 } else {
-                    setCurrentStep('income_salary');
+                    goToStep('income_salary');
                     addBotMessage(
                         empType === 'salary'
                             ? '세금과 4대보험을 제외한 월 평균 실수령액은 얼마인가요?\n\n(만원 단위)'
@@ -500,7 +541,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, salaryIncome }));
 
                 if (userInput.employmentType === 'both') {
-                    setCurrentStep('income_business');
+                    goToStep('income_business');
                     addBotMessage(
                         '사업에서 발생하는 월 순수익은 얼마인가요?\n\n(만원 단위)',
                         undefined,
@@ -508,7 +549,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     setUserInput(prev => ({ ...prev, monthlyIncome: salaryIncome }));
-                    setCurrentStep('income_confirm');
+                    goToStep('income_confirm');
                     addBotMessage(
                         `월 소득이 ${formatCurrency(salaryIncome)}이 맞으신가요?`,
                         [
@@ -528,7 +569,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     businessIncome,
                     monthlyIncome: totalIncome
                 }));
-                setCurrentStep('income_confirm');
+                goToStep('income_confirm');
                 addBotMessage(
                     `총 월 소득이 ${formatCurrency(totalIncome)}이 맞으신가요?`,
                     [
@@ -541,14 +582,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'income_confirm':
                 if (value === 'no') {
-                    setCurrentStep('income_salary');
+                    goToStep('income_salary');
                     addBotMessage(
                         '소득을 다시 입력해주세요.\n\n(만원 단위)',
                         undefined,
                         'money'
                     );
                 } else {
-                    setCurrentStep('marital_status');
+                    goToStep('marital_status');
                     addBotMessage(
                         '현재 결혼 상태는 어떻게 되시나요?',
                         [
@@ -572,7 +613,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
                 if (maritalStatus === 'married') {
                     // 배우자 소득은 변제금에 영향 없음 - 바로 배우자 재산 질문으로
-                    setCurrentStep('spouse_assets_select');
+                    goToStep('spouse_assets_select');
                     addBotMessage(
                         '배우자 명의로 가지고 있는 재산이 있나요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
                         [
@@ -601,7 +642,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         } : undefined
                     );
                 } else if (maritalStatus === 'divorced') {
-                    setCurrentStep('custody');
+                    goToStep('custody');
                     addBotMessage(
                         '미성년 자녀를 양육하고 계신가요?',
                         [
@@ -613,7 +654,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     // 미혼/기타
                     setUserInput(prev => ({ ...prev, spouseAssets: 0 }));
-                    setCurrentStep('minor_children');
+                    goToStep('minor_children');
                     addBotMessage(
                         '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?\n\n(부양가족 인정 기준이 까다로워서 미성년 자녀만 여쭤볼게요)',
                         [
@@ -632,7 +673,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             case 'spouse_assets_select':
                 if (value === 'none' || (Array.isArray(value) && value.includes('none'))) {
                     setUserInput(prev => ({ ...prev, spouseAssets: 0 }));
-                    setCurrentStep('minor_children');
+                    goToStep('minor_children');
                     addBotMessage(
                         '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
                         [
@@ -653,7 +694,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     if (assets.length === 0) {
                         // 자산을 선택하지 않고 완료만 누른 경우
                         setUserInput(prev => ({ ...prev, spouseAssets: 0 }));
-                        setCurrentStep('minor_children');
+                        goToStep('minor_children');
                         addBotMessage(
                             '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
                             [
@@ -669,7 +710,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         setSpouseSelectedAssets(assets);
                         setCurrentSpouseAssetIndex(0);
-                        setCurrentStep('spouse_asset_detail');
+                        goToStep('spouse_asset_detail');
                         addBotMessage(
                             `배우자의 ${ASSET_LABELS[assets[0]]} 가치는 대략 얼마인가요?\n\n(만원 단위)`,
                             undefined,
@@ -695,7 +736,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     // 배우자 재산 합산
                     const totalSpouseAssets = (Object.values(spouseAssetValues) as number[]).reduce((a, b) => a + b, 0) + (value as number) * 10000;
                     setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
-                    setCurrentStep('minor_children');
+                    goToStep('minor_children');
                     addBotMessage(
                         '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
                         [
@@ -714,14 +755,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             case 'custody':
                 setUserInput(prev => ({ ...prev, isCustodialParent: value === 'yes' }));
                 if (value === 'yes') {
-                    setCurrentStep('child_support_receive');
+                    goToStep('child_support_receive');
                     addBotMessage(
                         '전 배우자로부터 매달 받는 양육비는 얼마인가요?\n\n(만원 단위, 없으면 0)',
                         undefined,
                         'money'
                     );
                 } else {
-                    setCurrentStep('child_support_pay');
+                    goToStep('child_support_pay');
                     addBotMessage(
                         '전 배우자에게 매달 지급하는 양육비는 얼마인가요?\n\n(만원 단위, 없으면 0)',
                         undefined,
@@ -738,7 +779,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     monthlyIncome: (prev.monthlyIncome || 0) + received
                 }));
                 setUserInput(prev => ({ ...prev, spouseAssets: 0 }));
-                setCurrentStep('minor_children');
+                goToStep('minor_children');
                 addBotMessage(
                     '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
                     [
@@ -759,7 +800,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     childSupportPaid: (value as number) * 10000,
                     spouseAssets: 0
                 }));
-                setCurrentStep('minor_children');
+                goToStep('minor_children');
                 addBotMessage(
                     '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
                     [
@@ -784,7 +825,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 let familySize = 1 + safeMinorChildren;
 
                 setUserInput(prev => ({ ...prev, minorChildren: safeMinorChildren, familySize }));
-                setCurrentStep('housing_type');
+                goToStep('housing_type');
                 addBotMessage(
                     '현재 거주 형태는 무엇인가요?',
                     [
@@ -802,21 +843,21 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, housingType }));
 
                 if (housingType === 'rent') {
-                    setCurrentStep('rent_cost');
+                    goToStep('rent_cost');
                     addBotMessage(
                         '매달 월세는 얼마인가요?\n\n(만원 단위)',
                         undefined,
                         'money'
                     );
                 } else if (housingType === 'jeonse') {
-                    setCurrentStep('deposit_amount');
+                    goToStep('deposit_amount');
                     addBotMessage(
                         '전세금은 얼마인가요?\n\n(만원 단위)',
                         undefined,
                         'money'
                     );
                 } else if (housingType === 'owned') {
-                    setCurrentStep('owned_value');
+                    goToStep('owned_value');
                     addBotMessage(
                         '자가 부동산의 대략적인 시세는 얼마인가요?\n\n(만원 단위)',
                         undefined,
@@ -824,7 +865,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     setUserInput(prev => ({ ...prev, deposit: 0, rentCost: 0 }));
-                    setCurrentStep('medical_check');
+                    goToStep('medical_check');
                     addBotMessage(
                         '본인이나 가족의 **의료비**로 매달 고정적으로 지출하는 비용이 있나요?',
                         [
@@ -838,7 +879,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'rent_cost':
                 setUserInput(prev => ({ ...prev, rentCost: (value as number) * 10000 }));
-                setCurrentStep('deposit_amount');
+                goToStep('deposit_amount');
                 addBotMessage(
                     '보증금은 얼마인가요?\n\n(만원 단위)',
                     undefined,
@@ -848,7 +889,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'deposit_amount':
                 setUserInput(prev => ({ ...prev, deposit: (value as number) * 10000 }));
-                setCurrentStep('deposit_loan');
+                goToStep('deposit_loan');
                 addBotMessage(
                     '보증금 중 대출받은 금액이 있나요?',
                     [
@@ -867,10 +908,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         'money'
                     );
                     // 다음 입력 후 medical_check로 이동
-                    setCurrentStep('medical_check');
+                    goToStep('medical_check');
                 } else {
                     setUserInput(prev => ({ ...prev, depositLoan: 0 }));
-                    setCurrentStep('medical_check');
+                    goToStep('medical_check');
                     addBotMessage(
                         '본인이나 가족의 **의료비**로 매달 고정적으로 지출하는 비용이 있나요?',
                         [
@@ -884,7 +925,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'owned_value':
                 setUserInput(prev => ({ ...prev, myAssets: (prev.myAssets || 0) + (value as number) * 10000 }));
-                setCurrentStep('owned_mortgage');
+                goToStep('owned_mortgage');
                 addBotMessage(
                     '해당 부동산에 담보대출이 있으신가요?\n\n만원 단위로 입력해주세요. (없으면 0)',
                     undefined,
@@ -896,7 +937,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // 담보대출은 자산에서 차감
                 const mortgageAmount = (value as number) * 10000;
                 setUserInput(prev => ({ ...prev, myAssets: Math.max(0, (prev.myAssets || 0) - mortgageAmount) }));
-                setCurrentStep('medical_check');
+                goToStep('medical_check');
                 addBotMessage(
                     '본인이나 가족의 **의료비**로 매달 고정적으로 지출하는 비용이 있나요?',
                     [
@@ -909,7 +950,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'medical_check':
                 if (value === 'yes') {
-                    setCurrentStep('medical_amount');
+                    goToStep('medical_amount');
                     addBotMessage(
                         '월 의료비 지출액은 대략 얼마인가요?\n\n(만원 단위, 증빙 가능한 금액)',
                         undefined,
@@ -917,7 +958,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     setUserInput(prev => ({ ...prev, medicalCost: 0 }));
-                    setCurrentStep('education_check');
+                    goToStep('education_check');
                     addBotMessage(
                         '미성년 자녀의 **교육비**로 매달 고정적으로 지출하는 비용이 있나요?',
                         [
@@ -931,7 +972,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'medical_amount':
                 setUserInput(prev => ({ ...prev, medicalCost: (value as number) * 10000 }));
-                setCurrentStep('education_check');
+                goToStep('education_check');
                 addBotMessage(
                     '미성년 자녀의 **교육비**로 매달 고정적으로 지출하는 비용이 있나요?',
                     [
@@ -944,7 +985,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'education_check':
                 if (value === 'yes') {
-                    setCurrentStep('education_amount');
+                    goToStep('education_amount');
                     addBotMessage(
                         '월 교육비 지출액은 대략 얼마인가요?\n\n(만원 단위, 증빙 가능한 금액)',
                         undefined,
@@ -953,7 +994,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     setUserInput(prev => ({ ...prev, educationCost: 0 }));
                     // V2.1: 월 고정 지출로 이동
-                    setCurrentStep('monthly_expenses');
+                    goToStep('monthly_expenses');
                     addBotMessage(
                         '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
                         undefined,
@@ -964,7 +1005,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'education_amount':
                 setUserInput(prev => ({ ...prev, educationCost: (value as number) * 10000 }));
-                setCurrentStep('special_education');
+                goToStep('special_education');
                 addBotMessage(
                     '자녀 중 장애 등으로 인해 **특수교육**이 필요한 경우가 있나요?\n\n(특수교육비는 인정 한도가 더 높습니다)',
                     [
@@ -978,7 +1019,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             case 'special_education':
                 setUserInput(prev => ({ ...prev, hasSpecialEducation: value === 'yes' }));
                 // V2.1: 월 고정 지출로 이동
-                setCurrentStep('monthly_expenses');
+                goToStep('monthly_expenses');
                 addBotMessage(
                     '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
                     undefined,
@@ -989,7 +1030,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             case 'assets_select':
                 if (value === 'none' || (Array.isArray(value) && value.includes('none'))) {
                     setUserInput(prev => ({ ...prev, myAssets: 0 }));
-                    setCurrentStep('credit_card');
+                    goToStep('credit_card');
                     addBotMessage(
                         '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
                         [
@@ -1006,7 +1047,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     if (assets.length === 0) {
                         // 자산을 선택하지 않고 완료만 누른 경우
                         setUserInput(prev => ({ ...prev, myAssets: 0 }));
-                        setCurrentStep('credit_card');
+                        goToStep('credit_card');
                         addBotMessage(
                             '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
                             [
@@ -1018,7 +1059,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         setSelectedAssets(assets);
                         setCurrentAssetIndex(0);
-                        setCurrentStep('asset_detail');
+                        goToStep('asset_detail');
                         addBotMessage(
                             `${ASSET_LABELS[assets[0]]}의 현재 가치는 대략 얼마인가요?\n\n(만원 단위)`,
                             undefined,
@@ -1044,7 +1085,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     // 재산 합산
                     const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0) + (value as number) * 10000;
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
-                    setCurrentStep('credit_card');
+                    goToStep('credit_card');
                     addBotMessage(
                         '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
                         [
@@ -1058,7 +1099,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'credit_card':
                 if (value === 'yes') {
-                    setCurrentStep('credit_card_amount');
+                    goToStep('credit_card_amount');
                     addBotMessage(
                         '신용카드 총 사용금액(미결제액)은 얼마인가요?\n\n(여러 장 있으시면 합산해주세요, 만원 단위)',
                         undefined,
@@ -1066,7 +1107,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     setUserInput(prev => ({ ...prev, creditCardDebt: 0 }));
-                    setCurrentStep('other_debt');
+                    goToStep('other_debt');
                     addBotMessage(
                         '갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
                         undefined,
@@ -1078,7 +1119,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             case 'credit_card_amount':
                 setUserInput(prev => ({ ...prev, creditCardDebt: (value as number) * 10000 }));
                 // V2.1: 채무 유형 분류로 이동
-                setCurrentStep('debt_types');
+                goToStep('debt_types');
                 addBotMessage(
                     '많이 힘드셨을 거예요. 걸정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n빚의 종류를 좀 더 자세히 알려주시면 더 정확한 분석이 가능해요.',
                     [
@@ -1099,7 +1140,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const otherDebt = (value as number) * 10000;
                 const totalDebt = (userInput.creditCardDebt || 0) + otherDebt;
                 setUserInput(prev => ({ ...prev, totalDebt }));
-                setCurrentStep('debt_confirm');
+                goToStep('debt_confirm');
                 addBotMessage(
                     `총 채무가 ${formatCurrency(totalDebt)}이 맞으신가요?`,
                     [
@@ -1112,7 +1153,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'debt_confirm':
                 if (value === 'no') {
-                    setCurrentStep('credit_card');
+                    goToStep('credit_card');
                     addBotMessage(
                         '채무를 다시 입력해주세요.\n\n신용카드를 사용하고 계신가요?',
                         [
@@ -1124,7 +1165,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     // 기혼이고 미성년 자녀가 있는 경우 배우자 소득 질문
                     if (userInput.isMarried && userInput.minorChildren && userInput.minorChildren > 0) {
-                        setCurrentStep('spouse_income');
+                        goToStep('spouse_income');
                         addBotMessage(
                             '배우자의 월 소득은 대략 얼마인가요?\n\n(자녀 부양가족 산정에 필요합니다)',
                             [
@@ -1139,7 +1180,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         );
                     } else {
                         // 기혼+자녀 없는 경우 또는 미혼인 경우, 고령 부모님 부양가족 확인으로 이동
-                        setCurrentStep('elderly_parent_check');
+                        goToStep('elderly_parent_check');
                         addBotMessage(
                             '아래 조건에 **모두 부합하는** 부모님이 계신가요?\n\n• 친부모\n• 만 65세 이상\n• 소득이 없거나 기초수급 혹은 장애\n• 20만원 이상 생활비를 매달 드리는 중',
                             [
@@ -1190,7 +1231,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }));
 
                 // 고령 부모님 부양가족 확인으로 이동
-                setCurrentStep('elderly_parent_check');
+                goToStep('elderly_parent_check');
                 addBotMessage(
                     '아래 조건에 **모두 부합하는** 부모님이 계신가요?\n\n• 친부모\n• 만 65세 이상\n• 소득이 없거나 기초수급 혹은 장애\n• 20만원 이상 생활비를 매달 드리는 중',
                     [
@@ -1203,7 +1244,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'elderly_parent_check':
                 if (value === 'yes') {
-                    setCurrentStep('elderly_parent_count');
+                    goToStep('elderly_parent_count');
                     addBotMessage(
                         '해당 조건에 부합하는 부모님이 몇 분이신가요?',
                         [
@@ -1215,7 +1256,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     // 고령 부모님 부양가족 없음
                     setUserInput(prev => ({ ...prev, elderlyParentDependents: 0 }));
-                    setCurrentStep('priority_debt');
+                    goToStep('priority_debt');
                     addBotMessage(
                         '세금, 건강보험료 등 미납된 공과금이 있으신가요?',
                         [
@@ -1245,7 +1286,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     };
                 });
 
-                setCurrentStep('priority_debt');
+                goToStep('priority_debt');
                 addBotMessage(
                     '세금, 건강보험료 등 미납된 공과금이 있으신가요?',
                     [
@@ -1258,7 +1299,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'priority_debt':
                 if (value === 'yes') {
-                    setCurrentStep('priority_debt_amount');
+                    goToStep('priority_debt_amount');
                     addBotMessage(
                         '미납된 세금/보험료 총액은 대략 얼마인가요?\n\n(만원 단위)',
                         undefined,
@@ -1266,7 +1307,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     setUserInput(prev => ({ ...prev, priorityDebt: 0 }));
-                    setCurrentStep('risk');
+                    goToStep('risk');
                     addBotMessage(
                         '혹시 다음 중 해당하는 항목이 있나요?',
                         [
@@ -1282,7 +1323,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'priority_debt_amount':
                 setUserInput(prev => ({ ...prev, priorityDebt: (value as number) * 10000 }));
-                setCurrentStep('risk');
+                goToStep('risk');
                 addBotMessage(
                     '혹시 다음 중 해당하는 항목이 있나요?',
                     [
@@ -1306,7 +1347,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 }, 300);
                 setTimeout(() => {
-                    setCurrentStep('legal_actions');
+                    goToStep('legal_actions');
                     addBotMessage(
                         '혼시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
                         [
@@ -1326,7 +1367,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             case 'prior_rehab':
                 if (value === 'none' || value === 'fresh_start') {
                     // 24개월 특례 적용 가능 여부 확인으로 이동
-                    setCurrentStep('special_24_months');
+                    goToStep('special_24_months');
                     addBotMessage(
                         '24개월 단기 변제 특례 적용 가능 여부를 확인합니다.\n\n다음 중 해당하는 항목이 있으신가요?',
                         [
@@ -1338,14 +1379,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         'buttons'
                     );
                 } else if (value === 'rehab' || value === 'bankruptcy') {
-                    setCurrentStep('prior_rehab_detail');
+                    goToStep('prior_rehab_detail');
                     addBotMessage(
                         '면책받으신 년도와 월을 대략적으로 입력해주세요.\n\n(정확하지 않아도 괜찮아요. 예: 2020년 5월)',
                         undefined,
                         'text'
                     );
                 } else if (value === 'credit_recovery') {
-                    setCurrentStep('prior_credit_recovery');
+                    goToStep('prior_credit_recovery');
                     addBotMessage(
                         '신용회복 상태가 어떻게 되시나요?',
                         [
@@ -1375,7 +1416,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         undefined,
                         'money'
                     );
-                    setCurrentStep('prior_credit_recovery_amount');
+                    goToStep('prior_credit_recovery_amount');
                 } else {
                     calculateResult(userInput);
                 }
@@ -1392,7 +1433,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const rawDebtTypes = Array.isArray(value) ? value : [value];
                 const debtTypes = rawDebtTypes.filter(v => v !== 'done' && v !== 'none') as string[];
                 setUserInput(prev => ({ ...prev, debtTypes }));
-                setCurrentStep('other_debt');
+                goToStep('other_debt');
                 addBotMessage(
                     '신용카드 외에 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
                     undefined,
@@ -1419,7 +1460,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
 
                 setTimeout(() => {
-                    setCurrentStep('prior_rehab');
+                    goToStep('prior_rehab');
                     addBotMessage(
                         '기존에 개인회생, 파산, 신용회복, 새출발기금을 진행 중이거나 진행하신 적 있으신가요?',
                         [
@@ -1439,7 +1480,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // 월 고정 지출 저장 후 assets_select로 이동
                 const monthlyFixedExpenses = (value as number) * 10000;
                 setUserInput(prev => ({ ...prev, monthlyFixedExpenses }));
-                setCurrentStep('assets_select');
+                goToStep('assets_select');
                 addBotMessage(
                     '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
                     [
@@ -1468,7 +1509,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
 
         }
-    }, [userInput, addBotMessage, selectedAssets, currentAssetIndex, assetValues, spouseSelectedAssets, currentSpouseAssetIndex, spouseAssetValues, shouldUseBlock]);
+    }, [userInput, addBotMessage, selectedAssets, currentAssetIndex, assetValues, spouseSelectedAssets, currentSpouseAssetIndex, spouseAssetValues, shouldUseBlock, messages.length]);
 
     // 결과 계산 (V2.1 강화: 5단계 프로그레스 애니메이션)
     const calculateResult = useCallback((input: RehabUserInput) => {
@@ -1555,35 +1596,77 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         }, 300);
     }, [inputValue, messages, addUserMessage, processStep, currentStep]);
 
-    // 롤백 실행 함수
-    const executeRollback = useCallback((targetStep: ChatStep, targetMessageId: string, newValue: string | number) => {
-        // 해당 메시지 이후의 모든 메시지 삭제
+    // 롤백 실행 함수 (스냅샷 기반 완전 복원)
+    const executeRollback = useCallback((targetStep: ChatStep, targetMessageId: string, newValue?: string | number) => {
+        // 1. 해당 단계의 스냅샷 찾기
+        const snapshotIndex = stepHistory.findIndex(s => s.step === targetStep);
+        if (snapshotIndex === -1) return;
+        const snapshot = stepHistory[snapshotIndex];
+
+        // 2. 스냅샷 시점의 메시지까지만 유지
         setMessages(prev => {
-            const targetIndex = prev.findIndex(msg => msg.id === targetMessageId);
-            if (targetIndex === -1) return prev;
-            // 해당 메시지까지만 유지하고, 그 이후 모두 삭제
-            const kept = prev.slice(0, targetIndex + 1);
-            // 해당 메시지의 isAnswered를 false로 변경
+            const kept = prev.slice(0, snapshot.messageCount);
             return kept.map((msg, idx) =>
-                idx === targetIndex ? { ...msg, isAnswered: false } : msg
+                idx === kept.length - 1 && msg.type === 'bot' ? { ...msg, isAnswered: false } : msg
             );
         });
 
-        // 해당 단계로 currentStep 설정
+        // 3. 모든 관련 상태를 스냅샷으로 복원
+        setUserInput(snapshot.userInput);
+        setSelectedAssets(snapshot.selectedAssets);
+        setCurrentAssetIndex(snapshot.currentAssetIndex);
+        setAssetValues(snapshot.assetValues);
+        setSpouseSelectedAssets(snapshot.spouseSelectedAssets);
+        setCurrentSpouseAssetIndex(snapshot.currentSpouseAssetIndex);
+        setSpouseAssetValues(snapshot.spouseAssetValues);
+
+        // 4. 히스토리 스택에서 해당 단계 이후 제거
+        setStepHistory(prev => prev.slice(0, snapshotIndex));
+
+        // 5. 해당 단계로 이동
         setCurrentStep(targetStep);
 
-        // userInput 초기화 (해당 단계 이후의 값들)
-        // 간소화: 전체 초기화 대신 해당 단계부터 다시 시작
-        // 사용자 메시지 추가 및 단계 진행
-        const targetMessage = messages.find(msg => msg.id === targetMessageId);
-        const selectedOption = targetMessage?.options?.find(opt => opt.value === newValue);
-        if (selectedOption) {
-            addUserMessage(selectedOption.label);
-            setTimeout(() => processStep(targetStep, newValue), 300);
+        // 6. 새 값이 있으면 바로 답변 처리 (이전 옵션 클릭으로 롤백 시)
+        if (newValue !== undefined && newValue !== null) {
+            const targetMessage = messages.find(msg => msg.id === targetMessageId);
+            const selectedOption = targetMessage?.options?.find(opt => String(opt.value) === String(newValue));
+            if (selectedOption) {
+                setTimeout(() => {
+                    addUserMessage(selectedOption.label);
+                    setTimeout(() => processStep(targetStep, newValue), 300);
+                }, 100);
+            }
         }
 
         setRollbackConfirm({ isOpen: false, targetStep: null, targetMessageId: null, newValue: null });
-    }, [messages, addUserMessage, processStep]);
+    }, [stepHistory, messages, addUserMessage, processStep]);
+
+    // 뒤로 가기 함수
+    const handleGoBack = useCallback(() => {
+        if (stepHistory.length === 0) return;
+        const lastSnapshot = stepHistory[stepHistory.length - 1];
+
+        // 스냅샷 시점으로 메시지 복원
+        setMessages(prev => {
+            const kept = prev.slice(0, lastSnapshot.messageCount);
+            return kept.map((msg, idx) =>
+                idx === kept.length - 1 && msg.type === 'bot' ? { ...msg, isAnswered: false } : msg
+            );
+        });
+
+        // 모든 상태 복원
+        setUserInput(lastSnapshot.userInput);
+        setSelectedAssets(lastSnapshot.selectedAssets);
+        setCurrentAssetIndex(lastSnapshot.currentAssetIndex);
+        setAssetValues(lastSnapshot.assetValues);
+        setSpouseSelectedAssets(lastSnapshot.spouseSelectedAssets);
+        setCurrentSpouseAssetIndex(lastSnapshot.currentSpouseAssetIndex);
+        setSpouseAssetValues(lastSnapshot.spouseAssetValues);
+        setCurrentStep(lastSnapshot.step);
+
+        // 히스토리 스택에서 마지막 제거
+        setStepHistory(prev => prev.slice(0, -1));
+    }, [stepHistory]);
 
     // 옵션 선택 처리 (롤백 지원)
     const handleOptionSelect = useCallback((option: ChatOption, messageId?: string) => {
@@ -1713,6 +1796,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         inputRef={inputRef}
                         onBlockSubmit={handleBlockSubmit}
                         enableFormBlocks={enableFormBlocks || interactiveBlockPreset !== 'none'}
+                        onGoBack={handleGoBack}
+                        canGoBack={stepHistory.length > 0 && currentStep !== 'intro' && currentStep !== 'result'}
                         onBlockCancel={(id) => {
                             setMessages(prev => prev.map(msg =>
                                 msg.id === id ? { ...msg, blockState: { status: 'cancelled' } } : msg
