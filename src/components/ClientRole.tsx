@@ -1514,15 +1514,9 @@ export default function ClientRole({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-6 pb-4">
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
-                {/* 슬로건 배지 */}
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 dark:bg-brand/20 dark:border-brand/45">
-                  <ShieldCheck className="w-4 h-4 text-brand dark:text-brand-light" />
-                  <span className="text-xs text-brand dark:text-brand-light font-bold">빚 걱정, 혼자 하지 마세요 — 김변호사가 같이 고민해드려요</span>
-                </div>
-                
                 <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
-                  나한테 맞는 방법,<br />
-                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">따로 있을 수 있어요</span>
+                  빚 걱정, 혼자 하지 마세요<br />
+                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">my김변이 같이 고민해드려요</span>
                 </h1>
                 
                 <p className="text-slate-500 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
@@ -1743,7 +1737,11 @@ export default function ClientRole({
                 {/* 하단 CTA */}
                 <div className="px-5 pb-5">
                   <button 
-                    onClick={() => setDiagnosisPhase('flow')}
+                    onClick={() => {
+                      setRequestType('open');
+                      setRequestStep(1);
+                      setActiveTab('request');
+                    }}
                     className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-center font-bold py-3.5 rounded-2xl text-xs transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-brand/20 hover:shadow-brand/30 flex items-center justify-center gap-2"
                   >
                     <span>나도 이렇게 관리받고 싶어요</span>
