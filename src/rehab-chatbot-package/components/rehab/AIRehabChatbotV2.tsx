@@ -65,6 +65,14 @@ interface StepSnapshot {
     tempSpouseRealEstateMortgage?: number;
     landLoanCheck?: 'yes' | 'no' | null;
     spouseLandLoanCheck?: 'yes' | 'no' | null;
+    tempBusinessDeposit?: number;
+    tempBusinessPremium?: number;
+    tempBusinessMachinery?: number;
+    tempBusinessEtc?: number;
+    tempSpouseBusinessDeposit?: number;
+    tempSpouseBusinessPremium?: number;
+    tempSpouseBusinessMachinery?: number;
+    tempSpouseBusinessEtc?: number;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -90,6 +98,10 @@ type ChatStep =
     | 'spouse_asset_real_estate_deposit_amount'
     | 'spouse_asset_land_loan_check'
     | 'spouse_asset_land_loan_amount'
+    | 'spouse_asset_business_deposit'
+    | 'spouse_asset_business_premium'
+    | 'spouse_asset_business_machinery'
+    | 'spouse_asset_business_etc'
     | 'custody'
     | 'child_support_receive'
     | 'child_support_pay'
@@ -115,8 +127,10 @@ type ChatStep =
     | 'asset_real_estate_deposit_amount'
     | 'asset_land_loan_check'
     | 'asset_land_loan_amount'
-    | 'business_assets_deposit' // 사업장 보증금
-    | 'business_assets_facility' // 사업장 시설/권리금
+    | 'asset_business_deposit'
+    | 'asset_business_premium'
+    | 'asset_business_machinery'
+    | 'asset_business_etc'
     | 'credit_card'
     | 'credit_card_amount'
     | 'other_debt'
@@ -137,7 +151,7 @@ type ChatStep =
     | 'result';
 
 // 재산 항목 타입
-type AssetType = 'car' | 'realEstate' | 'land' | 'savings' | 'insurance' | 'stocks';
+type AssetType = 'car' | 'realEstate' | 'land' | 'savings' | 'insurance' | 'stocks' | 'businessAssets';
 
 interface AIRehabChatbotV2Props {
     isOpen: boolean;
@@ -169,7 +183,8 @@ const ASSET_LABELS: Record<AssetType, string> = {
     land: '토지',
     savings: '예금/적금',
     insurance: '보험(해지환급금)',
-    stocks: '주식/코인'
+    stocks: '주식/코인',
+    businessAssets: '사업재산'
 };
 
 const ASSET_BLOCK_OPTIONS = [
@@ -178,7 +193,8 @@ const ASSET_BLOCK_OPTIONS = [
     { label: '토지', value: 'land', icon: '🏞️' },
     { label: '예금/적금', value: 'savings', icon: '💰' },
     { label: '보험', value: 'insurance', icon: '🛡️' },
-    { label: '주식/코인', value: 'stocks', icon: '📈' }
+    { label: '주식/코인', value: 'stocks', icon: '📈' },
+    { label: '사업재산', value: 'businessAssets', icon: '🏢' }
 ];
 
 const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
@@ -281,12 +297,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [selectedAssets, setSelectedAssets] = useState<AssetType[]>([]);
     const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
     const [assetValues, setAssetValues] = useState<Record<AssetType, number>>({
-        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0
+        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0, businessAssets: 0
     });
     const [spouseSelectedAssets, setSpouseSelectedAssets] = useState<AssetType[]>([]);
     const [currentSpouseAssetIndex, setCurrentSpouseAssetIndex] = useState(0);
     const [spouseAssetValues, setSpouseAssetValues] = useState<Record<AssetType, number>>({
-        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0
+        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0, businessAssets: 0
     });
     const [carLoanType, setCarLoanType] = useState<'installment' | 'mortgage' | null>(null);
     const [spouseCarLoanType, setSpouseCarLoanType] = useState<'installment' | 'mortgage' | null>(null);
@@ -296,6 +312,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [tempSpouseRealEstateMortgage, setTempSpouseRealEstateMortgage] = useState<number>(0);
     const [landLoanCheck, setLandLoanCheck] = useState<'yes' | 'no' | null>(null);
     const [spouseLandLoanCheck, setSpouseLandLoanCheck] = useState<'yes' | 'no' | null>(null);
+    const [tempBusinessDeposit, setTempBusinessDeposit] = useState<number>(0);
+    const [tempBusinessPremium, setTempBusinessPremium] = useState<number>(0);
+    const [tempBusinessMachinery, setTempBusinessMachinery] = useState<number>(0);
+    const [tempBusinessEtc, setTempBusinessEtc] = useState<number>(0);
+    const [tempSpouseBusinessDeposit, setTempSpouseBusinessDeposit] = useState<number>(0);
+    const [tempSpouseBusinessPremium, setTempSpouseBusinessPremium] = useState<number>(0);
+    const [tempSpouseBusinessMachinery, setTempSpouseBusinessMachinery] = useState<number>(0);
+    const [tempSpouseBusinessEtc, setTempSpouseBusinessEtc] = useState<number>(0);
 
     // 뒤로 가기: 단계 히스토리 스택
     const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
@@ -467,7 +491,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     spouseRealEstateLoanType,
                     tempSpouseRealEstateMortgage,
                     landLoanCheck,
-                    spouseLandLoanCheck
+                    spouseLandLoanCheck,
+                    tempBusinessDeposit,
+                    tempBusinessPremium,
+                    tempBusinessMachinery,
+                    tempBusinessEtc,
+                    tempSpouseBusinessDeposit,
+                    tempSpouseBusinessPremium,
+                    tempSpouseBusinessMachinery,
+                    tempSpouseBusinessEtc
                 }];
             });
         }
@@ -763,18 +795,36 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         setSpouseSelectedAssets(assets);
                         setCurrentSpouseAssetIndex(0);
-                        goToStep('spouse_asset_detail');
-                        addBotMessage(
-                            `배우자의 ${ASSET_LABELS[assets[0]]} 가치는 대략 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'number'
-                        );
+                        if (assets[0] === 'businessAssets') {
+                            goToStep('spouse_asset_business_deposit');
+                            addBotMessage(
+                                '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                                undefined,
+                                'money'
+                            );
+                        } else {
+                            goToStep('spouse_asset_detail');
+                            addBotMessage(
+                                `배우자의 ${ASSET_LABELS[assets[0]]} 가치는 대략 얼마인가요?\n\n(만원 단위)`,
+                                undefined,
+                                'number'
+                            );
+                        }
                     }
                 }
                 break;
 
             case 'spouse_asset_detail': {
                 const spouseAssetType = spouseSelectedAssets[currentSpouseAssetIndex];
+                if (spouseAssetType === 'businessAssets') {
+                    goToStep('spouse_asset_business_deposit');
+                    addBotMessage(
+                        '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                        undefined,
+                        'money'
+                    );
+                    return;
+                }
                 const rawVal = (value as number) * 10000;
                 setSpouseAssetValues(prev => ({ ...prev, [spouseAssetType]: rawVal }));
 
@@ -1125,14 +1175,108 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
                     const nextIndex = currentSpouseAssetIndex + 1;
                     setCurrentSpouseAssetIndex(nextIndex);
-                    goToStep('spouse_asset_detail');
-                    addBotMessage(
-                        `배우자의 ${ASSET_LABELS[spouseSelectedAssets[nextIndex]]} 가치는 얼마인가요?\n\n(만원 단위)`,
-                        undefined,
-                        'money'
-                    );
+                    const nextAsset = spouseSelectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('spouse_asset_business_deposit');
+                        addBotMessage(
+                            '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('spouse_asset_detail');
+                        addBotMessage(
+                            `배우자의 ${ASSET_LABELS[nextAsset]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
                 } else {
                     // 배우자 재산 합산
+                    const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                    goToStep('minor_children');
+                    addBotMessage(
+                        '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                        [
+                            { label: '0️⃣ 없어요', value: 0 },
+                            { label: '1️⃣ 1명', value: 1 },
+                            { label: '2️⃣ 2명', value: 2 },
+                            { label: '3️⃣ 3명', value: 3 },
+                            { label: '4️⃣ 4명', value: 4 },
+                            { label: '5️⃣ 5명 이상', value: 5 }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'spouse_asset_business_deposit': {
+                const depVal = (value as number) * 10000;
+                setTempSpouseBusinessDeposit(depVal);
+                goToStep('spouse_asset_business_premium');
+                addBotMessage(
+                    '배우자 사업장의 권리금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                    undefined,
+                    'money'
+                );
+                break;
+            }
+
+            case 'spouse_asset_business_premium': {
+                const premVal = (value as number) * 10000;
+                setTempSpouseBusinessPremium(premVal);
+                goToStep('spouse_asset_business_machinery');
+                addBotMessage(
+                    '배우자 사업장의 시설 및 기자재 가치는 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                    undefined,
+                    'money'
+                );
+                break;
+            }
+
+            case 'spouse_asset_business_machinery': {
+                const machVal = (value as number) * 10000;
+                setTempSpouseBusinessMachinery(machVal);
+                goToStep('spouse_asset_business_etc');
+                addBotMessage(
+                    '배우자의 그 외 기타 사업재산의 가치는 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                    undefined,
+                    'money'
+                );
+                break;
+            }
+
+            case 'spouse_asset_business_etc': {
+                const etcVal = (value as number) * 10000;
+                setTempSpouseBusinessEtc(etcVal);
+                
+                const bizTotal = tempSpouseBusinessDeposit + tempSpouseBusinessPremium + tempSpouseBusinessMachinery + etcVal;
+                
+                setSpouseAssetValues(prev => ({ ...prev, businessAssets: bizTotal }));
+                const updatedSpouseAssetValues = { ...spouseAssetValues, businessAssets: bizTotal };
+
+                if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                    const nextIndex = currentSpouseAssetIndex + 1;
+                    setCurrentSpouseAssetIndex(nextIndex);
+                    const nextAsset = spouseSelectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('spouse_asset_business_deposit');
+                        addBotMessage(
+                            '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('spouse_asset_detail');
+                        addBotMessage(
+                            `배우자의 ${ASSET_LABELS[nextAsset]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
+                } else {
                     const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
                     setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
                     goToStep('minor_children');
@@ -1459,18 +1603,36 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         setSelectedAssets(assets);
                         setCurrentAssetIndex(0);
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[assets[0]]}의 현재 가치는 대략 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'number'
-                        );
+                        if (assets[0] === 'businessAssets') {
+                            goToStep('asset_business_deposit');
+                            addBotMessage(
+                                '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                                undefined,
+                                'money'
+                            );
+                        } else {
+                            goToStep('asset_detail');
+                            addBotMessage(
+                                `${ASSET_LABELS[assets[0]]}의 현재 가치는 대략 얼마인가요?\n\n(만원 단위)`,
+                                undefined,
+                                'number'
+                            );
+                        }
                     }
                 }
                 break;
 
             case 'asset_detail': {
                 const assetType = selectedAssets[currentAssetIndex];
+                if (assetType === 'businessAssets') {
+                    goToStep('asset_business_deposit');
+                    addBotMessage(
+                        '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                        undefined,
+                        'money'
+                    );
+                    return;
+                }
                 const rawVal = (value as number) * 10000;
                 setAssetValues(prev => ({ ...prev, [assetType]: rawVal }));
 
@@ -1793,14 +1955,104 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (currentAssetIndex < selectedAssets.length - 1) {
                     const nextIndex = currentAssetIndex + 1;
                     setCurrentAssetIndex(nextIndex);
-                    goToStep('asset_detail');
-                    addBotMessage(
-                        `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                        undefined,
-                        'money'
-                    );
+                    const nextAsset = selectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('asset_business_deposit');
+                        addBotMessage(
+                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('asset_detail');
+                        addBotMessage(
+                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
                 } else {
                     // 재산 합산
+                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                    goToStep('credit_card');
+                    addBotMessage(
+                        '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                        [
+                            { label: '사용 중이에요', value: 'yes' },
+                            { label: '사용 안 해요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_business_deposit': {
+                const depVal = (value as number) * 10000;
+                setTempBusinessDeposit(depVal);
+                goToStep('asset_business_premium');
+                addBotMessage(
+                    '사업장의 권리금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                    undefined,
+                    'money'
+                );
+                break;
+            }
+
+            case 'asset_business_premium': {
+                const premVal = (value as number) * 10000;
+                setTempBusinessPremium(premVal);
+                goToStep('asset_business_machinery');
+                addBotMessage(
+                    '시설 및 기자재 가치는 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                    undefined,
+                    'money'
+                );
+                break;
+            }
+
+            case 'asset_business_machinery': {
+                const machVal = (value as number) * 10000;
+                setTempBusinessMachinery(machVal);
+                goToStep('asset_business_etc');
+                addBotMessage(
+                    '그 외 기타 사업재산의 가치는 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                    undefined,
+                    'money'
+                );
+                break;
+            }
+
+            case 'asset_business_etc': {
+                const etcVal = (value as number) * 10000;
+                setTempBusinessEtc(etcVal);
+                
+                const bizTotal = tempBusinessDeposit + tempBusinessPremium + tempBusinessMachinery + etcVal;
+                
+                setAssetValues(prev => ({ ...prev, businessAssets: bizTotal }));
+                const updatedAssetValues = { ...assetValues, businessAssets: bizTotal };
+
+                if (currentAssetIndex < selectedAssets.length - 1) {
+                    const nextIndex = currentAssetIndex + 1;
+                    setCurrentAssetIndex(nextIndex);
+                    const nextAsset = selectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('asset_business_deposit');
+                        addBotMessage(
+                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('asset_detail');
+                        addBotMessage(
+                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
+                } else {
                     const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
@@ -2362,6 +2614,30 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (snapshot.spouseLandLoanCheck !== undefined) {
             setSpouseLandLoanCheck(snapshot.spouseLandLoanCheck);
         }
+        if (snapshot.tempBusinessDeposit !== undefined) {
+            setTempBusinessDeposit(snapshot.tempBusinessDeposit);
+        }
+        if (snapshot.tempBusinessPremium !== undefined) {
+            setTempBusinessPremium(snapshot.tempBusinessPremium);
+        }
+        if (snapshot.tempBusinessMachinery !== undefined) {
+            setTempBusinessMachinery(snapshot.tempBusinessMachinery);
+        }
+        if (snapshot.tempBusinessEtc !== undefined) {
+            setTempBusinessEtc(snapshot.tempBusinessEtc);
+        }
+        if (snapshot.tempSpouseBusinessDeposit !== undefined) {
+            setTempSpouseBusinessDeposit(snapshot.tempSpouseBusinessDeposit);
+        }
+        if (snapshot.tempSpouseBusinessPremium !== undefined) {
+            setTempSpouseBusinessPremium(snapshot.tempSpouseBusinessPremium);
+        }
+        if (snapshot.tempSpouseBusinessMachinery !== undefined) {
+            setTempSpouseBusinessMachinery(snapshot.tempSpouseBusinessMachinery);
+        }
+        if (snapshot.tempSpouseBusinessEtc !== undefined) {
+            setTempSpouseBusinessEtc(snapshot.tempSpouseBusinessEtc);
+        }
 
         // 4. 히스토리 스택에서 해당 단계 이후 제거
         setStepHistory(prev => prev.slice(0, snapshotIndex));
@@ -2430,6 +2706,30 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (lastSnapshot.spouseLandLoanCheck !== undefined) {
             setSpouseLandLoanCheck(lastSnapshot.spouseLandLoanCheck);
         }
+        if (lastSnapshot.tempBusinessDeposit !== undefined) {
+            setTempBusinessDeposit(lastSnapshot.tempBusinessDeposit);
+        }
+        if (lastSnapshot.tempBusinessPremium !== undefined) {
+            setTempBusinessPremium(lastSnapshot.tempBusinessPremium);
+        }
+        if (lastSnapshot.tempBusinessMachinery !== undefined) {
+            setTempBusinessMachinery(lastSnapshot.tempBusinessMachinery);
+        }
+        if (lastSnapshot.tempBusinessEtc !== undefined) {
+            setTempBusinessEtc(lastSnapshot.tempBusinessEtc);
+        }
+        if (lastSnapshot.tempSpouseBusinessDeposit !== undefined) {
+            setTempSpouseBusinessDeposit(lastSnapshot.tempSpouseBusinessDeposit);
+        }
+        if (lastSnapshot.tempSpouseBusinessPremium !== undefined) {
+            setTempSpouseBusinessPremium(lastSnapshot.tempSpouseBusinessPremium);
+        }
+        if (lastSnapshot.tempSpouseBusinessMachinery !== undefined) {
+            setTempSpouseBusinessMachinery(lastSnapshot.tempSpouseBusinessMachinery);
+        }
+        if (lastSnapshot.tempSpouseBusinessEtc !== undefined) {
+            setTempSpouseBusinessEtc(lastSnapshot.tempSpouseBusinessEtc);
+        }
 
         // 히스토리 스택에서 마지막 제거
         setStepHistory(prev => prev.slice(0, -1));
@@ -2469,14 +2769,17 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'work_location': 17,
             'income_salary': 20, 'income_business': 22, 'income_confirm': 25,
             'marital_status': 30, 'spouse_income': 35, 'spouse_assets_select': 38,
-            'spouse_asset_detail': 40, 'spouse_asset_car_loan_check': 40.5, 'spouse_asset_car_loan_amount': 41, 'spouse_asset_real_estate_loan_check': 41.2, 'spouse_asset_real_estate_mortgage_amount': 41.5, 'spouse_asset_real_estate_deposit_amount': 41.8, 'spouse_asset_land_loan_check': 41.9, 'spouse_asset_land_loan_amount': 42, 'custody': 35, 'child_support_receive': 38,
+            'spouse_asset_detail': 40, 'spouse_asset_car_loan_check': 40.5, 'spouse_asset_car_loan_amount': 41, 'spouse_asset_real_estate_loan_check': 41.2, 'spouse_asset_real_estate_mortgage_amount': 41.5, 'spouse_asset_real_estate_deposit_amount': 41.8, 'spouse_asset_land_loan_check': 41.9, 'spouse_asset_land_loan_amount': 42,
+            'spouse_asset_business_deposit': 42.1, 'spouse_asset_business_premium': 42.2, 'spouse_asset_business_machinery': 42.3, 'spouse_asset_business_etc': 42.4,
+            'custody': 35, 'child_support_receive': 38,
             'child_support_pay': 38, 'minor_children': 42, 'housing_type': 48,
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
             'owned_value': 53, 'owned_mortgage': 55,
             'medical_check': 57, 'medical_amount': 59,
             'education_check': 61, 'education_amount': 63, 'special_education': 64,
             'assets_select': 65,
-            'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'asset_real_estate_loan_check': 70.2, 'asset_real_estate_mortgage_amount': 70.5, 'asset_real_estate_deposit_amount': 70.8, 'asset_land_loan_check': 72.2, 'asset_land_loan_amount': 72.5, 'business_assets_deposit': 73, 'business_assets_facility': 74,
+            'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'asset_real_estate_loan_check': 70.2, 'asset_real_estate_mortgage_amount': 70.5, 'asset_real_estate_deposit_amount': 70.8, 'asset_land_loan_check': 72.2, 'asset_land_loan_amount': 72.5,
+            'asset_business_deposit': 73, 'asset_business_premium': 73.2, 'asset_business_machinery': 73.5, 'asset_business_etc': 73.8,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
             'other_debt': 82, 'debt_confirm': 85, 'priority_debt': 88,
