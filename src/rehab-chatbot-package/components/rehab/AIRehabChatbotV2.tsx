@@ -152,8 +152,6 @@ type ChatStep =
     | 'credit_card_amount'
     | 'other_debt'
     | 'debt_confirm'
-    | 'priority_debt'
-    | 'priority_debt_amount'
     | 'prior_rehab'          // 기존 개인회생/파산 진행 여부
     | 'prior_rehab_detail'   // 면책 년월
     | 'prior_credit_recovery' // 신용회복 상세
@@ -163,6 +161,7 @@ type ChatStep =
     | 'elderly_parent_check'  // 고령 부모님 부양가족 확인
     | 'elderly_parent_count'  // 고령 부모님 인원수
     | 'debt_types'            // V2.1: 채무 유형 분류
+    | 'tax_amount'            // 국세 금액 입력 (NEW)
     | 'legal_actions'         // V2.1: 법적 조치 경험
     | 'monthly_expenses'      // V2.1: 월 고정 지출
     | 'result';
@@ -2620,6 +2619,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '🏦 은행 대출', value: 'bank' },
                         { label: '💳 카드사/캐피탈', value: 'capital' },
                         { label: '🏪 저축은행/대부업', value: 'savings_bank' },
+                        { label: '🏛️ 국세', value: 'tax' },
                         { label: '👤 사금융/지인', value: 'private' },
                         { label: '📱 앱/온라인 대출', value: 'app_loan' },
                         { label: '🏢 보증채무', value: 'guarantee' },
@@ -2750,12 +2750,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     // 고령 부모님 부양가족 없음
                     setUserInput(prev => ({ ...prev, elderlyParentDependents: 0 }));
-                    goToStep('priority_debt');
+                    goToStep('risk');
                     addBotMessage(
-                        '세금, 건강보험료 등 미납된 공과금이 있으신가요?',
+                        '혹시 다음 중 해당하는 항목이 있나요?',
                         [
-                            { label: '없어요', value: 'no' },
-                            { label: '있어요', value: 'yes' }
+                            { label: '아니요, 일반 채무예요', value: 'none' },
+                            { label: '최근 1년 내 대출이 많아요', value: 'recent_loan' },
+                            { label: '주식/코인 투자 손실이 있어요', value: 'investment' },
+                            { label: '도박으로 인한 채무가 있어요', value: 'gambling' }
                         ],
                         'buttons'
                     );
@@ -2780,43 +2782,6 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     };
                 });
 
-                goToStep('priority_debt');
-                addBotMessage(
-                    '세금, 건강보험료 등 미납된 공과금이 있으신가요?',
-                    [
-                        { label: '없어요', value: 'no' },
-                        { label: '있어요', value: 'yes' }
-                    ],
-                    'buttons'
-                );
-                break;
-
-            case 'priority_debt':
-                if (value === 'yes') {
-                    goToStep('priority_debt_amount');
-                    addBotMessage(
-                        '미납된 세금/보험료 총액은 대략 얼마인가요?\n\n(만원 단위)',
-                        undefined,
-                        'money'
-                    );
-                } else {
-                    setUserInput(prev => ({ ...prev, priorityDebt: 0 }));
-                    goToStep('risk');
-                    addBotMessage(
-                        '혹시 다음 중 해당하는 항목이 있나요?',
-                        [
-                            { label: '아니요, 일반 채무예요', value: 'none' },
-                            { label: '최근 1년 내 대출이 많아요', value: 'recent_loan' },
-                            { label: '주식/코인 투자 손실이 있어요', value: 'investment' },
-                            { label: '도박으로 인한 채무가 있어요', value: 'gambling' }
-                        ],
-                        'buttons'
-                    );
-                }
-                break;
-
-            case 'priority_debt_amount':
-                setUserInput(prev => ({ ...prev, priorityDebt: (value as number) * 10000 }));
                 goToStep('risk');
                 addBotMessage(
                     '혹시 다음 중 해당하는 항목이 있나요?',
@@ -2923,18 +2888,38 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             // ── V2.1 신규 단계 ──
 
             case 'debt_types': {
-                // 채무 유형 저장 후 other_debt로 이동
                 const rawDebtTypes = Array.isArray(value) ? value : [value];
                 const debtTypes = rawDebtTypes.filter(v => v !== 'done' && v !== 'none') as string[];
                 setUserInput(prev => ({ ...prev, debtTypes }));
+                
+                if (debtTypes.includes('tax')) {
+                    goToStep('tax_amount');
+                    addBotMessage(
+                        '국세(세금 체납액)는 총 얼마인가요?\n\n(만원 단위로 입력해주세요. 없으면 0)',
+                        undefined,
+                        'money'
+                    );
+                } else {
+                    setUserInput(prev => ({ ...prev, priorityDebt: 0 }));
+                    goToStep('other_debt');
+                    addBotMessage(
+                        '신용카드 외에 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
+                        undefined,
+                        'money'
+                    );
+                }
+                break;
+            }
+
+            case 'tax_amount':
+                setUserInput(prev => ({ ...prev, priorityDebt: (value as number) * 10000 }));
                 goToStep('other_debt');
                 addBotMessage(
-                    '신용카드 외에 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
+                    '신용카드 및 국세를 제외하고, 추가로 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
                     undefined,
                     'money'
                 );
                 break;
-            }
 
             case 'legal_actions': {
                 // 법적 조치 저장 후 prior_rehab으로 이동
@@ -3375,8 +3360,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'asset_savings_loan_check': 74, 'asset_savings_loan_amount': 74.2, 'asset_insurance_loan_check': 74.5, 'asset_insurance_loan_amount': 74.8,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
-            'other_debt': 82, 'debt_confirm': 85, 'priority_debt': 88,
-            'priority_debt_amount': 90, 'prior_rehab': 91, 'prior_rehab_detail': 92,
+            'tax_amount': 80, 'other_debt': 82, 'debt_confirm': 85, 
+            'prior_rehab': 91, 'prior_rehab_detail': 92,
             'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95,
             'legal_actions': 95.2, 'monthly_expenses': 62,
             'special_24_months': 95.5, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
