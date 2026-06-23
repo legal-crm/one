@@ -63,6 +63,8 @@ interface StepSnapshot {
     tempRealEstateMortgage?: number;
     spouseRealEstateLoanType?: 'mortgage' | 'deposit' | 'both' | null;
     tempSpouseRealEstateMortgage?: number;
+    landLoanCheck?: 'yes' | 'no' | null;
+    spouseLandLoanCheck?: 'yes' | 'no' | null;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -86,6 +88,8 @@ type ChatStep =
     | 'spouse_asset_real_estate_loan_check'
     | 'spouse_asset_real_estate_mortgage_amount'
     | 'spouse_asset_real_estate_deposit_amount'
+    | 'spouse_asset_land_loan_check'
+    | 'spouse_asset_land_loan_amount'
     | 'custody'
     | 'child_support_receive'
     | 'child_support_pay'
@@ -109,6 +113,8 @@ type ChatStep =
     | 'asset_real_estate_loan_check'
     | 'asset_real_estate_mortgage_amount'
     | 'asset_real_estate_deposit_amount'
+    | 'asset_land_loan_check'
+    | 'asset_land_loan_amount'
     | 'business_assets_deposit' // 사업장 보증금
     | 'business_assets_facility' // 사업장 시설/권리금
     | 'credit_card'
@@ -288,6 +294,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [tempRealEstateMortgage, setTempRealEstateMortgage] = useState<number>(0);
     const [spouseRealEstateLoanType, setSpouseRealEstateLoanType] = useState<'mortgage' | 'deposit' | 'both' | null>(null);
     const [tempSpouseRealEstateMortgage, setTempSpouseRealEstateMortgage] = useState<number>(0);
+    const [landLoanCheck, setLandLoanCheck] = useState<'yes' | 'no' | null>(null);
+    const [spouseLandLoanCheck, setSpouseLandLoanCheck] = useState<'yes' | 'no' | null>(null);
 
     // 뒤로 가기: 단계 히스토리 스택
     const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
@@ -457,7 +465,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     realEstateLoanType,
                     tempRealEstateMortgage,
                     spouseRealEstateLoanType,
-                    tempSpouseRealEstateMortgage
+                    tempSpouseRealEstateMortgage,
+                    landLoanCheck,
+                    spouseLandLoanCheck
                 }];
             });
         }
@@ -797,6 +807,19 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     return;
                 }
 
+                if (spouseAssetType === 'land') {
+                    goToStep('spouse_asset_land_loan_check');
+                    addBotMessage(
+                        '해당 배우자 토지에 남은 담보대출이 있나요?',
+                        [
+                            { label: '대출 있음', value: 'yes' },
+                            { label: '없어요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                    return;
+                }
+
                 if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
                     const nextIndex = currentSpouseAssetIndex + 1;
                     setCurrentSpouseAssetIndex(nextIndex);
@@ -937,6 +960,86 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
                 setSpouseAssetValues(prev => ({ ...prev, realEstate: reNetValue }));
                 const updatedSpouseAssetValues = { ...spouseAssetValues, realEstate: reNetValue };
+
+                if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                    const nextIndex = currentSpouseAssetIndex + 1;
+                    setCurrentSpouseAssetIndex(nextIndex);
+                    goToStep('spouse_asset_detail');
+                    addBotMessage(
+                        `배우자의 ${ASSET_LABELS[spouseSelectedAssets[nextIndex]]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                        undefined,
+                        'money'
+                    );
+                } else {
+                    const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                    goToStep('minor_children');
+                    addBotMessage(
+                        '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                        [
+                            { label: '0️⃣ 없어요', value: 0 },
+                            { label: '1️⃣ 1명', value: 1 },
+                            { label: '2️⃣ 2명', value: 2 },
+                            { label: '3️⃣ 3명', value: 3 },
+                            { label: '4️⃣ 4명', value: 4 },
+                            { label: '5️⃣ 5명 이상', value: 5 }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'spouse_asset_land_loan_check': {
+                const type = value as 'yes' | 'no';
+                setSpouseLandLoanCheck(type);
+
+                if (type === 'no') {
+                    // 없어요 선택 시 차감 없이 바로 다음 배우자 자산으로
+                    if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                        const nextIndex = currentSpouseAssetIndex + 1;
+                        setCurrentSpouseAssetIndex(nextIndex);
+                        goToStep('spouse_asset_detail');
+                        addBotMessage(
+                            `배우자의 ${ASSET_LABELS[spouseSelectedAssets[nextIndex]]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        const totalSpouseAssets = (Object.values(spouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                        goToStep('minor_children');
+                        addBotMessage(
+                            '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                            [
+                                { label: '0️⃣ 없어요', value: 0 },
+                                { label: '1️⃣ 1명', value: 1 },
+                                { label: '2️⃣ 2명', value: 2 },
+                                { label: '3️⃣ 3명', value: 3 },
+                                { label: '4️⃣ 4명', value: 4 },
+                                { label: '5️⃣ 5명 이상', value: 5 }
+                            ],
+                            'buttons'
+                        );
+                    }
+                } else {
+                    goToStep('spouse_asset_land_loan_amount');
+                    addBotMessage(
+                        '해당 배우자 토지에 남은 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
+                        undefined,
+                        'number'
+                    );
+                }
+                break;
+            }
+
+            case 'spouse_asset_land_loan_amount': {
+                const loanAmount = (value as number) * 10000;
+                const landPrice = spouseAssetValues.land || 0;
+                const landNetValue = Math.max(0, landPrice - loanAmount);
+
+                setSpouseAssetValues(prev => ({ ...prev, land: landNetValue }));
+                const updatedSpouseAssetValues = { ...spouseAssetValues, land: landNetValue };
 
                 if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
                     const nextIndex = currentSpouseAssetIndex + 1;
@@ -1400,6 +1503,19 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     return;
                 }
 
+                if (assetType === 'land') {
+                    goToStep('asset_land_loan_check');
+                    addBotMessage(
+                        '해당 토지에 남은 담보대출이 있나요?',
+                        [
+                            { label: '대출 있음', value: 'yes' },
+                            { label: '없어요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                    return;
+                }
+
                 if (currentAssetIndex < selectedAssets.length - 1) {
                     const nextIndex = currentAssetIndex + 1;
                     setCurrentAssetIndex(nextIndex);
@@ -1528,6 +1644,78 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
                 setAssetValues(prev => ({ ...prev, realEstate: reNetValue }));
                 const updatedAssetValues = { ...assetValues, realEstate: reNetValue };
+
+                if (currentAssetIndex < selectedAssets.length - 1) {
+                    const nextIndex = currentAssetIndex + 1;
+                    setCurrentAssetIndex(nextIndex);
+                    goToStep('asset_detail');
+                    addBotMessage(
+                        `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                        undefined,
+                        'money'
+                    );
+                } else {
+                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                    goToStep('credit_card');
+                    addBotMessage(
+                        '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                        [
+                            { label: '사용 중이에요', value: 'yes' },
+                            { label: '사용 안 해요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_land_loan_check': {
+                const type = value as 'yes' | 'no';
+                setLandLoanCheck(type);
+
+                if (type === 'no') {
+                    // 없어요 선택 시 차감 없이 바로 다음 자산으로
+                    if (currentAssetIndex < selectedAssets.length - 1) {
+                        const nextIndex = currentAssetIndex + 1;
+                        setCurrentAssetIndex(nextIndex);
+                        goToStep('asset_detail');
+                        addBotMessage(
+                            `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                        goToStep('credit_card');
+                        addBotMessage(
+                            '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                            [
+                                { label: '사용 중이에요', value: 'yes' },
+                                { label: '사용 안 해요', value: 'no' }
+                            ],
+                            'buttons'
+                        );
+                    }
+                } else {
+                    goToStep('asset_land_loan_amount');
+                    addBotMessage(
+                        '해당 토지에 남은 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
+                        undefined,
+                        'number'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_land_loan_amount': {
+                const loanAmount = (value as number) * 10000;
+                const landPrice = assetValues.land || 0;
+                const landNetValue = Math.max(0, landPrice - loanAmount);
+
+                setAssetValues(prev => ({ ...prev, land: landNetValue }));
+                const updatedAssetValues = { ...assetValues, land: landNetValue };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
                     const nextIndex = currentAssetIndex + 1;
@@ -2168,6 +2356,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (snapshot.tempSpouseRealEstateMortgage !== undefined) {
             setTempSpouseRealEstateMortgage(snapshot.tempSpouseRealEstateMortgage);
         }
+        if (snapshot.landLoanCheck !== undefined) {
+            setLandLoanCheck(snapshot.landLoanCheck);
+        }
+        if (snapshot.spouseLandLoanCheck !== undefined) {
+            setSpouseLandLoanCheck(snapshot.spouseLandLoanCheck);
+        }
 
         // 4. 히스토리 스택에서 해당 단계 이후 제거
         setStepHistory(prev => prev.slice(0, snapshotIndex));
@@ -2230,6 +2424,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (lastSnapshot.tempSpouseRealEstateMortgage !== undefined) {
             setTempSpouseRealEstateMortgage(lastSnapshot.tempSpouseRealEstateMortgage);
         }
+        if (lastSnapshot.landLoanCheck !== undefined) {
+            setLandLoanCheck(lastSnapshot.landLoanCheck);
+        }
+        if (lastSnapshot.spouseLandLoanCheck !== undefined) {
+            setSpouseLandLoanCheck(lastSnapshot.spouseLandLoanCheck);
+        }
 
         // 히스토리 스택에서 마지막 제거
         setStepHistory(prev => prev.slice(0, -1));
@@ -2269,14 +2469,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'work_location': 17,
             'income_salary': 20, 'income_business': 22, 'income_confirm': 25,
             'marital_status': 30, 'spouse_income': 35, 'spouse_assets_select': 38,
-            'spouse_asset_detail': 40, 'spouse_asset_car_loan_check': 40.5, 'spouse_asset_car_loan_amount': 41, 'spouse_asset_real_estate_loan_check': 41.2, 'spouse_asset_real_estate_mortgage_amount': 41.5, 'spouse_asset_real_estate_deposit_amount': 41.8, 'custody': 35, 'child_support_receive': 38,
+            'spouse_asset_detail': 40, 'spouse_asset_car_loan_check': 40.5, 'spouse_asset_car_loan_amount': 41, 'spouse_asset_real_estate_loan_check': 41.2, 'spouse_asset_real_estate_mortgage_amount': 41.5, 'spouse_asset_real_estate_deposit_amount': 41.8, 'spouse_asset_land_loan_check': 41.9, 'spouse_asset_land_loan_amount': 42, 'custody': 35, 'child_support_receive': 38,
             'child_support_pay': 38, 'minor_children': 42, 'housing_type': 48,
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
             'owned_value': 53, 'owned_mortgage': 55,
             'medical_check': 57, 'medical_amount': 59,
             'education_check': 61, 'education_amount': 63, 'special_education': 64,
             'assets_select': 65,
-            'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'asset_real_estate_loan_check': 70.2, 'asset_real_estate_mortgage_amount': 70.5, 'asset_real_estate_deposit_amount': 70.8, 'business_assets_deposit': 73, 'business_assets_facility': 74,
+            'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'asset_real_estate_loan_check': 70.2, 'asset_real_estate_mortgage_amount': 70.5, 'asset_real_estate_deposit_amount': 70.8, 'asset_land_loan_check': 72.2, 'asset_land_loan_amount': 72.5, 'business_assets_deposit': 73, 'business_assets_facility': 74,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
             'other_debt': 82, 'debt_confirm': 85, 'priority_debt': 88,
