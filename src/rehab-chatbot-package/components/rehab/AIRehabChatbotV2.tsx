@@ -80,6 +80,7 @@ interface StepSnapshot {
     tempOwnedValue?: number;
     tempOwnedMortgage?: number;
     ownedOwnerType?: 'me' | 'spouse' | 'co-ownership' | null;
+    unemployedReason?: 'illness' | 'none' | null;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -90,6 +91,7 @@ type ChatStep =
     | 'address'
     | 'age'
     | 'employment'
+    | 'unemployed_reason'     // 무직 사유 질문 단계 (NEW)
     | 'work_location'           // NEW: 근무지역/사업지역 (관할 법원용)
     | 'income_salary'
     | 'income_business'
@@ -530,7 +532,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     spouseInsuranceLoanCheck,
                     tempOwnedValue,
                     tempOwnedMortgage,
-                    ownedOwnerType
+                    ownedOwnerType,
+                    unemployedReason: userInput.unemployedReason
                 }];
             });
         }
@@ -587,32 +590,28 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '💻 프리랜서', value: 'freelancer' },
                         { label: '🔄 직장인 + 사업자 겸업', value: 'both' },
                         { label: '👷 일용직', value: 'daily' },
-                        { label: '🔍 무직/구직 중', value: 'none' }
+                        { label: '🔍 무직/구직 중', value: 'none' },
+                        { label: '🌾 기초생활수급', value: 'basic_recipient' }
                     ],
                     'buttons'
                 );
                 break;
 
             case 'employment':
-                const employmentType = value as 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily';
+                const employmentType = value as 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily' | 'basic_recipient';
                 setUserInput(prev => ({ ...prev, employmentType }));
 
-                if (employmentType === 'none') {
-                    // 무직: 200만원 기준으로 자동 설정, 근무지역 질문 스킵
+                if (employmentType === 'none' || employmentType === 'basic_recipient') {
+                    // 무직/수급: 200만원 기준으로 자동 설정, 근무지역 질문 스킵하고 무직 사유 질문으로 이동
                     setUserInput(prev => ({ ...prev, monthlyIncome: 2000000 }));
-                    goToStep('marital_status');
+                    goToStep('unemployed_reason');
                     addBotMessage(
-                        '현재 결혼 상태는 어떻게 되시나요?',
+                        '현재 일을 하지 못하시는 이유가 **질병이나 장애**로 인해 근로활동이 불가능하기 때문인가요?',
                         [
-                            { label: '👤 미혼', value: 'single' },
-                            { label: '💑 기혼', value: 'married' },
-                            { label: '📋 이혼', value: 'divorced' },
-                            { label: '❓ 기타', value: 'other' }
+                            { label: '예 (일하기 어려워요)', value: 'illness' },
+                            { label: '아니오 (일할 수 있어요 / 구직 중)', value: 'none' }
                         ],
-                        'buttons',
-                        undefined,
-                        undefined,
-                        'marital_status'
+                        'buttons'
                     );
                 } else {
                     // 직장인/사업자/프리랜서/일용직/겸업: 근무지역 질문으로 이동
@@ -626,6 +625,25 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                                 : '직장이 위치한 지역(구/시)을 입력해주세요.\n\n(예: 서울 강남구, 경기 수원시)';
                     addBotMessage(locationQuestion, undefined, 'text');
                 }
+                break;
+
+            case 'unemployed_reason':
+                const reason = value as 'illness' | 'none';
+                setUserInput(prev => ({ ...prev, unemployedReason: reason }));
+                goToStep('marital_status');
+                addBotMessage(
+                    '현재 결혼 상태는 어떻게 되시나요?',
+                    [
+                        { label: '👤 미혼', value: 'single' },
+                        { label: '💑 기혼', value: 'married' },
+                        { label: '📋 이혼', value: 'divorced' },
+                        { label: '❓ 기타', value: 'other' }
+                    ],
+                    'buttons',
+                    undefined,
+                    undefined,
+                    'marital_status'
+                );
                 break;
 
             case 'work_location':
@@ -3339,7 +3357,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const getProgress = useCallback(() => {
         const stepOrder: Record<ChatStep, number> = {
             'intro': 0, 'address': 5, 'age': 10, 'employment': 15,
-            'work_location': 17,
+            'unemployed_reason': 16, 'work_location': 17,
             'income_salary': 20, 'income_business': 22, 'income_confirm': 25,
             'marital_status': 30, 'spouse_income': 35, 'spouse_assets_select': 38,
             'spouse_asset_detail': 40, 'spouse_asset_car_loan_check': 40.5, 'spouse_asset_car_loan_amount': 41, 'spouse_asset_real_estate_loan_check': 41.2, 'spouse_asset_real_estate_mortgage_amount': 41.5, 'spouse_asset_real_estate_deposit_amount': 41.8, 'spouse_asset_land_loan_check': 41.9, 'spouse_asset_land_loan_amount': 42,

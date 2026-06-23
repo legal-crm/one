@@ -29,8 +29,8 @@ export interface RehabUserInput {
     workLocation?: string;     // 근무지/사업장 지역 (관할 법원용)
     age?: number;              // 나이 (24개월 특례 확인용)
 
-    // 소득 정보
-    employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily'; // 고용 형태
+    employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily' | 'basic_recipient'; // 고용 형태
+    unemployedReason?: 'illness' | 'none'; // 무직/수급 사유 (질병/장애로 인한 근로불가 여부)
     monthlyIncome: number;     // 월 실수령 소득 (세후)
     salaryIncome?: number;     // 급여 소득 (겸업 시)
     businessIncome?: number;   // 사업 소득 (겸업 시)
@@ -647,7 +647,11 @@ export function calculateRepayment(
     const debtReductionRate = Math.round((totalDebtReduction / input.totalDebt) * 100);
 
     // 8. 상태 판단
-    if (liquidationValue >= input.totalDebt) {
+    if (input.unemployedReason === 'illness') {
+        status = 'IMPOSSIBLE';
+        statusReason = '질병이나 장애로 근로능력이 없어 개인회생보다 파산 면책 신청이 적합합니다.';
+        aiAdvice.push('💡 질병이나 장애로 인해 근로활동이 불가능한 경우, 법률상 개인회생 신청 요건(반복적이고 확실한 수입)을 충족하기 어렵습니다. 대신 채무 전액을 면책받을 수 있는 개인파산 신청 대상이 될 수 있으므로, 전문 변호사와 파산 가능 여부를 상의하시는 것이 유리합니다.');
+    } else if (liquidationValue >= input.totalDebt) {
         status = 'IMPOSSIBLE';
         statusReason = '재산 가치가 채무보다 많아 개인회생 신청이 어렵습니다.';
     } else if (monthlyPayment > input.monthlyIncome * 0.8) {
@@ -933,12 +937,17 @@ function buildRiskFactors(input: RehabUserInput): RiskFactor[] {
     }
 
     // 소득 안정성
-    if (input.employmentType === 'none') {
+    if (input.employmentType === 'none' || input.employmentType === 'basic_recipient') {
+        const isBasic = input.employmentType === 'basic_recipient';
         factors.push({
             level: 'medium',
-            title: '현재 무직 상태',
-            description: '안정적 소득 증빙이 없어 변제계획 인가가 어려울 수 있습니다.',
-            solution: '아르바이트·일용직 등 최소한의 소득 활동 증빙 확보 권장',
+            title: isBasic ? '기초생활수급 상태' : '현재 무직 상태',
+            description: isBasic 
+                ? '수급비 외 추가적이고 안정적인 소득 증빙이 부족하여 개인회생 진행 시 법원 인가가 어려울 수 있습니다.' 
+                : '안정적 소득 증빙이 없어 변제계획 인가가 어려울 수 있습니다.',
+            solution: isBasic 
+                ? '수급비 외 파트타임 등 최소한의 소득 활동 증빙 확보 또는 개인파산 적합 여부 검토 권장' 
+                : '아르바이트·일용직 등 최소한의 소득 활동 증빙 확보 권장',
         });
     } else {
         factors.push({
