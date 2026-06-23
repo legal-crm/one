@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Bot, Check, AlertCircle } from 'lucide-react';
 import { calculateRepayment, RehabUserInput, RehabCalculationResult, formatCurrency, formatTenThousandWon } from '../../services/calculationService';
-import { DEFAULT_POLICY_CONFIG_2026 } from '../../config/PolicyConfig';
+import { DEFAULT_POLICY_CONFIG_2026, getCourtNameForAddress } from '../../config/PolicyConfig';
 import { RehabChatConfig } from '../../types';
 import RehabResultReport from './RehabResultReport';
 import ChatbotRenderer from './templates/ChatbotRenderer';
@@ -444,7 +444,19 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
 
             case 'address':
-                setUserInput(prev => ({ ...prev, address: value as string }));
+                const addressVal = value as string;
+                const detectedCourt = getCourtNameForAddress(addressVal, policyConfig || DEFAULT_POLICY_CONFIG_2026);
+
+                if (detectedCourt === 'Default') {
+                    addBotMessage(
+                        '죄송합니다. 입력하신 주소를 확인하기 어렵습니다.\n\n정확한 지역명을 입력해주세요.\n(예: 서울 강남구, 경기 수원시, 남양주시)',
+                        undefined,
+                        'address'
+                    );
+                    return;
+                }
+
+                setUserInput(prev => ({ ...prev, address: addressVal }));
                 goToStep('age');
                 addBotMessage(
                     '만 나이가 어떻게 되시나요?\n\n(모르시면 태어난 연도를 입력해주셔도 돼요. 예: 1990)',
