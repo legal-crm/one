@@ -1012,6 +1012,15 @@ export default function ClientRole({
         payType: 'bank'
       });
     }
+    if (input.employmentType === 'daily') {
+      incomeSources.push({
+        id: `inc-daily-${Date.now()}`,
+        type: 'worker_no_ins',
+        amount: monthlyIncome,
+        tenureYears: 1,
+        payType: 'bank'
+      });
+    }
     if (input.employmentType === 'none' || incomeSources.length === 0) {
       incomeSources.push({
         id: `inc-none-${Date.now()}`,

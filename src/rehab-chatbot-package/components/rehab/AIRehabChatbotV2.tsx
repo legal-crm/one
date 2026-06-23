@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AI 변제금 진단 챗봇 V2 - 2026년 고도화 버전
  * 
  * 20+ 단계 조건부 분기 대화형 인터페이스
@@ -473,6 +473,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '🏪 영업소득자(자영업)', value: 'business' },
                         { label: '💻 프리랜서', value: 'freelancer' },
                         { label: '🔄 직장인 + 사업자 겸업', value: 'both' },
+                        { label: '👷 일용직', value: 'daily' },
                         { label: '🔍 무직/구직 중', value: 'none' }
                     ],
                     'buttons'
@@ -480,7 +481,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
 
             case 'employment':
-                const employmentType = value as 'salary' | 'business' | 'freelancer' | 'both' | 'none';
+                const employmentType = value as 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily';
                 setUserInput(prev => ({ ...prev, employmentType }));
 
                 if (employmentType === 'none') {
@@ -501,13 +502,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         'marital_status'
                     );
                 } else {
-                    // 직장인/사업자/프리랜서: 근무지역 질문으로 이동
+                    // 직장인/사업자/프리랜서/일용직/겸업: 근무지역 질문으로 이동
                     goToStep('work_location');
                     const locationQuestion = employmentType === 'business'
                         ? '사업장이 위치한 지역(구/시)을 입력해주세요.\n\n(예: 서울 강남구, 부산 해운대구)'
                         : employmentType === 'freelancer'
                             ? '주로 근무하시는 지역(구/시)을 입력해주세요.\n\n(예: 서울 마포구, 대전 유성구)'
-                            : '직장이 위치한 지역(구/시)을 입력해주세요.\n\n(예: 서울 강남구, 경기 수원시)';
+                            : employmentType === 'daily'
+                                ? '주로 일하시는 지역(구/시)을 입력해주세요.\n\n(예: 서울 마포구, 대전 유성구)'
+                                : '직장이 위치한 지역(구/시)을 입력해주세요.\n\n(예: 서울 강남구, 경기 수원시)';
                     addBotMessage(locationQuestion, undefined, 'text');
                 }
                 break;
@@ -527,7 +530,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     goToStep('income_salary');
                     addBotMessage(
-                        empType === 'salary'
+                        empType === 'salary' || empType === 'daily'
                             ? '세금과 4대보험을 제외한 월 평균 실수령액은 얼마인가요?\n\n(만원 단위)'
                             : '매달 순수익(매출-비용)은 대략 얼마인가요?\n\n(만원 단위)',
                         undefined,

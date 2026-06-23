@@ -30,7 +30,7 @@ export interface RehabUserInput {
     age?: number;              // 나이 (24개월 특례 확인용)
 
     // 소득 정보
-    employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none'; // 고용 형태
+    employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily'; // 고용 형태
     monthlyIncome: number;     // 월 실수령 소득 (세후)
     salaryIncome?: number;     // 급여 소득 (겸업 시)
     businessIncome?: number;   // 사업 소득 (겸업 시)

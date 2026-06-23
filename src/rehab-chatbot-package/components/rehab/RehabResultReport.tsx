@@ -597,7 +597,9 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <span className="text-base font-bold text-slate-800">
                                                     {userInput.employmentType === 'salary' ? '급여 소득자' :
                                                      userInput.employmentType === 'business' ? '영업 소득자' :
-                                                     userInput.employmentType === 'freelancer' ? '프리랜서' : '무직'}
+                                                     userInput.employmentType === 'freelancer' ? '프리랜서' :
+                                                     userInput.employmentType === 'both' ? '겸업 소득자' :
+                                                     userInput.employmentType === 'daily' ? '일용직' : '무직'}
                                                 </span>
                                             </div>
                                             <div className="bg-white p-3 rounded-lg border border-slate-200">
