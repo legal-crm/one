@@ -57,6 +57,7 @@ interface StepSnapshot {
     currentSpouseAssetIndex: number;
     spouseAssetValues: Record<AssetType, number>;
     messageCount: number;
+    carLoanType?: 'installment' | 'mortgage' | null;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -93,7 +94,8 @@ type ChatStep =
     | 'special_education'    // 특수교육 여부 (NEW)
     | 'assets_select'
     | 'asset_detail'
-    | 'asset_car_loan'
+    | 'asset_car_loan_check'
+    | 'asset_car_loan_amount'
     | 'business_assets_deposit' // 사업장 보증금
     | 'business_assets_facility' // 사업장 시설/권리금
     | 'credit_card'
@@ -267,6 +269,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [spouseAssetValues, setSpouseAssetValues] = useState<Record<AssetType, number>>({
         car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0
     });
+    const [carLoanType, setCarLoanType] = useState<'installment' | 'mortgage' | null>(null);
 
     // 뒤로 가기: 단계 히스토리 스택
     const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
@@ -430,7 +433,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     spouseSelectedAssets: [...spouseSelectedAssets],
                     currentSpouseAssetIndex,
                     spouseAssetValues: { ...spouseAssetValues },
-                    messageCount: messages.length
+                    messageCount: messages.length,
+                    carLoanType
                 }];
             });
         }
@@ -1091,11 +1095,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setAssetValues(prev => ({ ...prev, [assetType]: rawVal }));
 
                 if (assetType === 'car') {
-                    goToStep('asset_car_loan');
+                    goToStep('asset_car_loan_check');
                     addBotMessage(
-                        '해당 자동차에 남은 할부 금액 또는 담보대출 금액은 얼마인가요?\n\n(없으시면 0을 입력해 주세요, 만원 단위)',
-                        undefined,
-                        'number'
+                        '해당 자동차에 남은 할부 금액 또는 담보대출이 있나요?',
+                        [
+                            { label: '할부', value: 'installment' },
+                            { label: '담보 대출', value: 'mortgage' },
+                            { label: '없어요', value: 'none' }
+                        ],
+                        'buttons'
                     );
                     return;
                 }
@@ -1125,7 +1133,47 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
             }
 
-            case 'asset_car_loan': {
+            case 'asset_car_loan_check': {
+                const type = value as 'installment' | 'mortgage' | 'none';
+                setCarLoanType(type === 'none' ? null : type);
+
+                if (type === 'none') {
+                    // 없어요 선택 시 차감 없이 바로 다음으로 진행
+                    if (currentAssetIndex < selectedAssets.length - 1) {
+                        const nextIndex = currentAssetIndex + 1;
+                        setCurrentAssetIndex(nextIndex);
+                        goToStep('asset_detail');
+                        addBotMessage(
+                            `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                        goToStep('credit_card');
+                        addBotMessage(
+                            '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                            [
+                                { label: '사용 중이에요', value: 'yes' },
+                                { label: '사용 안 해요', value: 'no' }
+                            ],
+                            'buttons'
+                        );
+                    }
+                } else {
+                    goToStep('asset_car_loan_amount');
+                    const labelText = type === 'installment' ? '할부 금액' : '담보대출 금액';
+                    addBotMessage(
+                        `해당 자동차에 남은 [${labelText}]은 얼마인가요?\n\n(만원 단위)`,
+                        undefined,
+                        'number'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_car_loan_amount': {
                 const loanAmount = (value as number) * 10000;
                 const carPrice = assetValues.car || 0;
                 const carNetValue = Math.max(0, carPrice - loanAmount);
@@ -1681,6 +1729,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         setSpouseSelectedAssets(snapshot.spouseSelectedAssets);
         setCurrentSpouseAssetIndex(snapshot.currentSpouseAssetIndex);
         setSpouseAssetValues(snapshot.spouseAssetValues);
+        if (snapshot.carLoanType !== undefined) {
+            setCarLoanType(snapshot.carLoanType);
+        }
 
         // 4. 히스토리 스택에서 해당 단계 이후 제거
         setStepHistory(prev => prev.slice(0, snapshotIndex));
@@ -1725,6 +1776,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         setCurrentSpouseAssetIndex(lastSnapshot.currentSpouseAssetIndex);
         setSpouseAssetValues(lastSnapshot.spouseAssetValues);
         setCurrentStep(lastSnapshot.step);
+        if (lastSnapshot.carLoanType !== undefined) {
+            setCarLoanType(lastSnapshot.carLoanType);
+        }
 
         // 히스토리 스택에서 마지막 제거
         setStepHistory(prev => prev.slice(0, -1));
@@ -1771,7 +1825,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'medical_check': 57, 'medical_amount': 59,
             'education_check': 61, 'education_amount': 63, 'special_education': 64,
             'assets_select': 65,
-            'asset_detail': 70, 'asset_car_loan': 71, 'business_assets_deposit': 72, 'business_assets_facility': 74,
+            'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'business_assets_deposit': 73, 'business_assets_facility': 74,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
             'other_debt': 82, 'debt_confirm': 85, 'priority_debt': 88,
