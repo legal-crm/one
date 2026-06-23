@@ -2461,6 +2461,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '💰 예금/적금', value: 'savings' },
                         { label: '🛡️ 보험', value: 'insurance' },
                         { label: '📈 주식/코인', value: 'stocks' },
+                        { label: '🏢 사업재산', value: 'businessAssets' },
                         { label: '✅ 선택완료', value: 'done' },
                         { label: '❌ 없어요', value: 'none' }
                     ],
@@ -2754,8 +2755,42 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     targetMessageId: messageId || null,
                     newValue: option.value as string | number
                 });
+            } else if (clickedMessage?.multiSelect) {
+                // 다중 선택 모드인 경우
+                if (option.value === 'none') {
+                    // 없어요 선택 시 기존 선택 모두 무시하고 즉시 다음으로
+                    addUserMessage(option.label);
+                    setTimeout(() => processStep(currentStep, 'none'), 300);
+                } else if (option.value === 'done') {
+                    // 선택완료 클릭 시 현재까지 선택된 항목들을 수집하여 제출
+                    const selectedOptions = clickedMessage.options?.filter(opt => opt.selected && opt.value !== 'done' && opt.value !== 'none') || [];
+                    const selectedLabels = selectedOptions.map(opt => opt.label);
+                    const selectedValues = selectedOptions.map(opt => String(opt.value));
+                    
+                    const displayLabel = selectedLabels.length > 0 ? `${selectedLabels.join(', ')} 선택완료` : '선택완료';
+                    addUserMessage(displayLabel);
+                    
+                    setTimeout(() => {
+                        processStep(currentStep, selectedValues.length > 0 ? selectedValues : 'none');
+                    }, 300);
+                } else {
+                    // 일반 옵션 클릭 시 selected 상태 토글
+                    setMessages(prev => prev.map(msg => {
+                        if (msg.id === messageId && msg.options) {
+                            return {
+                                ...msg,
+                                options: msg.options.map(opt => 
+                                    opt.value === option.value 
+                                        ? { ...opt, selected: !opt.selected } 
+                                        : opt
+                                )
+                            };
+                        }
+                        return msg;
+                    }));
+                }
             } else {
-                // 일반 진행
+                // 일반 진행 (단일 선택)
                 addUserMessage(option.label);
                 setTimeout(() => processStep(currentStep, option.value), 300);
             }
@@ -2844,7 +2879,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             id: msg.id,
                             type: msg.type,
                             content: msg.content,
-                            options: msg.options?.map(opt => ({ label: opt.label, value: String(opt.value) })),
+                            options: msg.options?.map(opt => ({ label: opt.label, value: String(opt.value), selected: opt.selected })),
                             inputType: msg.inputType,
                             multiSelect: msg.multiSelect,
                             timestamp: msg.timestamp,

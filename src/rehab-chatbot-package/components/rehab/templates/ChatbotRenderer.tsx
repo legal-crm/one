@@ -25,7 +25,7 @@ export interface ChatMessage {
     id: string;
     type: 'user' | 'bot';
     content: string;
-    options?: { label: string; value: string }[];
+    options?: { label: string; value: string; selected?: boolean }[];
     inputType?: string;
     multiSelect?: boolean;
     timestamp?: Date;
@@ -567,11 +567,17 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                                     onClick={() => onOptionSelect(opt, msg.id)}
                                                     className="px-4 py-2.5 text-sm font-semibold transition-all"
                                                     style={{
-                                                        backgroundColor: isDark ? colors.accent : '#ffffff',
-                                                        color: isDark ? colors.headerText : colors.primary,
+                                                        backgroundColor: opt.selected
+                                                            ? colors.primary
+                                                            : (isDark ? colors.accent : '#ffffff'),
+                                                        color: opt.selected
+                                                            ? '#ffffff'
+                                                            : (isDark ? colors.headerText : colors.primary),
                                                         borderRadius: `${(layout?.bubbleRadius || 14)}px`,
-                                                        border: isDark ? 'none' : `1.5px solid ${colors.primary}`,
-                                                        boxShadow: isDark ? 'none' : '0 2px 8px rgba(114, 100, 255, 0.1)'
+                                                        border: `1.5px solid ${colors.primary}`,
+                                                        boxShadow: opt.selected
+                                                            ? `0 0 12px ${colors.primary}40`
+                                                            : (isDark ? 'none' : '0 2px 8px rgba(114, 100, 255, 0.1)')
                                                     }}
                                                 >
                                                     {opt.label}
