@@ -58,6 +58,7 @@ interface StepSnapshot {
     spouseAssetValues: Record<AssetType, number>;
     messageCount: number;
     carLoanType?: 'installment' | 'mortgage' | null;
+    spouseCarLoanType?: 'installment' | 'mortgage' | null;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -76,6 +77,8 @@ type ChatStep =
     | 'spouse_income'
     | 'spouse_assets_select'
     | 'spouse_asset_detail'
+    | 'spouse_asset_car_loan_check'
+    | 'spouse_asset_car_loan_amount'
     | 'custody'
     | 'child_support_receive'
     | 'child_support_pay'
@@ -270,6 +273,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0
     });
     const [carLoanType, setCarLoanType] = useState<'installment' | 'mortgage' | null>(null);
+    const [spouseCarLoanType, setSpouseCarLoanType] = useState<'installment' | 'mortgage' | null>(null);
 
     // 뒤로 가기: 단계 히스토리 스택
     const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
@@ -434,7 +438,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     currentSpouseAssetIndex,
                     spouseAssetValues: { ...spouseAssetValues },
                     messageCount: messages.length,
-                    carLoanType
+                    carLoanType,
+                    spouseCarLoanType
                 }];
             });
         }
@@ -740,9 +745,24 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
                 break;
 
-            case 'spouse_asset_detail':
+            case 'spouse_asset_detail': {
                 const spouseAssetType = spouseSelectedAssets[currentSpouseAssetIndex];
-                setSpouseAssetValues(prev => ({ ...prev, [spouseAssetType]: (value as number) * 10000 }));
+                const rawVal = (value as number) * 10000;
+                setSpouseAssetValues(prev => ({ ...prev, [spouseAssetType]: rawVal }));
+
+                if (spouseAssetType === 'car') {
+                    goToStep('spouse_asset_car_loan_check');
+                    addBotMessage(
+                        '해당 배우자 자동차에 남은 할부 금액 또는 담보대출이 있나요?',
+                        [
+                            { label: '할부', value: 'installment' },
+                            { label: '담보 대출', value: 'mortgage' },
+                            { label: '없어요', value: 'none' }
+                        ],
+                        'buttons'
+                    );
+                    return;
+                }
 
                 if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
                     const nextIndex = currentSpouseAssetIndex + 1;
@@ -754,7 +774,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     // 배우자 재산 합산
-                    const totalSpouseAssets = (Object.values(spouseAssetValues) as number[]).reduce((a, b) => a + b, 0) + (value as number) * 10000;
+                    const totalSpouseAssets = (Object.values(spouseAssetValues) as number[]).reduce((a, b) => a + b, 0) + rawVal;
                     setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
                     goToStep('minor_children');
                     addBotMessage(
@@ -771,6 +791,89 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 }
                 break;
+            }
+
+            case 'spouse_asset_car_loan_check': {
+                const type = value as 'installment' | 'mortgage' | 'none';
+                setSpouseCarLoanType(type === 'none' ? null : type);
+
+                if (type === 'none') {
+                    // 없어요 선택 시 차감 없이 바로 다음으로 진행
+                    if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                        const nextIndex = currentSpouseAssetIndex + 1;
+                        setCurrentSpouseAssetIndex(nextIndex);
+                        goToStep('spouse_asset_detail');
+                        addBotMessage(
+                            `배우자의 ${ASSET_LABELS[spouseSelectedAssets[nextIndex]]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        const totalSpouseAssets = (Object.values(spouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                        goToStep('minor_children');
+                        addBotMessage(
+                            '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                            [
+                                { label: '0️⃣ 없어요', value: 0 },
+                                { label: '1️⃣ 1명', value: 1 },
+                                { label: '2️⃣ 2명', value: 2 },
+                                { label: '3️⃣ 3명', value: 3 },
+                                { label: '4️⃣ 4명', value: 4 },
+                                { label: '5️⃣ 5명 이상', value: 5 }
+                            ],
+                            'buttons'
+                        );
+                    }
+                } else {
+                    goToStep('spouse_asset_car_loan_amount');
+                    const labelText = type === 'installment' ? '할부 금액' : '담보대출 금액';
+                    addBotMessage(
+                        `해당 배우자 자동차에 남은 [${labelText}]은 얼마인가요?\n\n(만원 단위)`,
+                        undefined,
+                        'number'
+                    );
+                }
+                break;
+            }
+
+            case 'spouse_asset_car_loan_amount': {
+                const loanAmount = (value as number) * 10000;
+                const carPrice = spouseAssetValues.car || 0;
+                const carNetValue = Math.max(0, carPrice - loanAmount);
+
+                setSpouseAssetValues(prev => ({ ...prev, car: carNetValue }));
+                const updatedSpouseAssetValues = { ...spouseAssetValues, car: carNetValue };
+
+                if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                    const nextIndex = currentSpouseAssetIndex + 1;
+                    setCurrentSpouseAssetIndex(nextIndex);
+                    goToStep('spouse_asset_detail');
+                    addBotMessage(
+                        `배우자의 ${ASSET_LABELS[spouseSelectedAssets[nextIndex]]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                        undefined,
+                        'money'
+                    );
+                } else {
+                    // 배우자 재산 합산
+                    const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                    goToStep('minor_children');
+                    addBotMessage(
+                        '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                        [
+                            { label: '0️⃣ 없어요', value: 0 },
+                            { label: '1️⃣ 1명', value: 1 },
+                            { label: '2️⃣ 2명', value: 2 },
+                            { label: '3️⃣ 3명', value: 3 },
+                            { label: '4️⃣ 4명', value: 4 },
+                            { label: '5️⃣ 5명 이상', value: 5 }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
 
             case 'custody':
                 setUserInput(prev => ({ ...prev, isCustodialParent: value === 'yes' }));
@@ -1732,6 +1835,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (snapshot.carLoanType !== undefined) {
             setCarLoanType(snapshot.carLoanType);
         }
+        if (snapshot.spouseCarLoanType !== undefined) {
+            setSpouseCarLoanType(snapshot.spouseCarLoanType);
+        }
 
         // 4. 히스토리 스택에서 해당 단계 이후 제거
         setStepHistory(prev => prev.slice(0, snapshotIndex));
@@ -1779,6 +1885,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (lastSnapshot.carLoanType !== undefined) {
             setCarLoanType(lastSnapshot.carLoanType);
         }
+        if (lastSnapshot.spouseCarLoanType !== undefined) {
+            setSpouseCarLoanType(lastSnapshot.spouseCarLoanType);
+        }
 
         // 히스토리 스택에서 마지막 제거
         setStepHistory(prev => prev.slice(0, -1));
@@ -1818,7 +1927,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'work_location': 17,
             'income_salary': 20, 'income_business': 22, 'income_confirm': 25,
             'marital_status': 30, 'spouse_income': 35, 'spouse_assets_select': 38,
-            'spouse_asset_detail': 40, 'custody': 35, 'child_support_receive': 38,
+            'spouse_asset_detail': 40, 'spouse_asset_car_loan_check': 40.5, 'spouse_asset_car_loan_amount': 41, 'custody': 35, 'child_support_receive': 38,
             'child_support_pay': 38, 'minor_children': 42, 'housing_type': 48,
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
             'owned_value': 53, 'owned_mortgage': 55,
