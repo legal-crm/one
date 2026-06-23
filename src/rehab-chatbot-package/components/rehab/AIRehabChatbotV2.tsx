@@ -79,8 +79,9 @@ interface StepSnapshot {
     spouseInsuranceLoanCheck?: 'yes' | 'no' | null;
     tempOwnedValue?: number;
     tempOwnedMortgage?: number;
-    ownedOwnerType?: 'me' | 'spouse' | 'co-ownership' | null;
     unemployedReason?: 'illness' | 'none' | null;
+    currentDebtTypeIndex?: number;
+    debtTypeValues?: Record<string, number>;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -150,7 +151,6 @@ type ChatStep =
     | 'asset_insurance_loan_amount'
     | 'credit_card'
     | 'credit_card_amount'
-    | 'other_debt'
     | 'debt_confirm'
     | 'prior_rehab'          // 기존 개인회생/파산 진행 여부
     | 'prior_rehab_detail'   // 면책 년월
@@ -161,7 +161,7 @@ type ChatStep =
     | 'elderly_parent_check'  // 고령 부모님 부양가족 확인
     | 'elderly_parent_count'  // 고령 부모님 인원수
     | 'debt_types'            // V2.1: 채무 유형 분류
-    | 'tax_amount'            // 국세 금액 입력 (NEW)
+    | 'debt_amount_detail'    // 채무 유형별 금액 개별 입력 단계 (NEW)
     | 'legal_actions'         // V2.1: 법적 조치 경험
     | 'monthly_expenses'      // V2.1: 월 고정 지출
     | 'result';
@@ -345,6 +345,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [tempOwnedValue, setTempOwnedValue] = useState<number>(0);
     const [tempOwnedMortgage, setTempOwnedMortgage] = useState<number>(0);
     const [ownedOwnerType, setOwnedOwnerType] = useState<'me' | 'spouse' | 'co-ownership' | null>(null);
+
+    // 채무 유형별 금액 입력을 위한 상태
+    const [currentDebtTypeIndex, setCurrentDebtTypeIndex] = useState<number>(0);
+    const [debtTypeValues, setDebtTypeValues] = useState<Record<string, number>>({
+        bank: 0, capital: 0, savings_bank: 0, tax: 0, private: 0, app_loan: 0, guarantee: 0
+    });
 
     // 뒤로 가기: 단계 히스토리 스택
     const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
@@ -532,7 +538,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     tempOwnedValue,
                     tempOwnedMortgage,
                     ownedOwnerType,
-                    unemployedReason: userInput.unemployedReason
+                    unemployedReason: userInput.unemployedReason,
+                    currentDebtTypeIndex,
+                    debtTypeValues: { ...debtTypeValues }
                 }];
             });
         }
@@ -2600,11 +2608,21 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     setUserInput(prev => ({ ...prev, creditCardDebt: 0 }));
-                    goToStep('other_debt');
+                    goToStep('debt_types');
                     addBotMessage(
-                        '갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
-                        undefined,
-                        'money'
+                        '많이 힘드셨을 거예요. 걸정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n빚의 종류를 좀 더 자세히 알려주시면 더 정확한 분석이 가능해요.',
+                        [
+                            { label: '🏦 은행 대출', value: 'bank' },
+                            { label: '💳 카드사/캐피탈', value: 'capital' },
+                            { label: '🏪 저축은행/대부업', value: 'savings_bank' },
+                            { label: '🏛️ 국세', value: 'tax' },
+                            { label: '👤 사금융/지인', value: 'private' },
+                            { label: '📱 앱/온라인 대출', value: 'app_loan' },
+                            { label: '🏢 보증채무', value: 'guarantee' },
+                            { label: '✅ 선택완료', value: 'done' }
+                        ],
+                        'buttons',
+                        true
                     );
                 }
                 break;
@@ -2630,7 +2648,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 );
                 break;
 
-            case 'other_debt':
+            case 'other_debt' as any:
                 const otherDebt = (value as number) * 10000;
                 const totalDebt = (userInput.creditCardDebt || 0) + otherDebt;
                 setUserInput(prev => ({ ...prev, totalDebt }));
@@ -2891,35 +2909,78 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const rawDebtTypes = Array.isArray(value) ? value : [value];
                 const debtTypes = rawDebtTypes.filter(v => v !== 'done' && v !== 'none') as string[];
                 setUserInput(prev => ({ ...prev, debtTypes }));
-                
-                if (debtTypes.includes('tax')) {
-                    goToStep('tax_amount');
-                    addBotMessage(
-                        '국세(세금 체납액)는 총 얼마인가요?\n\n(만원 단위로 입력해주세요. 없으면 0)',
-                        undefined,
-                        'money'
-                    );
+
+                if (debtTypes.length > 0) {
+                    setCurrentDebtTypeIndex(0);
+                    setDebtTypeValues({
+                        bank: 0, capital: 0, savings_bank: 0, tax: 0, private: 0, app_loan: 0, guarantee: 0
+                    });
+                    goToStep('debt_amount_detail');
+                    
+                    const firstType = debtTypes[0];
+                    const question = getDebtTypeQuestion(firstType);
+                    addBotMessage(firstType === 'tax' ? '💡 국세(세금)는 개인회생 시 일반 채무보다 먼저 갚아야 하는 우선 채권에 해당해요.\n\n' + question : question, undefined, 'money');
                 } else {
-                    setUserInput(prev => ({ ...prev, priorityDebt: 0 }));
-                    goToStep('other_debt');
+                    setUserInput(prev => ({ ...prev, priorityDebt: 0, totalDebt: prev.creditCardDebt || 0 }));
+                    goToStep('debt_confirm');
                     addBotMessage(
-                        '신용카드 외에 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
-                        undefined,
-                        'money'
+                        `총 채무가 ${formatCurrency(userInput.creditCardDebt || 0)}이 맞으신가요?`,
+                        [
+                            { label: '네, 맞아요', value: 'yes' },
+                            { label: '아니오, 다시 입력', value: 'no' }
+                        ],
+                        'buttons'
                     );
                 }
                 break;
             }
 
-            case 'tax_amount':
-                setUserInput(prev => ({ ...prev, priorityDebt: (value as number) * 10000 }));
-                goToStep('other_debt');
-                addBotMessage(
-                    '신용카드 및 국세를 제외하고, 추가로 갚아야 할 채무(대출, 카드론, 사채, 개인간 채무 등)는 총 얼마인가요?\n\n(개인간 채무도 포함해서 입력해주세요, 만원 단위)',
-                    undefined,
-                    'money'
-                );
+            case 'debt_amount_detail': {
+                const debtTypes = userInput.debtTypes || [];
+                const currentType = debtTypes[currentDebtTypeIndex];
+                const amount = (value as number) * 10000;
+
+                const updatedValues = { ...debtTypeValues, [currentType]: amount };
+                setDebtTypeValues(updatedValues);
+
+                if (currentDebtTypeIndex < debtTypes.length - 1) {
+                    const nextIndex = currentDebtTypeIndex + 1;
+                    setCurrentDebtTypeIndex(nextIndex);
+                    goToStep('debt_amount_detail');
+                    
+                    const nextType = debtTypes[nextIndex];
+                    const question = getDebtTypeQuestion(nextType);
+                    addBotMessage(nextType === 'tax' ? '💡 국세(세금)는 개인회생 시 일반 채무보다 먼저 갚아야 하는 우선 채권에 해당해요.\n\n' + question : question, undefined, 'money');
+                } else {
+                    const taxAmount = updatedValues.tax || 0;
+                    const otherDebtSum = 
+                        (updatedValues.bank || 0) +
+                        (updatedValues.capital || 0) +
+                        (updatedValues.savings_bank || 0) +
+                        (updatedValues.private || 0) +
+                        (updatedValues.app_loan || 0) +
+                        (updatedValues.guarantee || 0);
+
+                    const totalDebt = (userInput.creditCardDebt || 0) + otherDebtSum;
+
+                    setUserInput(prev => ({
+                        ...prev,
+                        priorityDebt: taxAmount,
+                        totalDebt: totalDebt
+                    }));
+
+                    goToStep('debt_confirm');
+                    addBotMessage(
+                        `총 채무가 ${formatCurrency(totalDebt)}이 맞으신가요?\n\n(신용카드 채무 및 입력하신 종류별 채무가 모두 포함된 금액입니다.)`,
+                        [
+                            { label: '네, 맞아요', value: 'yes' },
+                            { label: '아니오, 다시 입력', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                }
                 break;
+            }
 
             case 'legal_actions': {
                 // 법적 조치 저장 후 prior_rehab으로 이동
@@ -3168,6 +3229,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (snapshot.ownedOwnerType !== undefined) {
             setOwnedOwnerType(snapshot.ownedOwnerType);
         }
+        if (snapshot.currentDebtTypeIndex !== undefined) {
+            setCurrentDebtTypeIndex(snapshot.currentDebtTypeIndex);
+        }
+        if (snapshot.debtTypeValues !== undefined) {
+            setDebtTypeValues(snapshot.debtTypeValues);
+        }
 
         // 4. 히스토리 스택에서 해당 단계 이후 제거
         setStepHistory(prev => prev.slice(0, snapshotIndex));
@@ -3360,7 +3427,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'asset_savings_loan_check': 74, 'asset_savings_loan_amount': 74.2, 'asset_insurance_loan_check': 74.5, 'asset_insurance_loan_amount': 74.8,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
-            'tax_amount': 80, 'other_debt': 82, 'debt_confirm': 85, 
+            'debt_amount_detail': 82, 'debt_confirm': 85, 
             'prior_rehab': 91, 'prior_rehab_detail': 92,
             'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95,
             'legal_actions': 95.2, 'monthly_expenses': 62,
@@ -3582,3 +3649,24 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 };
 
 export default AIRehabChatbotV2;
+
+function getDebtTypeQuestion(type: string): string {
+    switch (type) {
+        case 'bank':
+            return '🏦 은행 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+        case 'capital':
+            return '💳 카드사 및 캐피탈 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+        case 'savings_bank':
+            return '🏪 저축은행 및 대부업 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+        case 'tax':
+            return '🏛️ 국세(세금 체납액)는 총 얼마인가요?\n\n(만원 단위)';
+        case 'private':
+            return '👤 사금융 및 지인 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+        case 'app_loan':
+            return '📱 앱 및 온라인 대출금액은 총 얼마인가요?\n\n(만원 단위)';
+        case 'guarantee':
+            return '🏢 보증채무 금액은 총 얼마인가요?\n\n(만원 단위)';
+        default:
+            return '갚아야 할 채무 금액은 총 얼마인가요?\n\n(만원 단위)';
+    }
+}
