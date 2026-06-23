@@ -1869,32 +1869,32 @@ export default function ClientRole({
                   {
                     type: 'rehab' as SolutionType,
                     title: '개인회생',
-                    sub: '소득이 있고 변제 능력이 있는 자',
-                    desc: '법정 생계비를 제외한 가용 소득을 36~60개월간 나누어 갚은 후 남은 원금의 최대 90% 법정 감면'
+                    sub: '소득이 있고 일정 금액을 갚을 수 있는 분',
+                    desc: '생활비를 빼고 남은 소득으로 3~5년간 나누어 갚으면, 남은 원금의 최대 90%까지 합법적으로 감면받을 수 있습니다.'
                   },
                   {
                     type: 'bankruptcy' as SolutionType,
                     title: '개인파산',
-                    sub: '상환 능력이 아예 없는 자',
-                    desc: '무직, 고령, 질병으로 최저생계비 미만 소득 시 보유한 최소 재산만 청산 후 채무 원금 100% 즉시 탕감'
+                    sub: '소득이 없거나 채무 상환이 불가능한 분',
+                    desc: '질병, 고령 등으로 소득 활동이 어렵고 재산이 거의 없는 경우, 법원 심사를 거쳐 채무 원금 전체를 한 번에 지워드립니다.'
                   },
                   {
                     type: 'credit' as SolutionType,
                     title: '신용회복',
-                    sub: '금융기관 채무 조정 희망자',
-                    desc: '신용회복위원회의 협약 기관 채무에 대해 이자 감면 및 상환 기간 최장 10년 연장 (신청 다음 날 독촉 정지)'
+                    sub: '은행 및 카드사 빚을 조율하고 싶으신 분',
+                    desc: '신용회복위원회를 통해 대출 이자를 전액 또는 일부 줄이고, 갚아 나가는 기간을 최대 10년까지 나누어 부담을 덜어드립니다.'
                   },
                   {
                     type: 'representation' as SolutionType,
                     title: '채무자대리',
-                    sub: '추심 및 대부업 독촉 방어가 우선인 자',
-                    desc: '변호사를 대리인으로 선임하여 대부업/사채업자의 전화, 문자, 가택 방문 등 일체의 직접 독촉을 차단'
+                    sub: '대부업이나 사채 독촉에 시달리고 계신 분',
+                    desc: '변호사를 대리인으로 선임하여 전화, 문자, 집 방문 등 대부업체나 사채업자의 모든 직접 독촉을 즉시 끊어냅니다.'
                   },
                   {
                     type: 'tax' as SolutionType,
                     title: '세금체납 관리',
-                    sub: '국세·지방세 압류 해결 필요자',
-                    desc: '세금 소멸시효(5/10년) 완성 여부와 압류 금지 소액금융재산 대상 불법 압류 적법성 심사 청구'
+                    sub: '밀린 세금과 통장/재산 압류로 힘드신 분',
+                    desc: '체납된 세금의 유효 기간(소멸시효)이 만료되었는지 확인하고, 최저 생계비 이하 재산의 부당한 압류를 풀어 일상 복귀를 도와드립니다.'
                   }
                 ]).map((item, idx) => (
                   <div key={idx} onClick={() => setActiveSolutionType(item.type)} className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-3 shadow-sm hover:shadow-md transition-all hover-lift-sm transition-card group">
