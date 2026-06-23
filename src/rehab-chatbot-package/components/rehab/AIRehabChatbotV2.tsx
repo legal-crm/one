@@ -73,6 +73,10 @@ interface StepSnapshot {
     tempSpouseBusinessPremium?: number;
     tempSpouseBusinessMachinery?: number;
     tempSpouseBusinessEtc?: number;
+    savingsLoanCheck?: 'yes' | 'no' | null;
+    spouseSavingsLoanCheck?: 'yes' | 'no' | null;
+    insuranceLoanCheck?: 'yes' | 'no' | null;
+    spouseInsuranceLoanCheck?: 'yes' | 'no' | null;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -102,6 +106,10 @@ type ChatStep =
     | 'spouse_asset_business_premium'
     | 'spouse_asset_business_machinery'
     | 'spouse_asset_business_etc'
+    | 'spouse_asset_savings_loan_check'
+    | 'spouse_asset_savings_loan_amount'
+    | 'spouse_asset_insurance_loan_check'
+    | 'spouse_asset_insurance_loan_amount'
     | 'custody'
     | 'child_support_receive'
     | 'child_support_pay'
@@ -111,7 +119,6 @@ type ChatStep =
     | 'deposit_amount'
     | 'deposit_loan'
     | 'owned_value'          // 자가 시세
-    | 'owned_mortgage'       // 자가 담보대출
     | 'owned_mortgage'       // 자가 담보대출
     | 'medical_check'        // 의료비 여부 (NEW)
     | 'medical_amount'       // 의료비 금액
@@ -131,6 +138,10 @@ type ChatStep =
     | 'asset_business_premium'
     | 'asset_business_machinery'
     | 'asset_business_etc'
+    | 'asset_savings_loan_check'
+    | 'asset_savings_loan_amount'
+    | 'asset_insurance_loan_check'
+    | 'asset_insurance_loan_amount'
     | 'credit_card'
     | 'credit_card_amount'
     | 'other_debt'
@@ -320,6 +331,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [tempSpouseBusinessPremium, setTempSpouseBusinessPremium] = useState<number>(0);
     const [tempSpouseBusinessMachinery, setTempSpouseBusinessMachinery] = useState<number>(0);
     const [tempSpouseBusinessEtc, setTempSpouseBusinessEtc] = useState<number>(0);
+    const [savingsLoanCheck, setSavingsLoanCheck] = useState<'yes' | 'no' | null>(null);
+    const [spouseSavingsLoanCheck, setSpouseSavingsLoanCheck] = useState<'yes' | 'no' | null>(null);
+    const [insuranceLoanCheck, setInsuranceLoanCheck] = useState<'yes' | 'no' | null>(null);
+    const [spouseInsuranceLoanCheck, setSpouseInsuranceLoanCheck] = useState<'yes' | 'no' | null>(null);
 
     // 뒤로 가기: 단계 히스토리 스택
     const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
@@ -499,7 +514,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     tempSpouseBusinessDeposit,
                     tempSpouseBusinessPremium,
                     tempSpouseBusinessMachinery,
-                    tempSpouseBusinessEtc
+                    tempSpouseBusinessEtc,
+                    savingsLoanCheck,
+                    spouseSavingsLoanCheck,
+                    insuranceLoanCheck,
+                    spouseInsuranceLoanCheck
                 }];
             });
         }
@@ -827,6 +846,32 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
                 const rawVal = (value as number) * 10000;
                 setSpouseAssetValues(prev => ({ ...prev, [spouseAssetType]: rawVal }));
+
+                if (spouseAssetType === 'savings') {
+                    goToStep('spouse_asset_savings_loan_check');
+                    addBotMessage(
+                        '해당 예금/적금을 담보로 한 대출(예적금 담보대출)이 있나요?',
+                        [
+                            { label: '네, 있어요', value: 'yes' },
+                            { label: '아니요, 없어요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                    return;
+                }
+
+                if (spouseAssetType === 'insurance') {
+                    goToStep('spouse_asset_insurance_loan_check');
+                    addBotMessage(
+                        '해당 보험을 담보로 한 대출(보험계약대출/약관대출)이 있나요?',
+                        [
+                            { label: '네, 있어요', value: 'yes' },
+                            { label: '아니요, 없어요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                    return;
+                }
 
                 if (spouseAssetType === 'car') {
                     goToStep('spouse_asset_car_loan_check');
@@ -1296,6 +1341,206 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
             }
 
+            case 'spouse_asset_savings_loan_check': {
+                const checkVal = value as 'yes' | 'no';
+                setSpouseSavingsLoanCheck(checkVal);
+
+                if (checkVal === 'yes') {
+                    goToStep('spouse_asset_savings_loan_amount');
+                    addBotMessage(
+                        '해당 배우자 예금/적금의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
+                        undefined,
+                        'number'
+                    );
+                } else {
+                    const updatedSpouseAssetValues = { ...spouseAssetValues };
+                    if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                        const nextIndex = currentSpouseAssetIndex + 1;
+                        setCurrentSpouseAssetIndex(nextIndex);
+                        const nextAsset = spouseSelectedAssets[nextIndex];
+                        if (nextAsset === 'businessAssets') {
+                            goToStep('spouse_asset_business_deposit');
+                            addBotMessage(
+                                '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                                undefined,
+                                'money'
+                            );
+                        } else {
+                            goToStep('spouse_asset_detail');
+                            addBotMessage(
+                                `배우자의 ${ASSET_LABELS[nextAsset]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                                undefined,
+                                'money'
+                            );
+                        }
+                    } else {
+                        const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                        goToStep('minor_children');
+                        addBotMessage(
+                            '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                            [
+                                { label: '0️⃣ 없어요', value: 0 },
+                                { label: '1️⃣ 1명', value: 1 },
+                                { label: '2️⃣ 2명', value: 2 },
+                                { label: '3️⃣ 3명', value: 3 },
+                                { label: '4️⃣ 4명', value: 4 },
+                                { label: '5️⃣ 5명 이상', value: 5 }
+                            ],
+                            'buttons'
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'spouse_asset_savings_loan_amount': {
+                const loanAmount = (value as number) * 10000;
+                const savingsPrice = spouseAssetValues.savings || 0;
+                const savingsNetValue = Math.max(0, savingsPrice - loanAmount);
+
+                setSpouseAssetValues(prev => ({ ...prev, savings: savingsNetValue }));
+                const updatedSpouseAssetValues = { ...spouseAssetValues, savings: savingsNetValue };
+
+                if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                    const nextIndex = currentSpouseAssetIndex + 1;
+                    setCurrentSpouseAssetIndex(nextIndex);
+                    const nextAsset = spouseSelectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('spouse_asset_business_deposit');
+                        addBotMessage(
+                            '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('spouse_asset_detail');
+                        addBotMessage(
+                            `배우자의 ${ASSET_LABELS[nextAsset]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
+                } else {
+                    const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                    goToStep('minor_children');
+                    addBotMessage(
+                        '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                        [
+                            { label: '0️⃣ 없어요', value: 0 },
+                            { label: '1️⃣ 1명', value: 1 },
+                            { label: '2️⃣ 2명', value: 2 },
+                            { label: '3️⃣ 3명', value: 3 },
+                            { label: '4️⃣ 4명', value: 4 },
+                            { label: '5️⃣ 5명 이상', value: 5 }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'spouse_asset_insurance_loan_check': {
+                const checkVal = value as 'yes' | 'no';
+                setSpouseInsuranceLoanCheck(checkVal);
+
+                if (checkVal === 'yes') {
+                    goToStep('spouse_asset_insurance_loan_amount');
+                    addBotMessage(
+                        '해당 배우자 보험의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
+                        undefined,
+                        'number'
+                    );
+                } else {
+                    const updatedSpouseAssetValues = { ...spouseAssetValues };
+                    if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                        const nextIndex = currentSpouseAssetIndex + 1;
+                        setCurrentSpouseAssetIndex(nextIndex);
+                        const nextAsset = spouseSelectedAssets[nextIndex];
+                        if (nextAsset === 'businessAssets') {
+                            goToStep('spouse_asset_business_deposit');
+                            addBotMessage(
+                                '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                                undefined,
+                                'money'
+                            );
+                        } else {
+                            goToStep('spouse_asset_detail');
+                            addBotMessage(
+                                `배우자의 ${ASSET_LABELS[nextAsset]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                                undefined,
+                                'money'
+                            );
+                        }
+                    } else {
+                        const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                        goToStep('minor_children');
+                        addBotMessage(
+                            '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                            [
+                                { label: '0️⃣ 없어요', value: 0 },
+                                { label: '1️⃣ 1명', value: 1 },
+                                { label: '2️⃣ 2명', value: 2 },
+                                { label: '3️⃣ 3명', value: 3 },
+                                { label: '4️⃣ 4명', value: 4 },
+                                { label: '5️⃣ 5명 이상', value: 5 }
+                            ],
+                            'buttons'
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'spouse_asset_insurance_loan_amount': {
+                const loanAmount = (value as number) * 10000;
+                const insurancePrice = spouseAssetValues.insurance || 0;
+                const insuranceNetValue = Math.max(0, insurancePrice - loanAmount);
+
+                setSpouseAssetValues(prev => ({ ...prev, insurance: insuranceNetValue }));
+                const updatedSpouseAssetValues = { ...spouseAssetValues, insurance: insuranceNetValue };
+
+                if (currentSpouseAssetIndex < spouseSelectedAssets.length - 1) {
+                    const nextIndex = currentSpouseAssetIndex + 1;
+                    setCurrentSpouseAssetIndex(nextIndex);
+                    const nextAsset = spouseSelectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('spouse_asset_business_deposit');
+                        addBotMessage(
+                            '배우자 사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('spouse_asset_detail');
+                        addBotMessage(
+                            `배우자의 ${ASSET_LABELS[nextAsset]} 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
+                } else {
+                    const totalSpouseAssets = (Object.values(updatedSpouseAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, spouseAssets: totalSpouseAssets }));
+                    goToStep('minor_children');
+                    addBotMessage(
+                        '함께 살고 있는 만 19세 미만 자녀가 몇 명인가요?',
+                        [
+                            { label: '0️⃣ 없어요', value: 0 },
+                            { label: '1️⃣ 1명', value: 1 },
+                            { label: '2️⃣ 2명', value: 2 },
+                            { label: '3️⃣ 3명', value: 3 },
+                            { label: '4️⃣ 4명', value: 4 },
+                            { label: '5️⃣ 5명 이상', value: 5 }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
             case 'custody':
                 setUserInput(prev => ({ ...prev, isCustodialParent: value === 'yes' }));
                 if (value === 'yes') {
@@ -1635,6 +1880,32 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
                 const rawVal = (value as number) * 10000;
                 setAssetValues(prev => ({ ...prev, [assetType]: rawVal }));
+
+                if (assetType === 'savings') {
+                    goToStep('asset_savings_loan_check');
+                    addBotMessage(
+                        '해당 예금/적금을 담보로 한 대출(예적금 담보대출)이 있나요?',
+                        [
+                            { label: '네, 있어요', value: 'yes' },
+                            { label: '아니요, 없어요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                    return;
+                }
+
+                if (assetType === 'insurance') {
+                    goToStep('asset_insurance_loan_check');
+                    addBotMessage(
+                        '해당 보험을 담보로 한 대출(보험계약대출/약관대출)이 있나요?',
+                        [
+                            { label: '네, 있어요', value: 'yes' },
+                            { label: '아니요, 없어요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                    return;
+                }
 
                 if (assetType === 'car') {
                     goToStep('asset_car_loan_check');
@@ -2032,6 +2303,190 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 
                 setAssetValues(prev => ({ ...prev, businessAssets: bizTotal }));
                 const updatedAssetValues = { ...assetValues, businessAssets: bizTotal };
+
+                if (currentAssetIndex < selectedAssets.length - 1) {
+                    const nextIndex = currentAssetIndex + 1;
+                    setCurrentAssetIndex(nextIndex);
+                    const nextAsset = selectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('asset_business_deposit');
+                        addBotMessage(
+                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('asset_detail');
+                        addBotMessage(
+                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
+                } else {
+                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                    goToStep('credit_card');
+                    addBotMessage(
+                        '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                        [
+                            { label: '사용 중이에요', value: 'yes' },
+                            { label: '사용 안 해요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_savings_loan_check': {
+                const checkVal = value as 'yes' | 'no';
+                setSavingsLoanCheck(checkVal);
+
+                if (checkVal === 'yes') {
+                    goToStep('asset_savings_loan_amount');
+                    addBotMessage(
+                        '해당 예금/적금의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
+                        undefined,
+                        'number'
+                    );
+                } else {
+                    const updatedAssetValues = { ...assetValues };
+                    if (currentAssetIndex < selectedAssets.length - 1) {
+                        const nextIndex = currentAssetIndex + 1;
+                        setCurrentAssetIndex(nextIndex);
+                        const nextAsset = selectedAssets[nextIndex];
+                        if (nextAsset === 'businessAssets') {
+                            goToStep('asset_business_deposit');
+                            addBotMessage(
+                                '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                                undefined,
+                                'money'
+                            );
+                        } else {
+                            goToStep('asset_detail');
+                            addBotMessage(
+                                `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                                undefined,
+                                'money'
+                            );
+                        }
+                    } else {
+                        const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                        goToStep('credit_card');
+                        addBotMessage(
+                            '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                            [
+                                { label: '사용 중이에요', value: 'yes' },
+                                { label: '사용 안 해요', value: 'no' }
+                            ],
+                            'buttons'
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'asset_savings_loan_amount': {
+                const loanAmount = (value as number) * 10000;
+                const savingsPrice = assetValues.savings || 0;
+                const savingsNetValue = Math.max(0, savingsPrice - loanAmount);
+
+                setAssetValues(prev => ({ ...prev, savings: savingsNetValue }));
+                const updatedAssetValues = { ...assetValues, savings: savingsNetValue };
+
+                if (currentAssetIndex < selectedAssets.length - 1) {
+                    const nextIndex = currentAssetIndex + 1;
+                    setCurrentAssetIndex(nextIndex);
+                    const nextAsset = selectedAssets[nextIndex];
+                    if (nextAsset === 'businessAssets') {
+                        goToStep('asset_business_deposit');
+                        addBotMessage(
+                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                            undefined,
+                            'money'
+                        );
+                    } else {
+                        goToStep('asset_detail');
+                        addBotMessage(
+                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                            undefined,
+                            'money'
+                        );
+                    }
+                } else {
+                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                    goToStep('credit_card');
+                    addBotMessage(
+                        '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                        [
+                            { label: '사용 중이에요', value: 'yes' },
+                            { label: '사용 안 해요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_insurance_loan_check': {
+                const checkVal = value as 'yes' | 'no';
+                setInsuranceLoanCheck(checkVal);
+
+                if (checkVal === 'yes') {
+                    goToStep('asset_insurance_loan_amount');
+                    addBotMessage(
+                        '해당 보험의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
+                        undefined,
+                        'number'
+                    );
+                } else {
+                    const updatedAssetValues = { ...assetValues };
+                    if (currentAssetIndex < selectedAssets.length - 1) {
+                        const nextIndex = currentAssetIndex + 1;
+                        setCurrentAssetIndex(nextIndex);
+                        const nextAsset = selectedAssets[nextIndex];
+                        if (nextAsset === 'businessAssets') {
+                            goToStep('asset_business_deposit');
+                            addBotMessage(
+                                '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                                undefined,
+                                'money'
+                            );
+                        } else {
+                            goToStep('asset_detail');
+                            addBotMessage(
+                                `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                                undefined,
+                                'money'
+                            );
+                        }
+                    } else {
+                        const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                        goToStep('credit_card');
+                        addBotMessage(
+                            '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                            [
+                                { label: '사용 중이에요', value: 'yes' },
+                                { label: '사용 안 해요', value: 'no' }
+                            ],
+                            'buttons'
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'asset_insurance_loan_amount': {
+                const loanAmount = (value as number) * 10000;
+                const insurancePrice = assetValues.insurance || 0;
+                const insuranceNetValue = Math.max(0, insurancePrice - loanAmount);
+
+                setAssetValues(prev => ({ ...prev, insurance: insuranceNetValue }));
+                const updatedAssetValues = { ...assetValues, insurance: insuranceNetValue };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
                     const nextIndex = currentAssetIndex + 1;
@@ -2639,6 +3094,18 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (snapshot.tempSpouseBusinessEtc !== undefined) {
             setTempSpouseBusinessEtc(snapshot.tempSpouseBusinessEtc);
         }
+        if (snapshot.savingsLoanCheck !== undefined) {
+            setSavingsLoanCheck(snapshot.savingsLoanCheck);
+        }
+        if (snapshot.spouseSavingsLoanCheck !== undefined) {
+            setSpouseSavingsLoanCheck(snapshot.spouseSavingsLoanCheck);
+        }
+        if (snapshot.insuranceLoanCheck !== undefined) {
+            setInsuranceLoanCheck(snapshot.insuranceLoanCheck);
+        }
+        if (snapshot.spouseInsuranceLoanCheck !== undefined) {
+            setSpouseInsuranceLoanCheck(snapshot.spouseInsuranceLoanCheck);
+        }
 
         // 4. 히스토리 스택에서 해당 단계 이후 제거
         setStepHistory(prev => prev.slice(0, snapshotIndex));
@@ -2731,6 +3198,18 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (lastSnapshot.tempSpouseBusinessEtc !== undefined) {
             setTempSpouseBusinessEtc(lastSnapshot.tempSpouseBusinessEtc);
         }
+        if (lastSnapshot.savingsLoanCheck !== undefined) {
+            setSavingsLoanCheck(lastSnapshot.savingsLoanCheck);
+        }
+        if (lastSnapshot.spouseSavingsLoanCheck !== undefined) {
+            setSpouseSavingsLoanCheck(lastSnapshot.spouseSavingsLoanCheck);
+        }
+        if (lastSnapshot.insuranceLoanCheck !== undefined) {
+            setInsuranceLoanCheck(lastSnapshot.insuranceLoanCheck);
+        }
+        if (lastSnapshot.spouseInsuranceLoanCheck !== undefined) {
+            setSpouseInsuranceLoanCheck(lastSnapshot.spouseInsuranceLoanCheck);
+        }
 
         // 히스토리 스택에서 마지막 제거
         setStepHistory(prev => prev.slice(0, -1));
@@ -2806,6 +3285,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'marital_status': 30, 'spouse_income': 35, 'spouse_assets_select': 38,
             'spouse_asset_detail': 40, 'spouse_asset_car_loan_check': 40.5, 'spouse_asset_car_loan_amount': 41, 'spouse_asset_real_estate_loan_check': 41.2, 'spouse_asset_real_estate_mortgage_amount': 41.5, 'spouse_asset_real_estate_deposit_amount': 41.8, 'spouse_asset_land_loan_check': 41.9, 'spouse_asset_land_loan_amount': 42,
             'spouse_asset_business_deposit': 42.1, 'spouse_asset_business_premium': 42.2, 'spouse_asset_business_machinery': 42.3, 'spouse_asset_business_etc': 42.4,
+            'spouse_asset_savings_loan_check': 42.5, 'spouse_asset_savings_loan_amount': 42.6, 'spouse_asset_insurance_loan_check': 42.7, 'spouse_asset_insurance_loan_amount': 42.8,
             'custody': 35, 'child_support_receive': 38,
             'child_support_pay': 38, 'minor_children': 42, 'housing_type': 48,
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
@@ -2815,6 +3295,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'assets_select': 65,
             'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'asset_real_estate_loan_check': 70.2, 'asset_real_estate_mortgage_amount': 70.5, 'asset_real_estate_deposit_amount': 70.8, 'asset_land_loan_check': 72.2, 'asset_land_loan_amount': 72.5,
             'asset_business_deposit': 73, 'asset_business_premium': 73.2, 'asset_business_machinery': 73.5, 'asset_business_etc': 73.8,
+            'asset_savings_loan_check': 74, 'asset_savings_loan_amount': 74.2, 'asset_insurance_loan_check': 74.5, 'asset_insurance_loan_amount': 74.8,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
             'other_debt': 82, 'debt_confirm': 85, 'priority_debt': 88,
