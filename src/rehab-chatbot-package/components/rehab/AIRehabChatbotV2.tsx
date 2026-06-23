@@ -93,6 +93,7 @@ type ChatStep =
     | 'special_education'    // 특수교육 여부 (NEW)
     | 'assets_select'
     | 'asset_detail'
+    | 'asset_car_loan'
     | 'business_assets_deposit' // 사업장 보증금
     | 'business_assets_facility' // 사업장 시설/권리금
     | 'credit_card'
@@ -1084,9 +1085,20 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
                 break;
 
-            case 'asset_detail':
+            case 'asset_detail': {
                 const assetType = selectedAssets[currentAssetIndex];
-                setAssetValues(prev => ({ ...prev, [assetType]: (value as number) * 10000 }));
+                const rawVal = (value as number) * 10000;
+                setAssetValues(prev => ({ ...prev, [assetType]: rawVal }));
+
+                if (assetType === 'car') {
+                    goToStep('asset_car_loan');
+                    addBotMessage(
+                        '해당 자동차에 남은 할부 금액 또는 담보대출 금액은 얼마인가요?\n\n(없으시면 0을 입력해 주세요, 만원 단위)',
+                        undefined,
+                        'number'
+                    );
+                    return;
+                }
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
                     const nextIndex = currentAssetIndex + 1;
@@ -1098,7 +1110,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 } else {
                     // 재산 합산
-                    const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0) + (value as number) * 10000;
+                    const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0) + rawVal;
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -1111,6 +1123,41 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                 }
                 break;
+            }
+
+            case 'asset_car_loan': {
+                const loanAmount = (value as number) * 10000;
+                const carPrice = assetValues.car || 0;
+                const carNetValue = Math.max(0, carPrice - loanAmount);
+
+                setAssetValues(prev => ({ ...prev, car: carNetValue }));
+                const updatedAssetValues = { ...assetValues, car: carNetValue };
+
+                if (currentAssetIndex < selectedAssets.length - 1) {
+                    const nextIndex = currentAssetIndex + 1;
+                    setCurrentAssetIndex(nextIndex);
+                    goToStep('asset_detail');
+                    addBotMessage(
+                        `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
+                        undefined,
+                        'money'
+                    );
+                } else {
+                    // 재산 합산
+                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                    goToStep('credit_card');
+                    addBotMessage(
+                        '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                        [
+                            { label: '사용 중이에요', value: 'yes' },
+                            { label: '사용 안 해요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
 
             case 'credit_card':
                 if (value === 'yes') {
@@ -1724,7 +1771,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'medical_check': 57, 'medical_amount': 59,
             'education_check': 61, 'education_amount': 63, 'special_education': 64,
             'assets_select': 65,
-            'asset_detail': 70, 'business_assets_deposit': 72, 'business_assets_facility': 74,
+            'asset_detail': 70, 'asset_car_loan': 71, 'business_assets_deposit': 72, 'business_assets_facility': 74,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
             'other_debt': 82, 'debt_confirm': 85, 'priority_debt': 88,
