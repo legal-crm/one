@@ -1821,61 +1821,32 @@ export default function ClientRole({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
+              <div className="max-w-xl mx-auto text-left">
                 {/* Free Column */}
-                <div className="bg-emerald-500/5 dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-900/30 rounded-3xl p-6 space-y-4">
-                  <h4 className="font-bold text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                    🎁 이건 전부 무료예요 — 부담 갖지 마세요
+                <div className="bg-emerald-500/[0.03] dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-900/30 rounded-3xl p-6 md:p-8 space-y-5 shadow-sm">
+                  <h4 className="font-bold text-sm md:text-base text-emerald-700 dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-2 border-b border-emerald-500/10 pb-3">
+                    <span className="text-base md:text-lg">🎁</span> 이건 전부 무료예요 — 부담 갖지 마세요
                   </h4>
-                  <ul className="space-y-2.5 text-xs text-slate-655 dark:text-slate-300 font-medium">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">✔</span>
-                      <span>지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크</span>
+                  <ul className="space-y-4 text-xs md:text-sm text-slate-600 dark:text-slate-300 font-medium">
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
+                      <span className="leading-relaxed">지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">✔</span>
-                      <span>나한테 맞는 해결 방법이 뭔지 첫 번째 확인</span>
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
+                      <span className="leading-relaxed">나한테 맞는 해결 방법이 뭔지 첫 번째 확인</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">✔</span>
-                      <span>독촉이 얼마나 심해질지, 통장이나 월급이 묶일 수 있는지 미리 확인</span>
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
+                      <span className="leading-relaxed">독촉이 얼마나 심해질지, 통장이나 월급이 묶일 수 있는지 미리 확인</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">✔</span>
-                      <span>생활비를 얼마까지 지킬 수 있는지, 어떤 서류가 필요한지 안내</span>
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
+                      <span className="leading-relaxed">생활비를 얼마까지 지킬 수 있는지, 어떤 서류가 필요한지 안내</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">✔</span>
-                      <span>최근 빌린 돈을 어디에 썼는지 보고, 신청이 잘 통과될지 미리 점검</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Paid Column */}
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4">
-                  <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    🤝 본격적으로 도움받을 때 드는 비용이에요
-                  </h4>
-                  <ul className="space-y-2.5 text-xs text-slate-500 dark:text-slate-405 font-medium">
-                    <li className="flex items-start gap-2">
-                      <span className="text-slate-400">•</span>
-                      <span>법원에 회생이나 파산 신청서를 대신 내드려요</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-slate-400">•</span>
-                      <span>카드사·대출회사 독촉, 저희가 직접 막아드려요</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-slate-400">•</span>
-                      <span>법원에서 추가 서류 달라고 하면, 저희가 써서 보내드려요</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-slate-400">•</span>
-                      <span>밀린 세금 때문에 재산이 묶이지 않게 도와드려요</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-slate-400">•</span>
-                      <span>3~5년 동안 매달 잘 갚아나갈 수 있게 끝까지 챙겨드려요</span>
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
+                      <span className="leading-relaxed">최근 빌린 돈을 어디에 썼는지 보고, 신청이 잘 통과될지 미리 점검</span>
                     </li>
                   </ul>
                 </div>
