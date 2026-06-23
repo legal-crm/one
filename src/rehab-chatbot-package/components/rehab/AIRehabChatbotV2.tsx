@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Bot, Check, AlertCircle } from 'lucide-react';
 import { calculateRepayment, RehabUserInput, RehabCalculationResult, formatCurrency, formatTenThousandWon } from '../../services/calculationService';
-import { DEFAULT_POLICY_CONFIG_2026, getCourtNameForAddress } from '../../config/PolicyConfig';
+import { DEFAULT_POLICY_CONFIG_2026, getCourtNameForAddress, chooseFavorableCourt } from '../../config/PolicyConfig';
 import { RehabChatConfig } from '../../types';
 import RehabResultReport from './RehabResultReport';
 import ChatbotRenderer from './templates/ChatbotRenderer';
@@ -77,6 +77,9 @@ interface StepSnapshot {
     spouseSavingsLoanCheck?: 'yes' | 'no' | null;
     insuranceLoanCheck?: 'yes' | 'no' | null;
     spouseInsuranceLoanCheck?: 'yes' | 'no' | null;
+    tempOwnedValue?: number;
+    tempOwnedMortgage?: number;
+    ownedOwnerType?: 'me' | 'spouse' | 'co-ownership' | null;
 }
 
 type InputType = 'text' | 'number' | 'buttons' | 'address' | 'multiselect' | 'money';
@@ -120,6 +123,7 @@ type ChatStep =
     | 'deposit_loan'
     | 'owned_value'          // 자가 시세
     | 'owned_mortgage'       // 자가 담보대출
+    | 'owned_owner_type'     // 자가 명의자 확인 (NEW)
     | 'medical_check'        // 의료비 여부 (NEW)
     | 'medical_amount'       // 의료비 금액
     | 'education_check'      // 교육비 여부 (NEW)
@@ -336,6 +340,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [insuranceLoanCheck, setInsuranceLoanCheck] = useState<'yes' | 'no' | null>(null);
     const [spouseInsuranceLoanCheck, setSpouseInsuranceLoanCheck] = useState<'yes' | 'no' | null>(null);
 
+    // 자가 부동산 관련 상태
+    const [tempOwnedValue, setTempOwnedValue] = useState<number>(0);
+    const [tempOwnedMortgage, setTempOwnedMortgage] = useState<number>(0);
+    const [ownedOwnerType, setOwnedOwnerType] = useState<'me' | 'spouse' | 'co-ownership' | null>(null);
+
     // 뒤로 가기: 단계 히스토리 스택
     const [stepHistory, setStepHistory] = useState<StepSnapshot[]>([]);
 
@@ -518,7 +527,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     savingsLoanCheck,
                     spouseSavingsLoanCheck,
                     insuranceLoanCheck,
-                    spouseInsuranceLoanCheck
+                    spouseInsuranceLoanCheck,
+                    tempOwnedValue,
+                    tempOwnedMortgage,
+                    ownedOwnerType
                 }];
             });
         }
@@ -1713,7 +1725,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
 
             case 'owned_value':
-                setUserInput(prev => ({ ...prev, myAssets: (prev.myAssets || 0) + (value as number) * 10000 }));
+                setTempOwnedValue((value as number) * 10000);
                 goToStep('owned_mortgage');
                 addBotMessage(
                     '해당 부동산에 담보대출이 있으신가요?\n\n만원 단위로 입력해주세요. (없으면 0)',
@@ -1723,9 +1735,47 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
 
             case 'owned_mortgage':
-                // 담보대출은 자산에서 차감
-                const mortgageAmount = (value as number) * 10000;
-                setUserInput(prev => ({ ...prev, myAssets: Math.max(0, (prev.myAssets || 0) - mortgageAmount) }));
+                setTempOwnedMortgage((value as number) * 10000);
+                goToStep('owned_owner_type');
+                addBotMessage(
+                    '해당 부동산의 명의자는 누구인가요?',
+                    [
+                        { label: '본인', value: 'me' },
+                        { label: '배우자', value: 'spouse' },
+                        { label: '공동명의', value: 'co-ownership' }
+                    ],
+                    'buttons'
+                );
+                break;
+
+            case 'owned_owner_type':
+                const ownerType = value as 'me' | 'spouse' | 'co-ownership';
+                setOwnedOwnerType(ownerType);
+
+                // 1. 순자산액 = 시세 - 담보대출 (최소 0)
+                const netAssetValue = Math.max(0, tempOwnedValue - tempOwnedMortgage);
+
+                // 2. 명의자와 관할 법원 설정에 따른 반영률 결정
+                let reflectionRate = 0;
+                if (ownerType === 'me') {
+                    reflectionRate = 1.0;
+                } else if (ownerType === 'co-ownership') {
+                    reflectionRate = 0.5;
+                } else if (ownerType === 'spouse') {
+                    const resCourt = getCourtNameForAddress(userInput.address || '', policyConfig || DEFAULT_POLICY_CONFIG_2026);
+                    const workCourt = userInput.workLocation ? getCourtNameForAddress(userInput.workLocation, policyConfig || DEFAULT_POLICY_CONFIG_2026) : 'Default';
+                    const activeCourt = chooseFavorableCourt(resCourt, workCourt, policyConfig || DEFAULT_POLICY_CONFIG_2026);
+                    const courtTrait = (policyConfig || DEFAULT_POLICY_CONFIG_2026).courtTraits[activeCourt] || (policyConfig || DEFAULT_POLICY_CONFIG_2026).courtTraits['Default'];
+                    
+                    // 법원별 성향 관리에 체크되어 있으면 spousePropertyRate가 0.5, 체크 해제 시 0.0
+                    reflectionRate = courtTrait?.spousePropertyRate || 0.0;
+                }
+
+                // 3. 최종 금액 계산 후 본인 자산에 추가
+                const finalAssetToInclude = Math.round(netAssetValue * reflectionRate);
+                setUserInput(prev => ({ ...prev, myAssets: (prev.myAssets || 0) + finalAssetToInclude }));
+
+                // 4. 다음 단계로 진행
                 goToStep('medical_check');
                 addBotMessage(
                     '본인이나 가족의 **의료비**로 매달 고정적으로 지출하는 비용이 있나요?',
@@ -3106,6 +3156,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         if (snapshot.spouseInsuranceLoanCheck !== undefined) {
             setSpouseInsuranceLoanCheck(snapshot.spouseInsuranceLoanCheck);
         }
+        if (snapshot.tempOwnedValue !== undefined) {
+            setTempOwnedValue(snapshot.tempOwnedValue);
+        }
+        if (snapshot.tempOwnedMortgage !== undefined) {
+            setTempOwnedMortgage(snapshot.tempOwnedMortgage);
+        }
+        if (snapshot.ownedOwnerType !== undefined) {
+            setOwnedOwnerType(snapshot.ownedOwnerType);
+        }
 
         // 4. 히스토리 스택에서 해당 단계 이후 제거
         setStepHistory(prev => prev.slice(0, snapshotIndex));
@@ -3289,7 +3348,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'custody': 35, 'child_support_receive': 38,
             'child_support_pay': 38, 'minor_children': 42, 'housing_type': 48,
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
-            'owned_value': 53, 'owned_mortgage': 55,
+            'owned_value': 53, 'owned_mortgage': 55, 'owned_owner_type': 56,
             'medical_check': 57, 'medical_amount': 59,
             'education_check': 61, 'education_amount': 63, 'special_education': 64,
             'assets_select': 65,
