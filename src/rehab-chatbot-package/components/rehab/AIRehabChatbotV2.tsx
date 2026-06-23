@@ -2717,18 +2717,22 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 let recognizedDependents = 0;
                 let dependentReason = '';
 
-                if (spouseIncomeRatio < 0.7) {
-                    // 배우자 소득 < 70%: 자녀 전원 인정
-                    recognizedDependents = children;
-                    dependentReason = '배우자 소득이 본인의 70% 미만으로, 미성년 자녀 전원이 부양가족으로 인정됩니다.';
-                } else if (spouseIncomeRatio <= 1.3) {
-                    // 배우자 소득 70~130%: 자녀 0.5명씩 산정
-                    recognizedDependents = children * 0.5;
-                    dependentReason = '부부 소득이 비슷하여(70~130%), 미성년 자녀는 공동 부양으로 0.5명씩 산정됩니다.';
+                const config = policyConfig || DEFAULT_POLICY_CONFIG_2026;
+                const underLimit = config.spouseIncomeRatioUnder ?? 0.7;
+                const underRate = config.spouseIncomeRatioUnderRate ?? 1.0;
+                const betweenLimit = config.spouseIncomeRatioBetween ?? 1.3;
+                const betweenRate = config.spouseIncomeRatioBetweenRate ?? 0.5;
+                const overRate = config.spouseIncomeRatioOverRate ?? 0.0;
+
+                if (spouseIncomeRatio < underLimit) {
+                    recognizedDependents = children * underRate;
+                    dependentReason = `배우자 소득이 본인의 ${Math.round(underLimit * 100)}% 미만으로, 미성년 자녀가 ${Math.round(underRate * 100)}% 부양가족으로 인정됩니다.`;
+                } else if (spouseIncomeRatio <= betweenLimit) {
+                    recognizedDependents = children * betweenRate;
+                    dependentReason = `부부 소득이 비슷하여(${Math.round(underLimit * 100)}~${Math.round(betweenLimit * 100)}%), 미성년 자녀는 공동 부양으로 ${Math.round(betweenRate * 100)}% 인정됩니다.`;
                 } else {
-                    // 배우자 소득 > 130%: 자녀 미인정
-                    recognizedDependents = 0;
-                    dependentReason = '배우자 소득이 본인의 130% 초과로, 자녀는 배우자의 부양가족으로 간주됩니다.';
+                    recognizedDependents = children * overRate;
+                    dependentReason = `배우자 소득이 본인의 ${Math.round(betweenLimit * 100)}% 초과로, 미성년 자녀는 ${Math.round(overRate * 100)}% 부양가족으로 인정됩니다.`;
                 }
 
                 // 최종 가구원 수 = 본인(1) + 인정된 자녀 부양가족 (소수점 올림)

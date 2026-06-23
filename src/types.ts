@@ -390,6 +390,11 @@ export interface GlobalPolicy {
   insuranceWarnRatio: number; 
   reduceMax36: number; 
   reduceMax60: number; 
+  spouseIncomeRatioUnder: number;
+  spouseIncomeRatioUnderRate: number;
+  spouseIncomeRatioBetween: number;
+  spouseIncomeRatioBetweenRate: number;
+  spouseIncomeRatioOverRate: number;
 }
 
 export interface AiFeatureConfig {

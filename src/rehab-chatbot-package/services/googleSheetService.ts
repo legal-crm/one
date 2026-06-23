@@ -119,6 +119,11 @@ function convertToRehabPolicyConfig(
     courtTraits,
     regionToCourtMap,
     regionToGroupMap,
+    spouseIncomeRatioUnder: appSettings.policy.spouseIncomeRatioUnder,
+    spouseIncomeRatioUnderRate: appSettings.policy.spouseIncomeRatioUnderRate,
+    spouseIncomeRatioBetween: appSettings.policy.spouseIncomeRatioBetween,
+    spouseIncomeRatioBetweenRate: appSettings.policy.spouseIncomeRatioBetweenRate,
+    spouseIncomeRatioOverRate: appSettings.policy.spouseIncomeRatioOverRate,
   };
 }
 

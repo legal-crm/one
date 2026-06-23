@@ -379,7 +379,21 @@ const DEFAULT_CASE_TYPES: { key: string; label: string }[] = [
 export const DEFAULT_SETTINGS: AppSettings = {
   activeVersion: "2025_K1",
   leibniz: { m24: 1.04, m36: 1.07, m48: 1.095, m60: 1.12 },
-  policy: { pminThreshold: 50000000, pminRateBelow: 0.05, pminRateAbove: 0.03, pminFixedAbove: 1000000, overpaymentWarnRatio: 1.2, insuranceWarnRatio: 0.3, reduceMax36: 0.10, reduceMax60: 0.20 },
+  policy: { 
+    pminThreshold: 50000000, 
+    pminRateBelow: 0.05, 
+    pminRateAbove: 0.03, 
+    pminFixedAbove: 1000000, 
+    overpaymentWarnRatio: 1.2, 
+    insuranceWarnRatio: 0.3, 
+    reduceMax36: 0.10, 
+    reduceMax60: 0.20,
+    spouseIncomeRatioUnder: 0.7,
+    spouseIncomeRatioUnderRate: 1.0,
+    spouseIncomeRatioBetween: 1.3,
+    spouseIncomeRatioBetweenRate: 0.5,
+    spouseIncomeRatioOverRate: 0.0
+  },
   aiConfig: {
     reportGenerator: { model: 'gemini-2.5-flash', prompt: `[고객명]님, 개인회생 상담 결과 보고서입니다...`, defaultTone: 'formal', defaultLength: 'medium' },
     statementGenerator: { model: 'gemini-2.5-flash', prompt: `당신은 법률 전문가입니다. 개인회생 사건에 제출할 진술서를 작성해주세요...` },

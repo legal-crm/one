@@ -31,6 +31,12 @@ export interface RehabPolicyConfig {
     regionToCourtMap: Record<string, string>;
     // 지역별 그룹 (Seoul, Overcrowded, Metro, Others)
     regionToGroupMap: Record<string, string>;
+    // 배우자 소득 자녀부양 인정 기준
+    spouseIncomeRatioUnder?: number;
+    spouseIncomeRatioUnderRate?: number;
+    spouseIncomeRatioBetween?: number;
+    spouseIncomeRatioBetweenRate?: number;
+    spouseIncomeRatioOverRate?: number;
 }
 
 export interface CourtTrait {
@@ -134,6 +140,11 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         maxLivingCostRate: 1.0,  // 총 생계비 공제 한도 (중위소득 100% 이하)
         minRepaymentRate: 0.4,   // 최소 변제율 40% 이상 (미충족 시 생계비 감액)
     },
+    spouseIncomeRatioUnder: 0.7,
+    spouseIncomeRatioUnderRate: 1.0,
+    spouseIncomeRatioBetween: 1.3,
+    spouseIncomeRatioBetweenRate: 0.5,
+    spouseIncomeRatioOverRate: 0.0,
 
     // 법원별 성향 (2026년 2월 기준 14개 법원)
     courtTraits: {

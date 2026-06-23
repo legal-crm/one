@@ -142,6 +142,7 @@ const RehabSettingsPanel: React.FC = () => {
   // ═══════════════════════════════════════════════════
   const renderPolicyTab = () => (
     <div className="space-y-6">
+      {/* Pmin Rules */}
       <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-white">
           <ShieldAlert className="text-blue-500" size={20} />
@@ -167,6 +168,55 @@ const RehabSettingsPanel: React.FC = () => {
             <label className={labelClass}>기준 이상 가산금 (Fixed)</label>
             <input type="number" className={inputClass} value={settings.policy.pminFixedAbove} 
               onChange={e => setSettings({...settings, policy: {...settings.policy, pminFixedAbove: Number(e.target.value)}})} />
+          </div>
+        </div>
+      </div>
+
+      {/* Spouse Income Based Child Dependent Criteria */}
+      <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
+        <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-white">
+          <DollarSign className="text-blue-500" size={20} />
+          미성년 자녀 부양가족 인정 기준
+        </h3>
+        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+          배우자 소득 수준에 따라 미성년 자녀를 부양가족으로 인정하는 비율을 설정합니다. (본인 소득 대비 배우자 소득 비율 기준)
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-4">
+            <h4 className="text-sm font-semibold text-blue-400">구간 1: 배우자 소득이 낮을 때 (온전한 부양)</h4>
+            <div>
+              <label className={labelClass}>배우자 소득 비율 미만 기준 (%)</label>
+              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioUnder ?? 0.7) * 100)} 
+                onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioUnder: Number(e.target.value) / 100}})} />
+            </div>
+            <div>
+              <label className={labelClass}>미성년 자녀 부양가족 인정 비율 (%)</label>
+              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioUnderRate ?? 1.0) * 100)} 
+                onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioUnderRate: Number(e.target.value) / 100}})} />
+            </div>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-4">
+            <h4 className="text-sm font-semibold text-blue-400">구간 2: 배우자 소득이 비슷할 때 (공동 부양)</h4>
+            <div>
+              <label className={labelClass}>배우자 소득 비율 이하 기준 (%)</label>
+              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioBetween ?? 1.3) * 100)} 
+                onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioBetween: Number(e.target.value) / 100}})} />
+            </div>
+            <div>
+              <label className={labelClass}>미성년 자녀 부양가족 인정 비율 (%)</label>
+              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioBetweenRate ?? 0.5) * 100)} 
+                onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioBetweenRate: Number(e.target.value) / 100}})} />
+            </div>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-4 md:col-span-2">
+            <h4 className="text-sm font-semibold text-blue-400">구간 3: 배우자 소득이 높을 때 (배우자 부양)</h4>
+            <div>
+              <label className={labelClass}>배우자 소득이 구간 2 초과 시 미성년 자녀 부양가족 인정 비율 (%)</label>
+              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioOverRate ?? 0.0) * 100)} 
+                onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioOverRate: Number(e.target.value) / 100}})} />
+            </div>
           </div>
         </div>
       </div>
