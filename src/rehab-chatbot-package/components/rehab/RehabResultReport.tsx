@@ -11,7 +11,10 @@ import React, { useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { X, Check, AlertTriangle, Building2, Shield, ArrowRight, Download, Share2, Users, DollarSign, Percent, BarChart3, Sparkles, Zap, Home, CreditCard, Calculator, FileText, ChevronRight } from 'lucide-react';
+import ReportShareModal from '../../../components/client/ReportShareModal';
+import PrintableReportTemplate from '../../../components/client/PrintableReportTemplate';
 import { RehabCalculationResult, RehabUserInput, formatCurrency, DebtComposition, RiskFactor, LegalActionGuide, BudgetItem } from '../../services/calculationService';
 import { StatComparisonCard, DistributionBar } from './StatisticalComparison';
 import { calculateIncomePercentile, calculateDebtPercentile, calculateReductionRatePercentile, generateStatisticalInsights } from '../../utils/statisticsUtils';
@@ -34,6 +37,59 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
     const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'statistics' | 'simulation' | 'checklist'>('overview');
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+    // 전문가용 PDF 보고서 다운로드 기능 (jspdf + html2canvas)
+    const handleDownloadPDF = async () => {
+        setIsGeneratingPdf(true);
+        try {
+            const page1El = document.getElementById('pdf-page-1');
+            const page2El = document.getElementById('pdf-page-2');
+
+            if (!page1El || !page2El) {
+                alert('PDF 템플릿을 찾을 수 없습니다.');
+                setIsGeneratingPdf(false);
+                return;
+            }
+
+            // 페이지 1 캡처
+            const canvas1 = await html2canvas(page1El, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            // 페이지 2 캡처
+            const canvas2 = await html2canvas(page2El, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            // PDF 생성 (A4: 210mm x 297mm)
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210;
+            const imgHeight = 297;
+
+            const imgData1 = canvas1.toDataURL('image/jpeg', 1.0);
+            const imgData2 = canvas2.toDataURL('image/jpeg', 1.0);
+
+            pdf.addImage(imgData1, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+            pdf.addPage();
+            pdf.addImage(imgData2, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+
+            const date = new Date().toISOString().split('T')[0];
+            pdf.save(`종합채무진단보고서_${userInput.name || '의뢰인'}_${date}.pdf`);
+        } catch (error) {
+            console.error('PDF 다운로드 실패:', error);
+            alert('PDF 다운로드 처리 중 오류가 발생했습니다.');
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
 
     // 이미지 저장 기능
     const handleSaveReport = async () => {
@@ -241,16 +297,17 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                             </div>
                             <div className="flex items-center gap-2">
                                 <motion.button
-                                    onClick={handleSaveReport}
-                                    className="p-1.5 text-slate-400 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors"
-                                    title="저장"
+                                    onClick={handleDownloadPDF}
+                                    disabled={isGeneratingPdf}
+                                    className="p-1.5 text-slate-400 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+                                    title="PDF 저장"
                                 >
                                     <Download className="w-4 h-4" />
                                 </motion.button>
                                 <motion.button
-                                    onClick={handleShareReport}
+                                    onClick={() => setIsShareModalOpen(true)}
                                     className="p-1.5 text-slate-400 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors"
-                                    title="공유"
+                                    title="보안 공유"
                                 >
                                     <Share2 className="w-4 h-4" />
                                 </motion.button>
@@ -1075,21 +1132,35 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                         {/* Save & Share Buttons */}
                         <div className="flex gap-2 mt-3 text-xs font-semibold">
                             <button
-                                onClick={handleSaveReport}
-                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
+                                onClick={handleDownloadPDF}
+                                disabled={isGeneratingPdf}
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200 disabled:opacity-55"
                             >
                                 <Download className="w-3.5 h-3.5" />
-                                보고서 이미지 저장
+                                {isGeneratingPdf ? 'PDF 생성 중...' : '전문가 PDF 다운로드'}
                             </button>
                             <button
-                                onClick={handleShareReport}
+                                onClick={() => setIsShareModalOpen(true)}
                                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
                             >
                                 <Share2 className="w-3.5 h-3.5" />
-                                카카오톡/보내기 공유
+                                보안 공유 (PIN 번호 설정)
                             </button>
                         </div>
                     </div>
+
+                    {/* Off-screen Printable Template */}
+                    <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', overflow: 'hidden', height: 0, width: 0 }}>
+                        <PrintableReportTemplate result={result} userInput={userInput} />
+                    </div>
+
+                    {/* Secure Share Modal */}
+                    <ReportShareModal
+                        isOpen={isShareModalOpen}
+                        onClose={() => setIsShareModalOpen(false)}
+                        result={result}
+                        userInput={userInput}
+                    />
                 </motion.div>
             </motion.div >
         </AnimatePresence >,

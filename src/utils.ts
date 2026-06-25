@@ -84,3 +84,49 @@ export const generateDateOptions = () => {
   const days = Array.from({length: 31}, (_, i) => String(i + 1));
   return { years, months, days };
 };
+
+/**
+ * Encrypts data using character shifting with a 4-digit PIN code.
+ * Safe for URL usage by substituting base64 characters.
+ */
+export const encryptReport = (data: string, pin: string): string => {
+  const pinDigits = pin.split('').map(Number);
+  let result = '';
+  for (let i = 0; i < data.length; i++) {
+    const charCode = data.charCodeAt(i);
+    const shift = pinDigits[i % pinDigits.length] || 0;
+    result += String.fromCharCode(charCode + shift);
+  }
+  // Convert unicode string safely to base64 and make it URL-safe
+  const b64 = btoa(encodeURIComponent(result).replace(/%([0-9A-F]{2})/g, (_, p1) => {
+    return String.fromCharCode(parseInt(p1, 16));
+  }));
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+/**
+ * Decrypts data using character shifting with a 4-digit PIN code.
+ */
+export const decryptReport = (ciphertext: string, pin: string): string => {
+  // Restore standard base64 characters from URL-safe ones
+  let b64 = ciphertext.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) {
+    b64 += '=';
+  }
+  
+  const byteString = atob(b64);
+  const percentString = byteString.split('').map((c) => {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join('');
+  
+  const decryptedShuffled = decodeURIComponent(percentString);
+  
+  const pinDigits = pin.split('').map(Number);
+  let result = '';
+  for (let i = 0; i < decryptedShuffled.length; i++) {
+    const charCode = decryptedShuffled.charCodeAt(i);
+    const shift = pinDigits[i % pinDigits.length] || 0;
+    result += String.fromCharCode(charCode - shift);
+  }
+  return result;
+};

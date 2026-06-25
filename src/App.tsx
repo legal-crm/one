@@ -18,14 +18,31 @@ import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, 
 import ClientRole from './components/ClientRole';
 import LawyerRole from './components/LawyerRole';
 import AdminRole from './components/AdminRole';
-import { ShieldCheck, Info, Sparkles, Scale, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
+import { decryptReport } from './utils';
+import SharedReportViewer from './components/client/SharedReportViewer';
 
 export default function App() {
   // Triple role state: 'client' | 'lawyer' | 'admin'
   const [currentRole, setCurrentRole] = useState<'client' | 'lawyer' | 'admin'>('client');
 
+  // Share report viewer states
+  const [sharePayload, setSharePayload] = useState<string | null>(null);
+  const [unlockedData, setUnlockedData] = useState<{ result: any; userInput: any } | null>(null);
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // 1. Share parameter detection
+    const shareParam = params.get('share');
+    if (shareParam) {
+      setSharePayload(shareParam);
+    }
+
+    // 2. Role parameter detection
     const roleParam = params.get('role');
     if (roleParam === 'admin') {
       setCurrentRole('admin');
@@ -33,6 +50,35 @@ export default function App() {
       setCurrentRole('lawyer');
     }
   }, []);
+
+  const handleUnlock = () => {
+    if (pin.length !== 4) return;
+    if (!sharePayload) return;
+    try {
+      const decrypted = decryptReport(sharePayload, pin);
+      const parsed = JSON.parse(decrypted);
+      if (parsed.result && parsed.userInput) {
+        setUnlockedData(parsed);
+        setPinError(false);
+      } else {
+        throw new Error('Invalid payload structure');
+      }
+    } catch (err) {
+      console.error('Decryption failed:', err);
+      setPinError(true);
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+      setPin('');
+    }
+  };
+
+  const handleRedirectToSelfDiagnosis = () => {
+    // Clear URL parameter and reset view states
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setSharePayload(null);
+    setUnlockedData(null);
+    setCurrentRole('client');
+  };
 
   // Core application states
   const [requests, setRequests] = useState<ConsultRequest[]>([]);
@@ -278,6 +324,82 @@ export default function App() {
       window.location.reload();
     }
   };
+
+  // Share mode conditional rendering
+  if (sharePayload) {
+    if (unlockedData) {
+      return (
+        <SharedReportViewer 
+          result={unlockedData.result}
+          userInput={unlockedData.userInput}
+          onStartSelfDiagnosis={handleRedirectToSelfDiagnosis}
+        />
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-[Pretendard] flex items-center justify-center p-4">
+        {/* Shaking & unlock css inject */}
+        <style>{`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+            20%, 40%, 60%, 80% { transform: translateX(6px); }
+          }
+          .shake-input {
+            animation: shake 0.4s ease-in-out;
+          }
+        `}</style>
+
+        <div className={`w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center space-y-5 ${isShaking ? 'shake-input' : ''}`}>
+          <div className="p-4 bg-[#7264FF]/10 text-[#7264FF] rounded-2xl">
+            <Lock className="w-8 h-8" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="font-extrabold text-lg text-white">보안 보호된 진단 보고서</h3>
+            <p className="text-xs text-slate-400 leading-relaxed px-4">
+              본 진단 보고서는 비밀번호로 보호되어 있습니다.<br />
+              공유자로부터 전달받은 <strong>숫자 4자리 비밀번호</strong>를 입력해 주세요.
+            </p>
+          </div>
+
+          <div className="w-full space-y-3">
+            <input 
+              type="password"
+              maxLength={4}
+              pattern="[0-9]*"
+              value={pin}
+              onChange={(e) => {
+                setPin(e.target.value.replace(/[^0-9]/g, ''));
+                if (pinError) setPinError(false);
+              }}
+              placeholder="••••"
+              className={`w-full text-center text-3xl tracking-[0.6em] font-bold py-3.5 border-2 ${
+                pinError ? 'border-red-500 bg-red-500/5 focus:border-red-500' : 'border-slate-800 bg-slate-950 focus:border-[#7264FF]'
+              } rounded-xl outline-none transition-colors placeholder:text-slate-700`}
+              onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+            />
+
+            {pinError && (
+              <div className="flex items-center gap-1.5 justify-center text-red-400 text-[11px] font-bold">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>비밀번호가 일치하지 않습니다. 다시 입력해주세요.</span>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleUnlock}
+            disabled={pin.length !== 4}
+            className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-bold rounded-xl transition-colors"
+          >
+            보고서 잠금 해제하기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
