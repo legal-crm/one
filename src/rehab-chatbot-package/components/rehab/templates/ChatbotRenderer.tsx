@@ -694,6 +694,70 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
     const renderComposer = () => {
         const inputRadius = layout?.composerInputRadius || 20;
 
+        const renderMoneyHelper = () => {
+            const lastBotMsg = [...messages].reverse().find(m => m.type === 'bot');
+            if (lastBotMsg?.inputType !== 'money' || isComposerLocked) return null;
+
+            const currentVal = parseInt(inputValue.replace(/,/g, '')) || 0;
+
+            const addAmount = (amount: number) => {
+                const newVal = currentVal + amount;
+                onInputChange(newVal.toString());
+            };
+
+            const resetAmount = () => onInputChange('');
+
+            const formatKoreanMoney = (val: number) => {
+                if (val === 0) return '';
+                const eok = Math.floor(val / 10000);
+                const man = val % 10000;
+
+                let result = '';
+                if (eok > 0) result += `${eok}억 `;
+                if (man > 0) result += `${man.toLocaleString()}만 `;
+                return result ? result + '원' : '';
+            };
+
+            return (
+                <div className="flex flex-col gap-2 mb-2 px-3 pt-2">
+                    {currentVal > 0 && (
+                        <div className="text-sm font-bold text-blue-600 dark:text-blue-400 px-1">
+                            현재 입력: {formatKoreanMoney(currentVal)}
+                        </div>
+                    )}
+
+                    <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
+                        {[
+                            { label: '+1억', value: 10000 },
+                            { label: '+5천만', value: 5000 },
+                            { label: '+1천만', value: 1000 },
+                            { label: '+100만', value: 100 },
+                            { label: '+10만', value: 10 },
+                        ].map((btn, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => addAmount(btn.value)}
+                                className="px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors border"
+                                style={{
+                                    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                                    borderColor: isDark ? '#475569' : '#e2e8f0',
+                                    color: isDark ? '#e2e8f0' : '#475569'
+                                }}
+                            >
+                                {btn.label}
+                            </button>
+                        ))}
+                        <button
+                            onClick={resetAmount}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors border bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30"
+                        >
+                            초기화
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
         // 06. 하단 툴바 확장형
         if (layout?.hasExpandPanel) {
             return (
@@ -704,6 +768,9 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                         borderColor: isDark ? '#374151' : '#e5e7eb'
                     }}
                 >
+                    {/* 숫자 입력 도우미 버튼 */}
+                    {renderMoneyHelper()}
+
                     {/* 툴바 행 */}
                     <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
                         <button
@@ -821,73 +888,8 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                     </div>
                 )}
 
-                {/* 숫자 입력 도우미 버튼 (inputType이 money일 때만 표시) */}
-                {(() => {
-                    const lastBotMsg = [...messages].reverse().find(m => m.type === 'bot');
-                    if (lastBotMsg?.inputType === 'money' && !isComposerLocked) {
-                        const currentVal = parseInt(inputValue.replace(/,/g, '')) || 0;
-
-                        const addAmount = (amount: number) => {
-                            const newVal = currentVal + amount;
-                            onInputChange(newVal.toString());
-                        };
-
-                        const resetAmount = () => onInputChange('');
-
-                        // 한글 금액 포맷팅 (만원 단위 입력 기준)
-                        const formatKoreanMoney = (val: number) => {
-                            if (val === 0) return '';
-                            const eok = Math.floor(val / 10000);
-                            const man = val % 10000;
-
-                            let result = '';
-                            if (eok > 0) result += `${eok}억 `;
-                            if (man > 0) result += `${man.toLocaleString()}만 `;
-                            return result ? result + '원' : '';
-                        };
-
-                        return (
-                            <div className="flex flex-col gap-2 mb-2">
-                                {/* 실시간 금액 프리뷰 */}
-                                {currentVal > 0 && (
-                                    <div className="text-sm font-bold text-blue-600 dark:text-blue-400 px-1">
-                                        현재 입력: {formatKoreanMoney(currentVal)}
-                                    </div>
-                                )}
-
-                                <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
-                                    {[
-                                        { label: '+1억', value: 10000 },
-                                        { label: '+5천만', value: 5000 },
-                                        { label: '+1천만', value: 1000 },
-                                        { label: '+100만', value: 100 },
-                                        { label: '+10만', value: 10 },
-                                    ].map((btn, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => addAmount(btn.value)}
-                                            className="px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors border"
-                                            style={{
-                                                backgroundColor: isDark ? '#1e293b' : '#ffffff',
-                                                borderColor: isDark ? '#475569' : '#e2e8f0',
-                                                color: isDark ? '#e2e8f0' : '#475569'
-                                            }}
-                                        >
-                                            {btn.label}
-                                        </button>
-                                    ))}
-                                    <button
-                                        onClick={resetAmount}
-                                        className="px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors border bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30"
-                                    >
-                                        초기화
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    }
-                    return null;
-                })()}
+                {/* 숫자 입력 도우미 버튼 */}
+                {renderMoneyHelper()}
 
                 <div className="flex items-center gap-2">
                     {/* 뒤로 가기 버튼 */}

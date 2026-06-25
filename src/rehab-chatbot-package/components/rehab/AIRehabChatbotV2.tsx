@@ -439,7 +439,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             addBotMessage(
                 `${ASSET_LABELS[nextAsset]}의 현재 가치는 대략 얼마인가요?\n\n(만원 단위)`,
                 undefined,
-                'number'
+                'money'
             );
         }
     }, [selectedAssets, goToStep, addBotMessage]);
@@ -905,7 +905,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             addBotMessage(
                                 `배우자의 ${ASSET_LABELS[assets[0]]} 가치는 대략 얼마인가요?\n\n(만원 단위)`,
                                 undefined,
-                                'number'
+                                'money'
                             );
                         }
                     }
@@ -1060,14 +1060,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 배우자 부동산에 남은 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else if (type === 'deposit') {
                     goToStep('spouse_asset_real_estate_deposit_amount');
                     addBotMessage(
                         '해당 배우자 부동산에 남은 임대(세입자) 보증금은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 }
                 break;
@@ -1082,7 +1082,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 배우자 부동산에 남은 임대(세입자) 보증금은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else {
                     // 담보대출만 있는 경우: 즉시 차감 계산 후 다음 진행
@@ -1201,7 +1201,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 배우자 토지에 남은 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 }
                 break;
@@ -1282,7 +1282,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         `해당 배우자 자동차에 남은 [${labelText}]은 얼마인가요?\n\n(만원 단위)`,
                         undefined,
-                        'number'
+                        'money'
                     );
                 }
                 break;
@@ -1429,7 +1429,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 배우자 예금/적금의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else {
                     const updatedSpouseAssetValues = { ...spouseAssetValues };
@@ -1529,7 +1529,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 배우자 보험의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else {
                     const updatedSpouseAssetValues = { ...spouseAssetValues };
@@ -1988,7 +1988,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             addBotMessage(
                                 `${ASSET_LABELS[assets[0]]}의 현재 가치는 대략 얼마인가요?\n\n(만원 단위)`,
                                 undefined,
-                                'number'
+                                'money'
                             );
                         }
                     }
@@ -2126,14 +2126,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 부동산에 남은 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else if (type === 'deposit') {
                     goToStep('asset_real_estate_deposit_amount');
                     addBotMessage(
                         '해당 부동산에 남은 임대(세입자) 보증금은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 }
                 break;
@@ -2148,7 +2148,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 부동산에 남은 임대(세입자) 보증금은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else {
                     // 담보대출만 있는 경우: 즉시 차감 계산 후 다음 자산 진행
@@ -2240,7 +2240,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 토지에 남은 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 }
                 break;
@@ -2303,7 +2303,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         `해당 자동차에 남은 [${labelText}]은 얼마인가요?\n\n(만원 단위)`,
                         undefined,
-                        'number'
+                        'money'
                     );
                 }
                 break;
@@ -2412,7 +2412,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 예금/적금의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else {
                     const updatedAssetValues = { ...assetValues };
@@ -2474,7 +2474,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '해당 보험의 담보대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
-                        'number'
+                        'money'
                     );
                 } else {
                     const updatedAssetValues = { ...assetValues };
