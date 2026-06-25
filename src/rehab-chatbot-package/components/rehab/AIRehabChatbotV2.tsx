@@ -2730,24 +2730,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const updatedAssetValues = { ...assetValues, insurance: insuranceNetValue };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
-                    const nextIndex = currentAssetIndex + 1;
-                    setCurrentAssetIndex(nextIndex);
-                    const nextAsset = selectedAssets[nextIndex];
-                    if (nextAsset === 'businessAssets') {
-                        goToStep('asset_business_deposit');
-                        addBotMessage(
-                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
-                            undefined,
-                            'money'
-                        );
-                    } else {
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
-                    }
+                    moveToAsset(currentAssetIndex + 1);
                 } else {
                     const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
