@@ -1172,6 +1172,8 @@ export default function ClientRole({
       specialCircumstances,
       assets,
       debts,
+      speculativeLoss: input.speculativeLoss,
+      gamblingLoss: input.gamblingLoss,
       consultationLogs
     };
   };
@@ -1213,7 +1215,20 @@ export default function ClientRole({
     });
     if (intakeData.debts.some(d => d.isRecent)) riskFlags.push('최근 대출 비중 높음 (30% 이상)');
     if (intakeData.debts.some(d => d.isGamblingOrLuxury)) riskFlags.push('투자/사행성 손실 채무 포함');
+    if (intakeData.speculativeLoss && intakeData.speculativeLoss > 0) {
+      riskFlags.push(`1년 이내 주식/코인 투자 손실: ${formatKoreanCurrency(intakeData.speculativeLoss)}`);
+    }
+    if (intakeData.gamblingLoss && intakeData.gamblingLoss > 0) {
+      riskFlags.push(`1년 이내 도박 채무: ${formatKoreanCurrency(intakeData.gamblingLoss)}`);
+    }
     
+    let specialNoteLine = '';
+    if (intakeData.speculativeLoss && intakeData.speculativeLoss > 0) {
+      specialNoteLine = `\n• 특이사항: 1년 이내 주식/코인 투자 손실액 ${formatKoreanCurrency(intakeData.speculativeLoss)}`;
+    } else if (intakeData.gamblingLoss && intakeData.gamblingLoss > 0) {
+      specialNoteLine = `\n• 특이사항: 1년 이내 도박으로 인한 채무액 ${formatKoreanCurrency(intakeData.gamblingLoss)}`;
+    }
+
     // Construct the new ConsultRequest
     const newRequest = {
       id: `req-${Date.now()}`,
@@ -1248,7 +1263,7 @@ export default function ClientRole({
   - 세금/체납 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.type === 'tax')?.principal || 0))}
   - 신용카드 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.creditor.includes('카드'))?.principal || 0))}
 • 회생/조정 이력: ${intakeData.prevHistory.exists ? '있음' : '없음'}
-• 주의 위험 지표: ${riskFlags.join(', ') || '없음'}
+• 주의 위험 지표: ${riskFlags.join(', ') || '없음'}${specialNoteLine}
 
 ----------------------------------
 💡 변호사 실무 검토 요지:
@@ -1267,7 +1282,7 @@ export default function ClientRole({
           cards,
           personals,
           recentLoans,
-          coinCrypto
+          coinCrypto: intakeData.speculativeLoss ? Math.round(intakeData.speculativeLoss / 10000) : (intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : coinCrypto)
         },
         riskFlags,
         jobType: intakeData.incomeSources[0]?.type === 'worker' ? 'SALARIED' : 'BUSINESS',
@@ -1279,9 +1294,11 @@ export default function ClientRole({
         spouseIncome: Math.round((intakeData.spouseIncome || 0) / 10000),
         hasRecentJobChange: intakeData.debts.some(d => d.isRecent),
         rentalDeposit: Math.round((intakeData.monthlyRent || 0) / 10000),
-        debtCause: 'LIVING',
+        debtCause: intakeData.speculativeLoss ? 'INVESTMENT' : (intakeData.gamblingLoss ? 'GAMBLING' : 'LIVING'),
         harassmentLevel: 'CALL',
-        creditorCount: intakeData.debts.length
+        creditorCount: intakeData.debts.length,
+        speculativeLoss: intakeData.speculativeLoss ? Math.round(intakeData.speculativeLoss / 10000) : undefined,
+        gamblingLoss: intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : undefined
       }
     };
     

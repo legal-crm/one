@@ -1186,7 +1186,11 @@ export default function AdminRole({
                               <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
                                 <span>채무 주원인 / 채권자수</span>
                                 <strong className="text-white">
-                                  {selectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : selectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : selectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : selectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
+                                  {selectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : 
+                                   selectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : 
+                                   selectedClient.financialProfile.debtCause === 'INVESTMENT' ? `투자 실패${selectedClient.financialProfile.speculativeLoss ? ` (${selectedClient.financialProfile.speculativeLoss.toLocaleString()}만원)` : ''}` : 
+                                   selectedClient.financialProfile.debtCause === 'GAMBLING' ? `도박/사행성${selectedClient.financialProfile.gamblingLoss ? ` (${selectedClient.financialProfile.gamblingLoss.toLocaleString()}만원)` : ''}` : 
+                                   selectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
                                   {` (${selectedClient.financialProfile.creditorCount}곳 금융기관)`}
                                 </strong>
                               </div>
@@ -1196,13 +1200,25 @@ export default function AdminRole({
                                   {selectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심 전화 및 문자' : selectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉장 및 가택방문' : selectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소급/소송 진행' : '급여/통장 압류 단계'}
                                 </strong>
                               </div>
+                              {selectedClient.financialProfile.speculativeLoss !== undefined && selectedClient.financialProfile.speculativeLoss > 0 && (
+                                <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 text-rose-450">
+                                  <span>1년내 주식/코인 손실액</span>
+                                  <strong className="font-bold">{selectedClient.financialProfile.speculativeLoss.toLocaleString()}만원</strong>
+                                </div>
+                              )}
+                              {selectedClient.financialProfile.gamblingLoss !== undefined && selectedClient.financialProfile.gamblingLoss > 0 && (
+                                <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 text-rose-450">
+                                  <span>1년내 도박 채무액</span>
+                                  <strong className="font-bold">{selectedClient.financialProfile.gamblingLoss.toLocaleString()}만원</strong>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
 
                         <div className="space-y-1">
                           <span className="font-bold text-slate-350 block">의뢰서 원본 텍스트 요약:</span>
-                          <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40 leading-relaxed text-[11px] text-slate-300">
+                          <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40 leading-relaxed text-[11px] text-slate-300 whitespace-pre-wrap">
                             {selectedClient.content}
                           </div>
                         </div>

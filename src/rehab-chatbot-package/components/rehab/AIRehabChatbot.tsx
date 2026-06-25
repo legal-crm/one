@@ -239,8 +239,8 @@ const AIRehabChatbot: React.FC<AIRehabChatbotProps> = ({
                     [
                         { label: '아니요, 생활비 등 일반 채무예요', value: 'none' },
                         { label: '최근 1년 내 대출이 많아요', value: 'recent_loan' },
-                        { label: '주식/코인 투자 손실이 있어요', value: 'investment' },
-                        { label: '도박으로 인한 채무가 있어요', value: 'gambling' },
+                        { label: '채무중에 1년 이내에 주식/코인 투자 손실이 있어요.', value: 'investment' },
+                        { label: '채무중에 1년 이내에 도박으로 인한 채무가 있어요', value: 'gambling' },
                     ],
                     'buttons'
                 );

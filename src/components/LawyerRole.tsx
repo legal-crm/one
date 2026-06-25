@@ -1174,7 +1174,7 @@ export default function LawyerRole({
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 bg-slate-950/40 p-3 rounded-lg text-[10px] text-slate-450 border border-slate-850">
                             <div>• 직업유형: <strong className="text-slate-300">{r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'} ({r.financialProfile.companyName || '미기재'})</strong></div>
                             <div>• 거주지역: <strong className="text-slate-300">{r.financialProfile.residenceRegion || '미기재'}</strong></div>
-                            <div>• 채무원인: <strong className="text-slate-300">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong></div>
+                            <div>• 채무원인: <strong className="text-slate-300">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : r.financialProfile.debtCause === 'INVESTMENT' ? `투자 실패${r.financialProfile.speculativeLoss ? ` (${r.financialProfile.speculativeLoss.toLocaleString()}만원)` : ''}` : r.financialProfile.debtCause === 'GAMBLING' ? `도박/사행성${r.financialProfile.gamblingLoss ? ` (${r.financialProfile.gamblingLoss.toLocaleString()}만원)` : ''}` : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong></div>
                             <div>• 채권자수 / 추심: <strong className="text-amber-400">{r.financialProfile.creditorCount || 0}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류/압류'}</strong></div>
                           </div>
                         )}
@@ -1313,7 +1313,7 @@ export default function LawyerRole({
 
                   {/* Chat flow messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3 h-[350px] scrollbar-hide">
-                    <div className="p-3 bg-[#161D30] rounded-xl text-slate-400 text-xs border border-[#1F2937]/60 text-left">
+                    <div className="p-3 bg-[#161D30] rounded-xl text-slate-400 text-xs border border-[#1F2937]/60 text-left whitespace-pre-wrap">
                       📝 <span className="text-brand font-bold">의뢰서 본문 내용:</span> {currentChatRequest.content}
                     </div>
 
@@ -1408,7 +1408,19 @@ export default function LawyerRole({
                           {currentChatRequest.financialProfile.maritalStatus === 'MARRIED' && (
                             <div className="flex justify-between"><span>배우자 재산:</span> <span className="text-white">{currentChatRequest.financialProfile.spouseAsset?.toLocaleString()}만 원</span></div>
                           )}
-                          <div className="flex justify-between"><span>주된 채무원인:</span> <span className="text-white">{currentChatRequest.financialProfile.debtCause === 'LIVING' ? '생활비' : currentChatRequest.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : currentChatRequest.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : currentChatRequest.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
+                          <div className="flex justify-between"><span>주된 채무원인:</span> <span className="text-white">{currentChatRequest.financialProfile.debtCause === 'LIVING' ? '생활비' : currentChatRequest.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : currentChatRequest.financialProfile.debtCause === 'INVESTMENT' ? `투자 실패${currentChatRequest.financialProfile.speculativeLoss ? ` (${currentChatRequest.financialProfile.speculativeLoss.toLocaleString()}만원)` : ''}` : currentChatRequest.financialProfile.debtCause === 'GAMBLING' ? `도박/사행성${currentChatRequest.financialProfile.gamblingLoss ? ` (${currentChatRequest.financialProfile.gamblingLoss.toLocaleString()}만원)` : ''}` : currentChatRequest.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
+                          {currentChatRequest.financialProfile.speculativeLoss !== undefined && currentChatRequest.financialProfile.speculativeLoss > 0 && (
+                            <div className="flex justify-between text-rose-400 font-semibold">
+                              <span>1년내 주식/코인 손실:</span>
+                              <span>{currentChatRequest.financialProfile.speculativeLoss.toLocaleString()}만 원</span>
+                            </div>
+                          )}
+                          {currentChatRequest.financialProfile.gamblingLoss !== undefined && currentChatRequest.financialProfile.gamblingLoss > 0 && (
+                            <div className="flex justify-between text-rose-400 font-semibold">
+                              <span>1년내 도박 채무금:</span>
+                              <span>{currentChatRequest.financialProfile.gamblingLoss.toLocaleString()}만 원</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-amber-400"><span>추심 단계:</span> <span>{currentChatRequest.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : currentChatRequest.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : currentChatRequest.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '압류/가압류'}</span></div>
                           <div className="flex justify-between"><span>채권자 기관수:</span> <span className="text-white">{currentChatRequest.financialProfile.creditorCount}곳</span></div>
                         </>
@@ -1957,8 +1969,20 @@ export default function LawyerRole({
                             )}
                             <div className="col-span-2 flex justify-between">
                               <span>채무 원인:</span>
-                              <strong className="text-slate-200">{crmSelectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : crmSelectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : crmSelectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : crmSelectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong>
+                              <strong className="text-slate-200">{crmSelectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : crmSelectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : crmSelectedClient.financialProfile.debtCause === 'INVESTMENT' ? `투자 실패${crmSelectedClient.financialProfile.speculativeLoss ? ` (${crmSelectedClient.financialProfile.speculativeLoss.toLocaleString()}만원)` : ''}` : crmSelectedClient.financialProfile.debtCause === 'GAMBLING' ? `도박/사행성${crmSelectedClient.financialProfile.gamblingLoss ? ` (${crmSelectedClient.financialProfile.gamblingLoss.toLocaleString()}만원)` : ''}` : crmSelectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong>
                             </div>
+                            {crmSelectedClient.financialProfile.speculativeLoss !== undefined && crmSelectedClient.financialProfile.speculativeLoss > 0 && (
+                              <div className="col-span-2 flex justify-between text-rose-400">
+                                <span>1년내 주식/코인 손실:</span>
+                                <strong>{crmSelectedClient.financialProfile.speculativeLoss.toLocaleString()}만원</strong>
+                              </div>
+                            )}
+                            {crmSelectedClient.financialProfile.gamblingLoss !== undefined && crmSelectedClient.financialProfile.gamblingLoss > 0 && (
+                              <div className="col-span-2 flex justify-between text-rose-400">
+                                <span>1년내 도박 채무금:</span>
+                                <strong>{crmSelectedClient.financialProfile.gamblingLoss.toLocaleString()}만원</strong>
+                              </div>
+                            )}
                             <div className="col-span-2 flex justify-between text-amber-400">
                               <span>추심 단계:</span>
                               <strong>{crmSelectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : crmSelectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉 최고서' : crmSelectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류/지급명령'}</strong>

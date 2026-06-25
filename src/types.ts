@@ -32,9 +32,11 @@ export interface FinancialProfile {
   spouseIncome?: number;
   hasRecentJobChange?: boolean;
   rentalDeposit?: number;
-  debtCause?: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'OTHER';
+  debtCause?: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'GAMBLING' | 'OTHER';
   harassmentLevel?: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE';
   creditorCount?: number;
+  speculativeLoss?: number; // 1년 이내 투자 손실 (만 원 단위)
+  gamblingLoss?: number;    // 1년 이내 도박 채무 (만 원 단위)
 }
 
 export type RequestType = 'direct' | 'open';
@@ -362,6 +364,8 @@ export interface IntakeData {
   debts: DebtItem[];
   consultationLogs: ConsultationLog[];
   notes?: string;
+  speculativeLoss?: number; // 1년 이내 투자 손실 (원 단위)
+  gamblingLoss?: number;    // 1년 이내 도박 채무 (원 단위)
   
   feeTotal?: number;
   feeInstallments?: number;

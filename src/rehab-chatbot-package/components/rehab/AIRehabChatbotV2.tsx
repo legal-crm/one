@@ -157,6 +157,7 @@ type ChatStep =
     | 'prior_credit_recovery' // 신용회복 상세
     | 'prior_credit_recovery_amount' // 신용회복 잔액 (NEW)
     | 'risk'
+    | 'speculative_loss_amount' // 1년 이내 주식/코인 손실 또는 도박 채무 금액 확인 (NEW)
     | 'special_24_months'    // 24개월 특례 적용 여부 (기초수급자, 장애 등)
     | 'elderly_parent_check'  // 고령 부모님 부양가족 확인
     | 'elderly_parent_count'  // 고령 부모님 인원수
@@ -2778,8 +2779,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         [
                             { label: '아니요, 일반 채무예요', value: 'none' },
                             { label: '최근 1년 내 대출이 많아요', value: 'recent_loan' },
-                            { label: '주식/코인 투자 손실이 있어요', value: 'investment' },
-                            { label: '도박으로 인한 채무가 있어요', value: 'gambling' }
+                            { label: '채무중에 1년 이내에 주식/코인 투자 손실이 있어요.', value: 'investment' },
+                            { label: '채무중에 1년 이내에 도박으로 인한 채무가 있어요', value: 'gambling' }
                         ],
                         'buttons'
                     );
@@ -2810,8 +2811,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     [
                         { label: '아니요, 일반 채무예요', value: 'none' },
                         { label: '최근 1년 내 대출이 많아요', value: 'recent_loan' },
-                        { label: '주식/코인 투자 손실이 있어요', value: 'investment' },
-                        { label: '도박으로 인한 채무가 있어요', value: 'gambling' }
+                        { label: '채무중에 1년 이내에 주식/코인 투자 손실이 있어요.', value: 'investment' },
+                        { label: '채무중에 1년 이내에 도박으로 인한 채무가 있어요', value: 'gambling' }
                     ],
                     'buttons'
                 );
@@ -2819,7 +2820,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'risk':
                 setUserInput(prev => ({ ...prev, riskFactor: value as RehabUserInput['riskFactor'] }));
-                // V2.1: 공감 리액션 후 법적 조치 질문으로 이동
+                // V2.1: 공감 리액션 후 법적 조치 또는 투자 손실금 질문으로 이동
                 setTimeout(() => {
                     addBotMessage(
                         '솔직하게 말씀해주셔서 감사해요. 정확한 상황 파악이 좋은 결과의 첫걸음이에요 ✨',
@@ -2827,23 +2828,61 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         undefined
                     );
                 }, 300);
-                setTimeout(() => {
-                    goToStep('legal_actions');
-                    addBotMessage(
-                        '혼시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
-                        [
-                            { label: '📞 독촉 전화/문자', value: 'collection_call' },
-                            { label: '📄 지급명령/소장 수령', value: 'court_order' },
-                            { label: '🔒 급여/계좌 압류', value: 'seizure' },
-                            { label: '🏠 부동산 가압류', value: 'property_seizure' },
-                            { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
-                            { label: '✅ 해당 없음', value: 'none' }
-                        ],
-                        'buttons',
-                        true
-                    );
-                }, 1200);
+                if (value === 'investment' || value === 'gambling') {
+                    setTimeout(() => {
+                        goToStep('speculative_loss_amount');
+                        const promptMsg = value === 'investment'
+                            ? '1년 이내의 주식/코인 투자 손실액은 대략 얼마인가요?\n\n(만원 단위)'
+                            : '1년 이내의 도박으로 인한 채무액은 대략 얼마인가요?\n\n(만원 단위)';
+                        addBotMessage(promptMsg, undefined, 'money');
+                    }, 1200);
+                } else {
+                    setTimeout(() => {
+                        goToStep('legal_actions');
+                        addBotMessage(
+                            '혼시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
+                            [
+                                { label: '📞 독촉 전화/문자', value: 'collection_call' },
+                                { label: '📄 지급명령/소장 수령', value: 'court_order' },
+                                { label: '🔒 급여/계좌 압류', value: 'seizure' },
+                                { label: '🏠 부동산 가압류', value: 'property_seizure' },
+                                { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
+                                { label: '✅ 해당 없음', value: 'none' }
+                            ],
+                            'buttons',
+                            true
+                        );
+                    }, 1200);
+                }
                 break;
+
+            case 'speculative_loss_amount': {
+                const amount = (typeof value === 'number' ? value : parseInt(String(value), 10)) * 10000;
+                setUserInput(prev => {
+                    if (prev.riskFactor === 'investment') {
+                        return { ...prev, speculativeLoss: amount };
+                    } else if (prev.riskFactor === 'gambling') {
+                        return { ...prev, gamblingLoss: amount };
+                    }
+                    return prev;
+                });
+
+                goToStep('legal_actions');
+                addBotMessage(
+                    '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
+                    [
+                        { label: '📞 독촉 전화/문자', value: 'collection_call' },
+                        { label: '📄 지급명령/소장 수령', value: 'court_order' },
+                        { label: '🔒 급여/계좌 압류', value: 'seizure' },
+                        { label: '🏠 부동산 가압류', value: 'property_seizure' },
+                        { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
+                        { label: '✅ 해당 없음', value: 'none' }
+                    ],
+                    'buttons',
+                    true
+                );
+                break;
+            }
 
             case 'prior_rehab':
                 if (value === 'none' || value === 'fresh_start') {
@@ -3433,7 +3472,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'debt_types': 79,
             'debt_amount_detail': 82, 'debt_confirm': 85, 
             'prior_rehab': 91, 'prior_rehab_detail': 92,
-            'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95,
+            'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95, 'speculative_loss_amount': 95.1,
             'legal_actions': 95.2, 'monthly_expenses': 62,
             'special_24_months': 95.5, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
             'result': 100

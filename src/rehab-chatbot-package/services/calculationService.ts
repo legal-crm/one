@@ -71,6 +71,7 @@ export interface RehabUserInput {
 
     // 투기성 손실
     speculativeLoss?: number;  // 주식/코인 손실금
+    gamblingLoss?: number;     // 도박 채무/손실금
     riskFactor?: 'none' | 'recent_loan' | 'investment' | 'gambling'; // 채무 유형
 
     // 24개월 특례 조건
@@ -534,6 +535,15 @@ export function calculateRepayment(
     // 배우자 재산 반영 (법원 성향에 따라)
     if (input.isMarried && input.spouseAssets > 0) {
         liquidationValue += Math.round(input.spouseAssets * courtTrait.spousePropertyRate);
+    }
+
+    // 투기성 손실금 청산가치 반영 (법원 성향에 따라)
+    if (courtTrait.investLossInclude) {
+        if (input.riskFactor === 'investment' && input.speculativeLoss && input.speculativeLoss > 0) {
+            liquidationValue += input.speculativeLoss;
+        } else if (input.riskFactor === 'gambling' && input.gamblingLoss && input.gamblingLoss > 0) {
+            liquidationValue += input.gamblingLoss;
+        }
     }
 
 
