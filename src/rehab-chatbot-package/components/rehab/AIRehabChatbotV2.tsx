@@ -132,6 +132,7 @@ type ChatStep =
     | 'education_check'      // 교육비 여부 (NEW)
     | 'education_amount'     // 교육비 금액
     | 'special_education'    // 특수교육 여부 (NEW)
+    | 'special_education_amount' // 특수교육비 금액 입력 (NEW)
     | 'assets_select'
     | 'asset_detail'
     | 'asset_car_loan_check'
@@ -2123,8 +2124,29 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
 
             case 'special_education':
-                setUserInput(prev => ({ ...prev, hasSpecialEducation: value === 'yes' }));
-                // V2.1: 월 고정 지출로 이동
+                const isSpecial = value === 'yes';
+                setUserInput(prev => ({ ...prev, hasSpecialEducation: isSpecial }));
+                if (isSpecial) {
+                    goToStep('special_education_amount');
+                    addBotMessage(
+                        '특수교육비는 매달 대략 얼마가 지출되나요?\n\n(만원 단위, 증빙 가능한 금액)',
+                        undefined,
+                        'money'
+                    );
+                } else {
+                    setUserInput(prev => ({ ...prev, specialEducationCost: 0 }));
+                    goToStep('monthly_expenses');
+                    addBotMessage(
+                        '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
+                        undefined,
+                        'money'
+                    );
+                }
+                break;
+
+            case 'special_education_amount':
+                const specialEduAmt = (value as number) * 10000;
+                setUserInput(prev => ({ ...prev, specialEducationCost: specialEduAmt }));
                 goToStep('monthly_expenses');
                 addBotMessage(
                     '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
@@ -3673,7 +3695,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
             'owned_value': 53, 'owned_mortgage': 55, 'owned_owner_type': 56,
             'medical_check': 57, 'medical_amount': 59,
-            'education_check': 61, 'education_amount': 63, 'special_education': 64,
+            'education_check': 61, 'education_amount': 63, 'special_education': 64, 'special_education_amount': 64.5,
             'assets_select': 65,
             'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'asset_real_estate_loan_check': 70.2, 'asset_real_estate_mortgage_amount': 70.5, 'asset_real_estate_deposit_amount': 70.8, 'asset_land_loan_check': 72.2, 'asset_land_loan_amount': 72.5,
             'asset_business_deposit': 73, 'asset_business_premium': 73.2, 'asset_business_machinery': 73.5, 'asset_business_etc': 73.8,

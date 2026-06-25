@@ -60,6 +60,7 @@ export interface RehabUserInput {
     medicalCost?: number;      // 월 의료비
     educationCost?: number;    // 월 교육비
     hasSpecialEducation?: boolean; // 특수교육 (장애 등) 여부
+    specialEducationCost?: number; // 월 특수교육비
 
     // 본인 재산
     myAssets: number;          // 본인 재산 총액
@@ -333,14 +334,15 @@ export function calculateRepayment(
         explanation: string;
     } | undefined;
 
-    if (input.educationCost && input.educationCost > 0 && input.minorChildren && input.minorChildren > 0) {
+    const totalEduCost = (input.educationCost || 0) + (input.specialEducationCost || 0);
+    if (totalEduCost > 0 && input.minorChildren && input.minorChildren > 0) {
         const eduCriteria = effectiveConfig.educationCostCriteria || { included: 89627, limit: 200000, specialLimit: 500000 };
 
         // 특수교육 여부에 따라 한도 적용
         const applicableLimit = input.hasSpecialEducation ? eduCriteria.specialLimit : eduCriteria.limit;
 
         // 자녀 1인당 평균 교육비 산출
-        const perChildCost = input.educationCost / input.minorChildren;
+        const perChildCost = totalEduCost / input.minorChildren;
 
         // [수정된 로직] Min(지출액, 한도) - 포함분
         const cappedCost = Math.min(perChildCost, applicableLimit);
@@ -361,7 +363,7 @@ export function calculateRepayment(
         }
 
         educationCostBreakdown = {
-            totalCost: input.educationCost,
+            totalCost: totalEduCost,
             childCount: input.minorChildren,
             perChildCost,
             applicableLimit,

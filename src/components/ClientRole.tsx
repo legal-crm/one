@@ -1144,7 +1144,7 @@ export default function ClientRole({
     const extraLivingCost: ExtraLivingCost = {
       utilities: 0,
       education: input.educationCost || 0,
-      specialEducation: input.hasSpecialEducation ? (input.educationCost || 0) : 0,
+      specialEducation: input.specialEducationCost || 0,
       medical: input.medicalCost || 0,
       other: 0,
       highIncomeExtraLimit: 0
