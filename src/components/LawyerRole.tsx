@@ -1422,6 +1422,23 @@ export default function LawyerRole({
                             </div>
                           )}
                           <div className="flex justify-between text-amber-400"><span>추심 단계:</span> <span>{currentChatRequest.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : currentChatRequest.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : currentChatRequest.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '압류/가압류'}</span></div>
+                          {currentChatRequest.financialProfile.legalActions && currentChatRequest.financialProfile.legalActions.length > 0 && currentChatRequest.financialProfile.legalActions.some(x => x !== 'none') && (
+                            <div className="flex justify-between text-amber-500">
+                              <span>법적 조치 진행:</span>
+                              <span className="text-white">
+                                {currentChatRequest.financialProfile.legalActions
+                                  .filter(x => x !== 'none')
+                                  .map(x => ({
+                                    collection_call: '독촉',
+                                    court_order: '소장수령',
+                                    seizure: '급여압류',
+                                    property_seizure: '부동산압류',
+                                    credit_drop: '신용하락'
+                                  }[x] || x))
+                                  .join(', ')}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex justify-between"><span>채권자 기관수:</span> <span className="text-white">{currentChatRequest.financialProfile.creditorCount}곳</span></div>
                         </>
                       )}
@@ -1987,6 +2004,23 @@ export default function LawyerRole({
                               <span>추심 단계:</span>
                               <strong>{crmSelectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : crmSelectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉 최고서' : crmSelectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류/지급명령'}</strong>
                             </div>
+                            {crmSelectedClient.financialProfile.legalActions && crmSelectedClient.financialProfile.legalActions.length > 0 && crmSelectedClient.financialProfile.legalActions.some(x => x !== 'none') && (
+                              <div className="col-span-2 flex justify-between text-amber-500">
+                                <span>법적 조치 진행:</span>
+                                <strong className="text-slate-200">
+                                  {crmSelectedClient.financialProfile.legalActions
+                                    .filter(x => x !== 'none')
+                                    .map(x => ({
+                                      collection_call: '독촉',
+                                      court_order: '소장수령',
+                                      seizure: '급여압류',
+                                      property_seizure: '부동산압류',
+                                      credit_drop: '신용하락'
+                                    }[x] || x))
+                                    .join(', ')}
+                                </strong>
+                              </div>
+                            )}
                             <div className="col-span-2 flex justify-between">
                               <span>채권자 수:</span>
                               <strong className="text-slate-200">{crmSelectedClient.financialProfile.creditorCount}곳</strong>

@@ -1200,6 +1200,23 @@ export default function AdminRole({
                                   {selectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심 전화 및 문자' : selectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉장 및 가택방문' : selectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소급/소송 진행' : '급여/통장 압류 단계'}
                                 </strong>
                               </div>
+                              {selectedClient.financialProfile.legalActions && selectedClient.financialProfile.legalActions.length > 0 && selectedClient.financialProfile.legalActions.some(x => x !== 'none') && (
+                                <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 text-indigo-400">
+                                  <span>진행중인 법적 조치</span>
+                                  <strong className="font-bold">
+                                    {selectedClient.financialProfile.legalActions
+                                      .filter(x => x !== 'none')
+                                      .map(x => ({
+                                        collection_call: '독촉',
+                                        court_order: '소장수령',
+                                        seizure: '급여압류',
+                                        property_seizure: '부동산압류',
+                                        credit_drop: '신용하락'
+                                      }[x] || x))
+                                      .join(', ')}
+                                  </strong>
+                                </div>
+                              )}
                               {selectedClient.financialProfile.speculativeLoss !== undefined && selectedClient.financialProfile.speculativeLoss > 0 && (
                                 <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 text-rose-450">
                                   <span>1년내 주식/코인 손실액</span>

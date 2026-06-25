@@ -1174,6 +1174,7 @@ export default function ClientRole({
       debts,
       speculativeLoss: input.speculativeLoss,
       gamblingLoss: input.gamblingLoss,
+      legalActions: input.legalActions,
       consultationLogs
     };
   };
@@ -1229,6 +1230,30 @@ export default function ClientRole({
       specialNoteLine = `\n• 특이사항: 1년 이내 도박으로 인한 채무액 ${formatKoreanCurrency(intakeData.gamblingLoss)}`;
     }
 
+    const legalActionLabels: Record<string, string> = {
+      collection_call: '독촉 전화/문자',
+      court_order: '지급명령/소장 수령',
+      seizure: '급여/계좌 압류',
+      property_seizure: '부동산 가압류',
+      credit_drop: '신용등급 하락 통보',
+      none: '해당 없음'
+    };
+    const activeActions = (intakeData.legalActions || [])
+      .filter(x => x !== 'none')
+      .map(x => legalActionLabels[x] || x);
+    const legalActionsStr = activeActions.length > 0 ? activeActions.join(', ') : '해당 없음';
+
+    let harassmentLevel: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE' = 'CALL';
+    if (intakeData.legalActions) {
+      if (intakeData.legalActions.includes('seizure') || intakeData.legalActions.includes('property_seizure')) {
+        harassmentLevel = 'SEIZURE';
+      } else if (intakeData.legalActions.includes('court_order')) {
+        harassmentLevel = 'LAWSUIT';
+      } else if (intakeData.legalActions.includes('credit_drop')) {
+        harassmentLevel = 'LETTER';
+      }
+    }
+
     // Construct the new ConsultRequest
     const newRequest = {
       id: `req-${Date.now()}`,
@@ -1264,6 +1289,7 @@ export default function ClientRole({
   - 신용카드 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.creditor.includes('카드'))?.principal || 0))}
 • 회생/조정 이력: ${intakeData.prevHistory.exists ? '있음' : '없음'}
 • 주의 위험 지표: ${riskFlags.join(', ') || '없음'}${specialNoteLine}
+• 현재 법적 조치: ${legalActionsStr}
 
 ----------------------------------
 💡 변호사 실무 검토 요지:
@@ -1295,10 +1321,11 @@ export default function ClientRole({
         hasRecentJobChange: intakeData.debts.some(d => d.isRecent),
         rentalDeposit: Math.round((intakeData.monthlyRent || 0) / 10000),
         debtCause: intakeData.speculativeLoss ? 'INVESTMENT' : (intakeData.gamblingLoss ? 'GAMBLING' : 'LIVING'),
-        harassmentLevel: 'CALL',
+        harassmentLevel,
         creditorCount: intakeData.debts.length,
         speculativeLoss: intakeData.speculativeLoss ? Math.round(intakeData.speculativeLoss / 10000) : undefined,
-        gamblingLoss: intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : undefined
+        gamblingLoss: intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : undefined,
+        legalActions: intakeData.legalActions
       }
     };
     
