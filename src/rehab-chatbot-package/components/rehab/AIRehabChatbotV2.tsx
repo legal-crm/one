@@ -371,6 +371,46 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         setCurrentStep(step);
     }, []);
 
+    // 봇 메시지 추가 (Interactive Block 지원 + stepId 추적)
+    const addBotMessage = useCallback((
+        content: string,
+        options?: ChatOption[],
+        inputType?: InputType,
+        multiSelect?: boolean,
+        interactiveBlock?: InteractiveBlockConfig,
+        stepId?: ChatStep
+    ) => {
+        setIsTyping(true);
+        setTimeout(() => {
+            // 이전 봇 메시지를 "답변됨"으로 표시
+            setMessages(prev => {
+                const updated = prev.map(msg =>
+                    msg.type === 'bot' && msg.options && !msg.isAnswered
+                        ? { ...msg, isAnswered: true }
+                        : msg
+                );
+                const newMessage: ChatMessage = {
+                    id: Date.now().toString(),
+                    type: 'bot',
+                    content,
+                    timestamp: new Date(),
+                    options,
+                    inputType,
+                    multiSelect,
+                    interactiveBlock,
+                    blockState: interactiveBlock ? { status: 'active' } : undefined,
+                    stepId: stepId || nextStepRef.current,
+                    isAnswered: false
+                };
+                return [...updated, newMessage];
+            });
+            setIsTyping(false);
+            if (inputType === 'number' || inputType === 'text' || inputType === 'address' || inputType === 'money') {
+                setTimeout(() => inputRef.current?.focus(), 100);
+            }
+        }, 600);
+    }, []);
+
     const moveToAsset = useCallback((nextIndex: number) => {
         setCurrentAssetIndex(nextIndex);
         const nextAsset = selectedAssets[nextIndex];
@@ -469,45 +509,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         }
     }, [interactiveBlockPreset, interactiveBlockConfig, disablePortal]);
 
-    // 봇 메시지 추가 (Interactive Block 지원 + stepId 추적)
-    const addBotMessage = useCallback((
-        content: string,
-        options?: ChatOption[],
-        inputType?: InputType,
-        multiSelect?: boolean,
-        interactiveBlock?: InteractiveBlockConfig,
-        stepId?: ChatStep
-    ) => {
-        setIsTyping(true);
-        setTimeout(() => {
-            // 이전 봇 메시지를 "답변됨"으로 표시
-            setMessages(prev => {
-                const updated = prev.map(msg =>
-                    msg.type === 'bot' && msg.options && !msg.isAnswered
-                        ? { ...msg, isAnswered: true }
-                        : msg
-                );
-                const newMessage: ChatMessage = {
-                    id: Date.now().toString(),
-                    type: 'bot',
-                    content,
-                    timestamp: new Date(),
-                    options,
-                    inputType,
-                    multiSelect,
-                    interactiveBlock,
-                    blockState: interactiveBlock ? { status: 'active' } : undefined,
-                    stepId: stepId || nextStepRef.current,
-                    isAnswered: false
-                };
-                return [...updated, newMessage];
-            });
-            setIsTyping(false);
-            if (inputType === 'number' || inputType === 'text' || inputType === 'address' || inputType === 'money') {
-                setTimeout(() => inputRef.current?.focus(), 100);
-            }
-        }, 600);
-    }, []);
+
 
     // 사용자 메시지 추가
     const addUserMessage = useCallback((content: string) => {
