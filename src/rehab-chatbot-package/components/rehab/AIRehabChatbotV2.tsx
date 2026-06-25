@@ -149,6 +149,8 @@ type ChatStep =
     | 'asset_savings_loan_amount'
     | 'asset_insurance_loan_check'
     | 'asset_insurance_loan_amount'
+    | 'asset_retirement_type'
+    | 'asset_retirement_value'
     | 'credit_card'
     | 'credit_card_amount'
     | 'debt_confirm'
@@ -168,7 +170,7 @@ type ChatStep =
     | 'result';
 
 // 재산 항목 타입
-type AssetType = 'car' | 'realEstate' | 'land' | 'savings' | 'insurance' | 'stocks' | 'businessAssets';
+type AssetType = 'car' | 'realEstate' | 'land' | 'savings' | 'insurance' | 'stocks' | 'businessAssets' | 'retirementPay';
 
 interface AIRehabChatbotV2Props {
     isOpen: boolean;
@@ -201,7 +203,8 @@ const ASSET_LABELS: Record<AssetType, string> = {
     savings: '예금/적금',
     insurance: '보험(해지환급금)',
     stocks: '주식/코인',
-    businessAssets: '사업재산'
+    businessAssets: '사업재산',
+    retirementPay: '퇴직금'
 };
 
 const ASSET_BLOCK_OPTIONS = [
@@ -211,7 +214,8 @@ const ASSET_BLOCK_OPTIONS = [
     { label: '예금/적금', value: 'savings', icon: '💰' },
     { label: '보험', value: 'insurance', icon: '🛡️' },
     { label: '주식/코인', value: 'stocks', icon: '📈' },
-    { label: '사업재산', value: 'businessAssets', icon: '🏢' }
+    { label: '사업재산', value: 'businessAssets', icon: '🏢' },
+    { label: '퇴직금', value: 'retirementPay', icon: '💼' }
 ];
 
 const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
@@ -366,6 +370,39 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         nextStepRef.current = step;
         setCurrentStep(step);
     }, []);
+
+    const moveToAsset = useCallback((nextIndex: number) => {
+        setCurrentAssetIndex(nextIndex);
+        const nextAsset = selectedAssets[nextIndex];
+        if (!nextAsset) return;
+
+        if (nextAsset === 'businessAssets') {
+            goToStep('asset_business_deposit');
+            addBotMessage(
+                '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
+                undefined,
+                'money'
+            );
+        } else if (nextAsset === 'retirementPay') {
+            goToStep('asset_retirement_type');
+            addBotMessage(
+                '회사에서 제공하는 퇴직연금(DB/DC형 등)에 가입되어 있으신가요?',
+                [
+                    { label: '퇴직연금 가입', value: 'pension' },
+                    { label: '퇴직연금 미가입', value: 'none' },
+                    { label: '모름', value: 'unknown' }
+                ],
+                'buttons'
+            );
+        } else {
+            goToStep('asset_detail');
+            addBotMessage(
+                `${ASSET_LABELS[nextAsset]}의 현재 가치는 대략 얼마인가요?\n\n(만원 단위)`,
+                undefined,
+                'number'
+            );
+        }
+    }, [selectedAssets, goToStep, addBotMessage]);
 
     // 스크롤 자동 이동
     useEffect(() => {
@@ -1933,6 +1970,17 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                                 undefined,
                                 'money'
                             );
+                        } else if (assets[0] === 'retirementPay') {
+                            goToStep('asset_retirement_type');
+                            addBotMessage(
+                                '회사에서 제공하는 퇴직연금(DB/DC형 등)에 가입되어 있으신가요?',
+                                [
+                                    { label: '퇴직연금 가입', value: 'pension' },
+                                    { label: '퇴직연금 미가입', value: 'none' },
+                                    { label: '모름', value: 'unknown' }
+                                ],
+                                'buttons'
+                            );
                         } else {
                             goToStep('asset_detail');
                             addBotMessage(
@@ -2028,16 +2076,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
-                    const nextIndex = currentAssetIndex + 1;
-                    setCurrentAssetIndex(nextIndex);
-                    addBotMessage(
-                        `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                        undefined,
-                        'money'
-                    );
+                    moveToAsset(currentAssetIndex + 1);
                 } else {
                     // 재산 합산
-                    const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0) + rawVal;
+                    const totalAssets = Object.entries(assetValues)
+                        .filter(([k]) => k !== 'retirementPay')
+                        .reduce((a, [_, b]) => a + b, 0) + (assetType !== 'retirementPay' ? rawVal : 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2059,16 +2103,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (type === 'none') {
                     // 없어요 선택 시 차감 없이 바로 다음 자산으로
                     if (currentAssetIndex < selectedAssets.length - 1) {
-                        const nextIndex = currentAssetIndex + 1;
-                        setCurrentAssetIndex(nextIndex);
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
+                        moveToAsset(currentAssetIndex + 1);
                     } else {
-                        const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0);
+                        const totalAssets = Object.entries(assetValues)
+                            .filter(([k]) => k !== 'retirementPay')
+                            .reduce((a, [_, b]) => a + b, 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2117,16 +2156,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     const updatedAssetValues = { ...assetValues, realEstate: reNetValue };
 
                     if (currentAssetIndex < selectedAssets.length - 1) {
-                        const nextIndex = currentAssetIndex + 1;
-                        setCurrentAssetIndex(nextIndex);
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
+                        moveToAsset(currentAssetIndex + 1);
                     } else {
-                        const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        const totalAssets = Object.entries(updatedAssetValues)
+                            .filter(([k]) => k !== 'retirementPay')
+                            .reduce((a, [_, b]) => a + b, 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2157,16 +2191,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const updatedAssetValues = { ...assetValues, realEstate: reNetValue };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
-                    const nextIndex = currentAssetIndex + 1;
-                    setCurrentAssetIndex(nextIndex);
-                    goToStep('asset_detail');
-                    addBotMessage(
-                        `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                        undefined,
-                        'money'
-                    );
+                    moveToAsset(currentAssetIndex + 1);
                 } else {
-                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    const totalAssets = Object.entries(updatedAssetValues)
+                        .filter(([k]) => k !== 'retirementPay')
+                        .reduce((a, [_, b]) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2188,16 +2217,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (type === 'no') {
                     // 없어요 선택 시 차감 없이 바로 다음 자산으로
                     if (currentAssetIndex < selectedAssets.length - 1) {
-                        const nextIndex = currentAssetIndex + 1;
-                        setCurrentAssetIndex(nextIndex);
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
+                        moveToAsset(currentAssetIndex + 1);
                     } else {
-                        const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0);
+                        const totalAssets = Object.entries(assetValues)
+                            .filter(([k]) => k !== 'retirementPay')
+                            .reduce((a, [_, b]) => a + b, 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2229,16 +2253,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const updatedAssetValues = { ...assetValues, land: landNetValue };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
-                    const nextIndex = currentAssetIndex + 1;
-                    setCurrentAssetIndex(nextIndex);
-                    goToStep('asset_detail');
-                    addBotMessage(
-                        `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                        undefined,
-                        'money'
-                    );
+                    moveToAsset(currentAssetIndex + 1);
                 } else {
-                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    const totalAssets = Object.entries(updatedAssetValues)
+                        .filter(([k]) => k !== 'retirementPay')
+                        .reduce((a, [_, b]) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2260,16 +2279,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (type === 'none') {
                     // 없어요 선택 시 차감 없이 바로 다음으로 진행
                     if (currentAssetIndex < selectedAssets.length - 1) {
-                        const nextIndex = currentAssetIndex + 1;
-                        setCurrentAssetIndex(nextIndex);
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[selectedAssets[nextIndex]]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
+                        moveToAsset(currentAssetIndex + 1);
                     } else {
-                        const totalAssets = (Object.values(assetValues) as number[]).reduce((a, b) => a + b, 0);
+                        const totalAssets = Object.entries(assetValues)
+                            .filter(([k]) => k !== 'retirementPay')
+                            .reduce((a, [_, b]) => a + b, 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2302,27 +2316,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const updatedAssetValues = { ...assetValues, car: carNetValue };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
-                    const nextIndex = currentAssetIndex + 1;
-                    setCurrentAssetIndex(nextIndex);
-                    const nextAsset = selectedAssets[nextIndex];
-                    if (nextAsset === 'businessAssets') {
-                        goToStep('asset_business_deposit');
-                        addBotMessage(
-                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
-                            undefined,
-                            'money'
-                        );
-                    } else {
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
-                    }
+                    moveToAsset(currentAssetIndex + 1);
                 } else {
                     // 재산 합산
-                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    const totalAssets = Object.entries(updatedAssetValues)
+                        .filter(([k]) => k !== 'retirementPay')
+                        .reduce((a, [_, b]) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2383,26 +2382,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const updatedAssetValues = { ...assetValues, businessAssets: bizTotal };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
-                    const nextIndex = currentAssetIndex + 1;
-                    setCurrentAssetIndex(nextIndex);
-                    const nextAsset = selectedAssets[nextIndex];
-                    if (nextAsset === 'businessAssets') {
-                        goToStep('asset_business_deposit');
-                        addBotMessage(
-                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
-                            undefined,
-                            'money'
-                        );
-                    } else {
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
-                    }
+                    moveToAsset(currentAssetIndex + 1);
                 } else {
-                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    const totalAssets = Object.entries(updatedAssetValues)
+                        .filter(([k]) => k !== 'retirementPay')
+                        .reduce((a, [_, b]) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2431,26 +2415,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     const updatedAssetValues = { ...assetValues };
                     if (currentAssetIndex < selectedAssets.length - 1) {
-                        const nextIndex = currentAssetIndex + 1;
-                        setCurrentAssetIndex(nextIndex);
-                        const nextAsset = selectedAssets[nextIndex];
-                        if (nextAsset === 'businessAssets') {
-                            goToStep('asset_business_deposit');
-                            addBotMessage(
-                                '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
-                                undefined,
-                                'money'
-                            );
-                        } else {
-                            goToStep('asset_detail');
-                            addBotMessage(
-                                `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                                undefined,
-                                'money'
-                            );
-                        }
+                        moveToAsset(currentAssetIndex + 1);
                     } else {
-                        const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        const totalAssets = Object.entries(updatedAssetValues)
+                            .filter(([k]) => k !== 'retirementPay')
+                            .reduce((a, [_, b]) => a + b, 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2475,26 +2444,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const updatedAssetValues = { ...assetValues, savings: savingsNetValue };
 
                 if (currentAssetIndex < selectedAssets.length - 1) {
-                    const nextIndex = currentAssetIndex + 1;
-                    setCurrentAssetIndex(nextIndex);
-                    const nextAsset = selectedAssets[nextIndex];
-                    if (nextAsset === 'businessAssets') {
-                        goToStep('asset_business_deposit');
-                        addBotMessage(
-                            '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
-                            undefined,
-                            'money'
-                        );
-                    } else {
-                        goToStep('asset_detail');
-                        addBotMessage(
-                            `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                            undefined,
-                            'money'
-                        );
-                    }
+                    moveToAsset(currentAssetIndex + 1);
                 } else {
-                    const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    const totalAssets = Object.entries(updatedAssetValues)
+                        .filter(([k]) => k !== 'retirementPay')
+                        .reduce((a, [_, b]) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2523,26 +2477,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     const updatedAssetValues = { ...assetValues };
                     if (currentAssetIndex < selectedAssets.length - 1) {
-                        const nextIndex = currentAssetIndex + 1;
-                        setCurrentAssetIndex(nextIndex);
-                        const nextAsset = selectedAssets[nextIndex];
-                        if (nextAsset === 'businessAssets') {
-                            goToStep('asset_business_deposit');
-                            addBotMessage(
-                                '사업장의 임대보증금은 대략 얼마인가요?\n\n(없으시면 0을 입력해주세요, 만원 단위)',
-                                undefined,
-                                'money'
-                            );
-                        } else {
-                            goToStep('asset_detail');
-                            addBotMessage(
-                                `${ASSET_LABELS[nextAsset]}의 현재 가치는 얼마인가요?\n\n(만원 단위)`,
-                                undefined,
-                                'money'
-                            );
-                        }
+                        moveToAsset(currentAssetIndex + 1);
                     } else {
-                        const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                        const totalAssets = Object.entries(updatedAssetValues)
+                            .filter(([k]) => k !== 'retirementPay')
+                            .reduce((a, [_, b]) => a + b, 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2587,6 +2526,71 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     }
                 } else {
                     const totalAssets = (Object.values(updatedAssetValues) as number[]).reduce((a, b) => a + b, 0);
+                    setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                    goToStep('credit_card');
+                    addBotMessage(
+                        '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                        [
+                            { label: '사용 중이에요', value: 'yes' },
+                            { label: '사용 안 해요', value: 'no' }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_retirement_type': {
+                const typeVal = value as 'pension' | 'none' | 'unknown';
+                setUserInput(prev => ({ ...prev, retirementPensionType: typeVal }));
+
+                if (typeVal === 'pension') {
+                    // 퇴직연금 가입 시 압류금지 재산 -> 예상퇴직금 0원 처리 후 바로 다음 자산으로
+                    setUserInput(prev => ({ ...prev, retirementPay: 0 }));
+                    setAssetValues(prev => ({ ...prev, retirementPay: 0 }));
+                    const updatedAssetValues = { ...assetValues, retirementPay: 0 };
+
+                    if (currentAssetIndex < selectedAssets.length - 1) {
+                        moveToAsset(currentAssetIndex + 1);
+                    } else {
+                        const totalAssets = Object.entries(updatedAssetValues)
+                            .filter(([k]) => k !== 'retirementPay')
+                            .reduce((a, [_, b]) => a + b, 0);
+                        setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
+                        goToStep('credit_card');
+                        addBotMessage(
+                            '현재 신용카드를 사용하고 계신가요?\n\n(카드 사용금액도 채무에 포함됩니다)',
+                            [
+                                { label: '사용 중이에요', value: 'yes' },
+                                { label: '사용 안 해요', value: 'no' }
+                            ],
+                            'buttons'
+                        );
+                    }
+                } else {
+                    // 미가입 또는 모름일 때 예상 퇴직금 금액 확인 질문
+                    goToStep('asset_retirement_value');
+                    addBotMessage(
+                        '예상 퇴직금(현재 퇴직 시 받을 수 있는 총액)은 대략 얼마인가요?\n\n(만원 단위)',
+                        undefined,
+                        'money'
+                    );
+                }
+                break;
+            }
+
+            case 'asset_retirement_value': {
+                const retirementPayValue = (value as number) * 10000;
+                setUserInput(prev => ({ ...prev, retirementPay: retirementPayValue }));
+                setAssetValues(prev => ({ ...prev, retirementPay: retirementPayValue }));
+                const updatedAssetValues = { ...assetValues, retirementPay: retirementPayValue };
+
+                if (currentAssetIndex < selectedAssets.length - 1) {
+                    moveToAsset(currentAssetIndex + 1);
+                } else {
+                    const totalAssets = Object.entries(updatedAssetValues)
+                        .filter(([k]) => k !== 'retirementPay')
+                        .reduce((a, [_, b]) => a + b, 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -3076,6 +3080,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '🛡️ 보험', value: 'insurance' },
                         { label: '📈 주식/코인', value: 'stocks' },
                         { label: '🏢 사업재산', value: 'businessAssets' },
+                        { label: '💼 퇴직금', value: 'retirementPay' },
                         { label: '✅ 선택완료', value: 'done' },
                         { label: '❌ 없어요', value: 'none' }
                     ],

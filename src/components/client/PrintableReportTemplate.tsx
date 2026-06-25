@@ -299,6 +299,20 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
                                     <td style={{ padding: '8px 10px', textAlign: 'right' }}>{formatCurrency(Math.max(0, (userInput.deposit || 0) - result.exemptDeposit))}</td>
                                     <td style={{ padding: '8px 10px', color: '#10b981' }}>소액임차공제: -{formatCurrency(result.exemptDeposit)}</td>
                                 </tr>
+                                {userInput.retirementPay !== undefined && userInput.retirementPay > 0 && (
+                                    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '8px 10px' }}>퇴직금 예상액</td>
+                                        <td style={{ padding: '8px 10px', textAlign: 'right' }}>{formatCurrency(userInput.retirementPay)}</td>
+                                        <td style={{ padding: '8px 10px', textAlign: 'right', color: userInput.retirementPensionType === 'pension' ? '#64748b' : '#f59e0b', fontWeight: userInput.retirementPensionType === 'pension' ? 'normal' : 'bold' }}>
+                                            {formatCurrency(userInput.retirementPensionType === 'pension' ? 0 : userInput.retirementPay * 0.5)}
+                                        </td>
+                                        <td style={{ padding: '8px 10px', color: userInput.retirementPensionType === 'unknown' ? '#b91c1c' : '#64748b', fontWeight: userInput.retirementPensionType === 'unknown' ? 'bold' : 'normal' }}>
+                                            {userInput.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' :
+                                             userInput.retirementPensionType === 'none' ? '퇴직연금 미가입 (50% 반영)' : 
+                                             '퇴직연금 종류 모름 (50% 반영, ⚠️확인 필요)'}
+                                        </td>
+                                    </tr>
+                                )}
                                 <tr style={{ borderBottom: '2px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
                                     <td style={{ padding: '10px', fontWeight: 'bold', color: '#312e81' }}>최종 청산가치 합계 (A)</td>
                                     <td style={{ padding: '10px', textAlign: 'right' }}>-</td>

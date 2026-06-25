@@ -90,6 +90,8 @@ export interface RehabUserInput {
     debtTypes?: string[];              // 채무 유형별 분류 (bank, capital, savings_bank, private 등)
     legalActions?: string[];           // 현재 법적 조치 상황 (collection_call, court_order, seizure 등)
     monthlyFixedExpenses?: number;     // 월 고정 지출 합계 (통신비, 보험료, 교통비 등)
+    retirementPensionType?: 'pension' | 'none' | 'unknown'; // 퇴직연금 가입 유형
+    retirementPay?: number;                                 // 예상 퇴직금 총액
 }
 
 /**
@@ -531,6 +533,13 @@ export function calculateRepayment(
 
     // 청산가치 계산: 본인재산 + 보증금기여분 + 배우자재산 반영분
     let liquidationValue = input.myAssets + depositContribution;
+
+    // 퇴직금 반영 (퇴직연금 미가입 또는 모름일 때 50% 반영)
+    if (input.retirementPay && input.retirementPay > 0) {
+        if (input.retirementPensionType === 'none' || input.retirementPensionType === 'unknown') {
+            liquidationValue += Math.round(input.retirementPay * 0.5);
+        }
+    }
 
     // 배우자 재산 반영 (법원 성향에 따라)
     if (input.isMarried && input.spouseAssets > 0) {

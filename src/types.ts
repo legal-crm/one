@@ -38,6 +38,8 @@ export interface FinancialProfile {
   speculativeLoss?: number; // 1년 이내 투자 손실 (만 원 단위)
   gamblingLoss?: number;    // 1년 이내 도박 채무 (만 원 단위)
   legalActions?: string[];
+  retirementPensionType?: 'pension' | 'none' | 'unknown';
+  retirementPay?: number;   // 예상 퇴직금 (만 원 단위)
 }
 
 export type RequestType = 'direct' | 'open';
@@ -368,6 +370,8 @@ export interface IntakeData {
   speculativeLoss?: number; // 1년 이내 투자 손실 (원 단위)
   gamblingLoss?: number;    // 1년 이내 도박 채무 (원 단위)
   legalActions?: string[];
+  retirementPensionType?: 'pension' | 'none' | 'unknown';
+  retirementPay?: number;   // 예상 퇴직금 (원 단위)
   
   feeTotal?: number;
   feeInstallments?: number;

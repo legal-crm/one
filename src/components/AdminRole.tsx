@@ -1224,10 +1224,30 @@ export default function AdminRole({
                                 </div>
                               )}
                               {selectedClient.financialProfile.gamblingLoss !== undefined && selectedClient.financialProfile.gamblingLoss > 0 && (
-                                <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 text-rose-450">
+                                <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 text-rose-455">
                                   <span>1년내 도박 채무액</span>
                                   <strong className="font-bold">{selectedClient.financialProfile.gamblingLoss.toLocaleString()}만원</strong>
                                 </div>
+                              )}
+                              {selectedClient.financialProfile.retirementPay !== undefined && selectedClient.financialProfile.retirementPay > 0 && (
+                                <>
+                                  <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5 pt-0.5 text-slate-300">
+                                    <span>예상 퇴직금 원금</span>
+                                    <strong className="text-white">{selectedClient.financialProfile.retirementPay.toLocaleString()}만원</strong>
+                                  </div>
+                                  <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
+                                    <span>퇴직연금 가입 형태</span>
+                                    <strong className={selectedClient.financialProfile.retirementPensionType === 'unknown' ? 'text-amber-400 font-bold' : 'text-slate-200'}>
+                                      {selectedClient.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' :
+                                       selectedClient.financialProfile.retirementPensionType === 'none' ? '퇴직연금 미가입 (50% 반영)' : '모름 (50% 반영)'}
+                                    </strong>
+                                  </div>
+                                  {selectedClient.financialProfile.retirementPensionType === 'unknown' && (
+                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded text-[10px] text-amber-400 font-bold text-center animate-pulse">
+                                      ⚠️ [확인 필요] 예상 퇴직금 조회 및 가입 형태 확인 요망
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </>
                           )}

@@ -98,6 +98,17 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                             <span className="text-slate-500">실제 상환 예정 총액</span>
                             <span className="font-semibold text-emerald-400">{formatCurrency(result.totalRepayment)}</span>
                         </div>
+                        {userInput.retirementPay !== undefined && userInput.retirementPay > 0 && (
+                            <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
+                                <span className="text-slate-500">예상 퇴직금 (반영률)</span>
+                                <span className="font-semibold text-slate-300">
+                                    {formatCurrency(userInput.retirementPay)} 
+                                    <span className="text-[10px] text-slate-400 ml-1">
+                                        ({userInput.retirementPensionType === 'pension' ? '0% 반영' : '50% 반영'})
+                                    </span>
+                                </span>
+                            </div>
+                        )}
                         <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
                             <span className="text-slate-500">가구원수 및 인정 부양가족</span>
                             <span className="font-semibold text-slate-300">{userInput.familySize}인 가구</span>
@@ -125,6 +136,19 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                             </div>
                             <p className="text-[10px] text-amber-200/70 leading-relaxed">
                                 ※ 본 채무는 지방법원 기준 청산가치에 반영되거나 추가 보정 권고를 받을 리스크가 있으므로, 법원별 실무준칙에 맞게 소명 서류를 작성해야 합니다.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Retirement unknown Warning Panel */}
+                    {userInput.retirementPensionType === 'unknown' && userInput.retirementPay !== undefined && userInput.retirementPay > 0 && (
+                        <div className="p-3.5 bg-amber-500/5 border border-amber-500/10 rounded-2xl space-y-2">
+                            <div className="flex items-center gap-2 text-xs font-bold text-amber-400 animate-pulse">
+                                <AlertTriangle className="w-4 h-4 shrink-0" />
+                                <span>퇴직연금 가입 형태 미확인</span>
+                            </div>
+                            <p className="text-[10px] text-amber-200/70 leading-relaxed">
+                                ※ 예상 퇴직금 종류(퇴직연금 가입 여부)를 "모름"으로 선택하셨습니다. 퇴직연금 가입 여부에 따라 청산가치 반영액(0% 또는 50%)이 달라지므로, 정확한 진단을 위해 변호사와 추가 상담 시 퇴직연금 가입 확인서 검토가 필요합니다.
                             </p>
                         </div>
                     )}

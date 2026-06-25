@@ -1058,6 +1058,23 @@ export default function ClientRole({
       });
     }
 
+    if (input.retirementPay && input.retirementPay > 0) {
+      assets.push({
+        id: `asset-severance-${Date.now()}`,
+        owner: 'self',
+        type: 'severance',
+        description: input.retirementPensionType === 'pension' 
+          ? '퇴직연금 (가입)' 
+          : input.retirementPensionType === 'none' 
+          ? '예상 퇴직금 (연금 미가입 - 50% 반영)' 
+          : '예상 퇴직금 (연금 모름 - 50% 반영)',
+        marketValue: input.retirementPay,
+        loanBalance: 0,
+        hasPledge: false,
+        isExempt: input.retirementPensionType === 'pension'
+      });
+    }
+
     if (input.deposit && input.deposit > 0) {
       assets.push({
         id: `asset-deposit-${Date.now()}`,
@@ -1175,6 +1192,11 @@ export default function ClientRole({
       speculativeLoss: input.speculativeLoss,
       gamblingLoss: input.gamblingLoss,
       legalActions: input.legalActions,
+      retirementPensionType: input.retirementPensionType,
+      retirementPay: input.retirementPay,
+      notes: input.retirementPensionType === 'unknown'
+        ? '[확인 필요] 예상 퇴직금 조회 및 퇴직연금 가입 여부 확인 요망 (챗봇 모름 선택)'
+        : undefined,
       consultationLogs
     };
   };
@@ -1282,13 +1304,20 @@ export default function ClientRole({
 • 총 자산가치 (청산가치): ${formatKoreanCurrency(result.base.liq)}
   - 임대보증금: ${formatKoreanCurrency((intakeData.assets.find(a => a.type === 'deposit')?.marketValue || 0))}
   - 배우자 자산: ${formatKoreanCurrency((intakeData.assets.find(a => a.owner === 'spouse')?.marketValue || 0))}
+  - 예상 퇴직금: ${intakeData.retirementPay ? formatKoreanCurrency(intakeData.retirementPay) : '없음'}${
+      intakeData.retirementPensionType === 'pension' ? ' (퇴직연금 가입 - 0% 반영)' :
+      intakeData.retirementPensionType === 'none' ? ' (퇴직연금 미가입 - 50% 반영)' :
+      intakeData.retirementPensionType === 'unknown' ? ' (퇴직연금 종류 모름 - 50% 반영)' : ''
+    }
 
 [3. 채무 구성 및 특이사항]
 • 총 채무액: ${formatKoreanCurrency(result.base.debtTotal)} (채권자 수: ${intakeData.debts.length}곳)
   - 세금/체납 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.type === 'tax')?.principal || 0))}
   - 신용카드 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.creditor.includes('카드'))?.principal || 0))}
 • 회생/조정 이력: ${intakeData.prevHistory.exists ? '있음' : '없음'}
-• 주의 위험 지표: ${riskFlags.join(', ') || '없음'}${specialNoteLine}
+• 주의 위험 지표: ${riskFlags.join(', ') || '없음'}${specialNoteLine}${
+    intakeData.retirementPensionType === 'unknown' ? '\n• ⚠️ [확인 필요] 예상 퇴직금 조회 및 퇴직연금 가입 여부 확인 요망 (챗봇 모름 선택)' : ''
+  }
 • 현재 법적 조치: ${legalActionsStr}
 
 ----------------------------------
@@ -1325,7 +1354,9 @@ export default function ClientRole({
         creditorCount: intakeData.debts.length,
         speculativeLoss: intakeData.speculativeLoss ? Math.round(intakeData.speculativeLoss / 10000) : undefined,
         gamblingLoss: intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : undefined,
-        legalActions: intakeData.legalActions
+        legalActions: intakeData.legalActions,
+        retirementPensionType: intakeData.retirementPensionType,
+        retirementPay: intakeData.retirementPay ? Math.round(intakeData.retirementPay / 10000) : undefined
       }
     };
     

@@ -160,7 +160,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     // 1. 제도별 적합도 평가 연동
     const suitabilities = useMemo(() => {
         const debt = userInput.totalDebt || 0;
-        const assets = (userInput.myAssets || 0) + (userInput.spouseAssets || 0) * 0.5 + (userInput.deposit || 0);
+        const retirementAsset = (userInput.retirementPay && (userInput.retirementPensionType === 'none' || userInput.retirementPensionType === 'unknown')) 
+            ? userInput.retirementPay * 0.5 
+            : 0;
+        const assets = (userInput.myAssets || 0) + (userInput.spouseAssets || 0) * 0.5 + (userInput.deposit || 0) + retirementAsset;
         const income = userInput.monthlyIncome || 0;
         
         // 최저생계비 기준 설정 (2026년 기준 1인 생계비 약 133만원 등)
@@ -618,6 +621,22 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         <span className="text-right font-semibold">-{formatCurrency(result.exemptDeposit)}</span>
                                                     </div>
                                                 </>
+                                            )}
+                                            {userInput.retirementPay !== undefined && userInput.retirementPay > 0 && (
+                                                <div className="grid grid-cols-3 p-2.5 border-b border-slate-200/60 items-center">
+                                                    <span>
+                                                        예상 퇴직금 
+                                                        <span className="text-[10px] text-slate-450 block font-normal mt-0.5">
+                                                            ({userInput.retirementPensionType === 'pension' ? '퇴직연금 가입 - 0% 반영' :
+                                                              userInput.retirementPensionType === 'none' ? '연금 미가입 - 50% 반영' : 
+                                                              '연금 모름 - 50% 반영'})
+                                                        </span>
+                                                    </span>
+                                                    <span className="text-right text-slate-400">{formatCurrency(userInput.retirementPay)}</span>
+                                                    <span className={`text-right font-semibold ${userInput.retirementPensionType === 'pension' ? 'text-slate-400' : 'text-[#F59E0B]'}`}>
+                                                        {formatCurrency(userInput.retirementPensionType === 'pension' ? 0 : userInput.retirementPay * 0.5)}
+                                                    </span>
+                                                </div>
                                             )}
                                             <div className="grid grid-cols-3 bg-white p-3 font-bold text-sm items-center border-t border-slate-200">
                                                 <span className="text-slate-800">최종 청산가치 합계</span>

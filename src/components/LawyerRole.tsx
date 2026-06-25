@@ -1176,6 +1176,23 @@ export default function LawyerRole({
                             <div>• 거주지역: <strong className="text-slate-300">{r.financialProfile.residenceRegion || '미기재'}</strong></div>
                             <div>• 채무원인: <strong className="text-slate-300">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : r.financialProfile.debtCause === 'INVESTMENT' ? `투자 실패${r.financialProfile.speculativeLoss ? ` (${r.financialProfile.speculativeLoss.toLocaleString()}만원)` : ''}` : r.financialProfile.debtCause === 'GAMBLING' ? `도박/사행성${r.financialProfile.gamblingLoss ? ` (${r.financialProfile.gamblingLoss.toLocaleString()}만원)` : ''}` : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong></div>
                             <div>• 채권자수 / 추심: <strong className="text-amber-400">{r.financialProfile.creditorCount || 0}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류/압류'}</strong></div>
+                            {r.financialProfile.retirementPay !== undefined && r.financialProfile.retirementPay > 0 && (
+                              <div className="col-span-2 sm:col-span-4 mt-1 border-t border-slate-900/30 pt-1 flex items-center justify-between text-slate-400">
+                                <span>💼 예상 퇴직금: <strong className="text-slate-300">{r.financialProfile.retirementPay.toLocaleString()}만원</strong> ({r.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 - 0% 반영' : r.financialProfile.retirementPensionType === 'none' ? '퇴직연금 미가입 - 50% 반영' : '퇴직연금 종류 모름 - 50% 반영'})</span>
+                                {r.financialProfile.retirementPensionType === 'unknown' && (
+                                  <span className="bg-amber-500/20 text-amber-400 text-[9px] px-1.5 py-0.5 rounded font-black border border-amber-500/30 animate-pulse">
+                                    ⚠️ 퇴직연금 확인 필요
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {r.financialProfile.retirementPensionType === 'unknown' && (
+                          <div className="pt-1">
+                            <span className="bg-amber-500/10 text-amber-400 text-[10px] px-2 py-0.5 rounded font-semibold border border-amber-500/10">
+                              ⚠️ 예상 퇴직금 조회 및 퇴직연금 가입 형태 확인 필요 (챗봇 모름 선택)
+                            </span>
                           </div>
                         )}
 
@@ -1440,6 +1457,26 @@ export default function LawyerRole({
                             </div>
                           )}
                           <div className="flex justify-between"><span>채권자 기관수:</span> <span className="text-white">{currentChatRequest.financialProfile.creditorCount}곳</span></div>
+                          {currentChatRequest.financialProfile.retirementPay !== undefined && currentChatRequest.financialProfile.retirementPay > 0 && (
+                            <>
+                              <div className="border-t border-slate-800 my-1.5 pt-1.5 flex justify-between text-[11px]">
+                                <span>예상 퇴직금:</span>
+                                <span className="text-white font-bold">{currentChatRequest.financialProfile.retirementPay.toLocaleString()}만 원</span>
+                              </div>
+                              <div className="flex justify-between text-[11px]">
+                                <span>퇴직연금 형태:</span>
+                                <span className={currentChatRequest.financialProfile.retirementPensionType === 'unknown' ? 'text-amber-400 font-bold' : 'text-slate-350'}>
+                                  {currentChatRequest.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' :
+                                   currentChatRequest.financialProfile.retirementPensionType === 'none' ? '퇴직연금 미가입 (50% 반영)' : '종류 모름 (50% 반영)'}
+                                </span>
+                              </div>
+                              {currentChatRequest.financialProfile.retirementPensionType === 'unknown' && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded text-[10px] text-amber-400 font-bold mt-1 text-center animate-pulse">
+                                  ⚠️ [확인 필요] 예상 퇴직금 조회 및 가입 형태 확인 요망
+                                </div>
+                              )}
+                            </>
+                          )}
                         </>
                       )}
                     </div>
@@ -2025,6 +2062,26 @@ export default function LawyerRole({
                               <span>채권자 수:</span>
                               <strong className="text-slate-200">{crmSelectedClient.financialProfile.creditorCount}곳</strong>
                             </div>
+                            {crmSelectedClient.financialProfile.retirementPay !== undefined && crmSelectedClient.financialProfile.retirementPay > 0 && (
+                              <>
+                                <div className="col-span-2 border-t border-slate-800 my-1 pt-1.5 flex justify-between">
+                                  <span>예상 퇴직금:</span>
+                                  <strong className="text-white">{crmSelectedClient.financialProfile.retirementPay.toLocaleString()}만원</strong>
+                                </div>
+                                <div className="col-span-2 flex justify-between">
+                                  <span>퇴직연금 종류:</span>
+                                  <strong className={crmSelectedClient.financialProfile.retirementPensionType === 'unknown' ? 'text-amber-400' : 'text-slate-200'}>
+                                    {crmSelectedClient.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' :
+                                     crmSelectedClient.financialProfile.retirementPensionType === 'none' ? '퇴직연금 미가입 (50% 반영)' : '모름 (50% 반영)'}
+                                  </strong>
+                                </div>
+                                {crmSelectedClient.financialProfile.retirementPensionType === 'unknown' && (
+                                  <div className="col-span-2 bg-amber-500/10 border border-amber-500/20 p-2 rounded text-[10px] text-amber-400 font-bold space-y-1 text-center animate-pulse">
+                                    ⚠️ [확인 필요] 예상 퇴직금 조회 및 가입 형태 확인 요망
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </>
                         )}
                       </div>
