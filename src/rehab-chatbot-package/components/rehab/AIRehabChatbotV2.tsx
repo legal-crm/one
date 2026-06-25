@@ -1951,7 +1951,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 addBotMessage(
                     '보증금은 얼마인가요?\n\n(만원 단위)',
                     undefined,
-                    'number'
+                    'money'
                 );
                 break;
 
@@ -1997,7 +1997,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 addBotMessage(
                     '해당 부동산에 담보대출이 있으신가요?\n\n만원 단위로 입력해주세요. (없으면 0)',
                     undefined,
-                    'number'
+                    'money'
                 );
                 break;
 
