@@ -3031,29 +3031,28 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 );
                 break;
 
-            case 'risk':
-                setUserInput(prev => ({ ...prev, riskFactor: value as RehabUserInput['riskFactor'] }));
-                // V2.1: 공감 리액션 후 법적 조치 또는 투자 손실금 질문으로 이동
-                setTimeout(() => {
+            case 'risk': {
+                const riskVal = value as RehabUserInput['riskFactor'];
+                setUserInput(prev => ({ ...prev, riskFactor: riskVal }));
+                
+                if (riskVal === 'investment' || riskVal === 'gambling') {
+                    // 투자/도박인 경우, 공감 멘트 없이 바로 금액 질문으로 이동
+                    goToStep('speculative_loss_amount');
+                    const promptMsg = riskVal === 'investment'
+                        ? '1년 이내의 주식/코인 투자 손실액은 대략 얼마인가요?\n\n(만원 단위)'
+                        : '1년 이내의 도박으로 인한 채무액은 대략 얼마인가요?\n\n(만원 단위)';
+                    addBotMessage(promptMsg, undefined, 'money');
+                } else {
+                    // 일반 채무 또는 최근 대출의 경우, 기존처럼 공감 멘트 후 법적 조치로 이동
                     addBotMessage(
                         '솔직하게 말씀해주셔서 감사해요. 정확한 상황 파악이 좋은 결과의 첫걸음이에요 ✨',
                         undefined,
                         undefined
                     );
-                }, 300);
-                if (value === 'investment' || value === 'gambling') {
-                    setTimeout(() => {
-                        goToStep('speculative_loss_amount');
-                        const promptMsg = value === 'investment'
-                            ? '1년 이내의 주식/코인 투자 손실액은 대략 얼마인가요?\n\n(만원 단위)'
-                            : '1년 이내의 도박으로 인한 채무액은 대략 얼마인가요?\n\n(만원 단위)';
-                        addBotMessage(promptMsg, undefined, 'money');
-                    }, 1200);
-                } else {
                     setTimeout(() => {
                         goToStep('legal_actions');
                         addBotMessage(
-                            '혼시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
+                            '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
                             [
                                 { label: '📞 독촉 전화/문자', value: 'collection_call' },
                                 { label: '📄 지급명령/소장 수령', value: 'court_order' },
@@ -3065,9 +3064,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             'buttons',
                             true
                         );
-                    }, 1200);
+                    }, 1000);
                 }
                 break;
+            }
 
             case 'speculative_loss_amount': {
                 const amount = (typeof value === 'number' ? value : parseInt(String(value), 10)) * 10000;
@@ -3080,20 +3080,29 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     return prev;
                 });
 
-                goToStep('legal_actions');
+                // 금액 입력이 끝났을 때 공감 멘트 노출
                 addBotMessage(
-                    '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
-                    [
-                        { label: '📞 독촉 전화/문자', value: 'collection_call' },
-                        { label: '📄 지급명령/소장 수령', value: 'court_order' },
-                        { label: '🔒 급여/계좌 압류', value: 'seizure' },
-                        { label: '🏠 부동산 가압류', value: 'property_seizure' },
-                        { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
-                        { label: '✅ 해당 없음', value: 'none' }
-                    ],
-                    'buttons',
-                    true
+                    '솔직하게 말씀해주셔서 감사해요. 정확한 상황 파악이 좋은 결과의 첫걸음이에요 ✨',
+                    undefined,
+                    undefined
                 );
+
+                setTimeout(() => {
+                    goToStep('legal_actions');
+                    addBotMessage(
+                        '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
+                        [
+                            { label: '📞 독촉 전화/문자', value: 'collection_call' },
+                            { label: '📄 지급명령/소장 수령', value: 'court_order' },
+                            { label: '🔒 급여/계좌 압류', value: 'seizure' },
+                            { label: '🏠 부동산 가압류', value: 'property_seizure' },
+                            { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
+                            { label: '✅ 해당 없음', value: 'none' }
+                        ],
+                        'buttons',
+                        true
+                    );
+                }, 1000);
                 break;
             }
 
