@@ -302,6 +302,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         newValue: string | number | null;
     }>({ isOpen: false, targetStep: null, targetMessageId: null, newValue: null });
 
+    // 이탈 확인 및 흔들림 애니메이션 상태
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
+    const [isShaking, setIsShaking] = useState(false);
+
     // Fetch Global Policy
     useEffect(() => {
         const loadPolicy = async () => {
@@ -318,12 +322,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const [selectedAssets, setSelectedAssets] = useState<AssetType[]>([]);
     const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
     const [assetValues, setAssetValues] = useState<Record<AssetType, number>>({
-        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0, businessAssets: 0
+        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0, businessAssets: 0, retirementPay: 0
     });
     const [spouseSelectedAssets, setSpouseSelectedAssets] = useState<AssetType[]>([]);
     const [currentSpouseAssetIndex, setCurrentSpouseAssetIndex] = useState(0);
     const [spouseAssetValues, setSpouseAssetValues] = useState<Record<AssetType, number>>({
-        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0, businessAssets: 0
+        car: 0, realEstate: 0, land: 0, savings: 0, insurance: 0, stocks: 0, businessAssets: 0, retirementPay: 0
     });
     const [carLoanType, setCarLoanType] = useState<'installment' | 'mortgage' | null>(null);
     const [spouseCarLoanType, setSpouseCarLoanType] = useState<'installment' | 'mortgage' | null>(null);
@@ -363,12 +367,27 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const hasInitialized = useRef(false);
+    const isRestoring = useRef(false);
 
     // stepId 자동 태깅용 ref (goToStep에서 동기적으로 갱신)
     const nextStepRef = useRef<ChatStep>('intro');
     const goToStep = useCallback((step: ChatStep) => {
         nextStepRef.current = step;
         setCurrentStep(step);
+    }, []);
+
+    const handleCloseRequest = useCallback(() => {
+        if (currentStep === 'intro' || currentStep === 'result' || showResult || stepHistory.length === 0) {
+            localStorage.removeItem('roi_rehab_chatbot_session');
+            onClose();
+        } else {
+            setShowExitConfirm(true);
+        }
+    }, [currentStep, showResult, stepHistory.length, onClose]);
+
+    const triggerShake = useCallback(() => {
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
     }, []);
 
     // 봇 메시지 추가 (Interactive Block 지원 + stepId 추적)
@@ -449,13 +468,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // 초기 메시지 (중복 방지)
+    // 초기 메시지 (중복 방지) 및 세션 복구 체크
     useEffect(() => {
         if (isOpen && !hasInitialized.current && messages.length === 0) {
             hasInitialized.current = true;
-            setTimeout(() => {
-                // [PREVIEW MODE] 에디터에서 Interactive Block이 활성화된 경우 즉시 보여줌
-                if (disablePortal && shouldUseBlock('form')) {
+            
+            // [PREVIEW MODE] 에디터에서 Interactive Block이 활성화된 경우 즉시 보여줌
+            if (disablePortal && shouldUseBlock('form')) {
+                setTimeout(() => {
                     addBotMessage(
                         `[미리보기 모드] \n설정하신 '폼-혼합형' 블록입니다.\n\n* 실제 사용 시에는 대화 마지막 단계에서, 상담원이 정보를 요청할 때 표시됩니다.`,
                         undefined,
@@ -472,18 +492,46 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             required: true
                         }
                     );
-                    return;
-                }
+                }, 500);
+                return;
+            }
 
-                // [DEFAULT] 기본 인트로 메시지
-                addBotMessage(
-                    `안녕하세요! 저는 AI 법률비서 '${characterName}'예요 😊\n\n빚 걱정, 혼자 하지 마세요.\n지금부터 몇 가지만 여쭤보면 법원 기준에 맞는 정확한 분석 결과를 알려드릴게요!\n\n3분이면 충분해요. 시작해볼까요?`,
-                    [{ label: '좋아요, 시작할게요', value: 'start' }],
-                    'buttons'
-                );
-            }, 500);
+            // Check if there is an active saved session
+            const raw = localStorage.getItem('roi_rehab_chatbot_session');
+            let foundSession = false;
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.currentStep && parsed.messages && parsed.messages.length > 0) {
+                        foundSession = true;
+                        setTimeout(() => {
+                            addBotMessage(
+                                `안녕하세요! 이전에 진행 중이던 진단 내역이 존재합니다. 이어서 진행하시겠습니까?`,
+                                [
+                                    { label: '⏮️ 이어서 진행하기', value: 'resume' },
+                                    { label: '🔄 처음부터 다시하기', value: 'restart' }
+                                ],
+                                'buttons'
+                            );
+                        }, 500);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse saved session on init', e);
+                }
+            }
+
+            if (!foundSession) {
+                setTimeout(() => {
+                    // [DEFAULT] 기본 인트로 메시지
+                    addBotMessage(
+                        `안녕하세요! 저는 AI 법률비서 '${characterName}'예요 😊\n\n빚 걱정, 혼자 하지 마세요.\n지금부터 몇 가지만 여쭤보면 법원 기준에 맞는 정확한 분석 결과를 알려드릴게요!\n\n3분이면 충분해요. 시작해볼까요?`,
+                        [{ label: '좋아요, 시작할게요', value: 'start' }],
+                        'buttons'
+                    );
+                }, 500);
+            }
         }
-    }, [isOpen, characterName, messages.length, disablePortal, shouldUseBlock]);
+    }, [isOpen, characterName, disablePortal, shouldUseBlock]);
 
     // 설정 변경 시 채팅 초기화 (Preview 모드에서 즉시 반영 확인용)
     useEffect(() => {
@@ -508,6 +556,88 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             hasInitialized.current = false;
         }
     }, [interactiveBlockPreset, interactiveBlockConfig, disablePortal]);
+
+    // 실시간 세션 자동 저장 (Auto-Save)
+    useEffect(() => {
+        if (isRestoring.current) return;
+        if (currentStep !== 'intro' && currentStep !== 'result' && messages.length > 0) {
+            const sessionData = {
+                currentStep,
+                userInput,
+                messages,
+                stepHistory,
+                selectedAssets,
+                currentAssetIndex,
+                assetValues,
+                spouseSelectedAssets,
+                currentSpouseAssetIndex,
+                spouseAssetValues,
+                carLoanType,
+                spouseCarLoanType,
+                realEstateLoanType,
+                tempRealEstateMortgage,
+                spouseRealEstateLoanType,
+                tempSpouseRealEstateMortgage,
+                landLoanCheck,
+                spouseLandLoanCheck,
+                tempBusinessDeposit,
+                tempBusinessPremium,
+                tempBusinessMachinery,
+                tempBusinessEtc,
+                tempSpouseBusinessDeposit,
+                tempSpouseBusinessPremium,
+                tempSpouseBusinessMachinery,
+                tempSpouseBusinessEtc,
+                savingsLoanCheck,
+                spouseSavingsLoanCheck,
+                insuranceLoanCheck,
+                spouseInsuranceLoanCheck,
+                tempOwnedValue,
+                tempOwnedMortgage,
+                ownedOwnerType,
+                currentDebtTypeIndex,
+                debtTypeValues,
+                savedAt: Date.now()
+            };
+            localStorage.setItem('roi_rehab_chatbot_session', JSON.stringify(sessionData));
+        }
+    }, [
+        currentStep,
+        userInput,
+        messages,
+        stepHistory,
+        selectedAssets,
+        currentAssetIndex,
+        assetValues,
+        spouseSelectedAssets,
+        currentSpouseAssetIndex,
+        spouseAssetValues,
+        carLoanType,
+        spouseCarLoanType,
+        realEstateLoanType,
+        tempRealEstateMortgage,
+        spouseRealEstateLoanType,
+        tempSpouseRealEstateMortgage,
+        landLoanCheck,
+        spouseLandLoanCheck,
+        tempBusinessDeposit,
+        tempBusinessPremium,
+        tempBusinessMachinery,
+        tempBusinessEtc,
+        tempSpouseBusinessDeposit,
+        tempSpouseBusinessPremium,
+        tempSpouseBusinessMachinery,
+        tempSpouseBusinessEtc,
+        savingsLoanCheck,
+        spouseSavingsLoanCheck,
+        insuranceLoanCheck,
+        spouseInsuranceLoanCheck,
+        tempOwnedValue,
+        tempOwnedMortgage,
+        ownedOwnerType,
+        currentDebtTypeIndex,
+        debtTypeValues
+    ]);
 
 
 
@@ -586,6 +716,76 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         }
         switch (step) {
             case 'intro':
+                if (value === 'resume') {
+                    const raw = localStorage.getItem('roi_rehab_chatbot_session');
+                    if (raw) {
+                        try {
+                            const data = JSON.parse(raw);
+                            isRestoring.current = true;
+                            
+                            if (data.userInput) setUserInput(data.userInput);
+                            if (data.messages) {
+                                const restoredMessages = data.messages.map((m: any) => ({
+                                    ...m,
+                                    timestamp: new Date(m.timestamp)
+                                }));
+                                setMessages(restoredMessages);
+                            }
+                            if (data.stepHistory) setStepHistory(data.stepHistory);
+                            if (data.selectedAssets) setSelectedAssets(data.selectedAssets);
+                            if (data.currentAssetIndex !== undefined) setCurrentAssetIndex(data.currentAssetIndex);
+                            if (data.assetValues) setAssetValues(data.assetValues);
+                            if (data.spouseSelectedAssets) setSpouseSelectedAssets(data.spouseSelectedAssets);
+                            if (data.currentSpouseAssetIndex !== undefined) setCurrentSpouseAssetIndex(data.currentSpouseAssetIndex);
+                            if (data.spouseAssetValues) setSpouseAssetValues(data.spouseAssetValues);
+                            if (data.carLoanType !== undefined) setCarLoanType(data.carLoanType);
+                            if (data.spouseCarLoanType !== undefined) setSpouseCarLoanType(data.spouseCarLoanType);
+                            if (data.realEstateLoanType !== undefined) setRealEstateLoanType(data.realEstateLoanType);
+                            if (data.tempRealEstateMortgage !== undefined) setTempRealEstateMortgage(data.tempRealEstateMortgage);
+                            if (data.spouseRealEstateLoanType !== undefined) setSpouseRealEstateLoanType(data.spouseRealEstateLoanType);
+                            if (data.tempSpouseRealEstateMortgage !== undefined) setTempSpouseRealEstateMortgage(data.tempSpouseRealEstateMortgage);
+                            if (data.landLoanCheck !== undefined) setLandLoanCheck(data.landLoanCheck);
+                            if (data.spouseLandLoanCheck !== undefined) setSpouseLandLoanCheck(data.spouseLandLoanCheck);
+                            if (data.tempBusinessDeposit !== undefined) setTempBusinessDeposit(data.tempBusinessDeposit);
+                            if (data.tempBusinessPremium !== undefined) setTempBusinessPremium(data.tempBusinessPremium);
+                            if (data.tempBusinessMachinery !== undefined) setTempBusinessMachinery(data.tempBusinessMachinery);
+                            if (data.tempBusinessEtc !== undefined) setTempBusinessEtc(data.tempBusinessEtc);
+                            if (data.tempSpouseBusinessDeposit !== undefined) setTempSpouseBusinessDeposit(data.tempSpouseBusinessDeposit);
+                            if (data.tempSpouseBusinessPremium !== undefined) setTempSpouseBusinessPremium(data.tempSpouseBusinessPremium);
+                            if (data.tempSpouseBusinessMachinery !== undefined) setTempSpouseBusinessMachinery(data.tempSpouseBusinessMachinery);
+                            if (data.tempSpouseBusinessEtc !== undefined) setTempSpouseBusinessEtc(data.tempSpouseBusinessEtc);
+                            if (data.savingsLoanCheck !== undefined) setSavingsLoanCheck(data.savingsLoanCheck);
+                            if (data.spouseSavingsLoanCheck !== undefined) setSpouseSavingsLoanCheck(data.spouseSavingsLoanCheck);
+                            if (data.insuranceLoanCheck !== undefined) setInsuranceLoanCheck(data.insuranceLoanCheck);
+                            if (data.spouseInsuranceLoanCheck !== undefined) setSpouseInsuranceLoanCheck(data.spouseInsuranceLoanCheck);
+                            if (data.tempOwnedValue !== undefined) setTempOwnedValue(data.tempOwnedValue);
+                            if (data.tempOwnedMortgage !== undefined) setTempOwnedMortgage(data.tempOwnedMortgage);
+                            if (data.ownedOwnerType !== undefined) setOwnedOwnerType(data.ownedOwnerType);
+                            if (data.currentDebtTypeIndex !== undefined) setCurrentDebtTypeIndex(data.currentDebtTypeIndex);
+                            if (data.debtTypeValues) setDebtTypeValues(data.debtTypeValues);
+                            
+                            if (data.currentStep) {
+                                goToStep(data.currentStep);
+                                const lastMsg = data.messages?.[data.messages.length - 1];
+                                if (lastMsg && lastMsg.type === 'bot' && (lastMsg.inputType === 'number' || lastMsg.inputType === 'text' || lastMsg.inputType === 'address' || lastMsg.inputType === 'money')) {
+                                    setTimeout(() => inputRef.current?.focus(), 200);
+                                }
+                            }
+                            
+                            hasInitialized.current = true;
+                            
+                            setTimeout(() => {
+                                isRestoring.current = false;
+                            }, 50);
+                            break;
+                        } catch (e) {
+                            console.error('Error restoring session:', e);
+                            isRestoring.current = false;
+                        }
+                    }
+                }
+                
+                localStorage.removeItem('roi_rehab_chatbot_session');
                 goToStep('address');
                 addBotMessage(
                     '정확한 진단을 위해 현재 **사시는 곳**이 어디신가요?\n\n(예: 서울 강남구, 수원시 영통구)',
@@ -3155,6 +3355,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             setCurrentStep('result');
             setShowResult(true);
+            localStorage.removeItem('roi_rehab_chatbot_session');
 
             if (onComplete) {
                 onComplete(calculationResult, input);
@@ -3521,9 +3722,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 className={`fixed inset-0 z-[9999] flex items-center justify-center ${disablePortal ? '' : 'p-4'} bg-black/60 backdrop-blur-sm`}
-                onClick={(e) => e.target === e.currentTarget && onClose()}
+                onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                        triggerShake();
+                    }
+                }}
             >
                 <motion.div
+                    animate={isShaking ? { x: [-6, 6, -6, 6, -3, 3, 0] } : { x: 0 }}
+                    transition={{ duration: 0.5 }}
                     className={`${disablePortal ? 'w-full max-w-md h-full rounded-none shadow-2xl' : 'w-full max-w-md h-[85vh] rounded-2xl shadow-2xl'} flex flex-col overflow-hidden`}
                     style={{
                         borderWidth: '1px',
@@ -3558,7 +3765,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         onInputChange={setInputValue}
                         onSubmit={handleSubmit}
                         onOptionSelect={(opt, msgId) => handleOptionSelect({ label: opt.label, value: opt.value }, msgId)}
-                        onClose={onClose}
+                        onClose={handleCloseRequest}
                         messagesEndRef={messagesEndRef}
                         inputRef={inputRef}
                         onBlockSubmit={handleBlockSubmit}
@@ -3668,6 +3875,56 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                                     style={{ backgroundColor: colors.primary }}
                                 >
                                     변경하기
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+
+            {/* Exit Confirmation Modal */}
+            {showExitConfirm && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+                    onClick={() => setShowExitConfirm(false)}
+                >
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border"
+                        style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                                진단을 중단하시겠습니까?
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                                지금 종료하면 입력된 진단 데이터가 모두 사라집니다.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowExitConfirm(false)}
+                                    className="flex-1 py-3 px-4 rounded-xl text-white font-medium transition-colors hover:opacity-90 cursor-pointer"
+                                    style={{ backgroundColor: colors.primary }}
+                                >
+                                    계속 진행하기
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowExitConfirm(false);
+                                        localStorage.removeItem('roi_rehab_chatbot_session');
+                                        onClose();
+                                    }}
+                                    className="flex-1 py-3 px-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                                >
+                                    진단 종료하기
                                 </button>
                             </div>
                         </div>
