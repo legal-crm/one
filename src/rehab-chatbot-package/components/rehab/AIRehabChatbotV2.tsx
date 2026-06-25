@@ -671,6 +671,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         empType === 'salary' || empType === 'daily'
                             ? '세금과 4대보험을 제외한 월 평균 실수령액은 얼마인가요?\n\n(만원 단위)'
+                            : empType === 'freelancer'
+                            ? '세금을 제외한 월 평균 실수령액은 얼마인가요?(매달 일정하지 않다면 6개월 평균으로 나눠서 입력해 주세요)\n\n(만원 단위)'
                             : '매달 순수익(매출-비용)은 대략 얼마인가요?\n\n(만원 단위)',
                         undefined,
                         'money'
