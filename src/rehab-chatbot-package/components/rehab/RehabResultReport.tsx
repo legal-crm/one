@@ -585,7 +585,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     <div className="bg-white shadow-sm border border-slate-200 p-4 rounded-xl space-y-3">
                                         <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                                             <Users className="w-4 h-4 text-[#7264FF]" />
-                                            가계 및 부양가족
+                                            가계 및 부양가족 상세 판정
                                         </h4>
                                         <div className="grid grid-cols-2 gap-4 text-xs">
                                             <div className="bg-white p-3 rounded-lg border border-slate-200">
@@ -599,6 +599,27 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                      userInput.maritalStatus === 'divorced' ? '이혼' : '미혼'}
                                                 </span>
                                             </div>
+                                        </div>
+
+                                        {/* 부양가족 상세 해설 추가 */}
+                                        <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-150 text-xs space-y-2 text-slate-800">
+                                            <div className="font-bold flex items-center gap-1">
+                                                <Shield className="w-3.5 h-3.5 text-[#7264FF]" />
+                                                <span>💡 부양가족 산정 기준 및 공제 설명</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-600 leading-relaxed">
+                                                인정 부양가족 수는 <strong>{userInput.familySize ? userInput.familySize - 1 : 0}명</strong>으로 산정되어 본인을 포함해 총 <strong>{userInput.familySize || 1}인 가구</strong>로 변제금을 계산합니다.
+                                            </p>
+                                            <ul className="text-[10.5px] text-slate-500 list-disc pl-4 space-y-1">
+                                                <li><strong>미성년 자녀:</strong> 만 19세 미만 자녀는 전원 인정되나, 맞벌이 시 소득이 월등히 높은 사람에게 일괄 반영하거나 부부 간 1명씩 분할 반영합니다.</li>
+                                                <li><strong>고령 부모님 (만 65세 이상):</strong> 동거 상태에서 실질적인 부양 중이어야 하며, 부모님의 재산이나 별도 소득이 없거나 소액이어야 인정됩니다.</li>
+                                                <li><strong>배우자:</strong> 신체 건강하여 일할 수 있는 경우 부양가족에서 제외됩니다. (장애나 지병 등 예외 사유 소명 시에만 가능)</li>
+                                            </ul>
+                                            {userInput.familySize && userInput.familySize >= 2 && (
+                                                <div className="text-[11px] font-semibold text-[#7264FF] border-t border-slate-200/60 pt-1.5 mt-1.5">
+                                                    👉 2명 부양 시 총 3인 가구 생계비(2026 보건복지부 기준 월 3,012,382원)를 보장받아 공제됩니다.
+                                                </div>
+                                            )}
                                         </div>
                                         {userInput.dependentReason && (
                                             <div className="text-[11px] text-[#7264FF] bg-[#7264FF]/5 p-2 rounded-lg border border-[#7264FF]/10">
@@ -639,7 +660,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         <span className="text-right text-slate-500">{formatCurrency(userInput.deposit)}</span>
                                                         <span className="text-right font-medium text-slate-800">{formatCurrency(userInput.deposit)}</span>
                                                     </div>
-                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-200/60 items-center text-emerald-400 bg-emerald-500/5">
+                                                    <div className="grid grid-cols-3 p-2.5 border-b border-slate-200/60 items-center text-[#10B981] bg-emerald-500/5">
                                                         <span className="font-medium">법원 소액임차 면제재산</span>
                                                         <span className="text-right">최대 공제</span>
                                                         <span className="text-right font-semibold">-{formatCurrency(result.exemptDeposit)}</span>
@@ -668,9 +689,36 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <span className="text-right text-[#7264FF]">{formatCurrency(result.liquidationValue)}</span>
                                             </div>
                                         </div>
-                                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                                            ※ 청산가치 보장 원칙: 개인회생 진행 시 총 변제금의 합계는 반드시 본 리포트의 최종 청산가치 합계({formatCurrency(result.liquidationValue)})보다 많아야 개시결정이 내려집니다.
-                                        </p>
+
+                                        {/* CSS 시각화 게이지바 추가 */}
+                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-150 space-y-2 mt-2">
+                                            <div className="flex justify-between text-xs font-semibold text-slate-700">
+                                                <span>⚖️ 청산가치(내 재산) 대비 3년 총 변제예정액 비율</span>
+                                                <span className="text-[#10B981] font-bold">{Math.round((result.totalRepayment / Math.max(1, result.liquidationValue)) * 100)}%</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="bg-gradient-to-r from-[#10B981] to-[#7264FF] h-full rounded-full" 
+                                                    style={{ width: `${Math.min(100, Math.round((result.totalRepayment / Math.max(1, result.liquidationValue)) * 100))}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 leading-relaxed mt-1">
+                                                * <strong>청산가치 보장 원칙</strong>: 3년간 법원에 갚는 돈의 합계({formatCurrency(result.totalRepayment)})가 내 재산({formatCurrency(result.liquidationValue)})보다 많아야 회생이 허가됩니다.
+                                            </p>
+                                        </div>
+
+                                        {/* 자산 산정 상세 가이드 추가 */}
+                                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-150 text-xs space-y-2 text-slate-800">
+                                            <div className="font-bold flex items-center gap-1">
+                                                <Shield className="w-3.5 h-3.5 text-[#10B981]" />
+                                                <span>📋 재산 평가 및 공제 상세 기준 안내</span>
+                                            </div>
+                                            <ul className="text-[10.5px] text-slate-550 list-disc pl-4 space-y-1.5">
+                                                <li><strong>배우자 자산 반영:</strong> 부부 공동재산 추정으로 50% 가산하나, 서울/수원/부산회생법원 준칙을 적용받는 관할인 경우 원칙적으로 반영하지 않아 대단히 유리합니다.</li>
+                                                <li><strong>퇴직연금 전액 면제 (0% 반영):</strong> 일반 퇴직금은 예상액의 50%가 반영되나, 근로자퇴직급여 보장법에 의해 완전히 압류가 금지된 퇴직연금(DB, DC, IRP)은 전액 제외됩니다.</li>
+                                                <li><strong>임차보증금 공제 (최우선변제금):</strong> 주택임대차보호법에 따라 지역별 서민 주거 보장 금액(서울 5,500만 원, 과밀억제권역 4,800만 원 등)만큼 청산가치에서 제외됩니다.</li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}
@@ -709,8 +757,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         </div>
                                         <dl className="space-y-2 text-xs border-t border-slate-200/50 pt-2.5">
                                             <div className="flex justify-between items-center py-1">
-                                                <dt className="text-slate-400">• 법원 기본 인정 생계비</dt>
-                                                <dd className="text-slate-600">{formatCurrency(result.baseLivingCost)}</dd>
+                                                <dt className="text-slate-400">• 법원 기본 인정 생계비 (보건복지부 기준 60%)</dt>
+                                                <dd className="text-slate-600 font-semibold">{formatCurrency(result.baseLivingCost)}</dd>
                                             </div>
                                             {result.additionalLivingCost > 0 && (
                                                 <div className="flex justify-between items-center py-1">
@@ -719,14 +767,46 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 </div>
                                             )}
                                             <div className="flex justify-between items-center py-2 border-t border-slate-200 font-bold text-sm">
-                                                <dt className="text-slate-800">최종 인정 생계비</dt>
-                                                <dd className="text-emerald-400">{formatCurrency(result.recognizedLivingCost)}</dd>
+                                                <dt className="text-slate-800 font-bold">최종 인정 생계비 합계</dt>
+                                                <dd className="text-emerald-500 font-bold">{formatCurrency(result.recognizedLivingCost)}</dd>
                                             </div>
                                             <div className="flex justify-between items-center py-2 font-bold text-sm text-slate-800 bg-[#7264FF]/5 px-2 rounded">
-                                                <dt>가용 소득 (월 납입금 기준액)</dt>
-                                                <dd className="text-[#7264FF]">{formatCurrency(result.availableIncome)}</dd>
+                                                <dt>월 가용 소득 (법원에 매달 갚는 돈)</dt>
+                                                <dd className="text-[#7264FF] font-bold">{formatCurrency(result.availableIncome)}</dd>
                                             </div>
                                         </dl>
+
+                                        {/* 2026년 기준 중위소득 60% 생계비 표 안내 */}
+                                        <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-150 text-xs">
+                                            <div className="font-bold text-slate-850 flex items-center gap-1 mb-2">
+                                                <Shield className="w-3.5 h-3.5 text-[#7264FF]" />
+                                                <span>📋 2026년 법정 기준 최저 생계비 표 (60% 기준)</span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2 text-center text-[10px] bg-white p-2 rounded border border-slate-200">
+                                                <span className="font-bold text-slate-500">가구원수</span>
+                                                <span className="font-bold text-slate-500">기준 중위소득</span>
+                                                <span className="font-bold text-[#7264FF]">인정 생계비</span>
+                                                
+                                                <span>1인 가구</span>
+                                                <span className="text-slate-400">239만 원</span>
+                                                <span className="font-semibold text-slate-800">143.4만 원</span>
+                                                
+                                                <span>2인 가구</span>
+                                                <span className="text-slate-400">392만 원</span>
+                                                <span className="font-semibold text-slate-800">235.2만 원</span>
+                                                
+                                                <span className="bg-slate-100/60 rounded">3인 가구</span>
+                                                <span className="bg-slate-100/60 text-slate-400 rounded">502만 원</span>
+                                                <span className="bg-slate-100/60 font-bold text-[#7264FF] rounded">301.2만 원</span>
+                                                
+                                                <span>4인 가구</span>
+                                                <span className="text-slate-400">609만 원</span>
+                                                <span className="font-semibold text-slate-800">365.4만 원</span>
+                                            </div>
+                                            <p className="text-[10.5px] text-slate-500 mt-2.5 leading-relaxed">
+                                                ※ <strong>월 변제금 공식</strong>: [월 실수령액] - [최종 인정 생계비] = [가용소득(월 변제금)]. 생계비가 크고 소득이 보정될수록 매달 갚을 돈은 낮아집니다.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* 채무 명세 및 위험 채무 검토 */}
@@ -742,18 +822,18 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </div>
                                             <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60">
                                                 <span>신용대출 및 일반 금융권 채무</span>
-                                                <span className="text-right text-slate-600">
+                                                <span className="text-right text-slate-650 font-semibold">
                                                     {formatCurrency(Math.max(0, (userInput.totalDebt || 0) - (userInput.creditCardDebt || 0) - (userInput.priorityDebt || 0)))}
                                                 </span>
                                             </div>
                                             {userInput.creditCardDebt !== undefined && userInput.creditCardDebt > 0 && (
                                                 <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60">
                                                     <span>신용카드 결제대금 및 카드론</span>
-                                                    <span className="text-right text-slate-600">{formatCurrency(userInput.creditCardDebt)}</span>
+                                                    <span className="text-right text-slate-650 font-semibold">{formatCurrency(userInput.creditCardDebt)}</span>
                                                 </div>
                                             )}
                                             {userInput.priorityDebt !== undefined && userInput.priorityDebt > 0 && (
-                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60 bg-red-950/10 text-red-300">
+                                                <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60 bg-red-50 text-red-700">
                                                     <span className="font-semibold">우선 변제 채권 (체납 국세/지방세/4대보험)</span>
                                                     <span className="text-right font-bold">{formatCurrency(userInput.priorityDebt)}</span>
                                                 </div>
