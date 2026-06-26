@@ -204,14 +204,6 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
             processingMonths: 5.7,
             description: '보통 처리 속도, 기준 보수적'
         },
-        '대전지방법원': {
-            name: '대전지방법원',
-            allow24Months: false,
-            spousePropertyRate: 0.5,
-            investLossInclude: true,
-            processingMonths: 7.3,
-            description: '2026년 3월 대전회생법원으로 승격되어 업무 승계'
-        },
         '대전회생법원': {
             name: '대전회생법원',
             allow24Months: false,
@@ -220,14 +212,6 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
             processingMonths: 6.0,
             description: '2026년 3월 개원, 서울식 표준화(배우자 재산/투자손실 제외) 진행 중'
         },
-        '대구지방법원': {
-            name: '대구지방법원',
-            allow24Months: false,
-            spousePropertyRate: 0.5,
-            investLossInclude: true,
-            processingMonths: 12.0,
-            description: '2026년 3월 대구회생법원으로 승격되어 업무 승계'
-        },
         '대구회생법원': {
             name: '대구회생법원',
             allow24Months: false,
@@ -235,14 +219,6 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
             investLossInclude: false,
             processingMonths: 7.0,
             description: '2026년 3월 개원, 기존 보수적 실무에서 서울식 준칙 도입 및 완화 전환 중'
-        },
-        '광주지방법원': {
-            name: '광주지방법원',
-            allow24Months: false,
-            spousePropertyRate: 0.5,
-            investLossInclude: true,
-            processingMonths: 4.5,
-            description: '2026년 3월 광주회생법원으로 승격되어 업무 승계'
         },
         '광주회생법원': {
             name: '광주회생법원',
