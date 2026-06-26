@@ -16,6 +16,8 @@ const TableIcon: React.FC<{ className?: string; size?: number }> = ({ className,
   </svg>
 );
 
+import { DEFAULT_SETTINGS } from '../constants';
+
 type SettingsTab = 'policy' | 'income' | 'coeffs' | 'region' | 'housing' | 'deductions' | 'court_char';
 
 const RehabSettingsPanel: React.FC = () => {
@@ -34,7 +36,26 @@ const RehabSettingsPanel: React.FC = () => {
     setLoading(true);
     try {
       const data = await fetchSettings();
-      setSettings(data);
+      
+      // Migration: fill empty/missing court configs or descriptions with defaults from constants
+      let changed = false;
+      const updatedConfigs = { ...data.courtConfigs };
+      for (const [court, defaultConfig] of Object.entries(DEFAULT_SETTINGS.courtConfigs)) {
+        if (!updatedConfigs[court]) {
+          updatedConfigs[court] = { ...defaultConfig };
+          changed = true;
+        } else if (!updatedConfigs[court].description && defaultConfig.description) {
+          updatedConfigs[court].description = defaultConfig.description;
+          changed = true;
+        }
+      }
+      
+      const migratedData = changed ? { ...data, courtConfigs: updatedConfigs } : data;
+      if (changed) {
+        await updateSettings(migratedData);
+      }
+      
+      setSettings(migratedData);
       if (!availableYears.includes(selectedYear)) {
         setSelectedYear(availableYears[0]);
       }
