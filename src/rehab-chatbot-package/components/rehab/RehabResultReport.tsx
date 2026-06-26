@@ -46,8 +46,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         try {
             const page1El = document.getElementById('pdf-page-1');
             const page2El = document.getElementById('pdf-page-2');
+            const page3El = document.getElementById('pdf-page-3');
+            const page4El = document.getElementById('pdf-page-4');
 
-            if (!page1El || !page2El) {
+            if (!page1El || !page2El || !page3El || !page4El) {
                 alert('PDF 템플릿을 찾을 수 없습니다.');
                 setIsGeneratingPdf(false);
                 return;
@@ -69,6 +71,22 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                 backgroundColor: '#ffffff'
             });
 
+            // 페이지 3 캡처
+            const canvas3 = await html2canvas(page3El, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            // 페이지 4 캡처
+            const canvas4 = await html2canvas(page4El, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
             // PDF 생성 (A4: 210mm x 297mm)
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgWidth = 210;
@@ -76,10 +94,16 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
             const imgData1 = canvas1.toDataURL('image/jpeg', 1.0);
             const imgData2 = canvas2.toDataURL('image/jpeg', 1.0);
+            const imgData3 = canvas3.toDataURL('image/jpeg', 1.0);
+            const imgData4 = canvas4.toDataURL('image/jpeg', 1.0);
 
             pdf.addImage(imgData1, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
             pdf.addPage();
             pdf.addImage(imgData2, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+            pdf.addPage();
+            pdf.addImage(imgData3, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+            pdf.addPage();
+            pdf.addImage(imgData4, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
 
             const date = new Date().toISOString().split('T')[0];
             pdf.save(`종합채무진단보고서_${userInput.name || '의뢰인'}_${date}.pdf`);
