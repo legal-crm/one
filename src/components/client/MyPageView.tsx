@@ -1,6 +1,7 @@
 import React from 'react';
-import { MessageSquare, Edit2, Check, X } from 'lucide-react';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle } from 'lucide-react';
 import { ConsultRequest } from '../../types';
+import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -9,16 +10,13 @@ interface MyPageViewProps {
   setIsEditingAlias: (v: boolean) => void;
   tempAlias: string;
   setTempAlias: (v: string) => void;
-  income: number;
-  setIncome: (v: number) => void;
-  dependents: number;
-  setDependents: (v: number) => void;
-  debtBanks: number;
-  setDebtBanks: (v: number) => void;
-  debtCards: number;
-  setDebtCards: (v: number) => void;
-  debtPersonals: number;
-  setDebtPersonals: (v: number) => void;
+  
+  // 동적 진단 데이터 연동
+  activeRequest?: ConsultRequest;
+  activeResult?: RehabCalculationResult;
+  onUpdateFinancialProfile: (updatedProfile: any) => void;
+  onStartDiagnosis?: () => void;
+  
   requests: ConsultRequest[];
   onNavigateToChat: (reqId?: string) => void;
 }
@@ -27,20 +25,90 @@ export default function MyPageView({
   userAlias, setUserAlias,
   isEditingAlias, setIsEditingAlias,
   tempAlias, setTempAlias,
-  income, setIncome,
-  dependents, setDependents,
-  debtBanks, setDebtBanks,
-  debtCards, setDebtCards,
-  debtPersonals, setDebtPersonals,
+  activeRequest,
+  activeResult,
+  onUpdateFinancialProfile,
+  onStartDiagnosis,
   requests,
   onNavigateToChat
 }: MyPageViewProps) {
-  const totalDebtValue = debtBanks + debtCards + debtPersonals;
-  const minLivingCost = dependents === 0 ? 133 : dependents === 1 ? 221 : dependents === 2 ? 282 : 343;
-  const monthlyRepayment = Math.max(0, income - minLivingCost);
-  const totalRepayment = Math.min(totalDebtValue, monthlyRepayment * 36);
-  const totalReduction = Math.max(0, totalDebtValue - totalRepayment);
-  const reductionRate = totalDebtValue > 0 ? Math.round((totalReduction / totalDebtValue) * 100) : 0;
+
+  // 자가진단 데이터가 아예 없는 경우
+  if (!activeRequest || !activeRequest.financialProfile || !activeResult) {
+    return (
+      <div className="max-w-3xl mx-auto py-12 px-4 animate-fadeIn text-center space-y-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-8 shadow-xl space-y-6">
+          <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto">
+            <Shield className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-black text-slate-800 dark:text-white">아직 자가진단 기록이 없습니다</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+              1분 만에 빚 탕감 비율과 월 예상 변제금을 시뮬레이션할 수 있는 무료 자가진단을 시작해 보세요.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onStartDiagnosis}
+            className="px-6 py-3.5 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>무료 자가진단 시작하기</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const profile = activeRequest.financialProfile;
+
+  // 세부 데이터 핸들러
+  const handleFieldChange = (field: string, value: any) => {
+    onUpdateFinancialProfile({
+      ...profile,
+      [field]: value
+    });
+  };
+
+  const handleDebtChange = (debtTypeField: string, val: number) => {
+    const updatedDebtTypes = {
+      ...profile.debtTypes,
+      [debtTypeField]: val
+    };
+    
+    // 총 채무액 합산
+    const totalDebt = (updatedDebtTypes.banks || 0) + (updatedDebtTypes.cards || 0) + (updatedDebtTypes.personals || 0) + (profile.priorityDebt || 0);
+
+    onUpdateFinancialProfile({
+      ...profile,
+      debtTypes: updatedDebtTypes,
+      debtTotal: totalDebt
+    });
+  };
+
+  const formatCurrency = (amount: number | undefined): string => {
+    if (amount === undefined) return '0원';
+    if (amount === 0) return '0원';
+    const absAmount = Math.abs(amount);
+    
+    // 세션 저장/화면 만원단위 호환
+    let valInWon = absAmount;
+    if (absAmount < 100000) {
+      // 만원 단위인 경우 원 단위로 보정해 포맷
+      valInWon = absAmount * 10000;
+    }
+    
+    const eok = Math.floor(valInWon / 100000000);
+    const remainder = valInWon % 100000000;
+    const man = Math.floor(remainder / 10000);
+
+    let res = '';
+    if (eok > 0) res += `${eok}억 `;
+    if (man > 0) res += `${man.toLocaleString()}만`;
+    return `${res}원`.trim();
+  };
+
+  const totalDebtValue = (profile.debtTypes?.banks || 0) + (profile.debtTypes?.cards || 0) + (profile.debtTypes?.personals || 0) + (profile.priorityDebt || 0);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left">
@@ -101,7 +169,7 @@ export default function MyPageView({
                   setTempAlias(userAlias || '새출발');
                   setIsEditingAlias(true);
                 }}
-                className="text-slate-400 hover:text-brand dark:hover:text-brand-light p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0 cursor-pointer"
+                className="text-slate-400 hover:text-brand dark:hover:text-brand-light p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-880 transition-all shrink-0 cursor-pointer"
                 title="가명(이름) 수정"
               >
                 <Edit2 className="w-4.5 h-4.5" />
@@ -143,126 +211,339 @@ export default function MyPageView({
       </div>
 
       {/* LIVE DIAGNOSTICS DASHBOARD */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Left Column: Recalculated live metrics */}
-        <div className="lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-850 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* Left Column: Recalculated live metrics & charts */}
+        <div className="lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5">
           <div className="space-y-1">
             <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider block">
-              ⚙️ 나의 예상 감면액 분석
+              ⚙️ 나의 예상 감면액 실시간 분석
             </span>
-            <h3 className="font-extrabold text-lg">한눈에 보는 나의 부채 상황</h3>
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              아래에서 소득이나 채무를 바꾸면, 감면 비율과 한 달 납부액이 즉시 다시 계산됩니다.
+            <h3 className="font-extrabold text-lg">나의 실시간 채무조정 상태</h3>
+            <p className="text-[10px] text-slate-450 leading-relaxed">
+              우측 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다.
             </p>
           </div>
 
-          <div className="space-y-4">
+          {/* 주요 3대 지표 카드 */}
+          <div className="space-y-3">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
               <div className="text-left space-y-0.5">
-                <span className="text-[9px] text-slate-400 font-bold block">나의 총 빚(채무액)</span>
-                <span className="text-xs text-slate-300 font-medium">빌린 돈의 원금 합계</span>
+                <span className="text-[9px] text-slate-450 font-bold block">나의 총 채무액</span>
+                <span className="text-xs text-slate-350 font-medium">원금 합계</span>
               </div>
-              <span className="font-black text-amber-400 text-lg">
-                {totalDebtValue.toLocaleString()}만 원
+              <span className="font-black text-amber-400 text-base">
+                {formatCurrency(totalDebtValue)}
               </span>
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
               <div className="text-left space-y-0.5">
-                <span className="text-[9px] text-slate-400 font-bold block">한 달에 갚을 돈(예상)</span>
-                <span className="text-xs text-slate-300 font-medium">생계비 제외 후 한 달 납부액</span>
+                <span className="text-[9px] text-slate-450 font-bold block">매달 법원에 갚는 돈 (월 변제금)</span>
+                <span className="text-xs text-slate-350 font-medium">생계비 제외 후 월 납입금</span>
               </div>
-              <span className="font-black text-brand-light text-lg">
-                월 {monthlyRepayment.toLocaleString()}만 원
+              <span className="font-black text-brand-light text-base">
+                {formatCurrency(activeResult.monthlyPayment)} / 월
               </span>
             </div>
 
             <div className="bg-brand/10 border border-brand/20 rounded-2xl p-4 flex items-center justify-between">
               <div className="text-left space-y-0.5">
-                <span className="text-[9px] text-brand-light font-bold block">최종 감면받을 금액</span>
-                <span className="text-xs text-slate-300 font-medium">법적으로 없어지는 빚의 액수</span>
+                <span className="text-[9px] text-brand-light font-bold block">최종 감면받을 금액 (탕감 혜택)</span>
+                <span className="text-xs text-slate-300 font-medium">법적으로 면제되는 빚 액수</span>
               </div>
               <div className="text-right">
-                <span className="font-black text-emerald-400 text-lg block">
-                  ★ {totalReduction.toLocaleString()}만 원
+                <span className="font-black text-emerald-400 text-base block">
+                  ★ {formatCurrency(activeResult.totalDebtReduction)}
                 </span>
-                <span className="text-[10px] text-emerald-300/80 font-bold">
-                  원금의 {reductionRate}% 없어집니다!
+                <span className="text-[10px] text-emerald-350/80 font-bold">
+                  전체 채무의 {activeResult.debtReductionRate}% 면제!
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="text-[10px] text-slate-400 leading-normal text-left pt-2 border-t border-white/5">
-            ※ 이 결과는 법원의 생계비 기준을 바탕으로 계산해 본 수치이며, 변호사가 서류를 꼼꼼히 보강해 주면 실제로 감면되는 액수가 더 늘어날 수 있습니다.
+          {/* 실시간 CSS 프로그레스 그래프 2선 */}
+          <div className="space-y-4 pt-3 border-t border-white/5">
+            {/* 1. 청산가치 충족성 */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] text-slate-350">
+                <span className="flex items-center gap-1">⚖️ 청산가치 보장율 (재산 대비 변제 비율)</span>
+                <span className="font-bold text-[#10B981]">{Math.round((activeResult.totalRepayment / Math.max(1, activeResult.liquidationValue)) * 100)}%</span>
+              </div>
+              <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-emerald-400 to-indigo-500 h-full rounded-full" 
+                  style={{ width: `${Math.min(100, Math.round((activeResult.totalRepayment / Math.max(1, activeResult.liquidationValue)) * 100))}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-slate-400 block leading-normal">
+                * 법상 내 재산({formatCurrency(activeResult.liquidationValue)})보다 3년 총 상환액({formatCurrency(activeResult.totalRepayment)})이 많아야 하므로 기준을 초과하면 안전합니다.
+              </span>
+            </div>
+
+            {/* 2. 소득 대비 인정 생계비 비율 */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] text-slate-350">
+                <span className="flex items-center gap-1">📊 소득 대비 생활비 확보율</span>
+                <span className="font-bold text-brand-light">{Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100)}%</span>
+              </div>
+              <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-brand-light to-emerald-400 h-full rounded-full" 
+                  style={{ width: `${Math.min(100, Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100))}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-slate-400 block leading-normal">
+                * 월 평균 실수령액 중 의뢰인 가구의 의식주를 위해 법적으로 확보된 금액({formatCurrency(activeResult.recognizedLivingCost)})의 비중입니다.
+              </span>
+            </div>
+          </div>
+
+          <div className="text-[10px] text-slate-400 leading-normal text-left pt-3 border-t border-white/5 flex items-start gap-1">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+            <span>이 시뮬레이션 결과는 법원 실무 기준을 근거로 계산된 가상 수치이며, 실제 법원의 인가 결정 및 세부 변제율 조정을 위해 변호사 서류 소명이 수반되어야 합니다.</span>
           </div>
         </div>
 
-        {/* Right Column: Live Debt Editor Input Form */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-5 text-left">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
+        {/* Right Column: Live Diagnostic Editor Input Form (Web UI Remodeled) */}
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left">
+          <div className="border-b border-slate-150 dark:border-slate-800 pb-3 flex justify-between items-center">
             <div>
-              <h3 className="font-black text-base text-slate-800 dark:text-white">⚖️ 나의 빚 현황 & 직접 조정해보기</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">금액을 직접 변경해 보시면 왼쪽의 감면 금액이 실시간으로 바뀝니다.</p>
+              <h3 className="font-black text-base text-slate-800 dark:text-white flex items-center gap-1.5">
+                <Scale className="w-5 h-5 text-brand" />
+                나의 상세 진단 정보 조회 및 수정
+              </h3>
+              <p className="text-[10px] text-slate-500 mt-0.5">내용을 자유롭게 수정해 보세요. 왼쪽의 채무조정 상태 및 변제금이 실시간으로 갱신됩니다.</p>
             </div>
-            <span className="text-[9px] bg-slate-100 text-slate-600 dark:bg-slate-950 dark:text-slate-400 px-2 py-0.5 rounded font-bold">
+            <span className="text-[9px] bg-slate-100 text-slate-650 dark:bg-slate-950 dark:text-slate-400 px-2 py-0.5 rounded font-bold">
               단위: 만 원
             </span>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">매달 실제로 통장에 들어오는 세후 월급 (만 원)</label>
-              <input type="number" value={income} onChange={(e) => setIncome(Math.max(0, Number(e.target.value)))} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" />
-            </div>
+          <div className="space-y-5">
+            
+            {/* 1. 소득 및 부양가족 */}
+            <div className="space-y-3.5">
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">1. 월급 및 가구 구성 설정</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">세후 실수령 소득 (월급)</label>
+                  <input 
+                    type="number" 
+                    value={profile.income || 0} 
+                    onChange={(e) => handleFieldChange('income', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
 
-            <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">내가 책임져야 하는 부양 가족 수 (나를 제외한 가족 수, 명)</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[0, 1, 2, 3].map(num => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setDependents(num)}
-                    className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${
-                      dependents === num
-                      ? 'bg-brand border-brand text-white shadow-md'
-                      : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850'
-                    }`}
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">결혼 상태</label>
+                  <select
+                    value={profile.maritalStatus || 'SINGLE'}
+                    onChange={(e) => handleFieldChange('maritalStatus', e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
                   >
-                    {num}명 ({num + 1}인 가구)
-                  </button>
-                ))}
+                    <option value="SINGLE">미혼 (1인가구 기준)</option>
+                    <option value="MARRIED">기혼 (부부 자산 공동산정 기준)</option>
+                    <option value="DIVORCED">이혼 (양육/양육비 공제 기준)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">나를 제외하고 실제로 부양하는 가족 수 (명)</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[0, 1, 2, 3].map(num => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => handleFieldChange('dependents', num)}
+                      className={`py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        profile.dependents === num
+                        ? 'bg-brand border-brand text-white shadow-md'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850'
+                      }`}
+                    >
+                      {num}명 ({num + 1}인 생계)
+                    </button>
+                  ))}
+                </div>
+                {profile.dependents === 2 && (
+                  <span className="text-[10px] text-brand block mt-1">
+                    💡 부양가족 2명 ➡️ 본인 포함 3인 가구로 인정되어 2026 기준 최저 생계비 {formatCurrency(301.2)}이 자동 공제됩니다.
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="border-t border-slate-150 dark:border-slate-800 my-4 pt-4">
-              <span className="text-[10px] text-slate-400 font-bold block mb-3 uppercase tracking-wider">나의 부채 내역 & 해결 방안</span>
+            {/* 2. 주거 및 자산 세부 정보 */}
+            <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">2. 주거 유형 및 재산 가치 설정</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">거주 주택 유형</label>
+                  <select
+                    value={profile.rentalDeposit !== undefined && profile.rentalDeposit > 0 ? 'rent' : 'free'}
+                    onChange={(e) => {
+                      if (e.target.value === 'free') {
+                        handleFieldChange('rentalDeposit', 0);
+                      } else {
+                        handleFieldChange('rentalDeposit', 1000); // Default placeholder
+                      }
+                    }}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                  >
+                    <option value="rent">임차 (전세/월세 보증금 있음)</option>
+                    <option value="free">자가 또는 무상 거주 (보증금 없음)</option>
+                  </select>
+                </div>
+
+                {profile.rentalDeposit !== undefined && profile.rentalDeposit > 0 && (
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">임차 보증금 (만 원)</label>
+                    <input 
+                      type="number" 
+                      value={profile.rentalDeposit || 0} 
+                      onChange={(e) => handleFieldChange('rentalDeposit', Math.max(0, Number(e.target.value)))} 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">배우자 소유 재산액 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.spouseAsset || 0} 
+                    onChange={(e) => handleFieldChange('spouseAsset', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                  <span className="text-[9px] text-slate-400 block">※ 법원 실무준칙에 따라 기혼 시 배우자 자산의 50%가 반영될 수 있습니다.</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">예상 퇴직금 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.retirementPay || 0} 
+                    onChange={(e) => handleFieldChange('retirementPay', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">퇴직연금 가입 종류</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: '퇴직연금 (DB/DC)', value: 'pension' },
+                    { label: '일반 퇴직금', value: 'none' },
+                    { label: '잘 모름', value: 'unknown' }
+                  ].map(item => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => handleFieldChange('retirementPensionType', item.value)}
+                      className={`py-2 px-1 rounded-xl border text-[10.5px] font-bold transition-all cursor-pointer ${
+                        profile.retirementPensionType === item.value
+                        ? 'bg-brand border-brand text-white shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-855'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                {profile.retirementPensionType === 'pension' && (
+                  <span className="text-[10px] text-[#10B981] block mt-1">
+                    🛡️ 법률 보호 확인: 퇴직연금 가입 상태이므로 자산 반영에서 완전히 배제(0% 가산)됩니다.
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">은행 신용대출 (만 원)</label>
-                <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">🛡️ 월급 압류 & 강제 인출 즉시 차단</span>
+            {/* 3. 부채 정보 */}
+            <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">3. 채무 구성 설정</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">은행/1금융권 대출 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.debtTypes?.banks || 0} 
+                    onChange={(e) => handleDebtChange('banks', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">카드 대금 및 카드론 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.debtTypes?.cards || 0} 
+                    onChange={(e) => handleDebtChange('cards', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
               </div>
-              <input type="number" value={debtBanks} onChange={(e) => setDebtBanks(Math.max(0, Number(e.target.value)))} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">캐피탈/대부/기타 채무 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.debtTypes?.personals || 0} 
+                    onChange={(e) => handleDebtChange('personals', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">국세/지방세/체납세금 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.priorityDebt || 0} 
+                    onChange={(e) => handleFieldChange('priorityDebt', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                  <span className="text-[9px] text-[#EF4444] block">※ 국세 체납 채무는 우선변제 채무에 해당하여 회생 변제금에서 우선 순위 공제됩니다.</span>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">신용카드 대금 및 카드론 (만 원)</label>
-                <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">🛡️ 밀린 이자 100% 면제 및 원금 감면</span>
-              </div>
-              <input type="number" value={debtCards} onChange={(e) => setDebtCards(Math.max(0, Number(e.target.value)))} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" />
-            </div>
+            {/* 4. 투자/도박 리스크 */}
+            <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">4. 1년 이내 투자 및 사행성 채무 설정</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">주식/코인 투자 손실액 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.speculativeLoss || 0} 
+                    onChange={(e) => handleFieldChange('speculativeLoss', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
 
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">대부업 / 사채 채무 (만 원)</label>
-                <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">🛡️ 불법 대부업/사채 빚 독촉 및 전화 강제 금지</span>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">도박/사행성 손실 채무액 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.gamblingLoss || 0} 
+                    onChange={(e) => handleFieldChange('gamblingLoss', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
               </div>
-              <input type="number" value={debtPersonals} onChange={(e) => setDebtPersonals(Math.max(0, Number(e.target.value)))} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" />
             </div>
+            
           </div>
         </div>
       </div>

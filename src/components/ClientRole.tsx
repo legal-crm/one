@@ -9,7 +9,7 @@ import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMe
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
 import AIRehabChatbotV2 from '../rehab-chatbot-package/components/rehab/AIRehabChatbotV2';
-import { RehabUserInput, RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
+import { RehabUserInput, RehabCalculationResult, calculateRepayment } from '../rehab-chatbot-package/services/calculationService';
 import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances, ExtraLivingCost, ConsultationLog } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { fetchSettings } from '../services/settingsService';
@@ -329,6 +329,172 @@ const renderRemedyIcon = (iconName: string, className = "w-6 h-6") => {
   }
 };
 
+const mapProfileToIntakeData = (profile: FinancialProfile): IntakeData => {
+  const incomeSources: IncomeSource[] = [{
+    id: `inc-salary-${Date.now()}`,
+    type: profile.jobType === 'SALARIED' ? 'worker' :
+          profile.jobType === 'BUSINESS' ? 'business' :
+          profile.jobType === 'DAILY' ? 'worker_no_ins' :
+          profile.jobType === 'FREELANCER' ? 'freelancer' : 'worker',
+    amount: (profile.income || 0) * 10000,
+    tenureYears: 1,
+    payType: 'bank'
+  }];
+
+  const assets: AssetDetail[] = [];
+  const rentalDepositWon = (profile.rentalDeposit || 0) * 10000;
+  const spouseAssetWon = (profile.spouseAsset || 0) * 10000;
+  const retirementPayWon = (profile.retirementPay || 0) * 10000;
+  const otherAssetsWon = Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000;
+
+  if (otherAssetsWon > 0) {
+    assets.push({
+      id: `asset-my-${Date.now()}`,
+      owner: 'self',
+      type: 'other',
+      description: '본인 보유 자산',
+      marketValue: otherAssetsWon,
+      loanBalance: 0,
+      hasPledge: false,
+      isExempt: false
+    });
+  }
+  if (spouseAssetWon > 0) {
+    assets.push({
+      id: `asset-spouse-${Date.now()}`,
+      owner: 'spouse',
+      type: 'other',
+      description: '배우자 보유 자산',
+      marketValue: spouseAssetWon,
+      loanBalance: 0,
+      hasPledge: false,
+      isExempt: false
+    });
+  }
+  if (retirementPayWon > 0) {
+    assets.push({
+      id: `asset-severance-${Date.now()}`,
+      owner: 'self',
+      type: 'severance',
+      description: profile.retirementPensionType === 'pension' ? '퇴직연금 (가입)' : '예상 퇴직금',
+      marketValue: retirementPayWon,
+      loanBalance: 0,
+      hasPledge: false,
+      isExempt: profile.retirementPensionType === 'pension'
+    });
+  }
+  if (rentalDepositWon > 0) {
+    assets.push({
+      id: `asset-deposit-${Date.now()}`,
+      owner: 'self',
+      type: 'deposit',
+      description: '보증금',
+      marketValue: rentalDepositWon,
+      loanBalance: 0,
+      hasPledge: false,
+      isExempt: false
+    });
+  }
+
+  const debts: DebtItem[] = [];
+  const banksWon = (profile.debtTypes?.banks || 0) * 10000;
+  const cardsWon = (profile.debtTypes?.cards || 0) * 10000;
+  const personalsWon = (profile.debtTypes?.personals || 0) * 10000;
+  const priorityDebtWon = (profile.priorityDebt || 0) * 10000;
+
+  if (banksWon > 0) {
+    debts.push({
+      id: `debt-banks-${Date.now()}`,
+      creditor: '은행 대출',
+      principal: banksWon,
+      interest: 0,
+      type: 'secured',
+      isRecent: profile.hasRecentJobChange || false,
+      isGamblingOrLuxury: false
+    });
+  }
+  if (cardsWon > 0) {
+    debts.push({
+      id: `debt-cards-${Date.now()}`,
+      creditor: '카드 대금',
+      principal: cardsWon,
+      interest: 0,
+      type: 'unsecured',
+      isRecent: false,
+      isGamblingOrLuxury: false
+    });
+  }
+  if (personalsWon > 0) {
+    debts.push({
+      id: `debt-personals-${Date.now()}`,
+      creditor: '대부/기타 채무',
+      principal: personalsWon,
+      interest: 0,
+      type: 'unsecured',
+      isRecent: false,
+      isGamblingOrLuxury: false
+    });
+  }
+  if (priorityDebtWon > 0) {
+    debts.push({
+      id: `debt-priority-${Date.now()}`,
+      creditor: '국세/지방세 체납 세금',
+      principal: priorityDebtWon,
+      interest: 0,
+      type: 'tax',
+      isRecent: false,
+      isGamblingOrLuxury: false
+    });
+  }
+
+  return {
+    clientName: profile.companyNameMasked || '의뢰인',
+    phoneNumber: '010-4567-8901',
+    birthDate: '1991-01-01',
+    consultDate: new Date().toISOString().split('T')[0],
+    dbVendor: '',
+    caseType: 'rehab',
+    applyYear: 2026,
+    residence: profile.residenceRegion || '서울',
+    workplace: '',
+    selectedCourt: profile.residenceRegion === '서울' ? '서울회생법원' :
+                   profile.residenceRegion === '부산' ? '부산회생법원' :
+                   profile.residenceRegion === '수원' ? '수원회생법원' : '서울회생법원',
+    maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
+    minorChildren: profile.dependents || 0,
+    minorChildrenFullRecognition: false,
+    otherDependents: 0,
+    incomeSources,
+    monthlyLivingCost: 0,
+    monthlyRent: 0,
+    monthlyInsurance: 0,
+    extraLivingCost: {
+      utilities: 0,
+      education: 0,
+      specialEducation: 0,
+      medical: 0,
+      other: 0
+    },
+    specialCircumstances: {
+      singleParent: false,
+      basicLivelihood: false,
+      rentFraud: false,
+      severeDisability: false
+    },
+    assets,
+    debts,
+    prevHistory: {
+      exists: false
+    },
+    consultationLogs: [],
+    speculativeLoss: (profile.speculativeLoss || 0) * 10000,
+    gamblingLoss: (profile.gamblingLoss || 0) * 10000,
+    legalActions: profile.legalActions || [],
+    retirementPensionType: profile.retirementPensionType || 'unknown',
+    retirementPay: (profile.retirementPay || 0) * 10000
+  };
+};
+
 interface ClientRoleProps {
   requests: ConsultRequest[];
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
@@ -384,6 +550,167 @@ export default function ClientRole({
   const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry'>('landing');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
+
+  const activeRequest = requests.find(r => r.clientId === 'client-temp') || requests[0];
+
+  const activeResult = React.useMemo(() => {
+    if (!activeRequest || !activeRequest.financialProfile) return undefined;
+    const profile = activeRequest.financialProfile;
+    const userInput: RehabUserInput = {
+      address: profile.residenceRegion || '서울',
+      workLocation: undefined,
+      age: 35,
+      employmentType: profile.jobType === 'SALARIED' ? 'salary' :
+                      profile.jobType === 'BUSINESS' ? 'business' :
+                      profile.jobType === 'DAILY' ? 'daily' :
+                      profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
+      monthlyIncome: (profile.income || 0) * 10000,
+      familySize: (profile.dependents || 0) + 1,
+      spouseAssets: (profile.spouseAsset || 0) * 10000,
+      rentCost: 0,
+      deposit: (profile.rentalDeposit || 0) * 10000,
+      myAssets: Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000,
+      totalDebt: (profile.debtTotal || 0) * 10000,
+      priorityDebt: (profile.priorityDebt || 0) * 10000,
+      speculativeLoss: (profile.speculativeLoss || 0) * 10000,
+      gamblingLoss: (profile.gamblingLoss || 0) * 10000,
+      retirementPensionType: profile.retirementPensionType || 'unknown',
+      retirementPay: (profile.retirementPay || 0) * 10000,
+      isMarried: profile.maritalStatus === 'MARRIED',
+      maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
+      minorChildren: profile.dependents || 0,
+      legalActions: profile.legalActions || []
+    };
+    try {
+      return calculateRepayment(userInput);
+    } catch (e) {
+      console.error(e);
+      return undefined;
+    }
+  }, [activeRequest]);
+
+  const handleUpdateFinancialProfile = (updatedProfile: FinancialProfile) => {
+    if (!activeRequest) return;
+
+    const intakeData = mapProfileToIntakeData(updatedProfile);
+    const result = calculateRehabPlan(intakeData, effectiveSettings);
+
+    let banks = 0;
+    let cards = 0;
+    let personals = 0;
+    let recentLoans = 0;
+    let coinCrypto = 0;
+    
+    intakeData.debts.forEach(d => {
+      const amt = Math.round(d.principal / 10000);
+      if (d.isRecent) recentLoans += amt;
+      if (d.isGamblingOrLuxury) coinCrypto += amt;
+      
+      if (d.type === 'secured') {
+        banks += amt;
+      } else if (d.type === 'tax') {
+        personals += amt;
+      } else {
+        cards += amt;
+      }
+    });
+
+    const riskFlags: string[] = [];
+    result.alerts.forEach(a => {
+      riskFlags.push(a.message);
+    });
+    if (intakeData.debts.some(d => d.isRecent)) riskFlags.push('최근 대출 비중 높음 (30% 이상)');
+    if (intakeData.debts.some(d => d.isGamblingOrLuxury)) riskFlags.push('투자/사행성 손실 채무 포함');
+    if (intakeData.speculativeLoss && intakeData.speculativeLoss > 0) {
+      riskFlags.push(`1년 이내 주식/코인 투자 손실: ${formatKoreanCurrency(intakeData.speculativeLoss)}`);
+    }
+    if (intakeData.gamblingLoss && intakeData.gamblingLoss > 0) {
+      riskFlags.push(`1년 이내 도박 채무: ${formatKoreanCurrency(intakeData.gamblingLoss)}`);
+    }
+
+    let specialNoteLine = '';
+    if (intakeData.speculativeLoss && intakeData.speculativeLoss > 0) {
+      specialNoteLine = `\n• 특이사항: 1년 이내 주식/코인 투자 손실액 ${formatKoreanCurrency(intakeData.speculativeLoss)}`;
+    } else if (intakeData.gamblingLoss && intakeData.gamblingLoss > 0) {
+      specialNoteLine = `\n• 특이사항: 1년 이내 도박으로 인한 채무액 ${formatKoreanCurrency(intakeData.gamblingLoss)}`;
+    }
+
+    const legalActionLabels: Record<string, string> = {
+      collection_call: '독촉 전화/문자',
+      court_order: '지급명령/소장 수령',
+      seizure: '급여/계좌 압류',
+      property_seizure: '부동산 가압류',
+      credit_drop: '신용등급 하락 통보',
+      none: '해당 없음'
+    };
+    const activeActions = (intakeData.legalActions || [])
+      .filter(x => x !== 'none')
+      .map(x => legalActionLabels[x] || x);
+    const legalActionsStr = activeActions.length > 0 ? activeActions.join(', ') : '해당 없음';
+
+    const updatedContent = `==================================
+📋 의뢰인 종합 사전 자가진단 리포트 (수정됨)
+==================================
+
+[1. 가계 및 부양가족 현황]
+• 거주지역 / 관할법원: ${intakeData.residence} / ${intakeData.selectedCourt}
+• 혼인 상태: ${intakeData.maritalStatus === 'single' ? '미혼' : intakeData.maritalStatus === 'married' ? '기혼' : intakeData.maritalStatus === 'divorced' ? '이혼' : '기타'}
+• 부양가족 구성: 미성년 자녀 ${intakeData.minorChildren}명 / 기타 부양가족 ${intakeData.otherDependents}명 (가구원 수: ${intakeData.minorChildren + intakeData.otherDependents + 1}인 가구)
+
+[2. 소득 및 자산 현황]
+• 직업 분류: ${intakeData.incomeSources[0]?.type === 'worker' ? '급여 소득자' : intakeData.incomeSources[0]?.type === 'business' ? '자영업/개인사업자' : intakeData.incomeSources[0]?.type === 'freelancer' ? '프리랜서' : '무직'}
+• 월 평균 실수령액: ${formatKoreanCurrency(result.client.monthlyIncome)}
+• 인정 생계비: ${formatKoreanCurrency(result.base.living)}
+• 가용 소득 (예상 월납입금): ${formatKoreanCurrency(result.base.disposable)}
+• 총 자산가치 (청산가치): ${formatKoreanCurrency(result.base.liq)}
+  - 임대보증금: ${formatKoreanCurrency((intakeData.assets.find(a => a.type === 'deposit')?.marketValue || 0))}
+  - 배우자 자산: ${formatKoreanCurrency((intakeData.assets.find(a => a.owner === 'spouse')?.marketValue || 0))}
+  - 예상 퇴직금: ${intakeData.retirementPay ? formatKoreanCurrency(intakeData.retirementPay) : '없음'}${
+      intakeData.retirementPensionType === 'pension' ? ' (퇴직연금 가입 - 0% 반영)' :
+      intakeData.retirementPensionType === 'none' ? ' (퇴직연금 미가입 - 50% 반영)' :
+      intakeData.retirementPensionType === 'unknown' ? ' (퇴직연금 종류 모름 - 50% 반영)' : ''
+    }
+
+[3. 채무 구성 및 특이사항]
+• 총 채무액: ${formatKoreanCurrency(result.base.debtTotal)} (채권자 수: ${intakeData.debts.length}곳)
+  - 세금/체납 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.type === 'tax')?.principal || 0))}
+  - 신용카드 채무: ${formatKoreanCurrency((intakeData.debts.find(d => d.creditor.includes('카드'))?.principal || 0))}
+• 회생/조정 이력: ${intakeData.prevHistory?.exists ? '있음' : '없음'}
+• 주의 위험 지표: ${riskFlags.join(', ') || '없음'}${specialNoteLine}${
+      intakeData.retirementPensionType === 'unknown' ? '\n• ⚠️ [확인 필요] 예상 퇴직금 조회 및 퇴직연금 가입 여부 확인 요망 (챗봇 모름 선택)' : ''
+    }
+• 현재 법적 조치: ${legalActionsStr}
+
+----------------------------------
+💡 변호사 실무 검토 요지:
+- 가용 소득 상환 능력 검토 완료.
+- 자산 청산가치 충족 여부 사전 확인.
+==================================`;
+
+    setRequests(prev => prev.map(req => {
+      if (req.id === activeRequest.id) {
+        return {
+          ...req,
+          content: updatedContent,
+          financialProfile: {
+            ...updatedProfile,
+            riskFlags
+          }
+        };
+      }
+      return req;
+    }));
+
+    const clientName = isLoggedIn ? userAlias : '익명 의뢰인';
+    const clientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+    onLogActivity(
+      clientId,
+      clientName,
+      'CLIENT',
+      'CALCULATE',
+      `마이페이지 진단 데이터 수정 (총 채무: ${formatKoreanCurrency(result.base.debtTotal)}, 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원)`
+    );
+  };
 
   // Terms and Privacy popup states
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
@@ -2240,8 +2567,22 @@ export default function ClientRole({
         )}
  
  
-        {/* TAB: 마이페이지 (실시간 채무 주도형 스마트 대시보드) */}
-        {activeTab === 'mypage' && (<MyPageView userAlias={userAlias} setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias} tempAlias={tempAlias} setTempAlias={setTempAlias} income={income} setIncome={setIncome} dependents={dependents} setDependents={setDependents} debtBanks={debtBanks} setDebtBanks={setDebtBanks} debtCards={debtCards} setDebtCards={setDebtCards} debtPersonals={debtPersonals} setDebtPersonals={setDebtPersonals} requests={requests} onNavigateToChat={(reqId) => { if(reqId) setActiveChatReqId(reqId); setActiveTab('chat'); }} />)}
+        {activeTab === 'mypage' && (
+          <MyPageView 
+            userAlias={userAlias} 
+            setUserAlias={setUserAlias} 
+            isEditingAlias={isEditingAlias} 
+            setIsEditingAlias={setIsEditingAlias} 
+            tempAlias={tempAlias} 
+            setTempAlias={setTempAlias} 
+            activeRequest={activeRequest}
+            activeResult={activeResult}
+            onUpdateFinancialProfile={handleUpdateFinancialProfile}
+            onStartDiagnosis={() => setActiveTab('request')}
+            requests={requests} 
+            onNavigateToChat={(reqId) => { if(reqId) setActiveChatReqId(reqId); setActiveTab('chat'); }} 
+          />
+        )}
  
  
         {/* TAB: 탕감액 계산기 */}

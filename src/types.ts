@@ -40,6 +40,7 @@ export interface FinancialProfile {
   legalActions?: string[];
   retirementPensionType?: 'pension' | 'none' | 'unknown';
   retirementPay?: number;   // 예상 퇴직금 (만 원 단위)
+  priorityDebt?: number;    // 우선변제채무 (만 원 단위)
 }
 
 export type RequestType = 'direct' | 'open';

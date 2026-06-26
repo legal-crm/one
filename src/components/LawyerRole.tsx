@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { platformPlans, mockLawyers } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
+import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   if (req.phoneConsultationRequested) {
@@ -616,6 +617,42 @@ export default function LawyerRole({
 
   const currentChatRequest = requests.find(r => r.id === activeChatReqId);
   const currentChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
+
+  const currentChatRequestResult = React.useMemo(() => {
+    if (!currentChatRequest || !currentChatRequest.financialProfile) return undefined;
+    const profile = currentChatRequest.financialProfile;
+    const userInput: RehabUserInput = {
+      address: profile.residenceRegion || '서울',
+      workLocation: undefined,
+      age: 35,
+      employmentType: profile.jobType === 'SALARIED' ? 'salary' :
+                      profile.jobType === 'BUSINESS' ? 'business' :
+                      profile.jobType === 'DAILY' ? 'daily' :
+                      profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
+      monthlyIncome: (profile.income || 0) * 10000,
+      familySize: (profile.dependents || 0) + 1,
+      spouseAssets: (profile.spouseAsset || 0) * 10000,
+      rentCost: 0,
+      deposit: (profile.rentalDeposit || 0) * 10000,
+      myAssets: Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000,
+      totalDebt: (profile.debtTotal || 0) * 10000,
+      priorityDebt: (profile.priorityDebt || 0) * 10000,
+      speculativeLoss: (profile.speculativeLoss || 0) * 10000,
+      gamblingLoss: (profile.gamblingLoss || 0) * 10000,
+      retirementPensionType: profile.retirementPensionType || 'unknown',
+      retirementPay: (profile.retirementPay || 0) * 10000,
+      isMarried: profile.maritalStatus === 'MARRIED',
+      maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
+      minorChildren: profile.dependents || 0,
+      legalActions: profile.legalActions || []
+    };
+    try {
+      return calculateRepayment(userInput);
+    } catch (e) {
+      console.error(e);
+      return undefined;
+    }
+  }, [currentChatRequest]);
 
   if (!isLoggedIn) {
     return (
@@ -1480,6 +1517,33 @@ export default function LawyerRole({
                         </>
                       )}
                     </div>
+
+                    {currentChatRequestResult && (
+                      <div className="bg-[#1e293b]/50 border border-slate-700/60 rounded-xl p-3 space-y-2 text-[11px] text-slate-300 mt-2">
+                        <span className="text-[10px] font-black text-emerald-400 tracking-wide uppercase block">💰 실시간 변제 시뮬레이션</span>
+                        <div className="flex justify-between"><span>예상 월 변제금:</span> <span className="font-bold text-white">{(currentChatRequestResult.monthlyPayment / 10000).toLocaleString()}만 원 / 월</span></div>
+                        <div className="flex justify-between"><span>변제 기간:</span> <span className="text-white">{currentChatRequestResult.repaymentMonths}개월</span></div>
+                        <div className="flex justify-between"><span>총 변제금:</span> <span className="text-slate-200">{(currentChatRequestResult.totalRepayment / 10000).toLocaleString()}만 원</span></div>
+                        <div className="flex justify-between text-emerald-400 font-semibold">
+                          <span>최종 탕감액:</span>
+                          <span>{(currentChatRequestResult.totalDebtReduction / 10000).toLocaleString()}만 원 ({currentChatRequestResult.debtReductionRate}%)</span>
+                        </div>
+                        <div className="flex justify-between"><span>청산가치 (재산):</span> <span className="text-slate-300">{(currentChatRequestResult.liquidationValue / 10000).toLocaleString()}만 원</span></div>
+                        
+                        <div className="space-y-1 pt-1.5 border-t border-slate-800">
+                          <div className="flex justify-between text-[9px] text-slate-400">
+                            <span>청산가치 보장율</span>
+                            <span className="font-bold text-emerald-400">{Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100)}%</span>
+                          </div>
+                          <div className="w-full bg-[#111827] h-1.5 rounded-full overflow-hidden">
+                            <div 
+                              className="bg-gradient-to-r from-emerald-400 to-indigo-500 h-full rounded-full" 
+                              style={{ width: `${Math.min(100, Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {currentChatRequest.financialProfile.riskFlags.length > 0 && (
                       <div className="space-y-1.5">
