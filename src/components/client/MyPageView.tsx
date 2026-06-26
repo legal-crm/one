@@ -19,6 +19,7 @@ interface MyPageViewProps {
   
   requests: ConsultRequest[];
   onNavigateToChat: (reqId?: string) => void;
+  isCompact?: boolean;
 }
 
 export default function MyPageView({
@@ -30,7 +31,8 @@ export default function MyPageView({
   onUpdateFinancialProfile,
   onStartDiagnosis,
   requests,
-  onNavigateToChat
+  onNavigateToChat,
+  isCompact = false
 }: MyPageViewProps) {
 
   // 자가진단 데이터가 아예 없는 경우
@@ -111,9 +113,10 @@ export default function MyPageView({
   const totalDebtValue = (profile.debtTypes?.banks || 0) + (profile.debtTypes?.cards || 0) + (profile.debtTypes?.personals || 0) + (profile.priorityDebt || 0);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left">
+    <div className={isCompact ? "space-y-6 animate-fadeIn text-left" : "max-w-5xl mx-auto space-y-6 animate-fadeIn text-left"}>
       {/* Header / Stealth Badge & Assigned Lawyer */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {!isCompact && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
@@ -209,19 +212,20 @@ export default function MyPageView({
           </button>
         </div>
       </div>
+      )}
 
       {/* LIVE DIAGNOSTICS DASHBOARD */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className={isCompact ? "flex flex-col gap-6 items-stretch" : "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"}>
         
         {/* Left Column: Recalculated live metrics & charts */}
-        <div className="lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5">
+        <div className={isCompact ? "w-full flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5" : "lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5"}>
           <div className="space-y-1">
             <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider block">
               ⚙️ 나의 예상 감면액 실시간 분석
             </span>
             <h3 className="font-extrabold text-lg">나의 실시간 채무조정 상태</h3>
-            <p className="text-[10px] text-slate-450 leading-relaxed">
-              우측 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다.
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              {isCompact ? "하단 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다." : "우측 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다."}
             </p>
           </div>
 
@@ -307,14 +311,16 @@ export default function MyPageView({
         </div>
 
         {/* Right Column: Live Diagnostic Editor Input Form (Web UI Remodeled) */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left">
+        <div className={isCompact ? "w-full bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-6 text-left" : "lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left"}>
           <div className="border-b border-slate-150 dark:border-slate-800 pb-3 flex justify-between items-center">
             <div>
               <h3 className="font-black text-base text-slate-800 dark:text-white flex items-center gap-1.5">
                 <Scale className="w-5 h-5 text-brand" />
                 나의 상세 진단 정보 조회 및 수정
               </h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">내용을 자유롭게 수정해 보세요. 왼쪽의 채무조정 상태 및 변제금이 실시간으로 갱신됩니다.</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                {isCompact ? "내용을 자유롭게 수정해 보세요. 상단의 채무조정 상태 및 변제금이 실시간으로 갱신됩니다." : "내용을 자유롭게 수정해 보세요. 왼쪽의 채무조정 상태 및 변제금이 실시간으로 갱신됩니다."}
+              </p>
             </div>
             <span className="text-[9px] bg-slate-100 text-slate-650 dark:bg-slate-950 dark:text-slate-400 px-2 py-0.5 rounded font-bold">
               단위: 만 원

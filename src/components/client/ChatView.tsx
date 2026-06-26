@@ -1,6 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { MessageSquare, Send, Users, Phone, Shield, Clock, AlertTriangle, Award } from 'lucide-react';
-import { ConsultRequest, ConsultMessage } from '../../types';
+import React, { useRef, useEffect, useState } from 'react';
+import { MessageSquare, Send, Users, Phone, Shield, Clock, AlertTriangle, Award, FileText, X } from 'lucide-react';
+import { ConsultRequest, ConsultMessage, FinancialProfile } from '../../types';
+import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
+import MyPageView from './MyPageView';
 
 // Inline ChatDisclaimer component
 function ChatDisclaimer() {
@@ -50,6 +52,16 @@ interface ChatViewProps {
   onSetRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
   onSendChat: () => void;
   onAddMessage: (requestId: string, message: string, senderType: 'client' | 'lawyer' | 'admin', senderId: string, senderName: string) => void;
+
+  // New combined diagnostic props
+  activeRequest?: ConsultRequest;
+  activeResult?: RehabCalculationResult;
+  onUpdateFinancialProfile: (updatedProfile: FinancialProfile) => void;
+  setUserAlias: (alias: string) => void;
+  isEditingAlias: boolean;
+  setIsEditingAlias: (v: boolean) => void;
+  tempAlias: string;
+  setTempAlias: (v: string) => void;
 }
 
 export default function ChatView({
@@ -57,9 +69,18 @@ export default function ChatView({
   phoneConsultNum, useSafeNumber050, isLoggedIn, userAlias,
   debtBanks, debtCards, debtPersonals,
   onSetActiveChatReqId, onSetChatInput, onSetPhoneConsultNum, onSetUseSafeNumber050,
-  onSetActiveTab, onSetRequests, onSendChat, onAddMessage
+  onSetActiveTab, onSetRequests, onSendChat, onAddMessage,
+  activeRequest,
+  activeResult,
+  onUpdateFinancialProfile,
+  setUserAlias,
+  isEditingAlias,
+  setIsEditingAlias,
+  tempAlias,
+  setTempAlias
 }: ChatViewProps) {
   const chatFeedRef = useRef<HTMLDivElement>(null);
+  const [showProfilePanel, setShowProfilePanel] = useState<boolean>(false);
   const currentRequest = requests.find(r => r.id === activeChatReqId);
   const activeChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
 
@@ -254,7 +275,7 @@ export default function ChatView({
       {/* Chat Workspace Grid */}
       <div id="chat-workspace-grid" className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-premium border border-slate-200 dark:border-slate-800 min-h-[550px] h-[calc(100vh-14rem)] lg:h-[700px] transition-all">
         {/* LEFT RAIL (상담 목록) */}
-        <div className="lg:col-span-4 border-r border-slate-100 dark:border-slate-800 flex flex-col h-full min-h-0 bg-slate-50/20 dark:bg-slate-900/40">
+        <div className={`border-r border-slate-100 dark:border-slate-800 flex flex-col h-full min-h-0 bg-slate-50/20 dark:bg-slate-900/40 transition-all ${showProfilePanel ? 'hidden lg:flex lg:col-span-3' : 'flex lg:col-span-3'}`}>
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white/40 dark:bg-slate-900/60 backdrop-blur-sm">
             <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 tracking-tight">
               나의 채무관리방 목록
@@ -320,10 +341,14 @@ export default function ChatView({
 
         {/* CHAT BOARD (채팅창 영역) */}
         {currentRequest ? (
-          <div className="lg:col-span-8 flex flex-col h-full min-h-0 bg-white dark:bg-slate-900">
+          <div className={`flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 transition-all ${
+            showProfilePanel 
+              ? 'hidden lg:flex lg:col-span-5 border-r border-slate-100 dark:border-slate-800' 
+              : 'flex lg:col-span-9'
+          }`}>
             {/* Active chat header */}
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm flex items-center justify-between gap-4">
-              <div className="text-left">
+              <div className="text-left flex-1 min-w-0">
                 <span className="text-[10px] font-bold text-brand dark:text-brand-light uppercase tracking-widest block">
                   ACTIVE PREVIEW
                 </span>
@@ -331,9 +356,23 @@ export default function ChatView({
                   {currentRequest.title}
                 </h3>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-bold shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>상담 채널 활성화</span>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowProfilePanel(!showProfilePanel)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer ${
+                    showProfilePanel
+                      ? 'bg-brand border-brand text-white'
+                      : 'bg-slate-50 dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>{showProfilePanel ? '진단서 접기' : '나의 진단서 수정'}</span>
+                </button>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-bold hidden sm:flex">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>상담 채널 활성화</span>
+                </div>
               </div>
             </div>
 
@@ -498,9 +537,62 @@ export default function ChatView({
                 <Send className="w-4 h-4" />
               </button>
             </div>
+            
+            {/* PROFILE SIDE PANEL (오른쪽 나의 상세 진단서 수정 패널) */}
+            <div className={`h-full flex flex-col min-h-0 bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 transition-all ${
+              showProfilePanel 
+                ? 'flex lg:col-span-4' 
+                : 'hidden'
+            }`}>
+              {/* Header inside side panel */}
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/20 shrink-0">
+                <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-brand" />
+                  나의 상세 진단서 수정
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowProfilePanel(false)}
+                  className="p-1 rounded-lg hover:bg-slate-150 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  title="닫기"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scrollable MyPageView inside side panel */}
+              <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
+                {/* Mobile back to chat button */}
+                <div className="lg:hidden mb-4">
+                  <button 
+                    type="button"
+                    onClick={() => setShowProfilePanel(false)}
+                    className="w-full flex items-center justify-center gap-1.5 text-brand font-extrabold text-xs border border-brand/20 bg-brand/5 py-2.5 rounded-xl transition-all"
+                  >
+                    &larr; 대화방으로 돌아가기
+                  </button>
+                </div>
+                
+                <MyPageView
+                  userAlias={userAlias}
+                  setUserAlias={setUserAlias}
+                  isEditingAlias={isEditingAlias}
+                  setIsEditingAlias={setIsEditingAlias}
+                  tempAlias={tempAlias}
+                  setTempAlias={setTempAlias}
+                  activeRequest={activeRequest}
+                  activeResult={activeResult}
+                  onUpdateFinancialProfile={onUpdateFinancialProfile}
+                  onStartDiagnosis={() => onSetActiveTab('request')}
+                  requests={requests}
+                  onNavigateToChat={() => setShowProfilePanel(false)}
+                  isCompact={true}
+                />
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="lg:col-span-8 flex flex-col items-center justify-center p-8 text-center space-y-4 h-full bg-white dark:bg-slate-900">
+          <div className="lg:col-span-9 flex flex-col items-center justify-center p-8 text-center space-y-4 h-full bg-white dark:bg-slate-900">
             <Users className="w-14 h-14 text-slate-300 dark:text-slate-700" />
             <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">
               선택된 채무상담방이 없습니다
