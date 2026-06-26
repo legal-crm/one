@@ -37,7 +37,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                 processingMonths: result.processingMonths,
                 baseLivingCost: result.baseLivingCost,
                 aiAdvice: result.aiAdvice,
-                preferred: result.preferred
+                preferred: (result as any).preferred
             },
             userInput: {
                 name: userInput.name,

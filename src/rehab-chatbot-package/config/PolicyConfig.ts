@@ -210,7 +210,15 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 7.3,
-            description: '2026년 3월 회생법원 개원 예정 (신설 후 3~4개월 단축)'
+            description: '2026년 3월 대전회생법원으로 승격되어 업무 승계'
+        },
+        '대전회생법원': {
+            name: '대전회생법원',
+            allow24Months: false,
+            spousePropertyRate: 0.0,
+            investLossInclude: false,
+            processingMonths: 6.0,
+            description: '2026년 3월 개원, 서울식 표준화(배우자 재산/투자손실 제외) 진행 중'
         },
         '대구지방법원': {
             name: '대구지방법원',
@@ -218,7 +226,15 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 12.0,
-            description: '현재 매우 느림(~1년), 2026년 3월 회생법원 개원 후 개선 예상'
+            description: '2026년 3월 대구회생법원으로 승격되어 업무 승계'
+        },
+        '대구회생법원': {
+            name: '대구회생법원',
+            allow24Months: false,
+            spousePropertyRate: 0.0,
+            investLossInclude: false,
+            processingMonths: 7.0,
+            description: '2026년 3월 개원, 기존 보수적 실무에서 서울식 준칙 도입 및 완화 전환 중'
         },
         '광주지방법원': {
             name: '광주지방법원',
@@ -226,7 +242,15 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
             spousePropertyRate: 0.5,
             investLossInclude: true,
             processingMonths: 4.5,
-            description: '빠른 처리, 2026년 3월 회생법원 개원 예정'
+            description: '2026년 3월 광주회생법원으로 승격되어 업무 승계'
+        },
+        '광주회생법원': {
+            name: '광주회생법원',
+            allow24Months: false,
+            spousePropertyRate: 0.0,
+            investLossInclude: false,
+            processingMonths: 7.0,
+            description: '2026년 3월 개원, 광주·전남·전북·제주 권역 전담, 상담센터 운영 강화'
         },
         '전주지방법원': {
             name: '전주지방법원',
@@ -316,24 +340,24 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         '원주': '춘천지방법원',
         '속초': '춘천지방법원',
         // 대전/세종/충청
-        '대전': '대전지방법원',
-        '세종': '대전지방법원',
-        '천안': '대전지방법원',
-        '공주': '대전지방법원',
-        '논산': '대전지방법원',
-        '보령': '대전지방법원',
-        '서산': '대전지방법원',
+        '대전': '대전회생법원',
+        '세종': '대전회생법원',
+        '천안': '대전회생법원',
+        '공주': '대전회생법원',
+        '논산': '대전회생법원',
+        '보령': '대전회생법원',
+        '서산': '대전회생법원',
         '청주': '청주지방법원',
         '충주': '청주지방법원',
         '제천': '청주지방법원',
         // 대구/경북
-        '대구': '대구지방법원',
-        '경산': '대구지방법원',
-        '포항': '대구지방법원',
-        '구미': '대구지방법원',
-        '경주': '대구지방법원',
-        '안동': '대구지방법원',
-        '김천': '대구지방법원',
+        '대구': '대구회생법원',
+        '경산': '대구회생법원',
+        '포항': '대구회생법원',
+        '구미': '대구회생법원',
+        '경주': '대구회생법원',
+        '안동': '대구회생법원',
+        '김천': '대구회생법원',
         // 부산/울산/경남
         '부산': '부산회생법원',
         '울산': '울산지방법원', // 2026 파일 기준 울산지방법원 별도 표기
@@ -344,10 +368,10 @@ export const DEFAULT_POLICY_CONFIG_2026: RehabPolicyConfig = {
         '거제': '창원지방법원',
         '통영': '창원지방법원',
         // 광주/전라/제주
-        '광주광역시': '광주지방법원',
-        '목포': '광주지방법원',
-        '순천': '광주지방법원',
-        '여수': '광주지방법원',
+        '광주광역시': '광주회생법원',
+        '목포': '광주회생법원',
+        '순천': '광주회생법원',
+        '여수': '광주회생법원',
         '전주': '전주지방법원',
         '익산': '전주지방법원',
         '군산': '전주지방법원',

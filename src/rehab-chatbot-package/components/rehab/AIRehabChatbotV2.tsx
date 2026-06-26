@@ -2099,13 +2099,32 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         'money'
                     );
                 } else {
-                    setUserInput(prev => ({ ...prev, educationCost: 0 }));
-                    // V2.1: 월 고정 지출로 이동
-                    goToStep('monthly_expenses');
+                    setUserInput(prev => ({ ...prev, educationCost: 0, monthlyFixedExpenses: 0 }));
+                    goToStep('assets_select');
                     addBotMessage(
-                        '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
-                        undefined,
-                        'money'
+                        '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                        [
+                            { label: '🚗 자동차', value: 'car' },
+                            { label: '🏠 부동산', value: 'realEstate' },
+                            { label: '🏞️ 토지', value: 'land' },
+                            { label: '💰 예금/적금', value: 'savings' },
+                            { label: '🛡️ 보험', value: 'insurance' },
+                            { label: '📈 주식/코인', value: 'stocks' },
+                            { label: '🏢 사업재산', value: 'businessAssets' },
+                            { label: '💼 퇴직금', value: 'retirementPay' },
+                            { label: '✅ 선택완료', value: 'done' },
+                            { label: '❌ 없어요', value: 'none' }
+                        ],
+                        'buttons',
+                        true,
+                        interactiveBlockPreset !== 'none' ? {
+                            type: 'multi_select',
+                            title: '보유 재산 선택',
+                            description: '해당하는 항목을 모두 선택해주세요.',
+                            options: ASSET_BLOCK_OPTIONS,
+                            buttonLabel: '선택 완료',
+                            required: false
+                        } : undefined
                     );
                 }
                 break;
@@ -2134,24 +2153,64 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         'money'
                     );
                 } else {
-                    setUserInput(prev => ({ ...prev, specialEducationCost: 0 }));
-                    goToStep('monthly_expenses');
+                    setUserInput(prev => ({ ...prev, specialEducationCost: 0, monthlyFixedExpenses: 0 }));
+                    goToStep('assets_select');
                     addBotMessage(
-                        '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
-                        undefined,
-                        'money'
+                        '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                        [
+                            { label: '🚗 자동차', value: 'car' },
+                            { label: '🏠 부동산', value: 'realEstate' },
+                            { label: '🏞️ 토지', value: 'land' },
+                            { label: '💰 예금/적금', value: 'savings' },
+                            { label: '🛡️ 보험', value: 'insurance' },
+                            { label: '📈 주식/코인', value: 'stocks' },
+                            { label: '🏢 사업재산', value: 'businessAssets' },
+                            { label: '💼 퇴직금', value: 'retirementPay' },
+                            { label: '✅ 선택완료', value: 'done' },
+                            { label: '❌ 없어요', value: 'none' }
+                        ],
+                        'buttons',
+                        true,
+                        interactiveBlockPreset !== 'none' ? {
+                            type: 'multi_select',
+                            title: '보유 재산 선택',
+                            description: '해당하는 항목을 모두 선택해주세요.',
+                            options: ASSET_BLOCK_OPTIONS,
+                            buttonLabel: '선택 완료',
+                            required: false
+                        } : undefined
                     );
                 }
                 break;
 
             case 'special_education_amount':
                 const specialEduAmt = (value as number) * 10000;
-                setUserInput(prev => ({ ...prev, specialEducationCost: specialEduAmt }));
-                goToStep('monthly_expenses');
+                setUserInput(prev => ({ ...prev, specialEducationCost: specialEduAmt, monthlyFixedExpenses: 0 }));
+                goToStep('assets_select');
                 addBotMessage(
-                    '네, 확인했어요. 소득 부분은 변제금 산정의 핵심이라 정확히 반영할게요 💪\n\n매달 꼭 나가는 고정 지출이 있다면 합계를 입력해주세요.\n(통신비, 보험료, 교통비 등)\n\n없으시면 0을 입력해주세요.',
-                    undefined,
-                    'money'
+                    '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                    [
+                        { label: '🚗 자동차', value: 'car' },
+                        { label: '🏠 부동산', value: 'realEstate' },
+                        { label: '🏞️ 토지', value: 'land' },
+                        { label: '💰 예금/적금', value: 'savings' },
+                        { label: '🛡️ 보험', value: 'insurance' },
+                        { label: '📈 주식/코인', value: 'stocks' },
+                        { label: '🏢 사업재산', value: 'businessAssets' },
+                        { label: '💼 퇴직금', value: 'retirementPay' },
+                        { label: '✅ 선택완료', value: 'done' },
+                        { label: '❌ 없어요', value: 'none' }
+                    ],
+                    'buttons',
+                    true,
+                    interactiveBlockPreset !== 'none' ? {
+                        type: 'multi_select',
+                        title: '보유 재산 선택',
+                        description: '해당하는 항목을 모두 선택해주세요.',
+                        options: ASSET_BLOCK_OPTIONS,
+                        buttonLabel: '선택 완료',
+                        required: false
+                    } : undefined
                 );
                 break;
 
@@ -2305,7 +2364,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     // 재산 합산
                     const totalAssets = Object.entries(assetValues)
                         .filter(([k]) => k !== 'retirementPay')
-                        .reduce((a, [_, b]) => a + b, 0) + (assetType !== 'retirementPay' ? rawVal : 0);
+                        .reduce((a, [_, b]) => a + (b as number), 0) + (assetType !== 'retirementPay' ? rawVal : 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2331,7 +2390,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         const totalAssets = Object.entries(assetValues)
                             .filter(([k]) => k !== 'retirementPay')
-                            .reduce((a, [_, b]) => a + b, 0);
+                            .reduce((a, [_, b]) => a + (b as number), 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2384,7 +2443,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         const totalAssets = Object.entries(updatedAssetValues)
                             .filter(([k]) => k !== 'retirementPay')
-                            .reduce((a, [_, b]) => a + b, 0);
+                            .reduce((a, [_, b]) => a + (b as number), 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2419,7 +2478,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     const totalAssets = Object.entries(updatedAssetValues)
                         .filter(([k]) => k !== 'retirementPay')
-                        .reduce((a, [_, b]) => a + b, 0);
+                        .reduce((a, [_, b]) => a + (b as number), 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2445,7 +2504,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         const totalAssets = Object.entries(assetValues)
                             .filter(([k]) => k !== 'retirementPay')
-                            .reduce((a, [_, b]) => a + b, 0);
+                            .reduce((a, [_, b]) => a + (b as number), 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2481,7 +2540,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     const totalAssets = Object.entries(updatedAssetValues)
                         .filter(([k]) => k !== 'retirementPay')
-                        .reduce((a, [_, b]) => a + b, 0);
+                        .reduce((a, [_, b]) => a + (b as number), 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2507,7 +2566,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         const totalAssets = Object.entries(assetValues)
                             .filter(([k]) => k !== 'retirementPay')
-                            .reduce((a, [_, b]) => a + b, 0);
+                            .reduce((a, [_, b]) => a + (b as number), 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2545,7 +2604,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     // 재산 합산
                     const totalAssets = Object.entries(updatedAssetValues)
                         .filter(([k]) => k !== 'retirementPay')
-                        .reduce((a, [_, b]) => a + b, 0);
+                        .reduce((a, [_, b]) => a + (b as number), 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2610,7 +2669,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     const totalAssets = Object.entries(updatedAssetValues)
                         .filter(([k]) => k !== 'retirementPay')
-                        .reduce((a, [_, b]) => a + b, 0);
+                        .reduce((a, [_, b]) => a + (b as number), 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2643,7 +2702,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         const totalAssets = Object.entries(updatedAssetValues)
                             .filter(([k]) => k !== 'retirementPay')
-                            .reduce((a, [_, b]) => a + b, 0);
+                            .reduce((a, [_, b]) => a + (b as number), 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2672,7 +2731,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     const totalAssets = Object.entries(updatedAssetValues)
                         .filter(([k]) => k !== 'retirementPay')
-                        .reduce((a, [_, b]) => a + b, 0);
+                        .reduce((a, [_, b]) => a + (b as number), 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -2705,7 +2764,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         const totalAssets = Object.entries(updatedAssetValues)
                             .filter(([k]) => k !== 'retirementPay')
-                            .reduce((a, [_, b]) => a + b, 0);
+                            .reduce((a, [_, b]) => a + (b as number), 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2762,7 +2821,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     } else {
                         const totalAssets = Object.entries(updatedAssetValues)
                             .filter(([k]) => k !== 'retirementPay')
-                            .reduce((a, [_, b]) => a + b, 0);
+                            .reduce((a, [_, b]) => a + (b as number), 0);
                         setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                         goToStep('credit_card');
                         addBotMessage(
@@ -2797,7 +2856,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 } else {
                     const totalAssets = Object.entries(updatedAssetValues)
                         .filter(([k]) => k !== 'retirementPay')
-                        .reduce((a, [_, b]) => a + b, 0);
+                        .reduce((a, [_, b]) => a + (b as number), 0);
                     setUserInput(prev => ({ ...prev, myAssets: totalAssets }));
                     goToStep('credit_card');
                     addBotMessage(
@@ -3692,6 +3751,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'asset_detail': 70, 'asset_car_loan_check': 71, 'asset_car_loan_amount': 72, 'asset_real_estate_loan_check': 70.2, 'asset_real_estate_mortgage_amount': 70.5, 'asset_real_estate_deposit_amount': 70.8, 'asset_land_loan_check': 72.2, 'asset_land_loan_amount': 72.5,
             'asset_business_deposit': 73, 'asset_business_premium': 73.2, 'asset_business_machinery': 73.5, 'asset_business_etc': 73.8,
             'asset_savings_loan_check': 74, 'asset_savings_loan_amount': 74.2, 'asset_insurance_loan_check': 74.5, 'asset_insurance_loan_amount': 74.8,
+            'asset_retirement_type': 74.9, 'asset_retirement_value': 75.0,
             'credit_card': 75, 'credit_card_amount': 78,
             'debt_types': 79,
             'debt_amount_detail': 82, 'debt_confirm': 85, 
