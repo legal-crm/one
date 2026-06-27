@@ -550,6 +550,14 @@ export default function ClientRole({
   const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry'>('landing');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [activeReviewIdx, setActiveReviewIdx] = useState(0);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
 
   const activeRequest = requests.find(r => r.clientId === 'client-temp') || requests[0];
@@ -2400,83 +2408,100 @@ export default function ClientRole({
                 </button>
               </div>
 
-              <div className="relative max-w-3xl mx-auto px-4 md:px-12">
-                {/* Carousel Container */}
-                <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                  <div 
-                    className="flex transition-transform duration-500 ease-in-out"
-                    style={{ transform: `translateX(-${activeReviewIdx * 100}%)` }}
-                  >
-                    {reviews.slice(0, Math.min(reviews.length, 5)).map(rev => (
-                      <div key={rev.id} className="w-full shrink-0 p-6 md:p-8 flex flex-col justify-between space-y-4">
-                        <div className="space-y-3 text-left">
-                          <div className="flex items-center justify-between">
-                            <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                              {rev.category}
-                            </span>
-                            <div className="flex text-amber-400 text-xs">★★★★★</div>
-                          </div>
-                          
-                          <h4 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-white leading-snug">
-                            {rev.title}
-                          </h4>
+              {(() => {
+                const visibleCards = windowWidth >= 1024 ? 3 : windowWidth >= 640 ? 2 : 1;
+                const maxIdx = Math.max(0, Math.min(reviews.length, 5) - visibleCards);
+                const safeActiveIdx = Math.min(activeReviewIdx, maxIdx);
+                const translatePercentage = safeActiveIdx * (100 / visibleCards);
 
-                          <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold">
-                            <div className="text-slate-400">기존 채무: {rev.originalDebt.toLocaleString()}만원</div>
-                            <div className="text-indigo-600 dark:text-indigo-400">조정 후: {rev.remainingDebt === 0 ? "전액 탕감" : `${rev.remainingDebt.toLocaleString()}만원`}</div>
-                          </div>
+                return (
+                  <div className="relative max-w-6xl mx-auto px-4 md:px-12">
+                    {/* Carousel Container */}
+                    <div className="overflow-hidden py-4">
+                      <div 
+                        className="flex transition-transform duration-500 ease-in-out -mx-2.5"
+                        style={{ transform: `translateX(-${translatePercentage}%)` }}
+                      >
+                        {reviews.slice(0, Math.min(reviews.length, 5)).map(rev => (
+                          <div key={rev.id} className="w-full sm:w-1/2 lg:w-1/3 shrink-0 px-2.5">
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
+                              <div className="space-y-3 text-left">
+                                <div className="flex items-center justify-between">
+                                  <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                                    {rev.category}
+                                  </span>
+                                  <div className="flex text-amber-400 text-xs">★★★★★</div>
+                                </div>
+                                
+                                <h4 className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-white leading-snug line-clamp-1">
+                                  {rev.title}
+                                </h4>
 
-                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed min-h-[72px]">
-                            "{rev.content}"
-                          </p>
-                        </div>
+                                <div className="bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-semibold">
+                                  <div className="text-slate-400">기존 채무: {rev.originalDebt.toLocaleString()}만원</div>
+                                  <div className="text-indigo-600 dark:text-indigo-400">조정 후: {rev.remainingDebt === 0 ? "전액 탕감" : `${rev.remainingDebt.toLocaleString()}만원`}</div>
+                                </div>
 
-                        <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-slate-400 font-semibold">{rev.author}</span>
-                            <div className="flex items-center gap-1.5">
-                              <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" />
-                              <span className="font-semibold text-slate-600 dark:text-slate-400">{rev.lawyerName}</span>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
+                                  "{rev.content}"
+                                </p>
+                              </div>
+
+                              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="text-slate-400 font-semibold">{rev.author}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" />
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">{rev.lawyerName}</span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Left/Right Floating Navigation Buttons */}
+                    {maxIdx > 0 && (
+                      <>
+                        <button
+                          onClick={() => setActiveReviewIdx(prev => (prev === 0 ? maxIdx : prev - 1))}
+                          className="absolute -left-2 sm:left-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors z-10 hover:text-brand"
+                          aria-label="Previous review"
+                        >
+                          ◀
+                        </button>
+                        <button
+                          onClick={() => setActiveReviewIdx(prev => (prev === maxIdx ? 0 : prev + 1))}
+                          className="absolute -right-2 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors z-10 hover:text-brand"
+                          aria-label="Next review"
+                        >
+                          ▶
+                        </button>
+                      </>
+                    )}
+
+                    {/* Pagination Dots */}
+                    {maxIdx > 0 && (
+                      <div className="flex justify-center gap-1.5 mt-4">
+                        {Array.from({ length: maxIdx + 1 }).map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveReviewIdx(idx)}
+                            className={`w-2 h-2 rounded-full transition-all ${
+                              safeActiveIdx === idx 
+                                ? 'bg-brand w-4' 
+                                : 'bg-slate-300 dark:bg-slate-700 hover:bg-slate-400'
+                            }`}
+                            aria-label={`Go to slide ${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                {/* Left/Right Floating Navigation Buttons */}
-                <button
-                  onClick={() => setActiveReviewIdx(prev => (prev === 0 ? Math.min(reviews.length, 5) - 1 : prev - 1))}
-                  className="absolute -left-2 sm:left-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors z-10 hover:text-brand"
-                  aria-label="Previous review"
-                >
-                  ◀
-                </button>
-                <button
-                  onClick={() => setActiveReviewIdx(prev => (prev === Math.min(reviews.length, 5) - 1 ? 0 : prev + 1))}
-                  className="absolute -right-2 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors z-10 hover:text-brand"
-                  aria-label="Next review"
-                >
-                  ▶
-                </button>
-
-                {/* Pagination Dots */}
-                <div className="flex justify-center gap-1.5 mt-4">
-                  {reviews.slice(0, Math.min(reviews.length, 5)).map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveReviewIdx(idx)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        activeReviewIdx === idx 
-                          ? 'bg-brand w-4' 
-                          : 'bg-slate-300 dark:bg-slate-700 hover:bg-slate-400'
-                      }`}
-                      aria-label={`Go to slide ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
+                );
+              })()}
             </div>
 
             </div>
