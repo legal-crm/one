@@ -368,13 +368,100 @@ export default function MyPageView({
 
           <div className="space-y-5">
             
-            {/* 1. 소득 및 부양가족 */}
+            {/* 0. 기본 인적 사항 */}
             <div className="space-y-3.5">
-              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">1. 월급 및 가구 구성 설정</h4>
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">0. 기본 인적 사항</h4>
               
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">이름</label>
+                  <input 
+                    type="text" 
+                    value={profile.clientName || ''} 
+                    onChange={(e) => handleFieldChange('clientName', e.target.value)} 
+                    placeholder="홍길동"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">연락처</label>
+                  <input 
+                    type="tel" 
+                    value={profile.clientPhone || ''} 
+                    onChange={(e) => handleFieldChange('clientPhone', e.target.value)} 
+                    placeholder="010-1234-5678"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">나이</label>
+                  <input 
+                    type="number" 
+                    value={profile.age || 0} 
+                    onChange={(e) => handleFieldChange('age', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">세후 실수령 소득 (월급)</label>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">거주지 주소</label>
+                  <input 
+                    type="text" 
+                    value={profile.address || ''} 
+                    onChange={(e) => handleFieldChange('address', e.target.value)} 
+                    placeholder="서울특별시 강남구..."
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">근무지/사업장 주소</label>
+                  <input 
+                    type="text" 
+                    value={profile.workLocation || ''} 
+                    onChange={(e) => handleFieldChange('workLocation', e.target.value)} 
+                    placeholder="서울특별시 서초구..."
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 1. 소득 및 고용 정보 */}
+            <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">1. 소득 및 고용 형태</h4>
+              
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">고용 형태</label>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                  {[
+                    { label: '직장인', value: 'salary' },
+                    { label: '사업자', value: 'business' },
+                    { label: '프리랜서', value: 'freelancer' },
+                    { label: '직장+사업', value: 'both' },
+                    { label: '일용직', value: 'daily' },
+                    { label: '무직/수급', value: 'none' },
+                  ].map(item => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => handleFieldChange('employmentType', item.value)}
+                      className={`py-2 px-1 rounded-xl border text-[10.5px] font-bold transition-all cursor-pointer ${
+                        profile.employmentType === item.value
+                        ? 'bg-brand border-brand text-white shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-855'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">세후 실수령 소득 (월급, 만 원)</label>
                   <input 
                     type="number" 
                     value={profile.income || 0} 
@@ -383,6 +470,23 @@ export default function MyPageView({
                   />
                 </div>
 
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">월 고정 지출 (통신/보험/교통 등, 만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.monthlyFixedExpenses || 0} 
+                    onChange={(e) => handleFieldChange('monthlyFixedExpenses', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. 가족 구성 */}
+            <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">2. 가족 구성</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">결혼 상태</label>
                   <select
@@ -394,6 +498,16 @@ export default function MyPageView({
                     <option value="MARRIED">기혼 (부부 자산 공동산정 기준)</option>
                     <option value="DIVORCED">이혼 (양육/양육비 공제 기준)</option>
                   </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">미성년 자녀 수 (명)</label>
+                  <input 
+                    type="number" 
+                    value={profile.minorChildren || 0} 
+                    onChange={(e) => handleFieldChange('minorChildren', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
                 </div>
               </div>
 
@@ -421,11 +535,60 @@ export default function MyPageView({
                   </span>
                 )}
               </div>
+
+              {/* 기혼 시 배우자 소득 */}
+              {profile.maritalStatus === 'MARRIED' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">배우자 월 소득 (만 원)</label>
+                    <input 
+                      type="number" 
+                      value={profile.spouseIncome || 0} 
+                      onChange={(e) => handleFieldChange('spouseIncome', Math.max(0, Number(e.target.value)))} 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">배우자 소유 재산액 (만 원)</label>
+                    <input 
+                      type="number" 
+                      value={profile.spouseAsset || 0} 
+                      onChange={(e) => handleFieldChange('spouseAsset', Math.max(0, Number(e.target.value)))} 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                    />
+                    <span className="text-[9px] text-slate-400 block">※ 법원 실무준칙에 따라 기혼 시 배우자 자산의 50%가 반영될 수 있습니다.</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 이혼 시 양육비 */}
+              {profile.maritalStatus === 'DIVORCED' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">양육비 수령액 (월, 만 원)</label>
+                    <input 
+                      type="number" 
+                      value={profile.childSupportReceived || 0} 
+                      onChange={(e) => handleFieldChange('childSupportReceived', Math.max(0, Number(e.target.value)))} 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">양육비 지급액 (월, 만 원)</label>
+                    <input 
+                      type="number" 
+                      value={profile.childSupportPaid || 0} 
+                      onChange={(e) => handleFieldChange('childSupportPaid', Math.max(0, Number(e.target.value)))} 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* 2. 주거 및 자산 세부 정보 */}
+            {/* 3. 주거 및 자산 */}
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
-              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">2. 주거 유형 및 재산 가치 설정</h4>
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">3. 주거 유형 및 재산 가치 설정</h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -461,16 +624,51 @@ export default function MyPageView({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">배우자 소유 재산액 (만 원)</label>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">월세 (만 원)</label>
                   <input 
                     type="number" 
-                    value={profile.spouseAsset || 0} 
-                    onChange={(e) => handleFieldChange('spouseAsset', Math.max(0, Number(e.target.value)))} 
+                    value={profile.rentCost || 0} 
+                    onChange={(e) => handleFieldChange('rentCost', Math.max(0, Number(e.target.value)))} 
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
-                  <span className="text-[9px] text-slate-400 block">※ 법원 실무준칙에 따라 기혼 시 배우자 자산의 50%가 반영될 수 있습니다.</span>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">보증금 대출금 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.depositLoan || 0} 
+                    onChange={(e) => handleFieldChange('depositLoan', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">본인 재산 총액 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.myAssets || 0} 
+                    onChange={(e) => handleFieldChange('myAssets', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                  <span className="text-[9px] text-slate-400 block">※ 예금, 보험 해지환급금, 자동차 시세 등 본인 명의 자산 합계</span>
                 </div>
 
+                {profile.maritalStatus !== 'MARRIED' && (
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">배우자 소유 재산액 (만 원)</label>
+                    <input 
+                      type="number" 
+                      value={profile.spouseAsset || 0} 
+                      onChange={(e) => handleFieldChange('spouseAsset', Math.max(0, Number(e.target.value)))} 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">예상 퇴직금 (만 원)</label>
                   <input 
@@ -512,9 +710,45 @@ export default function MyPageView({
               </div>
             </div>
 
-            {/* 3. 부채 정보 */}
+            {/* 4. 추가 생계비 */}
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
-              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">3. 채무 구성 설정</h4>
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">4. 추가 생계비 (월 기준)</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">의료비 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.medicalCost || 0} 
+                    onChange={(e) => handleFieldChange('medicalCost', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">교육비 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.educationCost || 0} 
+                    onChange={(e) => handleFieldChange('educationCost', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">특수교육비 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.specialEducationCost || 0} 
+                    onChange={(e) => handleFieldChange('specialEducationCost', Math.max(0, Number(e.target.value)))} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                  <span className="text-[9px] text-slate-400 block">※ 장애인 자녀 등 특수교육 관련 지출</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. 채무 구성 */}
+            <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">5. 채무 구성 설정</h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -562,9 +796,9 @@ export default function MyPageView({
               </div>
             </div>
 
-            {/* 4. 투자/도박 리스크 */}
+            {/* 6. 투자/도박 리스크 및 특수조건 */}
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
-              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">4. 1년 이내 투자 및 사행성 채무 설정</h4>
+              <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">6. 투자/사행성 채무 및 특수 조건</h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -586,6 +820,68 @@ export default function MyPageView({
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">24개월 특례 조건</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { label: '해당 없음', value: 'none' },
+                    { label: '기초수급자', value: 'basic_recipient' },
+                    { label: '중증장애인', value: 'severe_disability' },
+                    { label: '65세 이상 고령', value: 'elderly' },
+                  ].map(item => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => handleFieldChange('specialCondition', item.value)}
+                      className={`py-2 px-1 rounded-xl border text-[10.5px] font-bold transition-all cursor-pointer ${
+                        (profile.specialCondition || 'none') === item.value
+                        ? 'bg-brand border-brand text-white shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-855'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                {profile.specialCondition && profile.specialCondition !== 'none' && (
+                  <span className="text-[10px] text-[#10B981] block mt-1">
+                    ✅ 24개월 특례 조건 해당: 변제기간이 36개월에서 24개월로 단축됩니다.
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">현재 법적 조치 상황</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { label: '추심 전화/문자', value: 'collection_call' },
+                    { label: '법원 지급명령', value: 'court_order' },
+                    { label: '재산 압류', value: 'seizure' },
+                    { label: '급여 압류', value: 'wage_garnishment' },
+                  ].map(item => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => {
+                        const current = profile.legalActions || [];
+                        const updated = current.includes(item.value)
+                          ? current.filter(v => v !== item.value)
+                          : [...current, item.value];
+                        handleFieldChange('legalActions', updated);
+                      }}
+                      className={`py-2 px-1 rounded-xl border text-[10.5px] font-bold transition-all cursor-pointer ${
+                        (profile.legalActions || []).includes(item.value)
+                        ? 'bg-red-500 border-red-500 text-white shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-855'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[9px] text-slate-400 block">※ 해당 항목을 클릭하여 선택/해제합니다. 복수 선택 가능합니다.</span>
               </div>
             </div>
             

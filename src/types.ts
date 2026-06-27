@@ -41,6 +41,25 @@ export interface FinancialProfile {
   retirementPensionType?: 'pension' | 'none' | 'unknown';
   retirementPay?: number;   // 예상 퇴직금 (만 원 단위)
   priorityDebt?: number;    // 우선변제채무 (만 원 단위)
+
+  // ── 챗봇 수집 항목 완전 동기화 필드 ──
+  age?: number;             // 나이 (24개월 특례 확인용)
+  employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily'; // 고용 형태
+  minorChildren?: number;   // 미성년 자녀 수
+  childSupportReceived?: number; // 양육비 수령액 (이혼 시)
+  childSupportPaid?: number;     // 양육비 지급액 (이혼 시)
+  rentCost?: number;        // 월세 (만 원)
+  depositLoan?: number;     // 보증금 대출 (만 원)
+  medicalCost?: number;     // 월 의료비 (만 원)
+  educationCost?: number;   // 월 교육비 (만 원)
+  specialEducationCost?: number; // 월 특수교육비 (만 원)
+  myAssets?: number;        // 본인 재산 총액 (만 원)
+  specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly'; // 24개월 특례
+  monthlyFixedExpenses?: number; // 월 고정지출 (통신비, 보험료 등)
+  address?: string;         // 거주지 주소
+  workLocation?: string;    // 근무지/사업장 주소
+  clientName?: string;      // 고객명
+  clientPhone?: string;     // 연락처
 }
 
 export type RequestType = 'direct' | 'open';
