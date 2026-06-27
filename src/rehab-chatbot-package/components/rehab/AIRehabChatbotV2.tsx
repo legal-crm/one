@@ -2932,14 +2932,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, creditCardDebt: 0 }));
                     goToStep('debt_types');
                     addBotMessage(
-                        '많이 힘드셨을 거예요. 걸정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n빚의 종류를 좀 더 자세히 알려주시면 더 정확한 분석이 가능해요.',
+                        '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (복수 선택 가능)',
                         [
                             { label: '🏦 은행 대출', value: 'bank' },
                             { label: '💳 카드사/캐피탈', value: 'capital' },
                             { label: '🏪 저축은행/대부업', value: 'savings_bank' },
-                            { label: '🏛️ 국세', value: 'tax' },
-                            { label: '👤 사금융/지인', value: 'private' },
-                            { label: '📱 앱/온라인 대출', value: 'app_loan' },
+                            { label: '🏛️ 국세/세금 체납', value: 'tax' },
+                            { label: '👤 가족/지인', value: 'private' },
+                            { label: '📱 기타', value: 'app_loan' },
                             { label: '🏢 보증채무', value: 'guarantee' },
                             { label: '✅ 선택완료', value: 'done' }
                         ],
@@ -2954,14 +2954,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // V2.1: 채무 유형 분류로 이동
                 goToStep('debt_types');
                 addBotMessage(
-                    '많이 힘드셨을 거예요. 걸정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n빚의 종류를 좀 더 자세히 알려주시면 더 정확한 분석이 가능해요.',
+                    '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (복수 선택 가능)',
                     [
                         { label: '🏦 은행 대출', value: 'bank' },
                         { label: '💳 카드사/캐피탈', value: 'capital' },
                         { label: '🏪 저축은행/대부업', value: 'savings_bank' },
-                        { label: '🏛️ 국세', value: 'tax' },
-                        { label: '👤 사금융/지인', value: 'private' },
-                        { label: '📱 앱/온라인 대출', value: 'app_loan' },
+                        { label: '🏛️ 국세/세금 체납', value: 'tax' },
+                        { label: '👤 가족/지인', value: 'private' },
+                        { label: '📱 기타', value: 'app_loan' },
                         { label: '🏢 보증채무', value: 'guarantee' },
                         { label: '✅ 선택완료', value: 'done' }
                     ],

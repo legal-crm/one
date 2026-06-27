@@ -818,11 +818,11 @@ const DEBT_TYPE_CONFIG: Record<string, { label: string; color: string; riskLevel
     bank: { label: '은행 대출', color: '#3B82F6', riskLevel: 'low' },
     capital: { label: '카드사/캐피탈', color: '#8B5CF6', riskLevel: 'medium' },
     savings_bank: { label: '저축은행/대부업', color: '#F59E0B', riskLevel: 'medium' },
-    private: { label: '사금융/지인', color: '#EF4444', riskLevel: 'high' },
-    app_loan: { label: '앱/온라인 대출', color: '#F97316', riskLevel: 'medium' },
+    private: { label: '가족/지인', color: '#EF4444', riskLevel: 'high' },
+    app_loan: { label: '기타', color: '#F97316', riskLevel: 'medium' },
     guarantee: { label: '보증채무', color: '#EC4899', riskLevel: 'high' },
     credit_card: { label: '신용카드', color: '#6366F1', riskLevel: 'low' },
-    tax: { label: '세금 체납', color: '#DC2626', riskLevel: 'high' },
+    tax: { label: '국세/세금 체납', color: '#DC2626', riskLevel: 'high' },
     general: { label: '일반 채무', color: '#64748B', riskLevel: 'low' },
 };
 
