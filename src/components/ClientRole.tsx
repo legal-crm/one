@@ -2294,48 +2294,84 @@ export default function ClientRole({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-left">
                 {([
                   {
                     type: 'rehab' as SolutionType,
+                    icon: '⚖️',
                     title: '개인회생',
+                    badge: '원금 최대 90% 감면',
+                    badgeColor: 'bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light',
+                    accentColor: 'from-brand to-indigo-600',
                     sub: '소득이 있고 일정 금액을 갚을 수 있는 분',
                     desc: '생활비를 빼고 남은 소득으로 3~5년간 나누어 갚으면, 남은 원금의 최대 90%까지 합법적으로 감면받을 수 있습니다.'
                   },
                   {
                     type: 'bankruptcy' as SolutionType,
+                    icon: '🔓',
                     title: '개인파산',
+                    badge: '채무 전액 면책',
+                    badgeColor: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400',
+                    accentColor: 'from-rose-500 to-pink-600',
                     sub: '소득이 없거나 채무 상환이 불가능한 분',
                     desc: '질병, 고령 등으로 소득 활동이 어렵고 재산이 거의 없는 경우, 법원 심사를 거쳐 채무 원금 전체를 한 번에 지워드립니다.'
                   },
                   {
                     type: 'credit' as SolutionType,
+                    icon: '🏦',
                     title: '신용회복',
+                    badge: '이자 감면 + 분할 상환',
+                    badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400',
+                    accentColor: 'from-emerald-500 to-teal-600',
                     sub: '은행 및 카드사 빚을 조율하고 싶으신 분',
                     desc: '신용회복위원회를 통해 대출 이자를 전액 또는 일부 줄이고, 갚아 나가는 기간을 최대 10년까지 나누어 부담을 덜어드립니다.'
                   },
                   {
                     type: 'representation' as SolutionType,
+                    icon: '🛡️',
                     title: '채무자대리',
+                    badge: '독촉 즉시 차단',
+                    badgeColor: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400',
+                    accentColor: 'from-amber-500 to-orange-600',
                     sub: '대부업이나 사채 독촉에 시달리고 계신 분',
                     desc: '변호사를 대리인으로 선임하여 전화, 문자, 집 방문 등 대부업체나 사채업자의 모든 직접 독촉을 즉시 끊어냅니다.'
                   },
                   {
                     type: 'tax' as SolutionType,
+                    icon: '📊',
                     title: '세금체납 관리',
+                    badge: '압류 해제 + 시효 분석',
+                    badgeColor: 'bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400',
+                    accentColor: 'from-violet-500 to-purple-600',
                     sub: '밀린 세금과 통장/재산 압류로 힘드신 분',
                     desc: '체납된 세금의 유효 기간(소멸시효)이 만료되었는지 확인하고, 최저 생계비 이하 재산의 부당한 압류를 풀어 일상 복귀를 도와드립니다.'
                   }
                 ]).map((item, idx) => (
-                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-3 shadow-sm hover:shadow-md transition-all hover-lift-sm transition-card group">
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">{item.title}</h4>
-                      <span className="text-[10px] text-brand dark:text-brand-light font-semibold block">{item.sub}</span>
+                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden">
+                    {/* Accent top strip */}
+                    <div className={`h-1 w-full bg-gradient-to-r ${item.accentColor}`} />
+                    <div className="p-5 md:p-6 flex flex-col justify-between flex-1 space-y-4">
+                      <div className="space-y-3">
+                        {/* Icon + Title row */}
+                        <div className="flex items-center gap-3">
+                          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${item.accentColor} flex items-center justify-center text-xl shrink-0 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                            <span className="drop-shadow-sm">{item.icon}</span>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-base text-slate-800 dark:text-white">{item.title}</h4>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>
+                          </div>
+                        </div>
+                        {/* Target audience */}
+                        <p className="text-xs text-brand dark:text-brand-light font-semibold">{item.sub}</p>
+                        {/* Description */}
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                      </div>
+                      <span className="text-[11px] font-bold text-brand/50 dark:text-brand-light/50 group-hover:text-brand dark:group-hover:text-brand-light transition-colors flex items-center gap-1.5 pt-1">
+                        자세히 보기
+                        <span className="transition-transform group-hover:translate-x-1">→</span>
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
-                    <span className="text-[10px] font-bold text-brand/60 dark:text-brand-light/60 group-hover:text-brand dark:group-hover:text-brand-light transition-colors flex items-center gap-1 pt-1">
-                      자세히 보기 →
-                    </span>
                   </div>
                 ))}
               </div>
