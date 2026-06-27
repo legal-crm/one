@@ -116,44 +116,7 @@ export default function MyPageView({
 
   return (
     <div className={isCompact ? "space-y-6 animate-fadeIn text-left" : "max-w-5xl mx-auto space-y-6 animate-fadeIn text-left"}>
-      {/* compact 모드일 때만 최상단에 자가진단 요약 카드 노출 */}
-      {isCompact && (
-        <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs space-y-3 shadow-sm">
-          <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px] text-brand dark:text-brand-light">
-            📝 실시간 자가진단서 접수 데이터 (변호사 검토용)
-          </span>
-          <div className="grid grid-cols-2 gap-2 text-slate-500 dark:text-slate-400 font-semibold">
-            <div className="bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-              <span className="text-slate-400 block text-[9px] mb-0.5">월 실수령액</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-bold text-xs">{profile.income}만 원</strong>
-            </div>
-            <div className="bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-              <span className="text-slate-400 block text-[9px] mb-0.5">총 채무액</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-bold text-xs">{profile.debtTotal.toLocaleString()}만 원</strong>
-            </div>
-            <div className="bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-              <span className="text-slate-400 block text-[9px] mb-0.5">가구 부양가족</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-bold text-xs">{profile.dependents}명</strong>
-            </div>
-            <div className="bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-              <span className="text-slate-400 block text-[9px] mb-0.5">결혼 여부</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-bold text-xs">
-                {profile.maritalStatus === 'SINGLE' ? '미혼' : '기혼'}
-              </strong>
-            </div>
-          </div>
-          {profile.riskFlags && profile.riskFlags.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-2 border-t border-slate-100 dark:border-slate-800">
-              {profile.riskFlags.map(rf => (
-                <span key={rf} className="bg-red-500/5 border border-red-500/15 text-red-600 dark:text-red-400 text-[9px] px-2 py-0.5 rounded font-bold flex items-center gap-1">
-                  <span className="w-1 h-1 rounded-full bg-red-500"></span>
-                  🚨 {rf}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+
 
       {/* Header / Stealth Badge & Assigned Lawyer */}
       {!isCompact && (
@@ -346,6 +309,17 @@ export default function MyPageView({
               </span>
             </div>
           </div>
+
+          {profile.riskFlags && profile.riskFlags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5 mt-3">
+              {profile.riskFlags.map(rf => (
+                <span key={rf} className="bg-red-500/10 border border-red-500/25 text-red-400 text-[10px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                  🚨 {rf}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className="text-[10px] text-slate-400 leading-normal text-left pt-3 border-t border-white/5 mt-3 flex items-start gap-1">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
