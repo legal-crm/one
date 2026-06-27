@@ -2294,7 +2294,7 @@ export default function ClientRole({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-left">
+              <div className="flex flex-wrap justify-center gap-5 text-left">
                 {([
                   {
                     type: 'rehab' as SolutionType,
@@ -2347,7 +2347,7 @@ export default function ClientRole({
                     desc: '체납된 세금의 유효 기간(소멸시효)이 만료되었는지 확인하고, 최저 생계비 이하 재산의 부당한 압류를 풀어 일상 복귀를 도와드립니다.'
                   }
                 ]).map((item, idx) => (
-                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden">
+                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className="cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]">
                     {/* Accent top strip */}
                     <div className={`h-1 w-full bg-gradient-to-r ${item.accentColor}`} />
                     <div className="p-5 md:p-6 flex flex-col justify-between flex-1 space-y-4">
