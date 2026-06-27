@@ -3377,11 +3377,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     addBotMessage(
                         '기존에 개인회생, 파산, 신용회복, 새출발기금을 진행 중이거나 진행하신 적 있으신가요?',
                         [
-                            { label: '없어요', value: 'none' },
                             { label: '개인회생', value: 'rehab' },
                             { label: '파산', value: 'bankruptcy' },
                             { label: '신용회복', value: 'credit_recovery' },
-                            { label: '새출발기금', value: 'fresh_start' }
+                            { label: '새출발기금', value: 'fresh_start' },
+                            { label: '없어요', value: 'none' }
                         ],
                         'buttons'
                     );
