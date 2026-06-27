@@ -223,7 +223,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     isOpen,
     onClose,
     onComplete,
-    characterName = '로이',
+    characterName = '김변',
     characterImage,
     templateId = 'classic' as ChatbotTemplateId,
     themeMode = 'light',
@@ -525,7 +525,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setTimeout(() => {
                     // [DEFAULT] 기본 인트로 메시지
                     addBotMessage(
-                        `안녕하세요! 저는 AI 법률비서 '${characterName}'예요 😊\n\n빚 걱정, 혼자 하지 마세요.\n지금부터 몇 가지만 여쭤보면 법원 기준에 맞는 정확한 분석 결과를 알려드릴게요!\n\n3분이면 충분해요. 시작해볼까요?`,
+                        `안녕하세요! 법률 상담사 김변입니다 😊\n\n빚 걱정, 혼자 안 하셔도 돼요.\n몇 가지만 알려주시면 법원 기준에 맞게 분석해 드릴게요.\n\n3분이면 충분합니다. 바로 시작해 볼까요?`,
                         [{ label: '좋아요, 시작할게요', value: 'start' }],
                         'buttons'
                     );
@@ -789,7 +789,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 localStorage.removeItem('roi_rehab_chatbot_session');
                 goToStep('address');
                 addBotMessage(
-                    '정확한 진단을 위해 현재 **사시는 곳**이 어디신가요?\n\n(예: 서울 강남구, 수원시 영통구)',
+                    '지금 **살고 계신 곳**이 어디인가요?\n\n(예: 서울 강남구, 수원시 영통구)',
                     undefined,
                     'address'
                 );
@@ -854,7 +854,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, monthlyIncome: 2000000 }));
                     goToStep('unemployed_reason');
                     addBotMessage(
-                        '현재 일을 하지 못하시는 이유가 **질병이나 장애**로 인해 근로활동이 불가능하기 때문인가요?',
+                        '일을 못 하시는 이유가 **몸이 아프시거나 장애** 때문인가요?',
                         [
                             { label: '예 (일하기 어려워요)', value: 'illness' },
                             { label: '아니오 (일할 수 있어요 / 구직 중)', value: 'none' }
@@ -1936,7 +1936,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, deposit: 0, rentCost: 0 }));
                     goToStep('medical_check');
                     addBotMessage(
-                        '본인이나 가족의 **의료비**로 매달 고정적으로 지출하는 비용이 있나요?',
+                        '매달 **병원비**로 나가는 돈이 있으신가요? (본인 또는 가족)',
                         [
                             { label: '없어요', value: 'no' },
                             { label: '있어요', value: 'yes' }
@@ -2046,7 +2046,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // 4. 다음 단계로 진행
                 goToStep('medical_check');
                 addBotMessage(
-                    '본인이나 가족의 **의료비**로 매달 고정적으로 지출하는 비용이 있나요?',
+                    '매달 **병원비**로 나가는 돈이 있으신가요? (본인 또는 가족)',
                     [
                         { label: '없어요', value: 'no' },
                         { label: '있어요', value: 'yes' }
@@ -2067,7 +2067,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, medicalCost: 0 }));
                     goToStep('education_check');
                     addBotMessage(
-                        '미성년 자녀의 **교육비**로 매달 고정적으로 지출하는 비용이 있나요?',
+                        '아이 **학비나 학원비**로 매달 나가는 돈이 있으신가요?',
                         [
                             { label: '없어요', value: 'no' },
                             { label: '있어요', value: 'yes' }
@@ -2081,7 +2081,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, medicalCost: (value as number) * 10000 }));
                 goToStep('education_check');
                 addBotMessage(
-                    '미성년 자녀의 **교육비**로 매달 고정적으로 지출하는 비용이 있나요?',
+                    '아이 **학비나 학원비**로 매달 나가는 돈이 있으신가요?',
                     [
                         { label: '없어요', value: 'no' },
                         { label: '있어요', value: 'yes' }
@@ -2133,7 +2133,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, educationCost: (value as number) * 10000 }));
                 goToStep('special_education');
                 addBotMessage(
-                    '자녀 중 장애 등으로 인해 **특수교육**이 필요한 경우가 있나요?\n\n(특수교육비는 인정 한도가 더 높습니다)',
+                    '아이 중에 **특수교육**이 필요한 경우가 있나요?\n\n(인정 한도가 더 높아요)',
                     [
                         { label: '아니요, 일반 교육이에요', value: 'no' },
                         { label: '네, 특수교육이 필요해요', value: 'yes' }
@@ -2967,7 +2967,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         // 기혼+자녀 없는 경우 또는 미혼인 경우, 고령 부모님 부양가족 확인으로 이동
                         goToStep('elderly_parent_check');
                         addBotMessage(
-                            '아래 조건에 **모두 부합하는** 부모님이 계신가요?\n\n• 친부모\n• 만 65세 이상\n• 소득이 없거나 기초수급 혹은 장애\n• 20만원 이상 생활비를 매달 드리는 중',
+                            '아래 조건에 **모두 해당하는** 부모님이 계신가요?\n\n• 친부모\n• 만 65세 이상\n• 소득이 없거나 기초수급 혹은 장애\n• 매달 20만원 이상 생활비를 드리는 중',
                             [
                                 { label: '✅ 예, 해당됩니다', value: 'yes' },
                                 { label: '❌ 아니요', value: 'no' }
@@ -3022,7 +3022,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // 고령 부모님 부양가족 확인으로 이동
                 goToStep('elderly_parent_check');
                 addBotMessage(
-                    '아래 조건에 **모두 부합하는** 부모님이 계신가요?\n\n• 친부모\n• 만 65세 이상\n• 소득이 없거나 기초수급 혹은 장애\n• 20만원 이상 생활비를 매달 드리는 중',
+                    '아래 조건에 **모두 해당하는** 부모님이 계신가요?\n\n• 친부모\n• 만 65세 이상\n• 소득이 없거나 기초수급 혹은 장애\n• 매달 20만원 이상 생활비를 드리는 중',
                     [
                         { label: '✅ 예, 해당됩니다', value: 'yes' },
                         { label: '❌ 아니요', value: 'no' }
@@ -3316,7 +3316,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 if (legalActions.includes('seizure')) {
                     setTimeout(() => {
                         addBotMessage(
-                            '⚡ 압류를 받고 계시군요. 개인회생 신청 시 **금지명령**으로 즉시 중단시킬 수 있어요!',
+                            '⚡ 압류를 받고 계시군요. 회생 신청하면 바로 멈출 수 있어요!',
                             undefined,
                             undefined
                         );
@@ -3409,7 +3409,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 calculationResult.status === 'DIFFICULT' ? '🟡' : '🔴';
 
             // 무직자 안내 메시지
-            let resultMessage = `${statusEmoji} **분석이 완료되었습니다!**\n\n${input.name || '의뢰인'}님은 빚을 최대 **${calculationResult.debtReductionRate}%**까지 탕감받을 수 있어요.`;
+            let resultMessage = `${statusEmoji} 분석이 완료되었습니다!\n\n${input.name || '의뢰인'}님은 빚을 최대 **${calculationResult.debtReductionRate}%**까지 탕감받을 수 있어요.`;
 
             if (input.employmentType === 'none') {
                 resultMessage += '\n\n💡 현재 무직이시지만 월 200만원 수입 기준으로 계산한 결과입니다.\n\n어렵게 생각하지 마세요! 아르바이트 하루만 나가시거나 일용직 하루만 출근하셔도 수입이 인정되어 개인회생 진행이 가능합니다.';
@@ -3417,7 +3417,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             // V2.1: 압류 경험자 특별 메시지
             if (input.legalActions?.includes('seizure')) {
-                resultMessage += '\n\n⚡ 압류를 받고 계시군요. 개인회생 신청 시 **금지명령**으로 즉시 중단시킬 수 있어요!';
+                resultMessage += '\n\n⚡ 압류를 받고 계시군요. 회생 신청하면 바로 멈출 수 있어요!';
             }
 
             addBotMessage(

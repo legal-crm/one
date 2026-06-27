@@ -20,6 +20,18 @@ import { X, Send, Bot, MessageCircle, User, Sparkles, Zap, Building2, ChevronDow
 import { ChatbotTemplateId, ChatbotColorPalette, ThemeMode, getTemplateById, TemplateLayoutConfig, InteractiveBlockConfig, InteractiveBlockState } from './ChatbotTemplateConfig';
 import InteractiveBlock from './InteractiveBlock';
 
+// **text** 마크다운을 컬러 강조 <span>으로 변환하는 유틸리티
+const parseHighlight = (text: string, accentColor: string = '#6366f1'): React.ReactNode[] => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/);
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+            const inner = part.slice(2, -2);
+            return <span key={i} style={{ color: accentColor, fontWeight: 700 }}>{inner}</span>;
+        }
+        return <span key={i}>{part}</span>;
+    });
+};
+
 // 메시지 타입
 export interface ChatMessage {
     id: string;
@@ -142,7 +154,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                 {characterImage ? (
                                     <img src={characterImage} alt={characterName} className="w-full h-full object-cover" />
                                 ) : (
-                                    <Sparkles className="w-5 h-5" style={{ color: colors.headerText }} />
+                                    <span className="text-lg">🧑‍⚖️</span>
                                 )}
                             </div>
                             <span style={{ color: colors.headerText }} className="font-bold">{characterName}</span>
@@ -477,7 +489,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             className="w-10 h-10 rounded-full flex items-center justify-center"
                             style={{ backgroundColor: colors.primary }}
                         >
-                            <Bot className="w-5 h-5" style={{ color: colors.headerText }} />
+                            <span className="text-lg">🧑‍⚖️</span>
                         </div>
                     </div>
                 )}
@@ -532,7 +544,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                         {characterImage ? (
                                             <img src={characterImage} alt="Bot" className="w-full h-full object-cover" />
                                         ) : (
-                                            <Bot className="w-4 h-4" style={{ color: colors.headerText }} />
+                                            <span className="text-base">🧑‍⚖️</span>
                                         )}
                                     </div>
                                 )}
@@ -553,7 +565,9 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
 
                                     {/* 메시지 버블 */}
                                     <div style={getMessageStyle(msg.type === 'user', msg.isFirst, msg.isLast)}>
-                                        <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                                            {msg.type === 'bot' ? parseHighlight(msg.content, colors.primary) : msg.content}
+                                        </p>
                                     </div>
 
                                     {/* 옵션 버튼 - Interactive Block이 없는 경우에만 표시 */}

@@ -2595,7 +2595,7 @@ export default function ClientRole({
               }}
               templateId="gradient"
               themeMode="light"
-              characterName="로이"
+              characterName="김변"
               customColors={{
                 primary: '#7264FF',
                 secondary: '#f8f7ff',
