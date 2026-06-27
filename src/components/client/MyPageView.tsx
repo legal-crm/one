@@ -594,7 +594,7 @@ export default function MyPageView({
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
               <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">3. 주거 유형 및 재산 가치 설정</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">거주 주택 유형</label>
                   <select
@@ -602,8 +602,11 @@ export default function MyPageView({
                     onChange={(e) => {
                       if (e.target.value === 'free') {
                         handleFieldChange('rentalDeposit', 0);
+                        handleFieldChange('housingType', 'free');
                       } else {
                         handleFieldChange('rentalDeposit', 1000); // Default placeholder
+                        handleFieldChange('housingType', 'rent');
+                        handleFieldChange('housingContractHolder', 'self');
                       }
                     }}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
@@ -614,15 +617,41 @@ export default function MyPageView({
                 </div>
 
                 {profile.rentalDeposit !== undefined && profile.rentalDeposit > 0 && (
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">임차 보증금 (만 원)</label>
-                    <input 
-                      type="number" 
-                      value={profile.rentalDeposit || 0} 
-                      onChange={(e) => handleFieldChange('rentalDeposit', Math.max(0, Number(e.target.value)))} 
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                    />
-                  </div>
+                  <>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">임대차 계약 명의자</label>
+                      <select
+                        value={profile.housingContractHolder || 'self'}
+                        onChange={(e) => {
+                          const val = e.target.value as 'self' | 'spouse' | 'others';
+                          if (val === 'others') {
+                            handleFieldChange('housingContractHolder', 'others');
+                            handleFieldChange('rentalDeposit', 0);
+                            handleFieldChange('rentCost', 0);
+                            handleFieldChange('depositLoan', 0);
+                            handleFieldChange('housingType', 'free');
+                          } else {
+                            handleFieldChange('housingContractHolder', val);
+                          }
+                        }}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                      >
+                        <option value="self">본인</option>
+                        <option value="spouse">배우자</option>
+                        <option value="others">지인, 가족, 회사 등 (무상거주 처리)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">임차 보증금 (만 원)</label>
+                      <input 
+                        type="number" 
+                        value={profile.rentalDeposit || 0} 
+                        onChange={(e) => handleFieldChange('rentalDeposit', Math.max(0, Number(e.target.value)))} 
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                      />
+                    </div>
+                  </>
                 )}
               </div>
 

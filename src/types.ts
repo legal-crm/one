@@ -60,6 +60,8 @@ export interface FinancialProfile {
   workLocation?: string;    // 근무지/사업장 주소
   clientName?: string;      // 고객명
   clientPhone?: string;     // 연락처
+  housingContractHolder?: 'self' | 'spouse' | 'others'; // 주택 계약 명의자
+  housingType?: 'rent' | 'jeonse' | 'owned' | 'free'; // 거주 형태
 }
 
 export type RequestType = 'direct' | 'open';
@@ -397,6 +399,9 @@ export interface IntakeData {
   feeInstallments?: number;
   feeStartDate?: string;
   feeLoanInfo?: FeeLoanInfo;
+  housingType?: 'rent' | 'jeonse' | 'owned' | 'free'; // 거주 형태
+  housingContractHolder?: 'self' | 'spouse' | 'others'; // 계약 명의자
+  depositLoan?: number; // 보증금 대출금 (원 단위)
 }
 
 export interface MedianIncomeTable {

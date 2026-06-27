@@ -124,6 +124,8 @@ type ChatStep =
     | 'rent_cost'
     | 'deposit_amount'
     | 'deposit_loan'
+    | 'deposit_loan_amount'  // 보증금 대출 금액 (NEW)
+    | 'deposit_contract_holder' // 계약명의자 확인 (NEW)
     | 'owned_value'          // 자가 시세
     | 'owned_mortgage'       // 자가 담보대출
     | 'owned_owner_type'     // 자가 명의자 확인 (NEW)
@@ -1971,25 +1973,72 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'deposit_loan':
                 if (value === 'yes') {
+                    goToStep('deposit_loan_amount');
                     addBotMessage(
                         '보증금 대출 금액은 얼마인가요?\n\n(만원 단위)',
                         undefined,
                         'money'
                     );
-                    // 다음 입력 후 medical_check로 이동
-                    goToStep('medical_check');
                 } else {
                     setUserInput(prev => ({ ...prev, depositLoan: 0 }));
-                    goToStep('medical_check');
+                    goToStep('deposit_contract_holder');
                     addBotMessage(
-                        '본인이나 가족의 **의료비**로 매달 고정적으로 지출하는 비용이 있나요?',
+                        '해당 임대차 계약의 **명의자(계약서상 임차인)**가 누구인가요?',
+                        [
+                            { label: '본인', value: 'self' },
+                            { label: '배우자', value: 'spouse' },
+                            { label: '지인, 가족, 회사 등', value: 'others' }
+                        ],
+                        'buttons'
+                    );
+                }
+                break;
+
+            case 'deposit_loan_amount':
+                setUserInput(prev => ({ ...prev, depositLoan: (value as number) * 10000 }));
+                goToStep('deposit_contract_holder');
+                addBotMessage(
+                    '해당 임대차 계약의 **명의자(계약서상 임차인)**가 누구인가요?',
+                    [
+                        { label: '본인', value: 'self' },
+                        { label: '배우자', value: 'spouse' },
+                        { label: '지인, 가족, 회사 등', value: 'others' }
+                    ],
+                    'buttons'
+                );
+                break;
+
+            case 'deposit_contract_holder':
+                const holder = value as 'self' | 'spouse' | 'others';
+                if (holder === 'others') {
+                    setUserInput(prev => ({
+                        ...prev,
+                        housingContractHolder: 'others',
+                        housingType: 'free',
+                        deposit: 0,
+                        rentCost: 0,
+                        depositLoan: 0
+                    }));
+                    addBotMessage(
+                        '명의자가 지인/가족/회사인 경우 **무상거주**로 분류되어 보증금이 재산(청산가치)에서 전액 제외됩니다. 😊',
+                        undefined,
+                        undefined
+                    );
+                } else {
+                    setUserInput(prev => ({ ...prev, housingContractHolder: holder }));
+                }
+
+                goToStep('medical_check');
+                setTimeout(() => {
+                    addBotMessage(
+                        '매달 **병원비**로 나가는 돈이 있으신가요? (본인 또는 가족)',
                         [
                             { label: '없어요', value: 'no' },
                             { label: '있어요', value: 'yes' }
                         ],
                         'buttons'
                     );
-                }
+                }, holder === 'others' ? 800 : 0);
                 break;
 
             case 'owned_value':
@@ -3744,6 +3793,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'custody': 35, 'child_support_receive': 38,
             'child_support_pay': 38, 'minor_children': 42, 'housing_type': 48,
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
+            'deposit_loan_amount': 54.5, 'deposit_contract_holder': 55.5,
             'owned_value': 53, 'owned_mortgage': 55, 'owned_owner_type': 56,
             'medical_check': 57, 'medical_amount': 59,
             'education_check': 61, 'education_amount': 63, 'special_education': 64, 'special_education_amount': 64.5,

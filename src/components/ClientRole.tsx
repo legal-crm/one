@@ -567,8 +567,11 @@ export default function ClientRole({
       monthlyIncome: (profile.income || 0) * 10000,
       familySize: (profile.dependents || 0) + 1,
       spouseAssets: (profile.spouseAsset || 0) * 10000,
-      rentCost: 0,
+      rentCost: (profile.rentCost || 0) * 10000,
       deposit: (profile.rentalDeposit || 0) * 10000,
+      depositLoan: (profile.depositLoan || 0) * 10000,
+      housingType: profile.housingType,
+      housingContractHolder: profile.housingContractHolder,
       myAssets: Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000,
       totalDebt: (profile.debtTotal || 0) * 10000,
       priorityDebt: (profile.priorityDebt || 0) * 10000,
@@ -1405,7 +1408,7 @@ export default function ClientRole({
     if (input.deposit && input.deposit > 0) {
       assets.push({
         id: `asset-deposit-${Date.now()}`,
-        owner: 'self',
+        owner: input.housingContractHolder === 'spouse' ? 'spouse' : 'self',
         type: 'deposit',
         description: input.housingType === 'jeonse' ? '전세 보증금' : '월세 보증금',
         marketValue: input.deposit,
@@ -1524,6 +1527,9 @@ export default function ClientRole({
       notes: input.retirementPensionType === 'unknown'
         ? '[확인 필요] 예상 퇴직금 조회 및 퇴직연금 가입 여부 확인 요망 (챗봇 모름 선택)'
         : undefined,
+      housingType: input.housingType,
+      housingContractHolder: input.housingContractHolder,
+      depositLoan: input.depositLoan,
       consultationLogs
     };
   };
@@ -1675,7 +1681,11 @@ export default function ClientRole({
         spouseAsset: Math.round((intakeData.spouseIncome || 0) / 10000),
         spouseIncome: Math.round((intakeData.spouseIncome || 0) / 10000),
         hasRecentJobChange: intakeData.debts.some(d => d.isRecent),
-        rentalDeposit: Math.round((intakeData.monthlyRent || 0) / 10000),
+        rentalDeposit: Math.round((intakeData.assets.find(a => a.type === 'deposit')?.marketValue || 0) / 10000),
+        rentCost: Math.round((intakeData.monthlyRent || 0) / 10000),
+        depositLoan: Math.round((intakeData.depositLoan || 0) / 10000),
+        housingType: intakeData.housingType,
+        housingContractHolder: intakeData.housingContractHolder,
         debtCause: intakeData.speculativeLoss ? 'INVESTMENT' : (intakeData.gamblingLoss ? 'GAMBLING' : 'LIVING'),
         harassmentLevel,
         creditorCount: intakeData.debts.length,

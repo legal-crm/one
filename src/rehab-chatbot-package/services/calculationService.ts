@@ -55,6 +55,7 @@ export interface RehabUserInput {
     rentCost?: number;         // 월세
     deposit: number;           // 보증금/전세금
     depositLoan?: number;      // 보증금 대출금
+    housingContractHolder?: 'self' | 'spouse' | 'others'; // 주택 계약 명의자
 
     // 추가 생계비
     medicalCost?: number;      // 월 의료비
@@ -531,7 +532,19 @@ export function calculateRepayment(
 
     // Step 3: 잔여 보증금에서 대출금 차감 = 보증금 기여분
     // 대출금은 잔여 보증금에서만 차감 (면제 재산에는 영향 없음)
-    const depositContribution = Math.max(0, remainingDeposit - depositLoan);
+    let depositContribution = Math.max(0, remainingDeposit - depositLoan);
+
+    // V2.2: 계약명의자 분기 처리
+    if (input.housingContractHolder === 'spouse') {
+        const isRehabilitationCourt = courtName.includes('회생법원');
+        if (isRehabilitationCourt) {
+            depositContribution = 0;
+        } else {
+            depositContribution = Math.round(depositContribution * 0.5);
+        }
+    } else if (input.housingContractHolder === 'others') {
+        depositContribution = 0;
+    }
 
     // 청산가치 계산: 본인재산 + 보증금기여분 + 배우자재산 반영분
     let liquidationValue = input.myAssets + depositContribution;
