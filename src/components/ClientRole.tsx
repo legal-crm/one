@@ -1908,10 +1908,12 @@ export default function ClientRole({
 
         {/* TAB 1: LANDING & INTRO */}
         {activeTab === 'landing' && (
-          <div className="space-y-12 animate-fadeIn text-left pb-16">
-            
+          <div className="animate-fadeIn text-left">
+
+            {/* ── Sector 1: Hero ─────────────────────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16">
             {/* 1. Hero Section (Platform Pitch & Identity) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-6 pb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
                 <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
@@ -1969,10 +1971,12 @@ export default function ClientRole({
               </div>
             </div>
 
+            </div>
 
-
+            {/* ── Sector 2: 3단계 프로세스 ────────────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
-            <div className="space-y-6 pt-4 text-center">
+            <div className="space-y-6 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
                   이렇게 3단계면 끝이에요
@@ -2017,8 +2021,12 @@ export default function ClientRole({
               </div>
             </div>
 
+            </div>
+
+            {/* ── Sector 3: 대시보드 미리보기 ──────────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16">
             {/* 4. Section 3: 내 채무관리 대시보드 미리보기 (Dashboard Preview) */}
-            <div className="space-y-6 pt-4 text-center">
+            <div className="space-y-6 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
                   내 채무 상태를 한곳에서 관리합니다
@@ -2156,8 +2164,12 @@ export default function ClientRole({
             </div>
                 {/* 글로우 효과 */}
                 <div className="absolute top-0 right-0 w-40 h-40 bg-brand/15 rounded-full blur-3xl"></div>
+            </div>
+
+            {/* ── Sector 4: 상황별 채무관리 방향성 진단 ────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
             {/* 5. Section 4: 상황별 빠른 진단 카드 (Situation-based Cards) */}
-            <div className="space-y-4 pt-4 text-left">
+            <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
@@ -2205,6 +2217,10 @@ export default function ClientRole({
               </div>
             </div>
 
+            </div>
+
+            {/* ── Sector 5: 무료 관리 범위 ─────────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16">
             {/* 6. Section 5: 전담 변호사 무료 관리 범위 (Free Care Scope) */}
             <div className="pt-4">
               <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50/80 via-white to-violet-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-100/60 dark:border-slate-800 p-8 md:p-12">
@@ -2263,8 +2279,12 @@ export default function ClientRole({
               </div>
             </div>
 
+            </div>
+
+            {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
             {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
-            <div className="space-y-6 pt-4 text-center">
+            <div className="space-y-6 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
                   채무 해결 방법은 하나가 아닙니다
@@ -2321,8 +2341,12 @@ export default function ClientRole({
               </div>
             </div>
 
+            </div>
+
+            {/* ── Sector 7: 성공 후기 ─────────────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16">
             {/* 8. Section 7: 실제 사례/콘텐츠 (Success reviews & News) */}
-            <div className="space-y-4 pt-4 text-left">
+            <div className="space-y-4 text-left">
               <div className="flex items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
@@ -2384,8 +2408,12 @@ export default function ClientRole({
               </div>
             </div>
 
+            </div>
+
+            {/* ── Sector 8: 고민 해결 상담사례 ─────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
             {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
-            <div className="space-y-4 pt-4 text-left">
+            <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                   <HelpCircle className="w-5 h-5 text-brand" />
@@ -2493,8 +2521,12 @@ export default function ClientRole({
               </div>
             </div>
 
+            </div>
+
+            {/* ── Sector 9: 법률 정보 ─────────────────────── */}
+            <div className="-mx-4 px-4 py-12 md:py-16">
             {/* 6. Legal News & Tips Section */}
-            <div className="space-y-4 pt-4 text-left animate-fadeIn">
+            <div className="space-y-4 text-left animate-fadeIn">
               <div 
                 onClick={() => {
                   setActiveTab('news');
@@ -2569,6 +2601,8 @@ export default function ClientRole({
                   </div>
                 ))}
               </div>
+            </div>
+
             </div>
 
           </div>
