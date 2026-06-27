@@ -2018,129 +2018,134 @@ export default function ClientRole({
                 </p>
               </div>
 
-              <div className="max-w-2xl mx-auto bg-gradient-to-br from-[#0f1629] via-[#141d33] to-[#0d1117] text-white rounded-3xl shadow-2xl border border-slate-700/50 text-left relative overflow-hidden">
-                {/* 글로우 효과 */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-brand/15 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>
-                
-                {/* 상단 타이틀바 — PC 윈도우 느낌 */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/50 bg-slate-900/60 backdrop-blur-sm rounded-t-3xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.4)]"></span>
-                      <span className="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.3)]"></span>
-                      <span className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.3)]"></span>
-                    </div>
-                    <h4 className="text-xs font-bold text-slate-300 tracking-wide">내 관리방 — 변호사가 직접 관리해요</h4>
-                  </div>
+              {/* 모니터 프레임 */}
+              <div className="max-w-3xl mx-auto">
+                {/* 모니터 상단 베젤 */}
+                <div className="bg-[#1a1a2e] rounded-t-2xl px-4 py-2 flex items-center justify-between border-x border-t border-slate-700/60">
                   <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-semibold">실시간</span>
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
                   </div>
+                  <div className="flex-1 max-w-xs mx-auto bg-slate-800/80 rounded-lg px-3 py-1 flex items-center justify-center gap-1.5">
+                    <span className="w-3 h-3 text-emerald-400">🔒</span>
+                    <span className="text-[9px] text-slate-400 font-medium truncate">legal-rehab.co.kr/my-room</span>
+                  </div>
+                  <div className="w-16"></div>
                 </div>
 
-                {/* 메인 컨텐츠 */}
-                <div className="p-5 space-y-4">
-                  {/* 상태 카드 3개 — 그리드 */}
-                  <div className="grid grid-cols-3 gap-3">
-                    {/* 담당 변호사 */}
-                    <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-3.5 border border-slate-700/40 space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-lg bg-brand/20 flex items-center justify-center">
-                          <span className="text-xs">👤</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-bold">담당 변호사</span>
-                      </div>
-                      <p className="text-xs font-bold text-slate-200">아직 배정 전</p>
-                      <span className="inline-block text-[9px] text-brand font-bold bg-brand/10 px-2 py-0.5 rounded-full border border-brand/20 cursor-pointer hover:bg-brand/20 transition-colors">무료 배정받기 →</span>
-                    </div>
-
-                    {/* 위험도 */}
-                    <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-3.5 border border-rose-500/20 space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-lg bg-rose-500/20 flex items-center justify-center">
-                          <span className="text-xs">⚠️</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-bold">지금 상황</span>
-                      </div>
-                      <p className="text-xs font-bold text-rose-400">위험</p>
-                      <div className="w-full bg-slate-700/50 rounded-full h-1.5">
-                        <div className="bg-gradient-to-r from-amber-500 to-rose-500 h-1.5 rounded-full" style={{width: '78%'}}></div>
-                      </div>
-                    </div>
-
-                    {/* 추천 전략 */}
-                    <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-3.5 border border-emerald-500/20 space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                          <span className="text-xs">💡</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-bold">변호사 추천</span>
-                      </div>
-                      <p className="text-xs font-bold text-emerald-400 leading-snug">독촉 차단 + 회생 준비</p>
-                    </div>
-                  </div>
-
-                  {/* 알림 배너 */}
-                  <div className="flex items-center gap-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5">
-                    <span className="text-sm">🔔</span>
-                    <p className="text-[11px] text-rose-300 font-medium">빚 밀린 지 3일째 — 통장이 묶일 수 있어요. 빠른 대응이 필요해요!</p>
-                  </div>
-
-                  {/* 할 일 체크리스트 */}
-                  <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400 font-bold flex items-center gap-1.5">📋 변호사가 알려준 다음 할 일</span>
-                      <span className="text-[10px] text-slate-500 font-semibold bg-slate-700/50 px-2 py-0.5 rounded-full">0/3 완료</span>
-                    </div>
+                {/* 모니터 화면 */}
+                <div className="bg-[#f8fafc] dark:bg-[#0f172a] border-x border-b border-slate-700/60 rounded-b-lg overflow-hidden">
+                  <div className="grid grid-cols-12 min-h-[340px]">
                     
-                    {/* 프로그레스 바 */}
-                    <div className="w-full bg-slate-700/50 rounded-full h-1">
-                      <div className="bg-gradient-to-r from-brand to-indigo-500 h-1 rounded-full transition-all" style={{width: '0%'}}></div>
+                    {/* 좌측 사이드바 - 채무관리방 목록 */}
+                    <div className="col-span-4 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+                      <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-[9px] font-black text-brand uppercase tracking-widest">나의 채무관리방</span>
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="px-2 py-1.5">
+                          <div className="bg-brand/5 border border-brand/20 rounded-xl px-2.5 py-2 mb-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-slate-800 dark:text-slate-200 truncate">카드빚 + 대출 과다</span>
+                              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-[8px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full font-bold">상담중</span>
+                              <span className="text-[8px] text-slate-400">김우진 변호사</span>
+                            </div>
+                          </div>
+                          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-2.5 py-2 opacity-60">
+                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 truncate block">코인 투자 실패 상담</span>
+                            <span className="text-[8px] text-slate-400 mt-0.5 block">완료됨 · 이소민 변호사</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-2.5 py-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="bg-brand/5 rounded-xl px-2 py-1.5 text-center">
+                          <span className="text-[8px] font-bold text-brand">+ 새 상담 신청</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 bg-rose-500/5 border border-rose-500/15 rounded-xl px-3 py-2.5 group">
-                        <div className="w-5 h-5 rounded-md border-2 border-rose-500/40 flex items-center justify-center shrink-0">
-                          <span className="text-[9px] text-rose-400 font-black">!</span>
+                    {/* 우측 채팅 영역 */}
+                    <div className="col-span-8 flex flex-col bg-white dark:bg-slate-900">
+                      <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[8px] font-bold text-brand uppercase tracking-widest block">ACTIVE</span>
+                          <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">카드빚 + 대출 과다 채무조정</span>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-[11px] text-slate-200 font-medium">최근 독촉 전화나 문자가 왔는지 확인해주세요</p>
-                          <span className="text-[9px] text-rose-400 font-semibold">긴급</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[8px] bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded-lg font-bold border border-indigo-100 dark:border-indigo-900">📞 전화상담</span>
+                          <span className="text-[8px] bg-brand text-white px-2 py-1 rounded-lg font-bold">📄 진단서 수정</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 bg-slate-800/30 rounded-xl px-3 py-2.5">
-                        <div className="w-5 h-5 rounded-md border-2 border-slate-600 shrink-0"></div>
-                        <p className="text-[11px] text-slate-300 font-medium">월급이나 수입 증명 서류 준비해주세요 (최근 1년치)</p>
+                      <div className="flex-1 px-3 py-3 space-y-2.5 overflow-hidden bg-slate-50/30 dark:bg-slate-950/10">
+                        <div className="flex flex-col items-start space-y-0.5">
+                          <div className="flex items-center gap-1.5 text-[8px] text-slate-400 font-bold px-0.5">
+                            <span className="text-slate-700 dark:text-slate-300">김우진 변호사</span>
+                            <span>오전 10:14</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
+                            <p className="text-[9px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">안녕하세요, 김우진 변호사입니다. 가계 소득 및 채무 위기 명세를 긴급 검토하였습니다.</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-start space-y-0.5">
+                          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
+                            <p className="text-[9px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">월 평균 가용 변제금이 약 40만 원 수준으로 개인회생 신청이 가능합니다. 통장 거래 내역 준비가 가능하신가요?</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end space-y-0.5">
+                          <div className="flex items-center gap-1.5 text-[8px] text-slate-400 font-bold px-0.5">
+                            <span className="text-slate-700 dark:text-slate-300">나 (의뢰인)</span>
+                            <span>오후 01:32</span>
+                          </div>
+                          <div className="bg-brand text-white rounded-2xl rounded-tr-none px-3 py-2 max-w-[70%] shadow-sm">
+                            <p className="text-[9px] leading-relaxed font-medium">네 변호사님, 서류 준비하겠습니다!</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 bg-slate-800/30 rounded-xl px-3 py-2.5">
-                        <div className="w-5 h-5 rounded-md border-2 border-slate-600 shrink-0"></div>
-                        <p className="text-[11px] text-slate-300 font-medium">밀린 세금 있는지, 계좌가 묶인 적 있는지 확인해주세요</p>
+                      <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                        <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+                          <span className="text-[9px] text-slate-400">담당 변호사에게 메시지 보내기...</span>
+                        </div>
+                        <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center shrink-0">
+                          <span className="text-white text-[10px]">▶</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 하단 CTA */}
-                <div className="px-5 pb-5">
-                  <button 
-                    onClick={() => {
-                      setRequestType('open');
-                      setRequestStep(1);
-                      setActiveTab('request');
-                    }}
-                    className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-center font-bold py-3.5 rounded-2xl text-xs transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-brand/20 hover:shadow-brand/30 flex items-center justify-center gap-2"
-                  >
-                    <span>나도 이렇게 관리받고 싶어요</span>
-                    <span className="text-white/70">→</span>
-                  </button>
+                {/* 모니터 스탠드 */}
+                <div className="flex justify-center">
+                  <div className="w-20 h-5 bg-gradient-to-b from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 rounded-b-lg"></div>
+                </div>
+                <div className="flex justify-center -mt-0.5">
+                  <div className="w-36 h-2 bg-gradient-to-b from-slate-400 to-slate-300 dark:from-slate-800 dark:to-slate-700 rounded-b-xl"></div>
                 </div>
               </div>
-            </div>
 
+              {/* 하단 CTA */}
+              <div className="max-w-2xl mx-auto pt-4">
+                <button 
+                  onClick={() => {
+                    setRequestType('open');
+                    setRequestStep(1);
+                    setActiveTab('request');
+                  }}
+                  className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-center font-bold py-3.5 rounded-2xl text-xs transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-brand/20 hover:shadow-brand/30 flex items-center justify-center gap-2"
+                >
+                  <span>나도 이렇게 관리받고 싶어요</span>
+                  <span className="text-white/70">→</span>
+                </button>
+              </div>
+            </div>
+                {/* 글로우 효과 */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-brand/15 rounded-full blur-3xl"></div>
             {/* 5. Section 4: 상황별 빠른 진단 카드 (Situation-based Cards) */}
             <div className="space-y-4 pt-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
