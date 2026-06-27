@@ -517,8 +517,8 @@ export default function MyPageView({
 
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">나를 제외하고 실제로 부양하는 가족 수 (명)</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[0, 1, 2, 3].map(num => (
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                  {[0, 0.5, 1, 1.5, 2, 2.5, 3].map(num => (
                     <button
                       key={num}
                       type="button"
@@ -529,13 +529,13 @@ export default function MyPageView({
                         : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850'
                       }`}
                     >
-                      {num}명 ({num + 1}인 생계)
+                      {num}명 ({num + 1}인)
                     </button>
                   ))}
                 </div>
-                {profile.dependents === 2 && (
+                {profile.dependents !== undefined && activeResult && (
                   <span className="text-[10px] text-brand block mt-1">
-                    💡 부양가족 2명 ➡️ 본인 포함 3인 가구로 인정되어 2026 기준 최저 생계비 {formatCurrency(301.2)}이 자동 공제됩니다.
+                    💡 부양가족 {profile.dependents}명 ➡️ 본인 포함 {profile.dependents + 1}인 가구로 인정되어 2026 기준 최저 생계비 {formatCurrency(activeResult.baseLivingCost)}이 자동 공제됩니다.
                   </span>
                 )}
               </div>

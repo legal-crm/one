@@ -16,11 +16,31 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     allowOtherLivingCost: false
   };
 
-  // 1. Calculate Total Dependents
-  const minorChildren = data.minorChildren || 0;
+  // 1. Calculate Total Dependents (Consider joint custody/support where child counts as 0.5)
+  let recognizedMinorChildren = data.minorChildren || 0;
+  if (data.maritalStatus === 'married' && data.spouseIncome && data.spouseIncome > 0) {
+    const myIncome = data.incomeSources.reduce((sum, s) => sum + s.amount, 0);
+    const spouseIncome = data.spouseIncome;
+    const spouseIncomeRatio = myIncome > 0 ? spouseIncome / myIncome : 0;
+
+    const underLimit = settings.policy.spouseIncomeRatioUnder ?? 0.7;
+    const underRate = settings.policy.spouseIncomeRatioUnderRate ?? 1.0;
+    const betweenLimit = settings.policy.spouseIncomeRatioBetween ?? 1.3;
+    const betweenRate = settings.policy.spouseIncomeRatioBetweenRate ?? 0.5;
+    const overRate = settings.policy.spouseIncomeRatioOverRate ?? 0.0;
+
+    if (spouseIncomeRatio < underLimit) {
+      recognizedMinorChildren = (data.minorChildren || 0) * underRate;
+    } else if (spouseIncomeRatio <= betweenLimit) {
+      recognizedMinorChildren = (data.minorChildren || 0) * betweenRate;
+    } else {
+      recognizedMinorChildren = (data.minorChildren || 0) * overRate;
+    }
+  }
+
   const adultChildrenCount = data.adultChildrenCount || 0;
   const otherDependents = data.otherDependents || 0;
-  const totalDependents = minorChildren + adultChildrenCount + otherDependents;
+  const totalDependents = recognizedMinorChildren + adultChildrenCount + otherDependents;
 
   // 2. Calculate Total Net Income (Monthly)
   const totalMonthlyIncome = data.incomeSources.reduce((sum, source) => sum + source.amount, 0);
@@ -76,11 +96,26 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   const medianIncomeValues = yearPolicy.medianIncome.values;
   let baseMedianIncome = 0;
 
-  if (householdSize > 6) {
-    baseMedianIncome = medianIncomeValues[6] + (householdSize - 6) * yearPolicy.medianIncome.incrementOver7;
+  const lowerSize = Math.floor(householdSize);
+  const upperSize = Math.ceil(householdSize);
+  const fraction = householdSize - lowerSize;
+
+  let lowerMedian = 0;
+  let upperMedian = 0;
+
+  if (lowerSize > 6) {
+    lowerMedian = medianIncomeValues[6] + (lowerSize - 6) * yearPolicy.medianIncome.incrementOver7;
   } else {
-    baseMedianIncome = medianIncomeValues[householdSize] || medianIncomeValues[1];
+    lowerMedian = medianIncomeValues[lowerSize] || medianIncomeValues[1];
   }
+
+  if (upperSize > 6) {
+    upperMedian = medianIncomeValues[6] + (upperSize - 6) * yearPolicy.medianIncome.incrementOver7;
+  } else {
+    upperMedian = medianIncomeValues[upperSize] || medianIncomeValues[1];
+  }
+
+  baseMedianIncome = lowerMedian + (upperMedian - lowerMedian) * fraction;
 
   // Basic Living Cost is 60% of Median Income
   const basicLivingCost = Math.round(baseMedianIncome * 0.6);

@@ -3057,8 +3057,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     dependentReason = `배우자 소득이 본인의 ${Math.round(betweenLimit * 100)}% 초과로, 미성년 자녀는 ${Math.round(overRate * 100)}% 부양가족으로 인정됩니다.`;
                 }
 
-                // 최종 가구원 수 = 본인(1) + 인정된 자녀 부양가족 (소수점 올림)
-                const updatedFamilySize = 1 + Math.ceil(recognizedDependents);
+                // 최종 가구원 수 = 본인(1) + 인정된 자녀 부양가족 (소수점 유지)
+                const updatedFamilySize = 1 + recognizedDependents;
 
                 setUserInput(prev => ({
                     ...prev,
