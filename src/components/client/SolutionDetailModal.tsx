@@ -610,14 +610,7 @@ export default function SolutionDetailModal({
             </div>
           </section>
 
-          {/* Real-time matching indicator */}
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl">
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              실시간 도산 전문 변호사 매칭 대기 중
-            </span>
-            <span className={`${theme.iconText}`}>안심 100% 비공개 보장</span>
-          </div>
+
         </div>
 
         {/* ── Footer CTA ────────────────────────────────────────────── */}
