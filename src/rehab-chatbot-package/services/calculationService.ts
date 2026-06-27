@@ -233,9 +233,20 @@ export function calculateRepayment(
     const aiAdvice: string[] = [];
     const riskWarnings: string[] = [];
 
-    // 직장 관할 법원이 주거지 관할보다 유리하여 선택된 경우 어드바이스 추가
-    if (input.workLocation && workplaceCourt !== 'Default' && courtName === workplaceCourt && residenceCourt !== workplaceCourt) {
-        aiAdvice.push(`💡 주거지 관할(${residenceCourt})보다 직장 소재지 관할(${workplaceCourt})의 회생 심사 기준이 의뢰인님께 훨씬 유리하여, 직장 관할 법원 기준으로 정밀 분석을 진행했습니다. 실제 신청 시 직장 관할 법원으로 접수할 것을 권장합니다.`);
+    // 거주지와 직장 관할 법원이 다를 때 관할 선택 근거 제공
+    if (input.workLocation && workplaceCourt !== 'Default' && residenceCourt !== workplaceCourt) {
+        const isRehabRes = residenceCourt.includes('회생법원');
+        const isRehabWork = workplaceCourt.includes('회생법원');
+
+        if (isRehabRes && !isRehabWork) {
+            aiAdvice.push(`⚖️ 거주지 관할 법원인 **${residenceCourt}**은(는) 전문 회생법원으로서 일반 지방법원(${workplaceCourt})에 비해 실무 준칙이 유연하고(배우자 재산 제외 등) 진행 속도가 신속하므로, 거주지 관할 법원 기준으로 정밀 분석을 진행했습니다.`);
+        } else if (!isRehabRes && isRehabWork) {
+            aiAdvice.push(`⚖️ 직장 관할 법원인 **${workplaceCourt}**은(는) 전문 회생법원으로서 일반 지방법원(${residenceCourt})에 비해 실무 준칙이 유연하고(배우자 재산 제외 등) 진행 속도가 신속하므로, 직장 관할 법원 기준으로 정밀 분석을 진행했습니다. 실제 신청 시에도 직장 소재지 법원으로 접수하시는 것이 훨씬 유리합니다.`);
+        } else if (isRehabRes && isRehabWork) {
+            aiAdvice.push(`⚖️ 거주지(${residenceCourt})와 직장(${workplaceCourt}) 관할 법원이 모두 전문 회생법원인 경우, 실무상 신청 및 보정 권고 대응의 편의성을 위해 거주지 관할 법원을 기준으로 정밀 분석을 진행했습니다.`);
+        } else {
+            aiAdvice.push(`⚖️ 거주지(${residenceCourt})와 직장(${workplaceCourt}) 관할 법원이 모두 일반 지방법원인 경우, 실무 준칙상 주소지 우선 원칙에 따라 거주지 관할 법원을 기준으로 정밀 분석을 진행했습니다.`);
+        }
     }
 
     // 3. 월 가용소득 (변제금) 계산 및 생계비 자동 조정

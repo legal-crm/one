@@ -550,28 +550,16 @@ export function chooseFavorableCourt(courtA: string, courtB: string, config: Reh
     if (courtA === 'Default') return courtB;
     if (courtB === 'Default') return courtA;
 
-    const traitA = config.courtTraits[courtA];
-    const traitB = config.courtTraits[courtB];
+    const isRehabA = courtA.includes('회생법원');
+    const isRehabB = courtB.includes('회생법원');
 
-    if (!traitA) return courtB;
-    if (!traitB) return courtA;
-
-    // 1순위: 투자 손실금 청산가치 제외 혜택 여부 (investLossInclude: false가 유리)
-    if (traitA.investLossInclude !== traitB.investLossInclude) {
-        return !traitA.investLossInclude ? courtA : courtB;
+    if (isRehabA && !isRehabB) {
+        return courtA;
     }
-
-    // 2순위: 배우자 재산 반영 비율이 낮은 곳 (spousePropertyRate가 낮을수록 유리)
-    if (traitA.spousePropertyRate !== traitB.spousePropertyRate) {
-        return traitA.spousePropertyRate < traitB.spousePropertyRate ? courtA : courtB;
+    if (!isRehabA && isRehabB) {
+        return courtB;
     }
-
-    // 3순위: 24개월 청년 단축제도 지원 여부 (allow24Months: true가 유리)
-    if (traitA.allow24Months !== traitB.allow24Months) {
-        return traitA.allow24Months ? courtA : courtB;
-    }
-
-    // 기본값: 주거지 관할 법원 우선
+    // 둘 다 회생법원이거나 둘 다 아닌 경우 거주지 관할(courtA) 우선
     return courtA;
 }
 
