@@ -2207,23 +2207,22 @@ export default function ClientRole({
 
             {/* 6. Section 5: 전담 변호사 무료 관리 범위 (Free Care Scope) */}
             <div className="pt-4">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-8 md:p-12 shadow-2xl">
-                {/* Background decorations */}
-                <div className="absolute top-0 right-0 w-72 h-72 bg-brand/10 rounded-full blur-3xl -mr-20 -mt-20" />
-                <div className="absolute bottom-0 left-0 w-56 h-56 bg-emerald-500/10 rounded-full blur-3xl -ml-16 -mb-16" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50/80 via-white to-violet-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-100/60 dark:border-slate-800 p-8 md:p-12">
+                {/* Subtle background decorations */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-brand/[0.04] rounded-full blur-3xl -mr-16 -mt-16" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-violet-400/[0.04] rounded-full blur-3xl -ml-12 -mb-12" />
 
                 <div className="relative z-10 space-y-8">
                   {/* Header */}
                   <div className="text-center space-y-3">
-                    <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <div className="inline-flex items-center gap-2 bg-brand/10 border border-brand/15 text-brand dark:text-brand-light text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                       100% 무료 · 부담 제로
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white leading-tight">
                       돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
                     </h3>
-                    <p className="text-sm text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
                       바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
                     </p>
                   </div>
@@ -2239,15 +2238,15 @@ export default function ClientRole({
                     ].map((item, i) => (
                       <div
                         key={i}
-                        className={`group relative bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5 hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-300 ${i >= 3 ? 'lg:col-span-1' : ''}`}
+                        className="group bg-white/80 dark:bg-white/[0.04] backdrop-blur-sm border border-slate-200/60 dark:border-white/[0.08] rounded-2xl p-5 hover:shadow-lg hover:border-brand/20 dark:hover:border-brand/30 transition-all duration-300"
                       >
                         <div className="flex items-start gap-3.5">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-brand/20 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand/10 to-violet-500/10 dark:from-brand/20 dark:to-violet-500/20 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform duration-300">
                             {item.icon}
                           </div>
                           <div className="space-y-1.5 min-w-0">
-                            <h5 className="font-bold text-sm text-white/90">{item.title}</h5>
-                            <p className="text-xs text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                            <h5 className="font-bold text-sm text-slate-800 dark:text-white/90">{item.title}</h5>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -2256,7 +2255,7 @@ export default function ClientRole({
 
                   {/* Bottom hint */}
                   <div className="text-center pt-2">
-                    <p className="text-[11px] text-slate-500 font-semibold">
+                    <p className="text-[11px] text-slate-400 font-semibold">
                       ✦ 상담 신청 전, AI 자가진단으로 나의 상황을 먼저 파악해 보세요
                     </p>
                   </div>
