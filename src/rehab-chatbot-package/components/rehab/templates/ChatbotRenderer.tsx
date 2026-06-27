@@ -580,19 +580,41 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                                                     whileTap={{ scale: 0.97 }}
                                                     onClick={() => onOptionSelect(opt, msg.id)}
                                                     className="px-4 py-2.5 text-sm font-semibold transition-all"
-                                                    style={{
-                                                        backgroundColor: opt.selected
+                                                    style={(() => {
+                                                        const isCompleteBtn = opt.label.includes('선택완료');
+                                                        const isNoneBtn = opt.label.includes('없어요');
+                                                        
+                                                        let bgColor = opt.selected
                                                             ? colors.primary
-                                                            : (isDark ? colors.accent : '#ffffff'),
-                                                        color: opt.selected
+                                                            : (isDark ? colors.accent : '#ffffff');
+                                                        let textColor = opt.selected
                                                             ? '#ffffff'
-                                                            : (isDark ? colors.headerText : colors.primary),
-                                                        borderRadius: `${(layout?.bubbleRadius || 14)}px`,
-                                                        border: `1.5px solid ${colors.primary}`,
-                                                        boxShadow: opt.selected
+                                                            : (isDark ? colors.headerText : colors.primary);
+                                                        let borderStyle = `1.5px solid ${colors.primary}`;
+                                                        let shadowStyle = opt.selected
                                                             ? `0 0 12px ${colors.primary}40`
-                                                            : (isDark ? 'none' : '0 2px 8px rgba(114, 100, 255, 0.1)')
-                                                    }}
+                                                            : (isDark ? 'none' : '0 2px 8px rgba(114, 100, 255, 0.1)');
+
+                                                        if (isCompleteBtn) {
+                                                            bgColor = '#10b981'; // Emerald Green
+                                                            textColor = '#ffffff';
+                                                            borderStyle = '1.5px solid #10b981';
+                                                            shadowStyle = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                                                        } else if (isNoneBtn) {
+                                                            bgColor = isDark ? '#451a1a' : '#fef2f2'; // Soft Red / Rose
+                                                            textColor = isDark ? '#fca5a5' : '#ef4444'; // Red
+                                                            borderStyle = isDark ? '1.5px solid #ef4444' : '1.5px solid #fee2e2';
+                                                            shadowStyle = 'none';
+                                                        }
+
+                                                        return {
+                                                            backgroundColor: bgColor,
+                                                            color: textColor,
+                                                            borderRadius: `${(layout?.bubbleRadius || 14)}px`,
+                                                            border: borderStyle,
+                                                            boxShadow: shadowStyle
+                                                        };
+                                                    })()}
                                                 >
                                                     {opt.label}
                                                 </motion.button>
