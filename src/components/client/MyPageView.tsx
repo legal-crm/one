@@ -254,10 +254,10 @@ export default function MyPageView({
       )}
 
       {/* LIVE DIAGNOSTICS DASHBOARD */}
-      <div className={isCompact ? "flex flex-col gap-6 items-stretch" : "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"}>
+      <div className={isCompact ? "grid grid-cols-1 md:grid-cols-12 gap-5 items-start" : "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"}>
         
         {/* Left Column: Recalculated live metrics & charts */}
-        <div className={isCompact ? "w-full flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5" : "lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5"}>
+        <div className={isCompact ? "md:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-5 border border-slate-800 space-y-4 shadow-sm" : "lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5"}>
           <div className="space-y-1">
             <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider block">
               ⚙️ 나의 예상 감면액 실시간 분석
@@ -350,7 +350,7 @@ export default function MyPageView({
         </div>
 
         {/* Right Column: Live Diagnostic Editor Input Form (Web UI Remodeled) */}
-        <div className={isCompact ? "w-full bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-6 text-left" : "lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left"}>
+        <div className={isCompact ? "md:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-5 text-left" : "lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left"}>
           <div className="border-b border-slate-150 dark:border-slate-800 pb-3 flex justify-between items-center">
             <div>
               <h3 className="font-black text-base text-slate-800 dark:text-white flex items-center gap-1.5">
@@ -372,7 +372,7 @@ export default function MyPageView({
             <div className="space-y-3.5">
               <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">1. 월급 및 가구 구성 설정</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={isCompact ? "grid grid-cols-1 gap-3.5" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">세후 실수령 소득 (월급)</label>
                   <input 
@@ -427,7 +427,7 @@ export default function MyPageView({
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
               <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">2. 주거 유형 및 재산 가치 설정</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={isCompact ? "grid grid-cols-1 gap-3.5" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">거주 주택 유형</label>
                   <select
@@ -459,7 +459,7 @@ export default function MyPageView({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={isCompact ? "grid grid-cols-1 gap-3.5" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">배우자 소유 재산액 (만 원)</label>
                   <input 
@@ -516,7 +516,7 @@ export default function MyPageView({
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
               <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">3. 채무 구성 설정</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={isCompact ? "grid grid-cols-1 gap-3.5" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">은행/1금융권 대출 (만 원)</label>
                   <input 
@@ -538,7 +538,7 @@ export default function MyPageView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={isCompact ? "grid grid-cols-1 gap-3.5" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">캐피탈/대부/기타 채무 (만 원)</label>
                   <input 
@@ -566,7 +566,7 @@ export default function MyPageView({
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
               <h4 className="text-xs font-bold text-slate-400 border-l-2 border-brand pl-2">4. 1년 이내 투자 및 사행성 채무 설정</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={isCompact ? "grid grid-cols-1 gap-3.5" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">주식/코인 투자 손실액 (만 원)</label>
                   <input 
