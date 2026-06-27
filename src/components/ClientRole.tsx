@@ -2163,7 +2163,6 @@ export default function ClientRole({
                   <HeartHandshake className="w-5 h-5 text-brand" />
                   <span>상황별 채무관리 방향성 진단</span>
                 </h3>
-                <span className="text-xs text-slate-400">처한 채무 형태에 따라 전담 변호사가 즉각 진단 및 구제 관리를 시작합니다.</span>
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
