@@ -105,7 +105,6 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
 
     // 특수 레이아웃 상태
     const [activeTab, setActiveTab] = useState<'faq' | 'chat' | 'history'>('chat');
-    const [showToolbarPanel, setShowToolbarPanel] = useState(false);
     const [showNewMessage, setShowNewMessage] = useState(false);
 
     // 배경색
@@ -807,49 +806,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                     {/* 숫자 입력 도우미 버튼 */}
                     {renderMoneyHelper()}
 
-                    {/* 툴바 행 */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
-                        <button
-                            onClick={() => setShowToolbarPanel(!showToolbarPanel)}
-                            className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                            <Paperclip className="w-5 h-5" style={{ color: colors.accent }} />
-                        </button>
-                        <button className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
-                            <Image className="w-5 h-5" style={{ color: colors.accent }} />
-                        </button>
-                        <button className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700">
-                            <Smile className="w-5 h-5" style={{ color: colors.accent }} />
-                        </button>
-                    </div>
 
-                    {/* 확장 패널 */}
-                    <AnimatePresence>
-                        {showToolbarPanel && (
-                            <motion.div
-                                initial={{ height: 0 }}
-                                animate={{ height: 160 }}
-                                exit={{ height: 0 }}
-                                className="overflow-hidden"
-                                style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc' }}
-                            >
-                                <div className="p-4 grid grid-cols-3 gap-3">
-                                    {['📄 파일', '📷 사진', '📍 위치'].map((item, i) => (
-                                        <button
-                                            key={i}
-                                            className="flex flex-col items-center gap-1 p-3 rounded-xl transition-colors"
-                                            style={{ backgroundColor: isDark ? '#334155' : '#e2e8f0' }}
-                                        >
-                                            <span className="text-2xl">{item.split(' ')[0]}</span>
-                                            <span className="text-xs" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
-                                                {item.split(' ')[1]}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
 
                     {/* 입력 영역 */}
                     <div className="flex items-center gap-2 p-3">
