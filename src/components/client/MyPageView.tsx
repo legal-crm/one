@@ -253,29 +253,31 @@ export default function MyPageView({
       </div>
       )}
 
-      {/* LIVE DIAGNOSTICS DASHBOARD */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* LIVE DIAGNOSTICS DASHBOARD - 상하 스택 레이아웃 */}
+      <div className="flex flex-col gap-5">
         
-        {/* Left Column: Recalculated live metrics & charts */}
-        <div className="lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 space-y-5">
-          <div className="space-y-1">
-            <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider block">
-              ⚙️ 나의 예상 감면액 실시간 분석
-            </span>
-            <h3 className="font-extrabold text-lg">나의 실시간 채무조정 상태</h3>
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              {isCompact ? "하단 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다." : "우측 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다."}
+        {/* TOP: 실시간 채무조정 상태 (가로 배치) */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 md:p-6 shadow-xl border border-slate-800">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+            <div className="space-y-0.5">
+              <span className="text-[10px] text-brand-light font-bold uppercase tracking-wider block">
+                ⚙️ 나의 예상 감면액 실시간 분석
+              </span>
+              <h3 className="font-extrabold text-base md:text-lg">나의 실시간 채무조정 상태</h3>
+            </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed max-w-md">
+              하단 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다.
             </p>
           </div>
 
-          {/* 주요 3대 지표 카드 */}
-          <div className="space-y-3">
+          {/* 주요 3대 지표 카드 - 가로 배치 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
               <div className="text-left space-y-0.5">
                 <span className="text-[9px] text-slate-450 font-bold block">나의 총 채무액</span>
-                <span className="text-xs text-slate-350 font-medium">원금 합계</span>
+                <span className="text-[10px] text-slate-350 font-medium">원금 합계</span>
               </div>
-              <span className="font-black text-amber-400 text-base">
+              <span className="font-black text-amber-400 text-base md:text-lg">
                 {formatCurrency(totalDebtValue)}
               </span>
             </div>
@@ -283,9 +285,9 @@ export default function MyPageView({
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
               <div className="text-left space-y-0.5">
                 <span className="text-[9px] text-slate-450 font-bold block">매달 법원에 갚는 돈 (월 변제금)</span>
-                <span className="text-xs text-slate-350 font-medium">생계비 제외 후 월 납입금</span>
+                <span className="text-[10px] text-slate-350 font-medium">생계비 제외 후 월 납입금</span>
               </div>
-              <span className="font-black text-brand-light text-base">
+              <span className="font-black text-brand-light text-base md:text-lg">
                 {formatCurrency(activeResult.monthlyPayment)} / 월
               </span>
             </div>
@@ -293,10 +295,10 @@ export default function MyPageView({
             <div className="bg-brand/10 border border-brand/20 rounded-2xl p-4 flex items-center justify-between">
               <div className="text-left space-y-0.5">
                 <span className="text-[9px] text-brand-light font-bold block">최종 감면받을 금액 (탕감 혜택)</span>
-                <span className="text-xs text-slate-300 font-medium">법적으로 면제되는 빚 액수</span>
+                <span className="text-[10px] text-slate-300 font-medium">법적으로 면제되는 빚 액수</span>
               </div>
               <div className="text-right">
-                <span className="font-black text-emerald-400 text-base block">
+                <span className="font-black text-emerald-400 text-base md:text-lg block">
                   ★ {formatCurrency(activeResult.totalDebtReduction)}
                 </span>
                 <span className="text-[10px] text-emerald-350/80 font-bold">
@@ -306,8 +308,8 @@ export default function MyPageView({
             </div>
           </div>
 
-          {/* 실시간 CSS 프로그레스 그래프 2선 */}
-          <div className="space-y-4 pt-3 border-t border-white/5">
+          {/* 실시간 프로그레스 그래프 - 가로 2열 배치 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/5">
             {/* 1. 청산가치 충족성 */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-[10px] text-slate-350">
@@ -316,7 +318,7 @@ export default function MyPageView({
               </div>
               <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-emerald-400 to-indigo-500 h-full rounded-full" 
+                  className="bg-gradient-to-r from-emerald-400 to-indigo-500 h-full rounded-full transition-all duration-500" 
                   style={{ width: `${Math.min(100, Math.round((activeResult.totalRepayment / Math.max(1, activeResult.liquidationValue)) * 100))}%` }}
                 />
               </div>
@@ -333,7 +335,7 @@ export default function MyPageView({
               </div>
               <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-brand-light to-emerald-400 h-full rounded-full" 
+                  className="bg-gradient-to-r from-brand-light to-emerald-400 h-full rounded-full transition-all duration-500" 
                   style={{ width: `${Math.min(100, Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100))}%` }}
                 />
               </div>
@@ -343,14 +345,14 @@ export default function MyPageView({
             </div>
           </div>
 
-          <div className="text-[10px] text-slate-400 leading-normal text-left pt-3 border-t border-white/5 flex items-start gap-1">
+          <div className="text-[10px] text-slate-400 leading-normal text-left pt-3 border-t border-white/5 mt-3 flex items-start gap-1">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
             <span>이 시뮬레이션 결과는 법원 실무 기준을 근거로 계산된 가상 수치이며, 실제 법원의 인가 결정 및 세부 변제율 조정을 위해 변호사 서류 소명이 수반되어야 합니다.</span>
           </div>
         </div>
 
-        {/* Right Column: Live Diagnostic Editor Input Form (Web UI Remodeled) */}
-        <div className={isCompact ? "lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-6 text-left" : "lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left"}>
+        {/* BOTTOM: 상세 진단 정보 조회 및 수정 (전체 너비) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left">
           <div className="border-b border-slate-150 dark:border-slate-800 pb-3 flex justify-between items-center">
             <div>
               <h3 className="font-black text-base text-slate-800 dark:text-white flex items-center gap-1.5">
