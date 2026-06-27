@@ -2206,44 +2206,60 @@ export default function ClientRole({
             </div>
 
             {/* 6. Section 5: 전담 변호사 무료 관리 범위 (Free Care Scope) */}
-            <div className="space-y-6 pt-4 text-center">
-              <div className="space-y-1">
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
-                  돈 한 푼 안 들어요, 먼저 상황부터 살펴볼게요
-                </h3>
-                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                  바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
-                </p>
-              </div>
+            <div className="pt-4">
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-8 md:p-12 shadow-2xl">
+                {/* Background decorations */}
+                <div className="absolute top-0 right-0 w-72 h-72 bg-brand/10 rounded-full blur-3xl -mr-20 -mt-20" />
+                <div className="absolute bottom-0 left-0 w-56 h-56 bg-emerald-500/10 rounded-full blur-3xl -ml-16 -mb-16" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
 
-              <div className="max-w-xl mx-auto text-left">
-                {/* Free Column */}
-                <div className="bg-emerald-500/[0.03] dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-900/30 rounded-3xl p-6 md:p-8 space-y-5 shadow-sm">
-                  <h4 className="font-bold text-sm md:text-base text-emerald-700 dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-2 border-b border-emerald-500/10 pb-3">
-                    <span className="text-base md:text-lg">🎁</span> 이건 전부 무료예요 — 부담 갖지 마세요
-                  </h4>
-                  <ul className="space-y-4 text-xs md:text-sm text-slate-600 dark:text-slate-300 font-medium">
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
-                      <span className="leading-relaxed">지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
-                      <span className="leading-relaxed">나한테 맞는 해결 방법이 뭔지 첫 번째 확인</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
-                      <span className="leading-relaxed">독촉이 얼마나 심해질지, 통장이나 월급이 묶일 수 있는지 미리 확인</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
-                      <span className="leading-relaxed">생활비를 얼마까지 지킬 수 있는지, 어떤 서류가 필요한지 안내</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-650 dark:text-emerald-400 text-[10px] font-bold">✔</span>
-                      <span className="leading-relaxed">최근 빌린 돈을 어디에 썼는지 보고, 신청이 잘 통과될지 미리 점검</span>
-                    </li>
-                  </ul>
+                <div className="relative z-10 space-y-8">
+                  {/* Header */}
+                  <div className="text-center space-y-3">
+                    <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      100% 무료 · 부담 제로
+                    </div>
+                    <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">
+                      돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
+                    </h3>
+                    <p className="text-sm text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
+                      바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
+                    </p>
+                  </div>
+
+                  {/* Feature Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                    {[
+                      { icon: '🔍', title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크' },
+                      { icon: '🧭', title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인' },
+                      { icon: '🛡️', title: '압류 위험 사전 점검', desc: '독촉이 얼마나 심해질지, 통장이나 월급이 묶일 수 있는지 미리 확인' },
+                      { icon: '💰', title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지, 어떤 서류가 필요한지 안내' },
+                      { icon: '📋', title: '신청 적격 사전 심사', desc: '최근 빌린 돈을 어디에 썼는지 보고, 신청이 잘 통과될지 미리 점검' },
+                    ].map((item, i) => (
+                      <div
+                        key={i}
+                        className={`group relative bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5 hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-300 ${i >= 3 ? 'lg:col-span-1' : ''}`}
+                      >
+                        <div className="flex items-start gap-3.5">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-brand/20 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform duration-300">
+                            {item.icon}
+                          </div>
+                          <div className="space-y-1.5 min-w-0">
+                            <h5 className="font-bold text-sm text-white/90">{item.title}</h5>
+                            <p className="text-xs text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bottom hint */}
+                  <div className="text-center pt-2">
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      ✦ 상담 신청 전, AI 자가진단으로 나의 상황을 먼저 파악해 보세요
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
