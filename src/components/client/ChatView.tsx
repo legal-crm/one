@@ -385,6 +385,7 @@ export default function ChatView({
 
         {/* CHAT BOARD (채팅창 영역) */}
         {currentRequest ? (
+          <>
           <div className={`flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 transition-all ${
             showProfilePanel 
               ? 'hidden lg:flex lg:col-span-5 border-r border-slate-100 dark:border-slate-800' 
@@ -485,13 +486,11 @@ export default function ChatView({
                 <Send className="w-4 h-4" />
               </button>
             </div>
-            
-            {/* PROFILE SIDE PANEL (오른쪽 나의 상세 진단서 수정 패널) */}
-            <div className={`h-full flex flex-col min-h-0 bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 transition-all ${
-              showProfilePanel 
-                ? 'flex lg:col-span-7' 
-                : 'hidden'
-            }`}>
+          </div>
+
+          {/* PROFILE SIDE PANEL (오른쪽 나의 상세 진단서 수정 패널) - 그리드 직접 자식 */}
+          {showProfilePanel && (
+            <div className="flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 lg:col-span-7 overflow-hidden">
               {/* Header inside side panel */}
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/20 shrink-0">
                 <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -538,7 +537,8 @@ export default function ChatView({
                 />
               </div>
             </div>
-          </div>
+          )}
+          </>
         ) : (
           <div className="lg:col-span-9 flex flex-col items-center justify-center p-8 text-center space-y-4 h-full bg-white dark:bg-slate-900">
             <Users className="w-14 h-14 text-slate-300 dark:text-slate-700" />
