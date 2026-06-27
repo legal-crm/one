@@ -34,12 +34,12 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
 
     // 2026년 가구원수별 보건복지부 기준 중위소득 및 60% 생계비 데이터
     const medianIncomes = [
-        { size: 1, median: 2390000, minLiving: 1434316 },
-        { size: 2, median: 3920000, minLiving: 2352651 },
-        { size: 3, median: 5020000, minLiving: 3012382 },
-        { size: 4, median: 6090000, minLiving: 3654047 },
-        { size: 5, median: 7100000, minLiving: 4264136 },
-        { size: 6, median: 8080000, minLiving: 4850772 },
+        { size: 1, median: 2564238, minLiving: 1538543 },
+        { size: 2, median: 4199292, minLiving: 2519575 },
+        { size: 3, median: 5359036, minLiving: 3215422 },
+        { size: 4, median: 6494738, minLiving: 3896843 },
+        { size: 5, median: 7556719, minLiving: 4534031 },
+        { size: 6, median: 8555952, minLiving: 5133571 },
     ];
 
     return (

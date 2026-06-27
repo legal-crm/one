@@ -50,10 +50,28 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
 
     for (const year of years) {
         const multiplier = Math.pow(annualIncrease, year - baseYear);
-        const newMedianIncomeValues: Record<number, number> = {};
-        for (const key in baseMedianIncome) { 
-            newMedianIncomeValues[key] = Math.round(baseMedianIncome[key as any] * multiplier); 
+        let newMedianIncomeValues: Record<number, number> = {};
+        let incrementOver7 = 0;
+
+        if (year === 2025) {
+            newMedianIncomeValues = { 1: 2392013, 2: 3932658, 3: 5025353, 4: 6097773, 5: 7108192, 6: 8064805 };
+            incrementOver7 = 956614;
+        } else if (year === 2026) {
+            newMedianIncomeValues = { 1: 2564238, 2: 4199292, 3: 5359036, 4: 6494738, 5: 7556719, 6: 8555952 };
+            incrementOver7 = 999233;
+        } else {
+            const futureMultiplier = Math.pow(annualIncrease, year - 2026);
+            newMedianIncomeValues = {
+                1: Math.round(2564238 * futureMultiplier),
+                2: Math.round(4199292 * futureMultiplier),
+                3: Math.round(5359036 * futureMultiplier),
+                4: Math.round(6494738 * futureMultiplier),
+                5: Math.round(7556719 * futureMultiplier),
+                6: Math.round(8555952 * futureMultiplier)
+            };
+            incrementOver7 = Math.round(999233 * futureMultiplier);
         }
+
         const newDepositRules: Record<RegionKey, DepositRule> = JSON.parse(JSON.stringify(baseDepositRules));
         for (const key in newDepositRules) {
             newDepositRules[key as RegionKey].limit = Math.round(baseDepositRules[key as RegionKey].limit * multiplier / 100000) * 100000;
@@ -94,7 +112,7 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
         };
 
         policies[year] = {
-            medianIncome: { values: newMedianIncomeValues, incrementOver7: Math.round(923623 * multiplier) },
+            medianIncome: { values: newMedianIncomeValues, incrementOver7 },
             depositRules: newDepositRules,
             housingCostLimits: newHousingLimits,
             assetExemptions: newAssetExemptions,

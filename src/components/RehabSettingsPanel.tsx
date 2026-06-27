@@ -49,6 +49,13 @@ const RehabSettingsPanel: React.FC = () => {
           changed = true;
         }
       }
+
+      // 2025년/2026년 최신 공식 데이터 자동 동기화 마이그레이션
+      if (!data.yearlyPolicies[2026] || data.yearlyPolicies[2026].medianIncome.values[1] !== 2564238 || !data.yearlyPolicies[2025] || data.yearlyPolicies[2025].medianIncome.values[5] !== 7108192) {
+        data.yearlyPolicies[2025] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2025]));
+        data.yearlyPolicies[2026] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2026]));
+        changed = true;
+      }
       
       const migratedData = changed ? { ...data, courtConfigs: updatedConfigs } : data;
       if (changed) {

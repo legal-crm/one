@@ -788,20 +788,20 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <span className="font-bold text-[#7264FF]">인정 생계비</span>
                                                 
                                                 <span>1인 가구</span>
-                                                <span className="text-slate-400">239만 원</span>
-                                                <span className="font-semibold text-slate-800">143.4만 원</span>
+                                                <span className="text-slate-400">256만 원</span>
+                                                <span className="font-semibold text-slate-800">153.8만 원</span>
                                                 
                                                 <span>2인 가구</span>
-                                                <span className="text-slate-400">392만 원</span>
-                                                <span className="font-semibold text-slate-800">235.2만 원</span>
+                                                <span className="text-slate-400">420만 원</span>
+                                                <span className="font-semibold text-slate-800">251.9만 원</span>
                                                 
                                                 <span className="bg-slate-100/60 rounded">3인 가구</span>
-                                                <span className="bg-slate-100/60 text-slate-400 rounded">502만 원</span>
-                                                <span className="bg-slate-100/60 font-bold text-[#7264FF] rounded">301.2만 원</span>
+                                                <span className="bg-slate-100/60 text-slate-400 rounded">536만 원</span>
+                                                <span className="bg-slate-100/60 font-bold text-[#7264FF] rounded">321.5만 원</span>
                                                 
                                                 <span>4인 가구</span>
-                                                <span className="text-slate-400">609만 원</span>
-                                                <span className="font-semibold text-slate-800">365.4만 원</span>
+                                                <span className="text-slate-400">649만 원</span>
+                                                <span className="font-semibold text-slate-800">389.6만 원</span>
                                             </div>
                                             <p className="text-[10.5px] text-slate-500 mt-2.5 leading-relaxed">
                                                 ※ <strong>월 변제금 공식</strong>: [월 실수령액] - [최종 인정 생계비] = [가용소득(월 변제금)]. 생계비가 크고 소득이 보정될수록 매달 갚을 돈은 낮아집니다.
