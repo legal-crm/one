@@ -2424,7 +2424,7 @@ export default function ClientRole({
                       </p>
                     </div>
 
-                    <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="text-slate-400 font-semibold">{rev.author}</span>
                         <div className="flex items-center gap-1.5">
@@ -2432,12 +2432,6 @@ export default function ClientRole({
                           <span className="font-semibold text-slate-600 dark:text-slate-400">{rev.lawyerName}</span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleReviewClick(rev)}
-                        className="w-full text-center py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[11px] font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
-                      >
-                        <span>⚖️ 동일 사건 상담 신청</span>
-                      </button>
                     </div>
                   </div>
                 ))}
