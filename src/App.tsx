@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Toaster } from 'sonner';
 import { 
   mockLawyers, 
   initialConsultRequests, 
@@ -481,6 +482,7 @@ export default function App() {
 
 
 
+      <Toaster position="top-center" richColors closeButton />
     </div>
   );
 }

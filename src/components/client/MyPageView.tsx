@@ -1,7 +1,9 @@
-import React from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft } from 'lucide-react';
 import { ConsultRequest } from '../../types';
 import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
+import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -885,6 +887,39 @@ export default function MyPageView({
                 </div>
                 <span className="text-[9px] text-slate-400 block">※ 해당 항목을 클릭하여 선택/해제합니다. 복수 선택 가능합니다.</span>
               </div>
+            </div>
+
+            {/* 저장 완료 & 채팅방 이동 버튼 */}
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-6 mt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => onNavigateToChat()}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                상담 채팅방으로 돌아가기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // 꽃가루 이펙트
+                  confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.8 },
+                    colors: ['#6366f1', '#8b5cf6', '#a78bfa', '#10b981', '#f59e0b']
+                  });
+                  // 토스트 알림
+                  toast.success('진단서가 성공적으로 저장되었습니다!', {
+                    description: '상단 채무조정 상태 지표가 실시간으로 갱신되었습니다.',
+                    duration: 4000,
+                  });
+                }}
+                className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-sm font-extrabold shadow-lg hover:shadow-brand-sm transition-all cursor-pointer transform active:scale-[0.97]"
+              >
+                <Save className="w-4.5 h-4.5" />
+                진단서 수정 저장 완료
+              </button>
             </div>
             
           </div>
