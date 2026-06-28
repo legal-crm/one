@@ -42,6 +42,21 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
   };
 
   const handleSocialLogin = async (provider: string) => {
+    if (provider === '카카오') {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'kakao',
+          options: {
+            redirectTo: window.location.origin
+          }
+        });
+        if (error) throw error;
+      } catch (err: any) {
+        alert(`카카오 로그인 시작 실패: ${err.message || err}`);
+      }
+      return;
+    }
+
     const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
     alert(`[${provider} 로그인 시뮬레이션]\n${provider} 소셜 로그인이 완료되었습니다.\n배정된 가명: ${generatedAlias}`);
     const channel = provider === 'Google' ? 'google' : provider === '카카오' ? 'kakao' : 'naver';
