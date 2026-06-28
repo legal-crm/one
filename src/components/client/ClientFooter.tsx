@@ -61,12 +61,14 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
                   <span className="text-slate-300">·</span>
                 </>
               )}
-              <span 
-                onClick={() => onShowTerms('tos')}
+              <a 
+                href="/tos.html"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
               >
                 서비스 이용약관
-              </span>
+              </a>
               <span className="text-slate-300">·</span>
               <a 
                 href="/privacy.html"
