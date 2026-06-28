@@ -68,12 +68,14 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
                 서비스 이용약관
               </span>
               <span className="text-slate-300">·</span>
-              <span 
-                onClick={() => onShowTerms('privacy')}
+              <a 
+                href="/privacy.html"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
               >
                 개인정보 처리방침
-              </span>
+              </a>
               <span className="text-slate-300">·</span>
               <span className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white">법적 고지사항</span>
             </div>
