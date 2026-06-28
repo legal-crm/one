@@ -4,6 +4,19 @@ import { ConsultRequest, ConsultMessage, FinancialProfile } from '../../types';
 import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import MyPageView from './MyPageView';
 
+// [SECURITY] 법률상담 비밀유지 + 보안 안내 배너
+function ChatPrivacyBanner() {
+  return (
+    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4 py-3 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-2.5 items-start shadow-sm text-left">
+      <Shield className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+      <div>
+        <strong>🔒 법률상담 비밀 보장</strong>
+        <span className="block mt-0.5 text-indigo-600/80 dark:text-indigo-400/80">이 채팅은 법률상담을 위한 비밀 대화입니다. 상담 내용은 전담 변호사와 고객만 확인할 수 있으며, 플랫폼 운영자는 원문 내용을 열람하지 않습니다.</span>
+      </div>
+    </div>
+  );
+}
+
 // Inline ChatDisclaimer component
 function ChatDisclaimer() {
   return (
@@ -425,8 +438,9 @@ export default function ChatView({
               </div>
             </div>
 
-            {/* Disclaimer */}
-            <div className="p-4 bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800">
+            {/* [SECURITY] Privacy + Disclaimer */}
+            <div className="p-4 bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 space-y-2">
+              <ChatPrivacyBanner />
               <ChatDisclaimer />
             </div>
 

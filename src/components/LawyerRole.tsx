@@ -2506,8 +2506,9 @@ export default function LawyerRole({
                                 <div className="space-y-1.5 text-[11px] leading-relaxed text-slate-300">
                                   <div>• <strong className="text-slate-400">수신 유형:</strong> {m.card.type === 'direct' ? '1:1 대리인 다이렉트 지정' : '최대 3명 선착순 오픈 배정'}</div>
                                   <div>• <strong className="text-slate-400">관할 지역:</strong> {m.card.region} 법원 관할</div>
-                                  <div>• <strong className="text-slate-400">채무 규모:</strong> {m.card.debt}</div>
-                                  <div>• <strong className="text-slate-400">소득 수준:</strong> {m.card.income} ({m.card.dependents})</div>
+                                  {/* [SECURITY] 구간값만 표시 — 원시 금액 및 PII 미포함 */}
+                                  <div>• <strong className="text-slate-400">채무 구간:</strong> {m.card.debt}</div>
+                                  <div>• <strong className="text-slate-400">소득 구간:</strong> {m.card.income}</div>
                                 </div>
 
                                 <div className="flex flex-wrap gap-1">

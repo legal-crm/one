@@ -1967,6 +1967,8 @@ export default function ClientRole({
                     { icon: '💬', title: '상담은 무료', desc: '첫 상담부터 비용 걱정 없이, 변호사가 직접 상황을 분석해드려요.' },
                     { icon: '🔒', title: '익명 상담 보장', desc: '실명 없이도 상담 가능. 내 이름,전화번호도 노출되지 않아요.' },
                     { icon: '⚖️', title: '전담 변호사 매칭', desc: '채무 유형에 맞는 전문 변호사가 1:1로 끝까지 함께합니다.' },
+                    { icon: '🛡️', title: '상담 내용 암호화', desc: '변호사와의 대화는 별도 암호화되어 관리되며, 운영자도 열람할 수 없습니다.' },
+                    { icon: '📋', title: '내 정보는 내가 통제', desc: '내 연락처는 동의 전까지 변호사에게 공개되지 않습니다.' },
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all">
                       <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>

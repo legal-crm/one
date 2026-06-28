@@ -134,16 +134,77 @@ export default function AdminRole({
   const [bannerColor, setBannerColor] = useState<string>('rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)');
   const [bannerImage, setBannerImage] = useState<string>('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200');
 
-  // Auth states
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('legal_crm_admin_session') !== null;
-  });
+  // ============================================================
+  // [SECURITY] 관리자 인증 — 세션 만료 + 로그인 잠금
+  // ============================================================
+  const ADMIN_SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30분
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5분
+
+  const checkAdminSession = (): boolean => {
+    const sessionData = localStorage.getItem('legal_crm_admin_session');
+    if (!sessionData) return false;
+    try {
+      const { timestamp } = JSON.parse(sessionData);
+      if (!timestamp || Date.now() - timestamp > ADMIN_SESSION_TIMEOUT_MS) {
+        localStorage.removeItem('legal_crm_admin_session');
+        return false;
+      }
+      return true;
+    } catch {
+      // 레거시 'active' 문자열 호환 — 즉시 만료 처리
+      localStorage.removeItem('legal_crm_admin_session');
+      return false;
+    }
+  };
+
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => checkAdminSession());
   const [loginId, setLoginId] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
+  const [loginAttempts, setLoginAttempts] = useState<number>(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number>(0);
+
+  // [SECURITY] 30분 미활동 자동 로그아웃 타이머
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const refreshSession = () => {
+      if (isLoggedIn) {
+        localStorage.setItem('legal_crm_admin_session', JSON.stringify({ timestamp: Date.now() }));
+      }
+    };
+
+    const checkExpiry = () => {
+      if (!checkAdminSession()) {
+        setIsLoggedIn(false);
+        alert('보안을 위해 30분 미활동으로 자동 로그아웃되었습니다.');
+      }
+    };
+
+    // 사용자 활동 시 세션 갱신
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, refreshSession));
+
+    // 1분마다 만료 확인
+    const interval = setInterval(checkExpiry, 60_000);
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, refreshSession));
+      clearInterval(interval);
+    };
+  }, [isLoggedIn]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // [SECURITY] 잠금 상태 확인
+    if (Date.now() < lockoutUntil) {
+      const remainSec = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setLoginError(`로그인이 잠겼습니다. ${remainSec}초 후 다시 시도해주세요.`);
+      return;
+    }
+
     if (!loginId.trim() || !loginPassword.trim()) {
       setLoginError('아이디와 비밀번호를 입력해주세요.');
       return;
@@ -153,13 +214,25 @@ export default function AdminRole({
     const pw = loginPassword.trim();
 
     if ((id === 'admin' && pw === 'admin') || (id === '1' && pw === '1')) {
-      localStorage.setItem('legal_crm_admin_session', 'active');
+      // [SECURITY] 타임스탬프 기반 세션 저장
+      localStorage.setItem('legal_crm_admin_session', JSON.stringify({ timestamp: Date.now() }));
       setIsLoggedIn(true);
       setLoginError('');
       setLoginId('');
       setLoginPassword('');
+      setLoginAttempts(0);
     } else {
-      setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+
+      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+        const until = Date.now() + LOCKOUT_DURATION_MS;
+        setLockoutUntil(until);
+        setLoginError(`로그인 ${MAX_LOGIN_ATTEMPTS}회 실패. 5분간 잠금됩니다.`);
+        setLoginAttempts(0);
+      } else {
+        setLoginError(`아이디 또는 비밀번호가 올바르지 않습니다. (${newAttempts}/${MAX_LOGIN_ATTEMPTS})`);
+      }
     }
   };
 
@@ -464,7 +537,7 @@ export default function AdminRole({
               <button 
                 type="button"
                 onClick={() => {
-                  localStorage.setItem('legal_crm_admin_session', 'active');
+                  localStorage.setItem('legal_crm_admin_session', JSON.stringify({ timestamp: Date.now() }));
                   setIsLoggedIn(true);
                 }}
                 className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
