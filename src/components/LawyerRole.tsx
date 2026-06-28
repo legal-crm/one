@@ -708,22 +708,22 @@ export default function LawyerRole({
 
   if (!isLoggedIn) {
     return (
-      <div className="flex flex-col min-h-screen bg-[#070A13] text-slate-100 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
-        <div className="w-full max-w-md bg-[#0F1626]/90 backdrop-blur-md border border-[#1F2937]/80 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
+      <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
               <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover" />
-              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
+              <span className="font-black text-xl tracking-tight text-slate-800">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
             </div>
-            <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
+            <p className="text-slate-500 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
 
           {authMode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4 text-left">
-              <h3 className="font-extrabold text-sm text-slate-200 border-b border-[#1F2937]/60 pb-2">로그인</h3>
+              <h3 className="font-extrabold text-sm text-slate-800 border-b border-slate-200 pb-2">로그인</h3>
               {loginError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">
+                <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-xl">
                   {loginError}
                 </div>
               )}
@@ -734,7 +734,7 @@ export default function LawyerRole({
                   placeholder="예: 1 또는 김우진 또는 lawyer-1"
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
-                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 placeholder-slate-600"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800 placeholder-slate-400"
                 />
               </div>
               <div className="space-y-1.5">
@@ -744,15 +744,15 @@ export default function LawyerRole({
                   placeholder="비밀번호 입력 (기본: 1)"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 placeholder-slate-600"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800 placeholder-slate-400"
                 />
               </div>
 
               {/* Quick test login info */}
-              <div className="bg-slate-900 border border-[#1F2937]/60 rounded-xl p-3 text-[11px] text-slate-400 space-y-1">
-                <span className="font-bold text-slate-350 block">🔑 테스트 로그인 계정 정보</span>
-                <div>• 아이디: <strong className="text-white">1</strong> / 비밀번호: <strong className="text-white">1</strong></div>
-                <div>• (또는 변호사명: <strong className="text-slate-300">김우진</strong> / 비밀번호: <strong className="text-slate-300">1234</strong>)</div>
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[11px] text-slate-500 space-y-1">
+                <span className="font-bold text-slate-600 block">🔑 테스트 로그인 계정 정보</span>
+                <div>• 아이디: <strong className="text-slate-800">1</strong> / 비밀번호: <strong className="text-slate-800">1</strong></div>
+                <div>• (또는 변호사명: <strong className="text-slate-700">김우진</strong> / 비밀번호: <strong className="text-slate-700">1234</strong>)</div>
               </div>
 
               <div className="flex gap-2 pt-1">
@@ -770,7 +770,7 @@ export default function LawyerRole({
                     setActiveLawyer(demoLawyer);
                     setIsLoggedIn(true);
                   }}
-                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-brand-light font-extrabold py-3 rounded-[200px] text-xs border border-slate-800 transition-colors"
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3 rounded-[200px] text-xs border border-slate-200 transition-colors"
                 >
                   테스트 계정 1초 로그인
                 </button>
@@ -788,9 +788,9 @@ export default function LawyerRole({
             </form>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4 text-left max-h-[450px] overflow-y-auto pr-1 scrollbar-hide">
-              <h3 className="font-extrabold text-sm text-slate-200 border-b border-[#1F2937]/60 pb-2">회원가입</h3>
+              <h3 className="font-extrabold text-sm text-slate-800 border-b border-slate-200 pb-2">회원가입</h3>
               {signupError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">
+                <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-xl">
                   {signupError}
                 </div>
               )}
@@ -802,7 +802,7 @@ export default function LawyerRole({
                     placeholder="예: lawyer-kim"
                     value={signupId}
                     onChange={(e) => setSignupId(e.target.value)}
-                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -812,7 +812,7 @@ export default function LawyerRole({
                     placeholder="비밀번호 입력"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
-                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                   />
                 </div>
               </div>
@@ -824,7 +824,7 @@ export default function LawyerRole({
                     placeholder="예: 홍길동"
                     value={signupName}
                     onChange={(e) => setSignupName(e.target.value)}
-                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -832,7 +832,7 @@ export default function LawyerRole({
                   <select 
                     value={signupRole}
                     onChange={(e) => setSignupRole(e.target.value as 'LAWYER' | 'STAFF')}
-                    className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                   >
                     <option value="LAWYER">변호사 (LAWYER)</option>
                     <option value="STAFF">실장/사무장 (STAFF)</option>
@@ -845,7 +845,7 @@ export default function LawyerRole({
                   type="text" 
                   placeholder="예: 개인회생, 개인파산, 보정명령대응"
                   onChange={(e) => setSignupFields(e.target.value.split(',').map(f => f.trim()).filter(Boolean))}
-                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                 />
               </div>
               <div className="space-y-1.5">
@@ -855,7 +855,7 @@ export default function LawyerRole({
                   placeholder="예: 서울, 경기/수원, 부산"
                   value={signupRegion}
                   onChange={(e) => setSignupRegion(e.target.value)}
-                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                 />
               </div>
               <div className="space-y-1.5">
@@ -864,10 +864,10 @@ export default function LawyerRole({
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="프로필 미리보기" className="w-12 h-12 rounded-xl object-cover border border-brand/30 shrink-0" />
                   ) : (
-                    <div className="w-12 h-12 rounded-xl bg-[#1F2937] flex items-center justify-center text-slate-500 text-[10px] shrink-0 border border-[#1F2937]">사진</div>
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-[10px] shrink-0 border border-slate-200">사진</div>
                   )}
                   <label className="flex-1 cursor-pointer">
-                    <div className="bg-[#0B111E] border border-[#1F2937] border-dashed rounded-xl p-2.5 text-xs text-slate-400 text-center hover:border-brand/50 transition-colors">
+                    <div className="bg-slate-50 border border-slate-200 border-dashed rounded-xl p-2.5 text-xs text-slate-400 text-center hover:border-brand/50 transition-colors">
                       📷 클릭하여 프로필 사진 선택
                     </div>
                     <input type="file" accept="image/*" onChange={handleAvatarFileChange} className="hidden" />
@@ -876,15 +876,15 @@ export default function LawyerRole({
               </div>
 
               {/* 변호사 등록증 첨부 (핵심 자격 증빙) */}
-              <div className="space-y-1.5 bg-[#0B111E] border border-amber-500/20 rounded-xl p-3">
-                <label className="text-[10px] text-amber-400 block uppercase font-bold">📋 변호사 등록증 첨부 (필수 자격 증빙)*</label>
+              <div className="space-y-1.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <label className="text-[10px] text-amber-600 block uppercase font-bold">📋 변호사 등록증 첨부 (필수 자격 증빙)*</label>
                 <p className="text-[10px] text-slate-500 leading-relaxed">관리자가 등록증을 확인한 후 계정이 승인됩니다. 이미지 또는 PDF 파일을 첨부해주세요.</p>
                 <label className="block cursor-pointer">
-                  <div className={`border ${licensePreview ? 'border-emerald-500/30' : 'border-[#1F2937] border-dashed'} rounded-xl p-3 text-xs text-center transition-colors hover:border-brand/50`}>
+                  <div className={`border ${licensePreview ? 'border-emerald-300' : 'border-slate-200 border-dashed'} rounded-xl p-3 text-xs text-center transition-colors hover:border-brand/50 bg-white`}>
                     {licensePreview ? (
                       <div className="space-y-2">
                         <img src={licensePreview} alt="등록증 미리보기" className="max-h-32 mx-auto rounded-lg object-contain" />
-                        <span className="text-emerald-400 text-[10px] font-bold">✅ 파일 첨부 완료 — 다시 선택하려면 클릭</span>
+                        <span className="text-emerald-600 text-[10px] font-bold">✅ 파일 첨부 완료 — 다시 선택하려면 클릭</span>
                       </div>
                     ) : (
                       <span className="text-slate-400">📎 클릭하여 변호사 등록증 이미지 첨부 (최대 5MB)</span>
@@ -899,7 +899,7 @@ export default function LawyerRole({
                     placeholder="예: 12345"
                     value={signupLicenseNumber}
                     onChange={(e) => setSignupLicenseNumber(e.target.value)}
-                    className="w-full bg-[#070A13] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                   />
                 </div>
               </div>
@@ -910,7 +910,7 @@ export default function LawyerRole({
                   placeholder="전문 대리인으로서의 약력 및 인사말을 작성하세요."
                   value={signupBio}
                   onChange={(e) => setSignupBio(e.target.value)}
-                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800"
                 />
               </div>
               <button 
@@ -938,28 +938,28 @@ export default function LawyerRole({
 
   if (isLoggedIn && activeLawyer.approved === false) {
     return (
-      <div className="flex flex-col min-h-screen bg-[#070A13] text-slate-100 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
-        <div className="w-full max-w-md bg-[#0F1626]/90 backdrop-blur-md border border-[#1F2937]/80 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
+      <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
               <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover" />
-              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
+              <span className="font-black text-xl tracking-tight text-slate-800">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
             </div>
-            <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
+            <p className="text-slate-500 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
 
-          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl p-4 text-xs text-left space-y-2 leading-relaxed">
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-xs text-left space-y-2 leading-relaxed">
             <h4 className="font-bold text-sm text-center">⏳ 계정 승인 심사 대기 중</h4>
             <p>안녕하세요, <strong>{activeLawyer.name}</strong> 님.</p>
             <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
             <p>{platformConfig.siteLogoText || "my김변"} 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
-            <p className="text-[11px] text-slate-400">* 어드민 페이지(Admin Portal)에서 본 계정의 승인 처리를 하실 수 있습니다.</p>
+            <p className="text-[11px] text-slate-500">* 어드민 페이지(Admin Portal)에서 본 계정의 승인 처리를 하실 수 있습니다.</p>
           </div>
 
           <button 
             onClick={handleLogout}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-slate-300 font-extrabold py-3 rounded-[200px] text-xs border border-slate-800 transition-colors shrink-0"
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold py-3 rounded-[200px] text-xs border border-slate-200 transition-colors shrink-0"
           >
             로그아웃
           </button>
