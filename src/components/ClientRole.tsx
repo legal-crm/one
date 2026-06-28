@@ -552,6 +552,44 @@ export default function ClientRole({
   const [activeReviewIdx, setActiveReviewIdx] = useState(0);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
+  const isPopStateRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // 첫 진입 시 초기 브라우저 히스토리 상태 강제 세팅
+    if (!window.history.state) {
+      window.history.replaceState({ tab: 'landing' }, '', '');
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      isPopStateRef.current = true;
+      if (event.state && event.state.tab) {
+        setActiveTab(event.state.tab);
+      } else {
+        setActiveTab('landing');
+      }
+      setTimeout(() => {
+        isPopStateRef.current = false;
+      }, 50);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // 뒤로 가기/앞으로 가기 이벤트에 의한 탭 변경 시 pushState 중복 호출 방지
+    if (isPopStateRef.current) return;
+
+    const currentState = window.history.state;
+    if (!currentState || currentState.tab !== activeTab) {
+      window.history.pushState({ tab: activeTab }, '', '');
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
