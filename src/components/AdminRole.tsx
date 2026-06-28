@@ -528,9 +528,12 @@ export default function AdminRole({
               />
             </div>
 
+            {/* [SECURITY] 테스트 계정 정보 + 1초 로그인은 개발환경에서만 표시 */}
+            {import.meta.env.DEV && (
+            <>
             {/* Test credentials info */}
             <div className="bg-[#111622] border border-[#1E293B]/40 rounded-xl p-3.5 text-[11px] text-slate-400 space-y-1">
-              <span className="font-bold text-indigo-400 block">🔑 테스트용 관리자 계정</span>
+              <span className="font-bold text-indigo-400 block">🔑 테스트용 관리자 계정 (DEV Only)</span>
               <div>• 아이디: <strong className="text-white">admin</strong> / 비밀번호: <strong className="text-white">admin</strong></div>
               <div>• (또는 초간편 바이패스: <strong className="text-slate-350">1</strong> / <strong className="text-slate-350">1</strong>)</div>
             </div>
@@ -554,6 +557,21 @@ export default function AdminRole({
                 테스트 계정 1초 로그인
               </button>
             </div>
+            </>
+            )}
+
+            {/* 프로덕션 로그인 버튼 */}
+            {!import.meta.env.DEV && (
+            <div className="pt-1">
+              <button 
+                type="submit"
+                className="w-full bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>어드민 로그인</span>
+              </button>
+            </div>
+            )}
           </form>
 
           {/* Compliance statement */}

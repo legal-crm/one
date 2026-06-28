@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /one/
+Disallow: /one/#admin
+Disallow: /one/#lawyer
+
+# Sitemap
+# Sitemap: https://legal-crm.github.io/one/sitemap.xml

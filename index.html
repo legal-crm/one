@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- [SECURITY] 보안 헤더 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none';" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
     <meta name="description" content="my김변 — 나의 김변호사. 빚 걱정, 혼자 하지 마세요. 1분 만에 내 상황을 확인하고 전담 변호사가 무료로 관리해드려요." />
     <meta name="keywords" content="개인회생,파산,면책,채무조정,채무탕감,빚정리,회생상담,파산면책,개인회생무료상담" />
     <meta property="og:title" content="my김변 — 나의 김변호사가 내 빚, 대신 관리해드려요" />
