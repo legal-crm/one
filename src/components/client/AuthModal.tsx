@@ -92,9 +92,6 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
           <button onClick={() => handleSocialLogin('카카오')} className="w-full bg-[#FEE500] hover:bg-[#FEE500]/95 text-[#191919] font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm cursor-pointer">
             <span className="w-4 h-4 flex items-center justify-center font-bold text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full">K</span><span>카카오로 간편 로그인</span>
           </button>
-          <button onClick={() => handleSocialLogin('네이버')} className="w-full bg-[#03C75A] hover:bg-[#03C75A]/95 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm cursor-pointer">
-            <span className="w-4 h-4 flex items-center justify-center font-bold text-xs bg-white text-[#03C75A] rounded-full">N</span><span>네이버로 간편 로그인</span>
-          </button>
         </div>
 
         <div className="relative flex py-1 items-center">
