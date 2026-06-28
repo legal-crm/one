@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout } from '../services/auditService';
+import { createSecureSession, verifySecureSession, refreshSecureSession } from '../utils/secureSession';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
@@ -136,48 +137,68 @@ export default function AdminRole({
   const [bannerImage, setBannerImage] = useState<string>('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200');
 
   // ============================================================
-  // [SECURITY] 관리자 인증 — 세션 만료 + 로그인 잠금
+  // [SECURITY] 관리자 인증 — HMAC 서명 + 세션 만료 + 로그인 잠금
   // ============================================================
   const ADMIN_SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30분
   const MAX_LOGIN_ATTEMPTS = 5;
   const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5분
+  const SESSION_KEY = 'legal_crm_admin_session';
 
-  const checkAdminSession = (): boolean => {
-    const sessionData = localStorage.getItem('legal_crm_admin_session');
+  // 초기 로드 시 동기적으로 타임스탬프만 확인 (HMAC은 비동기로 후속 검증)
+  const quickCheckSession = (): boolean => {
+    const sessionData = localStorage.getItem(SESSION_KEY);
     if (!sessionData) return false;
     try {
-      const { timestamp } = JSON.parse(sessionData);
-      if (!timestamp || Date.now() - timestamp > ADMIN_SESSION_TIMEOUT_MS) {
-        localStorage.removeItem('legal_crm_admin_session');
+      const { timestamp, signature } = JSON.parse(sessionData);
+      if (!timestamp || !signature) return false;
+      if (Date.now() - timestamp > ADMIN_SESSION_TIMEOUT_MS) {
+        localStorage.removeItem(SESSION_KEY);
         return false;
       }
-      return true;
+      return true; // HMAC 검증은 useEffect에서 비동기로 수행
     } catch {
-      // 레거시 'active' 문자열 호환 — 즉시 만료 처리
-      localStorage.removeItem('legal_crm_admin_session');
+      localStorage.removeItem(SESSION_KEY);
       return false;
     }
   };
 
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => checkAdminSession());
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => quickCheckSession());
   const [loginId, setLoginId] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
   const [loginAttempts, setLoginAttempts] = useState<number>(0);
   const [lockoutUntil, setLockoutUntil] = useState<number>(0);
 
-  // [SECURITY] 30분 미활동 자동 로그아웃 타이머
+  // [SECURITY] 마운트 시 HMAC 서명 비동기 검증
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const verifyOnMount = async () => {
+      const sessionData = localStorage.getItem(SESSION_KEY);
+      const isValid = await verifySecureSession(sessionData, ADMIN_SESSION_TIMEOUT_MS);
+      if (!isValid) {
+        localStorage.removeItem(SESSION_KEY);
+        setIsLoggedIn(false);
+      }
+    };
+    verifyOnMount();
+  }, []);
+
+  // [SECURITY] 30분 미활동 자동 로그아웃 + HMAC 갱신 타이머
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    const refreshSession = () => {
+    const handleRefreshSession = async () => {
       if (isLoggedIn) {
-        localStorage.setItem('legal_crm_admin_session', JSON.stringify({ timestamp: Date.now() }));
+        const token = await refreshSecureSession();
+        localStorage.setItem(SESSION_KEY, token);
       }
     };
 
-    const checkExpiry = () => {
-      if (!checkAdminSession()) {
+    const checkExpiry = async () => {
+      const sessionData = localStorage.getItem(SESSION_KEY);
+      const isValid = await verifySecureSession(sessionData, ADMIN_SESSION_TIMEOUT_MS);
+      if (!isValid) {
+        localStorage.removeItem(SESSION_KEY);
         setIsLoggedIn(false);
         alert('보안을 위해 30분 미활동으로 자동 로그아웃되었습니다.');
       }
@@ -185,13 +206,13 @@ export default function AdminRole({
 
     // 사용자 활동 시 세션 갱신
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(e => window.addEventListener(e, refreshSession));
+    events.forEach(e => window.addEventListener(e, handleRefreshSession));
 
-    // 1분마다 만료 확인
+    // 1분마다 만료 + 서명 확인
     const interval = setInterval(checkExpiry, 60_000);
 
     return () => {
-      events.forEach(e => window.removeEventListener(e, refreshSession));
+      events.forEach(e => window.removeEventListener(e, handleRefreshSession));
       clearInterval(interval);
     };
   }, [isLoggedIn]);
@@ -215,8 +236,10 @@ export default function AdminRole({
     const pw = loginPassword.trim();
 
     if ((id === 'admin' && pw === 'admin') || (id === '1' && pw === '1')) {
-      // [SECURITY] 타임스탬프 기반 세션 저장
-      localStorage.setItem('legal_crm_admin_session', JSON.stringify({ timestamp: Date.now() }));
+      // [SECURITY] HMAC 서명된 세션 토큰 생성 (비동기)
+      createSecureSession().then(token => {
+        localStorage.setItem(SESSION_KEY, token);
+      });
       setIsLoggedIn(true);
       setLoginError('');
       setLoginId('');
@@ -247,7 +270,7 @@ export default function AdminRole({
     if (confirm('어드민 세션을 로그아웃 하시겠습니까?')) {
       // [AUDIT] 로그아웃 기록
       auditAdminLogout('admin');
-      localStorage.removeItem('legal_crm_admin_session');
+      localStorage.removeItem(SESSION_KEY);
       setIsLoggedIn(false);
     }
   };
@@ -548,8 +571,9 @@ export default function AdminRole({
               </button>
               <button 
                 type="button"
-                onClick={() => {
-                  localStorage.setItem('legal_crm_admin_session', JSON.stringify({ timestamp: Date.now() }));
+                onClick={async () => {
+                  const token = await createSecureSession();
+                  localStorage.setItem(SESSION_KEY, token);
                   setIsLoggedIn(true);
                 }}
                 className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"

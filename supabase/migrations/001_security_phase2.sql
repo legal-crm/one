@@ -92,7 +92,7 @@ CREATE POLICY "authenticated_select_diagnosis"
 DROP POLICY IF EXISTS "anon_select_own_diagnosis" ON diagnosis_results;
 CREATE POLICY "anon_select_own_diagnosis"
   ON diagnosis_results FOR SELECT TO anon
-  USING (true);
+  USING (false);
 
 DROP POLICY IF EXISTS "authenticated_update_diagnosis" ON diagnosis_results;
 CREATE POLICY "authenticated_update_diagnosis"
@@ -102,7 +102,7 @@ CREATE POLICY "authenticated_update_diagnosis"
 DROP POLICY IF EXISTS "anon_update_own_diagnosis" ON diagnosis_results;
 CREATE POLICY "anon_update_own_diagnosis"
   ON diagnosis_results FOR UPDATE TO anon
-  USING (true);
+  USING (false);
 
 -- diagnosis_config RLS
 ALTER TABLE diagnosis_config ENABLE ROW LEVEL SECURITY;
