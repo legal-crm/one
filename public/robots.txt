@@ -1,7 +1,7 @@
 User-agent: *
-Allow: /one/
-Disallow: /one/#admin
-Disallow: /one/#lawyer
+Allow: /
+Disallow: /#admin
+Disallow: /#lawyer
 
 # Sitemap
-# Sitemap: https://legal-crm.github.io/one/sitemap.xml
+Sitemap: https://mykim.kr/sitemap.xml
