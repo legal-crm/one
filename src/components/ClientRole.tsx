@@ -1892,6 +1892,20 @@ export default function ClientRole({
                     await supabase.auth.signOut();
                     setIsLoggedIn(false);
                     setUserAlias('');
+                    
+                    // 개인정보 보호를 위해 브라우저 로컬 저장소 완전 초기화
+                    localStorage.removeItem('legal_crm_client_id');
+                    localStorage.removeItem('legal_crm_requests');
+                    localStorage.removeItem('legal_crm_messages');
+                    localStorage.removeItem('legal_crm_inquiries');
+                    localStorage.removeItem('legal_crm_client_alias');
+                    
+                    // 메모리 상태 초기화
+                    setRequests([]);
+                    setMessages([]);
+                    setInquiries([]);
+                    
+                    alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 진단 및 상담 기록이 완전히 초기화되었습니다.');
                   }}
                   className="whitespace-nowrap flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold transition-all shrink-0 cursor-pointer"
                 >
