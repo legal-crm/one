@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout } from '../services/auditService';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
@@ -221,6 +222,8 @@ export default function AdminRole({
       setLoginId('');
       setLoginPassword('');
       setLoginAttempts(0);
+      // [AUDIT] 로그인 성공 기록
+      auditAdminLogin(id);
     } else {
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
@@ -230,14 +233,20 @@ export default function AdminRole({
         setLockoutUntil(until);
         setLoginError(`로그인 ${MAX_LOGIN_ATTEMPTS}회 실패. 5분간 잠금됩니다.`);
         setLoginAttempts(0);
+        // [AUDIT] 잠금 기록
+        auditLoginLocked(id);
       } else {
         setLoginError(`아이디 또는 비밀번호가 올바르지 않습니다. (${newAttempts}/${MAX_LOGIN_ATTEMPTS})`);
+        // [AUDIT] 실패 기록
+        auditAdminLoginFailed(id, newAttempts);
       }
     }
   };
 
   const handleLogout = () => {
     if (confirm('어드민 세션을 로그아웃 하시겠습니까?')) {
+      // [AUDIT] 로그아웃 기록
+      auditAdminLogout('admin');
       localStorage.removeItem('legal_crm_admin_session');
       setIsLoggedIn(false);
     }

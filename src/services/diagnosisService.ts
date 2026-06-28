@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { DiagnosisResult, DiagnosisConfig } from '../types';
+import { auditDiagnosisSubmit, auditConfigUpdate } from './auditService';
 
 // ============================================================
 // Supabase 진단 결과 저장/조회 서비스
@@ -113,6 +114,8 @@ export async function saveDiagnosisResult(result: DiagnosisResult): Promise<{ su
       console.warn('진단 결과 저장 실패 (비차단):', error.message);
       return { success: false, error: error.message };
     }
+    // [AUDIT] 진단 제출 성공 기록
+    auditDiagnosisSubmit(getSessionId());
     return { success: true };
   } catch (err) {
     console.warn('진단 결과 저장 중 예외 (비차단):', err);
@@ -191,6 +194,8 @@ export async function saveDiagnosisConfig(config: DiagnosisConfig): Promise<{ su
     });
 
     if (error) return { success: false, error: error.message };
+    // [AUDIT] 설정 변경 기록
+    auditConfigUpdate(config.lastUpdatedBy || 'admin', 'diagnosis_config');
     return { success: true };
   } catch (err) {
     return { success: false, error: String(err) };
