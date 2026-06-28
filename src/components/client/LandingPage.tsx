@@ -452,7 +452,7 @@ export default function LandingPage({
               </span>
             </h2>
             <p className="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
-              회생톡의 전담 변호사는 일회성 상담에 그치지 않고, 해결의 순간까지 의뢰인과 동행하며 채무 상황을 관리합니다.
+              my김변의 전담 변호사는 일회성 상담에 그치지 않고, 해결의 순간까지 의뢰인과 동행하며 채무 상황을 관리합니다.
             </p>
           </div>
 

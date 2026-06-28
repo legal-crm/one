@@ -661,8 +661,8 @@ export default function LawyerRole({
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
-              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "회생톡")} 변호사 CRM</span>
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover" />
+              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
             </div>
             <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
@@ -855,8 +855,8 @@ export default function LawyerRole({
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="회생톡 로고" className="w-10 h-10 rounded-xl object-cover" />
-              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "회생톡")} 변호사 CRM</span>
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover" />
+              <span className="font-black text-xl tracking-tight text-white">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
             </div>
             <p className="text-slate-400 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
@@ -865,7 +865,7 @@ export default function LawyerRole({
             <h4 className="font-bold text-sm text-center">⏳ 계정 승인 심사 대기 중</h4>
             <p>안녕하세요, <strong>{activeLawyer.name}</strong> 님.</p>
             <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
-            <p>{platformConfig.siteLogoText || "회생톡"} 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
+            <p>{platformConfig.siteLogoText || "my김변"} 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
             <p className="text-[11px] text-slate-400">* 어드민 페이지(Admin Portal)에서 본 계정의 승인 처리를 하실 수 있습니다.</p>
           </div>
 
@@ -888,10 +888,10 @@ export default function LawyerRole({
         <header className="sticky top-0 z-40 bg-[#0F1626]/90 backdrop-blur-md border-b border-[#1F2937]/80 shadow-xl px-4 py-3">
           <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="회생톡 로고" className="w-8 h-8 rounded-lg object-cover" />
+              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-8 h-8 rounded-lg object-cover" />
               <div className="flex flex-col text-left">
                 <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-black text-sm tracking-tight text-white">{(platformConfig.siteLogoText || "회생톡")} 변호사 CRM</span>
+                  <span className="font-black text-sm tracking-tight text-white">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
                   <span className="bg-brand/10 text-brand border border-brand/20 px-1.5 py-0.5 rounded font-extrabold text-[9px] tracking-wider uppercase">SaaS</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-0.5">도산 전문 법률 대리인 지부</span>
@@ -2587,7 +2587,7 @@ export default function LawyerRole({
         <div className="flex flex-col md:flex-row justify-between items-start gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-slate-400">
-              <span>{platformConfig.siteLogoText || "주식회사 회생톡"}</span>
+              <span>{platformConfig.siteLogoText || "주식회사 my김변"}</span>
               <span>|</span>
               <span>대표이사 {platformConfig.companyRepresentative}</span>
               <span>|</span>
@@ -2601,7 +2601,7 @@ export default function LawyerRole({
             </p>
           </div>
           <div className="md:text-right shrink-0">
-            <p>© 2026 {platformConfig.siteLogoText || "회생톡"} 도산 전문 변호사 CRM. All rights reserved.</p>
+            <p>© 2026 {platformConfig.siteLogoText || "my김변"} 도산 전문 변호사 CRM. All rights reserved.</p>
           </div>
         </div>
       </footer>

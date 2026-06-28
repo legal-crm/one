@@ -58,7 +58,7 @@ export default function NoticesView({ notices, selectedNoticeId, onSetSelectedNo
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
             <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2"><span>📢</span> 공지사항</h2>
-            <p className="text-xs text-slate-500 mt-1">회생톡의 새로운 알림 및 정책 변경 사항을 안내해 드립니다.</p>
+            <p className="text-xs text-slate-500 mt-1">my김변의 새로운 알림 및 정책 변경 사항을 안내해 드립니다.</p>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {notices.map(notice => (

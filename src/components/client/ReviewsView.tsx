@@ -48,7 +48,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
           </span>
           
           <h1 className="text-2xl md:text-3.5xl font-bold tracking-tight leading-tight">
-            회생톡 회생파산 성공사례
+            my김변 회생파산 성공사례
           </h1>
           
           <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium">

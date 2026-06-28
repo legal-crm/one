@@ -44,7 +44,7 @@ export default function QnAView({ qas, onConsultRequest }: QnAViewProps) {
             <HelpCircle className="w-3.5 h-3.5 text-brand" />
             <span>실시간 법률 고민 Q&A 상담사례</span>
           </span>
-          <h1 className="text-2xl md:text-3.5xl font-bold tracking-tight leading-tight">회생톡 법률 상담사례 디렉토리</h1>
+          <h1 className="text-2xl md:text-3.5xl font-bold tracking-tight leading-tight">my김변 법률 상담사례 디렉토리</h1>
           <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
             도산 전문 변호인단이 직접 분석하고 탕감/면책 방향을 속결 소명해 낸 실제 고민사례 목록입니다.<br/>
             나와 가장 유사한 채무 유형 및 거주 법원의 고민을 빠르게 찾고 실시간 즉시 1:1 대리인 대응을 시작해 보세요.

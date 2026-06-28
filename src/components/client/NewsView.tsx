@@ -51,7 +51,7 @@ export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews 
             <BookOpen className="w-3.5 h-3.5 text-brand" />
             <span>알아두면 좋을 법률 정보</span>
           </span>
-          <h1 className="text-2xl md:text-3.5xl font-black tracking-tight leading-tight">회생톡 법률 정보 &amp; 뉴스 센터</h1>
+          <h1 className="text-2xl md:text-3.5xl font-black tracking-tight leading-tight">my김변 법률 정보 &amp; 뉴스 센터</h1>
           <p className="text-slate-350 text-xs md:text-sm leading-relaxed">
             대한변협 등록 도산 전문 변호인단이 집필한 고품격 법률 칼럼과 뉴스입니다.<br/>
             최신 회생 실무 기준과 탕감 노하우를 확인하고 빚 독촉 위기를 신속하게 해결해 보세요.

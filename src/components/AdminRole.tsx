@@ -489,7 +489,7 @@ export default function AdminRole({
               <div className="p-2 rounded-xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20">
                 <ShieldAlert className="w-6 h-6" />
               </div>
-              <span className="font-black text-xl tracking-tight text-white">회생톡 통합 어드민</span>
+              <span className="font-black text-xl tracking-tight text-white">my김변 통합 어드민</span>
             </div>
             <p className="text-slate-400 text-xs">플랫폼 통합 의뢰인 및 파트너 제어 관리 센터</p>
           </div>
@@ -578,7 +578,7 @@ export default function AdminRole({
               </div>
               <div className="flex flex-col text-left">
                 <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-black text-sm tracking-tight text-white">회생톡 플랫폼 어드민</span>
+                  <span className="font-black text-sm tracking-tight text-white">my김변 플랫폼 어드민</span>
                   <span className="bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded font-extrabold text-[9px] tracking-wider uppercase">Master</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-0.5">통합 통합 의뢰인 및 파트너 자격 제어 모듈</span>
@@ -778,7 +778,7 @@ export default function AdminRole({
                   </div>
 
                   <div className="space-y-3.5 text-xs leading-relaxed text-slate-400">
-                    <p>회생톡 플랫폼은 가입 변호사로부터 <strong>사건 성사당 수임 소개 수수료를 1원도 징수하지 않습니다.</strong></p>
+                    <p>my김변 플랫폼은 가입 변호사로부터 <strong>사건 성사당 수임 소개 수수료를 1원도 징수하지 않습니다.</strong></p>
                     <div className="p-3 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-2">
                       <div className="flex justify-between text-[11px]">
                         <span>• 사건 당 중개 수수료 수취율</span>
