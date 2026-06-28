@@ -1602,6 +1602,30 @@ export default function AdminRole({
                             <p className="text-[10px] leading-relaxed text-slate-400">
                               가입 시 제출한 자격 확인서 및 소속 로펌 인증을 심사하십시오. 승인을 완료하면 대리인은 my김변의 모든 상담 세션 및 실시간 채팅 매칭에 정식으로 참여할 권한을 부여받습니다.
                             </p>
+
+                            {/* 변호사 등록증 미리보기 */}
+                            {selectedLawyer.licenseImageData && (
+                              <div className="space-y-1.5 bg-[#0B0F19] border border-amber-500/20 rounded-xl p-3">
+                                <span className="text-[10px] font-bold text-amber-400 block">📋 첨부된 변호사 등록증</span>
+                                <img src={selectedLawyer.licenseImageData} alt="변호사 등록증" className="w-full max-h-48 object-contain rounded-lg border border-[#1E293B]/40" />
+                              </div>
+                            )}
+                            {selectedLawyer.licenseNumber && (
+                              <div className="text-[11px] text-slate-300 bg-[#0B0F19] p-2.5 rounded-xl border border-[#1E293B]/40">
+                                • 변호사 등록번호: <strong className="text-white">{selectedLawyer.licenseNumber}</strong>
+                                {selectedLawyer.licenseStatus && (
+                                  <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded ${selectedLawyer.licenseStatus === 'pending' ? 'bg-amber-500/10 text-amber-400' : selectedLawyer.licenseStatus === 'verified' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                    {selectedLawyer.licenseStatus === 'pending' ? '심사 대기' : selectedLawyer.licenseStatus === 'verified' ? '검증 완료' : '반려됨'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {!selectedLawyer.licenseImageData && !selectedLawyer.licenseNumber && (
+                              <div className="text-[10px] text-red-400 bg-red-500/5 border border-red-500/10 p-2.5 rounded-xl">
+                                ⚠️ 등록증 미첨부 — 가입자에게 등록증 제출을 요청하세요.
+                              </div>
+                            )}
+
                             <button 
                               onClick={() => handleApproveLawyer(selectedLawyer.id)}
                               className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1"

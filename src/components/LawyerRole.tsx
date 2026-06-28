@@ -145,6 +145,43 @@ export default function LawyerRole({
   const [signupBio, setSignupBio] = useState<string>('');
   const [signupAvatar, setSignupAvatar] = useState<string>('https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256');
   const [signupError, setSignupError] = useState<string>('');
+  const [signupLicenseNumber, setSignupLicenseNumber] = useState<string>('');
+  const [licensePreview, setLicensePreview] = useState<string>('');
+  const [licenseImageData, setLicenseImageData] = useState<string>('');
+  const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const [avatarImageData, setAvatarImageData] = useState<string>('');
+
+  const handleLicenseFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기가 5MB를 초과합니다. 더 작은 파일을 선택해주세요.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setLicensePreview(result);
+      setLicenseImageData(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('프로필 사진은 2MB 이하로 올려주세요.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setAvatarPreview(result);
+      setAvatarImageData(result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // CRM States
   const [crmSearch, setCrmSearch] = useState<string>('');
@@ -310,6 +347,12 @@ export default function LawyerRole({
       return;
     }
 
+    // Unapproved account check
+    if (found.approved === false) {
+      setLoginError('관리자 자격 승인 심사가 완료되지 않은 계정입니다. 관리자 승인 후 로그인이 가능합니다.');
+      return;
+    }
+
     // Suspended, Withdrawn, or Dormant check before logging in
     const currentMember = members.find(m => m.id === found.id);
     if (currentMember) {
@@ -372,12 +415,16 @@ export default function LawyerRole({
       role: signupRole,
       fields: signupFields,
       region: signupRegion,
-      avatar: signupAvatar,
+      avatar: avatarImageData || signupAvatar,
+      avatarData: avatarImageData || undefined,
       bio: signupBio.trim() || `${signupName.trim()} ${signupRole === 'LAWYER' ? '변호사' : '실장'}입니다.`,
       recentActivity: '신규 회원 가입 완료',
       matchedCount: 0,
       password: signupPassword,
-      approved: false // New lawyer accounts must be approved by the admin portal
+      approved: false, // New lawyer accounts must be approved by the admin portal
+      licenseImageData: licenseImageData || undefined,
+      licenseNumber: signupLicenseNumber.trim() || undefined,
+      licenseStatus: 'pending'
     };
 
     setLawyers(prev => [...prev, newLawyer]);
@@ -396,7 +443,7 @@ export default function LawyerRole({
     setMembers(prev => [...prev, newMember]);
     onLogActivity(newMember.id, newMember.alias, newMember.role, 'SIGNUP', '로펌 CRM 파트너 신규 가입 신청 완료 (자격 심사 대기)');
 
-    alert('회원가입이 완료되었습니다. 로그인 해주세요!');
+    alert('회원가입이 완료되었습니다!\n\n관리자가 변호사 등록증을 확인한 후 승인 처리됩니다.\n승인 완료 후 로그인이 가능합니다.');
     setAuthMode('login');
     setLoginId(newLawyer.id);
     setSignupId('');
@@ -404,6 +451,11 @@ export default function LawyerRole({
     setSignupName('');
     setSignupBio('');
     setSignupError('');
+    setSignupLicenseNumber('');
+    setLicensePreview('');
+    setLicenseImageData('');
+    setAvatarPreview('');
+    setAvatarImageData('');
   };
 
   const handleLogout = () => {
@@ -807,13 +859,49 @@ export default function LawyerRole({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] text-slate-500 block uppercase font-bold">프로필 사진 URL</label>
-                <input 
-                  type="text" 
-                  value={signupAvatar}
-                  onChange={(e) => setSignupAvatar(e.target.value)}
-                  className="w-full bg-[#0B111E] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100 font-mono"
-                />
+                <label className="text-[10px] text-slate-500 block uppercase font-bold">프로필 사진 업로드</label>
+                <div className="flex items-center gap-3">
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="프로필 미리보기" className="w-12 h-12 rounded-xl object-cover border border-brand/30 shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-[#1F2937] flex items-center justify-center text-slate-500 text-[10px] shrink-0 border border-[#1F2937]">사진</div>
+                  )}
+                  <label className="flex-1 cursor-pointer">
+                    <div className="bg-[#0B111E] border border-[#1F2937] border-dashed rounded-xl p-2.5 text-xs text-slate-400 text-center hover:border-brand/50 transition-colors">
+                      📷 클릭하여 프로필 사진 선택
+                    </div>
+                    <input type="file" accept="image/*" onChange={handleAvatarFileChange} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              {/* 변호사 등록증 첨부 (핵심 자격 증빙) */}
+              <div className="space-y-1.5 bg-[#0B111E] border border-amber-500/20 rounded-xl p-3">
+                <label className="text-[10px] text-amber-400 block uppercase font-bold">📋 변호사 등록증 첨부 (필수 자격 증빙)*</label>
+                <p className="text-[10px] text-slate-500 leading-relaxed">관리자가 등록증을 확인한 후 계정이 승인됩니다. 이미지 또는 PDF 파일을 첨부해주세요.</p>
+                <label className="block cursor-pointer">
+                  <div className={`border ${licensePreview ? 'border-emerald-500/30' : 'border-[#1F2937] border-dashed'} rounded-xl p-3 text-xs text-center transition-colors hover:border-brand/50`}>
+                    {licensePreview ? (
+                      <div className="space-y-2">
+                        <img src={licensePreview} alt="등록증 미리보기" className="max-h-32 mx-auto rounded-lg object-contain" />
+                        <span className="text-emerald-400 text-[10px] font-bold">✅ 파일 첨부 완료 — 다시 선택하려면 클릭</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">📎 클릭하여 변호사 등록증 이미지 첨부 (최대 5MB)</span>
+                    )}
+                  </div>
+                  <input type="file" accept="image/*,.pdf" onChange={handleLicenseFileChange} className="hidden" />
+                </label>
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-[10px] text-slate-500 block uppercase font-bold">변호사 등록번호</label>
+                  <input
+                    type="text"
+                    placeholder="예: 12345"
+                    value={signupLicenseNumber}
+                    onChange={(e) => setSignupLicenseNumber(e.target.value)}
+                    className="w-full bg-[#070A13] border border-[#1F2937] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-100"
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] text-slate-500 block uppercase font-bold">소개 약력(Bio)</label>

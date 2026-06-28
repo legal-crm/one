@@ -131,6 +131,10 @@ export interface User {
   matchedCount: number;
   password?: string; // Optional password for authentication
   approved?: boolean; // Admin approval status for lawyers
+  licenseImageData?: string; // 변호사 등록증 이미지 (Base64 Data URL)
+  licenseNumber?: string; // 변호사 등록번호
+  licenseStatus?: 'pending' | 'verified' | 'rejected'; // 자격 심사 상태
+  avatarData?: string; // 프로필 사진 (Base64 Data URL, 파일 업로드 시)
 }
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';

@@ -133,6 +133,18 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
             <strong>(필수)</strong> 개인정보 제3자 제공 및 신용정보원 마이데이터 대출/연체 정보 조회 동의서에 동의합니다.
           </label>
         </div>
+
+        {/* Lawyer Login Redirect */}
+        <div className="text-center pt-1">
+          <button
+            type="button"
+            onClick={() => { window.location.href = '?role=lawyer'; }}
+            className="text-[11px] text-slate-400 hover:text-indigo-500 transition-colors font-semibold cursor-pointer inline-flex items-center gap-1"
+          >
+            <span className="w-3.5 h-3.5 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 rounded-full text-[8px] font-bold">⚖</span>
+            <span>변호사이신가요? 변호사 전용 로그인 →</span>
+          </button>
+        </div>
       </div>
     </div>
   );
