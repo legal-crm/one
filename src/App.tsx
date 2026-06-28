@@ -35,6 +35,13 @@ export default function App() {
   const [isShaking, setIsShaking] = useState(false);
 
   useEffect(() => {
+    // OAuth 리다이렉트 후 URL에 남는 #access_token=... 또는 빈 # 제거
+    if (window.location.hash) {
+      // Supabase가 세션을 처리한 후 해시를 비워도 '#'만 남는 경우 정리
+      const cleanUrl = window.location.pathname + window.location.search;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+
     const params = new URLSearchParams(window.location.search);
     
     // 1. Share parameter detection
