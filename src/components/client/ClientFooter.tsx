@@ -98,7 +98,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
 
       {/* Footer */}
       <footer className="bg-slate-200 dark:bg-slate-950/80 border-t border-slate-300 dark:border-slate-900 py-6 px-4 text-[11px] text-center text-slate-500 space-y-1">
-        <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 my김변. All rights reserved.</p>
+        <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 my김변(마이김변). All rights reserved.</p>
         <p className="mt-1">본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
       </footer>
     </>
