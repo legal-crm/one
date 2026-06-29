@@ -2279,14 +2279,9 @@ export default function ClientRole({
                   <div
                     key={item.id}
                     onClick={() => handleCategoryClick(item.id)}
-                    className={`bg-white dark:bg-slate-900 border p-5 rounded-2xl hover:border-brand/50 hover:shadow-md transition-all cursor-pointer group text-center space-y-3 hover-lift-sm transition-card ${
-                      item.id === 'tax_delinquency' 
-                        ? 'border-amber-200 dark:border-amber-900/30 bg-gradient-to-br from-amber-500/5 to-yellow-500/5 dark:from-amber-950/10 dark:to-yellow-950/10' 
-                        : 'border-slate-200 dark:border-slate-800'
-                    }`}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl hover:border-brand/50 hover:shadow-md transition-all cursor-pointer group text-center space-y-3 hover-lift-sm transition-card"
                   >
                     <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center group-hover:scale-110 transition-transform ${
-                      item.id === 'tax_delinquency' ? 'bg-amber-100 dark:bg-amber-955 text-amber-600' :
                       item.themeColor === 'red' ? 'bg-red-50 dark:bg-red-950/20 text-red-500' :
                       item.themeColor === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500' :
                       item.themeColor === 'amber' ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-500' :
