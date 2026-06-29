@@ -79,7 +79,14 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
                 개인정보 처리방침
               </a>
               <span className="text-slate-300">·</span>
-              <span className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white">법적 고지사항</span>
+              <a 
+                href="/legal.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
+              >
+                법적 고지사항
+              </a>
             </div>
             <p className="leading-relaxed text-left md:text-right">
               {platformConfig.siteLogoText || "my김변"}은 채무 해결 매칭 플랫폼으로서 통신판매의 당사자가 아니며,<br/>
