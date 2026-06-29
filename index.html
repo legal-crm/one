@@ -24,6 +24,97 @@
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="stylesheet" crossorigin="anonymous" as="style" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
     <title>my김변 — 나의 김변호사가 내 빚, 대신 관리해드려요</title>
+
+    <!-- [SEO] Google Search Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://mykim.kr/#website",
+          "url": "https://mykim.kr",
+          "name": "my김변",
+          "alternateName": "마이김변",
+          "description": "빚 걱정, 혼자 하지 마세요. 1분 만에 내 상황을 확인하고 전담 변호사가 무료로 관리해드려요.",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://mykim.kr/?tab=qna&search={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://mykim.kr/#organization",
+          "name": "주식회사 my김변컴퍼니",
+          "url": "https://mykim.kr",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://mykim.kr/mykim_logo.png",
+            "width": 512,
+            "height": 512
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "help@rebirthtalk.com",
+            "contactType": "customer service"
+          }
+        },
+        {
+          "@type": "ItemList",
+          "@id": "https://mykim.kr/#sitelinks",
+          "name": "my김변 주요 서비스",
+          "itemListElement": [
+            {
+              "@type": "SiteNavigationElement",
+              "position": 1,
+              "name": "탕감액 계산기",
+              "description": "나의 예상 채무 탕감액과 법정생계비를 10초 만에 확인해 보세요.",
+              "url": "https://mykim.kr/?tab=calculator"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 2,
+              "name": "제휴 변호사 찾기",
+              "description": "개인회생/파산 전문 분야의 신뢰할 수 있는 제휴 변호사 목록입니다.",
+              "url": "https://mykim.kr/?tab=lawyers"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 3,
+              "name": "회생/파산 성공후기",
+              "description": "실제 my김변을 통해 면책을 받은 회원들의 생생한 후기입니다.",
+              "url": "https://mykim.kr/?tab=reviews"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 4,
+              "name": "자주 묻는 질문 (Q&A)",
+              "description": "채무자대리인, 개인회생 자격 요건 등 자주 묻는 질문에 대한 답변입니다.",
+              "url": "https://mykim.kr/?tab=qna"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 5,
+              "name": "서비스 이용약관",
+              "description": "my김변 서비스 이용에 관한 권리와 의무를 규정합니다.",
+              "url": "https://mykim.kr/tos.html"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 6,
+              "name": "개인정보 처리방침",
+              "description": "my김변은 개인정보보호법에 의거하여 이용자의 권리를 보호합니다.",
+              "url": "https://mykim.kr/privacy.html"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

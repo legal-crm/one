@@ -547,7 +547,17 @@ export default function ClientRole({
   setInquiries
 }: ClientRoleProps) {
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry'>('landing');
+  // Sub-navigation for user
+  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry'>(() => {
+    if (typeof window === 'undefined') return 'landing';
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry'];
+    if (tabParam && validTabs.includes(tabParam)) {
+      return tabParam as any;
+    }
+    return 'landing';
+  });
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [activeReviewIdx, setActiveReviewIdx] = useState(0);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
@@ -559,7 +569,9 @@ export default function ClientRole({
 
     // 첫 진입 시 초기 브라우저 히스토리 상태 강제 세팅
     if (!window.history.state) {
-      window.history.replaceState({ tab: 'landing' }, '', '');
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') || 'landing';
+      window.history.replaceState({ tab: tabParam }, '', window.location.search || '?tab=landing');
     }
 
     const handlePopState = (event: PopStateEvent) => {
@@ -567,7 +579,13 @@ export default function ClientRole({
       if (event.state && event.state.tab) {
         setActiveTab(event.state.tab);
       } else {
-        setActiveTab('landing');
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab');
+        if (tabParam) {
+          setActiveTab(tabParam as any);
+        } else {
+          setActiveTab('landing');
+        }
       }
       setTimeout(() => {
         isPopStateRef.current = false;
@@ -586,7 +604,10 @@ export default function ClientRole({
 
     const currentState = window.history.state;
     if (!currentState || currentState.tab !== activeTab) {
-      window.history.pushState({ tab: activeTab }, '', '');
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', activeTab);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.pushState({ tab: activeTab }, '', newUrl);
     }
   }, [activeTab]);
 
