@@ -578,7 +578,7 @@ export default function LawyerRole({
 
     setActiveChatReqId(reqId);
     setMobilePane('chat');
-    setActiveTab('active-chats');
+    setActiveTab('client-crm');
   };
 
   // Turn active request into an formal Case (수임 완료)
@@ -1094,11 +1094,11 @@ export default function LawyerRole({
         {/* TAB 1: LAWYER DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-fadeIn">
-            {/* Top Stat grid */}
+            {/* 섹션 1: 상단 요약 카드 */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">오픈 대기중 신청</span>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">신규 상담 요청</span>
                   <span className="text-2xl font-black text-brand-light">{totalOpenRequestsCount}개</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-brand/10 text-brand-light">
@@ -1108,17 +1108,17 @@ export default function LawyerRole({
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">직접 지정 응답 대기</span>
-                  <span className="text-2xl font-black text-brand-light">{directCounselingCount}개</span>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">내게 지정된 응답 대기</span>
+                  <span className="text-2xl font-black text-amber-400">{directCounselingCount}개</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-brand/10 text-brand-light">
+                <div className="p-2.5 rounded-lg bg-amber-400/10 text-amber-400">
                   <Clock className="w-5 h-5" />
                 </div>
               </div>
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">내가 참여중인 상담</span>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">진행 중인 상담</span>
                   <span className="text-2xl font-black text-emerald-400">{activeChatsCount}개</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-emerald-400/10 text-emerald-400">
@@ -1128,7 +1128,7 @@ export default function LawyerRole({
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">사건화(수임 계약) 성공</span>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">수임 전환 성공</span>
                   <span className="text-2xl font-black text-purple-400">{totalCasesCount}건</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-purple-400/10 text-purple-400">
@@ -1138,96 +1138,154 @@ export default function LawyerRole({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Daily Conversion Stats and Team KPIs */}
+
+              {/* 섹션 2: 신규 상담 요청 미리보기 */}
               <div className="lg:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                   <h3 className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
-                    <BarChart2 className="w-4 h-4 text-emerald-400" />
-                    <span>팀별 도산 전문 영업 KPI 분석 (실시간)</span>
+                    <Bell className="w-4 h-4 text-brand-light" />
+                    <span>지금 상담을 기다리는 의뢰인</span>
                   </h3>
-                  <span className="bg-slate-100 border border-slate-850 px-2 py-0.5 rounded text-[10px]">오늘: 2026-05-26</span>
+                  <span className="text-[10px] text-slate-400">{totalOpenRequestsCount}건 대기 중</span>
                 </div>
 
-                <div className="space-y-4 text-xs">
-                  {/* KPI Progress 1 */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400 text-xs font-semibold">회생/파산 상담전화 사건 수임 변환률 (Target: 40%)</span>
-                      <span className="text-emerald-400 font-bold">44.5% (달성)</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-emerald-500 h-full w-[85%] rounded-full"></div>
-                    </div>
-                  </div>
+                <div className="space-y-3">
+                  {requests
+                    .filter(r => r.status === 'requested')
+                    .slice(0, 3)
+                    .map(r => (
+                      <div key={r.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-brand/30 transition-all space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                              r.requestType === 'direct'
+                                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                : 'bg-brand/10 text-brand-light border border-brand/20'
+                            }`}>
+                              {r.requestType === 'direct' ? '단독지명' : '오픈형'}
+                            </span>
+                            <span className="text-xs font-bold text-slate-700">{r.clientName}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                        </div>
 
-                  {/* KPI Progress 2 */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400 text-xs font-semibold">평균 법원 보정 권고대응 납기 (Target: 7일 내)</span>
-                      <span className="text-indigo-400 font-bold">5.8일 (보강 필요)</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-indigo-500 h-full w-[70%] rounded-full"></div>
-                    </div>
-                  </div>
+                        <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed">{r.content}</p>
 
-                  {/* KPI Progress 3 */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400 text-xs font-semibold">상담 참여 락(Lock) 소진율 - 마케팅 원가 대비 전환</span>
-                      <span className="text-brand-light font-bold">68.2%</span>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+                          <div className="bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                            <span className="text-slate-400 block text-[9px] font-bold">총 채무</span>
+                            <span className="font-bold text-red-400">{r.financialProfile.debtTotal.toLocaleString()}만</span>
+                          </div>
+                          <div className="bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                            <span className="text-slate-400 block text-[9px] font-bold">월 소득</span>
+                            <span className="font-bold text-slate-700">{r.financialProfile.income}만</span>
+                          </div>
+                          <div className="bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                            <span className="text-slate-400 block text-[9px] font-bold">직업</span>
+                            <span className="font-bold text-slate-700">
+                              {r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : r.financialProfile.jobType === 'FREELANCER' ? '프리랜서' : '-'}
+                            </span>
+                          </div>
+                          <div className="bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                            <span className="text-slate-400 block text-[9px] font-bold">채무 원인</span>
+                            <span className="font-bold text-slate-700">
+                              {r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {r.financialProfile.riskFlags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {r.financialProfile.riskFlags.slice(0, 3).map(rf => (
+                              <span key={rf} className="bg-red-500/10 text-red-400 border border-red-500/10 text-[9px] px-1.5 py-0.5 rounded font-semibold">
+                                ⚠ {rf}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => setActiveTab('open-requests')}
+                          className="w-full bg-slate-850 hover:bg-slate-100 text-brand-light font-bold py-2 rounded-[200px] text-[11px] border border-slate-200 transition-colors flex items-center justify-center gap-1"
+                        >
+                          상세 확인 & 상담 참여하기
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                  {requests.filter(r => r.status === 'requested').length === 0 && (
+                    <div className="py-12 text-center space-y-2">
+                      <Briefcase className="w-10 h-10 text-slate-300 mx-auto" />
+                      <p className="text-xs text-slate-400">현재 대기 중인 신규 상담 요청이 없습니다.</p>
+                      <p className="text-[10px] text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
                     </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-brand h-full w-[68%] rounded-full"></div>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Sub regional performance box */}
-                <div className="pt-4 border-t border-slate-200 grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block">수원지법 지부</span>
-                    <strong className="text-xs text-indigo-300">총 수임 42M</strong>
-                  </div>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block">서울회생법원</span>
-                    <strong className="text-xs text-brand-light">총 수임 155M</strong>
-                  </div>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block">부산지방법원</span>
-                    <strong className="text-xs text-emerald-300">총 수임 60M</strong>
-                  </div>
-                </div>
+                {requests.filter(r => r.status === 'requested').length > 3 && (
+                  <button
+                    onClick={() => setActiveTab('open-requests')}
+                    className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2.5 rounded-[200px] text-xs transition-colors"
+                  >
+                    전체 상담 요청 {totalOpenRequestsCount}건 모두 보기 &rarr;
+                  </button>
+                )}
               </div>
 
-              {/* CRM Active Info Guide */}
-              <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+              {/* 섹션 3: 나의 상담 활동 요약 */}
+              <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-5">
                 <h3 className="font-bold text-sm text-slate-800 flex items-center gap-1.5 border-b border-slate-200 pb-3">
-                  <Shield className="w-4 h-4 text-brand-light" />
-                  <span>플랫폼 공존 원칙 준수 요약</span>
+                  <BarChart2 className="w-4 h-4 text-emerald-400" />
+                  <span>나의 상담 활동</span>
                 </h3>
-                <ul className="text-xs space-y-2.5 text-slate-400">
-                  <li className="flex items-start gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>의뢰인이 상담을 자발적으로 개설한 요청에 대해서만 보정 접근할 수 있습니다.</span>
-                  </li>
-                  <li className="flex items-start gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>오픈 다중참여형 매칭은 선착순 3인 도달 시 자율 시스템이 락(Lock)을 생성합니다.</span>
-                  </li>
-                  <li className="flex items-start gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>개별 임의 DM 및 타인 광고 노출은 불가하며, 성과 수수료 갈취 행위는 금지됩니다.</span>
-                  </li>
-                </ul>
 
-                <button 
-                  onClick={() => setActiveTab('open-requests')}
-                  className="w-full bg-slate-850 hover:bg-slate-100 text-brand-light font-bold py-2 rounded-[200px] text-xs border border-slate-200 transition-colors"
-                >
-                  새 상담요청 수집확인 &rarr;
-                </button>
+                {(() => {
+                  const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
+                  const myCounseling = requests.filter(r => r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id).length;
+                  const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
+                  const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
+                  return (
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400 font-semibold">총 상담 참여</span>
+                          <span className="font-black text-slate-700">{myParticipated}건</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400 font-semibold">현재 진행 중</span>
+                          <span className="font-black text-emerald-400">{myCounseling}건</span>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-200 pt-4 space-y-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400 font-semibold">수임 전환 성공</span>
+                          <span className="font-black text-purple-400">{myCases}건</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400 font-semibold">전환율</span>
+                          <span className={`font-black ${conversionRate >= 40 ? 'text-emerald-400' : conversionRate >= 20 ? 'text-amber-400' : 'text-slate-500'}`}>{conversionRate}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${conversionRate >= 40 ? 'bg-emerald-500' : conversionRate >= 20 ? 'bg-amber-500' : 'bg-slate-300'}`}
+                            style={{ width: `${Math.min(100, conversionRate)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-200 pt-4">
+                        <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 space-y-1.5">
+                          <span className="text-[10px] font-black text-brand-light uppercase tracking-wide">💡 상담 TIP</span>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            의뢰인의 채무 원인에 맞춘 구체적인 해결 방안을 제시하면 수임 전환율이 높아집니다. 채무 구조를 꼼꼼히 분석해 보세요.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
