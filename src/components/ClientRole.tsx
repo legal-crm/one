@@ -1919,7 +1919,20 @@ export default function ClientRole({
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
-                변호사 찾기
+                전담 변호사 찾기
+              </button>
+              <button 
+                onClick={() => {
+                  setActiveTab('qna');
+                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭');
+                }}
+                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                  activeTab === 'qna' 
+                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
+                }`}
+              >
+                고민상담 Q&A
               </button>
               {/* 성공사례 메뉴 숨김 처리
               <button 
