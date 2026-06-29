@@ -1,0 +1,48 @@
+# my김변 (mykim.kr)
+> 채무 위기에 놓인 사용자가 익명으로 채무 상태를 진단하고,
+> 개인회생·파산·신용회복·채무자대리 중 적합한 해결 방향을
+> 전담 변호사와 함께 관리할 수 있도록 돕는 대한민국 채무관리 플랫폼
+
+## 운영사
+- 회사명: (주)my김변컴퍼니
+- 대표: 진성호
+- 이메일: help@rebirthtalk.com
+- 사이트: https://mykim.kr
+
+## 핵심 서비스
+- 1분 익명 채무 자가진단 (AI 기반)
+- 맞춤형 해결 전략 추천 (개인회생/파산/신용회복/채무자대리)
+- 전담 변호사 무료 배정
+- 비공개 관리방 운영
+- 탕감액 계산기
+
+## 주요 페이지
+- 서비스 소개: https://mykim.kr/about.html
+- 보안센터: https://mykim.kr/security.html
+- 채무관리란: https://mykim.kr/guide/debt-management.html
+- 개인회생 가이드: https://mykim.kr/guide/personal-rehabilitation.html
+- 개인파산 가이드: https://mykim.kr/guide/bankruptcy.html
+- 신용회복 가이드: https://mykim.kr/guide/credit-recovery.html
+- 채무자대리 가이드: https://mykim.kr/guide/debt-agent.html
+- 세금체납 가이드: https://mykim.kr/guide/tax-debt.html
+- 자주 묻는 질문: https://mykim.kr/faq.html
+- 탕감액 계산기: https://mykim.kr/?tab=calculator
+- 전담 변호사 찾기: https://mykim.kr/?tab=lawyers
+- 성공후기: https://mykim.kr/?tab=reviews
+- 고민상담 Q&A: https://mykim.kr/?tab=qna
+
+## 법률/정책 페이지
+- 이용약관: https://mykim.kr/tos.html
+- 개인정보 처리방침: https://mykim.kr/privacy.html
+- 법적 고지사항: https://mykim.kr/legal.html
+
+## 서비스 철학
+개인회생이 정답이 아닐 수도 있습니다.
+먼저 내 채무 상태를 진단하고, 전담 변호사와 관리 방향을 확인하세요.
+my김변은 상담 연결이 아니라, 채무 진단 → 해결전략 추천 → 전담 변호사 배정 → 관리방 운영까지 연결하는 채무관리 플랫폼입니다.
+
+## 차별점
+- 익명성: 가명 기반 상담, 실명 미공개
+- 전담 관리: 1회 상담이 아닌 지속적 채무 관리
+- 투명성: 변호사법 준수, 알선료 0원
+- 보안: 상담 내용 암호화, 감사 로그 관리

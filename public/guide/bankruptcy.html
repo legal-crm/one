@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <title>개인파산과 면책 완전 가이드 — 절차, 조건, FAQ | my김변</title>
+    <meta name="description" content="개인파산은 소득이 없거나 극히 적어 채무를 갚을 능력이 없는 사람이 법원에 파산을 신청하고, 면책 결정을 받아 모든 채무를 면제받는 절차입니다. 개인회생과의 차이, 면책불허가 사유를 안내합니다.">
+    <link rel="canonical" href="https://mykim.kr/guide/bankruptcy.html">
+    <style>
+        body { font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #fafafa; }
+        h1 { font-size: 24px; border-bottom: 2px solid #6C5CE7; padding-bottom: 12px; color: #2d3436; }
+        h2 { margin-top: 36px; font-size: 17px; color: #6C5CE7; border-left: 3px solid #6C5CE7; padding-left: 12px; }
+        h3 { font-size: 15px; color: #2d3436; margin-top: 20px; }
+        p, li { font-size: 14px; color: #555; }
+        ul, ol { padding-left: 20px; }
+        li { margin-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+        th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
+        th { background: #f0edfc; color: #6C5CE7; font-weight: 600; }
+        .highlight-box { background: #f0edfc; border-left: 4px solid #6C5CE7; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; color: #2d3436; }
+        .warning-box { background: #fff3e0; border-left: 4px solid #FF9800; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 14px; }
+        .success-box { background: #e8f5e9; border-left: 4px solid #4CAF50; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 14px; }
+        .faq-item { background: white; border: 1px solid #e8e5f8; border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+        .faq-q { font-weight: 700; color: #6C5CE7; font-size: 14px; margin-bottom: 8px; }
+        .faq-a { font-size: 14px; color: #555; }
+        .cta-box { background: linear-gradient(135deg, #6C5CE7, #a29bfe); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 32px 0; }
+        .cta-box a { color: white; text-decoration: none; font-weight: 700; font-size: 16px; }
+        .footer-note { margin-top: 48px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; }
+        nav.breadcrumb { font-size: 12px; color: #999; margin-bottom: 16px; }
+        nav.breadcrumb a { color: #6C5CE7; text-decoration: none; }
+        .checklist li { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "☑ "; color: #6C5CE7; font-weight: bold; }
+    </style>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "홈", "item": "https://mykim.kr" },
+            { "@type": "ListItem", "position": 2, "name": "채무관리 가이드", "item": "https://mykim.kr/guide/debt-management.html" },
+            { "@type": "ListItem", "position": 3, "name": "개인파산", "item": "https://mykim.kr/guide/bankruptcy.html" }
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            { "@type": "Question", "name": "소득이 없으면 파산이 더 나은가요?",
+              "acceptedAnswer": { "@type": "Answer", "text": "일반적으로 그렇습니다. 개인회생은 정기적 소득이 있어야 변제계획을 수립할 수 있지만, 개인파산은 소득이 없거나 극히 적어 채무를 갚을 능력이 없는 경우에 적합합니다. 다만 '지급불능 상태'를 법원에 소명해야 하며, 소액의 소득이 있더라도 채무 대비 현저히 부족하면 파산 신청이 가능합니다." }
+            },
+            { "@type": "Question", "name": "파산하면 모든 빚이 없어지나요?",
+              "acceptedAnswer": { "@type": "Answer", "text": "파산 선고만으로는 채무가 소멸하지 않습니다. 파산 선고 이후 별도로 '면책' 결정을 받아야 채무가 면제됩니다. 다만 세금, 벌금, 양육비, 근로자 임금 등 일부 채무는 면책 대상에서 제외됩니다(비면책채권). 또한 도박, 사치, 허위 신용거래 등 면책불허가 사유가 있으면 면책이 거부될 수 있습니다." }
+            },
+            { "@type": "Question", "name": "세금도 파산으로 없어지나요?",
+              "acceptedAnswer": { "@type": "Answer", "text": "아닙니다. 국세, 지방세 등 세금은 비면책채권으로서 개인파산 면책을 받더라도 소멸하지 않습니다. 세금체납이 있는 경우 별도의 납부 전략(분납, 소멸시효 관리 등)을 병행해야 합니다." }
+            },
+            { "@type": "Question", "name": "파산하면 직업 제한이 있나요?",
+              "acceptedAnswer": { "@type": "Answer", "text": "파산 선고를 받으면 일정 기간 동안 일부 직업과 자격에 제한이 생길 수 있습니다. 변호사, 공인회계사, 세무사 등 전문직과 보험모집인, 경비업 종사자 등이 해당됩니다. 다만 면책 결정을 받으면 복권되어 이러한 제한이 해제됩니다. 일반 회사원이나 자영업자에게는 실질적인 직업 제한이 거의 없습니다." }
+            },
+            { "@type": "Question", "name": "파산 신청 시 재산은 어떻게 되나요?",
+              "acceptedAnswer": { "@type": "Answer", "text": "파산 선고 시 채무자의 재산은 파산재단에 포함되어 채권자에게 배당됩니다. 다만 생활에 필요한 최소한의 재산(자유재산)은 보호됩니다. 자유재산에는 6개월분 생계비, 생활필수품, 소액의 예금 등이 포함됩니다. 법원에 자유재산 범위 확장을 신청할 수도 있습니다." }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="/">홈</a> &gt; <a href="/guide/debt-management.html">채무관리 가이드</a> &gt; 개인파산</nav>
+
+    <h1>개인파산과 면책 완전 가이드</h1>
+
+    <div class="highlight-box">
+        <strong>Quick Answer:</strong> 개인파산은 소득이 없거나 극히 적어 채무를 갚을 능력이 없는 사람이 법원에 파산을 신청하고, <strong>면책 결정을 받아 모든 채무를 면제받는 절차</strong>입니다. 개인회생과 달리 변제계획 없이 채무 전액이 면책될 수 있지만, <strong>재산 처분과 자격 제한</strong>이 따릅니다. 면책 후에는 복권되어 제한이 해제됩니다.
+    </div>
+
+    <h2>파산과 면책의 차이</h2>
+    <table>
+        <tr><th>구분</th><th>파산</th><th>면책</th></tr>
+        <tr><td><strong>의미</strong></td><td>채무자가 지급불능 상태임을 법원이 선고</td><td>파산 선고 후 잔여 채무를 면제하는 결정</td></tr>
+        <tr><td><strong>효과</strong></td><td>재산이 파산재단에 포함, 자격 제한 시작</td><td>채무 소멸, 복권(자격 제한 해제)</td></tr>
+        <tr><td><strong>절차</strong></td><td>파산 신청 → 심문 → 파산 선고</td><td>면책 신청 → 면책 심문 → 면책 결정</td></tr>
+        <tr><td><strong>기간</strong></td><td>신청 후 1~3개월</td><td>파산 선고 후 3~6개월</td></tr>
+    </table>
+    <p>통상적으로 파산과 면책은 동시에 신청하며, 전체 절차는 6개월~1년 정도 소요됩니다.</p>
+
+    <h2>이 제도가 맞는 사람</h2>
+    <div class="success-box">
+        <ul style="margin:0;padding-left:20px;">
+            <li><strong>소득이 전혀 없거나</strong> 극히 적어 채무 변제가 불가능한 사람</li>
+            <li>고령, 질병, 장애 등으로 <strong>향후 소득 전망이 없는</strong> 사람</li>
+            <li>재산이 거의 없어 <strong>처분할 것이 적은</strong> 사람</li>
+            <li>개인회생 변제계획을 <strong>3~5년간 이행하기 어려운</strong> 사람</li>
+            <li>보증채무 등으로 <strong>갑작스럽게 거액의 채무</strong>를 지게 된 사람</li>
+        </ul>
+    </div>
+
+    <h2>이 제도가 불리한 사람</h2>
+    <div class="warning-box">
+        <ul style="margin:0;padding-left:20px;">
+            <li><strong>정기 소득이 있는 사람</strong> → 개인회생이 유리 (재산 보전)</li>
+            <li><strong>부동산, 차량 등 재산을 유지</strong>하고 싶은 사람 → 개인회생 검토</li>
+            <li><strong>도박, 사치, 과소비</strong>가 채무 원인인 사람 → 면책불허가 위험</li>
+            <li><strong>전문직 종사자</strong>로 자격 제한이 치명적인 사람 → 개인회생 검토</li>
+        </ul>
+    </div>
+
+    <h2>면책불허가 사유 (주의)</h2>
+    <p>다음에 해당하면 면책이 거부될 수 있습니다 (채무자회생법 제564조).</p>
+    <ul>
+        <li>사행행위(도박)로 현저하게 재산을 감소시킨 경우</li>
+        <li>과대한 낭비, 도박 기타 사행행위로 채무가 발생한 경우</li>
+        <li>채권자를 해할 목적으로 재산을 은닉·손괴·처분한 경우</li>
+        <li>허위의 채권자 목록을 제출한 경우</li>
+        <li>법원에 대해 허위 진술을 한 경우</li>
+        <li>최근 7년 이내에 면책을 받은 사실이 있는 경우</li>
+    </ul>
+    <div class="warning-box">
+        <strong>⚠️ 중요:</strong> 면책불허가 사유가 있더라도, 법원이 재량으로 면책을 허가하는 경우(재량면책)도 있습니다. 도박이 채무 원인이라 하더라도 반드시 면책이 불가능한 것은 아니므로, 반드시 전문 변호사와 상담하시기 바랍니다.
+    </div>
+
+    <h2>자유재산 범위</h2>
+    <table>
+        <tr><th>항목</th><th>보호 범위</th></tr>
+        <tr><td>생계비</td><td>6개월분 생계비 (가구원 수에 따라 산정)</td></tr>
+        <tr><td>생활필수품</td><td>가구, 주방기구, 의류 등 기본 생활용품</td></tr>
+        <tr><td>예금</td><td>소액예금 보호 (압류금지채권에 해당하는 범위)</td></tr>
+        <tr><td>직업도구</td><td>직업에 필수적인 도구·장비</td></tr>
+        <tr><td>자유재산 확장</td><td>법원 신청으로 보호 범위를 확대할 수 있음</td></tr>
+    </table>
+
+    <h2>비용 안내</h2>
+    <table>
+        <tr><th>항목</th><th>금액</th></tr>
+        <tr><td>인지대·송달료</td><td>약 10~30만 원</td></tr>
+        <tr><td>변호사 보수</td><td>150~300만 원 (분할납부 가능)</td></tr>
+    </table>
+
+    <h2>자주 묻는 질문</h2>
+
+    <div class="faq-item">
+        <div class="faq-q">Q. 소득이 없으면 파산이 더 나은가요?</div>
+        <div class="faq-a">A. 일반적으로 그렇습니다. 개인회생은 정기적 소득이 필요하지만, 파산은 소득이 없거나 극히 적은 경우에 적합합니다. 소액 소득이 있어도 채무 대비 현저히 부족하면 파산 신청이 가능합니다.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-q">Q. 파산하면 모든 빚이 없어지나요?</div>
+        <div class="faq-a">A. 파산 선고만으로는 안 됩니다. 별도로 '면책' 결정을 받아야 합니다. 단, 세금, 벌금, 양육비, 근로자 임금 등 일부 비면책채권은 면책되지 않습니다.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-q">Q. 세금도 파산으로 없어지나요?</div>
+        <div class="faq-a">A. 아닙니다. 국세, 지방세는 비면책채권으로 파산 면책을 받더라도 소멸하지 않습니다. <a href="/guide/tax-debt.html">세금체납 관리 가이드</a>를 참고하세요.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-q">Q. 파산하면 직업 제한이 있나요?</div>
+        <div class="faq-a">A. 일부 전문직(변호사, 공인회계사 등)과 보험모집인, 경비업 등에 제한이 있습니다. 다만 면책 후 복권되면 해제됩니다. 일반 회사원이나 자영업자에게는 실질적 제한이 거의 없습니다.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-q">Q. 파산 신청 시 재산은 어떻게 되나요?</div>
+        <div class="faq-a">A. 재산은 파산재단에 포함되어 채권자에게 배당됩니다. 다만 6개월분 생계비, 생활필수품 등 자유재산은 보호됩니다. 법원에 자유재산 범위 확장 신청도 가능합니다.</div>
+    </div>
+
+    <h2>전담 변호사와 확인할 체크리스트</h2>
+    <ul class="checklist">
+        <li>현재 소득이 정말로 없는가, 아니면 소액이라도 있는가?</li>
+        <li>개인회생이 아닌 파산이 더 유리한 구체적 이유는?</li>
+        <li>면책불허가 사유(도박, 사치 등)에 해당하는 채무가 있는가?</li>
+        <li>보전할 재산(부동산, 차량, 보험)이 있는가?</li>
+        <li>현재 직업에 파산으로 인한 자격 제한이 있는가?</li>
+        <li>세금체납이 있는가? (비면책채권 확인)</li>
+        <li>최근 7년 이내에 면책을 받은 적이 있는가?</li>
+    </ul>
+
+    <div class="cta-box">
+        <p style="margin: 0 0 12px 0; font-size: 18px; font-weight: 800; color: white;">파산이 나에게 맞는 방법일까?</p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: rgba(255,255,255,0.9);">익명으로 채무 상태를 진단하고, 전담 변호사에게 확인하세요.</p>
+        <a href="https://mykim.kr">🔍 익명 채무진단 시작하기 →</a>
+    </div>
+
+    <div class="footer-note">
+        <p>본 가이드는 「채무자 회생 및 파산에 관한 법률」에 근거한 일반 정보 제공입니다.</p>
+        <p>© 2026 (주)my김변컴퍼니 | <a href="/guide/debt-management.html">채무관리 가이드</a> | <a href="/guide/personal-rehabilitation.html">개인회생 가이드</a> | <a href="/about.html">서비스 소개</a></p>
+    </div>
+</body>
+</html>

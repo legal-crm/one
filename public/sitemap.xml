@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Main Home Page -->
+  <!-- Main Home -->
   <url>
     <loc>https://mykim.kr/</loc>
     <lastmod>2026-06-29</lastmod>
@@ -8,55 +8,111 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- Debt Calculator Tab -->
+  <!-- Service Pages -->
+  <url>
+    <loc>https://mykim.kr/about.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://mykim.kr/security.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Guide Hub Pages -->
+  <url>
+    <loc>https://mykim.kr/guide/debt-management.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/personal-rehabilitation.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/bankruptcy.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/credit-recovery.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/debt-agent.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://mykim.kr/guide/tax-debt.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- FAQ -->
+  <url>
+    <loc>https://mykim.kr/faq.html</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Tab Pages -->
   <url>
     <loc>https://mykim.kr/?tab=calculator</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Lawyers List Tab -->
   <url>
     <loc>https://mykim.kr/?tab=lawyers</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Success Testimonials/Reviews Tab -->
   <url>
     <loc>https://mykim.kr/?tab=reviews</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Q&A Tab -->
   <url>
     <loc>https://mykim.kr/?tab=qna</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://mykim.kr/?tab=news</loc>
+    <lastmod>2026-06-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-  <!-- Service Terms page -->
+  <!-- Legal/Policy Pages -->
   <url>
     <loc>https://mykim.kr/tos.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
-
-  <!-- Privacy Policy page -->
   <url>
     <loc>https://mykim.kr/privacy.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
-
-  <!-- Legal Notice page -->
   <url>
     <loc>https://mykim.kr/legal.html</loc>
     <lastmod>2026-06-29</lastmod>
