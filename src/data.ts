@@ -1533,7 +1533,7 @@ export const initialInquiries: ClientInquiry[] = [
 ];
 
 export const initialPlatformConfig: PlatformConfig = {
-  siteTitle: 'my김변 - 나의 김변호사가 내 빚, 대신 관리해드려요',
+  siteTitle: 'my김변 — 내 빚, 전담 변호사가 관리해드려요',
   siteLogoText: 'my김변',
   siteLogoUrl: './mykim_logo.png',
   companyAddress: '서울특별시 서초구 서초대로 123 서초빌딩 5층 (주)my김변컴퍼니',
