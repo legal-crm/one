@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
@@ -58,7 +58,7 @@ export default function LawyerRole({
   platformConfig
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'active-chats' | 'cases' | 'billing' | 'client-crm' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'cases' | 'billing' | 'client-crm' | 'settings'>('dashboard');
   
   // Mobile UI navigation controls
   const [mobilePane, setMobilePane] = useState<'threads' | 'chat' | 'crm'>('threads');
@@ -311,7 +311,7 @@ export default function LawyerRole({
       return req;
     }));
 
-    alert(`[다시시작 CRM 연동] ${activeLawyer.name} 님이 담당 변호사로 지정되었습니다. 실시간 협업실(채팅) 탭에서 의뢰인 소명 분석을 개시할 수 있습니다.`);
+    alert(`[다시시작 CRM 연동] ${activeLawyer.name} 님이 담당 변호사로 지정되었습니다. 의뢰인 CRM 탭에서 소명 분석을 개시할 수 있습니다.`);
   };
 
   // Auth logic
@@ -1039,20 +1039,6 @@ export default function LawyerRole({
               )}
             </button>
 
-            <button 
-              onClick={() => setActiveTab('active-chats')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'active-chats' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>실시간 협업실 (채팅)</span>
-              {activeChatsCount > 0 && (
-                <span className="bg-brand text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">
-                  {activeChatsCount}
-                </span>
-              )}
-            </button>
 
             <button 
               onClick={() => setActiveTab('client-crm')}
@@ -1344,7 +1330,7 @@ export default function LawyerRole({
                           className="w-full bg-brand hover:bg-brand-hover text-white font-black py-2.5 rounded-[200px] text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>상담 참여 & 실시간 채팅 참여</span>
+                          <span>상담 참여</span>
                         </button>
                       </div>
 
@@ -1361,8 +1347,8 @@ export default function LawyerRole({
           </div>
         )}
 
-        {/* TAB 3: THREE-PANE REAL-TIME CHAT & 법률 CRM PANEL */}
-        {activeTab === 'active-chats' && (
+        {/* TAB 3: (실시간 협업실 채팅 - 추후 추가 예정) */}
+        {false && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-slate-50 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 min-h-[500px] h-[calc(100vh-14rem)] lg:h-[700px] animate-fadeIn">
             
             {/* PANEL I: INBOX THREADS (LEFT) */}
