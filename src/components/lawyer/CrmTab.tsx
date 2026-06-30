@@ -768,16 +768,159 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         </div>
                       )}
 
-                      {/* 채무 요약 */}
+
+                      {/* 채무 현황 + 전체 프로필 */}
                       <div className="space-y-2">
-                        <span className="text-[11px] font-bold text-slate-500 block">📊 채무 현황</span>
+                        <span className="text-[11px] font-bold text-slate-500 block">📊 채무 현황 및 의뢰인 프로필</span>
+                        
+                        {/* 핵심 4대 지표 */}
                         <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">총 채무</span><span className="font-bold text-red-400">{selectedClient.financialProfile.debtTotal.toLocaleString()}만</span></div>
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">월 소득</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.income}만</span></div>
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">자산</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.assetsTotal.toLocaleString()}만</span></div>
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">부양가족</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.dependents}명</span></div>
+                          <div className="bg-red-50 p-2 rounded border border-red-100"><span className="text-red-300 block text-[9px]">총 채무</span><span className="font-extrabold text-red-500 text-sm">{selectedClient.financialProfile.debtTotal.toLocaleString()}만</span></div>
+                          <div className="bg-blue-50 p-2 rounded border border-blue-100"><span className="text-blue-300 block text-[9px]">월 소득</span><span className="font-extrabold text-blue-600 text-sm">{selectedClient.financialProfile.income}만</span></div>
+                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">자산 합산</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.assetsTotal.toLocaleString()}만</span></div>
+                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">소득 대비 부채</span><span className="font-bold text-amber-500">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}배</span></div>
                         </div>
+
+                        {/* 인적사항 */}
+                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
+                          <span className="text-[9px] font-black text-indigo-400 tracking-wide uppercase block">👤 인적사항</span>
+                          {selectedClient.financialProfile.age && (
+                            <div className="flex justify-between"><span>나이</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.age}세</span></div>
+                          )}
+                          <div className="flex justify-between"><span>부양가족</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.dependents}명 ({selectedClient.financialProfile.dependents + 1}인 가구)</span></div>
+                          {selectedClient.financialProfile.minorChildren !== undefined && (
+                            <div className="flex justify-between"><span>미성년 자녀</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.minorChildren}명</span></div>
+                          )}
+                          <div className="flex justify-between"><span>혼인 상태</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : selectedClient.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
+                          {selectedClient.financialProfile.specialCondition && selectedClient.financialProfile.specialCondition !== 'none' && (
+                            <div className="bg-emerald-50 border border-emerald-200 p-1.5 rounded text-[10px] text-emerald-600 font-bold text-center mt-1">
+                              ⚡ 24개월 특례: {selectedClient.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : selectedClient.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : '고령자'}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 직업·주거 정보 */}
+                        {selectedClient.financialProfile.jobType && (
+                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
+                            <span className="text-[9px] font-black text-cyan-500 tracking-wide uppercase block">💼 직업 · 주거</span>
+                            <div className="flex justify-between"><span>직업 유형</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.jobType === 'SALARIED' ? '급여소득' : selectedClient.financialProfile.jobType === 'BUSINESS' ? '영업소득' : selectedClient.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}{selectedClient.financialProfile.companyName ? ` (${selectedClient.financialProfile.companyName})` : ''}</span></div>
+                            {selectedClient.financialProfile.employmentDate && (
+                              <div className="flex justify-between"><span>입사/개업일</span><span className="text-slate-700">{selectedClient.financialProfile.employmentDate}</span></div>
+                            )}
+                            <div className="flex justify-between"><span>거주 지역</span><span className="text-slate-700">{selectedClient.financialProfile.residenceRegion}</span></div>
+                            {selectedClient.financialProfile.housingType && (
+                              <div className="flex justify-between"><span>거주 형태</span><span className="text-slate-700">{selectedClient.financialProfile.housingType === 'rent' ? '월세' : selectedClient.financialProfile.housingType === 'jeonse' ? '전세' : selectedClient.financialProfile.housingType === 'owned' ? '자가' : '무상거주'}{selectedClient.financialProfile.housingContractHolder ? ` (${selectedClient.financialProfile.housingContractHolder === 'self' ? '본인' : selectedClient.financialProfile.housingContractHolder === 'spouse' ? '배우자' : '타인'}명의)` : ''}</span></div>
+                            )}
+                            <div className="flex justify-between"><span>임차 보증금</span><span className="text-slate-700">{selectedClient.financialProfile.rentalDeposit?.toLocaleString() || 0}만</span></div>
+                            {selectedClient.financialProfile.depositLoan !== undefined && selectedClient.financialProfile.depositLoan > 0 && (
+                              <div className="flex justify-between"><span>보증금 대출</span><span className="text-rose-400 font-bold">{selectedClient.financialProfile.depositLoan.toLocaleString()}만</span></div>
+                            )}
+                            {selectedClient.financialProfile.maritalStatus === 'MARRIED' && (
+                              <>
+                                <div className="flex justify-between"><span>배우자 재산</span><span className="text-slate-700">{selectedClient.financialProfile.spouseAsset?.toLocaleString() || 0}만</span></div>
+                                {selectedClient.financialProfile.spouseIncome !== undefined && (
+                                  <div className="flex justify-between"><span>배우자 소득</span><span className="text-slate-700">{selectedClient.financialProfile.spouseIncome}만</span></div>
+                                )}
+                              </>
+                            )}
+                            {selectedClient.financialProfile.maritalStatus === 'DIVORCED' && (
+                              <>
+                                {selectedClient.financialProfile.childSupportReceived !== undefined && selectedClient.financialProfile.childSupportReceived > 0 && (
+                                  <div className="flex justify-between"><span>양육비 수령</span><span className="text-emerald-500">+{selectedClient.financialProfile.childSupportReceived}만</span></div>
+                                )}
+                                {selectedClient.financialProfile.childSupportPaid !== undefined && selectedClient.financialProfile.childSupportPaid > 0 && (
+                                  <div className="flex justify-between"><span>양육비 지급</span><span className="text-rose-400">-{selectedClient.financialProfile.childSupportPaid}만</span></div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 채무 상세 */}
+                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
+                          <span className="text-[9px] font-black text-red-400 tracking-wide uppercase block">⚠️ 채무 상세</span>
+                          <div className="flex justify-between"><span>채무 원인</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : selectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : selectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : selectedClient.financialProfile.debtCause === 'GAMBLING' ? '도박/사행성' : selectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
+                          {selectedClient.financialProfile.speculativeLoss !== undefined && selectedClient.financialProfile.speculativeLoss > 0 && (
+                            <div className="flex justify-between text-rose-500 font-semibold"><span>1년내 투자 손실</span><span>{selectedClient.financialProfile.speculativeLoss.toLocaleString()}만</span></div>
+                          )}
+                          {selectedClient.financialProfile.gamblingLoss !== undefined && selectedClient.financialProfile.gamblingLoss > 0 && (
+                            <div className="flex justify-between text-rose-500 font-semibold"><span>1년내 도박 채무</span><span>{selectedClient.financialProfile.gamblingLoss.toLocaleString()}만</span></div>
+                          )}
+                          <div className="flex justify-between text-amber-500"><span>추심 단계</span><span className="font-bold">{selectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : selectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : selectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '압류/가압류'}</span></div>
+                          {selectedClient.financialProfile.legalActions && selectedClient.financialProfile.legalActions.some(x => x !== 'none') && (
+                            <div className="flex justify-between text-amber-600"><span>법적 조치</span><span className="font-bold">{selectedClient.financialProfile.legalActions.filter(x => x !== 'none').map(x => ({ collection_call: '독촉', court_order: '소장수령', seizure: '급여압류', property_seizure: '부동산압류', credit_drop: '신용하락' }[x] || x)).join(', ')}</span></div>
+                          )}
+                          <div className="flex justify-between"><span>채권자 수</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.creditorCount}곳</span></div>
+                          {selectedClient.financialProfile.priorityDebt !== undefined && selectedClient.financialProfile.priorityDebt > 0 && (
+                            <div className="flex justify-between"><span>우선변제 채무</span><span className="font-bold text-orange-500">{selectedClient.financialProfile.priorityDebt.toLocaleString()}만</span></div>
+                          )}
+                          {/* 채무 유형별 구성 */}
+                          {(selectedClient.financialProfile.debtTypes.banks > 0 || selectedClient.financialProfile.debtTypes.cards > 0 || selectedClient.financialProfile.debtTypes.personals > 0) && (
+                            <div className="border-t border-slate-200 mt-1 pt-1 space-y-0.5">
+                              <span className="text-[9px] text-slate-400 font-bold">채무 유형별 구성</span>
+                              {selectedClient.financialProfile.debtTypes.banks > 0 && (
+                                <div className="flex justify-between"><span>은행 대출</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.banks.toLocaleString()}만</span></div>
+                              )}
+                              {selectedClient.financialProfile.debtTypes.cards > 0 && (
+                                <div className="flex justify-between"><span>카드 채무</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.cards.toLocaleString()}만</span></div>
+                              )}
+                              {selectedClient.financialProfile.debtTypes.personals > 0 && (
+                                <div className="flex justify-between"><span>사인간 채무</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.personals.toLocaleString()}만</span></div>
+                              )}
+                              {selectedClient.financialProfile.debtTypes.recentLoans > 0 && (
+                                <div className="flex justify-between text-rose-400"><span>최근 고위험 대출</span><span className="font-bold">{selectedClient.financialProfile.debtTypes.recentLoans.toLocaleString()}만</span></div>
+                              )}
+                              {selectedClient.financialProfile.debtTypes.coinCrypto > 0 && (
+                                <div className="flex justify-between text-rose-400"><span>코인/주식 손실</span><span className="font-bold">{selectedClient.financialProfile.debtTypes.coinCrypto.toLocaleString()}만</span></div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 생계비 구성 */}
+                        {(selectedClient.financialProfile.rentCost || selectedClient.financialProfile.medicalCost || selectedClient.financialProfile.educationCost || selectedClient.financialProfile.monthlyFixedExpenses) && (
+                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
+                            <span className="text-[9px] font-black text-teal-500 tracking-wide uppercase block">🏠 월 생계비 구성</span>
+                            {selectedClient.financialProfile.rentCost !== undefined && selectedClient.financialProfile.rentCost > 0 && (
+                              <div className="flex justify-between"><span>월세</span><span className="text-slate-700">{selectedClient.financialProfile.rentCost}만</span></div>
+                            )}
+                            {selectedClient.financialProfile.medicalCost !== undefined && selectedClient.financialProfile.medicalCost > 0 && (
+                              <div className="flex justify-between"><span>의료비</span><span className="text-slate-700">{selectedClient.financialProfile.medicalCost}만</span></div>
+                            )}
+                            {selectedClient.financialProfile.educationCost !== undefined && selectedClient.financialProfile.educationCost > 0 && (
+                              <div className="flex justify-between"><span>교육비</span><span className="text-slate-700">{selectedClient.financialProfile.educationCost}만</span></div>
+                            )}
+                            {selectedClient.financialProfile.specialEducationCost !== undefined && selectedClient.financialProfile.specialEducationCost > 0 && (
+                              <div className="flex justify-between"><span>특수교육비</span><span className="text-slate-700">{selectedClient.financialProfile.specialEducationCost}만</span></div>
+                            )}
+                            {selectedClient.financialProfile.monthlyFixedExpenses !== undefined && selectedClient.financialProfile.monthlyFixedExpenses > 0 && (
+                              <div className="flex justify-between"><span>고정지출 (통신/보험)</span><span className="text-slate-700">{selectedClient.financialProfile.monthlyFixedExpenses}만</span></div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 퇴직금 */}
+                        {selectedClient.financialProfile.retirementPay !== undefined && selectedClient.financialProfile.retirementPay > 0 && (
+                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
+                            <span className="text-[9px] font-black text-amber-500 tracking-wide uppercase block">💼 퇴직금</span>
+                            <div className="flex justify-between"><span>예상 퇴직금</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.retirementPay.toLocaleString()}만</span></div>
+                            <div className="flex justify-between"><span>퇴직연금 형태</span><span className={selectedClient.financialProfile.retirementPensionType === 'unknown' ? 'font-bold text-amber-500' : 'text-slate-700'}>{selectedClient.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' : selectedClient.financialProfile.retirementPensionType === 'none' ? '미가입 (50% 반영)' : '모름 (50% 반영)'}</span></div>
+                            {selectedClient.financialProfile.retirementPensionType === 'unknown' && (
+                              <div className="bg-amber-50 border border-amber-200 p-1.5 rounded text-[10px] text-amber-600 font-bold text-center">⚠️ 퇴직금 가입 형태 확인 필요</div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 리스크 플래그 */}
+                        {selectedClient.financialProfile.riskFlags && selectedClient.financialProfile.riskFlags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedClient.financialProfile.riskFlags.map((flag, i) => (
+                              <span key={i} className="text-[9px] bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded font-bold">🚨 {flag}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
+
 
                       {/* 배정 + 상태 */}
                       {currentPermissions.changeStatus && (
