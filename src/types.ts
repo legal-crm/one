@@ -67,6 +67,154 @@ export interface FinancialProfile {
 export type RequestType = 'direct' | 'open';
 export type ConsultStatus = 'requested' | 'responding' | 'counseling' | 'closed';
 
+// ── CRM 업그레이드 타입 ──
+
+// 8단계 진행 파이프라인
+export type CrmStatus = 
+  | 'requested'    // 📋 상담 신청
+  | 'consulting'   // 📞 초기 상담
+  | 'contracted'   // 📝 수임 계약
+  | 'document'     // 📂 서류 수집
+  | 'filed'        // ⚖️ 법원 접수
+  | 'commenced'    // 🔍 개시 결정
+  | 'repaying'     // 💰 변제 진행
+  | 'discharged';  // ✅ 면책/종결
+
+export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
+  requested:   { label: '상담 신청', emoji: '📋', color: 'text-blue-400',    bgColor: 'bg-blue-500/10',    borderColor: 'border-blue-500/20' },
+  consulting:  { label: '초기 상담', emoji: '📞', color: 'text-yellow-400',  bgColor: 'bg-yellow-500/10',  borderColor: 'border-yellow-500/20' },
+  contracted:  { label: '수임 계약', emoji: '📝', color: 'text-orange-400',  bgColor: 'bg-orange-500/10',  borderColor: 'border-orange-500/20' },
+  document:    { label: '서류 수집', emoji: '📂', color: 'text-purple-400',  bgColor: 'bg-purple-500/10',  borderColor: 'border-purple-500/20' },
+  filed:       { label: '법원 접수', emoji: '⚖️', color: 'text-red-400',     bgColor: 'bg-red-500/10',     borderColor: 'border-red-500/20' },
+  commenced:   { label: '개시 결정', emoji: '🔍', color: 'text-amber-400',   bgColor: 'bg-amber-500/10',   borderColor: 'border-amber-500/20' },
+  repaying:    { label: '변제 진행', emoji: '💰', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/20' },
+  discharged:  { label: '면책/종결', emoji: '✅', color: 'text-slate-400',   bgColor: 'bg-slate-500/10',   borderColor: 'border-slate-500/20' },
+};
+
+// 직원 역할 체계
+export type StaffRole = 'OWNER' | 'LAWYER' | 'CONSULTANT' | 'STAFF' | 'ACCOUNTING';
+
+export const STAFF_ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bgColor: string }> = {
+  OWNER:       { label: '대표 변호사', color: 'text-amber-400',   bgColor: 'bg-amber-500/10' },
+  LAWYER:      { label: '담당 변호사', color: 'text-blue-400',    bgColor: 'bg-blue-500/10' },
+  CONSULTANT:  { label: '상담 직원',   color: 'text-emerald-400', bgColor: 'bg-emerald-500/10' },
+  STAFF:       { label: '사무 직원',   color: 'text-purple-400',  bgColor: 'bg-purple-500/10' },
+  ACCOUNTING:  { label: '경리 직원',   color: 'text-pink-400',    bgColor: 'bg-pink-500/10' },
+};
+
+// 법무법인 직원
+export interface StaffMember {
+  id: string;
+  name: string;
+  role: StaffRole;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+  isActive: boolean;
+  assignedCount: number;  // 현재 담당 건수
+  createdAt: string;
+  permissions: StaffPermissions;
+}
+
+export interface StaffPermissions {
+  viewAllClients: boolean;     // 전체 고객 조회
+  editClientInfo: boolean;     // 고객 정보 수정
+  changeStatus: boolean;       // 상태 변경
+  assignCases: boolean;        // 사건 배정/이관
+  manageStaff: boolean;        // 직원 관리
+  writeNotes: boolean;         // 상담 메모 작성
+  manageBilling: boolean;      // 수임료 관리
+  deleteClients: boolean;      // 고객 삭제
+}
+
+export const DEFAULT_PERMISSIONS: Record<StaffRole, StaffPermissions> = {
+  OWNER:       { viewAllClients: true,  editClientInfo: true,  changeStatus: true,  assignCases: true,  manageStaff: true,  writeNotes: true,  manageBilling: true,  deleteClients: true },
+  LAWYER:      { viewAllClients: false, editClientInfo: true,  changeStatus: true,  assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
+  CONSULTANT:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
+  STAFF:       { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
+  ACCOUNTING:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: false, manageBilling: true,  deleteClients: false },
+};
+
+// CRM 활동 로그
+export type CrmActivityType = 
+  | 'status_change' | 'assigned' | 'transferred' | 'note_added' 
+  | 'document_checked' | 'contract_signed' | 'payment_received' | 'created';
+
+export interface CrmActivityLog {
+  id: string;
+  clientId: string;
+  actorId: string;
+  actorName: string;
+  actorRole: StaffRole;
+  type: CrmActivityType;
+  description: string;
+  metadata?: Record<string, string>;
+  createdAt: string;
+}
+
+// CRM 메모 카테고리
+export type CrmNoteCategory = 'call' | 'consult' | 'document' | 'court' | 'billing' | 'urgent';
+
+export const CRM_NOTE_CATEGORIES: Record<CrmNoteCategory, { label: string; emoji: string; color: string }> = {
+  call:     { label: '통화',   emoji: '📞', color: 'text-blue-400' },
+  consult:  { label: '상담',   emoji: '📝', color: 'text-emerald-400' },
+  document: { label: '서류',   emoji: '📂', color: 'text-purple-400' },
+  court:    { label: '법원',   emoji: '⚖️', color: 'text-amber-400' },
+  billing:  { label: '수임료', emoji: '💰', color: 'text-pink-400' },
+  urgent:   { label: '긴급',   emoji: '⚠️', color: 'text-red-400' },
+};
+
+export interface CrmNote {
+  id: string;
+  category: CrmNoteCategory;
+  content: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+}
+
+// 서류 체크리스트
+export interface DocumentCheckItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  checkedBy?: string;
+  checkedAt?: string;
+}
+
+export const DEFAULT_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
+  { id: 'doc-01', label: '주민등록등본', checked: false },
+  { id: 'doc-02', label: '주민등록초본', checked: false },
+  { id: 'doc-03', label: '가족관계증명서', checked: false },
+  { id: 'doc-04', label: '재산세 과세증명', checked: false },
+  { id: 'doc-05', label: '소득금액증명원', checked: false },
+  { id: 'doc-06', label: '건강보험자격확인서', checked: false },
+  { id: 'doc-07', label: '급여명세서 (3개월)', checked: false },
+  { id: 'doc-08', label: '재직증명서', checked: false },
+  { id: 'doc-09', label: '채무증명원 (전 금융기관)', checked: false },
+  { id: 'doc-10', label: '통장사본 (전 계좌)', checked: false },
+  { id: 'doc-11', label: '보험가입내역조회서', checked: false },
+  { id: 'doc-12', label: '국민연금가입증명', checked: false },
+  { id: 'doc-13', label: '임대차계약서', checked: false },
+  { id: 'doc-14', label: '자동차등록원부', checked: false },
+  { id: 'doc-15', label: '퇴직금산정서류', checked: false },
+];
+
+// CRM 확장된 고객 데이터 (ConsultRequest에 추가)
+export interface CrmClientExtension {
+  crmStatus: CrmStatus;
+  assignedLawyerId?: string;
+  assignedConsultantId?: string;
+  assignedStaffId?: string;
+  documents: DocumentCheckItem[];
+  notes: CrmNote[];
+  activities: CrmActivityLog[];
+  contractDate?: string;
+  contractAmount?: number;
+  lastActivityAt: string;
+}
+
+
 export interface ConsultRequest {
   id: string;
   clientId: string;
