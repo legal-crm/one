@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Heart } from 'lucide-react';
+import { AlertTriangle, Heart, ChevronRight } from 'lucide-react';
 import type { User } from '../../types';
 import LawyerProfileModal from './LawyerProfileModal';
 
@@ -73,6 +73,94 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs focus:ring-1 focus:ring-brand focus:outline-none font-bold"
         />
+      </div>
+
+      {/* ── AD: 빠른 상담 가능한 변호사 ── */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-premium overflow-hidden">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3">
+          <h3 className="font-bold text-sm sm:text-base text-slate-800 tracking-tight flex items-center gap-2">
+            <span className="w-1.5 h-4 bg-brand rounded-full"></span>
+            빠른 상담 가능한 변호사
+            <ChevronRight className="w-4 h-4 text-slate-300" />
+          </h3>
+          <span className="flex items-center gap-1 text-[10px] text-slate-300 font-medium select-none" title="광고 · 변호사가 직접 등록한 유료 노출 영역입니다">
+            AD <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-[8px] text-slate-300 font-bold">ⓘ</span>
+          </span>
+        </div>
+
+        {/* 분야 탭 (가로 스크롤) */}
+        <div className="px-5 sm:px-6 pb-3 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-2 min-w-max">
+            {['개인회생', '개인파산', '신용회복', '채무조정', '보정명령', '압류해제', '전세사기'].map((cat, i) => (
+              <span key={cat} className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer transition-all whitespace-nowrap ${
+                i === 0
+                  ? 'bg-slate-800 text-white border-slate-800'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'
+              }`}>
+                {cat}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* 변호사 광고 카드 그리드 */}
+        <div className="px-5 sm:px-6 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {lawyers
+            .filter(l => l.role === 'LAWYER')
+            .slice(0, 4)
+            .map((l, idx) => {
+              // 현재 시간 기준 30분 단위 상담 슬롯 생성
+              const now = new Date();
+              const baseMin = Math.ceil(now.getMinutes() / 30) * 30;
+              const slots = Array.from({ length: 4 }, (_, i) => {
+                const d = new Date(now);
+                d.setMinutes(baseMin + (i + 1) * 30, 0, 0);
+                const h = d.getHours();
+                const m = d.getMinutes();
+                return `${h >= 12 ? '오후' : '오전'} ${h > 12 ? h - 12 : h}:${m.toString().padStart(2, '0')}`;
+              });
+              const firm = ['법무법인 한빛', '하늘 법률사무소', '법무법인 해원', '법무법인 한빛'][idx];
+
+              return (
+                <div
+                  key={l.id}
+                  onClick={() => setProfileLawyer(l)}
+                  className="flex gap-4 p-4 rounded-xl border border-slate-100 hover:border-brand/20 hover:shadow-sm transition-all cursor-pointer group bg-white"
+                >
+                  {/* 프로필 사진 */}
+                  <div className="relative shrink-0">
+                    <img src={l.avatarData || l.avatar} alt={l.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-100 group-hover:border-brand/30 transition-colors" />
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                  </div>
+
+                  {/* 정보 */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-800 truncate">{l.name}</span>
+                      <span className="text-[10px] text-slate-400 font-medium shrink-0">{firm}</span>
+                    </div>
+
+                    {/* 전문 분야 태그 */}
+                    <div className="flex flex-wrap gap-1">
+                      {l.fields.slice(0, 2).map(f => (
+                        <span key={f} className="text-[10px] text-brand font-bold px-1.5 py-0.5 bg-brand/5 rounded">{f}</span>
+                      ))}
+                    </div>
+
+                    {/* 상담 가능 시간 슬롯 */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {slots.map(s => (
+                        <span key={s} className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-brand/5 hover:border-brand/20 hover:text-brand transition-colors cursor-pointer">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
       </div>
 
       {/* Region Selection Grid */}
