@@ -2318,140 +2318,187 @@ export default function LawyerRole({
 
               </div>
 
-              {/* Right Column: Simulated Live Telegram Widget */}
-              <div className="lg:col-span-6 space-y-4">
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block text-left uppercase tracking-wider flex items-center gap-1.5">
+              {/* Right Column: Simulated Live Telegram Widget — Smartphone Frame */}
+              <div className="lg:col-span-6 flex flex-col items-center">
+                <span className="text-xs font-bold text-slate-500 block text-left uppercase tracking-wider flex items-center gap-1.5 w-full mb-3">
                   <Smartphone className="w-4 h-4 text-brand" />
-                  📱 텔레그램 실시간 알림방 시뮬레이터 (Mock Telegram Client)
+                  텔레그램 실시간 알림방 시뮬레이터
                 </span>
 
-                {/* Mock Telegram Window */}
-                <div className="bg-[#182533] border border-slate-200 rounded-3xl shadow-xl w-full h-[540px] flex flex-col overflow-hidden animate-fadeIn relative">
-                  
-                  {/* Telegram Header */}
-                  <div className="bg-[#22313F] px-4 py-3 flex items-center justify-between border-b border-[#141E28]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center text-white font-extrabold text-sm select-none">
-                        다
+                {/* ── Smartphone Outer Frame ── */}
+                <div className="relative mx-auto w-full max-w-[360px]">
+                  {/* Phone body */}
+                  <div className="bg-[#1a1a1a] rounded-[44px] p-[10px] shadow-2xl border-[3px] border-[#2a2a2a] relative"
+                    style={{ boxShadow: '0 25px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05) inset' }}>
+                    
+                    {/* Side buttons (volume + power) */}
+                    <div className="absolute -left-[5px] top-[100px] w-[3px] h-[28px] bg-[#2a2a2a] rounded-l-sm"></div>
+                    <div className="absolute -left-[5px] top-[140px] w-[3px] h-[50px] bg-[#2a2a2a] rounded-l-sm"></div>
+                    <div className="absolute -left-[5px] top-[200px] w-[3px] h-[50px] bg-[#2a2a2a] rounded-l-sm"></div>
+                    <div className="absolute -right-[5px] top-[160px] w-[3px] h-[70px] bg-[#2a2a2a] rounded-r-sm"></div>
+
+                    {/* Inner screen area */}
+                    <div className="bg-[#182533] rounded-[36px] overflow-hidden flex flex-col" style={{ height: '620px' }}>
+                      
+                      {/* Dynamic Island / Notch */}
+                      <div className="flex justify-center pt-2 pb-0 bg-[#182533] relative z-20">
+                        <div className="bg-black rounded-full w-[120px] h-[28px] flex items-center justify-center gap-2">
+                          <div className="w-[8px] h-[8px] rounded-full bg-[#1a1a2e] border border-[#333] ring-1 ring-[#222]"></div>
+                          <div className="w-[5px] h-[5px] rounded-full bg-[#0a3d2a]"></div>
+                        </div>
                       </div>
-                      <div className="text-left leading-tight">
-                        <h4 className="font-extrabold text-xs text-white">다시시작 법률지부 알림방</h4>
-                        <span className="text-[10px] text-[#86959E] font-medium">멤버 5명, 봇 1개 등록됨</span>
+
+                      {/* Status Bar */}
+                      <div className="flex items-center justify-between px-6 py-1 text-[10px] text-white/60 font-semibold bg-[#182533]">
+                        <span>10:27</span>
+                        <div className="flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M2 22h20V2z"/><path d="M12 12H2v10h10z" opacity="0.3"/></svg>
+                          <span>87%</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-[#86959E] hover:text-white transition-colors cursor-pointer select-none text-xs font-bold">
-                      •••
-                    </div>
-                  </div>
 
-                  {/* Telegram Message Area */}
-                  <div className="flex-1 p-4 overflow-y-auto space-y-4 flex flex-col-reverse justify-start scrollbar-hide bg-[#182533]">
-                    {/* Reverse map to show newest at bottom */}
-                    {tgMessages.slice().reverse().map((m) => {
-                      if (m.sender === 'system') {
-                        return (
-                          <div key={m.id} className="w-full flex justify-center py-1 select-none">
-                            <span className="bg-[#111A24]/60 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-[100px] border border-[#1C2836]">
-                              {m.text}
-                            </span>
+                      {/* Telegram Header */}
+                      <div className="bg-[#22313F] px-4 py-2.5 flex items-center justify-between border-b border-[#141E28]">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-1 text-[#86959E]">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
                           </div>
-                        );
-                      }
-
-                      return (
-                        <div key={m.id} className="w-full flex items-start gap-2 text-left">
-                          <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">
-                            Bot
+                          <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white font-extrabold text-[11px] select-none">
+                            다
                           </div>
-                          
-                          <div className="space-y-1 max-w-[85%] text-left">
-                            <div className="flex items-center gap-1.5 leading-none">
-                              <span className="font-extrabold text-[11px] text-[#5288C1]">{m.name || '다시시작 알림봇'}</span>
-                              <span className="bg-[#22313F] text-[#5288C1] text-[8px] px-1 py-0.2 rounded font-extrabold uppercase">BOT</span>
-                            </div>
-
-                            {/* Alert Card Box */}
-                            {m.card && (
-                              <div className="bg-[#22313F] border border-[#2B3E50] rounded-2xl p-4 space-y-3 shadow-md relative text-left">
-                                <div className="flex items-center justify-between border-b border-[#2C3B4B] pb-2 leading-none">
-                                  <span className="font-black text-xs text-white flex items-center gap-1">
-                                    <Bell className="w-3.5 h-3.5 text-brand" />
-                                    <span>{m.card.type === 'direct' ? '🔔 신규 직접선택 상담 요청' : '📢 참여형 상담 오픈 요청'}</span>
-                                  </span>
-                                  <span className="text-[#86959E] text-[9px]">{m.time}</span>
-                                </div>
-
-                                <div className="space-y-1.5 text-[11px] leading-relaxed text-slate-600">
-                                  <div>• <strong className="text-slate-400">수신 유형:</strong> {m.card.type === 'direct' ? '1:1 대리인 다이렉트 지정' : '최대 3명 선착순 오픈 배정'}</div>
-                                  <div>• <strong className="text-slate-400">관할 지역:</strong> {m.card.region} 법원 관할</div>
-                                  {/* [SECURITY] 구간값만 표시 — 원시 금액 및 PII 미포함 */}
-                                  <div>• <strong className="text-slate-400">채무 구간:</strong> {m.card.debt}</div>
-                                  <div>• <strong className="text-slate-400">소득 구간:</strong> {m.card.income}</div>
-                                </div>
-
-                                <div className="flex flex-wrap gap-1">
-                                  {m.card.tags.map(t => (
-                                    <span key={t} className="bg-brand/10 text-brand text-[9px] px-2 py-0.5 rounded font-bold">{t}</span>
-                                  ))}
-                                </div>
-
-                                {/* Inline Actions inside Telegram message */}
-                                <div className="pt-2 border-t border-[#2C3B4B] flex flex-col gap-2">
-                                  {m.card.assignedLawyer ? (
-                                    <div className="w-full py-2 bg-emerald-950/40 text-emerald-400 text-center rounded-lg border border-emerald-500/20 text-[10px] font-extrabold flex items-center justify-center gap-1 animate-fadeIn select-none">
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>{m.card.assignedLawyer} 수임 배정 완료</span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <button 
-                                        type="button"
-                                        onClick={() => handleTgAssign(m.id, m.card!.reqId)}
-                                        className="w-full py-2 bg-brand hover:bg-brand-hover text-white text-[10px] font-extrabold rounded-lg transition-colors flex items-center justify-center gap-1 select-none cursor-pointer"
-                                      >
-                                        <span>🙋 내가 즉시 담당자로 배정 등록</span>
-                                      </button>
-                                      <div className="grid grid-cols-2 gap-1.5">
-                                        <button 
-                                          type="button"
-                                          onClick={() => {
-                                            setActiveChatReqId(m.card!.reqId);
-                                            setActiveTab('open-requests');
-                                            alert('플랫폼의 신규 상담 탭으로 즉시 안전하게 스위칭하여 의뢰인 상세 명세를 조회합니다.');
-                                          }}
-                                          className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-slate-600 text-[9px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
-                                        >
-                                          💻 CRM 상세보기
-                                        </button>
-                                        <button 
-                                          type="button"
-                                          onClick={() => alert('30분 후 해당 채무자의 상담 응답 미결 상태를 텔레그램 그룹방에 다시 리마인드 호출합니다.')}
-                                          className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-slate-600 text-[9px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
-                                        >
-                                          ⏰ 30분 후 리마인드
-                                        </button>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-
-                              </div>
-                            )}
-
+                          <div className="text-left leading-tight">
+                            <h4 className="font-extrabold text-[11px] text-white">다시시작 법률지부 알림방</h4>
+                            <span className="text-[9px] text-[#86959E] font-medium">멤버 5명, 봇 1개 등록됨</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="flex items-center gap-3 text-[#86959E]">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                          <span className="text-xs font-bold cursor-pointer">•••</span>
+                        </div>
+                      </div>
 
-                  {/* Telegram Bottom Bar */}
-                  <div className="bg-[#22313F] px-4 py-3 flex items-center gap-3 border-t border-[#141E28] select-none text-[10px] text-slate-400 text-center justify-center font-semibold">
-                    🔒 그룹방 프라이버시 모드 가동 중 (봇은 일반 대화를 기록하지 않고 명령어 액션만 수신합니다)
-                  </div>
+                      {/* Telegram Message Area */}
+                      <div className="flex-1 p-3 overflow-y-auto space-y-3 flex flex-col-reverse justify-start scrollbar-hide bg-[#182533]">
+                        {tgMessages.slice().reverse().map((m) => {
+                          if (m.sender === 'system') {
+                            return (
+                              <div key={m.id} className="w-full flex justify-center py-1 select-none">
+                                <span className="bg-[#111A24]/60 text-[#86959E] text-[9px] font-bold px-3 py-1 rounded-full border border-[#1C2836]">
+                                  {m.text}
+                                </span>
+                              </div>
+                            );
+                          }
 
+                          return (
+                            <div key={m.id} className="w-full flex items-start gap-2 text-left">
+                              <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center font-extrabold text-[9px] shrink-0 select-none">
+                                Bot
+                              </div>
+                              
+                              <div className="space-y-1 max-w-[88%] text-left">
+                                <div className="flex items-center gap-1.5 leading-none">
+                                  <span className="font-extrabold text-[10px] text-[#5288C1]">{m.name || '다시시작 알림봇'}</span>
+                                  <span className="bg-[#22313F] text-[#5288C1] text-[7px] px-1 py-px rounded font-extrabold uppercase">BOT</span>
+                                </div>
+
+                                {/* Alert Card Box */}
+                                {m.card && (
+                                  <div className="bg-[#22313F] border border-[#2B3E50] rounded-xl p-3 space-y-2.5 shadow-md text-left">
+                                    <div className="flex items-center justify-between border-b border-[#2C3B4B] pb-1.5 leading-none">
+                                      <span className="font-black text-[10px] text-white flex items-center gap-1">
+                                        {m.card.type === 'direct' ? '🔔' : '📢'} {m.card.type === 'direct' ? '신규 직접선택 상담 요청' : '참여형 상담 오픈'}
+                                      </span>
+                                      <span className="text-[#86959E] text-[8px]">{m.time}</span>
+                                    </div>
+
+                                    <div className="space-y-1 text-[10px] leading-relaxed text-[#86959E]">
+                                      <div>• <strong className="text-slate-400">수신 유형:</strong> {m.card.type === 'direct' ? '1:1 다이렉트 지정' : '선착순 오픈 배정'}</div>
+                                      <div>• <strong className="text-slate-400">관할 지역:</strong> {m.card.region} 법원 관할</div>
+                                      <div>• <strong className="text-slate-400">채무 구간:</strong> {m.card.debt}</div>
+                                      <div>• <strong className="text-slate-400">소득 구간:</strong> {m.card.income}</div>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-1">
+                                      {m.card.tags.map(t => (
+                                        <span key={t} className="bg-brand/15 text-brand text-[8px] px-1.5 py-0.5 rounded font-bold">{t}</span>
+                                      ))}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="pt-2 border-t border-[#2C3B4B] flex flex-col gap-1.5">
+                                      {m.card.assignedLawyer ? (
+                                        <div className="w-full py-2 bg-emerald-950/40 text-emerald-400 text-center rounded-lg border border-emerald-500/20 text-[9px] font-extrabold flex items-center justify-center gap-1 animate-fadeIn select-none">
+                                          <Check className="w-3 h-3" />
+                                          <span>{m.card.assignedLawyer} 수임 배정 완료</span>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <button 
+                                            type="button"
+                                            onClick={() => handleTgAssign(m.id, m.card!.reqId)}
+                                            className="w-full py-2 bg-brand hover:bg-brand-hover text-white text-[9px] font-extrabold rounded-lg transition-colors flex items-center justify-center gap-1 select-none cursor-pointer"
+                                          >
+                                            🙋 내가 즉시 담당자로 배정
+                                          </button>
+                                          <div className="grid grid-cols-2 gap-1">
+                                            <button 
+                                              type="button"
+                                              onClick={() => {
+                                                setActiveChatReqId(m.card!.reqId);
+                                                setActiveTab('open-requests');
+                                                alert('플랫폼의 신규 상담 탭으로 즉시 안전하게 스위칭하여 의뢰인 상세 명세를 조회합니다.');
+                                              }}
+                                              className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[8px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
+                                            >
+                                              💻 CRM 상세보기
+                                            </button>
+                                            <button 
+                                              type="button"
+                                              onClick={() => alert('30분 후 해당 채무자의 상담 응답 미결 상태를 텔레그램 그룹방에 다시 리마인드 호출합니다.')}
+                                              className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[8px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
+                                            >
+                                              ⏰ 30분 후 리마인드
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+
+                                  </div>
+                                )}
+
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Telegram Bottom Bar */}
+                      <div className="bg-[#22313F] px-3 py-2.5 flex items-center gap-2 border-t border-[#141E28] select-none">
+                        <div className="flex-1 bg-[#182533] border border-[#2D3E50] rounded-full px-3 py-1.5 text-[10px] text-[#86959E]">메시지 입력...</div>
+                        <div className="w-7 h-7 rounded-full bg-brand/20 flex items-center justify-center">
+                          <svg className="w-3.5 h-3.5 text-brand" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                        </div>
+                      </div>
+
+                      {/* Privacy notice */}
+                      <div className="bg-[#182533] px-3 py-1.5 text-[8px] text-[#86959E]/60 text-center font-medium">
+                        🔒 프라이버시 모드 · 봇은 명령어 액션만 수신
+                      </div>
+
+                      {/* Home Indicator Bar */}
+                      <div className="flex justify-center py-2 bg-[#182533]">
+                        <div className="w-[100px] h-[4px] bg-white/20 rounded-full"></div>
+                      </div>
+
+                    </div>
+                  </div>
                 </div>
 
               </div>
+
 
             </div>
 
