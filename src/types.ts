@@ -283,6 +283,17 @@ export interface User {
   licenseNumber?: string; // 변호사 등록번호
   licenseStatus?: 'pending' | 'verified' | 'rejected'; // 자격 심사 상태
   avatarData?: string; // 프로필 사진 (Base64 Data URL, 파일 업로드 시)
+  // ── 미니홈피 프로필 확장 필드 ──
+  catchphrase?: string; // 한줄 캐치프레이즈
+  career?: string[]; // 경력 사항
+  education?: string; // 학력
+  certYear?: string; // 변호사 자격 취득년도
+  barAssociation?: string; // 소속 변호사회
+  specialties?: string[]; // 상세 전문 분야
+  successRate?: number; // 인가 성공률 (%)
+  totalCases?: number; // 누적 수임 건수
+  avgRepaymentRate?: number; // 평균 변제율 (%)
+  courtJurisdiction?: string; // 관할 법원
 }
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';

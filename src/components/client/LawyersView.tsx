@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-
-interface Lawyer {
-  id: string;
-  name: string;
-  avatar: string;
-  region: string;
-  bio: string;
-  fields: string[];
-  recentActivity: string;
-}
+import type { User } from '../../types';
+import LawyerProfileModal from './LawyerProfileModal';
 
 const REGIONS = [
   { value: '서울', label: '서울' },
@@ -29,7 +21,7 @@ const REGIONS = [
 const ITEMS_PER_PAGE = 10;
 
 interface LawyersViewProps {
-  lawyers: Lawyer[];
+  lawyers: User[];
   onSelectLawyer: (lawyerId: string) => void;
 }
 
@@ -37,6 +29,7 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('전체');
   const [page, setPage] = useState(1);
+  const [profileLawyer, setProfileLawyer] = useState<User | null>(null);
 
   const filtered = lawyers.filter(l => {
     const queryLower = searchQuery.toLowerCase();
@@ -105,7 +98,7 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {paginated.map(l => (
-                <div key={l.id} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 border border-slate-100 dark:border-slate-800 p-6 flex flex-col sm:flex-row gap-5 transition-all duration-300 group relative overflow-hidden text-left">
+                <div key={l.id} onClick={() => setProfileLawyer(l)} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 border border-slate-100 dark:border-slate-800 p-6 flex flex-col sm:flex-row gap-5 transition-all duration-300 group relative overflow-hidden text-left cursor-pointer">
                   {/* Subtle top brand line overlay */}
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand/20 to-transparent"></div>
                   <div className="relative shrink-0 self-start sm:self-center">
@@ -171,6 +164,17 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
           </>
         )}
       </div>
+      {/* 변호사 프로필 모달 */}
+      {profileLawyer && (
+        <LawyerProfileModal
+          lawyer={profileLawyer}
+          onClose={() => setProfileLawyer(null)}
+          onConsult={(lawyerId) => {
+            setProfileLawyer(null);
+            onSelectLawyer(lawyerId);
+          }}
+        />
+      )}
     </div>
   );
 }
