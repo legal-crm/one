@@ -595,7 +595,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       {/* ── 일괄 선택 액션 바 ── */}
       {selectedIds.size > 0 && currentPermissions.assignCases && (
         <div className="bg-brand/5 border border-brand/20 p-3 rounded-xl flex flex-wrap items-center gap-3 text-xs animate-fadeIn">
-          <span className="font-bold text-brand-light">☑ {selectedIds.size}건 선택됨</span>
+          <span className="font-bold text-brand">☑ {selectedIds.size}건 선택됨</span>
           <div className="flex items-center gap-1">
             <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value as CrmStatus)}
               className="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
@@ -675,7 +675,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             <span className="text-[10px] text-slate-600">{getStaffName(ext.assignedLawyerId)}</span>
                           </div>
                         </td>
-                        <td className="p-2.5 text-right font-bold text-brand-light text-[11px]">
+                        <td className="p-2.5 text-right font-bold text-red-500 text-[11px]">
                           {r.financialProfile.debtTotal.toLocaleString()}만
                         </td>
                         <td className="p-2.5 text-right text-[10px] text-slate-400">
@@ -925,7 +925,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       {/* 배정 + 상태 */}
                       {currentPermissions.changeStatus && (
                         <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-bold text-brand-light block">⚙️ 담당자 배정 및 상태</span>
+                          <span className="text-[11px] font-bold text-brand block">⚙️ 담당자 배정 및 상태</span>
                           <div className="space-y-2 text-xs">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-slate-400 shrink-0">진행 상태:</span>
