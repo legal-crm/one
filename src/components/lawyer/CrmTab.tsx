@@ -927,37 +927,38 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
                           <span className="text-[11px] font-bold text-brand block">⚙️ 담당자 배정 및 상태</span>
                           <div className="space-y-2 text-xs">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-slate-400 shrink-0">진행 상태:</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-slate-400 w-20 shrink-0 text-right">진행 상태:</span>
                               <select value={editStatus} onChange={e => setEditStatus(e.target.value as CrmStatus)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>)}
                               </select>
                             </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-slate-400 shrink-0">담당 변호사:</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-slate-400 w-20 shrink-0 text-right">담당 변호사:</span>
                               <select value={editLawyerId} onChange={e => setEditLawyerId(e.target.value)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 <option value="">미배정</option>
                                 {[...lawyers, ...staffMembers.filter(m => m.role === 'LAWYER')].map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                               </select>
                             </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-slate-400 shrink-0">상담 직원:</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-slate-400 w-20 shrink-0 text-right">상담 직원:</span>
                               <select value={editConsultantId} onChange={e => setEditConsultantId(e.target.value)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 <option value="">미배정</option>
                                 {staffMembers.filter(m => m.role === 'CONSULTANT' && m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                               </select>
                             </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-slate-400 shrink-0">사무 직원:</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-slate-400 w-20 shrink-0 text-right">사무 직원:</span>
                               <select value={editStaffId} onChange={e => setEditStaffId(e.target.value)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 <option value="">미배정</option>
                                 {staffMembers.filter(m => m.role === 'STAFF' && m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                               </select>
                             </div>
+
                           </div>
                           <button onClick={handleSaveAssignment}
                             className="w-full bg-brand hover:bg-brand-hover text-white py-2 rounded-[200px] text-xs font-extrabold mt-1">
