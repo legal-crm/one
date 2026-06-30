@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Heart } from 'lucide-react';
 import type { User } from '../../types';
 import LawyerProfileModal from './LawyerProfileModal';
+
+const FAVORITES_KEY = 'lawyer_favorites';
+function loadFavorites(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]')); } catch { return new Set(); }
+}
+function saveFavorites(ids: Set<string>) {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...ids]));
+}
 
 const REGIONS = [
   { value: '서울', label: '서울' },
@@ -30,12 +38,25 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
   const [selectedRegion, setSelectedRegion] = useState('전체');
   const [page, setPage] = useState(1);
   const [profileLawyer, setProfileLawyer] = useState<User | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  const toggleFavorite = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      saveFavorites(next);
+      return next;
+    });
+  };
 
   const filtered = lawyers.filter(l => {
     const queryLower = searchQuery.toLowerCase();
     const matchesSearch = l.name.toLowerCase().includes(queryLower) || l.fields.some(f => f.toLowerCase().includes(queryLower)) || l.bio.toLowerCase().includes(queryLower);
     const matchesRegion = selectedRegion === '전체' || l.region.includes(selectedRegion);
-    return matchesSearch && matchesRegion;
+    const matchesFav = !showFavoritesOnly || favorites.has(l.id);
+    return matchesSearch && matchesRegion && matchesFav;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -80,8 +101,22 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
 
       {/* Grid of Lawyers */}
       <div className="space-y-6">
-        <div className="text-left text-xs text-slate-500 dark:text-slate-400 font-bold">
-          이 변호사들이 당신의 채무 상황을 끝까지 함께 관리해주는 <span className="text-brand dark:text-brand-light font-bold">전담 파트너</span>가 됩니다. (총 {filtered.length}명 활동 중)
+        <div className="flex items-center justify-between">
+          <div className="text-left text-xs text-slate-500 dark:text-slate-400 font-bold">
+            이 변호사들이 당신의 채무 상황을 끝까지 함께 관리해주는 <span className="text-brand font-bold">전담 파트너</span>가 됩니다. (총 {filtered.length}명 활동 중)
+          </div>
+          <button
+            type="button"
+            onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer shrink-0 ${
+              showFavoritesOnly
+                ? 'bg-rose-50 border-rose-200 text-rose-500'
+                : 'bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-400'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${showFavoritesOnly ? 'fill-rose-500 text-rose-500' : ''}`} />
+            <span>즐겨찾기 {favorites.size > 0 ? `(${favorites.size})` : ''}</span>
+          </button>
         </div>
 
         {filtered.length === 0 ? (
@@ -112,7 +147,20 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
                         <h3 className="font-bold text-lg text-slate-800 dark:text-white tracking-tight">{l.name} 변호사</h3>
                         <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{l.region}지방법원 전담 지원</span>
                       </div>
-                      <span className="bg-brand/5 border border-brand/20 text-brand dark:text-brand-light text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">수임 75건 이상</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => toggleFavorite(l.id, e)}
+                          className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer group/fav"
+                        >
+                          <Heart className={`w-4 h-4 transition-colors ${
+                            favorites.has(l.id)
+                              ? 'fill-rose-500 text-rose-500'
+                              : 'text-slate-300 group-hover/fav:text-rose-400'
+                          }`} />
+                        </button>
+                        <span className="bg-brand/5 border border-brand/20 text-brand text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">수임 75건 이상</span>
+                      </div>
                     </div>
                     
                     <p className="text-xs text-slate-400 dark:text-slate-400 leading-relaxed font-medium">{l.bio}</p>
@@ -173,6 +221,8 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
             setProfileLawyer(null);
             onSelectLawyer(lawyerId);
           }}
+          isFavorite={favorites.has(profileLawyer.id)}
+          onToggleFavorite={() => toggleFavorite(profileLawyer.id)}
         />
       )}
     </div>

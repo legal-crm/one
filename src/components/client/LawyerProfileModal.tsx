@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building } from 'lucide-react';
+import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building, Heart } from 'lucide-react';
 import type { User } from '../../types';
 import { mockLawFirms } from '../../data';
 
@@ -7,6 +7,8 @@ interface LawyerProfileModalProps {
   lawyer: User;
   onClose: () => void;
   onConsult: (lawyerId: string) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 // 의뢰인 후기 mock
@@ -18,7 +20,7 @@ const mockReviews = [
   { id: 5, author: '정○○', rating: 5, date: '2026.04.05', content: '3억이 넘는 채무였는데 변제율 25%로 인가받아서 월 상환금이 크게 줄었습니다. 새 출발할 수 있게 되었어요.', tag: '고액채무' },
 ];
 
-export default function LawyerProfileModal({ lawyer, onClose, onConsult }: LawyerProfileModalProps) {
+export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavorite, onToggleFavorite }: LawyerProfileModalProps) {
   const [activeTab, setActiveTab] = useState<'home' | 'info' | 'reviews'>('home');
 
   const firm = mockLawFirms.find(f => f.id === lawyer.lawFirmId);
@@ -38,10 +40,19 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult }: Lawye
         className="relative w-full max-w-[720px] my-4 sm:my-8 bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-fadeIn"
         onClick={e => e.stopPropagation()}
       >
-        {/* ── 닫기 버튼 ── */}
-        <button onClick={onClose} className="absolute top-4 right-4 z-50 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer">
-          <X className="w-4 h-4" />
-        </button>
+        {/* ── 상단 버튼들 ── */}
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+          {onToggleFavorite && (
+            <button onClick={onToggleFavorite} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+              isFavorite ? 'bg-rose-500/80 hover:bg-rose-500' : 'bg-black/30 hover:bg-black/50'
+            }`}>
+              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white text-white' : 'text-white'}`} />
+            </button>
+          )}
+          <button onClick={onClose} className="w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* ═══════════════════════════════════════
             히어로 섹션
