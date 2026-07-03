@@ -219,7 +219,7 @@ export default function LandingPage({
             transition={{ duration: 0.7, delay: 0.85 }}
             className="text-sm text-indigo-400 mb-10 tracking-wide font-semibold"
           >
-            ※ 지금 단계에서는 일체의 비용 없이 상황 진단 및 초기 관리 상담이 시작됩니다.
+            ※ 지금 단계에서는 일체의 비용 없이 상황 체크 및 초기 정보 정리가 시작됩니다.
           </motion.p>
 
           {/* Primary CTA */}
@@ -387,7 +387,7 @@ export default function LandingPage({
               {
                 icon: Lock,
                 title: '개인정보 없이 시작',
-                desc: '이름, 연락처 없이 바로 진단을 시작할 수 있습니다.',
+                desc: '이름, 연락처 없이 바로 체크를 시작할 수 있습니다.',
                 gradient: 'from-indigo-500 to-blue-500',
               },
               {
@@ -479,7 +479,7 @@ export default function LandingPage({
               {
                 icon: MessageSquare,
                 title: '반복되는 상황 설명 없음',
-                desc: '여기저기 전화를 돌리며 매번 채무 역사를 설명할 필요가 없습니다. 내 진단 정보를 기반으로 일관된 관리 서비스를 제공합니다.',
+                desc: '여기저기 전화를 돌리며 매번 채무 역사를 설명할 필요가 없습니다. 내 체크 정보를 기반으로 일관된 관리 서비스를 제공합니다.',
                 gradient: 'from-emerald-600/10 to-teal-600/10 border-emerald-500/20 hover:border-emerald-500/40'
               }
             ].map((item, i) => (
@@ -542,9 +542,9 @@ export default function LandingPage({
               {
                 step: '①',
                 icon: Search,
-                title: '익명 진단',
+                title: '익명 체크',
                 desc: '5문항, 1분 소요',
-                detail: '개인정보 없이 간단하게 자가진단을 거쳐 예상 탕감 범위를 계산해 봅니다.',
+                detail: '개인정보 없이 간단하게 사전 체크를 거쳐 예상 조정 범위를 계산해 봅니다.',
               },
               {
                 step: '②',
@@ -693,7 +693,7 @@ export default function LandingPage({
                         <div className="mt-2 text-center">
                           <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10
                                             px-2 py-0.5 rounded-full">
-                            {savingsRate}% 탕감
+                            {savingsRate}% 조정 가능성
                           </span>
                         </div>
                       )}
@@ -720,7 +720,7 @@ export default function LandingPage({
           >
             <div className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-center">
               {[
-                { emoji: '📊', label: '평균 탕감률', value: '72%' },
+                { emoji: '📊', label: '평균 조정 비율', value: '72%' },
                 { emoji: '⏱', label: '평균 진단 시간', value: '47초' },
                 { emoji: '👥', label: '누적 이용자', value: '8,400+' },
               ].map((stat, i) => (

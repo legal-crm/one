@@ -3,5 +3,15 @@ Allow: /
 Disallow: /#admin
 Disallow: /#lawyer
 
+# AI Crawlers - Explicitly allow
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
 # Sitemap
 Sitemap: https://mykim.kr/sitemap.xml

@@ -48,7 +48,7 @@ export default function MyPageView({
           <div className="space-y-2">
             <h2 className="text-xl font-black text-slate-800 dark:text-white">아직 자가진단 기록이 없습니다</h2>
             <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
-              1분 만에 빚 탕감 비율과 월 예상 변제금을 시뮬레이션할 수 있는 무료 자가진단을 시작해 보세요.
+              1분 만에 예상 조정 비율과 월 예상 변제금 범위를 시뮬레이션할 수 있는 무료 채무 체크를 시작해 보세요.
             </p>
           </div>
           <button
@@ -259,7 +259,7 @@ export default function MyPageView({
 
             <div className="bg-brand/10 border border-brand/20 rounded-2xl p-4 flex items-center justify-between">
               <div className="text-left space-y-0.5">
-                <span className="text-[9px] text-brand-light font-bold block">최종 감면받을 금액 (탕감 혜택)</span>
+                <span className="text-[9px] text-brand-light font-bold block">예상 조정 가능 금액 (변호사 검토 필요)</span>
                 <span className="text-[10px] text-slate-300 font-medium">법적으로 면제되는 빚 액수</span>
               </div>
               <div className="text-right">

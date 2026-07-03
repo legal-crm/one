@@ -49,7 +49,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
                     onClick={() => onNavigate('calculator')}
                     className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
                   >
-                    탕감액 계산기
+                    변제 시뮬레이션
                   </span>
                   <span className="text-slate-300">·</span>
                   <span 

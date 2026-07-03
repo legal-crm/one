@@ -3,7 +3,7 @@
   <!-- Main Home -->
   <url>
     <loc>https://mykim.kr/</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -11,13 +11,13 @@
   <!-- Service Pages -->
   <url>
     <loc>https://mykim.kr/about.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/security.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -25,67 +25,67 @@
   <!-- Guide Hub Pages -->
   <url>
     <loc>https://mykim.kr/guide/debt-management.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/personal-rehabilitation.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/bankruptcy.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/credit-recovery.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/debt-agent.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/tax-debt.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/rehabilitation-cost.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/rehabilitation-eligibility.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/garnishment-defense.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/debt-types.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://mykim.kr/guide/occupation-guide.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -93,7 +93,7 @@
   <!-- FAQ -->
   <url>
     <loc>https://mykim.kr/faq.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -101,31 +101,31 @@
   <!-- Tab Pages -->
   <url>
     <loc>https://mykim.kr/?tab=calculator</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://mykim.kr/?tab=lawyers</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://mykim.kr/?tab=reviews</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://mykim.kr/?tab=qna</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://mykim.kr/?tab=news</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -133,49 +133,49 @@
   <!-- News Article Pages -->
   <url>
     <loc>https://mykim.kr/articles/crypto-stock-debt.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mykim.kr/articles/debt-collection-defense.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mykim.kr/articles/tax-debt-statute.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mykim.kr/articles/secret-rehabilitation.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mykim.kr/articles/rehabilitation-vs-bankruptcy.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mykim.kr/articles/wage-garnishment-defense.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mykim.kr/articles/self-employed-rehabilitation.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mykim.kr/articles/professional-license-preservation.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -183,19 +183,19 @@
   <!-- Legal/Policy Pages -->
   <url>
     <loc>https://mykim.kr/tos.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://mykim.kr/privacy.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://mykim.kr/legal.html</loc>
-    <lastmod>2026-06-29</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

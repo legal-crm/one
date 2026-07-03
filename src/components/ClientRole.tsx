@@ -1790,7 +1790,7 @@ export default function ClientRole({
     setTimeout(() => {
       onAddMessage(
         newRequest.id,
-        `반갑습니다. 의뢰인님의 정밀 AI 분석 상담 요청이 정상 등록되었습니다. 예상 월 변제금은 약 ${formatNumber(result.preferred?.monthly || 0)}원(${result.preferred?.m || 36}개월)으로 진단되었습니다. 곧 배정된 회생 전문 변호사가 실시간 대화를 통해 서류 면밀 검토 및 기각 차단 법리 대책을 수립해 드리겠습니다.`,
+        `반갑습니다. 고객님의 채무 체크 요청이 정상 등록되었습니다. 입력값 기준 예상 월 변제금 범위는 약 ${formatNumber(result.preferred?.monthly || 0)}원(${result.preferred?.m || 36}개월)입니다. 고객님이 선택하신 변호사가 상세 검토 후 안내를 드리겠습니다.`,
         'lawyer',
         'lawyer-1',
         '김우진 변호사'
@@ -1886,7 +1886,7 @@ export default function ClientRole({
                   setRequestType('open');
                   setRequestStep(1);
                   setActiveTab('request');
-                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 진단하기] 메뉴 클릭');
+                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭');
                 }}
                 className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'request' 
@@ -1894,7 +1894,7 @@ export default function ClientRole({
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
-                내 상황 진단하기
+                내 상황 체크하기
               </button>
               <button 
                 onClick={() => setActiveTab('chat')}
@@ -1977,7 +1977,7 @@ export default function ClientRole({
                     setMessages([]);
                     setInquiries([]);
                     
-                    alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 진단 및 상담 기록이 완전히 초기화되었습니다.');
+                    alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
                   }}
                   className="whitespace-nowrap flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold transition-all shrink-0 cursor-pointer"
                 >
@@ -2029,11 +2029,11 @@ export default function ClientRole({
                       setRequestType('open');
                       setRequestStep(1);
                       setActiveTab('request');
-                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [전담 변호사 무료 진단 시작하기] 버튼 클릭');
+                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [1분 채무관리 체크 시작하기] 버튼 클릭');
                     }}
                     className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold px-6 py-4.5 rounded-2xl shadow-lg shadow-brand/10 hover:shadow-brand/20 hover:scale-[1.01] active:scale-[0.99] transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-sm md:text-base"
                   >
-                    <span>전담 변호사 무료 진단 시작하기</span>
+                    <span>1분 채무관리 체크 시작하기</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </button>
                 </div>
@@ -2045,14 +2045,14 @@ export default function ClientRole({
                   <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     🤝 my김변의 약속
                   </h4>
-                  <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">100% 무료</span>
+                  <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">초기 체크 무료</span>
                 </div>
 
                 <div className="space-y-3">
                   {[
-                    { icon: '💬', title: '상담은 무료', desc: '첫 상담부터 비용 걱정 없이, 변호사가 직접 상황을 분석해드려요.' },
+                    { icon: '💬', title: '초기 체크 무료', desc: '채무 체크는 비용 없이 이용 가능합니다. 상담 조건은 변호사별로 다를 수 있습니다.' },
                     { icon: '🔒', title: '익명 상담 보장', desc: '실명 없이도 상담 가능. 내 이름,전화번호도 노출되지 않아요.' },
-                    { icon: '⚖️', title: '전담 변호사 매칭', desc: '채무 유형에 맞는 전문 변호사가 1:1로 끝까지 함께합니다.' },
+                    { icon: '⚖️', title: '변호사 직접 선택', desc: '고객이 직접 선택한 변호사와 1:1 전담 상담방을 만들 수 있습니다.' },
                     { icon: '🛡️', title: '상담 내용 암호화', desc: '변호사와의 대화는 별도 암호화되어 관리되며, 운영자도 열람할 수 없습니다.' },
                     { icon: '📋', title: '내 정보는 내가 통제', desc: '내 연락처는 동의 전까지 변호사에게 공개되지 않습니다.' },
                   ].map((item, idx) => (
@@ -2091,8 +2091,8 @@ export default function ClientRole({
                   },
                   {
                     step: 'Step 2',
-                    title: '2. 전문가 무료 연결',
-                    desc: '경험 많은 전문가 3명이 내 상황을 살펴보고, 어떻게 하면 좋을지 무료로 알려드려요',
+                    title: '2. 전문가 검토 요청',
+                    desc: '고객이 선택한 최대 3명의 변호사에게 익명으로 검토를 요청할 수 있어요',
                     icon: '👥',
                     action: () => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }
                   },
@@ -2195,7 +2195,7 @@ export default function ClientRole({
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[8px] bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded-lg font-bold border border-indigo-100 dark:border-indigo-900">📞 전화상담</span>
-                          <span className="text-[8px] bg-brand text-white px-2 py-1 rounded-lg font-bold">📄 진단서 수정</span>
+                          <span className="text-[8px] bg-brand text-white px-2 py-1 rounded-lg font-bold">📄 리포트 수정</span>
                         </div>
                       </div>
                       <div className="flex-1 px-3 py-3 space-y-2.5 overflow-hidden bg-slate-50/30 dark:bg-slate-950/10">
@@ -2270,7 +2270,7 @@ export default function ClientRole({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
-                  <span>상황별 채무관리 방향성 진단</span>
+                  <span>상황별 채무관리 방향 체크</span>
                 </h3>
               </div>
               
@@ -2325,7 +2325,7 @@ export default function ClientRole({
                   <div className="text-center space-y-3">
                     <div className="inline-flex items-center gap-2 bg-brand/10 border border-brand/15 text-brand dark:text-brand-light text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
                       <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
-                      100% 무료 · 부담 제로
+                      초기 채무 체크 무료
                     </div>
                     <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white leading-tight">
                       돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
@@ -2364,7 +2364,7 @@ export default function ClientRole({
                   {/* Bottom hint */}
                   <div className="text-center pt-2">
                     <p className="text-[11px] text-slate-400 font-semibold">
-                      ✦ 상담 신청 전, AI 자가진단으로 나의 상황을 먼저 파악해 보세요
+                      ✦ 상담 신청 전, 사전 체크로 나의 상황을 먼저 정리해 보세요
                     </p>
                   </div>
                 </div>

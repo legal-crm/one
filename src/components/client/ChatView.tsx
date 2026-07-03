@@ -277,7 +277,7 @@ export default function ChatView({
                         else if (requests.length > 0) { onSetActiveChatReqId(requests[0].id); }
                         else { 
                           onSetActiveTab('request'); 
-                          alert('제안서의 변호사님과 비밀 대화를 시작하려면 먼저 자가진단 신청을 진행해 주세요! (30초 완료)'); 
+                          alert('제안서의 변호사님과 비밀 대화를 시작하려면 먼저 채무 체크를 진행해 주세요! (30초 완료)'); 
                           return; 
                         }
                         setTimeout(() => { 
@@ -309,7 +309,7 @@ export default function ChatView({
               나의 채무관리방 목록
             </h3>
             <p className="text-slate-400 dark:text-slate-500 text-[11px] font-medium mt-0.5">
-              접수 완료된 자가진단 및 변호사 매칭 목록입니다.
+              접수 완료된 채무 체크 및 상담 목록입니다.
             </p>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 scrollbar-hide">
@@ -322,7 +322,7 @@ export default function ChatView({
                   onClick={() => onSetActiveTab('request')} 
                   className="inline-flex text-xs text-brand hover:text-brand-hover font-bold cursor-pointer transition-colors"
                 >
-                  무료 자가진단 바로가기 &rarr;
+                  무료 채무 체크 바로가기 &rarr;
                 </button>
               </div>
             ) : requests.map(r => {
@@ -433,7 +433,7 @@ export default function ChatView({
                   }`}
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>{showProfilePanel ? '진단서 접기' : '진단서 수정'}</span>
+                  <span>{showProfilePanel ? '리포트 접기' : '리포트 수정'}</span>
                 </button>
               </div>
             </div>
@@ -509,7 +509,7 @@ export default function ChatView({
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/20 shrink-0">
                 <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-brand" />
-                  나의 상세 진단서 수정
+                  나의 상세 리포트 수정
                 </span>
                 <button
                   type="button"
@@ -560,13 +560,13 @@ export default function ChatView({
               선택된 채무상담방이 없습니다
             </h3>
             <p className="text-slate-400 dark:text-slate-500 text-xs max-w-sm font-medium leading-relaxed">
-              왼쪽의 나의 채무관리방 목록에서 특정 방을 선택하시거나, 신규 무료 자가진단을 신청하여 상담을 활성화하세요.
+              왼쪽의 나의 채무관리방 목록에서 특정 방을 선택하시거나, 신규 무료 채무 체크를 신청하여 상담을 활성화하세요.
             </p>
             <button 
               onClick={() => onSetActiveTab('request')} 
               className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-6 py-3 rounded-2xl text-xs shadow-sm hover:shadow-brand-sm transition-all cursor-pointer transform active:scale-[0.98]"
             >
-              지금 30초 무료 진단 신청
+              지금 30초 무료 체크 시작
             </button>
           </div>
         )}
@@ -592,7 +592,7 @@ export default function ChatView({
                 <Phone className="w-4 h-4 text-brand animate-pulse" /> 5분 내 즉시 안심 전화상담 신청
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                의뢰인님의 자가진단 정보를 바탕으로 매칭된 법률 대리인이 5분 이내에 기재해주신 번호로 연락을 드립니다.
+                고객님의 채무 체크 정보를 바탕으로 선택하신 변호사가 확인 후 연락을 드립니다.
               </p>
             </div>
 

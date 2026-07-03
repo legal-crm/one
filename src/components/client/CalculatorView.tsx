@@ -29,12 +29,12 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
           <div className="space-y-1.5">
             <span className="text-[10px] text-brand-light font-bold uppercase tracking-widest flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-brand-light" />
-              실시간 자가진단 계산기
+              채무관리 사전 체크 계산기
             </span>
-            <h3 className="text-xl md:text-2xl font-bold tracking-tight">나의 예상 개인회생 탕감액 조회</h3>
+            <h3 className="text-xl md:text-2xl font-bold tracking-tight">나의 예상 변제 부담 시뮬레이션</h3>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed max-w-sm font-medium">
-            소득과 채무, 부양가족 수에 따른 최저생계비를 대입하여 법원에서 인정받을 수 있는 최적의 예상 탕감액과 변제율을 가계산합니다.
+            소득과 채무, 부양가족 수에 따른 최저생계비를 대입하여 예상 변제 부담을 단순 시뮬레이션합니다. 실제 결과는 달라질 수 있습니다.
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                 <>
                   <div className="space-y-4 text-left relative z-10">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-brand-light block border-b border-white/10 pb-2">
-                      🔍 1차 자격 진단 리포트
+                      🔍 1차 사전 체크 리포트
                     </span>
                     <div className="space-y-3.5 text-xs text-slate-300 font-medium">
                       <div className="flex justify-between items-center">
@@ -131,7 +131,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                       </div>
                       {isBankruptcyApplicable ? (
                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-[11px] text-red-300 font-semibold leading-relaxed shadow-sm">
-                          ⚠️ 월 소득이 법정 최저생계비보다 적습니다. 이 경우 변제금 납부 대신 채무 전액을 탕감받는 **개인파산 면책 신청**이 가장 유리합니다!
+                          ⚠️ 월 소득이 법정 최저생계비보다 적습니다. 이 경우 개인파산 면책 신청을 검토해 볼 수 있는 상황입니다. 정확한 가능 여부는 변호사 검토가 필요합니다.
                         </div>
                       ) : (
                         <div className="space-y-2.5">
@@ -150,9 +150,9 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
                   {!isBankruptcyApplicable && (
                     <div className="bg-gradient-to-r from-brand/10 to-indigo-600/15 border border-brand/35 p-5 rounded-2xl text-center space-y-1.5 shadow-sm relative z-10">
-                      <span className="text-[10px] text-brand-light uppercase tracking-widest font-bold">법적 예상 탕감 비율</span>
+                      <span className="text-[10px] text-brand-light uppercase tracking-widest font-bold">입력값 기준 예상 조정 비율</span>
                       <div className="text-3xl font-bold text-brand-light tracking-tight">
-                        약 {reductionRate}% 탕감 예정
+                        약 {reductionRate}% 조정 가능성
                       </div>
                       <p className="text-[11px] text-slate-400 font-medium">
                         (총 채무 중 약 <strong className="text-white font-bold">{Math.round(totalReduction).toLocaleString()}만 원</strong> 감면)
@@ -166,14 +166,14 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                         income: calcIncome,
                         debtTotal: calcDebt,
                         dependents: calcDependents,
-                        title: `탕감액 계산기 연동 상담 신청`,
-                        content: `탕감액 계산기 실행 결과:\n- 월 세후 소득: ${calcIncome}만 원\n- 총 부채액: ${calcDebt}만 원\n- 부양가족 수: ${calcDependents}명 (${calcDependents + 1}인 가구)\n\n상기 수치 데이터를 기반으로 법정 개시가 안전하게 가능한 구조인지, 추가적인 탕감율 극대화 전략에 대한 도산 전문 변호사의 상담을 신청합니다.`,
+                        title: `시뮬레이션 결과 검토 요청`,
+                        content: `채무 시뮬레이션 결과:\n- 월 세후 소득: ${calcIncome}만 원\n- 총 부채액: ${calcDebt}만 원\n- 부양가족 수: ${calcDependents}명 (${calcDependents + 1}인 가구)\n\n위 입력값 기준 시뮬레이션 결과를 바탕으로 변호사의 검토 의견을 받아보고 싶습니다.`,
                         step: 3
                       })}
                       className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-3.5 rounded-2xl text-xs transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 cursor-pointer active:scale-[0.98]"
                     >
                       <FileText className="w-4 h-4" />
-                      <span>이 계산 결과로 바로 상담 신청하기</span>
+                      <span>이 결과로 변호사 검토 요청하기</span>
                     </button>
                   </div>
                 </>
@@ -187,15 +187,15 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
       <div className="bg-amber-500/5 dark:bg-amber-500/5 border border-amber-500/20 p-5 rounded-3xl text-xs space-y-3 shadow-premium">
         <h4 className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2 text-sm">
           <AlertTriangle className="w-4 h-4" />
-          <span>탕감액 계산기 이용 시 유의사항 (변호사 전문 소명의 중요성)</span>
+          <span>시뮬레이션 이용 시 유의사항</span>
         </h4>
         <div className="text-slate-400 dark:text-slate-400 leading-relaxed font-medium space-y-2">
           <p>
-            위 계산기는 보건복지부 기준 최저생계비를 대입한 <strong>가계산(가상 결과)</strong>입니다. 
-            실제 법원 접수 시에는 채무 형성 경로(최근 대출 비율, 사행성 투자 손실 유무) 및 의뢰인의 개별 소득 형태, 재산 가치(청산가치)에 따라 법원이 인정해주는 생계비의 보정 폭이 매우 크게 달라집니다.
+            본 결과는 입력값 기준 예상 변제 부담을 단순 시뮬레이션한 <strong>참고자료</strong>이며, 법률 판단이 아닙니다.
+            실제 변제금과 조정 가능성은 법원, 소득, 재산, 채무 발생 원인, 최근 채무 비율, 세금체납 여부 등에 따라 달라질 수 있습니다.
           </p>
           <p>
-            따라서, 계산 결과를 토대로 반드시 **도산 전문 변호사와의 1:1 상담 및 매칭**을 진행하여 적법하게 생계비를 극대화하고 변제금을 최소화하는 전략적 계획서를 수립하셔야 합니다.
+            정확한 진행 가능성과 예상 변제금은 변호사의 개별 검토를 통해 확인하시기 바랍니다.
           </p>
         </div>
         <div className="pt-2 flex justify-end">

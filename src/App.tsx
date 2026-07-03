@@ -365,9 +365,9 @@ export default function App() {
           </div>
           
           <div className="space-y-2">
-            <h3 className="font-extrabold text-lg text-white">보안 보호된 진단 보고서</h3>
+            <h3 className="font-extrabold text-lg text-white">보안 보호된 채무 리포트</h3>
             <p className="text-xs text-slate-400 leading-relaxed px-4">
-              본 진단 보고서는 비밀번호로 보호되어 있습니다.<br />
+              본 채무 리포트는 비밀번호로 보호되어 있습니다.<br />
               공유자로부터 전달받은 <strong>숫자 4자리 비밀번호</strong>를 입력해 주세요.
             </p>
           </div>

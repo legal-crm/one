@@ -69,7 +69,7 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                     {/* Main Metrics Box */}
                     <div className="grid grid-cols-2 gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
                         <div className="space-y-0.5">
-                            <span className="text-[10px] text-slate-500">예상 탕감율</span>
+                            <span className="text-[10px] text-slate-500">예상 조정 비율</span>
                             <div className="text-xl font-black text-emerald-400">
                                 {result.debtReductionRate}%
                             </div>
@@ -178,7 +178,7 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                         나도 채무 감면율을 확인하고 싶다면?
                     </h3>
                     <p className="text-[11px] text-slate-500">
-                        회원가입 없이 5분 만에 무료로 개인회생/파산 탕감 가능 금액 진단하기
+                        회원가입 없이 5분 만에 무료로 예상 조정 범위 체크하기
                     </p>
                 </div>
                 

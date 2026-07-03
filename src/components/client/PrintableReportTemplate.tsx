@@ -157,7 +157,7 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
                                 {result.status === 'POSSIBLE' ? '개인회생 인가 유력' : result.status === 'DIFFICULT' ? '법리 보완 후 진행 권장' : '신청 불허 리스크 대상'}
                             </div>
                             <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
-                                평균 탕감비율: <strong style={{ color: '#312e81', fontSize: '14px' }}>{result.debtReductionRate}% (빚 면제 혜택)</strong>
+                                입력값 기준 예상 조정 비율: <strong style={{ color: '#312e81', fontSize: '14px' }}>{result.debtReductionRate}% (참고용, 변호사 검토 필요)</strong>
                             </div>
                         </div>
                         <div style={{ fontSize: '11px', color: '#334155', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
@@ -170,7 +170,7 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
                                 <span style={{ fontWeight: 'bold', color: '#10b981' }}>{formatCurrency(result.totalRepayment)}</span>
                             </div>
                             <div style={{ display: 'flex', borderTop: '1px dashed #cbd5e1', paddingTop: '4px', justifyContent: 'space-between' }}>
-                                <span>• 탕감받는 채무 면책액:</span>
+                                <span>• 예상 조정 가능 채무액 (변호사 검토 필요):</span>
                                 <span style={{ fontWeight: 'bold', color: '#312e81' }}>{formatCurrency(result.totalDebtReduction)}</span>
                             </div>
                         </div>
@@ -353,7 +353,7 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
                                 </div>
                             </div>
                             <p style={{ fontSize: '10px', color: '#64748b', margin: '8px 0 0 0', lineHeight: 1.4 }}>
-                                * 남는 자금(가용 소득): <strong>{formatCurrency(result.monthlyPayment)}</strong>가 월 변제금으로 도출되며, 이 금액으로 3년간 채무를 변제하고 남은 빚은 전액 탕감받습니다.
+                                * 남는 자금(가용 소득): <strong>{formatCurrency(result.monthlyPayment)}</strong>가 월 변제금으로 도출되며, 이 금액으로 3년간 채무를 변제하고 남은 채무는 조정 대상이 될 수 있습니다. (실제 결과는 법원·변호사 검토에 따라 달라집니다)
                             </p>
                         </div>
                     </div>

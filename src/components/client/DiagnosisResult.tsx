@@ -135,13 +135,13 @@ function ResultHero({
         >
           <Sparkles className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
           <p className="text-sm text-slate-400 mb-2 tracking-wide">
-            예상 탕감 금액
+            예상 조정 가능 금액
           </p>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-none">
             약 {formatManWon(animatedAmount)}
           </h1>
           <p className="text-lg sm:text-xl text-indigo-300 mt-1 font-semibold">
-            탕감 가능
+            조정 검토 필요
           </p>
         </motion.div>
       </div>
@@ -515,7 +515,7 @@ function MatchingGuidanceCard() {
           <div className="space-y-1.5 text-left">
             <h4 className="font-bold text-white text-sm sm:text-base">⚠️ 중요 안내: 분석 정보의 한계 고지</h4>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              본 결과는 입력하신 5가지 기초 항목만을 토대로 분석한 <strong>단순 예상치(간이 진단)</strong>입니다.
+              본 결과는 입력하신 5가지 기초 항목만을 토대로 분석한 <strong>단순 예상치(사전 체크)</strong>이며, 법률 판단이 아닙니다. 정확한 가능 여부는 변호사 검토가 필요합니다.
               현재 단계에서는 변호사가 고객님의 구체적인 연체 정보, 최근 대출금의 사용처, 재산 보유 상태 등을 알지 못하므로 정확한 대책 수립이 어렵습니다.
             </p>
           </div>
@@ -600,7 +600,7 @@ function CTASection({
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          다시 진단하기
+          다시 체크하기
         </button>
       </div>
 
@@ -644,7 +644,7 @@ export default function DiagnosisResultPage({
           </button>
           <div className="flex items-center gap-1.5">
             <Shield className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs text-slate-500 font-medium">간이 진단 결과</span>
+            <span className="text-xs text-slate-500 font-medium">사전 체크 결과</span>
           </div>
         </div>
       </motion.header>

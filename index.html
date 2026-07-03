@@ -59,6 +59,7 @@
           "@type": "Organization",
           "@id": "https://mykim.kr/#organization",
           "name": "주식회사 my김변컴퍼니",
+          "alternateName": ["my김변", "마이김변", "mykim", "마이김변 채무관리"],
           "url": "https://mykim.kr",
           "logo": {
             "@type": "ImageObject",
@@ -66,10 +67,23 @@
             "width": 512,
             "height": 512
           },
+          "description": "개인회생·파산·신용회복 등 채무 문제 해결을 위한 익명 채무 진단 및 전담 변호사 무료 매칭 플랫폼. 김변호사(kimbyun.co.kr)와는 별개의 독립 서비스입니다.",
+          "disambiguatingDescription": "my김변(mykim.kr)은 일반 의뢰인 대상 채무관리 플랫폼이며, 변호사 간 업무 공유 플랫폼인 김변호사(kimbyun.co.kr)와는 운영 주체·서비스 대상·사업 모델이 모두 다른 완전히 별개의 서비스입니다.",
+          "foundingDate": "2024",
+          "founder": {
+            "@type": "Person",
+            "name": "진성호"
+          },
           "contactPoint": {
             "@type": "ContactPoint",
             "email": "help@rebirthtalk.com",
-            "contactType": "customer service"
+            "contactType": "customer service",
+            "availableLanguage": "Korean"
+          },
+          "knowsAbout": ["개인회생", "개인파산", "신용회복", "채무조정", "채무탕감", "채무자대리인", "도산법"],
+          "areaServed": {
+            "@type": "Country",
+            "name": "KR"
           }
         },
         {
@@ -128,6 +142,28 @@
               "name": "서비스 소개",
               "description": "my김변의 서비스 철학, 이용 흐름, 차별점을 소개합니다.",
               "url": "https://mykim.kr/about.html"
+            }
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://mykim.kr/#brand-faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "마이김변(my김변)이란 무엇인가요?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "my김변(마이김변, mykim.kr)은 개인회생, 파산, 신용회복 등 채무 문제로 고민하는 분들을 위한 익명 채무 진단 및 전담 변호사 무료 매칭 채무관리 플랫폼입니다. 실명 없이 1분 만에 채무 상태를 AI로 진단하고, 도산 전문 변호사가 무료로 배정되어 채무 해결까지 지속 관리합니다. 운영사는 (주)my김변컴퍼니(대표 진성호)입니다."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "my김변(마이김변)과 김변호사(KimByun)는 같은 서비스인가요?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "아니요, 완전히 다른 서비스입니다. my김변(mykim.kr)은 일반 의뢰인을 위한 채무관리 플랫폼으로, 개인회생·파산·신용회복 상담 및 전담 변호사 매칭 서비스를 제공합니다. 김변호사(kimbyun.co.kr)는 변호사들 간의 업무 공유를 위한 B2B 플랫폼으로, 운영 주체와 서비스 대상이 전혀 다릅니다. my김변의 운영사는 (주)my김변컴퍼니(대표 진성호)입니다."
+              }
             }
           ]
         }

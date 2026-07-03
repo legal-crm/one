@@ -223,7 +223,7 @@ export default function DiagnosisFlow(props: DiagnosisFlowProps) {
 
         {/* Progress bar */}
         <div className="mb-2 flex items-center justify-between text-xs text-white/40">
-          <span>자가진단</span>
+          <span>채무 체크</span>
           <span>
             {currentStep + 1} / {questions.length}
           </span>
