@@ -1248,7 +1248,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                             className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#7264FF]/20"
                         >
                             <Sparkles className="w-4 h-4 text-white" />
-                            즉시 전문 상담 신청 (다수 변호사 동시 배정)
+                            내 전담 변호사 선택하기
                             <ArrowRight className="w-4 h-4 text-white" />
                         </motion.button>
 
