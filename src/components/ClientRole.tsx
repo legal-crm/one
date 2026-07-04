@@ -2488,9 +2488,6 @@ export default function ClientRole({
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
                   <span>실제 채무 해결 성공 후기</span>
-                  <span className="text-[12px] bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light font-semibold px-2 py-0.5 rounded-md">
-                    리얼 자필 사연
-                  </span>
                 </h3>
                 <button
                   onClick={() => setActiveTab('reviews')}
