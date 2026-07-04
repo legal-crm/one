@@ -551,19 +551,19 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-3 gap-2 mt-2">
-                                                <div className="bg-slate-800/60 p-2.5 rounded-lg text-center">
-                                                    <div className="text-[12px] text-slate-500">월 절약액</div>
-                                                    <div className="text-xs font-bold text-emerald-400 mt-0.5">
+                                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-center">
+                                                    <div className="text-[12px] text-slate-600 font-semibold">월 절약액</div>
+                                                    <div className="text-xs font-bold text-emerald-600 mt-0.5">
                                                         {formatCurrency(Math.max(0, Math.round(userInput.totalDebt / 36) - result.monthlyPayment))}
                                                     </div>
                                                 </div>
-                                                <div className="bg-slate-800/60 p-2.5 rounded-lg text-center">
-                                                    <div className="text-[12px] text-slate-500">총 탕감액</div>
+                                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-center">
+                                                    <div className="text-[12px] text-slate-600 font-semibold">총 탕감액</div>
                                                     <div className="text-xs font-bold text-[#7264FF] mt-0.5">{formatCurrency(result.totalDebtReduction)}</div>
                                                 </div>
-                                                <div className="bg-slate-800/60 p-2.5 rounded-lg text-center">
-                                                    <div className="text-[12px] text-slate-500">감소율</div>
-                                                    <div className="text-xs font-bold text-amber-400 mt-0.5">{result.debtReductionRate}%</div>
+                                                <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-center">
+                                                    <div className="text-[12px] text-slate-600 font-semibold">감소율</div>
+                                                    <div className="text-xs font-bold text-amber-600 mt-0.5">{result.debtReductionRate}%</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1081,7 +1081,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             <div className="space-y-1.5">
                                                 {result.monthlyBudgetBefore.map((item, idx) => (
                                                     <div key={idx} className={`flex justify-between items-center text-xs px-2 py-1.5 rounded-lg ${
-                                                        item.type === 'total' ? 'bg-slate-800/60 border border-slate-700 mt-2' :
+                                                        item.type === 'total' ? 'bg-slate-100 border border-slate-200 mt-2' :
                                                         item.highlight ? 'bg-red-500/5' : ''
                                                     }`}>
                                                         <span className={`${
@@ -1090,9 +1090,9 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         }`}>{item.label}</span>
                                                         <span className={`font-semibold ${
                                                             item.type === 'income' ? 'text-slate-900' :
-                                                            item.type === 'total' && item.amount < 0 ? 'text-red-400 font-bold' :
-                                                            item.type === 'total' ? 'text-emerald-400' :
-                                                            item.highlight ? 'text-red-400' : 'text-slate-600'
+                                                            item.type === 'total' && item.amount < 0 ? 'text-red-600 font-bold' :
+                                                            item.type === 'total' ? 'text-emerald-600' :
+                                                            item.highlight ? 'text-red-500' : 'text-slate-600'
                                                         }`}>
                                                             {formatCurrency(Math.abs(item.amount))}
                                                             {item.type === 'total' && item.amount < 0 && ' ❌ 부족'}
@@ -1124,7 +1124,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             <div className="space-y-1.5">
                                                 {result.monthlyBudgetAfter.map((item, idx) => (
                                                     <div key={idx} className={`flex justify-between items-center text-xs px-2 py-1.5 rounded-lg ${
-                                                        item.type === 'total' ? 'bg-slate-800/60 border border-emerald-500/20 mt-2' :
+                                                        item.type === 'total' ? 'bg-slate-100 border border-slate-200 mt-2' :
                                                         item.highlight ? 'bg-[#7264FF]/5' : ''
                                                     }`}>
                                                         <span className={`${
@@ -1133,8 +1133,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                         }`}>{item.label}</span>
                                                         <span className={`font-semibold ${
                                                             item.type === 'income' ? 'text-slate-900' :
-                                                            item.type === 'total' ? 'text-emerald-400 font-bold' :
-                                                            item.highlight ? 'text-[#7264FF]' : 'text-slate-600'
+                                                            item.type === 'total' ? 'text-emerald-600 font-bold' :
+                                                            item.highlight ? 'text-indigo-600' : 'text-slate-600'
                                                         }`}>
                                                             {formatCurrency(Math.abs(item.amount))}
                                                             {item.type === 'total' && ' ✅ 관리 가능'}
