@@ -2518,21 +2518,9 @@ export default function ClientRole({
                           <div key={rev.id} className="w-full sm:w-1/2 lg:w-1/3 shrink-0 px-2.5">
                             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
                               <div className="space-y-3 text-left">
-                                <div className="flex items-center justify-between">
-                                  <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[12px] font-semibold px-2 py-0.5 rounded-md">
-                                    {rev.category}
-                                  </span>
-                                  <div className="flex text-amber-400 text-xs">★★★★★</div>
-                                </div>
-                                
                                 <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug line-clamp-1">
                                   {rev.title}
                                 </h4>
-
-                                <div className="bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-[12px] font-semibold">
-                                  <div className="text-slate-500">기존 채무: {rev.originalDebt.toLocaleString()}만원</div>
-                                  <div className="text-indigo-600 dark:text-indigo-400">조정 후: {rev.remainingDebt === 0 ? "전액 탕감" : `${rev.remainingDebt.toLocaleString()}만원`}</div>
-                                </div>
 
                                 <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
                                   "{rev.content}"

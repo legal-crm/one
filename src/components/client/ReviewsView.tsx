@@ -137,31 +137,9 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                 <div key={rev.id} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-100 dark:border-slate-800 rounded-3xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-6 flex flex-col justify-between space-y-6 group relative overflow-hidden text-left">
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand/10 to-transparent"></div>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="bg-brand/5 border border-brand/20 text-brand dark:text-brand-light text-[12px] font-bold px-3 py-1 rounded-full shadow-sm">{rev.category}</span>
-                      <div className="flex text-amber-400 text-xs tracking-wider">★★★★★</div>
-                    </div>
                     <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-snug group-hover:text-brand dark:group-hover:text-brand-light transition-colors line-clamp-2">
                       "{rev.title}"
                     </h3>
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs font-bold shadow-sm">
-                      <div className="flex justify-between items-center text-slate-600 font-semibold">
-                        <span>기존 채무액</span>
-                        <span className="line-through text-slate-500">{rev.originalDebt.toLocaleString()}만원</span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-900 dark:text-white font-bold">
-                        <span>조정 후 채무</span>
-                        <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                          {rev.remainingDebt === 0 ? "전액 탕감 (0원)" : `${rev.remainingDebt.toLocaleString()}만원`}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pt-2.5 border-t border-slate-200 dark:border-slate-800 text-[12px] font-bold">
-                        <span className="text-emerald-600 dark:text-emerald-400">총 감면 혜택</span>
-                        <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded font-bold">
-                          {reductionRate}% 감면 (-{saved.toLocaleString()}만원)
-                        </span>
-                      </div>
-                    </div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium line-clamp-3 md:line-clamp-none">{rev.content}</p>
                     <div className="flex flex-wrap gap-1.5 pt-1.5">
                       {rev.tags.map(t => (
