@@ -2014,7 +2014,7 @@ export default function ClientRole({
               <div className="lg:col-span-7 space-y-6 text-left">
                 <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">
                   빚 걱정, 혼자 하지 마세요<br />
-                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">my김변이 같이 고민해드려요</span>
+                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">my김변이 관리해드려요</span>
                 </h1>
                 
                 <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
