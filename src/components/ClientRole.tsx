@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  PlusCircle, Users, Scale, FileText, ChevronRight, CheckCircle, 
+  PlusCircle, Users, Scale, FileText, ChevronLeft, ChevronRight, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
@@ -2544,17 +2544,17 @@ export default function ClientRole({
                       <>
                         <button
                           onClick={() => setActiveReviewIdx(prev => (prev === 0 ? maxIdx : prev - 1))}
-                          className="absolute -left-2 sm:left-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors z-10 hover:text-brand"
+                          className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-300 dark:text-slate-600 hover:text-slate-800 dark:hover:text-slate-200 transition-colors z-10 p-2 cursor-pointer"
                           aria-label="Previous review"
                         >
-                          ◀
+                          <ChevronLeft className="w-8 h-8 md:w-10 md:h-10 stroke-[1.2]" />
                         </button>
                         <button
                           onClick={() => setActiveReviewIdx(prev => (prev === maxIdx ? 0 : prev + 1))}
-                          className="absolute -right-2 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors z-10 hover:text-brand"
+                          className="absolute -right-4 sm:-right-6 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-300 dark:text-slate-600 hover:text-slate-800 dark:hover:text-slate-200 transition-colors z-10 p-2 cursor-pointer"
                           aria-label="Next review"
                         >
-                          ▶
+                          <ChevronRight className="w-8 h-8 md:w-10 md:h-10 stroke-[1.2]" />
                         </button>
                       </>
                     )}
