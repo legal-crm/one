@@ -2006,7 +2006,7 @@ export default function ClientRole({
           <div className="animate-fadeIn text-left">
 
             {/* ── Sector 1: Hero ─────────────────────────────── */}
-            <section className="w-full py-16 md:py-24 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/20">
+            <section className="w-full py-10 md:py-16 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 1. Hero Section (Platform Pitch & Identity) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -2072,7 +2072,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 2: 3단계 프로세스 ────────────────────── */}
-            <section className="w-full py-16 md:py-20 bg-white dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
+            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
             <div className="space-y-6 text-center">
@@ -2124,7 +2124,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 3: 대시보드 미리보기 ──────────────────── */}
-            <section className="w-full py-16 md:py-20 bg-gradient-to-b from-indigo-50/50 to-slate-50/80 dark:from-slate-900 dark:to-slate-950">
+            <section className="w-full py-10 md:py-14 bg-gradient-to-b from-indigo-50/50 to-slate-50/80 dark:from-slate-900 dark:to-slate-950">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 4. Section 3: 내 채무관리 대시보드 미리보기 (Dashboard Preview) */}
             <div className="space-y-6 text-center">
@@ -2269,7 +2269,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 4: 상황별 채무관리 방향성 진단 ────────── */}
-            <section className="w-full py-16 md:py-20 bg-slate-50 dark:bg-slate-900/50">
+            <section className="w-full py-10 md:py-14 bg-slate-50 dark:bg-slate-900/50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 5. Section 4: 상황별 빠른 진단 카드 (Situation-based Cards) */}
             <div className="space-y-4 text-left">
@@ -2319,7 +2319,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 5: 무료 관리 범위 ─────────────────── */}
-            <section className="w-full py-16 md:py-20 bg-white dark:bg-slate-900">
+            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 6. Section 5: 전담 변호사 무료 관리 범위 (Free Care Scope) */}
             <div className="pt-4">
@@ -2383,7 +2383,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
-            <section className="w-full py-16 md:py-20 bg-indigo-50/30 dark:bg-indigo-950/10 border-y border-indigo-100/50 dark:border-slate-800">
+            <section className="w-full py-10 md:py-14 bg-indigo-50/30 dark:bg-indigo-950/10 border-y border-indigo-100/50 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
             <div className="space-y-6 text-center">
@@ -2493,7 +2493,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 7: 성공 후기 ─────────────────────── */}
-            <section className="w-full py-16 md:py-20 bg-slate-50 dark:bg-slate-900/50">
+            <section className="w-full py-10 md:py-14 bg-slate-50 dark:bg-slate-900/50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 8. Section 7: 실제 사례/콘텐츠 (Success reviews & News) */}
             <div className="space-y-4 text-left">
@@ -2598,7 +2598,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 8: 고민 해결 상담사례 ─────────────── */}
-            <section className="w-full py-16 md:py-20 bg-white dark:bg-slate-900">
+            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
             <div className="space-y-4 text-left">
@@ -2713,7 +2713,7 @@ export default function ClientRole({
             </section>
 
             {/* ── Sector 9: 법률 정보 ─────────────────────── */}
-            <section className="w-full py-16 md:py-20 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+            <section className="w-full py-10 md:py-14 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 6. Legal News & Tips Section */}
             <div className="space-y-4 text-left animate-fadeIn">
