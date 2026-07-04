@@ -1999,14 +1999,15 @@ export default function ClientRole({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+      <main className="flex-1 w-full">
 
         {/* TAB 1: LANDING & INTRO */}
         {activeTab === 'landing' && (
           <div className="animate-fadeIn text-left">
 
             {/* ── Sector 1: Hero ─────────────────────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16">
+            <section className="w-full py-16 md:py-24 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/20">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 1. Hero Section (Platform Pitch & Identity) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               {/* Left Column: Core Value Proposition */}
@@ -2068,9 +2069,11 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
             {/* ── Sector 2: 3단계 프로세스 ────────────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
+            <section className="w-full py-16 md:py-20 bg-white dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
@@ -2118,9 +2121,11 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
             {/* ── Sector 3: 대시보드 미리보기 ──────────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16">
+            <section className="w-full py-16 md:py-20 bg-gradient-to-b from-indigo-50/50 to-slate-50/80 dark:from-slate-900 dark:to-slate-950">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 4. Section 3: 내 채무관리 대시보드 미리보기 (Dashboard Preview) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
@@ -2261,9 +2266,11 @@ export default function ClientRole({
                 {/* 글로우 효과 */}
                 <div className="absolute top-0 right-0 w-40 h-40 bg-brand/15 rounded-full blur-3xl"></div>
             </div>
+            </section>
 
             {/* ── Sector 4: 상황별 채무관리 방향성 진단 ────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
+            <section className="w-full py-16 md:py-20 bg-slate-50 dark:bg-slate-900/50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 5. Section 4: 상황별 빠른 진단 카드 (Situation-based Cards) */}
             <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
@@ -2309,9 +2316,11 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
             {/* ── Sector 5: 무료 관리 범위 ─────────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16">
+            <section className="w-full py-16 md:py-20 bg-white dark:bg-slate-900">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 6. Section 5: 전담 변호사 무료 관리 범위 (Free Care Scope) */}
             <div className="pt-4">
               <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50/80 via-white to-violet-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-100/60 dark:border-slate-800 p-8 md:p-12">
@@ -2371,9 +2380,11 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
             {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
+            <section className="w-full py-16 md:py-20 bg-indigo-50/30 dark:bg-indigo-950/10 border-y border-indigo-100/50 dark:border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
@@ -2479,9 +2490,11 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
             {/* ── Sector 7: 성공 후기 ─────────────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16">
+            <section className="w-full py-16 md:py-20 bg-slate-50 dark:bg-slate-900/50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 8. Section 7: 실제 사례/콘텐츠 (Success reviews & News) */}
             <div className="space-y-4 text-left">
               <div className="flex items-center justify-between gap-1 text-left">
@@ -2582,9 +2595,11 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
             {/* ── Sector 8: 고민 해결 상담사례 ─────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16 bg-slate-50/70 dark:bg-slate-950/30">
+            <section className="w-full py-16 md:py-20 bg-white dark:bg-slate-900">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
             <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
@@ -2695,9 +2710,11 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
             {/* ── Sector 9: 법률 정보 ─────────────────────── */}
-            <div className="-mx-4 px-4 py-12 md:py-16">
+            <section className="w-full py-16 md:py-20 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 6. Legal News & Tips Section */}
             <div className="space-y-4 text-left animate-fadeIn">
               <div 
@@ -2777,6 +2794,7 @@ export default function ClientRole({
             </div>
 
             </div>
+            </section>
 
           </div>
         )}
@@ -2785,6 +2803,8 @@ export default function ClientRole({
 
  
  
+        {activeTab !== 'landing' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* TAB: 탕감액 계산기 */}
         {activeTab === 'calculator' && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); setActiveTab('request'); }} />)}
 
@@ -2872,6 +2892,8 @@ export default function ClientRole({
             tempAlias={tempAlias}
             setTempAlias={setTempAlias}
           />
+        )}
+        </div>
         )}
 
       </main>
