@@ -549,38 +549,66 @@ export default function LawyerRole({
     return matchesSearch && matchesStatus && matchesLawyer;
   });
 
-  // Participate in an Open Request
-  const handleJoinConsult = (reqId: string) => {
-    setRequests(prev => prev.map(req => {
-      if (req.id === reqId) {
-        return { 
-          ...req, 
-          status: 'counseling',
-          selectedLawyerId: activeLawyer.id 
+  // ── 제안서 모달 상태 ──
+  const [proposalModalReqId, setProposalModalReqId] = useState<string | null>(null);
+  const [proposalForm, setProposalForm] = useState({
+    feasibility: '',
+    monthlyPayment: 0,
+    duration: 36,
+    reductionRate: 0,
+    fee: 0,
+    installment: '',
+    remark: ''
+  });
+
+  // Submit a proposal (replaces handleJoinConsult)
+  const handleSubmitProposal = (reqId: string) => {
+    const req = requests.find(r => r.id === reqId);
+    if (!req) return;
+
+    const totalReduction = Math.round(req.financialProfile.debtTotal * proposalForm.reductionRate / 100);
+    const firmNames = ['법무법인 한빛', '하늘 법률사무소', '법무법인 해원', '법무법인 정의'];
+
+    const newProposal = {
+      id: `prop-${Date.now()}`,
+      lawyerId: activeLawyer.id,
+      lawyerName: activeLawyer.name,
+      lawyerAvatar: activeLawyer.avatar,
+      firmName: firmNames[Math.floor(Math.random() * firmNames.length)],
+      feasibility: proposalForm.feasibility,
+      monthlyPayment: proposalForm.monthlyPayment,
+      duration: proposalForm.duration,
+      reductionRate: proposalForm.reductionRate,
+      totalReduction,
+      fee: proposalForm.fee,
+      installment: proposalForm.installment,
+      remark: proposalForm.remark,
+      createdAt: new Date().toISOString()
+    };
+
+    setRequests(prev => prev.map(r => {
+      if (r.id === reqId) {
+        return {
+          ...r,
+          status: 'responding' as const,
+          proposals: [...(r.proposals || []), newProposal]
         };
       }
-      return req;
+      return r;
     }));
-
-    onAddMessage(
-      reqId,
-      `안녕하십니까, ${activeLawyer.name}입니다. 요청해 주신 가계 소득 및 채무 위기 명세를 긴급 송달 검토하였습니다. 압류 예고 및 보정 대응 등 즉시 효력이 발생하는 법적 대응에 대하여 세부 법리 검토를 도와드리겠습니다.`,
-      'lawyer',
-      activeLawyer.id,
-      activeLawyer.name
-    );
 
     onLogActivity(
       activeLawyer.id,
       activeLawyer.name,
       activeLawyer.role as MemberRole,
       'CONSULT_REQUEST',
-      `의뢰인 상담 요청 참여 수락 (요청 ID: ${reqId})`
+      `의뢰인에게 솔루션/비용 제안서 발송 (수임료: ${proposalForm.fee}만원, 예상 탕감률: ${proposalForm.reductionRate}%)`
     );
 
-    setActiveChatReqId(reqId);
-    setMobilePane('chat');
-    setActiveTab('client-crm');
+    // Reset form & close modal
+    setProposalForm({ feasibility: '', monthlyPayment: 0, duration: 36, reductionRate: 0, fee: 0, installment: '', remark: '' });
+    setProposalModalReqId(null);
+    alert('제안서가 의뢰인에게 성공적으로 발송되었습니다.');
   };
 
   // Turn active request into an formal Case (수임 완료)
@@ -1350,7 +1378,8 @@ export default function LawyerRole({
 
             <div className="grid grid-cols-1 gap-4">
               {requests
-                .filter(r => r.status === 'requested' || (r.status === 'responding' && r.selectedLawyerId === activeLawyer.id))
+                .filter(r => (r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id) && (r.status === 'requested' || r.status === 'responding'))
+                .filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id))
                 .map(r => {
                   const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
                   return (
@@ -1360,7 +1389,7 @@ export default function LawyerRole({
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-2">
                           <span className="bg-brand/10 text-brand font-bold px-2 py-0.5 rounded text-[12px]">
-                            {r.requestType === 'direct' ? '단독지명' : '오픈형'}
+                            {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
                           </span>
                           <span className="text-xs text-slate-500">의뢰인: <strong>{r.clientName}</strong></span>
                           <span className="text-xs text-slate-600">|</span>
@@ -1443,19 +1472,19 @@ export default function LawyerRole({
                         )}
                       </div>
 
-                      {/* Right: Quick action panel to "상담 참여" or "단독 수임" */}
+                      {/* Right: Quick action panel to "솔루션 및 비용 제안" */}
                       <div className="md:w-60 flex flex-col justify-between shrink-0 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6 gap-4">
                         <div className="text-xs text-slate-500 space-y-1">
-                          <div className="flex justify-between"><span>최대 참여 한도:</span> <strong className="text-slate-700">{r.maxParticipants}명</strong></div>
-                          <div className="flex justify-between"><span>현재 상태:</span> <strong className="text-brand font-bold">요청대기</strong></div>
+                          <div className="flex justify-between"><span>지정 변호사 수:</span> <strong className="text-slate-700">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></div>
+                          <div className="flex justify-between"><span>현재 상태:</span> <strong className="text-brand font-bold">제안서 작성 대기</strong></div>
                         </div>
 
                         <button 
-                          onClick={() => handleJoinConsult(r.id)}
+                          onClick={() => setProposalModalReqId(r.id)}
                           className="w-full bg-brand hover:bg-brand-hover text-white font-black py-2.5 rounded-[200px] text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>상담 참여</span>
+                          <span>솔루션 및 비용 제안</span>
                         </button>
                       </div>
 
@@ -1463,7 +1492,7 @@ export default function LawyerRole({
                   );
                 })}
 
-              {requests.filter(r => r.status === 'requested' || (r.status === 'responding' && r.selectedLawyerId === activeLawyer.id)).length === 0 && (
+              {requests.filter(r => (r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id) && (r.status === 'requested' || r.status === 'responding')).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).length === 0 && (
                 <div className="bg-slate-50 p-12 text-center rounded-xl border border-slate-200 text-slate-600 text-xs">
                   현재 즉시 대응할 신규 상담 신청 건이 존재하지 않습니다.
                 </div>
@@ -2552,7 +2581,63 @@ export default function LawyerRole({
         </div>
       </footer>
 
-      </div>
+      {/* ── 솔루션/비용 제안서 작성 모달 ── */}
+      {proposalModalReqId && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setProposalModalReqId(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-slate-200">
+              <h3 className="font-extrabold text-lg text-slate-900">솔루션 및 비용 제안서 작성</h3>
+              <p className="text-xs text-slate-500 mt-1">의뢰인에게 보낼 개인회생 솔루션과 비용을 입력하세요.</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">진행 가능성 / 성공률 의견 <span className="text-red-500">*</span></label>
+                <input type="text" placeholder="예: 진행 가능 (성공률 95%)" value={proposalForm.feasibility} onChange={e => setProposalForm(p => ({...p, feasibility: e.target.value}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">예상 월 변제금 (만원) <span className="text-red-500">*</span></label>
+                  <input type="number" value={proposalForm.monthlyPayment || ''} onChange={e => setProposalForm(p => ({...p, monthlyPayment: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">변제 기간 (개월) <span className="text-red-500">*</span></label>
+                  <input type="number" value={proposalForm.duration || ''} onChange={e => setProposalForm(p => ({...p, duration: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">예상 탕감률 (%) <span className="text-red-500">*</span></label>
+                  <input type="number" value={proposalForm.reductionRate || ''} onChange={e => setProposalForm(p => ({...p, reductionRate: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">수임 비용 (만원) <span className="text-red-500">*</span></label>
+                  <input type="number" value={proposalForm.fee || ''} onChange={e => setProposalForm(p => ({...p, fee: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">분납 조건</label>
+                <input type="text" placeholder="예: 최대 6개월 분할 가능" value={proposalForm.installment} onChange={e => setProposalForm(p => ({...p, installment: e.target.value}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">변호사 솔루션 한줄 의견 <span className="text-red-500">*</span></label>
+                <textarea placeholder="의뢰인에게 전달할 솔루션 요약 코멘트" value={proposalForm.remark} onChange={e => setProposalForm(p => ({...p, remark: e.target.value}))} rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none resize-none" />
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-200 flex gap-3">
+              <button onClick={() => setProposalModalReqId(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-colors">취소</button>
+              <button
+                onClick={() => proposalModalReqId && handleSubmitProposal(proposalModalReqId)}
+                disabled={!proposalForm.feasibility || !proposalForm.remark || proposalForm.fee <= 0}
+                className="flex-1 py-2.5 bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white font-bold text-xs rounded-xl transition-colors"
+              >
+                제안서 발송
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
     </div>
   );
 }

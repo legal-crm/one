@@ -64,7 +64,7 @@ export interface FinancialProfile {
   housingType?: 'rent' | 'jeonse' | 'owned' | 'free'; // 거주 형태
 }
 
-export type RequestType = 'direct' | 'open';
+export type RequestType = 'direct' | 'open' | 'direct_multi';
 export type ConsultStatus = 'requested' | 'responding' | 'counseling' | 'closed';
 
 // ── CRM 업그레이드 타입 ──
@@ -251,7 +251,9 @@ export interface ConsultRequest {
   requestType: RequestType;
   maxParticipants: number;
   status: ConsultStatus;
-  selectedLawyerId?: string; // If 'direct'
+  selectedLawyerId?: string; // If 'direct' — 채팅이 개시된 변호사 ID
+  selectedLawyerIds?: string[]; // 의뢰인이 지정한 변호사 ID 목록 (최대 3명)
+  proposals?: ConsultProposal[]; // 변호사들이 제출한 솔루션/비용 제안서 목록
   createdAt: string;
   title: string;
   content: string;
@@ -260,6 +262,24 @@ export interface ConsultRequest {
   safeNumber?: string;
   safeNumberAssignedAt?: string;
   safeNumberExpiresAt?: string;
+}
+
+// ── 변호사 솔루션/비용 제안서 ──
+export interface ConsultProposal {
+  id: string;
+  lawyerId: string;
+  lawyerName: string;
+  lawyerAvatar: string;
+  firmName: string;
+  feasibility: string;       // 진행 가능성/성공률 의견
+  monthlyPayment: number;    // 예상 월 변제금 (만원)
+  duration: number;          // 변제 기간 (개월)
+  reductionRate: number;     // 예상 탕감률 (%)
+  totalReduction: number;    // 총 탕감액 (만원)
+  fee: number;               // 수임 비용 (만원)
+  installment: string;       // 분납 조건
+  remark: string;            // 변호사 솔루션 한줄 의견
+  createdAt: string;
 }
 
 export interface ConsultParticipant {
@@ -820,7 +840,7 @@ export interface ActivityLog {
   memberId: string;
   memberName: string;
   role: MemberRole;
-  action: 'SIGNUP' | 'LOGIN' | 'CALCULATE' | 'CONSULT_REQUEST' | 'CHAT_SEND' | 'STATUS_CHANGE' | 'ADMIN_ACTION' | 'WITHDRAWAL';
+  action: 'SIGNUP' | 'LOGIN' | 'CALCULATE' | 'CONSULT_REQUEST' | 'CHAT_SEND' | 'STATUS_CHANGE' | 'ADMIN_ACTION' | 'WITHDRAWAL' | 'QNA_BROWSE';
   details: string;
   ipAddress: string;
   createdAt: string;

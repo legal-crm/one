@@ -512,7 +512,7 @@ interface ClientRoleProps {
   setBanners: React.Dispatch<React.SetStateAction<MainBanner[]>>;
   notices: Notice[];
   setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
-  matchingPolicy: 'daily' | 'weekly' | 'unlimited';
+  matchingCooldownHours: number;
   members: Member[];
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
   onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
@@ -538,7 +538,7 @@ export default function ClientRole({
   setBanners,
   notices,
   setNotices,
-  matchingPolicy,
+  matchingCooldownHours,
   members,
   setMembers,
   onLogActivity,
@@ -797,8 +797,12 @@ export default function ClientRole({
   const [inquiryTitle, setInquiryTitle] = useState<string>('');
   const [inquiryContent, setInquiryContent] = useState<string>('');
 
-  const checkMatchingLimit = (): boolean => {
-    if (matchingPolicy === 'unlimited') return true;
+  // 변호사 선택 모드 (챗봇 완료 후 LawyersView를 선택 모드로 전환)
+  const [lawyerSelectionMode, setLawyerSelectionMode] = useState(false);
+  const [pendingNewRequest, setPendingNewRequest] = useState<any>(null);
+
+  const checkCooldown = (): boolean => {
+    if (matchingCooldownHours === 0) return true;
 
     const clientRequests = requests.filter(r => r.clientId === 'client-temp');
     if (clientRequests.length === 0) return true;
@@ -809,22 +813,52 @@ export default function ClientRole({
     const latestTime = new Date(latestRequest.createdAt).getTime();
     const currentTime = Date.now();
     const diffMs = currentTime - latestTime;
+    const cooldownMs = matchingCooldownHours * 60 * 60 * 1000;
 
-    if (matchingPolicy === 'daily') {
-      if (diffMs < 24 * 60 * 60 * 1000) {
-        const remainingHours = Math.ceil((24 * 60 * 60 * 1000 - diffMs) / (60 * 60 * 1000));
-        alert(`[매칭 제한 정책 안내]\n현재 플랫폼 정책(매일 최대 3인 매칭)에 따라 새로운 상담 신청을 하실 수 없습니다.\n마지막 신청으로부터 24시간이 경과해야 합니다. (남은 시간: 약 ${remainingHours}시간)`);
-        return false;
-      }
-    } else if (matchingPolicy === 'weekly') {
-      if (diffMs < 7 * 24 * 60 * 60 * 1000) {
-        const remainingDays = Math.ceil((7 * 24 * 60 * 60 * 1000 - diffMs) / (24 * 60 * 60 * 1000));
-        alert(`[매칭 제한 정책 안내]\n현재 플랫폼 정책(매주 최대 3인 매칭)에 따라 새로운 상담 신청을 하실 수 없습니다.\n마지막 신청으로부터 7일이 경과해야 합니다. (남은 시간: 약 ${remainingDays}일)`);
-        return false;
-      }
+    if (diffMs < cooldownMs) {
+      const remainingHours = Math.ceil((cooldownMs - diffMs) / (60 * 60 * 1000));
+      alert(`${remainingHours}시간 후 상담 요청 가능합니다.`);
+      return false;
     }
 
     return true;
+  };
+
+  // 의뢰인이 변호사 선택 완료 시 호출
+  const handleConfirmLawyerSelection = (lawyerIds: string[]) => {
+    if (!pendingNewRequest) return;
+    const finalRequest = {
+      ...pendingNewRequest,
+      requestType: 'direct_multi' as const,
+      selectedLawyerIds: lawyerIds,
+      proposals: [],
+      maxParticipants: lawyerIds.length,
+    };
+    setRequests(prev => [finalRequest, ...prev]);
+    setActiveChatReqId(finalRequest.id);
+    setLawyerSelectionMode(false);
+    setPendingNewRequest(null);
+
+    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+    onLogActivity(
+      finalClientId,
+      isLoggedIn ? userAlias : '익명 의뢰인',
+      'CLIENT',
+      'CONSULT_REQUEST',
+      `${lawyerIds.length}명의 변호사에게 상담 요청 발송`
+    );
+
+    setTimeout(() => {
+      onAddMessage(
+        finalRequest.id,
+        `상담 요청이 선택하신 ${lawyerIds.length}명의 변호사에게 전달되었습니다. 변호사가 고객님의 채무 현황을 검토한 뒤 솔루션 및 비용 제안서를 보내드립니다. 제안서를 확인하신 후 1:1 상담을 시작하실 수 있습니다.`,
+        'lawyer',
+        'system',
+        '시스템 안내'
+      );
+    }, 1000);
+
+    setActiveTab('chat');
   };
   
   // Home Landing States
@@ -1255,7 +1289,7 @@ export default function ClientRole({
 
   // Submit Handler
   const handleRequestSubmit = () => {
-    if (!checkMatchingLimit()) return;
+    if (!checkCooldown()) return;
     if (!title || !content) {
       alert('상담 요청 제목과 내용을 입력 후 제출해 주세요.');
       return;
@@ -1603,7 +1637,7 @@ export default function ClientRole({
   };
 
   const handleIntakeSubmit = (intakeData: IntakeData) => {
-    if (!checkMatchingLimit()) return;
+    if (!checkCooldown()) return;
     const result = calculateRehabPlan(intakeData, effectiveSettings);
     
     // Convert Won units to Man-won (10,000 KRW) units
@@ -1677,15 +1711,15 @@ export default function ClientRole({
       }
     }
 
-    // Construct the new ConsultRequest
+    // Construct the new ConsultRequest (pending - not yet saved)
     const newRequest = {
       id: `req-${Date.now()}`,
       clientId: 'client-temp',
       clientName: isLoggedIn ? `${userAlias} (의뢰인)` : '익명 의뢰인',
       phone: intakeData.phoneNumber || '010-4567-8901',
-      requestType: 'open',
+      requestType: 'direct_multi' as const,
       maxParticipants: 3,
-      status: 'requested',
+      status: 'requested' as const,
       createdAt: new Date().toISOString(),
       title: `${intakeData.clientName}님의 정밀 개인회생 상담 분석 신청`,
       content: `==================================
@@ -1765,11 +1799,10 @@ export default function ClientRole({
       }
     };
     
-    // Save to requests and navigate to active chat
-    setRequests(prev => [newRequest, ...prev]);
-    setActiveChatReqId(newRequest.id);
+    // 요청을 바로 저장하지 않고 pending에 보관 → 변호사 선택 페이지로 이동
+    setPendingNewRequest(newRequest);
 
-    // Log calculation and request activity
+    // Log calculation activity
     const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
     onLogActivity(
       finalClientId,
@@ -1778,26 +1811,10 @@ export default function ClientRole({
       'CALCULATE',
       `정밀 자가진단 실행 (총 채무: ${formatKoreanCurrency(result.base.debtTotal)}, 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원)`
     );
-    onLogActivity(
-      finalClientId,
-      isLoggedIn ? userAlias : '익명 의뢰인',
-      'CLIENT',
-      'CONSULT_REQUEST',
-      `정밀 개인회생 상담 신청 제출: "${intakeData.clientName}님의 정밀 분석 신청"`
-    );
-    
-    // Auto-respond simulation
-    setTimeout(() => {
-      onAddMessage(
-        newRequest.id,
-        `반갑습니다. 고객님의 채무 체크 요청이 정상 등록되었습니다. 입력값 기준 예상 월 변제금 범위는 약 ${formatNumber(result.preferred?.monthly || 0)}원(${result.preferred?.m || 36}개월)입니다. 고객님이 선택하신 변호사가 상세 검토 후 안내를 드리겠습니다.`,
-        'lawyer',
-        'lawyer-1',
-        '김우진 변호사'
-      );
-    }, 1500);
 
-    setActiveTab('chat');
+    // 변호사 선택 모드로 전환
+    setLawyerSelectionMode(true);
+    setActiveTab('lawyers');
   };
 
   const handleSendChat = () => {
@@ -2860,7 +2877,7 @@ export default function ClientRole({
         )}
 
         {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
-        {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} />)}
+        {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} />)}
 
         {activeTab === 'chat' && (
           <ChatView 

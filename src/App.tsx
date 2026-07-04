@@ -120,9 +120,9 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialNotices;
   });
 
-  const [matchingPolicy, setMatchingPolicy] = useState<'daily' | 'weekly' | 'unlimited'>(() => {
-    const saved = localStorage.getItem('legal_crm_matching_policy');
-    return (saved as 'daily' | 'weekly' | 'unlimited') || 'daily';
+  const [matchingCooldownHours, setMatchingCooldownHours] = useState<number>(() => {
+    const saved = localStorage.getItem('legal_crm_matching_cooldown_hours');
+    return saved ? Number(saved) : 24;
   });
 
   const [inquiries, setInquiries] = useState<ClientInquiry[]>([]);
@@ -153,8 +153,8 @@ export default function App() {
   }, [notices]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_matching_policy', matchingPolicy);
-  }, [matchingPolicy]);
+    localStorage.setItem('legal_crm_matching_cooldown_hours', String(matchingCooldownHours));
+  }, [matchingCooldownHours]);
 
   useEffect(() => {
     if (inquiries.length > 0) {
@@ -319,7 +319,7 @@ export default function App() {
       localStorage.removeItem('legal_crm_reviews');
       localStorage.removeItem('legal_crm_banners');
       localStorage.removeItem('legal_crm_notices');
-      localStorage.removeItem('legal_crm_matching_policy');
+      localStorage.removeItem('legal_crm_matching_cooldown_hours');
       localStorage.removeItem('legal_crm_members');
       localStorage.removeItem('legal_crm_activity_logs');
       localStorage.removeItem('legal_crm_inquiries');
@@ -432,7 +432,7 @@ export default function App() {
             setBanners={setBanners}
             notices={notices}
             setNotices={setNotices}
-            matchingPolicy={matchingPolicy}
+            matchingCooldownHours={matchingCooldownHours}
             members={members}
             setMembers={setMembers}
             onLogActivity={handleLogActivity}
@@ -472,8 +472,8 @@ export default function App() {
             setBanners={setBanners}
             notices={notices}
             setNotices={setNotices}
-            matchingPolicy={matchingPolicy}
-            setMatchingPolicy={setMatchingPolicy}
+            matchingCooldownHours={matchingCooldownHours}
+            setMatchingCooldownHours={setMatchingCooldownHours}
             members={members}
             setMembers={setMembers}
             activityLogs={activityLogs}

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { MessageSquare, Send, Users, Phone, Shield, Clock, AlertTriangle, Award, FileText, X } from 'lucide-react';
-import { ConsultRequest, ConsultMessage, FinancialProfile } from '../../types';
+import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } from '../../types';
 import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import MyPageView from './MyPageView';
 
@@ -27,22 +27,6 @@ function ChatDisclaimer() {
       </div>
     </div>
   );
-}
-
-interface LawyerBid {
-  id: string;
-  name: string;
-  avatar: string;
-  firm: string;
-  feasibility: string;
-  monthlyPayment: number;
-  duration: number;
-  reductionRate: number;
-  totalReduction: number;
-  fee: number;
-  installment: string;
-  remark: string;
-  tag: string;
 }
 
 interface ChatViewProps {
@@ -105,42 +89,12 @@ export default function ChatView({
     }
   }, [activeChatMessages.length]);
 
-  const lawyerBids: LawyerBid[] = [
-    {
-      id: 'lawyer-1', name: '김우진 변호사',
-      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256',
-      firm: '법무법인 한빛', feasibility: '진행 가능 (성공률 98%)',
-      monthlyPayment: 45, duration: 36, reductionRate: 82,
-      totalReduction: Math.round((debtBanks + debtCards + debtPersonals) * 0.82),
-      fee: 180, installment: '최대 6개월 분할 가능 (월 30만 원)',
-      remark: '급여 가압류를 금지명령으로 신속히 방어하고, 채권 추심 및 독촉을 3일 이내에 원천 차단해 드립니다.',
-      tag: '신속추심차단'
-    },
-    {
-      id: 'lawyer-2', name: '이소민 변호사',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256',
-      firm: '법무법인 한빛', feasibility: '진행 가능 (사행성 채무 특화)',
-      monthlyPayment: 42, duration: 36, reductionRate: 85,
-      totalReduction: Math.round((debtBanks + debtCards + debtPersonals) * 0.85),
-      fee: 200, installment: '최대 12개월 장기 분할 납부 가능!',
-      remark: '자녀 교육비를 특별 생계비로 법원에 추가 주장 소명하여 월 변제금을 최소한으로 낮춰드리겠습니다.',
-      tag: '최저변제금설계'
-    },
-    {
-      id: 'lawyer-3', name: '최덕중 변호사',
-      avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256',
-      firm: '하늘 법률사무소', feasibility: '진행 가능 (수원 전문 15년)',
-      monthlyPayment: 48, duration: 36, reductionRate: 80,
-      totalReduction: Math.round((debtBanks + debtCards + debtPersonals) * 0.80),
-      fee: 170, installment: '최대 3회 분할 납부 가능',
-      remark: '복잡한 보정서류 일체를 대행 발급해 드리며, 법원의 까다로운 재산 검증 심사를 완벽히 방어합니다.',
-      tag: '서류일체대행'
-    }
-  ];
+  // proposals 데이터를 currentRequest에서 동적으로 읽어옴
+  const proposals: ConsultProposal[] = currentRequest?.proposals || [];
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn font-sans text-left">
-      {/* Rebirth Bid: 3-Lawyer Estimate Comparison Dashboard (Collapsible Accordion) */}
+    {/* Rebirth Bid: 제안서 비교 대시보드 */}
       <div className="bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-3xl shadow-premium relative overflow-hidden transition-all duration-300">
         {/* Accordion Trigger Header */}
         <button
@@ -153,146 +107,169 @@ export default function ChatView({
               <span className="text-[11px] bg-brand text-white dark:bg-brand/20 dark:text-brand-light px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
                 Rebirth Bid
               </span>
-              <span className="text-[11px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
-                실시간 3인 안심 제안서 도달
-              </span>
+              {proposals.length > 0 ? (
+                <span className="text-[11px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
+                  {proposals.length}건 제안서 도달
+                </span>
+              ) : (
+                <span className="text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  제안서 대기 중
+                </span>
+              )}
             </div>
             <h3 className="font-bold text-lg md:text-xl text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-              <span>⚖️ 나를 위해 도착한 도산 변호사 3인의 안심 제안서 비교</span>
+              <span>⚖️ 변호사 솔루션 및 비용 제안서 비교</span>
               <span className="text-slate-500 font-normal text-xs">
                 ({isBidExpanded ? '클릭 시 접기 △' : '클릭 시 자세히 보기 ▽'})
               </span>
             </h3>
           </div>
           <div className="text-xs font-bold text-brand hover:text-brand-hover flex items-center gap-1">
-            {isBidExpanded ? '제안서 요약 접기 △' : '제안서 3건 비교하기 ▽'}
+            {isBidExpanded ? '제안서 요약 접기 △' : `제안서 ${proposals.length}건 비교하기 ▽`}
           </div>
         </button>
 
         {isBidExpanded && (
           <div className="p-6 md:p-8 pt-0 border-t border-slate-100 dark:border-slate-800 space-y-6 animate-fadeIn">
-            {/* Glowing aura decorations */}
             <div className="absolute -right-24 -top-24 w-72 h-72 bg-brand/10 dark:bg-brand/5 rounded-full blur-3xl pointer-events-none"></div>
             
-            <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium max-w-3xl leading-relaxed">
-              의뢰인님의 소득과 채무 상황을 정밀 검토하여 도산 전문 변호사 3명이 산정한 최적 조건입니다. 제안서를 클릭해 1:1 전담 무료 상담을 시작할 수 있습니다.
-            </p>
+            {proposals.length === 0 ? (
+              <div className="text-center py-12 space-y-3">
+                <div className="w-16 h-16 mx-auto bg-amber-50 dark:bg-amber-950/30 rounded-2xl flex items-center justify-center">
+                  <Clock className="w-8 h-8 text-amber-500" />
+                </div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">변호사의 솔루션 및 비용 제안서를 기다리고 있습니다.</p>
+                <p className="text-xs text-slate-500">선택하신 변호사가 고객님의 채무 현황을 검토한 뒤 제안서를 보내드립니다.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium max-w-3xl leading-relaxed">
+                  의뢰인님의 소득과 채무 상황을 검토하여 변호사가 산정한 최적 조건입니다. 제안서의 "💬 1:1 상담 시작" 버튼을 클릭하면 해당 변호사와의 채팅이 활성화됩니다.
+                </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-              {lawyerBids.map((bid, index) => {
-                const borderGradient = index === 0 
-                  ? 'group-hover:border-brand/40 border-slate-200 dark:border-slate-800 shadow-premium hover:shadow-glow'
-                  : index === 1 
-                  ? 'group-hover:border-indigo-500/40 border-slate-200 dark:border-slate-800 shadow-premium hover:shadow-glow'
-                  : 'group-hover:border-violet-500/40 border-slate-200 dark:border-slate-800 shadow-premium hover:shadow-glow';
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+                  {proposals.map((bid, index) => {
+                    const borderGradient = index === 0 
+                      ? 'group-hover:border-brand/40 border-slate-200 dark:border-slate-800 shadow-premium hover:shadow-glow'
+                      : index === 1 
+                      ? 'group-hover:border-indigo-500/40 border-slate-200 dark:border-slate-800 shadow-premium hover:shadow-glow'
+                      : 'group-hover:border-violet-500/40 border-slate-200 dark:border-slate-800 shadow-premium hover:shadow-glow';
 
-                return (
-                  <div 
-                    key={bid.id} 
-                    className={`bg-white dark:bg-slate-950/65 border rounded-3xl p-6 flex flex-col justify-between gap-5 transition-all duration-300 hover:-translate-y-0.5 group relative overflow-hidden ${borderGradient}`}
-                  >
-                    <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${
-                      index === 0 ? 'from-brand to-indigo-500' : index === 1 ? 'from-indigo-500 to-purple-500' : 'from-purple-500 to-pink-500'
-                    }`} />
+                    return (
+                      <div 
+                        key={bid.id} 
+                        className={`bg-white dark:bg-slate-950/65 border rounded-3xl p-6 flex flex-col justify-between gap-5 transition-all duration-300 hover:-translate-y-0.5 group relative overflow-hidden ${borderGradient}`}
+                      >
+                        <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${
+                          index === 0 ? 'from-brand to-indigo-500' : index === 1 ? 'from-indigo-500 to-purple-500' : 'from-purple-500 to-pink-500'
+                        }`} />
 
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="relative shrink-0">
-                            <img 
-                              src={bid.avatar} 
-                              alt={bid.name} 
-                              className="w-12 h-12 rounded-2xl object-cover border border-slate-100 dark:border-slate-800 shadow-sm" 
-                            />
-                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-950 rounded-full"></span>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="relative shrink-0">
+                                <img 
+                                  src={bid.lawyerAvatar} 
+                                  alt={bid.lawyerName} 
+                                  className="w-12 h-12 rounded-2xl object-cover border border-slate-100 dark:border-slate-800 shadow-sm" 
+                                />
+                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-950 rounded-full"></span>
+                              </div>
+                              <div className="text-left">
+                                <span className="text-[12px] text-slate-500 dark:text-slate-500 font-bold block">
+                                  {bid.firmName}
+                                </span>
+                                <strong className="text-sm font-bold text-slate-900 dark:text-white block">
+                                  {bid.lawyerName}
+                                </strong>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-left">
-                            <span className="text-[12px] text-slate-500 dark:text-slate-500 font-bold block">
-                              {bid.firm}
-                            </span>
-                            <strong className="text-sm font-bold text-slate-900 dark:text-white block">
-                              {bid.name}
+
+                          <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
+                            <div className="flex justify-between items-center py-0.5">
+                              <span className="text-slate-500 dark:text-slate-500 font-medium">진행 가능성</span>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                <Award className="w-3.5 h-3.5" /> {bid.feasibility}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-0.5">
+                              <span className="text-slate-500 dark:text-slate-500 font-medium">예상 월 변제금</span>
+                              <span className="text-slate-900 dark:text-slate-200 font-bold">
+                                월 {bid.monthlyPayment}만 원 <span className="text-slate-500 font-normal">({bid.duration}개월)</span>
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-0.5">
+                              <span className="text-slate-500 dark:text-slate-500 font-medium">총 감면율 (원금)</span>
+                              <span className="bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand-light px-2 py-0.5 rounded-md font-bold text-[13px]">
+                                약 {bid.reductionRate}% 탕감
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-0.5">
+                              <span className="text-slate-500 dark:text-slate-500 font-medium">총 감면 예상액</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                                ★ {bid.totalReduction.toLocaleString()}만 원 감면
+                              </span>
+                            </div>
+                            
+                            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                              <div className="flex justify-between items-center text-[13px] mb-1">
+                                <span className="text-slate-500 dark:text-slate-500 font-medium">제시 수임료</span>
+                                <span className="text-slate-900 dark:text-slate-200 font-bold">{bid.fee}만 원</span>
+                              </div>
+                              {bid.installment && (
+                                <div className="flex justify-between items-center text-[12px]">
+                                  <span className="text-slate-500 dark:text-slate-500 font-medium">분납 조건</span>
+                                  <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full font-bold">
+                                    {bid.installment}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-3.5 rounded-2xl text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                            <strong className="text-slate-900 dark:text-slate-200 font-bold block mb-1">
+                              💡 변호인 솔루션
                             </strong>
+                            "{bid.remark}"
                           </div>
                         </div>
-                        <span className="text-[12px] bg-brand/5 dark:bg-brand/15 text-brand dark:text-brand-light px-2.5 py-1 rounded-lg font-bold">
-                          {bid.tag}
-                        </span>
-                      </div>
 
-                      <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
-                        <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-500 dark:text-slate-500 font-medium">진행 가능성</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                            <Award className="w-3.5 h-3.5" /> {bid.feasibility}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-500 dark:text-slate-500 font-medium">예상 월 변제금</span>
-                          <span className="text-slate-900 dark:text-slate-200 font-bold">
-                            월 {bid.monthlyPayment}만 원 <span className="text-slate-500 font-normal">({bid.duration}개월)</span>
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-500 dark:text-slate-500 font-medium">총 감면율 (원금)</span>
-                          <span className="bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand-light px-2 py-0.5 rounded-md font-bold text-[13px]">
-                            약 {bid.reductionRate}% 탕감
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-500 dark:text-slate-500 font-medium">총 감면 예상액</span>
-                          <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                            ★ {bid.totalReduction.toLocaleString()}만 원 감면
-                          </span>
-                        </div>
-                        
-                        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                          <div className="flex justify-between items-center text-[13px] mb-1">
-                            <span className="text-slate-500 dark:text-slate-500 font-medium">제시 수임료</span>
-                            <span className="text-slate-900 dark:text-slate-200 font-bold">{bid.fee}만 원</span>
-                          </div>
-                          <div className="flex justify-between items-center text-[12px]">
-                            <span className="text-slate-500 dark:text-slate-500 font-medium">분납 조건</span>
-                            <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full font-bold">
-                              {bid.installment}
-                            </span>
-                          </div>
-                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            // 제안서 수락 → 채팅 활성화
+                            if (currentRequest) {
+                              onSetRequests(prev => prev.map(r => {
+                                if (r.id === currentRequest.id) {
+                                  return { ...r, status: 'counseling' as const, selectedLawyerId: bid.lawyerId };
+                                }
+                                return r;
+                              }));
+                              onAddMessage(
+                                currentRequest.id,
+                                `${bid.lawyerName}의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
+                                'lawyer', 'system', '시스템 안내'
+                              );
+                            }
+                            setTimeout(() => { 
+                              document.getElementById('chat-workspace-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
+                            }, 100);
+                          }} 
+                          className="w-full text-center py-3 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-xs font-bold rounded-2xl transition-all duration-300 shadow-sm hover:shadow-brand-sm flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-[0.98]"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>💬 {bid.lawyerName}와 1:1 상담 시작</span>
+                        </button>
                       </div>
-
-                      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-3.5 rounded-2xl text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                        <strong className="text-slate-900 dark:text-slate-200 font-bold block mb-1">
-                          💡 변호인 솔루션
-                        </strong>
-                        "{bid.remark}"
-                      </div>
-                    </div>
-
-                    <button 
-                      type="button" 
-                      onClick={() => {
-                        const matchedRequest = requests.find(r => r.selectedLawyerId === bid.id || r.requestType === 'open');
-                        if (matchedRequest) { onSetActiveChatReqId(matchedRequest.id); }
-                        else if (requests.length > 0) { onSetActiveChatReqId(requests[0].id); }
-                        else { 
-                          onSetActiveTab('request'); 
-                          alert('제안서의 변호사님과 비밀 대화를 시작하려면 먼저 채무 체크를 진행해 주세요! (30초 완료)'); 
-                          return; 
-                        }
-                        setTimeout(() => { 
-                          document.getElementById('chat-workspace-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
-                        }, 100);
-                      }} 
-                      className="w-full text-center py-3 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-xs font-bold rounded-2xl transition-all duration-300 shadow-sm hover:shadow-brand-sm flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-[0.98]"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>💬 {bid.name}와 1:1 상담 시작</span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             <div className="text-[12px] text-slate-500 dark:text-slate-500 leading-normal pt-4 border-t border-slate-100 dark:border-slate-800 font-medium">
               ※ Rebirthtalk은 공인된 변호사들이 제안하는 변제안 및 수임 조건을 투명하게 비교 매칭해주며, 사건 수임료 결제 및 정식 선임 등 모든 법률적 행위는 의뢰인과 변호인 간에 플랫폼을 거치지 않고 직접 성사됩니다.
             </div>
@@ -327,16 +304,16 @@ export default function ChatView({
               </div>
             ) : requests.map(r => {
               const isSelected = r.id === activeChatReqId;
-              const styleLabel = r.requestType === 'direct' ? '1:1 전담' : '3인 오픈';
+              const styleLabel = r.requestType === 'direct' ? '1:1 전담' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '3인 오픈';
               
               // 변호사 아바타 매칭 로직
               let avatarUrl = '';
               let lawyerName = '';
-              if (r.requestType === 'direct' && r.selectedLawyerId) {
-                const matchedBid = lawyerBids.find(b => b.id === r.selectedLawyerId);
-                if (matchedBid) {
-                  avatarUrl = matchedBid.avatar;
-                  lawyerName = matchedBid.name;
+              if (r.selectedLawyerId) {
+                const matchedProposal = (r.proposals || []).find(p => p.lawyerId === r.selectedLawyerId);
+                if (matchedProposal) {
+                  avatarUrl = matchedProposal.lawyerAvatar;
+                  lawyerName = matchedProposal.lawyerName;
                 }
               }
 

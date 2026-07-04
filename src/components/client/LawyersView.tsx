@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Heart, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, Heart, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { User } from '../../types';
 import LawyerProfileModal from './LawyerProfileModal';
 
 const FAVORITES_KEY = 'lawyer_favorites';
 function loadFavorites(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]')); } catch { return new Set(); }
+  try { return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]') as string[]); } catch { return new Set<string>(); }
 }
 function saveFavorites(ids: Set<string>) {
   localStorage.setItem(FAVORITES_KEY, JSON.stringify([...ids]));
@@ -31,20 +31,37 @@ const ITEMS_PER_PAGE = 10;
 interface LawyersViewProps {
   lawyers: User[];
   onSelectLawyer: (lawyerId: string) => void;
+  selectionMode?: boolean;
+  maxSelections?: number;
+  onConfirmSelection?: (lawyerIds: string[]) => void;
 }
 
-export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProps) {
+export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, maxSelections = 3, onConfirmSelection }: LawyersViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('전체');
   const [page, setPage] = useState(1);
   const [profileLawyer, setProfileLawyer] = useState<User | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [selectedLawyerIds, setSelectedLawyerIds] = useState<string[]>([]);
+
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedLawyerIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      }
+      if (prev.length >= maxSelections) {
+        alert(`최대 ${maxSelections}명까지만 선택 가능합니다.`);
+        return prev;
+      }
+      return [...prev, id];
+    });
+  }, [maxSelections]);
 
   const toggleFavorite = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setFavorites(prev => {
-      const next = new Set(prev);
+      const next = new Set<string>(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       saveFavorites(next);
       return next;
@@ -63,7 +80,28 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
-    <div className="space-y-6 animate-fadeIn font-sans">
+    <div className={`space-y-6 animate-fadeIn font-sans ${selectionMode ? 'pb-28' : ''}`}>
+      {selectionMode && (
+        <div className="bg-gradient-to-r from-brand to-indigo-600 rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-lg shadow-brand/20">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-4.5 h-4.5 text-white" />
+            </div>
+            <span className="text-white font-bold text-sm tracking-tight">
+              변호사 <span className="text-white/90 text-base">{selectedLawyerIds.length}/{maxSelections}</span>명 선택됨
+            </span>
+          </div>
+          {selectedLawyerIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedLawyerIds([])}
+              className="text-white/70 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+            >
+              선택 초기화
+            </button>
+          )}
+        </div>
+      )}
       {/* Filter & Search Bar */}
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl shadow-premium border border-slate-100 dark:border-slate-800">
         <input
@@ -125,9 +163,26 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
               return (
                 <div
                   key={l.id}
-                  onClick={() => setProfileLawyer(l)}
-                  className="flex gap-4 p-4 rounded-xl border border-slate-100 hover:border-brand/20 hover:shadow-sm transition-all cursor-pointer group bg-white"
+                  onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)}
+                  className={`flex gap-4 p-4 rounded-xl border transition-all cursor-pointer group bg-white relative ${
+                    selectionMode && selectedLawyerIds.includes(l.id)
+                      ? 'border-brand ring-2 ring-brand/20 shadow-md shadow-brand/10'
+                      : 'border-slate-100 hover:border-brand/20 hover:shadow-sm'
+                  }`}
                 >
+                  {selectionMode && (
+                    <div className={`absolute top-2.5 right-2.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                      selectedLawyerIds.includes(l.id)
+                        ? 'bg-brand border-brand scale-110'
+                        : 'bg-white border-slate-300 group-hover:border-brand/50'
+                    }`}>
+                      {selectedLawyerIds.includes(l.id) && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  )}
                   {/* 프로필 사진 */}
                   <div className="relative shrink-0">
                     <img src={l.avatarData || l.avatar} alt={l.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-100 group-hover:border-brand/30 transition-colors" />
@@ -221,9 +276,26 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {paginated.map(l => (
-                <div key={l.id} onClick={() => setProfileLawyer(l)} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 border border-slate-100 dark:border-slate-800 p-6 flex flex-col sm:flex-row gap-5 transition-all duration-300 group relative overflow-hidden text-left cursor-pointer">
+                <div key={l.id} onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)} className={`bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 border p-6 flex flex-col sm:flex-row gap-5 transition-all duration-300 group relative overflow-hidden text-left cursor-pointer ${
+                  selectionMode && selectedLawyerIds.includes(l.id)
+                    ? 'border-brand ring-2 ring-brand/20 shadow-brand/10'
+                    : 'border-slate-100 dark:border-slate-800'
+                }`}>
                   {/* Subtle top brand line overlay */}
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand/20 to-transparent"></div>
+                  {selectionMode && (
+                    <div className={`absolute top-4 right-4 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 z-10 ${
+                      selectedLawyerIds.includes(l.id)
+                        ? 'bg-brand border-brand scale-110 shadow-md shadow-brand/30'
+                        : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 group-hover:border-brand/50'
+                    }`}>
+                      {selectedLawyerIds.includes(l.id) && (
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  )}
                   <div className="relative shrink-0 self-start sm:self-center">
                     <img src={l.avatar} alt={l.name} className="w-20 h-20 rounded-full object-cover bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 shadow-sm" />
                     <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></span>
@@ -312,6 +384,26 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
           isFavorite={favorites.has(profileLawyer.id)}
           onToggleFavorite={() => toggleFavorite(profileLawyer.id)}
         />
+      )}
+      {selectionMode && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-700 px-5 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+          <div className="max-w-4xl mx-auto">
+            <button
+              type="button"
+              disabled={selectedLawyerIds.length === 0}
+              onClick={() => onConfirmSelection?.(selectedLawyerIds)}
+              className={`w-full py-3.5 rounded-2xl font-bold text-[15px] transition-all duration-300 cursor-pointer ${
+                selectedLawyerIds.length > 0
+                  ? 'bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white shadow-lg shadow-brand/25 hover:shadow-xl hover:shadow-brand/30 active:scale-[0.98]'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              {selectedLawyerIds.length > 0
+                ? `선택한 ${selectedLawyerIds.length}명의 변호사에게 상담 요청하기`
+                : '변호사를 선택해주세요'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

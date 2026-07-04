@@ -28,8 +28,8 @@ interface AdminRoleProps {
   setBanners: React.Dispatch<React.SetStateAction<MainBanner[]>>;
   notices: Notice[];
   setNotices: React.Dispatch<React.SetStateAction<Notice[]>>;
-  matchingPolicy: 'daily' | 'weekly' | 'unlimited';
-  setMatchingPolicy: React.Dispatch<React.SetStateAction<'daily' | 'weekly' | 'unlimited'>>;
+  matchingCooldownHours: number;
+  setMatchingCooldownHours: React.Dispatch<React.SetStateAction<number>>;
   members: Member[];
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
   activityLogs: ActivityLog[];
@@ -56,8 +56,8 @@ export default function AdminRole({
   setBanners,
   notices,
   setNotices,
-  matchingPolicy,
-  setMatchingPolicy,
+  matchingCooldownHours,
+  setMatchingCooldownHours,
   members,
   setMembers,
   activityLogs,
@@ -3589,58 +3589,57 @@ export default function AdminRole({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                  {[
-                    {
-                      id: 'daily',
-                      title: '매일 최대 3인 매칭 정책 (권장)',
-                      desc: '의뢰인은 하루(24시간)에 최대 3명의 변호사에게만 상담 신청 및 제안서 매칭이 가능합니다.',
-                      badge: '일일 제한'
-                    },
-                    {
-                      id: 'weekly',
-                      title: '매주 최대 3인 매칭 정책',
-                      desc: '의뢰인은 일주일(7일)에 최대 3명의 변호사에게만 상담 신청 및 제안서 매칭이 가능합니다.',
-                      badge: '주간 제한'
-                    },
-                    {
-                      id: 'unlimited',
-                      title: '매칭 제한 없음',
-                      desc: '제한 없이 원할 때마다 언제든지 상담을 신청하여 3인 제안서를 받아볼 수 있습니다.',
-                      badge: '무제한'
-                    }
-                  ].map((policy) => (
-                    <button
-                      key={policy.id}
-                      type="button"
-                      onClick={() => {
-                        setMatchingPolicy(policy.id as 'daily' | 'weekly' | 'unlimited');
-                        alert(`매칭 정책이 [${policy.title}]으로 변경되었습니다.`);
-                      }}
-                      className={`p-5 rounded-xl border text-left flex flex-col justify-between gap-4 transition-all cursor-pointer ${
-                        matchingPolicy === policy.id
-                          ? 'bg-indigo-600/10 border-indigo-500 text-white shadow-lg'
-                          : 'bg-[#161B26]/50 border-[#1E293B]/60 text-slate-355 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className={`text-[12px] px-2 py-0.5 rounded font-extrabold ${
-                            matchingPolicy === policy.id
-                              ? 'bg-indigo-500 text-white'
-                              : 'bg-slate-800 text-slate-500'
-                          }`}>
-                            {policy.badge}
-                          </span>
-                          {matchingPolicy === policy.id && (
-                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                          )}
-                        </div>
-                        <h4 className="font-extrabold text-sm text-white">{policy.title}</h4>
-                        <p className="text-xs text-slate-500 leading-relaxed">{policy.desc}</p>
-                      </div>
-                    </button>
-                  ))}
+                <div className="space-y-5 pt-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-extrabold text-slate-300">쿨다운 시간 (시간 단위)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={matchingCooldownHours}
+                      onChange={(e) => setMatchingCooldownHours(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full px-4 py-3 rounded-xl bg-[#161B26] border border-[#1E293B] text-white text-sm font-bold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                      placeholder="쿨다운 시간을 입력하세요"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { label: '6시간', value: 6 },
+                      { label: '24시간', value: 24 },
+                      { label: '48시간', value: 48 },
+                      { label: '무제한(0)', value: 0 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => setMatchingCooldownHours(preset.value)}
+                        className={`px-4 py-2 rounded-lg text-sm font-extrabold border transition-all cursor-pointer ${
+                          matchingCooldownHours === preset.value
+                            ? 'bg-indigo-600/10 border-indigo-500 text-white shadow-lg'
+                            : 'bg-[#161B26]/50 border-[#1E293B]/60 text-slate-355 hover:border-slate-700'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B] text-sm">
+                    <span className="text-slate-400">현재 설정: </span>
+                    <span className="font-extrabold text-white">
+                      {matchingCooldownHours === 0
+                        ? '제한 없음 (무제한)'
+                        : `${matchingCooldownHours}시간 후 재요청 가능`}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => alert(`쿨다운 시간이 ${matchingCooldownHours === 0 ? '무제한(제한 없음)' : matchingCooldownHours + '시간'}으로 변경되었습니다.`)}
+                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold transition-all cursor-pointer"
+                  >
+                    정책 저장
+                  </button>
                 </div>
 
                 <div className="bg-[#161B26] p-4 rounded-xl border border-indigo-500/10 flex items-start gap-3 mt-4 text-xs text-slate-500">
