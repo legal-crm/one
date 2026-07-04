@@ -7,7 +7,7 @@ import MyPageView from './MyPageView';
 // [SECURITY] 법률상담 비밀유지 + 보안 안내 배너
 function ChatPrivacyBanner() {
   return (
-    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4 py-3 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-2.5 items-start shadow-sm text-left">
+    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4 py-3 text-[13px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-2.5 items-start shadow-sm text-left">
       <Shield className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
       <div>
         <strong>🔒 법률상담 비밀 보장</strong>
@@ -20,7 +20,7 @@ function ChatPrivacyBanner() {
 // Inline ChatDisclaimer component
 function ChatDisclaimer() {
   return (
-    <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3.5 text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium flex gap-2 items-start shadow-sm text-left">
+    <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3.5 text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium flex gap-2 items-start shadow-sm text-left">
       <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
       <div>
         <strong>주의사항:</strong> 대화 중 오가는 상담 내용은 강력하게 암호화되어 안전하게 보호됩니다. 공식 선임계약 체결 전의 법률 상담은 참고용으로만 효력을 지니며, 모든 선임비용 결제 및 계약은 본 플랫폼 외부에서 변호사와 직접 조율하여 안전하게 체결하여 주시기 바랍니다.
@@ -150,17 +150,17 @@ export default function ChatView({
         >
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[9px] bg-brand text-white dark:bg-brand/20 dark:text-brand-light px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
+              <span className="text-[11px] bg-brand text-white dark:bg-brand/20 dark:text-brand-light px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
                 Rebirth Bid
               </span>
-              <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+              <span className="text-[11px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                 <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
                 실시간 3인 안심 제안서 도달
               </span>
             </div>
             <h3 className="font-bold text-lg md:text-xl text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
               <span>⚖️ 나를 위해 도착한 도산 변호사 3인의 안심 제안서 비교</span>
-              <span className="text-slate-400 font-normal text-xs">
+              <span className="text-slate-500 font-normal text-xs">
                 ({isBidExpanded ? '클릭 시 접기 △' : '클릭 시 자세히 보기 ▽'})
               </span>
             </h3>
@@ -175,7 +175,7 @@ export default function ChatView({
             {/* Glowing aura decorations */}
             <div className="absolute -right-24 -top-24 w-72 h-72 bg-brand/10 dark:bg-brand/5 rounded-full blur-3xl pointer-events-none"></div>
             
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium max-w-3xl leading-relaxed">
+            <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium max-w-3xl leading-relaxed">
               의뢰인님의 소득과 채무 상황을 정밀 검토하여 도산 전문 변호사 3명이 산정한 최적 조건입니다. 제안서를 클릭해 1:1 전담 무료 상담을 시작할 수 있습니다.
             </p>
 
@@ -208,52 +208,52 @@ export default function ChatView({
                             <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-950 rounded-full"></span>
                           </div>
                           <div className="text-left">
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block">
+                            <span className="text-[12px] text-slate-500 dark:text-slate-500 font-bold block">
                               {bid.firm}
                             </span>
-                            <strong className="text-sm font-bold text-slate-800 dark:text-white block">
+                            <strong className="text-sm font-bold text-slate-900 dark:text-white block">
                               {bid.name}
                             </strong>
                           </div>
                         </div>
-                        <span className="text-[10px] bg-brand/5 dark:bg-brand/15 text-brand dark:text-brand-light px-2.5 py-1 rounded-lg font-bold">
+                        <span className="text-[12px] bg-brand/5 dark:bg-brand/15 text-brand dark:text-brand-light px-2.5 py-1 rounded-lg font-bold">
                           {bid.tag}
                         </span>
                       </div>
 
                       <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
                         <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-400 dark:text-slate-500 font-medium">진행 가능성</span>
+                          <span className="text-slate-500 dark:text-slate-500 font-medium">진행 가능성</span>
                           <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                             <Award className="w-3.5 h-3.5" /> {bid.feasibility}
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-400 dark:text-slate-500 font-medium">예상 월 변제금</span>
-                          <span className="text-slate-800 dark:text-slate-200 font-bold">
-                            월 {bid.monthlyPayment}만 원 <span className="text-slate-400 font-normal">({bid.duration}개월)</span>
+                          <span className="text-slate-500 dark:text-slate-500 font-medium">예상 월 변제금</span>
+                          <span className="text-slate-900 dark:text-slate-200 font-bold">
+                            월 {bid.monthlyPayment}만 원 <span className="text-slate-500 font-normal">({bid.duration}개월)</span>
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-400 dark:text-slate-500 font-medium">총 감면율 (원금)</span>
-                          <span className="bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand-light px-2 py-0.5 rounded-md font-bold text-[11px]">
+                          <span className="text-slate-500 dark:text-slate-500 font-medium">총 감면율 (원금)</span>
+                          <span className="bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand-light px-2 py-0.5 rounded-md font-bold text-[13px]">
                             약 {bid.reductionRate}% 탕감
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-0.5">
-                          <span className="text-slate-400 dark:text-slate-500 font-medium">총 감면 예상액</span>
+                          <span className="text-slate-500 dark:text-slate-500 font-medium">총 감면 예상액</span>
                           <span className="text-indigo-600 dark:text-indigo-400 font-bold">
                             ★ {bid.totalReduction.toLocaleString()}만 원 감면
                           </span>
                         </div>
                         
                         <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                          <div className="flex justify-between items-center text-[11px] mb-1">
-                            <span className="text-slate-400 dark:text-slate-500 font-medium">제시 수임료</span>
-                            <span className="text-slate-800 dark:text-slate-200 font-bold">{bid.fee}만 원</span>
+                          <div className="flex justify-between items-center text-[13px] mb-1">
+                            <span className="text-slate-500 dark:text-slate-500 font-medium">제시 수임료</span>
+                            <span className="text-slate-900 dark:text-slate-200 font-bold">{bid.fee}만 원</span>
                           </div>
-                          <div className="flex justify-between items-center text-[10px]">
-                            <span className="text-slate-400 dark:text-slate-500 font-medium">분납 조건</span>
+                          <div className="flex justify-between items-center text-[12px]">
+                            <span className="text-slate-500 dark:text-slate-500 font-medium">분납 조건</span>
                             <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full font-bold">
                               {bid.installment}
                             </span>
@@ -261,8 +261,8 @@ export default function ChatView({
                         </div>
                       </div>
 
-                      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-3.5 rounded-2xl text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                        <strong className="text-slate-800 dark:text-slate-200 font-bold block mb-1">
+                      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-3.5 rounded-2xl text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                        <strong className="text-slate-900 dark:text-slate-200 font-bold block mb-1">
                           💡 변호인 솔루션
                         </strong>
                         "{bid.remark}"
@@ -293,7 +293,7 @@ export default function ChatView({
                 );
               })}
             </div>
-            <div className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal pt-4 border-t border-slate-100 dark:border-slate-800 font-medium">
+            <div className="text-[12px] text-slate-500 dark:text-slate-500 leading-normal pt-4 border-t border-slate-100 dark:border-slate-800 font-medium">
               ※ Rebirthtalk은 공인된 변호사들이 제안하는 변제안 및 수임 조건을 투명하게 비교 매칭해주며, 사건 수임료 결제 및 정식 선임 등 모든 법률적 행위는 의뢰인과 변호인 간에 플랫폼을 거치지 않고 직접 성사됩니다.
             </div>
           </div>
@@ -305,17 +305,17 @@ export default function ChatView({
         {/* LEFT RAIL (상담 목록) */}
         <div className={`border-r border-slate-100 dark:border-slate-800 flex flex-col h-full min-h-0 bg-slate-50/20 dark:bg-slate-900/40 transition-all ${showProfilePanel ? 'hidden' : 'flex lg:col-span-3'}`}>
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white/40 dark:bg-slate-900/60 backdrop-blur-sm">
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 tracking-tight">
+            <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 tracking-tight">
               나의 채무관리방 목록
             </h3>
-            <p className="text-slate-400 dark:text-slate-500 text-[11px] font-medium mt-0.5">
+            <p className="text-slate-500 dark:text-slate-500 text-[13px] font-medium mt-0.5">
               접수 완료된 채무 체크 및 상담 목록입니다.
             </p>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 scrollbar-hide">
             {requests.length === 0 ? (
               <div className="p-8 text-center space-y-3">
-                <p className="text-slate-400 dark:text-slate-500 text-xs font-medium">
+                <p className="text-slate-500 dark:text-slate-500 text-xs font-medium">
                   작성 완료된 상담 요청이 없습니다.
                 </p>
                 <button 
@@ -366,21 +366,21 @@ export default function ChatView({
 
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className={`text-[9px] uppercase tracking-wider px-2 py-0.5 rounded font-bold ${
+                      <span className={`text-[11px] uppercase tracking-wider px-2 py-0.5 rounded font-bold ${
                         r.requestType === 'direct' 
                           ? 'bg-indigo-50 border border-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:border-indigo-900/50 dark:text-indigo-300' 
                           : 'bg-brand/5 border border-brand/20 text-brand dark:text-brand-light'
                       }`}>
                         {styleLabel}
                       </span>
-                      <span className="text-[9px] text-slate-400 font-semibold">
+                      <span className="text-[11px] text-slate-500 font-semibold">
                         {new Date(r.createdAt).toLocaleDateString(undefined, {month: 'numeric', day: 'numeric'})}
                       </span>
                     </div>
-                    <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-200 line-clamp-1">
+                    <h4 className="font-semibold text-xs text-slate-900 dark:text-slate-200 line-clamp-1">
                       {lawyerName ? `${lawyerName} (${r.title})` : r.title}
                     </h4>
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-450 font-semibold">
+                    <div className="flex items-center justify-between text-[12px] text-slate-500 dark:text-slate-450 font-semibold">
                       <span>부채: {(r.financialProfile.debtTotal).toLocaleString()}만</span>
                       <span className={`font-bold flex items-center gap-1 ${
                         r.status === 'requested' ? 'text-amber-600 dark:text-amber-500' : r.status === 'responding' ? 'text-brand animate-pulse' : 'text-emerald-600 dark:text-emerald-500'
@@ -407,10 +407,10 @@ export default function ChatView({
             {/* Active chat header */}
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm flex items-center justify-between gap-4">
               <div className="text-left flex-1 min-w-0">
-                <span className="text-[10px] font-bold text-brand dark:text-brand-light uppercase tracking-widest block">
+                <span className="text-[12px] font-bold text-brand dark:text-brand-light uppercase tracking-widest block">
                   ACTIVE PREVIEW
                 </span>
-                <h3 className="font-bold text-sm md:text-base text-slate-800 dark:text-slate-100 line-clamp-1 mt-0.5">
+                <h3 className="font-bold text-sm md:text-base text-slate-900 dark:text-slate-100 line-clamp-1 mt-0.5">
                   {currentRequest.title}
                 </h3>
               </div>
@@ -448,7 +448,7 @@ export default function ChatView({
             <div ref={chatFeedRef} className="flex-1 min-h-0 overflow-y-auto p-5 space-y-6 scrollbar-hide bg-slate-50/[0.15] dark:bg-slate-950/[0.05]">
               {/* Chat bubbles */}
               {activeChatMessages.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 text-xs font-bold flex flex-col items-center gap-2">
+                <div className="text-center py-12 text-slate-500 text-xs font-bold flex flex-col items-center gap-2">
                   <Clock className="w-8 h-8 text-slate-300" />
                   <span>상담방이 정상적으로 활성화되었습니다.<br />아래 입력란을 통해 변호사에게 무엇이든 물어보세요!</span>
                 </div>
@@ -457,7 +457,7 @@ export default function ChatView({
                 if (isSystem) {
                   return (
                     <div key={m.id} className="flex justify-center my-2">
-                      <div className="bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 px-4 text-[10px] text-slate-500 dark:text-slate-400 font-semibold tracking-tight text-center max-w-md">
+                      <div className="bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 px-4 text-[12px] text-slate-600 dark:text-slate-400 font-semibold tracking-tight text-center max-w-md">
                         {m.message.replace('[System] ', '')}
                       </div>
                     </div>
@@ -467,14 +467,14 @@ export default function ChatView({
                 const isMe = m.senderType === 'client';
                 return (
                   <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1`}>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold px-1">
-                      <span className="text-slate-800 dark:text-slate-300">{m.senderName}</span>
+                    <div className="flex items-center gap-2 text-[12px] text-slate-500 font-bold px-1">
+                      <span className="text-slate-900 dark:text-slate-300">{m.senderName}</span>
                       <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <div className={`p-3.5 rounded-2xl max-w-sm md:max-w-md text-xs leading-relaxed font-semibold shadow-sm ${
                       isMe 
                         ? 'bg-brand text-white rounded-tr-none' 
-                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-700'
+                        : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-700'
                     }`}>
                       {m.message}
                     </div>
@@ -507,14 +507,14 @@ export default function ChatView({
             <div className="flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 lg:col-span-12 overflow-hidden">
               {/* Header inside side panel */}
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/20 shrink-0">
-                <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span className="font-bold text-xs text-slate-900 dark:text-slate-200 flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-brand" />
                   나의 상세 리포트 수정
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowProfilePanel(false)}
-                  className="p-1 rounded-lg hover:bg-slate-150 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  className="p-1 rounded-lg hover:bg-slate-150 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
                   title="닫기"
                 >
                   <X className="w-4 h-4" />
@@ -556,10 +556,10 @@ export default function ChatView({
         ) : (
           <div className="lg:col-span-9 flex flex-col items-center justify-center p-8 text-center space-y-4 h-full bg-white dark:bg-slate-900">
             <Users className="w-14 h-14 text-slate-300 dark:text-slate-700" />
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">
+            <h3 className="font-bold text-base text-slate-900 dark:text-slate-200">
               선택된 채무상담방이 없습니다
             </h3>
-            <p className="text-slate-400 dark:text-slate-500 text-xs max-w-sm font-medium leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-500 text-xs max-w-sm font-medium leading-relaxed">
               왼쪽의 나의 채무관리방 목록에서 특정 방을 선택하시거나, 신규 무료 채무 체크를 신청하여 상담을 활성화하세요.
             </p>
             <button 
@@ -579,26 +579,26 @@ export default function ChatView({
             <button
               type="button"
               onClick={() => setShowPhoneConsultModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-650 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-650 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div className="space-y-1 text-left">
-              <span className="text-[10px] bg-brand/10 text-brand px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider inline-block">
+              <span className="text-[12px] bg-brand/10 text-brand px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider inline-block">
                 변호사 1:1 직통 통화
               </span>
               <h3 className="font-extrabold text-base md:text-lg text-slate-900 dark:text-white flex items-center gap-1.5 mt-1">
                 <Phone className="w-4 h-4 text-brand animate-pulse" /> 5분 내 즉시 안심 전화상담 신청
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+              <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 고객님의 채무 체크 정보를 바탕으로 선택하신 변호사가 확인 후 연락을 드립니다.
               </p>
             </div>
 
             <div className="space-y-4 text-left border-t border-slate-100 dark:border-slate-800 pt-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block">
+                <label className="text-[12px] text-slate-500 dark:text-slate-500 font-bold block">
                   연락받으실 전화번호
                 </label>
                 <input 
@@ -610,7 +610,7 @@ export default function ChatView({
                 />
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer select-none text-[11px] text-slate-500 dark:text-slate-400 py-1 font-semibold">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-[13px] text-slate-600 dark:text-slate-400 py-1 font-semibold">
                 <input 
                   type="checkbox" 
                   checked={useSafeNumber050} 

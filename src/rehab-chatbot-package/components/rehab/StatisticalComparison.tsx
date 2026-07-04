@@ -159,7 +159,7 @@ export const TrendIndicator: React.FC<TrendIndicatorProps> = ({ value, average, 
     const isNeutral = Math.abs(diff) < 5;
 
     const Icon = isNeutral ? Minus : isPositive ? TrendingUp : TrendingDown;
-    const color = isNeutral ? 'text-slate-400' : isPositive ? 'text-green-400' : 'text-red-400';
+    const color = isNeutral ? 'text-slate-500' : isPositive ? 'text-green-400' : 'text-red-400';
     const bgColor = isNeutral ? 'bg-slate-500/20' : isPositive ? 'bg-green-500/20' : 'bg-red-500/20';
 
     return (
@@ -173,7 +173,7 @@ export const TrendIndicator: React.FC<TrendIndicatorProps> = ({ value, average, 
             <span className={`text-xs font-bold ${color}`}>
                 {isNeutral ? '평균' : `${isPositive ? '+' : ''}${diff.toFixed(0)}%`}
             </span>
-            <span className="text-xs text-slate-400">{label}</span>
+            <span className="text-xs text-slate-500">{label}</span>
         </motion.div>
     );
 };
@@ -236,8 +236,8 @@ export const ComparisonMetric: React.FC<ComparisonMetricProps> = ({
             <span className="text-sm text-slate-300">{label}</span>
             <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">{format(userValue)}</span>
-                <span className="text-xs text-slate-400">vs</span>
-                <span className="text-xs text-slate-400">{format(averageValue)}</span>
+                <span className="text-xs text-slate-500">vs</span>
+                <span className="text-xs text-slate-500">{format(averageValue)}</span>
                 <TrendIndicator value={userValue} average={averageValue} label="" />
             </div>
         </div>

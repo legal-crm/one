@@ -95,7 +95,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
 
     return (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col text-slate-800 dark:text-slate-100">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col text-slate-900 dark:text-slate-100">
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-850">
                     <h3 className="font-bold text-sm flex items-center gap-1.5">
@@ -116,7 +116,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                             </div>
                             <div className="space-y-1">
                                 <h4 className="font-extrabold text-base">보안 비밀번호 설정</h4>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                                     받는 사람이 안전하게 보고서를 열람할 수 있도록<br />
                                     숫자 4자리 비밀번호(PIN)를 입력해 주세요.
                                 </p>
@@ -135,7 +135,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                             <button
                                 onClick={handleGenerateLink}
                                 disabled={pin.length !== 4}
-                                className="w-full py-3 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1"
+                                className="w-full py-3 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1"
                             >
                                 <span>안전 링크 생성하기</span>
                                 <ArrowRight className="w-3.5 h-3.5" />
@@ -148,7 +148,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                             </div>
                             <div className="space-y-1.5 w-full">
                                 <h4 className="font-extrabold text-base">보안 공유 링크 생성 완료</h4>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                                     설정하신 비밀번호 <strong className="text-emerald-500">[{pin}]</strong> 와 함께<br />
                                     아래의 보안 공유 링크를 전달해 주세요.
                                 </p>
@@ -158,14 +158,14 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                             <div className="grid grid-cols-2 gap-2.5 w-full">
                                 <button
                                     onClick={handleCopy}
-                                    className="p-3 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-xl transition-colors flex flex-col items-center gap-1.5 text-[11px] font-bold"
+                                    className="p-3 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-xl transition-colors flex flex-col items-center gap-1.5 text-[13px] font-bold"
                                 >
                                     {copied ? <Check className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5 text-slate-550" />}
                                     <span>{copied ? '복사 완료' : '링크 복사'}</span>
                                 </button>
                                 <button
                                     onClick={handleSMS}
-                                    className="p-3 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-xl transition-colors flex flex-col items-center gap-1.5 text-[11px] font-bold"
+                                    className="p-3 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-750 rounded-xl transition-colors flex flex-col items-center gap-1.5 text-[13px] font-bold"
                                 >
                                     <MessageSquare className="w-5 h-5 text-indigo-500" />
                                     <span>문자메시지 공유</span>

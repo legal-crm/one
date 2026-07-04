@@ -155,7 +155,7 @@ const RehabSettingsPanel: React.FC = () => {
       <div className="flex items-center justify-center py-20">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-slate-400">정책 설정을 불러오는 중...</p>
+          <p className="text-sm text-slate-500">정책 설정을 불러오는 중...</p>
         </div>
       </div>
     );
@@ -163,7 +163,7 @@ const RehabSettingsPanel: React.FC = () => {
 
   const currentYearPolicy = settings.yearlyPolicies[selectedYear];
   const inputClass = "w-full p-2 bg-slate-950 border border-slate-700 rounded text-slate-200 focus:ring-2 focus:ring-blue-500 text-sm";
-  const labelClass = "block text-sm font-medium text-slate-400 mb-1";
+  const labelClass = "block text-sm font-medium text-slate-500 mb-1";
 
   // ═══════════════════════════════════════════════════
   // TAB 1: 기본 정책 (Pmin)
@@ -206,7 +206,7 @@ const RehabSettingsPanel: React.FC = () => {
           <DollarSign className="text-blue-500" size={20} />
           미성년 자녀 부양가족 인정 기준
         </h3>
-        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+        <p className="text-xs text-slate-500 mb-6 leading-relaxed">
           배우자 소득 수준에 따라 미성년 자녀를 부양가족으로 인정하는 비율을 설정합니다. (본인 소득 대비 배우자 소득 비율 기준)
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -283,7 +283,7 @@ const RehabSettingsPanel: React.FC = () => {
                     setSettings({...settings, yearlyPolicies: newPolicies});
                   }} />
                 </td>
-                <td className="px-4 py-3 text-slate-500">{Math.round((currentYearPolicy.medianIncome.values[size] || 0) * 0.6).toLocaleString()}원</td>
+                <td className="px-4 py-3 text-slate-600">{Math.round((currentYearPolicy.medianIncome.values[size] || 0) * 0.6).toLocaleString()}원</td>
               </tr>
             ))}
           </tbody>
@@ -305,7 +305,7 @@ const RehabSettingsPanel: React.FC = () => {
         <div className="space-y-3">
           {[24, 36, 48, 60].map(m => (
             <div key={m} className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">{m}개월</span>
+              <span className="text-sm text-slate-500">{m}개월</span>
               <input type="number" step="0.01" className="w-32 p-2 bg-slate-950 border border-slate-700 rounded text-white text-sm" 
                 value={settings.leibniz[`m${m}` as keyof LeibnizTable] || 0} 
                 onChange={e => setSettings({ ...settings, leibniz: {...settings.leibniz, [`m${m}`]: Number(e.target.value)} })} />
@@ -337,7 +337,7 @@ const RehabSettingsPanel: React.FC = () => {
               </h4>
               <div className="space-y-2">
                 <div>
-                  <label className="text-xs text-slate-500 block">소액보증금 범위</label>
+                  <label className="text-xs text-slate-600 block">소액보증금 범위</label>
                   <input 
                     type="number" 
                     className="w-full bg-slate-900 border border-slate-700 rounded text-sm p-1 text-white" 
@@ -351,7 +351,7 @@ const RehabSettingsPanel: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block">최우선 변제금액</label>
+                  <label className="text-xs text-slate-600 block">최우선 변제금액</label>
                   <input 
                     type="number" 
                     className="w-full bg-slate-900 border border-slate-700 rounded text-sm p-1 text-white" 
@@ -495,7 +495,7 @@ const RehabSettingsPanel: React.FC = () => {
                           <input type="number" className={inputClass} value={rule.includedInMedian} onChange={e => handleHousingChange(r, size, 'includedInMedian', Number(e.target.value))} />
                         </td>
                         <td className="px-4 py-3">
-                          <input type="number" className={inputClass + " bg-slate-950 text-slate-500"} value={rule.totalLimit} readOnly />
+                          <input type="number" className={inputClass + " bg-slate-950 text-slate-600"} value={rule.totalLimit} readOnly />
                         </td>
                       </tr>
                     );
@@ -514,7 +514,7 @@ const RehabSettingsPanel: React.FC = () => {
   // ═══════════════════════════════════════════════════
   const renderDeductionsTab = () => {
     if (!currentYearPolicy?.assetExemptions) {
-      return <div className="p-4 text-slate-500">선택된 연도의 공제 기준 데이터가 없습니다. 설정을 초기화하거나 다른 연도를 선택해주세요.</div>;
+      return <div className="p-4 text-slate-600">선택된 연도의 공제 기준 데이터가 없습니다. 설정을 초기화하거나 다른 연도를 선택해주세요.</div>;
     }
 
     const handleNestedChange = (category: keyof YearlyPolicy, field: string, value: string) => {
@@ -564,7 +564,7 @@ const RehabSettingsPanel: React.FC = () => {
             </div>
             <div>
               <label className={labelClass}>총 인정 한도 (자동계산)</label>
-              <input type="number" className={inputClass + " bg-slate-950 text-slate-500"} value={currentYearPolicy.educationCost.totalLimit} readOnly />
+              <input type="number" className={inputClass + " bg-slate-950 text-slate-600"} value={currentYearPolicy.educationCost.totalLimit} readOnly />
             </div>
           </div>
         </div>
@@ -582,14 +582,14 @@ const RehabSettingsPanel: React.FC = () => {
             </div>
             <div>
               <label className={labelClass}>총 인정 한도 (자동계산)</label>
-              <input type="number" className={inputClass + " bg-slate-950 text-slate-500"} value={currentYearPolicy.specialEducationCost.totalLimit} readOnly />
+              <input type="number" className={inputClass + " bg-slate-950 text-slate-600"} value={currentYearPolicy.specialEducationCost.totalLimit} readOnly />
             </div>
           </div>
         </div>
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
           <h3 className="font-bold text-lg mb-4 text-white">고정 의료비 (중위소득 60% 포함분)</h3>
-          <p className="text-sm text-slate-500 mb-4 -mt-2">의료비는 기준 중위소득 60%에 포함된 금액을 초과하는 부분에 대해 인정됩니다.</p>
+          <p className="text-sm text-slate-600 mb-4 -mt-2">의료비는 기준 중위소득 60%에 포함된 금액을 초과하는 부분에 대해 인정됩니다.</p>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map(size => (
               <div key={size}>
@@ -602,7 +602,7 @@ const RehabSettingsPanel: React.FC = () => {
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
           <h3 className="font-bold text-lg mb-4 text-white">고소득자 기타 생계비 한도 기준</h3>
-          <p className="text-sm text-slate-500 mb-4 -mt-2">월 소득이 기준 중위소득의 N배를 초과하고, 변제율이 기준 이상인 채무자를 대상으로 합니다.</p>
+          <p className="text-sm text-slate-600 mb-4 -mt-2">월 소득이 기준 중위소득의 N배를 초과하고, 변제율이 기준 이상인 채무자를 대상으로 합니다.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>소득 기준 배율 (예: 1.5 = 150%)</label>
@@ -619,7 +619,7 @@ const RehabSettingsPanel: React.FC = () => {
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
           <h3 className="font-bold text-lg mb-4 text-white">성년 자녀 부양가족 인정 기준</h3>
-          <p className="text-sm text-slate-500 mb-4 -mt-2">
+          <p className="text-sm text-slate-600 mb-4 -mt-2">
             만 {currentYearPolicy.adultChildDependentCriteria.minAge}세 이상 ~ 만 {currentYearPolicy.adultChildDependentCriteria.maxAge}세 미만 자녀의 소득 기준입니다.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -652,7 +652,7 @@ const RehabSettingsPanel: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg flex items-center gap-2 text-white">
             <Gavel className="text-yellow-500" size={20} />
-            법원별 성향 관리 <span className="hidden sm:inline text-sm font-normal text-slate-500">(계산 및 보고서 반영)</span>
+            법원별 성향 관리 <span className="hidden sm:inline text-sm font-normal text-slate-600">(계산 및 보고서 반영)</span>
           </h3>
           <button onClick={handleAddCourt} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 whitespace-nowrap">
             + 법원 추가
@@ -749,12 +749,12 @@ const RehabSettingsPanel: React.FC = () => {
               <div key={court} className="bg-slate-950 p-5 rounded-xl border border-slate-700 shadow-sm flex flex-col gap-3">
                 <div className="flex justify-between items-start border-b border-slate-800 pb-2 mb-1">
                   <h4 className="font-bold text-white text-lg flex items-center gap-2">
-                    <Gavel size={16} className="text-slate-400"/> {court}
+                    <Gavel size={16} className="text-slate-500"/> {court}
                   </h4>
                 </div>
                 
                 <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">특징 / 메모</label>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">특징 / 메모</label>
                   <input 
                     type="text" 
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-300 text-sm focus:ring-1 focus:ring-blue-500 outline-none" 
@@ -831,7 +831,7 @@ const RehabSettingsPanel: React.FC = () => {
             <ShieldAlert className="w-5 h-5 text-blue-400" />
             회생/파산 정책 및 계산 기준 설정
           </h2>
-          <p className="text-xs text-slate-400 mt-1">챗봇 상담 및 보고서 산출에 사용되는 핵심 정책값을 관리합니다.</p>
+          <p className="text-xs text-slate-500 mt-1">챗봇 상담 및 보고서 산출에 사용되는 핵심 정책값을 관리합니다.</p>
         </div>
         <button 
           onClick={handleSave} 
@@ -852,7 +852,7 @@ const RehabSettingsPanel: React.FC = () => {
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === tab.id 
                   ? 'bg-slate-800 text-white' 
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                  : 'text-slate-500 hover:text-white hover:bg-slate-800/50'
               }`}
             >
               <tab.icon size={14} className={activeTab === tab.id ? 'text-blue-400' : ''} />

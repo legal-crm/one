@@ -45,7 +45,7 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
         <div className="relative p-6 md:p-8 text-left border-b border-slate-100 dark:border-slate-800">
           <button 
             onClick={onClose}
-            className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
+            className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -55,7 +55,7 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
               {renderRemedyIcon(data.iconName, "w-6 h-6")}
             </div>
             <div className="space-y-0.5">
-              <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light">
+              <span className="inline-block text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light">
                 {data.badgeText}
               </span>
               <h4 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -73,10 +73,10 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
               <span>법률상 대표적 해법 (Remedy)</span>
             </h5>
             <div className="space-y-2">
-              <h6 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+              <h6 className="font-bold text-sm text-slate-900 dark:text-slate-200">
                 "{data.remedyTitle}"
               </h6>
-              <p className="text-xs text-slate-400 dark:text-slate-400 leading-relaxed font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                 {data.remedyDesc}
               </p>
             </div>
@@ -88,10 +88,10 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
               <span>🚨 변호사의 골든타임 행동 지침</span>
             </h5>
             <div className="space-y-2">
-              <h6 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+              <h6 className="font-bold text-sm text-slate-900 dark:text-slate-200">
                 {data.guideTitle}
               </h6>
-              <p className="text-xs text-slate-400 dark:text-slate-400 leading-relaxed font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                 {data.guideDesc}
               </p>
             </div>
@@ -104,7 +104,7 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
         <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
           <button 
             onClick={onClose}
-            className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+            className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
           >
             닫기
           </button>

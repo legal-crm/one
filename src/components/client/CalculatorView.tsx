@@ -27,13 +27,13 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6 relative z-10">
           <div className="space-y-1.5">
-            <span className="text-[10px] text-brand-light font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <span className="text-[12px] text-brand-light font-bold uppercase tracking-widest flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-brand-light" />
               채무관리 사전 체크 계산기
             </span>
             <h3 className="text-xl md:text-2xl font-bold tracking-tight">나의 예상 변제 부담 시뮬레이션</h3>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-sm font-medium">
+          <p className="text-xs text-slate-500 leading-relaxed max-w-sm font-medium">
             소득과 채무, 부양가족 수에 따른 최저생계비를 대입하여 예상 변제 부담을 단순 시뮬레이션합니다. 실제 결과는 달라질 수 있습니다.
           </p>
         </div>
@@ -56,7 +56,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                 onChange={(e) => setCalcIncome(Number(e.target.value))} 
                 className="w-full my-2" 
               />
-              <div className="flex justify-between text-[10px] text-slate-500 font-bold">
+              <div className="flex justify-between text-[12px] text-slate-600 font-bold">
                 <span>100만 원</span><span>450만 원</span><span>800만 원</span>
               </div>
             </div>
@@ -78,7 +78,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                 onChange={(e) => setCalcDebt(Number(e.target.value))} 
                 className="w-full my-2 slider-amber" 
               />
-              <div className="flex justify-between text-[10px] text-slate-500 font-bold">
+              <div className="flex justify-between text-[12px] text-slate-600 font-bold">
                 <span>1,000만 원</span><span>1.5억 원</span><span>3억 원</span>
               </div>
             </div>
@@ -95,7 +95,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                     className={`py-3 rounded-2xl border text-xs font-bold transition-all duration-200 cursor-pointer ${
                       calcDependents === num 
                         ? 'bg-brand border-brand text-white shadow-[0_4px_15px_rgba(114,100,255,0.3)] scale-[1.03]' 
-                        : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                        : 'bg-slate-800/40 border-slate-700/60 text-slate-500 hover:bg-slate-800/80 hover:text-slate-200'
                     }`}
                   >
                     {num === 0 ? '0명 (1인 가구)' : `${num}명 (${num+1}인 가구)`}
@@ -121,7 +121,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
               return (
                 <>
                   <div className="space-y-4 text-left relative z-10">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-brand-light block border-b border-white/10 pb-2">
+                    <span className="text-[12px] uppercase font-bold tracking-wider text-brand-light block border-b border-white/10 pb-2">
                       🔍 1차 사전 체크 리포트
                     </span>
                     <div className="space-y-3.5 text-xs text-slate-300 font-medium">
@@ -130,7 +130,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
                         <strong className="text-white text-sm">{ minLivingCost}만 원</strong>
                       </div>
                       {isBankruptcyApplicable ? (
-                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-[11px] text-red-300 font-semibold leading-relaxed shadow-sm">
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-[13px] text-red-300 font-semibold leading-relaxed shadow-sm">
                           ⚠️ 월 소득이 법정 최저생계비보다 적습니다. 이 경우 개인파산 면책 신청을 검토해 볼 수 있는 상황입니다. 정확한 가능 여부는 변호사 검토가 필요합니다.
                         </div>
                       ) : (
@@ -150,11 +150,11 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
 
                   {!isBankruptcyApplicable && (
                     <div className="bg-gradient-to-r from-brand/10 to-indigo-600/15 border border-brand/35 p-5 rounded-2xl text-center space-y-1.5 shadow-sm relative z-10">
-                      <span className="text-[10px] text-brand-light uppercase tracking-widest font-bold">입력값 기준 예상 조정 비율</span>
+                      <span className="text-[12px] text-brand-light uppercase tracking-widest font-bold">입력값 기준 예상 조정 비율</span>
                       <div className="text-3xl font-bold text-brand-light tracking-tight">
                         약 {reductionRate}% 조정 가능성
                       </div>
-                      <p className="text-[11px] text-slate-400 font-medium">
+                      <p className="text-[13px] text-slate-500 font-medium">
                         (총 채무 중 약 <strong className="text-white font-bold">{Math.round(totalReduction).toLocaleString()}만 원</strong> 감면)
                       </p>
                     </div>
@@ -189,7 +189,7 @@ export default function CalculatorView({ onNavigateToRequest }: CalculatorViewPr
           <AlertTriangle className="w-4 h-4" />
           <span>시뮬레이션 이용 시 유의사항</span>
         </h4>
-        <div className="text-slate-400 dark:text-slate-400 leading-relaxed font-medium space-y-2">
+        <div className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium space-y-2">
           <p>
             본 결과는 입력값 기준 예상 변제 부담을 단순 시뮬레이션한 <strong>참고자료</strong>이며, 법률 판단이 아닙니다.
             실제 변제금과 조정 가능성은 법원, 소득, 재산, 채무 발생 원인, 최근 채무 비율, 세금체납 여부 등에 따라 달라질 수 있습니다.

@@ -1851,7 +1851,7 @@ export default function ClientRole({
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans">
+    <div className="flex flex-col min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       <div className="w-full max-w-[1024px] min-h-screen mx-auto bg-white dark:bg-slate-900 border-x border-slate-100 dark:border-slate-800 shadow-sm flex flex-col relative">
       
         {/* Dynamic Client Header */}
@@ -1860,10 +1860,10 @@ export default function ClientRole({
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
               <img src="./mykim_logo.png" alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
               <div className="flex flex-col items-start leading-none">
-                <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
                   my김변
                 </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
+                <span className="text-[12px] text-slate-500 dark:text-slate-500 mt-0.5 font-medium">
                   나의 전담 채무관리 변호사
                 </span>
               </div>
@@ -1952,10 +1952,10 @@ export default function ClientRole({
             {isLoggedIn ? (
               <div className="flex items-center gap-1.5 lg:gap-2.5 ml-1 lg:ml-2 pl-2 lg:pl-3 border-l border-slate-200 dark:border-slate-800">
                 <div className="flex flex-col items-end hidden lg:flex whitespace-nowrap shrink-0">
-                  <span className="text-[10px] lg:text-[11px] font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  <span className="text-[12px] lg:text-[13px] font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
                     👤 <span className="text-brand dark:text-brand-light whitespace-nowrap">{userAlias}</span>님
                   </span>
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-semibold leading-none">
+                  <span className="text-[12px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-semibold leading-none">
                     스텔스 보호중
                   </span>
                 </div>
@@ -2011,12 +2011,12 @@ export default function ClientRole({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
-                <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white leading-tight tracking-tight">
+                <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">
                   빚 걱정, 혼자 하지 마세요<br />
                   <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">my김변이 같이 고민해드려요</span>
                 </h1>
                 
-                <p className="text-slate-500 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
+                <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
                   지금 내 상황이 어떤지 먼저 무료로 살펴보고,<br />
                   어떻게 하면 좋을지 전담변호사가 함께 찾아드려요.
                 </p>
@@ -2042,10 +2042,10 @@ export default function ClientRole({
               {/* Right Column: 핵심 약속 & 프로세스 안내 */}
               <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-5">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200 flex items-center gap-1.5">
                     🤝 my김변의 약속
                   </h4>
-                  <span className="text-[10px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">초기 체크 무료</span>
+                  <span className="text-[12px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">초기 체크 무료</span>
                 </div>
 
                 <div className="space-y-3">
@@ -2058,8 +2058,8 @@ export default function ClientRole({
                     <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all">
                       <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
                       <div>
-                        <span className="text-xs font-bold text-slate-800 dark:text-white block">{item.title}</span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white block">{item.title}</span>
+                        <span className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed">{item.desc}</span>
                       </div>
                     </div>
                   ))}
@@ -2074,7 +2074,7 @@ export default function ClientRole({
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+                <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                   이렇게 3단계면 끝이에요
                 </h3>
               </div>
@@ -2106,11 +2106,11 @@ export default function ClientRole({
                   <div key={idx} onClick={item.action} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl text-left hover:border-brand/50 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md flex flex-col justify-between min-h-[160px] group hover-lift-sm transition-card">
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-brand dark:text-brand-light font-black tracking-wider uppercase">{item.step}</span>
+                        <span className="text-[12px] text-brand dark:text-brand-light font-black tracking-wider uppercase">{item.step}</span>
                         <span className="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>
                       </div>
-                      <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">{item.title}</h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                      <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200">{item.title}</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -2124,10 +2124,10 @@ export default function ClientRole({
             {/* 4. Section 3: 내 채무관리 대시보드 미리보기 (Dashboard Preview) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+                <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                   내 채무 상태를 한곳에서 관리합니다
                 </h3>
-                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
                   진단을 마치거나 변호사를 지정하면 나만의 비밀 대시보드 관리방이 실시간 개설됩니다.
                 </p>
               </div>
@@ -2143,7 +2143,7 @@ export default function ClientRole({
                   </div>
                   <div className="flex-1 max-w-xs mx-auto bg-slate-800/80 rounded-lg px-3 py-1 flex items-center justify-center gap-1.5">
                     <span className="w-3 h-3 text-emerald-400">🔒</span>
-                    <span className="text-[9px] text-slate-400 font-medium truncate">legal-rehab.co.kr/my-room</span>
+                    <span className="text-[11px] text-slate-500 font-medium truncate">legal-rehab.co.kr/my-room</span>
                   </div>
                   <div className="w-16"></div>
                 </div>
@@ -2155,32 +2155,32 @@ export default function ClientRole({
                     {/* 좌측 사이드바 - 채무관리방 목록 */}
                     <div className="col-span-4 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
                       <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-[9px] font-black text-brand uppercase tracking-widest">나의 채무관리방</span>
+                        <span className="text-[11px] font-black text-brand uppercase tracking-widest">나의 채무관리방</span>
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <div className="px-2 py-1.5">
                           <div className="bg-brand/5 border border-brand/20 rounded-xl px-2.5 py-2 mb-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-bold text-slate-800 dark:text-slate-200 truncate">카드빚 + 대출 과다</span>
+                              <span className="text-[11px] font-bold text-slate-900 dark:text-slate-200 truncate">카드빚 + 대출 과다</span>
                               <span className="relative flex h-1.5 w-1.5 shrink-0">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
                               </span>
                             </div>
                             <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[8px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full font-bold">상담중</span>
-                              <span className="text-[8px] text-slate-400">김우진 변호사</span>
+                              <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full font-bold">상담중</span>
+                              <span className="text-[10px] text-slate-500">김우진 변호사</span>
                             </div>
                           </div>
                           <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-2.5 py-2 opacity-60">
-                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 truncate block">코인 투자 실패 상담</span>
-                            <span className="text-[8px] text-slate-400 mt-0.5 block">완료됨 · 이소민 변호사</span>
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate block">코인 투자 실패 상담</span>
+                            <span className="text-[10px] text-slate-500 mt-0.5 block">완료됨 · 이소민 변호사</span>
                           </div>
                         </div>
                       </div>
                       <div className="px-2.5 py-2 border-t border-slate-100 dark:border-slate-800">
                         <div className="bg-brand/5 rounded-xl px-2 py-1.5 text-center">
-                          <span className="text-[8px] font-bold text-brand">+ 새 상담 신청</span>
+                          <span className="text-[10px] font-bold text-brand">+ 새 상담 신청</span>
                         </div>
                       </div>
                     </div>
@@ -2189,45 +2189,45 @@ export default function ClientRole({
                     <div className="col-span-8 flex flex-col bg-white dark:bg-slate-900">
                       <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                         <div>
-                          <span className="text-[8px] font-bold text-brand uppercase tracking-widest block">ACTIVE</span>
-                          <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">카드빚 + 대출 과다 채무조정</span>
+                          <span className="text-[10px] font-bold text-brand uppercase tracking-widest block">ACTIVE</span>
+                          <span className="text-[12px] font-bold text-slate-900 dark:text-slate-200">카드빚 + 대출 과다 채무조정</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[8px] bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded-lg font-bold border border-indigo-100 dark:border-indigo-900">📞 전화상담</span>
-                          <span className="text-[8px] bg-brand text-white px-2 py-1 rounded-lg font-bold">📄 리포트 수정</span>
+                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded-lg font-bold border border-indigo-100 dark:border-indigo-900">📞 전화상담</span>
+                          <span className="text-[10px] bg-brand text-white px-2 py-1 rounded-lg font-bold">📄 리포트 수정</span>
                         </div>
                       </div>
                       <div className="flex-1 px-3 py-3 space-y-2.5 overflow-hidden bg-slate-50/30 dark:bg-slate-950/10">
                         <div className="flex flex-col items-start space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-[8px] text-slate-400 font-bold px-0.5">
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold px-0.5">
                             <span className="text-slate-700 dark:text-slate-300">김우진 변호사</span>
                             <span>오전 10:14</span>
                           </div>
                           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
-                            <p className="text-[9px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">안녕하세요, 김우진 변호사입니다. 가계 소득 및 채무 위기 명세를 긴급 검토하였습니다.</p>
+                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">안녕하세요, 김우진 변호사입니다. 가계 소득 및 채무 위기 명세를 긴급 검토하였습니다.</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-start space-y-0.5">
                           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
-                            <p className="text-[9px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">월 평균 가용 변제금이 약 40만 원 수준으로 개인회생 신청이 가능합니다. 통장 거래 내역 준비가 가능하신가요?</p>
+                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">월 평균 가용 변제금이 약 40만 원 수준으로 개인회생 신청이 가능합니다. 통장 거래 내역 준비가 가능하신가요?</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-[8px] text-slate-400 font-bold px-0.5">
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold px-0.5">
                             <span className="text-slate-700 dark:text-slate-300">나 (의뢰인)</span>
                             <span>오후 01:32</span>
                           </div>
                           <div className="bg-brand text-white rounded-2xl rounded-tr-none px-3 py-2 max-w-[70%] shadow-sm">
-                            <p className="text-[9px] leading-relaxed font-medium">네 변호사님, 서류 준비하겠습니다!</p>
+                            <p className="text-[11px] leading-relaxed font-medium">네 변호사님, 서류 준비하겠습니다!</p>
                           </div>
                         </div>
                       </div>
                       <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
                         <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
-                          <span className="text-[9px] text-slate-400">담당 변호사에게 메시지 보내기...</span>
+                          <span className="text-[11px] text-slate-500">담당 변호사에게 메시지 보내기...</span>
                         </div>
                         <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center shrink-0">
-                          <span className="text-white text-[10px]">▶</span>
+                          <span className="text-white text-[12px]">▶</span>
                         </div>
                       </div>
                     </div>
@@ -2267,7 +2267,7 @@ export default function ClientRole({
             {/* 5. Section 4: 상황별 빠른 진단 카드 (Situation-based Cards) */}
             <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
                   <span>상황별 채무관리 방향 체크</span>
                 </h3>
@@ -2294,12 +2294,12 @@ export default function ClientRole({
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center justify-center gap-1">
-                        <h5 className="font-semibold text-xs text-slate-800 dark:text-slate-200">{item.title}</h5>
+                        <h5 className="font-semibold text-xs text-slate-900 dark:text-slate-200">{item.title}</h5>
                         {item.id === 'tax_delinquency' && (
-                          <span className="text-[10px] bg-amber-500 text-white font-semibold px-1.5 py-0.5 rounded">중요</span>
+                          <span className="text-[12px] bg-amber-500 text-white font-semibold px-1.5 py-0.5 rounded">중요</span>
                         )}
                       </div>
-                      <p className="text-[10px] text-[#7e7e8f] dark:text-slate-400 font-semibold line-clamp-2 leading-relaxed">
+                      <p className="text-[12px] text-[#7e7e8f] dark:text-slate-400 font-semibold line-clamp-2 leading-relaxed">
                         {item.subtitle}
                       </p>
                     </div>
@@ -2322,14 +2322,14 @@ export default function ClientRole({
                 <div className="relative z-10 space-y-8">
                   {/* Header */}
                   <div className="text-center space-y-3">
-                    <div className="inline-flex items-center gap-2 bg-brand/10 border border-brand/15 text-brand dark:text-brand-light text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
+                    <div className="inline-flex items-center gap-2 bg-brand/10 border border-brand/15 text-brand dark:text-brand-light text-[12px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
                       <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                       초기 채무 체크 무료
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white leading-tight">
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-tight">
                       돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
                       바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
                     </p>
                   </div>
@@ -2352,8 +2352,8 @@ export default function ClientRole({
                             {item.icon}
                           </div>
                           <div className="space-y-1.5 min-w-0">
-                            <h5 className="font-bold text-sm text-slate-800 dark:text-white/90">{item.title}</h5>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                            <h5 className="font-bold text-sm text-slate-900 dark:text-white/90">{item.title}</h5>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -2362,7 +2362,7 @@ export default function ClientRole({
 
                   {/* Bottom hint */}
                   <div className="text-center pt-2">
-                    <p className="text-[11px] text-slate-400 font-semibold">
+                    <p className="text-[13px] text-slate-500 font-semibold">
                       ✦ 상담 신청 전, 사전 체크로 나의 상황을 먼저 정리해 보세요
                     </p>
                   </div>
@@ -2377,10 +2377,10 @@ export default function ClientRole({
             {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+                <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                   채무 해결 방법은 하나가 아닙니다
                 </h3>
-                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
                   나의 연체 기간, 채권 성격, 소득 지속성에 맞게 다섯 가지 경로를 비교 설계합니다.
                 </p>
               </div>
@@ -2459,16 +2459,16 @@ export default function ClientRole({
                             <span className="drop-shadow-sm">{item.icon}</span>
                           </div>
                           <div>
-                            <h4 className="font-bold text-base text-slate-800 dark:text-white">{item.title}</h4>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>
+                            <h4 className="font-bold text-base text-slate-900 dark:text-white">{item.title}</h4>
+                            <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>
                           </div>
                         </div>
                         {/* Target audience */}
                         <p className="text-xs text-brand dark:text-brand-light font-semibold">{item.sub}</p>
                         {/* Description */}
-                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                       </div>
-                      <span className="text-[11px] font-bold text-brand/50 dark:text-brand-light/50 group-hover:text-brand dark:group-hover:text-brand-light transition-colors flex items-center gap-1.5 pt-1">
+                      <span className="text-[13px] font-bold text-brand/50 dark:text-brand-light/50 group-hover:text-brand dark:group-hover:text-brand-light transition-colors flex items-center gap-1.5 pt-1">
                         자세히 보기
                         <span className="transition-transform group-hover:translate-x-1">→</span>
                       </span>
@@ -2485,10 +2485,10 @@ export default function ClientRole({
             {/* 8. Section 7: 실제 사례/콘텐츠 (Success reviews & News) */}
             <div className="space-y-4 text-left">
               <div className="flex items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-brand" />
                   <span>실제 채무 해결 성공 후기</span>
-                  <span className="text-[10px] bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light font-semibold px-2 py-0.5 rounded-md">
+                  <span className="text-[12px] bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light font-semibold px-2 py-0.5 rounded-md">
                     리얼 자필 사연
                   </span>
                 </h3>
@@ -2519,29 +2519,29 @@ export default function ClientRole({
                             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
                               <div className="space-y-3 text-left">
                                 <div className="flex items-center justify-between">
-                                  <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                                  <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/45 dark:text-indigo-300 text-[12px] font-semibold px-2 py-0.5 rounded-md">
                                     {rev.category}
                                   </span>
                                   <div className="flex text-amber-400 text-xs">★★★★★</div>
                                 </div>
                                 
-                                <h4 className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-white leading-snug line-clamp-1">
+                                <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug line-clamp-1">
                                   {rev.title}
                                 </h4>
 
-                                <div className="bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-semibold">
-                                  <div className="text-slate-400">기존 채무: {rev.originalDebt.toLocaleString()}만원</div>
+                                <div className="bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-[12px] font-semibold">
+                                  <div className="text-slate-500">기존 채무: {rev.originalDebt.toLocaleString()}만원</div>
                                   <div className="text-indigo-600 dark:text-indigo-400">조정 후: {rev.remainingDebt === 0 ? "전액 탕감" : `${rev.remainingDebt.toLocaleString()}만원`}</div>
                                 </div>
 
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
+                                <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
                                   "{rev.content}"
                                 </p>
                               </div>
 
                               <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                                <div className="flex items-center justify-between text-[10px]">
-                                  <span className="text-slate-400 font-semibold">{rev.author}</span>
+                                <div className="flex items-center justify-between text-[12px]">
+                                  <span className="text-slate-500 font-semibold">{rev.author}</span>
                                   <div className="flex items-center gap-1.5">
                                     <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" />
                                     <span className="font-semibold text-slate-600 dark:text-slate-400">{rev.lawyerName}</span>
@@ -2603,11 +2603,11 @@ export default function ClientRole({
             {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
             <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <HelpCircle className="w-5 h-5 text-brand" />
                   <span>실시간 고민 해결 상담사례</span>
                 </h3>
-                <span className="text-xs text-slate-400">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
+                <span className="text-xs text-slate-500">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
               </div>
 
               <div className="space-y-3.5">
@@ -2632,18 +2632,18 @@ export default function ClientRole({
                         >
                           <div className="space-y-2 text-left">
                             <div className="flex items-center gap-2.5">
-                              <span className="bg-brand-light text-brand dark:bg-brand/10 dark:text-blue-400 text-[10px] font-semibold px-2.5 py-0.5 rounded-md">
+                              <span className="bg-brand-light text-brand dark:bg-brand/10 dark:text-blue-400 text-[12px] font-semibold px-2.5 py-0.5 rounded-md">
                                 {qa.category}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-semibold">
+                              <span className="text-[12px] text-slate-500 font-semibold">
                                 {qa.author}
                               </span>
                               <div className="flex items-center gap-1.5 ml-auto">
                                 <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-800 bg-slate-100 shrink-0" />
-                                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{qa.lawyerName} 답변</span>
+                                <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-400">{qa.lawyerName} 답변</span>
                               </div>
                             </div>
-                            <h4 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200 pr-4 leading-snug">
+                            <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-slate-200 pr-4 leading-snug">
                               Q. {qa.question}
                             </h4>
                           </div>
@@ -2664,8 +2664,8 @@ export default function ClientRole({
                               />
                               <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-xs text-slate-800 dark:text-white">{qa.lawyerName}</span>
-                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-md">전문가 답변</span>
+                                  <span className="font-bold text-xs text-slate-900 dark:text-white">{qa.lawyerName}</span>
+                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[12px] font-semibold px-2 py-0.5 rounded-md">전문가 답변</span>
                                 </div>
                                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
                                   {qa.answer}
@@ -2682,7 +2682,7 @@ export default function ClientRole({
                                   setRequestStep(3); // Go directly to submit step
                                   setActiveTab('request');
                                 }}
-                                className="bg-brand hover:bg-brand text-white font-bold px-4 py-2 rounded-xl text-[10px] transition-colors"
+                                className="bg-brand hover:bg-brand text-white font-bold px-4 py-2 rounded-xl text-[12px] transition-colors"
                               >
                                 이 변호사에게 유사건 즉시 상담 신청
                               </button>
@@ -2722,7 +2722,7 @@ export default function ClientRole({
                 }}
                 className="flex items-center justify-between gap-1 text-left cursor-pointer group"
               >
-                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-brand" />
                   <span>알아두면 좋을 법률 정보</span>
                   <ChevronRight className="w-4 h-4 text-[#7e7e8f] transition-transform group-hover:translate-x-1" />
@@ -2750,7 +2750,7 @@ export default function ClientRole({
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       {art.badge && (
-                        <span className={`absolute top-3.5 left-3.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
+                        <span className={`absolute top-3.5 left-3.5 text-[12px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
                           art.badge === 'HOT' ? 'bg-orange-500' :
                           art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
                         }`}>
@@ -2761,15 +2761,15 @@ export default function ClientRole({
 
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
+                        <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold">
                           <span>{art.category}</span>
                           <span>•</span>
                           <span>조회 {art.views}</span>
                         </div>
-                        <h4 className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">
+                        <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">
                           {art.title}
                         </h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
+                        <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
                           {art.excerpt}
                         </p>
                       </div>
@@ -2781,7 +2781,7 @@ export default function ClientRole({
                             alt={art.authorName} 
                             className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" 
                           />
-                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">By {art.authorName}</span>
+                          <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-400">By {art.authorName}</span>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 transition-transform group-hover:translate-x-1" />
                       </div>
@@ -2892,11 +2892,11 @@ export default function ClientRole({
       </main>
 
       {/* Subtle Bottom legal status line */}
-      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 space-y-6 text-left">
+      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-600 space-y-6 text-left">
         {/* Notice Section */}
         <div className="space-y-2 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-250 flex items-center gap-1.5">
+            <h4 className="font-bold text-xs text-slate-900 dark:text-slate-250 flex items-center gap-1.5">
               <span>📋</span> 공지사항
             </h4>
             <button 
@@ -2905,12 +2905,12 @@ export default function ClientRole({
                 setSelectedNoticeId(null);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="text-[10px] text-slate-450 hover:text-slate-650 dark:hover:text-slate-200 font-bold transition-colors cursor-pointer"
+              className="text-[12px] text-slate-450 hover:text-slate-650 dark:hover:text-slate-200 font-bold transition-colors cursor-pointer"
             >
               전체보기 &rarr;
             </button>
           </div>
-          <div className="space-y-2 text-[11px]">
+          <div className="space-y-2 text-[13px]">
             {notices.slice(0, 3).map(notice => (
               <div 
                 key={notice.id} 
@@ -2922,22 +2922,22 @@ export default function ClientRole({
                 className="flex items-center gap-2 cursor-pointer hover:text-brand dark:hover:text-brand-light group transition-colors"
               >
                 {notice.isImportant && (
-                  <span className="bg-red-500 text-white font-semibold text-[10px] px-1.5 py-0.5 rounded-sm shrink-0">중요</span>
+                  <span className="bg-red-500 text-white font-semibold text-[12px] px-1.5 py-0.5 rounded-sm shrink-0">중요</span>
                 )}
                 <span className="text-slate-600 dark:text-slate-300 truncate flex-1 group-hover:underline">
                   {notice.title}
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono shrink-0">{notice.date}</span>
+                <span className="text-[12px] text-slate-500 font-mono shrink-0">{notice.date}</span>
               </div>
             ))}
             {notices.length === 0 && (
-              <p className="text-[10px] text-slate-450 py-1">등록된 공지사항이 없습니다.</p>
+              <p className="text-[12px] text-slate-450 py-1">등록된 공지사항이 없습니다.</p>
             )}
           </div>
         </div>
 
         {/* Policy & Legal disclaimer */}
-        <div className="space-y-2.5 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+        <div className="space-y-2.5 text-[13px] leading-relaxed text-slate-500 dark:text-slate-500">
           <p className="font-bold text-slate-600 dark:text-slate-400">my김변(마이김변) 정책 설명 및 법적 고지</p>
           <p>
             (주)my김변컴퍼니는 대한민국 법률시장의 정보비대칭과 불법 법조브로커를 해소하여 투명하고 공정한 법률시장을 만들기 위해 my김변(마이김변) 서비스를 제공하고 있습니다. my김변(마이김변)은 의뢰인회원의 법률상담 내용 및 상담 여부, 법률사건 내용 및 수임 여부, 변호사회원의 선택 등에 대해 일절 관여하지 않아 변호사법 및 기타 관련규정을 준수하고 있으며, 변호사회원이 의뢰인회원에게 제공하는 서비스의 내용과 질에 대해 어떠한 법적책임도 부담하지 않습니다. 또한 회원간의 예약 및 결제정보의 중개서비스 또는 통신판매중개 시스템을 제공할 뿐, 통신판매의 당사자가 아닙니다.

@@ -263,7 +263,7 @@ export default function LandingPage({
               '실시간 법원 기준 적용',
               '개인정보 없이 즉시 확인',
             ].map((text, i) => (
-              <span key={i} className="flex items-center gap-2 text-sm text-slate-400">
+              <span key={i} className="flex items-center gap-2 text-sm text-slate-500">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 {text}
               </span>
@@ -305,7 +305,7 @@ export default function LandingPage({
               </span>{' '}
               중이신가요?
             </h2>
-            <p className="text-slate-500 text-base sm:text-lg">
+            <p className="text-slate-600 text-base sm:text-lg">
               혼자 고민하지 마세요. 같은 걱정을 하셨던 분들이 이미 해결하셨습니다.
             </p>
           </motion.div>
@@ -377,7 +377,7 @@ export default function LandingPage({
               </span>
               이 아닙니다
             </h2>
-            <p className="text-slate-500 text-base sm:text-lg max-w-2xl mx-auto">
+            <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto">
               불필요한 상담 연결 없이, 내 상황에 맞는 전략을 먼저 확인합니다.
             </p>
           </motion.div>
@@ -430,7 +430,7 @@ export default function LandingPage({
                     <item.icon className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+                  <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
                 </motion.div>
               </StaggerChild>
             ))}
@@ -451,7 +451,7 @@ export default function LandingPage({
                 전담 채무 케어
               </span>
             </h2>
-            <p className="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
+            <p className="text-slate-500 text-sm sm:text-base max-w-2xl mx-auto">
               my김변의 전담 변호사는 일회성 상담에 그치지 않고, 해결의 순간까지 의뢰인과 동행하며 채무 상황을 관리합니다.
             </p>
           </div>
@@ -493,7 +493,7 @@ export default function LandingPage({
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+                    <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export default function LandingPage({
               </span>
               이면 내 상태를 확인할 수 있습니다
             </h2>
-            <p className="text-slate-500 text-base sm:text-lg">
+            <p className="text-slate-600 text-base sm:text-lg">
               복잡한 절차 없이, 3단계로 끝납니다.
             </p>
           </motion.div>
@@ -584,7 +584,7 @@ export default function LandingPage({
                                     px-3 py-1 rounded-full mb-3">
                     {item.desc}
                   </span>
-                  <p className="text-sm text-slate-400 leading-relaxed max-w-[240px] mx-auto">
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-[240px] mx-auto">
                     {item.detail}
                   </p>
                 </div>
@@ -676,14 +676,14 @@ export default function LandingPage({
                     <div className="mb-4 p-3 rounded-xl bg-slate-800/50 border border-slate-700/30">
                       <div className="flex items-center justify-between text-sm">
                         <div>
-                          <span className="text-slate-500 text-xs block mb-0.5">원래 채무</span>
+                          <span className="text-slate-600 text-xs block mb-0.5">원래 채무</span>
                           <span className="text-slate-300 font-semibold">
                             {formatMoney(review.originalDebt)}
                           </span>
                         </div>
                         <ArrowRight className="w-4 h-4 text-emerald-400 mx-2 shrink-0" />
                         <div className="text-right">
-                          <span className="text-slate-500 text-xs block mb-0.5">남은 변제</span>
+                          <span className="text-slate-600 text-xs block mb-0.5">남은 변제</span>
                           <span className="text-emerald-400 font-bold">
                             {formatMoney(review.remainingDebt)}
                           </span>
@@ -700,7 +700,7 @@ export default function LandingPage({
                     </div>
 
                     {/* Content */}
-                    <p className="text-sm text-slate-400 leading-relaxed mb-3 line-clamp-3">
+                    <p className="text-sm text-slate-500 leading-relaxed mb-3 line-clamp-3">
                       "{review.content}"
                     </p>
                     <p className="text-xs text-slate-600">— {review.author}</p>
@@ -727,7 +727,7 @@ export default function LandingPage({
                 <div key={i} className="flex items-center gap-3">
                   <span className="text-2xl">{stat.emoji}</span>
                   <div className="text-left">
-                    <p className="text-xs text-slate-500">{stat.label}</p>
+                    <p className="text-xs text-slate-600">{stat.label}</p>
                     <p className="text-lg font-bold text-white">{stat.value}</p>
                   </div>
                 </div>
@@ -739,7 +739,7 @@ export default function LandingPage({
           <div className="text-center mt-8">
             <button
               onClick={() => onNavigate('reviews')}
-              className="inline-flex items-center gap-2 text-sm text-slate-400
+              className="inline-flex items-center gap-2 text-sm text-slate-500
                           hover:text-indigo-400 transition-colors cursor-pointer"
             >
               성공 사례 더보기
@@ -769,7 +769,7 @@ export default function LandingPage({
               </span>
               를 추천해드립니다
             </h2>
-            <p className="text-slate-500 text-base sm:text-lg">
+            <p className="text-slate-600 text-base sm:text-lg">
               결과에 따라 가장 적합한 전문가를 자동 매칭합니다.
             </p>
           </motion.div>
@@ -796,13 +796,13 @@ export default function LandingPage({
                     </div>
 
                     <h3 className="text-lg font-bold text-white mb-1">
-                      {lawyer.name} <span className="text-slate-400 font-normal">변호사</span>
+                      {lawyer.name} <span className="text-slate-500 font-normal">변호사</span>
                     </h3>
-                    <p className="text-sm text-slate-500 mb-3">
+                    <p className="text-sm text-slate-600 mb-3">
                       {lawyer.region} | {lawyer.fields.join('·')} 전문
                     </p>
 
-                    <div className="flex items-center justify-center gap-3 text-xs text-slate-400">
+                    <div className="flex items-center justify-center gap-3 text-xs text-slate-500">
                       <span className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5" />
                         매칭 {lawyer.matchedCount}건
@@ -822,7 +822,7 @@ export default function LandingPage({
             initial={{ opacity: 0 }}
             animate={expertInView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="text-center text-sm text-slate-500"
+            className="text-center text-sm text-slate-600"
           >
             <HeartHandshake className="inline w-4 h-4 mr-1 -mt-0.5" />
             전문가는 진단 결과에 따라 자동 매칭됩니다
@@ -884,7 +884,7 @@ export default function LandingPage({
               </span>
             </motion.button>
 
-            <p className="text-sm text-slate-500 tracking-wide">
+            <p className="text-sm text-slate-600 tracking-wide">
               소요시간 1분 · 회원가입 불필요 · 결과 즉시 확인
             </p>
           </motion.div>

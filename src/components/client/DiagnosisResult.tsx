@@ -70,7 +70,7 @@ const confidenceBadge = (level: 'high' | 'medium' | 'low') => {
   const map = {
     high: { label: '높은 적합도', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
     medium: { label: '보통', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-    low: { label: '참고', cls: 'bg-slate-500/15 text-slate-400 border-slate-500/30' },
+    low: { label: '참고', cls: 'bg-slate-500/15 text-slate-500 border-slate-500/30' },
   };
   return map[level];
 };
@@ -134,7 +134,7 @@ function ResultHero({
           className="relative"
         >
           <Sparkles className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-          <p className="text-sm text-slate-400 mb-2 tracking-wide">
+          <p className="text-sm text-slate-500 mb-2 tracking-wide">
             예상 조정 가능 금액
           </p>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-none">
@@ -212,7 +212,7 @@ function PrimaryStrategyCard({
             <div className="flex items-center gap-3">
               <span className="text-3xl">{STRATEGY_ICONS[strategy.type]}</span>
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-widest mb-0.5">
+                <p className="text-xs text-slate-600 uppercase tracking-widest mb-0.5">
                   추천 전략
                 </p>
                 <h2 className="text-2xl font-bold text-white">{strategy.label}</h2>
@@ -234,14 +234,14 @@ function PrimaryStrategyCard({
           {/* Key numbers */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-              <p className="text-xs text-slate-500 mb-1">예상 월 변제금</p>
+              <p className="text-xs text-slate-600 mb-1">예상 월 변제금</p>
               <p className="text-lg font-bold text-white">
                 약 {formatManWon(estimatedMonthlyPayment)}
               </p>
             </div>
             {duration && (
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                <p className="text-xs text-slate-500 mb-1">예상 변제 기간</p>
+                <p className="text-xs text-slate-600 mb-1">예상 변제 기간</p>
                 <p className="text-lg font-bold text-white">{duration}</p>
               </div>
             )}
@@ -272,7 +272,7 @@ function PrimaryStrategyCard({
 
             {/* Cons */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                 단점
               </p>
               <ul className="space-y-2">
@@ -282,9 +282,9 @@ function PrimaryStrategyCard({
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.7 + i * 0.08 }}
-                    className="flex items-start gap-2 text-sm text-slate-400"
+                    className="flex items-start gap-2 text-sm text-slate-500"
                   >
-                    <XCircle className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                    <XCircle className="w-4 h-4 text-slate-600 flex-shrink-0 mt-0.5" />
                     {con}
                   </motion.li>
                 ))}
@@ -323,9 +323,9 @@ function StrategyComparisonSection({
           다른 전략도 비교해보세요
         </span>
         {open ? (
-          <ChevronUp className="w-5 h-5 text-slate-400" />
+          <ChevronUp className="w-5 h-5 text-slate-500" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-slate-400" />
+          <ChevronDown className="w-5 h-5 text-slate-500" />
         )}
       </button>
 
@@ -363,27 +363,27 @@ function StrategyComparisonSection({
                           <span className="text-xl">{STRATEGY_ICONS[s.type]}</span>
                           <h3 className="text-sm font-bold text-white">{s.label}</h3>
                           {isPrimary && (
-                            <span className="text-[10px] bg-indigo-500/30 text-indigo-300 px-1.5 py-0.5 rounded-full font-semibold">
+                            <span className="text-[12px] bg-indigo-500/30 text-indigo-300 px-1.5 py-0.5 rounded-full font-semibold">
                               추천
                             </span>
                           )}
                         </div>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}
+                          className={`text-[12px] px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}
                         >
                           {badge.label}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                         {s.description}
                       </p>
 
                       {/* Expand indicator */}
                       <div className="flex justify-center mt-2">
                         {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-slate-500" />
+                          <ChevronUp className="w-4 h-4 text-slate-600" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-slate-500" />
+                          <ChevronDown className="w-4 h-4 text-slate-600" />
                         )}
                       </div>
                     </div>
@@ -400,10 +400,10 @@ function StrategyComparisonSection({
                           <div className="px-4 pb-4 pt-1 border-t border-white/5">
                             <div className="grid grid-cols-2 gap-3 mt-2">
                               <div>
-                                <p className="text-[10px] text-emerald-400 font-semibold mb-1">장점</p>
+                                <p className="text-[12px] text-emerald-400 font-semibold mb-1">장점</p>
                                 <ul className="space-y-1">
                                   {s.pros.map((p, i) => (
-                                    <li key={i} className="text-[11px] text-slate-300 flex items-start gap-1">
+                                    <li key={i} className="text-[13px] text-slate-300 flex items-start gap-1">
                                       <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
                                       {p}
                                     </li>
@@ -411,11 +411,11 @@ function StrategyComparisonSection({
                                 </ul>
                               </div>
                               <div>
-                                <p className="text-[10px] text-slate-500 font-semibold mb-1">단점</p>
+                                <p className="text-[12px] text-slate-600 font-semibold mb-1">단점</p>
                                 <ul className="space-y-1">
                                   {s.cons.map((c, i) => (
-                                    <li key={i} className="text-[11px] text-slate-400 flex items-start gap-1">
-                                      <XCircle className="w-3 h-3 text-slate-500 flex-shrink-0 mt-0.5" />
+                                    <li key={i} className="text-[13px] text-slate-500 flex items-start gap-1">
+                                      <XCircle className="w-3 h-3 text-slate-600 flex-shrink-0 mt-0.5" />
                                       {c}
                                     </li>
                                   ))}
@@ -525,7 +525,7 @@ function MatchingGuidanceCard() {
           <h4 className="font-bold text-white text-xs mb-3 flex items-center gap-1.5">
             <span>📊</span> 나만을 위한 1:1 전담 파트너 케어 범위:
           </h4>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-400">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-500">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>불법 추심/독촉 즉시 대리 대응 (대리인 제도)</span>
@@ -589,7 +589,7 @@ function CTASection({
         >
           <Users className="w-5 h-5 text-indigo-400" />
           <span>⚖️ 맞춤 전문가 목록 보기</span>
-          <ArrowRight className="w-4 h-4 ml-1 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          <ArrowRight className="w-4 h-4 ml-1 text-slate-500 group-hover:translate-x-0.5 transition-transform" />
         </motion.button>
       </div>
 
@@ -597,7 +597,7 @@ function CTASection({
       <div className="text-center mb-8">
         <button
           onClick={onRetakeDiagnosis}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-300 transition-colors"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           다시 체크하기
@@ -637,14 +637,14 @@ export default function DiagnosisResultPage({
         <div className="max-w-2xl mx-auto flex items-center justify-between px-4 py-3">
           <button
             onClick={onGoHome}
-            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             홈으로
           </button>
           <div className="flex items-center gap-1.5">
             <Shield className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs text-slate-500 font-medium">사전 체크 결과</span>
+            <span className="text-xs text-slate-600 font-medium">사전 체크 결과</span>
           </div>
         </div>
       </motion.header>

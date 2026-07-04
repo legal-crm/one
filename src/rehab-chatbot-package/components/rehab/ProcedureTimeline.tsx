@@ -156,7 +156,7 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                                 >
                                     {step.icon}
                                     {/* Step Number Badge */}
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-slate-800 rounded-full text-[10px] font-bold flex items-center justify-center border border-white/20">
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-slate-800 rounded-full text-[12px] font-bold flex items-center justify-center border border-white/20">
                                         {step.id}
                                     </span>
                                 </motion.div>
@@ -174,7 +174,7 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                                             <h5 className={`text-sm font-semibold ${step.color}`}>
                                                 {step.title}
                                             </h5>
-                                            <p className="text-xs text-slate-400 mt-0.5">
+                                            <p className="text-xs text-slate-500 mt-0.5">
                                                 {step.description}
                                             </p>
                                         </div>
@@ -186,7 +186,7 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                                                 animate={{ rotate: expandedStep === step.id ? 180 : 0 }}
                                                 transition={{ duration: 0.2 }}
                                             >
-                                                <ChevronDown className="w-4 h-4 text-slate-400" />
+                                                <ChevronDown className="w-4 h-4 text-slate-500" />
                                             </motion.div>
                                         </div>
                                     </div>
@@ -232,12 +232,12 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                             <Clock className="w-4 h-4 text-cyan-400" />
                         </div>
                         <div>
-                            <p className="text-xs text-slate-400">총 예상 소요기간</p>
+                            <p className="text-xs text-slate-500">총 예상 소요기간</p>
                             <p className="text-sm font-bold text-white">신청~면책 약 <span className="text-cyan-400">4~6년</span></p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs text-slate-400">변제 기간</p>
+                        <p className="text-xs text-slate-500">변제 기간</p>
                         <p className="text-sm font-bold text-green-400">3~5년</p>
                     </div>
                 </div>
@@ -251,7 +251,7 @@ export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processing
                         className="h-full bg-gradient-to-r from-blue-500 via-purple-500 via-cyan-500 via-green-500 via-orange-500 to-yellow-500"
                     />
                 </div>
-                <div className="flex justify-between mt-1 text-[10px] text-slate-500">
+                <div className="flex justify-between mt-1 text-[12px] text-slate-600">
                     <span>신청</span>
                     <span>개시결정</span>
                     <span>인가</span>

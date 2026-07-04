@@ -321,7 +321,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
                         initial={{ opacity: 0 }}
                         animate={isInView ? { opacity: 1 } : { opacity: 0 }}
                         transition={{ delay: delay + 0.8, duration: 0.3 }}
-                        className="text-[10px] text-gray-400"
+                        className="text-[12px] text-gray-400"
                     >
                         {sublabel}
                     </motion.span>

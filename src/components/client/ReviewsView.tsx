@@ -59,15 +59,15 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
           {/* Micro statistics banner */}
           <div className="grid grid-cols-3 gap-3 md:gap-5 pt-4 border-t border-slate-700/50">
             <div className="space-y-1">
-              <span className="block text-[10px] md:text-xs text-slate-400 font-bold">누적 탕감액</span>
+              <span className="block text-[12px] md:text-xs text-slate-500 font-bold">누적 탕감액</span>
               <span className="block text-sm md:text-lg font-bold text-amber-400">84억 5,000만원+</span>
             </div>
             <div className="space-y-1">
-              <span className="block text-[10px] md:text-xs text-slate-400 font-bold">인가면책 성공률</span>
+              <span className="block text-[12px] md:text-xs text-slate-500 font-bold">인가면책 성공률</span>
               <span className="block text-sm md:text-lg font-bold text-indigo-400">98.7%</span>
             </div>
             <div className="space-y-1">
-              <span className="block text-[10px] md:text-xs text-slate-400 font-bold">평균 감면율</span>
+              <span className="block text-[12px] md:text-xs text-slate-500 font-bold">평균 감면율</span>
               <span className="block text-sm md:text-lg font-bold text-emerald-400">최대 78%</span>
             </div>
           </div>
@@ -78,7 +78,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-100 dark:border-slate-800 p-6 rounded-2xl shadow-premium space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
               type="text"
               placeholder="검색어 입력 (예: 코인, 독촉, 이소민...)"
@@ -87,12 +87,12 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-10 py-3 text-xs focus:ring-1 focus:ring-brand focus:outline-none font-bold"
             />
             {searchQuery && (
-              <button onClick={() => { setSearchQuery(''); setPage(1); }} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button onClick={() => { setSearchQuery(''); setPage(1); }} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-          <span className="text-xs text-slate-400 dark:text-slate-400 font-bold self-end md:self-center">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-bold self-end md:self-center">
             검색 결과: <strong className="text-brand dark:text-brand-light text-sm">{filteredReviews.length}</strong>건
           </span>
         </div>
@@ -118,8 +118,8 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
       {filteredReviews.length === 0 ? (
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-12 rounded-2xl text-center space-y-3 shadow-premium">
           <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
-          <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">일치하는 성공 사례가 없습니다.</h4>
-          <p className="text-xs text-slate-500">다른 검색어를 입력하시거나 카테고리 필터를 변경해 주세요.</p>
+          <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200">일치하는 성공 사례가 없습니다.</h4>
+          <p className="text-xs text-slate-600">다른 검색어를 입력하시거나 카테고리 필터를 변경해 주세요.</p>
           <button
             onClick={() => { setCategoryFilter('전체'); setSearchQuery(''); setPage(1); }}
             className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
@@ -138,24 +138,24 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand/10 to-transparent"></div>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="bg-brand/5 border border-brand/20 text-brand dark:text-brand-light text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">{rev.category}</span>
+                      <span className="bg-brand/5 border border-brand/20 text-brand dark:text-brand-light text-[12px] font-bold px-3 py-1 rounded-full shadow-sm">{rev.category}</span>
                       <div className="flex text-amber-400 text-xs tracking-wider">★★★★★</div>
                     </div>
-                    <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white leading-snug group-hover:text-brand dark:group-hover:text-brand-light transition-colors line-clamp-2">
+                    <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-snug group-hover:text-brand dark:group-hover:text-brand-light transition-colors line-clamp-2">
                       "{rev.title}"
                     </h3>
                     <div className="bg-slate-50/60 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs font-bold shadow-sm">
-                      <div className="flex justify-between items-center text-slate-500 font-semibold">
+                      <div className="flex justify-between items-center text-slate-600 font-semibold">
                         <span>기존 채무액</span>
-                        <span className="line-through text-slate-400">{rev.originalDebt.toLocaleString()}만원</span>
+                        <span className="line-through text-slate-500">{rev.originalDebt.toLocaleString()}만원</span>
                       </div>
-                      <div className="flex justify-between items-center text-slate-800 dark:text-white font-bold">
+                      <div className="flex justify-between items-center text-slate-900 dark:text-white font-bold">
                         <span>조정 후 채무</span>
                         <span className="text-indigo-600 dark:text-indigo-400 font-bold">
                           {rev.remainingDebt === 0 ? "전액 탕감 (0원)" : `${rev.remainingDebt.toLocaleString()}만원`}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center pt-2.5 border-t border-slate-200 dark:border-slate-800 text-[10px] font-bold">
+                      <div className="flex justify-between items-center pt-2.5 border-t border-slate-200 dark:border-slate-800 text-[12px] font-bold">
                         <span className="text-emerald-600 dark:text-emerald-400">총 감면 혜택</span>
                         <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded font-bold">
                           {reductionRate}% 감면 (-{saved.toLocaleString()}만원)
@@ -165,7 +165,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium line-clamp-3 md:line-clamp-none">{rev.content}</p>
                     <div className="flex flex-wrap gap-1.5 pt-1.5">
                       {rev.tags.map(t => (
-                        <button key={t} onClick={() => { setSearchQuery(t); setPage(1); }} className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 px-2 py-1 rounded-md hover:text-brand-hover dark:hover:text-brand-light transition-colors font-bold cursor-pointer">
+                        <button key={t} onClick={() => { setSearchQuery(t); setPage(1); }} className="text-[12px] text-slate-600 dark:text-slate-400 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 px-2 py-1 rounded-md hover:text-brand-hover dark:hover:text-brand-light transition-colors font-bold cursor-pointer">
                           #{t}
                         </button>
                       ))}
@@ -173,12 +173,12 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                   </div>
                   <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400 font-bold">{rev.author} 의뢰인님</span>
+                      <span className="text-slate-500 font-bold">{rev.author} 의뢰인님</span>
                       <div className="flex items-center gap-2">
                         <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-6 h-6 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shadow-sm" />
                         <div className="text-left">
-                          <span className="block font-bold text-slate-700 dark:text-slate-300 text-[11px] leading-none">{rev.lawyerName}</span>
-                          <span className="text-[10px] text-slate-400 font-bold">도산 전담 변호사</span>
+                          <span className="block font-bold text-slate-700 dark:text-slate-300 text-[13px] leading-none">{rev.lawyerName}</span>
+                          <span className="text-[12px] text-slate-500 font-bold">도산 전담 변호사</span>
                         </div>
                       </div>
                     </div>
@@ -195,7 +195,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-1.5 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
-              <button type="button" disabled={activePage === 1} onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${activePage === 1 ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-400 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>
+              <button type="button" disabled={activePage === 1} onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${activePage === 1 ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>
                 이전
               </button>
               {Array.from({ length: totalPages }).map((_, idx) => {
@@ -204,7 +204,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                   <button key={pNum} type="button" onClick={() => { setPage(pNum); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`w-9 h-9 rounded-xl border text-xs font-bold transition-all cursor-pointer ${activePage === pNum ? 'bg-brand border-brand text-white shadow-md shadow-brand/20 scale-105' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>{pNum}</button>
                 );
               })}
-              <button type="button" disabled={activePage === totalPages} onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${activePage === totalPages ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-400 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>
+              <button type="button" disabled={activePage === totalPages} onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${activePage === totalPages ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>
                 다음
               </button>
             </div>

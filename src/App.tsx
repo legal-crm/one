@@ -366,7 +366,7 @@ export default function App() {
           
           <div className="space-y-2">
             <h3 className="font-extrabold text-lg text-white">보안 보호된 채무 리포트</h3>
-            <p className="text-xs text-slate-400 leading-relaxed px-4">
+            <p className="text-xs text-slate-500 leading-relaxed px-4">
               본 채무 리포트는 비밀번호로 보호되어 있습니다.<br />
               공유자로부터 전달받은 <strong>숫자 4자리 비밀번호</strong>를 입력해 주세요.
             </p>
@@ -390,7 +390,7 @@ export default function App() {
             />
 
             {pinError && (
-              <div className="flex items-center gap-1.5 justify-center text-red-400 text-[11px] font-bold">
+              <div className="flex items-center gap-1.5 justify-center text-red-400 text-[13px] font-bold">
                 <AlertCircle className="w-3.5 h-3.5" />
                 <span>비밀번호가 일치하지 않습니다. 다시 입력해주세요.</span>
               </div>
@@ -400,7 +400,7 @@ export default function App() {
           <button
             onClick={handleUnlock}
             disabled={pin.length !== 4}
-            className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-bold rounded-xl transition-colors"
+            className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-xl transition-colors"
           >
             보고서 잠금 해제하기
           </button>
@@ -410,7 +410,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
+    <div className="flex flex-col min-h-screen text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
       
       {/* Role View Render */}
       <div className="flex-1">

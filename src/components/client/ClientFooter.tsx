@@ -11,12 +11,12 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
   return (
     <>
       {/* Babitalk-style Footer (Company Info) */}
-      <div className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-500 text-left space-y-6">
+      <div className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-600 text-left space-y-6">
         <div className="flex items-center gap-2">
           <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
           <span className="font-bold text-sm text-slate-600 dark:text-slate-400">{platformConfig.siteLogoText || "주식회사 my김변"}</span>
         </div>
-        <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-xs text-slate-400 dark:text-slate-500">
+        <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-xs text-slate-500 dark:text-slate-500">
           <div className="flex-1 flex-col justify-start items-start gap-2 inline-flex">
             <div className="self-stretch justify-start items-center gap-1.5 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400">
               <span>{platformConfig.siteLogoText || "주식회사 my김변"}</span>
@@ -35,26 +35,26 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
             </p>
           </div>
           <div className="flex-1 flex-col justify-start items-start md:items-end gap-2 inline-flex">
-            <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs">
+            <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400 text-[13px] sm:text-xs">
               {onNavigate && (
                 <>
                   <span 
                     onClick={() => onNavigate('notices')}
-                    className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
+                    className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
                   >
                     공지사항
                   </span>
                   <span className="text-slate-300">·</span>
                   <span 
                     onClick={() => onNavigate('calculator')}
-                    className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
+                    className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
                   >
                     변제 시뮬레이션
                   </span>
                   <span className="text-slate-300">·</span>
                   <span 
                     onClick={() => onNavigate('inquiry')}
-                    className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
+                    className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
                   >
                     1:1 문의
                   </span>
@@ -65,7 +65,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
                 href="/tos.html"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
+                className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
               >
                 서비스 이용약관
               </a>
@@ -74,7 +74,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
                 href="/privacy.html"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
+                className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
               >
                 개인정보 처리방침
               </a>
@@ -83,7 +83,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
                 href="/legal.html"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="cursor-pointer hover:underline hover:text-slate-800 dark:hover:text-white"
+                className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
               >
                 법적 고지사항
               </a>
@@ -97,7 +97,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
       </div>
 
       {/* Footer */}
-      <footer className="bg-slate-200 dark:bg-slate-950/80 border-t border-slate-300 dark:border-slate-900 py-6 px-4 text-[11px] text-center text-slate-500 space-y-1">
+      <footer className="bg-slate-200 dark:bg-slate-950/80 border-t border-slate-300 dark:border-slate-900 py-6 px-4 text-[13px] text-center text-slate-600 space-y-1">
         <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 my김변(마이김변). All rights reserved.</p>
         <p className="mt-1">본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
       </footer>

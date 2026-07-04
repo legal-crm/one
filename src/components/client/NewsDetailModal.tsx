@@ -37,18 +37,18 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
 
           <div className="absolute bottom-6 left-6 right-6 text-white text-left space-y-2">
             <div className="flex items-center gap-2">
-              <span className="bg-brand text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+              <span className="bg-brand text-white text-[12px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
                 {article.category}
               </span>
               {article.badge && (
-                <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
+                <span className={`text-[12px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
                   article.badge === 'HOT' ? 'bg-orange-500' :
                   article.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
                 }`}>
                   {article.badge}
                 </span>
               )}
-              <span className="text-[10px] text-slate-300 font-medium">
+              <span className="text-[12px] text-slate-300 font-medium">
                 조회 {article.views} • {article.date}
               </span>
             </div>
@@ -78,13 +78,13 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
             />
             <div className="space-y-0.5">
               <div className="flex items-center gap-1.5 leading-none">
-                <span className="font-semibold text-sm text-slate-800 dark:text-white">{matchingLawyer.name}</span>
-                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold px-1.5 py-0.5 rounded-md">도산 전문 변호사</span>
+                <span className="font-semibold text-sm text-slate-900 dark:text-white">{matchingLawyer.name}</span>
+                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[12px] font-semibold px-1.5 py-0.5 rounded-md">도산 전문 변호사</span>
               </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block">
+              <span className="text-[12px] text-slate-600 dark:text-slate-400 font-medium block">
                 ★ {rating} · 후기 {reviewsCount}건 · 매칭 {matchingLawyer.matchedCount}건
               </span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal line-clamp-1 block">
+              <span className="text-[12px] text-slate-500 dark:text-slate-500 font-normal line-clamp-1 block">
                 {matchingLawyer.bio}
               </span>
             </div>
@@ -93,7 +93,7 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
           <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
             <button 
               onClick={onClose}
-              className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               닫기
             </button>

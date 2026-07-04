@@ -8,17 +8,31 @@
   /* ── Typography ── */
   --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 
+  /* ── Font Size Scale Override (가독성 강화 · 로톡 벤치마킹) ── */
+  --font-size-xs: 0.8125rem;              /* 12px → 13px */
+  --font-size-xs--line-height: 1.125rem;  /* 18px */
+  --font-size-sm: 0.9375rem;              /* 14px → 15px */
+  --font-size-sm--line-height: 1.375rem;  /* 22px */
+  --font-size-base: 1.0625rem;            /* 16px → 17px */
+  --font-size-base--line-height: 1.625rem;/* 26px */
+  --font-size-lg: 1.1875rem;              /* 18px → 19px */
+  --font-size-lg--line-height: 1.75rem;   /* 28px */
+  --font-size-xl: 1.375rem;               /* 20px → 22px */
+  --font-size-xl--line-height: 1.875rem;  /* 30px */
+  --font-size-2xl: 1.625rem;              /* 24px → 26px */
+  --font-size-2xl--line-height: 2.125rem; /* 34px */
+
   /* ── Brand Colors ── */
   --color-brand: #7264FF;
   --color-brand-hover: #5b4cf5;
   --color-brand-light: #f0efff;
   --color-brand-deep: #4338ca;
 
-  /* ── Semantic Text Colors (mapped to valid Tailwind slate) ── */
-  --color-text-primary: #1e293b;     /* slate-800 */
-  --color-text-secondary: #475569;   /* slate-600 */
-  --color-text-muted: #94a3b8;       /* slate-400 */
-  --color-text-subtle: #cbd5e1;      /* slate-300 */
+  /* ── Semantic Text Colors (대비 강화 · 가독성 개선) ── */
+  --color-text-primary: #0f172a;     /* slate-900 · 더 진한 기본 텍스트 */
+  --color-text-secondary: #334155;   /* slate-700 · 보조 텍스트 대비 강화 */
+  --color-text-muted: #64748b;       /* slate-500 · 뮤트 텍스트도 읽기 쉽게 */
+  --color-text-subtle: #94a3b8;      /* slate-400 · 서브틀 텍스트 한 단계 진하게 */
 
   /* ── Semantic Border Colors ── */
   --color-border-default: #e2e8f0;   /* slate-200 */

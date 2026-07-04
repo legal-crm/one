@@ -395,10 +395,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     const staff = staffMembers.find(s => s.id === id);
     if (staff) {
       const cfg = STAFF_ROLE_CONFIG[staff.role];
-      return <span className={`text-[8px] px-1 py-0.5 rounded ${cfg.bgColor} ${cfg.color} font-bold`}>{cfg.label}</span>;
+      return <span className={`text-[10px] px-1 py-0.5 rounded ${cfg.bgColor} ${cfg.color} font-bold`}>{cfg.label}</span>;
     }
     const lawyer = lawyers.find(l => l.id === id);
-    if (lawyer) return <span className="text-[8px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold">변호사</span>;
+    if (lawyer) return <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold">변호사</span>;
     return null;
   };
 
@@ -423,11 +423,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       <div className="bg-white p-5 rounded-3xl border border-slate-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-brand" />
               <span>상담 신청 고객 통합 관리 CRM</span>
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">상담이 접수된 전체 의뢰인의 진단 결과, 담당자 지정 및 진행 단계를 상세 관리합니다.</p>
+            <p className="text-xs text-slate-500 mt-0.5">상담이 접수된 전체 의뢰인의 진단 결과, 담당자 지정 및 진행 단계를 상세 관리합니다.</p>
           </div>
           <div className="flex items-center gap-2">
             {/* 직원 전환 드롭다운 */}
@@ -458,25 +458,25 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
-            <div className="text-2xl font-black text-slate-800">{stats.total}</div>
-            <div className="text-[10px] text-slate-400 font-bold">전체 고객</div>
+            <div className="text-2xl font-black text-slate-900">{stats.total}</div>
+            <div className="text-[12px] text-slate-500 font-bold">전체 고객</div>
           </div>
           <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-center">
             <div className="text-2xl font-black text-yellow-600">{stats.consulting}</div>
-            <div className="text-[10px] text-yellow-500 font-bold">상담/수임 중</div>
+            <div className="text-[12px] text-yellow-500 font-bold">상담/수임 중</div>
           </div>
           <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center">
             <div className="text-2xl font-black text-emerald-600">{stats.active}</div>
-            <div className="text-[10px] text-emerald-500 font-bold">진행 사건</div>
+            <div className="text-[12px] text-emerald-500 font-bold">진행 사건</div>
           </div>
           <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center">
             <div className="text-2xl font-black text-blue-600">+{stats.thisMonth}</div>
-            <div className="text-[10px] text-blue-500 font-bold">이번달 신규</div>
+            <div className="text-[12px] text-blue-500 font-bold">이번달 신규</div>
           </div>
         </div>
 
         {/* 담당자별 건수 */}
-        <div className="flex flex-wrap gap-2 mt-3 text-[10px] text-slate-500">
+        <div className="flex flex-wrap gap-2 mt-3 text-[12px] text-slate-600">
           {staffMembers.filter(m => m.isActive).map(m => {
             const count = requests.filter(r => {
               const ext = getCrmExt(r.id);
@@ -498,34 +498,34 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       {showStaffPanel && (
         <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+            <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-brand" /> 법무법인 직원 관리
             </h3>
-            <button onClick={() => setShowStaffPanel(false)} className="text-slate-400 hover:text-slate-600 text-xs">닫기 ✕</button>
+            <button onClick={() => setShowStaffPanel(false)} className="text-slate-500 hover:text-slate-600 text-xs">닫기 ✕</button>
           </div>
 
           <table className="w-full text-xs text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-400 font-bold">
+              <tr className="border-b border-slate-200 text-slate-500 font-bold">
                 <th className="p-2">이름</th><th className="p-2">역할</th><th className="p-2">담당 건수</th><th className="p-2">상태</th><th className="p-2 text-right">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {staffMembers.map(m => (
                 <tr key={m.id} className="hover:bg-slate-50">
-                  <td className="p-2 font-bold text-slate-800">{m.name}</td>
+                  <td className="p-2 font-bold text-slate-900">{m.name}</td>
                   <td className="p-2">
-                    <span className={`text-[10px] px-2 py-0.5 rounded ${STAFF_ROLE_CONFIG[m.role].bgColor} ${STAFF_ROLE_CONFIG[m.role].color} font-bold border`}>
+                    <span className={`text-[12px] px-2 py-0.5 rounded ${STAFF_ROLE_CONFIG[m.role].bgColor} ${STAFF_ROLE_CONFIG[m.role].color} font-bold border`}>
                       {STAFF_ROLE_CONFIG[m.role].label}
                     </span>
                   </td>
-                  <td className="p-2 text-slate-500">
+                  <td className="p-2 text-slate-600">
                     {requests.filter(r => { const ext = getCrmExt(r.id); return ext.assignedLawyerId === m.id || ext.assignedConsultantId === m.id || ext.assignedStaffId === m.id; }).length}건
                   </td>
-                  <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${m.isActive ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-400'}`}>{m.isActive ? '활성' : '비활성'}</span></td>
+                  <td className="p-2"><span className={`text-[12px] px-1.5 py-0.5 rounded ${m.isActive ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-500'}`}>{m.isActive ? '활성' : '비활성'}</span></td>
                   <td className="p-2 text-right">
                     {m.role !== 'OWNER' && (
-                      <button onClick={() => handleRemoveStaff(m.id)} className="text-slate-400 hover:text-red-400">
+                      <button onClick={() => handleRemoveStaff(m.id)} className="text-slate-500 hover:text-red-400">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -537,7 +537,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
           <div className="flex gap-2 pt-2 border-t border-slate-100">
             <input type="text" placeholder="직원 이름" value={newStaffName} onChange={e => setNewStaffName(e.target.value)}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-800" />
+              className="flex-1 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-900" />
             <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value as StaffRole)}
               className="bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-600">
               <option value="LAWYER">담당 변호사</option>
@@ -556,8 +556,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:max-w-xs">
           <input type="text" placeholder="고객명 또는 연락처 검색..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="w-full bg-white border border-slate-200 rounded-[200px] py-1.5 px-4 pl-9 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-800 placeholder-slate-400" />
-          <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-slate-400" />
+            className="w-full bg-white border border-slate-200 rounded-[200px] py-1.5 px-4 pl-9 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400" />
+          <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-slate-500" />
         </div>
 
         <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end items-center">
@@ -582,10 +582,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           </select>
 
           <div className="flex border border-slate-200 rounded-lg overflow-hidden">
-            <button onClick={() => setViewMode('list')} className={`p-1.5 ${viewMode === 'list' ? 'bg-brand text-white' : 'bg-white text-slate-400 hover:bg-slate-50'}`}>
+            <button onClick={() => setViewMode('list')} className={`p-1.5 ${viewMode === 'list' ? 'bg-brand text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
               <List className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => setViewMode('kanban')} className={`p-1.5 ${viewMode === 'kanban' ? 'bg-brand text-white' : 'bg-white text-slate-400 hover:bg-slate-50'}`}>
+            <button onClick={() => setViewMode('kanban')} className={`p-1.5 ${viewMode === 'kanban' ? 'bg-brand text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -601,7 +601,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               className="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
               {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].label}</option>)}
             </select>
-            <button onClick={handleBulkStatusChange} className="bg-brand hover:bg-brand-hover text-white px-3 py-1 rounded-[200px] text-[11px] font-bold">
+            <button onClick={handleBulkStatusChange} className="bg-brand hover:bg-brand-hover text-white px-3 py-1 rounded-[200px] text-[13px] font-bold">
               상태 일괄 변경
             </button>
           </div>
@@ -612,11 +612,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               {staffMembers.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
             <button onClick={handleBulkAssign} disabled={!bulkAssignee}
-              className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-3 py-1 rounded-[200px] text-[11px] font-bold">
+              className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-3 py-1 rounded-[200px] text-[13px] font-bold">
               담당 일괄 배정
             </button>
           </div>
-          <button onClick={() => setSelectedIds(new Set())} className="text-slate-400 hover:text-slate-600 ml-auto text-[11px]">선택 해제</button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-slate-500 hover:text-slate-600 ml-auto text-[13px]">선택 해제</button>
         </div>
       )}
 
@@ -628,7 +628,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-400 font-bold border-b border-slate-200">
+                  <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
                     <th className="p-2.5 w-8">
                       <input type="checkbox" checked={selectedIds.size === pagedRequests.length && pagedRequests.length > 0} onChange={handleSelectAll}
                         className="rounded border-slate-300" />
@@ -661,24 +661,24 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => handleToggleSelect(r.id)} className="rounded border-slate-300" />
                         </td>
                         <td className="p-2.5">
-                          <div className="font-bold text-slate-800">{r.clientName}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{getDisplayPhoneNumber(r)}</div>
+                          <div className="font-bold text-slate-900">{r.clientName}</div>
+                          <div className="text-[12px] text-slate-500 font-mono">{getDisplayPhoneNumber(r)}</div>
                         </td>
                         <td className="p-2.5">
-                          <span className={`text-[10px] px-2 py-0.5 rounded border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold`}>
+                          <span className={`text-[12px] px-2 py-0.5 rounded border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold`}>
                             {sc.emoji} {sc.label}
                           </span>
                         </td>
                         <td className="p-2.5">
                           <div className="flex items-center gap-1">
                             {getStaffRoleBadge(ext.assignedLawyerId)}
-                            <span className="text-[10px] text-slate-600">{getStaffName(ext.assignedLawyerId)}</span>
+                            <span className="text-[12px] text-slate-600">{getStaffName(ext.assignedLawyerId)}</span>
                           </div>
                         </td>
-                        <td className="p-2.5 text-right font-bold text-red-500 text-[11px]">
+                        <td className="p-2.5 text-right font-bold text-red-500 text-[13px]">
                           {r.financialProfile.debtTotal.toLocaleString()}만
                         </td>
-                        <td className="p-2.5 text-right text-[10px] text-slate-400">
+                        <td className="p-2.5 text-right text-[12px] text-slate-500">
                           <div>{new Date(r.createdAt).toLocaleDateString()}</div>
                           <div className="text-slate-350">{timeAgo(ext.lastActivityAt)}</div>
                         </td>
@@ -686,14 +686,14 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     );
                   })}
                   {pagedRequests.length === 0 && (
-                    <tr><td colSpan={6} className="p-8 text-center text-slate-400 text-xs">검색 조건에 부합하는 고객이 없습니다.</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-slate-500 text-xs">검색 조건에 부합하는 고객이 없습니다.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
 
             {/* 페이지네이션 */}
-            <div className="flex items-center justify-between p-3 border-t border-slate-100 text-xs text-slate-400">
+            <div className="flex items-center justify-between p-3 border-t border-slate-100 text-xs text-slate-500">
               <span>총 {filteredRequests.length}건 중 {(page-1)*perPage+1}~{Math.min(page*perPage, filteredRequests.length)}건</span>
               <div className="flex items-center gap-1">
                 <button onClick={() => setPage(1)} disabled={page === 1} className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"><ChevronsLeft className="w-3.5 h-3.5" /></button>
@@ -704,7 +704,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   if (p > totalPages) return null;
                   return (
                     <button key={p} onClick={() => setPage(p)}
-                      className={`w-7 h-7 rounded text-[11px] font-bold ${p === page ? 'bg-brand text-white' : 'hover:bg-slate-100 text-slate-500'}`}>
+                      className={`w-7 h-7 rounded text-[13px] font-bold ${p === page ? 'bg-brand text-white' : 'hover:bg-slate-100 text-slate-600'}`}>
                       {p}
                     </button>
                   );
@@ -722,11 +722,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                 {/* 헤더 */}
                 <div className="p-4 border-b border-slate-100 flex justify-between items-start">
                   <div>
-                    <span className="text-[9px] text-brand font-bold block uppercase tracking-wider">CLIENT DETAIL</span>
-                    <h3 className="text-base font-extrabold text-slate-800">{selectedClient.clientName}</h3>
-                    <span className="text-[10px] text-slate-400">{getDisplayPhoneNumber(selectedClient)}</span>
+                    <span className="text-[11px] text-brand font-bold block uppercase tracking-wider">CLIENT DETAIL</span>
+                    <h3 className="text-base font-extrabold text-slate-900">{selectedClient.clientName}</h3>
+                    <span className="text-[12px] text-slate-500">{getDisplayPhoneNumber(selectedClient)}</span>
                   </div>
-                  <span className={`text-[10px] px-2 py-1 rounded border font-bold ${CRM_STATUS_CONFIG[selectedExt.crmStatus].bgColor} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].color} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].borderColor}`}>
+                  <span className={`text-[12px] px-2 py-1 rounded border font-bold ${CRM_STATUS_CONFIG[selectedExt.crmStatus].bgColor} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].color} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].borderColor}`}>
                     {CRM_STATUS_CONFIG[selectedExt.crmStatus].emoji} {CRM_STATUS_CONFIG[selectedExt.crmStatus].label}
                   </span>
                 </div>
@@ -735,7 +735,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                 <div className="flex border-b border-slate-100">
                   {([['info','👤 정보'],['docs','📂 서류'],['notes','📝 메모'],['timeline','📅 타임라인']] as [typeof detailTab, string][]).map(([key, label]) => (
                     <button key={key} onClick={() => setDetailTab(key)}
-                      className={`flex-1 py-2 text-[11px] font-bold transition-colors ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-400 hover:text-slate-600'}`}>
+                      className={`flex-1 py-2 text-[13px] font-bold transition-colors ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-600'}`}>
                       {label}
                     </button>
                   ))}
@@ -748,17 +748,17 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       {/* 인적 정보 */}
                       {currentPermissions.editClientInfo && (
                         <div className="space-y-2">
-                          <span className="text-[11px] font-bold text-slate-500 block">인적 정보</span>
+                          <span className="text-[13px] font-bold text-slate-600 block">인적 정보</span>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
-                              <label className="text-[10px] text-slate-400">의뢰인 이름</label>
+                              <label className="text-[12px] text-slate-500">의뢰인 이름</label>
                               <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs text-slate-800" />
+                                className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs text-slate-900" />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] text-slate-400">연락처</label>
+                              <label className="text-[12px] text-slate-500">연락처</label>
                               <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs text-slate-800" />
+                                className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs text-slate-900" />
                             </div>
                           </div>
                           <button onClick={handleSaveClientInfo}
@@ -771,19 +771,19 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                       {/* 채무 현황 + 전체 프로필 */}
                       <div className="space-y-2">
-                        <span className="text-[11px] font-bold text-slate-500 block">📊 채무 현황 및 의뢰인 프로필</span>
+                        <span className="text-[13px] font-bold text-slate-600 block">📊 채무 현황 및 의뢰인 프로필</span>
                         
                         {/* 핵심 4대 지표 */}
-                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                          <div className="bg-red-50 p-2 rounded border border-red-100"><span className="text-red-300 block text-[9px]">총 채무</span><span className="font-extrabold text-red-500 text-sm">{selectedClient.financialProfile.debtTotal.toLocaleString()}만</span></div>
-                          <div className="bg-blue-50 p-2 rounded border border-blue-100"><span className="text-blue-300 block text-[9px]">월 소득</span><span className="font-extrabold text-blue-600 text-sm">{selectedClient.financialProfile.income}만</span></div>
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">자산 합산</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.assetsTotal.toLocaleString()}만</span></div>
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-400 block text-[9px]">소득 대비 부채</span><span className="font-bold text-amber-500">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}배</span></div>
+                        <div className="grid grid-cols-2 gap-1.5 text-[13px]">
+                          <div className="bg-red-50 p-2 rounded border border-red-100"><span className="text-red-300 block text-[11px]">총 채무</span><span className="font-extrabold text-red-500 text-sm">{selectedClient.financialProfile.debtTotal.toLocaleString()}만</span></div>
+                          <div className="bg-blue-50 p-2 rounded border border-blue-100"><span className="text-blue-300 block text-[11px]">월 소득</span><span className="font-extrabold text-blue-600 text-sm">{selectedClient.financialProfile.income}만</span></div>
+                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-500 block text-[11px]">자산 합산</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.assetsTotal.toLocaleString()}만</span></div>
+                          <div className="bg-slate-50 p-2 rounded border border-slate-100"><span className="text-slate-500 block text-[11px]">소득 대비 부채</span><span className="font-bold text-amber-500">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}배</span></div>
                         </div>
 
                         {/* 인적사항 */}
-                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
-                          <span className="text-[9px] font-black text-indigo-400 tracking-wide uppercase block">👤 인적사항</span>
+                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[13px] text-slate-600">
+                          <span className="text-[11px] font-black text-indigo-400 tracking-wide uppercase block">👤 인적사항</span>
                           {selectedClient.financialProfile.age && (
                             <div className="flex justify-between"><span>나이</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.age}세</span></div>
                           )}
@@ -793,7 +793,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           )}
                           <div className="flex justify-between"><span>혼인 상태</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : selectedClient.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
                           {selectedClient.financialProfile.specialCondition && selectedClient.financialProfile.specialCondition !== 'none' && (
-                            <div className="bg-emerald-50 border border-emerald-200 p-1.5 rounded text-[10px] text-emerald-600 font-bold text-center mt-1">
+                            <div className="bg-emerald-50 border border-emerald-200 p-1.5 rounded text-[12px] text-emerald-600 font-bold text-center mt-1">
                               ⚡ 24개월 특례: {selectedClient.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : selectedClient.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : '고령자'}
                             </div>
                           )}
@@ -801,8 +801,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                         {/* 직업·주거 정보 */}
                         {selectedClient.financialProfile.jobType && (
-                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
-                            <span className="text-[9px] font-black text-cyan-500 tracking-wide uppercase block">💼 직업 · 주거</span>
+                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[13px] text-slate-600">
+                            <span className="text-[11px] font-black text-cyan-500 tracking-wide uppercase block">💼 직업 · 주거</span>
                             <div className="flex justify-between"><span>직업 유형</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.jobType === 'SALARIED' ? '급여소득' : selectedClient.financialProfile.jobType === 'BUSINESS' ? '영업소득' : selectedClient.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}{selectedClient.financialProfile.companyName ? ` (${selectedClient.financialProfile.companyName})` : ''}</span></div>
                             {selectedClient.financialProfile.employmentDate && (
                               <div className="flex justify-between"><span>입사/개업일</span><span className="text-slate-700">{selectedClient.financialProfile.employmentDate}</span></div>
@@ -837,8 +837,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         )}
 
                         {/* 채무 상세 */}
-                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
-                          <span className="text-[9px] font-black text-red-400 tracking-wide uppercase block">⚠️ 채무 상세</span>
+                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[13px] text-slate-600">
+                          <span className="text-[11px] font-black text-red-400 tracking-wide uppercase block">⚠️ 채무 상세</span>
                           <div className="flex justify-between"><span>채무 원인</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : selectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : selectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : selectedClient.financialProfile.debtCause === 'GAMBLING' ? '도박/사행성' : selectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
                           {selectedClient.financialProfile.speculativeLoss !== undefined && selectedClient.financialProfile.speculativeLoss > 0 && (
                             <div className="flex justify-between text-rose-500 font-semibold"><span>1년내 투자 손실</span><span>{selectedClient.financialProfile.speculativeLoss.toLocaleString()}만</span></div>
@@ -857,7 +857,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           {/* 채무 유형별 구성 */}
                           {(selectedClient.financialProfile.debtTypes.banks > 0 || selectedClient.financialProfile.debtTypes.cards > 0 || selectedClient.financialProfile.debtTypes.personals > 0) && (
                             <div className="border-t border-slate-200 mt-1 pt-1 space-y-0.5">
-                              <span className="text-[9px] text-slate-400 font-bold">채무 유형별 구성</span>
+                              <span className="text-[11px] text-slate-500 font-bold">채무 유형별 구성</span>
                               {selectedClient.financialProfile.debtTypes.banks > 0 && (
                                 <div className="flex justify-between"><span>은행 대출</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.banks.toLocaleString()}만</span></div>
                               )}
@@ -879,8 +879,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                         {/* 생계비 구성 */}
                         {(selectedClient.financialProfile.rentCost || selectedClient.financialProfile.medicalCost || selectedClient.financialProfile.educationCost || selectedClient.financialProfile.monthlyFixedExpenses) && (
-                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
-                            <span className="text-[9px] font-black text-teal-500 tracking-wide uppercase block">🏠 월 생계비 구성</span>
+                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[13px] text-slate-600">
+                            <span className="text-[11px] font-black text-teal-500 tracking-wide uppercase block">🏠 월 생계비 구성</span>
                             {selectedClient.financialProfile.rentCost !== undefined && selectedClient.financialProfile.rentCost > 0 && (
                               <div className="flex justify-between"><span>월세</span><span className="text-slate-700">{selectedClient.financialProfile.rentCost}만</span></div>
                             )}
@@ -901,12 +901,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                         {/* 퇴직금 */}
                         {selectedClient.financialProfile.retirementPay !== undefined && selectedClient.financialProfile.retirementPay > 0 && (
-                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px] text-slate-500">
-                            <span className="text-[9px] font-black text-amber-500 tracking-wide uppercase block">💼 퇴직금</span>
+                          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[13px] text-slate-600">
+                            <span className="text-[11px] font-black text-amber-500 tracking-wide uppercase block">💼 퇴직금</span>
                             <div className="flex justify-between"><span>예상 퇴직금</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.retirementPay.toLocaleString()}만</span></div>
                             <div className="flex justify-between"><span>퇴직연금 형태</span><span className={selectedClient.financialProfile.retirementPensionType === 'unknown' ? 'font-bold text-amber-500' : 'text-slate-700'}>{selectedClient.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' : selectedClient.financialProfile.retirementPensionType === 'none' ? '미가입 (50% 반영)' : '모름 (50% 반영)'}</span></div>
                             {selectedClient.financialProfile.retirementPensionType === 'unknown' && (
-                              <div className="bg-amber-50 border border-amber-200 p-1.5 rounded text-[10px] text-amber-600 font-bold text-center">⚠️ 퇴직금 가입 형태 확인 필요</div>
+                              <div className="bg-amber-50 border border-amber-200 p-1.5 rounded text-[12px] text-amber-600 font-bold text-center">⚠️ 퇴직금 가입 형태 확인 필요</div>
                             )}
                           </div>
                         )}
@@ -915,7 +915,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         {selectedClient.financialProfile.riskFlags && selectedClient.financialProfile.riskFlags.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {selectedClient.financialProfile.riskFlags.map((flag, i) => (
-                              <span key={i} className="text-[9px] bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded font-bold">🚨 {flag}</span>
+                              <span key={i} className="text-[11px] bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded font-bold">🚨 {flag}</span>
                             ))}
                           </div>
                         )}
@@ -925,17 +925,17 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       {/* 배정 + 상태 */}
                       {currentPermissions.changeStatus && (
                         <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-bold text-brand block">⚙️ 담당자 배정 및 상태</span>
+                          <span className="text-[13px] font-bold text-brand block">⚙️ 담당자 배정 및 상태</span>
                           <div className="space-y-2 text-xs">
                             <div className="flex items-center gap-3">
-                              <span className="text-slate-400 w-20 shrink-0 text-right">진행 상태:</span>
+                              <span className="text-slate-500 w-20 shrink-0 text-right">진행 상태:</span>
                               <select value={editStatus} onChange={e => setEditStatus(e.target.value as CrmStatus)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>)}
                               </select>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-slate-400 w-20 shrink-0 text-right">담당 변호사:</span>
+                              <span className="text-slate-500 w-20 shrink-0 text-right">담당 변호사:</span>
                               <select value={editLawyerId} onChange={e => setEditLawyerId(e.target.value)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 <option value="">미배정</option>
@@ -943,7 +943,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                               </select>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-slate-400 w-20 shrink-0 text-right">상담 직원:</span>
+                              <span className="text-slate-500 w-20 shrink-0 text-right">상담 직원:</span>
                               <select value={editConsultantId} onChange={e => setEditConsultantId(e.target.value)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 <option value="">미배정</option>
@@ -951,7 +951,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                               </select>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-slate-400 w-20 shrink-0 text-right">사무 직원:</span>
+                              <span className="text-slate-500 w-20 shrink-0 text-right">사무 직원:</span>
                               <select value={editStaffId} onChange={e => setEditStaffId(e.target.value)}
                                 className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
                                 <option value="">미배정</option>
@@ -970,7 +970,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       {/* 이관 */}
                       {currentPermissions.assignCases && (
                         <div className="space-y-2 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
-                          <span className="text-[11px] font-bold text-amber-600 block">↔️ 사건 이관</span>
+                          <span className="text-[13px] font-bold text-amber-600 block">↔️ 사건 이관</span>
                           <div className="flex gap-2">
                             <select value={transferTargetId} onChange={e => setTransferTargetId(e.target.value)}
                               className="bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-600 flex-1">
@@ -981,7 +981,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             </select>
                           </div>
                           <input type="text" placeholder="이관 사유 (선택)" value={transferReason} onChange={e => setTransferReason(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-800" />
+                            className="w-full bg-white border border-slate-200 rounded p-1.5 text-xs text-slate-900" />
                           <button onClick={handleTransfer} disabled={!transferTargetId}
                             className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-1.5 rounded-[200px] text-xs font-bold flex items-center justify-center gap-1">
                             <ArrowRightLeft className="w-3.5 h-3.5" /> 사건 이관 실행
@@ -995,8 +995,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   {detailTab === 'docs' && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-500">📂 필수 서류 체크리스트</span>
-                        <span className="text-[10px] text-brand font-bold">
+                        <span className="text-[13px] font-bold text-slate-600">📂 필수 서류 체크리스트</span>
+                        <span className="text-[12px] text-brand font-bold">
                           {selectedExt.documents.filter(d => d.checked).length}/{selectedExt.documents.length} 완료
                         </span>
                       </div>
@@ -1011,7 +1011,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${doc.checked ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100 hover:bg-slate-100'}`}>
                             <span className={`text-sm ${doc.checked ? 'text-emerald-500' : 'text-slate-300'}`}>{doc.checked ? '☑' : '☐'}</span>
                             <span className={`text-xs flex-1 ${doc.checked ? 'text-emerald-700 line-through' : 'text-slate-700'}`}>{doc.label}</span>
-                            {doc.checkedBy && <span className="text-[9px] text-slate-400">{doc.checkedBy}</span>}
+                            {doc.checkedBy && <span className="text-[11px] text-slate-500">{doc.checkedBy}</span>}
                           </div>
                         ))}
                       </div>
@@ -1021,12 +1021,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   {/* ── 메모 탭 ── */}
                   {detailTab === 'notes' && currentPermissions.writeNotes && (
                     <div className="space-y-3">
-                      <span className="text-[11px] font-bold text-slate-500 block">📝 CRM 상담 기록</span>
+                      <span className="text-[13px] font-bold text-slate-600 block">📝 CRM 상담 기록</span>
                       {/* 카테고리 + 입력 */}
                       <div className="flex flex-wrap gap-1 mb-1">
                         {(Object.entries(CRM_NOTE_CATEGORIES) as [CrmNoteCategory, typeof CRM_NOTE_CATEGORIES[CrmNoteCategory]][]).map(([key, cfg]) => (
                           <button key={key} onClick={() => setNewNoteCategory(key)}
-                            className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${newNoteCategory === key ? `${cfg.color} bg-white border-current font-bold` : 'text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                            className={`text-[12px] px-2 py-0.5 rounded border transition-colors ${newNoteCategory === key ? `${cfg.color} bg-white border-current font-bold` : 'text-slate-500 border-slate-200 hover:border-slate-300'}`}>
                             {cfg.emoji} {cfg.label}
                           </button>
                         ))}
@@ -1034,7 +1034,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       <div className="flex gap-2">
                         <input type="text" placeholder="상담 메모 입력..." value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-800" />
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs text-slate-900" />
                         <button onClick={handleAddNote} className="bg-brand hover:bg-brand-hover text-white px-3 py-1.5 rounded-[200px] text-xs font-semibold shrink-0">추가</button>
                       </div>
                       <div className="space-y-1.5 max-h-[350px] overflow-y-auto">
@@ -1044,11 +1044,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             <div key={note.id} className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${catCfg.color} bg-white border font-bold`}>{catCfg.emoji} {catCfg.label}</span>
-                                  <span className="text-[10px] text-slate-400">{note.authorName}</span>
+                                  <span className={`text-[11px] px-1.5 py-0.5 rounded ${catCfg.color} bg-white border font-bold`}>{catCfg.emoji} {catCfg.label}</span>
+                                  <span className="text-[12px] text-slate-500">{note.authorName}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[9px] text-slate-350">{timeAgo(note.createdAt)}</span>
+                                  <span className="text-[11px] text-slate-350">{timeAgo(note.createdAt)}</span>
                                   <button onClick={() => handleDeleteNote(note.id)} className="text-slate-300 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                                 </div>
                               </div>
@@ -1057,7 +1057,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           );
                         })}
                         {selectedExt.notes.length === 0 && (
-                          <div className="text-center py-6 text-slate-400 text-[11px]">기록된 메모가 없습니다.</div>
+                          <div className="text-center py-6 text-slate-500 text-[13px]">기록된 메모가 없습니다.</div>
                         )}
                       </div>
                     </div>
@@ -1066,7 +1066,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   {/* ── 타임라인 탭 ── */}
                   {detailTab === 'timeline' && (
                     <div className="space-y-2">
-                      <span className="text-[11px] font-bold text-slate-500 block">📅 활동 타임라인</span>
+                      <span className="text-[13px] font-bold text-slate-600 block">📅 활동 타임라인</span>
                       <div className="space-y-0 max-h-[450px] overflow-y-auto">
                         {[...selectedExt.activities].reverse().map((act, idx) => (
                           <div key={act.id} className="flex gap-3 pb-3">
@@ -1084,14 +1084,14 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             <div className="flex-1 pb-1">
                               <p className="text-xs text-slate-700">{act.description}</p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[9px] text-slate-400">{act.actorName}</span>
-                                <span className="text-[9px] text-slate-350">{new Date(act.createdAt).toLocaleString()}</span>
+                                <span className="text-[11px] text-slate-500">{act.actorName}</span>
+                                <span className="text-[11px] text-slate-350">{new Date(act.createdAt).toLocaleString()}</span>
                               </div>
                             </div>
                           </div>
                         ))}
                         {selectedExt.activities.length === 0 && (
-                          <div className="text-center py-6 text-slate-400 text-[11px]">활동 기록이 없습니다.</div>
+                          <div className="text-center py-6 text-slate-500 text-[13px]">활동 기록이 없습니다.</div>
                         )}
                       </div>
                     </div>
@@ -1099,7 +1099,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                 </div>
               </div>
             ) : (
-              <div className="text-center py-16 text-slate-400 text-xs">
+              <div className="text-center py-16 text-slate-500 text-xs">
                 <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                 고객 리스트에서 상세 조회할 고객을 선택해 주십시오.
               </div>
@@ -1127,7 +1127,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   <div className={`p-3 border-b border-slate-100 ${sc.bgColor}`}>
                     <div className="flex items-center justify-between">
                       <span className={`text-xs font-bold ${sc.color}`}>{sc.emoji} {sc.label}</span>
-                      <span className={`text-[10px] ${sc.color} font-bold bg-white/50 px-1.5 py-0.5 rounded`}>{clients.length}</span>
+                      <span className={`text-[12px] ${sc.color} font-bold bg-white/50 px-1.5 py-0.5 rounded`}>{clients.length}</span>
                     </div>
                   </div>
                   {/* 카드 */}
@@ -1141,20 +1141,20 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           onClick={() => { setSelectedId(r.id); setViewMode('list'); }}
                           className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 hover:border-brand/30 cursor-pointer transition-all hover:shadow-sm group">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-slate-800 truncate">{r.clientName}</span>
+                            <span className="text-xs font-bold text-slate-900 truncate">{r.clientName}</span>
                             <GripVertical className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100" />
                           </div>
-                          <div className="text-[10px] text-red-400 font-bold">{r.financialProfile.debtTotal.toLocaleString()}만</div>
+                          <div className="text-[12px] text-red-400 font-bold">{r.financialProfile.debtTotal.toLocaleString()}만</div>
                           <div className="flex items-center gap-1 mt-1.5">
                             {getStaffRoleBadge(ext.assignedLawyerId)}
-                            <span className="text-[9px] text-slate-400 truncate">{getStaffName(ext.assignedLawyerId)}</span>
+                            <span className="text-[11px] text-slate-500 truncate">{getStaffName(ext.assignedLawyerId)}</span>
                           </div>
-                          <div className="text-[9px] text-slate-350 mt-1">{timeAgo(ext.lastActivityAt)}</div>
+                          <div className="text-[11px] text-slate-350 mt-1">{timeAgo(ext.lastActivityAt)}</div>
                         </div>
                       );
                     })}
                     {clients.length === 0 && (
-                      <div className="text-center py-4 text-[10px] text-slate-400">없음</div>
+                      <div className="text-center py-4 text-[12px] text-slate-500">없음</div>
                     )}
                   </div>
                 </div>

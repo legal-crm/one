@@ -79,13 +79,13 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
       <div className="bg-white rounded-2xl border border-slate-100 shadow-premium overflow-hidden">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3">
-          <h3 className="font-bold text-sm sm:text-base text-slate-800 tracking-tight flex items-center gap-2">
+          <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-tight flex items-center gap-2">
             <span className="w-1.5 h-4 bg-brand rounded-full"></span>
             빠른 상담 가능한 변호사
             <ChevronRight className="w-4 h-4 text-slate-300" />
           </h3>
-          <span className="flex items-center gap-1 text-[10px] text-slate-300 font-medium select-none" title="광고 · 변호사가 직접 등록한 유료 노출 영역입니다">
-            AD <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-[8px] text-slate-300 font-bold">ⓘ</span>
+          <span className="flex items-center gap-1 text-[12px] text-slate-300 font-medium select-none" title="광고 · 변호사가 직접 등록한 유료 노출 영역입니다">
+            AD <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-[10px] text-slate-300 font-bold">ⓘ</span>
           </span>
         </div>
 
@@ -93,10 +93,10 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
         <div className="px-5 sm:px-6 pb-3 overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 min-w-max">
             {['개인회생', '개인파산', '신용회복', '채무조정', '보정명령', '압류해제', '전세사기'].map((cat, i) => (
-              <span key={cat} className={`px-3.5 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer transition-all whitespace-nowrap ${
+              <span key={cat} className={`px-3.5 py-1.5 rounded-lg text-[13px] font-bold border cursor-pointer transition-all whitespace-nowrap ${
                 i === 0
                   ? 'bg-slate-800 text-white border-slate-800'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-slate-700'
               }`}>
                 {cat}
               </span>
@@ -137,21 +137,21 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
                   {/* 정보 */}
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-800 truncate">{l.name}</span>
-                      <span className="text-[10px] text-slate-400 font-medium shrink-0">{firm}</span>
+                      <span className="font-bold text-sm text-slate-900 truncate">{l.name}</span>
+                      <span className="text-[12px] text-slate-500 font-medium shrink-0">{firm}</span>
                     </div>
 
                     {/* 전문 분야 태그 */}
                     <div className="flex flex-wrap gap-1">
                       {l.fields.slice(0, 2).map(f => (
-                        <span key={f} className="text-[10px] text-brand font-bold px-1.5 py-0.5 bg-brand/5 rounded">{f}</span>
+                        <span key={f} className="text-[12px] text-brand font-bold px-1.5 py-0.5 bg-brand/5 rounded">{f}</span>
                       ))}
                     </div>
 
                     {/* 상담 가능 시간 슬롯 */}
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {slots.map(s => (
-                        <span key={s} className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-brand/5 hover:border-brand/20 hover:text-brand transition-colors cursor-pointer">
+                        <span key={s} className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-600 hover:bg-brand/5 hover:border-brand/20 hover:text-brand transition-colors cursor-pointer">
                           {s}
                         </span>
                       ))}
@@ -165,7 +165,7 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
 
       {/* Region Selection Grid */}
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-premium space-y-5 text-left">
-        <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+        <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
           <span className="w-1.5 h-4 bg-brand rounded-full"></span>
           <span>지역별 관할 법원 전담 파트너 찾기</span>
         </h3>
@@ -175,7 +175,7 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
               key={reg.value} 
               type="button" 
               onClick={() => { setSelectedRegion(reg.value); setPage(1); }} 
-              className={`py-3 text-[11px] font-bold rounded-xl text-center transition-all duration-300 cursor-pointer border ${
+              className={`py-3 text-[13px] font-bold rounded-xl text-center transition-all duration-300 cursor-pointer border ${
                 selectedRegion === reg.value 
                   ? 'bg-gradient-to-r from-brand to-indigo-600 border-brand text-white shadow-[0_4px_15px_rgba(114,100,255,0.25)] scale-[1.03]' 
                   : 'bg-slate-50/50 hover:bg-slate-100/80 dark:bg-slate-950/40 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold'
@@ -190,16 +190,16 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
       {/* Grid of Lawyers */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div className="text-left text-xs text-slate-500 dark:text-slate-400 font-bold">
+          <div className="text-left text-xs text-slate-600 dark:text-slate-400 font-bold">
             이 변호사들이 당신의 채무 상황을 끝까지 함께 관리해주는 <span className="text-brand font-bold">전담 파트너</span>가 됩니다. (총 {filtered.length}명 활동 중)
           </div>
           <button
             type="button"
             onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setPage(1); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer shrink-0 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-bold border transition-all cursor-pointer shrink-0 ${
               showFavoritesOnly
                 ? 'bg-rose-50 border-rose-200 text-rose-500'
-                : 'bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-400'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-rose-200 hover:text-rose-400'
             }`}
           >
             <Heart className={`w-3.5 h-3.5 ${showFavoritesOnly ? 'fill-rose-500 text-rose-500' : ''}`} />
@@ -209,12 +209,12 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
 
         {filtered.length === 0 ? (
           <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center space-y-4 shadow-premium">
-            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-950 rounded-full flex items-center justify-center mx-auto text-slate-400">
+            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-950 rounded-full flex items-center justify-center mx-auto text-slate-500">
               <AlertTriangle className="w-8 h-8 text-amber-500" />
             </div>
             <div className="space-y-1">
-              <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">해당 조건에 맞는 변호사가 없습니다</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">다른 지역을 선택하거나 검색어를 변경해 보세요.</p>
+              <h4 className="font-semibold text-slate-900 dark:text-slate-200 text-sm">해당 조건에 맞는 변호사가 없습니다</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400">다른 지역을 선택하거나 검색어를 변경해 보세요.</p>
             </div>
           </div>
         ) : (
@@ -232,8 +232,8 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
                   <div className="flex-1 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-bold text-lg text-slate-800 dark:text-white tracking-tight">{l.name} 변호사</h3>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{l.region}지방법원 전담 지원</span>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">{l.name} 변호사</h3>
+                        <span className="text-[12px] text-slate-500 dark:text-slate-500 font-bold">{l.region}지방법원 전담 지원</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -247,34 +247,34 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
                               : 'text-slate-300 group-hover/fav:text-rose-400'
                           }`} />
                         </button>
-                        <span className="bg-brand/5 border border-brand/20 text-brand text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">수임 75건 이상</span>
+                        <span className="bg-brand/5 border border-brand/20 text-brand text-[12px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">수임 75건 이상</span>
                       </div>
                     </div>
                     
-                    <p className="text-xs text-slate-400 dark:text-slate-400 leading-relaxed font-medium">{l.bio}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{l.bio}</p>
                     
                     <div className="flex flex-wrap gap-1">
                       {l.fields.map(f => (
-                        <span key={f} className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-[10px] px-2 py-0.5 rounded-md font-bold">#{f}</span>
+                        <span key={f} className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[12px] px-2 py-0.5 rounded-md font-bold">#{f}</span>
                       ))}
                     </div>
                     
                     {/* 4 Dedicated Care Pillars */}
-                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 py-2.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
-                      <span className="flex items-center gap-1.5"><span className="text-[10px] text-brand/75">•</span>상황 밀착 상담</span>
-                      <span className="flex items-center gap-1.5"><span className="text-[10px] text-brand/75">•</span>채무 전략 관리</span>
-                      <span className="flex items-center gap-1.5"><span className="text-[10px] text-brand/75">•</span>사건 신속 진행</span>
-                      <span className="flex items-center gap-1.5"><span className="text-[10px] text-brand/75">•</span>면책 후 신용 케어</span>
+                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 py-2.5 text-[12px] font-bold text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
+                      <span className="flex items-center gap-1.5"><span className="text-[12px] text-brand/75">•</span>상황 밀착 상담</span>
+                      <span className="flex items-center gap-1.5"><span className="text-[12px] text-brand/75">•</span>채무 전략 관리</span>
+                      <span className="flex items-center gap-1.5"><span className="text-[12px] text-brand/75">•</span>사건 신속 진행</span>
+                      <span className="flex items-center gap-1.5"><span className="text-[12px] text-brand/75">•</span>면책 후 신용 케어</span>
                     </div>
 
                     <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-[11px] font-bold">
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-[13px] font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span>{l.recentActivity}</span>
                       </span>
                       <button 
                         onClick={() => onSelectLawyer(l.id)} 
-                        className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-4.5 py-2 rounded-xl transition-all duration-300 text-[11px] cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]"
+                        className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-4.5 py-2 rounded-xl transition-all duration-300 text-[13px] cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]"
                       >
                         전담 변호사 시작하기
                       </button>
@@ -287,14 +287,14 @@ export default function LawyersView({ lawyers, onSelectLawyer }: LawyersViewProp
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-1.5 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" disabled={page === 1} onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${page === 1 ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-400 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>이전</button>
+                <button type="button" disabled={page === 1} onClick={() => { setPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${page === 1 ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>이전</button>
                 {Array.from({ length: totalPages }).map((_, idx) => {
                   const pNum = idx + 1;
                   return (
                     <button key={pNum} type="button" onClick={() => { setPage(pNum); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`w-9 h-9 rounded-xl border text-xs font-bold transition-all cursor-pointer ${page === pNum ? 'bg-brand border-brand text-white shadow-md shadow-brand/20 scale-105' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>{pNum}</button>
                   );
                 })}
-                <button type="button" disabled={page === totalPages} onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${page === totalPages ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-400 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>다음</button>
+                <button type="button" disabled={page === totalPages} onClick={() => { setPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${page === totalPages ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}>다음</button>
               </div>
             )}
           </>
