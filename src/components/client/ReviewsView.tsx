@@ -134,7 +134,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
               const saved = rev.originalDebt - rev.remainingDebt;
               const reductionRate = Math.round((saved / rev.originalDebt) * 100);
               return (
-                <div key={rev.id} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-100 dark:border-slate-800 rounded-3xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-6 flex flex-col justify-between space-y-6 group relative overflow-hidden text-left">
+                <div key={rev.id} className="bg-slate-50/90 dark:bg-slate-850/50 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-3xl shadow-premium hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-6 flex flex-col justify-between space-y-6 group relative overflow-hidden text-left">
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand/10 to-transparent"></div>
                   <div className="space-y-4">
                     <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-snug group-hover:text-brand dark:group-hover:text-brand-light transition-colors line-clamp-2">

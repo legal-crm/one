@@ -2513,7 +2513,7 @@ export default function ClientRole({
                       >
                         {reviews.slice(0, Math.min(reviews.length, 5)).map(rev => (
                           <div key={rev.id} className="w-full sm:w-1/2 lg:w-1/3 shrink-0 px-2.5">
-                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
+                            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
                               <div className="space-y-3 text-left">
                                 <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug line-clamp-1">
                                   {rev.title}
