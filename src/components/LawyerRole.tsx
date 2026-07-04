@@ -11,6 +11,7 @@ import { platformPlans, mockLawyers } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 import CrmTab from './lawyer/CrmTab';
+import StaffManagementTab from './lawyer/StaffManagementTab';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   if (req.phoneConsultationRequested) {
@@ -59,7 +60,7 @@ export default function LawyerRole({
   platformConfig
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'cases' | 'billing' | 'client-crm' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'cases' | 'billing' | 'client-crm' | 'staff-management' | 'settings'>('dashboard');
   
   // Mobile UI navigation controls
   const [mobilePane, setMobilePane] = useState<'threads' | 'chat' | 'crm'>('threads');
@@ -1075,6 +1076,16 @@ export default function LawyerRole({
             >
               <CreditCard className="w-4 h-4" />
               <span>이용 요금제 / 빌링</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('staff-management')}
+              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                activeTab === 'staff-management' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              <span>직원 관리</span>
             </button>
 
             <button 
@@ -2142,6 +2153,16 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}
+          />
+        )}
+
+        {/* TAB: STAFF MANAGEMENT */}
+        {activeTab === 'staff-management' && (
+          <StaffManagementTab
+            requests={requests}
+            lawyers={lawyers}
+            activeLawyer={activeLawyer}
+            setRequests={setRequests}
           />
         )}
 

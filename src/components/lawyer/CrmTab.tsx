@@ -100,6 +100,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           assignedCount: 0,
           createdAt: new Date().toISOString(),
           permissions: DEFAULT_PERMISSIONS.OWNER,
+          status: 'active',
         };
         setStaffMembers([defaultOwner]);
         setActiveStaff(defaultOwner);
@@ -308,6 +309,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       assignedCount: 0,
       createdAt: new Date().toISOString(),
       permissions: DEFAULT_PERMISSIONS[newStaffRole],
+      status: 'active',
     };
     setStaffMembers(prev => [...prev, member]);
     await saveStaffMember(member);

@@ -94,13 +94,16 @@ export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; emoji: string
 // 직원 역할 체계
 export type StaffRole = 'OWNER' | 'LAWYER' | 'CONSULTANT' | 'STAFF' | 'ACCOUNTING';
 
-export const STAFF_ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bgColor: string }> = {
-  OWNER:       { label: '대표 변호사', color: 'text-amber-400',   bgColor: 'bg-amber-500/10' },
-  LAWYER:      { label: '담당 변호사', color: 'text-blue-400',    bgColor: 'bg-blue-500/10' },
-  CONSULTANT:  { label: '상담 직원',   color: 'text-emerald-400', bgColor: 'bg-emerald-500/10' },
-  STAFF:       { label: '사무 직원',   color: 'text-purple-400',  bgColor: 'bg-purple-500/10' },
-  ACCOUNTING:  { label: '경리 직원',   color: 'text-pink-400',    bgColor: 'bg-pink-500/10' },
+export const STAFF_ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bgColor: string; borderColor: string }> = {
+  OWNER:       { label: '대표 변호사', color: 'text-amber-400',   bgColor: 'bg-amber-500/10',   borderColor: 'border-amber-500/20' },
+  LAWYER:      { label: '담당 변호사', color: 'text-blue-400',    bgColor: 'bg-blue-500/10',    borderColor: 'border-blue-500/20' },
+  CONSULTANT:  { label: '상담 직원',   color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/20' },
+  STAFF:       { label: '사무 직원',   color: 'text-purple-400',  bgColor: 'bg-purple-500/10',  borderColor: 'border-purple-500/20' },
+  ACCOUNTING:  { label: '경리 직원',   color: 'text-pink-400',    bgColor: 'bg-pink-500/10',    borderColor: 'border-pink-500/20' },
 };
+
+// 직원 상태
+export type StaffMemberStatus = 'pending' | 'active' | 'suspended' | 'removed';
 
 // 법무법인 직원
 export interface StaffMember {
@@ -114,6 +117,12 @@ export interface StaffMember {
   assignedCount: number;  // 현재 담당 건수
   createdAt: string;
   permissions: StaffPermissions;
+  status: StaffMemberStatus;   // 직원 상태 (승인대기/활성/정지/강퇴)
+  invitedBy?: string;          // 초대한 사람 ID
+  approvedAt?: string;         // 승인 일시
+  removedAt?: string;          // 강퇴 일시
+  removalReason?: string;      // 강퇴 사유
+  lastActiveAt?: string;       // 마지막 활동 일시
 }
 
 export interface StaffPermissions {
@@ -147,6 +156,25 @@ export interface CrmActivityLog {
   actorName: string;
   actorRole: StaffRole;
   type: CrmActivityType;
+  description: string;
+  metadata?: Record<string, string>;
+  createdAt: string;
+}
+
+// 직원 관리 활동 로그
+export type StaffActivityType = 
+  | 'staff_invited' | 'staff_approved' | 'staff_rejected'
+  | 'staff_suspended' | 'staff_removed' | 'staff_reactivated'
+  | 'case_assigned' | 'case_transferred' | 'case_bulk_transferred'
+  | 'permission_changed' | 'role_changed';
+
+export interface StaffActivityLog {
+  id: string;
+  staffId: string;
+  staffName: string;
+  actorId: string;
+  actorName: string;
+  type: StaffActivityType;
   description: string;
   metadata?: Record<string, string>;
   createdAt: string;
