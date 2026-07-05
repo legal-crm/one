@@ -7,11 +7,12 @@ import {
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server,
   Edit2, Plus, Save, RotateCcw
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig } from '../types';
 import { platformPlans } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
 import RehabSettingsPanel from './RehabSettingsPanel';
+import PopupEditor from './popup/PopupEditor';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -39,6 +40,8 @@ interface AdminRoleProps {
   setPlatformConfig: React.Dispatch<React.SetStateAction<PlatformConfig>>;
   inquiries: ClientInquiry[];
   setInquiries: React.Dispatch<React.SetStateAction<ClientInquiry[]>>;
+  popupConfig: PopupConfig;
+  setPopupConfig: React.Dispatch<React.SetStateAction<PopupConfig>>;
 }
 
 export default function AdminRole({
@@ -66,7 +69,9 @@ export default function AdminRole({
   platformConfig,
   setPlatformConfig,
   inquiries,
-  setInquiries
+  setInquiries,
+  popupConfig,
+  setPopupConfig
 }: AdminRoleProps) {
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
@@ -91,7 +96,7 @@ export default function AdminRole({
   const [formImageUrl, setFormImageUrl] = useState<string>('');
 
   // Site Content sub-navigation state
-  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry' | 'diagnosis'>('news');
+  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry' | 'diagnosis' | 'popup'>('news');
 
   // CRUD states for Diagnosis Config
   const [diagQuestions, setDiagQuestions] = useState<DiagnosisQuestion[]>(DEFAULT_DIAGNOSIS_QUESTIONS);
@@ -2169,7 +2174,7 @@ export default function AdminRole({
               </div>
 
               {/* Sub-tab navigation */}
-              <div className="flex border-b border-[#1E293B]/60 pb-3 gap-6 text-xs font-bold text-slate-500">
+              <div className="flex flex-wrap border-b border-[#1E293B]/60 pb-3 gap-x-5 gap-y-2 text-xs font-bold text-slate-500">
                 <button 
                   onClick={() => { setContentSubTab('news'); setIsCreateMode(false); setEditingArticle(null); }}
                   className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'news' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
@@ -2211,6 +2216,12 @@ export default function AdminRole({
                   className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'diagnosis' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
                 >
                   🧪 진단 문항 관리
+                </button>
+                <button 
+                  onClick={() => setContentSubTab('popup')}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'popup' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  🎯 팝업 관리
                 </button>
               </div>
 
@@ -3568,6 +3579,16 @@ export default function AdminRole({
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* 8. POPUP MANAGEMENT SECTION */}
+              {contentSubTab === 'popup' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <PopupEditor
+                    popupConfig={popupConfig}
+                    onChange={setPopupConfig}
+                  />
                 </div>
               )}
 

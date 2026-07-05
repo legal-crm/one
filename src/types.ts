@@ -939,4 +939,35 @@ export interface DiagnosisConfig {
   lastUpdatedBy: string;
 }
 
+// --- Popup Types ---
+export interface PopupItem {
+  id: string;
+  title?: string;
+  imageUrl: string;
+  linkUrl?: string;
+  actionType?: 'link_url' | 'scroll_to_form' | 'open_rehab_chat';
+  openInNewWindow: boolean;
+  startDate: string;   // YYYY-MM-DD
+  endDate: string;     // YYYY-MM-DD
+}
+
+export interface PopupStyleConfig {
+  width: number;
+  top: number;
+  left: number;
+  isCentered: boolean;
+}
+
+export interface PopupConfig {
+  usePopup: boolean;
+  items: PopupItem[];
+  slideEffect?: boolean;
+  autoPlay?: boolean;
+  autoPlayInterval?: number; // seconds
+  pcStyle: PopupStyleConfig;
+  mobileStyle: PopupStyleConfig;
+  showDoNotOpenToday: boolean;
+  closeButtonColor?: string;
+  disableOverlay: boolean;
+}
 

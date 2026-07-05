@@ -13,9 +13,10 @@ import {
   initialMembers,
   initialActivityLogs,
   initialInquiries,
-  initialPlatformConfig
+  initialPlatformConfig,
+  initialPopupConfig
 } from './data';
-import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, PlatformConfig } from './types';
+import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, PlatformConfig, PopupConfig } from './types';
 import ClientRole from './components/ClientRole';
 import LawyerRole from './components/LawyerRole';
 import AdminRole from './components/AdminRole';
@@ -131,6 +132,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialPlatformConfig;
   });
 
+  const [popupConfig, setPopupConfig] = useState<PopupConfig>(() => {
+    const saved = localStorage.getItem('legal_crm_popup_config');
+    return saved ? JSON.parse(saved) : initialPopupConfig;
+  });
+
   // Sync states to localStorage
   useEffect(() => {
     localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
@@ -165,6 +171,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('legal_crm_platform_config', JSON.stringify(platformConfig));
   }, [platformConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_popup_config', JSON.stringify(popupConfig));
+  }, [popupConfig]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -324,6 +334,7 @@ export default function App() {
       localStorage.removeItem('legal_crm_activity_logs');
       localStorage.removeItem('legal_crm_inquiries');
       localStorage.removeItem('legal_crm_platform_config');
+      localStorage.removeItem('legal_crm_popup_config');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
       setCases(initialCases);
@@ -439,6 +450,7 @@ export default function App() {
             platformConfig={platformConfig}
             inquiries={inquiries}
             setInquiries={setInquiries}
+            popupConfig={popupConfig}
           />
         ) : currentRole === 'lawyer' ? (
           <LawyerRole 
@@ -483,6 +495,8 @@ export default function App() {
             setPlatformConfig={setPlatformConfig}
             inquiries={inquiries}
             setInquiries={setInquiries}
+            popupConfig={popupConfig}
+            setPopupConfig={setPopupConfig}
           />
         )}
       </div>

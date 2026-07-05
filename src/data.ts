@@ -1,4 +1,4 @@
-import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, PlatformConfig } from './types';
+import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, PlatformConfig, PopupConfig } from './types';
 
 
 
@@ -1671,6 +1671,18 @@ export const initialPlatformConfig: PlatformConfig = {
   companyRepresentative: '진성호',
   termsOfService: '제 1 조 (목적)\n본 약관은 (주)my김변컴퍼니(이하 "회사")가 운영하는 my김변 서비스(https://mykim.kr)의 이용에 관한 조건 및 절차, 회사와 회원 간의 권리, 의무 및 책임 사항을 규정함을 목적으로 합니다.\n\n제 2 조 (용어의 정의)\n1. "서비스"란 회사가 제공하는 채무 자가진단(AI 분석), 변호사 매칭 중개, 가명 상담 중개 및 관련 법률 정보 콘텐츠 제반 서비스를 의미합니다.\n2. "회원"이란 본 약관에 동의하고 이용계약을 체결한 자를 말합니다.\n3. "의뢰인회원"이란 채무 해결을 위해 서비스를 이용하는 회원을 말합니다.\n4. "변호사회원"이란 대한변호사협회에 등록된 변호사로서 서비스에 가입한 회원을 말합니다.\n\n제 3 조 (약관의 효력 및 변경)\n1. 회사는 본 약관의 내용을 서비스 화면에 게시합니다.\n2. 약관 변경 시 적용일 7일(회원에게 불리한 변경의 경우 30일) 전부터 공지합니다.\n3. 변경된 약관에 동의하지 않는 회원은 이용계약을 해지할 수 있습니다.\n\n제 4 조 (이용계약의 체결)\n이용계약은 회원이 약관에 동의하고 소셜 로그인(구글, 카카오 등)을 통해 가입 신청을 하고 회사가 이를 승낙함으로써 체결됩니다.\n\n제 5 조 (서비스의 제공)\n회사는 다음 각 호의 서비스를 제공합니다.\n1. 채무 자가진단 서비스 (AI 기반 분석)\n2. 변호사 매칭 중개 서비스\n3. 가명 상담 중개 서비스\n4. 법률 정보 콘텐츠 제공\n\n제 6 조 (회사의 면책)\n1. 회사는 「전자상거래 등에서의 소비자보호에 관한 법률」에 따른 통신판매중개자로서, 통신판매의 당사자가 아닙니다.\n2. 회사는 변호사회원이 의뢰인회원에게 제공하는 법률 서비스의 내용, 질, 결과에 대해 어떠한 법적 책임도 부담하지 않습니다.\n3. AI 자가진단 결과는 참고 목적의 정보 제공일 뿐, 법률 자문에 해당하지 않습니다.\n4. 회사는 의뢰인회원의 법률상담 내용, 상담 여부, 법률사건 내용, 수임 여부, 변호사회원의 선택 등에 대해 일절 관여하지 않습니다.\n\n※ 전체 이용약관은 서비스 하단의 「서비스 이용약관」 링크에서 확인하실 수 있습니다.',
   privacyPolicy: '(주)my김변컴퍼니(이하 "회사")는 개인정보보호법 제30조에 따라 정보주체의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.\n\n1. 수집하는 개인정보 항목\n• 회원가입 시: 가명(별칭), 이메일 주소, 휴대폰 번호\n• 서비스 이용 시: 채무 내역(채권자명, 채무액, 연체기간 등), 소득 정보, 재산 정보, 가족관계 정보, 상담 내용\n• 자동 수집: 접속 IP, 접속 기기 정보, 방문 일시, 서비스 이용 기록, 쿠키\n• 수집 방법: 소셜 로그인(구글, 카카오), 서비스 이용 과정에서 직접 입력, 자동 수집\n\n2. 개인정보의 처리 목적\n• 회원 관리: 본인 확인, 가입의사 확인, 문의사항 처리\n• 서비스 제공: 채무 자가진단 분석, 변호사 매칭 중개, 가명 상담 중개\n• 서비스 개선: 통계 분석, 서비스 품질 향상\n• 법적 의무 이행: 관련 법령에 따른 의무 준수\n\n3. 개인정보의 보유 및 이용기간\n• 회원정보: 회원 탈퇴 시까지\n• 상담기록: 상담 종료 후 3년 (변호사법 관련)\n• 전자상거래 기록: 5년 (전자상거래법)\n• 접속기록: 3개월 (통신비밀보호법)\n\n4. 개인정보 보호책임자\n• 성명: 진성호 (대표이사)\n• 이메일: help@rebirthtalk.com\n\n※ 전체 개인정보 처리방침은 서비스 하단의 「개인정보 처리방침」 링크에서 확인하실 수 있습니다.'
+};
+
+export const initialPopupConfig: PopupConfig = {
+  usePopup: false,
+  items: [],
+  autoPlay: true,
+  autoPlayInterval: 3,
+  pcStyle: { width: 400, top: 100, left: 100, isCentered: true },
+  mobileStyle: { width: 300, top: 50, left: 20, isCentered: true },
+  showDoNotOpenToday: true,
+  closeButtonColor: '#ffffff',
+  disableOverlay: false,
 };
 
 

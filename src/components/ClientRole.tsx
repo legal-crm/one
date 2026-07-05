@@ -5,7 +5,7 @@ import {
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
 } from 'lucide-react';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
 import AIRehabChatbotV2 from '../rehab-chatbot-package/components/rehab/AIRehabChatbotV2';
@@ -18,6 +18,7 @@ import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
 import { supabase } from '../supabaseClient';
 import ReviewsView from './client/ReviewsView';
+import PopupContainer from './popup/PopupContainer';
 import CalculatorView from './client/CalculatorView';
 import QnAView from './client/QnAView';
 import ChatView from './client/ChatView';
@@ -519,6 +520,7 @@ interface ClientRoleProps {
   platformConfig: PlatformConfig;
   inquiries: ClientInquiry[];
   setInquiries: React.Dispatch<React.SetStateAction<ClientInquiry[]>>;
+  popupConfig?: PopupConfig;
 }
 
 export default function ClientRole({
@@ -544,7 +546,8 @@ export default function ClientRole({
   onLogActivity,
   platformConfig,
   inquiries,
-  setInquiries
+  setInquiries,
+  popupConfig
 }: ClientRoleProps) {
   // Sub-navigation for user
   // Sub-navigation for user
@@ -2996,6 +2999,25 @@ export default function ClientRole({
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (<RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />)}
       {activeSolutionType && (<SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { setActiveSolutionType(null); setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onApplyConsult={(ctaTitle, ctaContent) => { setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
       {selectedArticle && (<NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setIncome(230); setDebtTotal(6500); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
+
+      {/* Popup Container */}
+      {popupConfig && (
+        <PopupContainer
+          config={popupConfig}
+          landingId="legal-crm-main"
+          onScrollToForm={() => {
+            setRequestType('open');
+            setRequestStep(1);
+            setActiveTab('request');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenChat={() => {
+            setActiveTab('request');
+            setRequestType('open');
+            setRequestStep(1);
+          }}
+        />
+      )}
 
       </div>
     </div>
