@@ -2066,7 +2066,6 @@ export default function ClientRole({
                   <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200 flex items-center gap-1.5">
                     🤝 my김변의 약속
                   </h4>
-                  <span className="text-[12px] text-brand dark:text-brand-light font-bold bg-brand-light dark:bg-brand/10 px-2 py-0.5 rounded">초기 체크 무료</span>
                 </div>
 
                 <div className="space-y-3">
