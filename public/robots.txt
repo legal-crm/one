@@ -13,5 +13,8 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
+User-agent: Yeti
+Allow: /
+
 # Sitemap
 Sitemap: https://mykim.kr/sitemap.xml
