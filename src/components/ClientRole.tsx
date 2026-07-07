@@ -2108,24 +2108,21 @@ export default function ClientRole({
                     title: '1. 내 상황 체크',
                     desc: '빚이 얼마나 있는지, 독촉이 오는지 — 이름 없이 1분 만에 확인해보세요',
                     icon: '🔍',
-                    action: () => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }
                   },
                   {
                     step: 'Step 2',
                     title: '2. 전문가 검토 요청',
                     desc: '고객이 선택한 최대 3명의 변호사에게 익명으로 검토를 요청할 수 있어요',
                     icon: '👥',
-                    action: () => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }
                   },
                   {
                     step: 'Step 3',
                     title: '3. 나만의 관리방',
                     desc: '내 상황에 딱 맞는 방법으로, 전문가와 1:1 채팅으로 처음부터 끝까지 함께해요',
                     icon: '💬',
-                    action: () => setActiveTab('chat')
                   }
                 ].map((item, idx) => (
-                  <div key={idx} onClick={item.action} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl text-left hover:border-brand/50 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md flex flex-col justify-between min-h-[160px] group hover-lift-sm transition-card">
+                  <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl text-left hover:border-brand/50 transition-all duration-300 shadow-sm hover:shadow-md flex flex-col justify-between min-h-[160px] group hover-lift-sm transition-card">
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-[12px] text-brand dark:text-brand-light font-black tracking-wider uppercase">{item.step}</span>
