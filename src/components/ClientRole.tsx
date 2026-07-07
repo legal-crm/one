@@ -2163,8 +2163,8 @@ export default function ClientRole({
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
                   </div>
                   <div className="flex-1 max-w-xs mx-auto bg-slate-800/80 rounded-lg px-3 py-1 flex items-center justify-center gap-1.5">
-                    <span className="w-3 h-3 text-emerald-400">🔒</span>
-                    <span className="text-[11px] text-slate-500 font-medium truncate">legal-rehab.co.kr/my-room</span>
+                    <span className="text-[11px] leading-none">🔒</span>
+                    <span className="text-[11px] text-slate-500 font-medium truncate leading-none">legal-rehab.co.kr/my-room</span>
                   </div>
                   <div className="w-16"></div>
                 </div>
@@ -2225,12 +2225,12 @@ export default function ClientRole({
                             <span>오전 10:14</span>
                           </div>
                           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
-                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">안녕하세요, 김우진 변호사입니다. 가계 소득 및 채무 위기 명세를 긴급 검토하였습니다.</p>
+                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">안녕하세요, 김우진 변호사입니다. 제출해 주신 자료를 검토한 결과를 말씀드리겠습니다.</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-start space-y-0.5">
                           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
-                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">월 평균 가용 변제금이 약 40만 원 수준으로 개인회생 신청이 가능합니다. 통장 거래 내역 준비가 가능하신가요?</p>
+                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">재산이 다소 많아 개인회생은 어렵지만, 워크아웃 신청은 충분히 가능합니다. 이자 감면과 상환기간 조정으로 부담을 줄일 수 있어요.</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end space-y-0.5">
@@ -2239,7 +2239,7 @@ export default function ClientRole({
                             <span>오후 01:32</span>
                           </div>
                           <div className="bg-brand text-white rounded-2xl rounded-tr-none px-3 py-2 max-w-[70%] shadow-sm">
-                            <p className="text-[11px] leading-relaxed font-medium">네 변호사님, 서류 준비하겠습니다!</p>
+                            <p className="text-[11px] leading-relaxed font-medium">워크아웃이요? 자세히 알려주세요!</p>
                           </div>
                         </div>
                       </div>
