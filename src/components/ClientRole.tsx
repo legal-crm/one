@@ -1880,10 +1880,10 @@ export default function ClientRole({
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
               <img src="./mykim_logo.png" alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
               <div className="flex flex-col items-start leading-none">
-                <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
+                <span className="font-extrabold text-base text-slate-900 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
                   my김변
                 </span>
-                <span className="text-[12px] text-slate-500 dark:text-slate-500 mt-0.5 font-medium">
+                <span className="text-[13px] text-slate-500 dark:text-slate-500 mt-0.5 font-medium">
                   나의 전담 채무관리 변호사
                 </span>
               </div>
@@ -1893,7 +1893,7 @@ export default function ClientRole({
             <div className="hidden md:flex items-center gap-1 lg:gap-1.5">
               <button 
                 onClick={() => setActiveTab('landing')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
                   activeTab === 'landing' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -1908,7 +1908,7 @@ export default function ClientRole({
                   setActiveTab('request');
                   onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭');
                 }}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
                   activeTab === 'request' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -1918,7 +1918,7 @@ export default function ClientRole({
               </button>
               <button 
                 onClick={() => setActiveTab('chat')}
-                className={`relative whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                className={`relative whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
                   activeTab === 'chat' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -1933,7 +1933,7 @@ export default function ClientRole({
 
               <button 
                 onClick={() => setActiveTab('lawyers')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
                   activeTab === 'lawyers' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -1946,7 +1946,7 @@ export default function ClientRole({
                   setActiveTab('qna');
                   onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭');
                 }}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
                   activeTab === 'qna' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -1957,7 +1957,7 @@ export default function ClientRole({
               {/* 성공사례 메뉴 숨김 처리
               <button 
                 onClick={() => setActiveTab('reviews')}
-                className={`whitespace-nowrap px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
+                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
                   activeTab === 'reviews' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -1972,10 +1972,10 @@ export default function ClientRole({
             {isLoggedIn ? (
               <div className="flex items-center gap-1.5 lg:gap-2.5 ml-1 lg:ml-2 pl-2 lg:pl-3 border-l border-slate-200 dark:border-slate-800">
                 <div className="flex flex-col items-end hidden lg:flex whitespace-nowrap shrink-0">
-                  <span className="text-[12px] lg:text-[13px] font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+                  <span className="text-[13px] lg:text-sm font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
                     👤 <span className="text-brand dark:text-brand-light whitespace-nowrap">{userAlias}</span>님
                   </span>
-                  <span className="text-[12px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-semibold leading-none">
+                  <span className="text-[13px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-semibold leading-none">
                     스텔스 보호중
                   </span>
                 </div>
@@ -1999,18 +1999,18 @@ export default function ClientRole({
                     
                     alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
                   }}
-                  className="whitespace-nowrap flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold transition-all shrink-0 cursor-pointer"
+                  className="whitespace-nowrap flex items-center gap-1.5 px-3 lg:px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-bold transition-all shrink-0 cursor-pointer"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-4 h-4" />
                   <span className="hidden sm:inline">로그아웃</span>
                 </button>
               </div>
             ) : (
               <button 
                 onClick={() => setShowAuthModal(true)}
-                className="ml-2 flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-2xl text-xs font-bold transition-all shadow-sm hover:shadow-brand-sm whitespace-nowrap shrink-0"
+                className="ml-2 flex items-center gap-1.5 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-2xl text-sm font-bold transition-all shadow-sm hover:shadow-brand-sm whitespace-nowrap shrink-0"
               >
-                <Lock className="w-3.5 h-3.5" />
+                <Lock className="w-4 h-4" />
                 <span>로그인 및 회원가입</span>
               </button>
             )}
@@ -2078,7 +2078,7 @@ export default function ClientRole({
                     <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all">
                       <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
                       <div>
-                        <span className="text-xs font-bold text-slate-900 dark:text-white block">{item.title}</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white block">{item.title}</span>
                         <span className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed">{item.desc}</span>
                       </div>
                     </div>
@@ -2129,7 +2129,7 @@ export default function ClientRole({
                         <span className="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>
                       </div>
                       <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200">{item.title}</h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -2148,7 +2148,7 @@ export default function ClientRole({
                 <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                   내 채무 상태를 한곳에서 관리합니다
                 </h3>
-                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
+                <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium">
                   진단을 마치거나 변호사를 지정하면 나만의 비밀 대시보드 관리방이 실시간 개설됩니다.
                 </p>
               </div>
@@ -2272,7 +2272,7 @@ export default function ClientRole({
                     setRequestStep(1);
                     setActiveTab('request');
                   }}
-                  className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-center font-bold py-3.5 rounded-2xl text-xs transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-brand/20 hover:shadow-brand/30 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-center font-bold py-3.5 rounded-2xl text-sm transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-brand/20 hover:shadow-brand/30 flex items-center justify-center gap-2"
                 >
                   <span>나도 이렇게 관리받고 싶어요</span>
                   <span className="text-white/70">→</span>
@@ -2317,7 +2317,7 @@ export default function ClientRole({
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center justify-center gap-1">
-                        <h5 className="font-semibold text-xs text-slate-900 dark:text-slate-200">{item.title}</h5>
+                        <h5 className="font-semibold text-sm text-slate-900 dark:text-slate-200">{item.title}</h5>
                         {item.id === 'tax_delinquency' && (
                           <span className="text-[12px] bg-amber-500 text-white font-semibold px-1.5 py-0.5 rounded">중요</span>
                         )}
@@ -2378,7 +2378,7 @@ export default function ClientRole({
                           </div>
                           <div className="space-y-1.5 min-w-0">
                             <h5 className="font-bold text-sm text-slate-900 dark:text-white/90">{item.title}</h5>
-                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -2407,7 +2407,7 @@ export default function ClientRole({
                 <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                   채무 해결 방법은 하나가 아닙니다
                 </h3>
-                <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
+                <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium">
                   나의 연체 기간, 채권 성격, 소득 지속성에 맞게 다섯 가지 경로를 비교 설계합니다.
                 </p>
               </div>
@@ -2491,9 +2491,9 @@ export default function ClientRole({
                           </div>
                         </div>
                         {/* Target audience */}
-                        <p className="text-xs text-brand dark:text-brand-light font-semibold">{item.sub}</p>
+                        <p className="text-sm text-brand dark:text-brand-light font-semibold">{item.sub}</p>
                         {/* Description */}
-                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                       </div>
                       <span className="text-[13px] font-bold text-brand/50 dark:text-brand-light/50 group-hover:text-brand dark:group-hover:text-brand-light transition-colors flex items-center gap-1.5 pt-1">
                         자세히 보기
@@ -2520,7 +2520,7 @@ export default function ClientRole({
                 </h3>
                 <button
                   onClick={() => setActiveTab('reviews')}
-                  className="text-xs text-brand dark:text-brand-light font-bold hover:underline shrink-0"
+                  className="text-sm text-brand dark:text-brand-light font-bold hover:underline shrink-0"
                 >
                   후기 더 보기 →
                 </button>
@@ -2544,7 +2544,7 @@ export default function ClientRole({
                           <div key={rev.id} className="w-full sm:w-1/2 lg:w-1/3 shrink-0 px-2.5">
                             <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
                               <div className="space-y-3 text-left">
-                                <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white leading-snug line-clamp-1">
+                                <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white leading-snug line-clamp-1">
                                   {rev.title}
                                 </h4>
 
@@ -2623,7 +2623,7 @@ export default function ClientRole({
                   <HelpCircle className="w-5 h-5 text-brand" />
                   <span>실시간 고민 해결 상담사례</span>
                 </h3>
-                <span className="text-xs text-slate-500">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
+                <span className="text-sm text-slate-500">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
               </div>
 
               <div className="space-y-3.5">
@@ -2680,10 +2680,10 @@ export default function ClientRole({
                               />
                               <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-xs text-slate-900 dark:text-white">{qa.lawyerName}</span>
+                                  <span className="font-bold text-sm text-slate-900 dark:text-white">{qa.lawyerName}</span>
                                   <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[12px] font-semibold px-2 py-0.5 rounded-md">전문가 답변</span>
                                 </div>
-                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
                                   {qa.answer}
                                 </p>
                               </div>
@@ -2717,7 +2717,7 @@ export default function ClientRole({
                     setActiveTab('qna');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-brand-light font-bold rounded-2xl text-xs transition-all shadow-md group cursor-pointer active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-brand-light font-bold rounded-2xl text-sm transition-all shadow-md group cursor-pointer active:scale-[0.98]"
                 >
                   <span>⚖️ 실시간 고민 해결 상담사례 전체보기 (더보기)</span>
                   <span className="transition-transform group-hover:translate-x-1">→</span>
@@ -2745,7 +2745,7 @@ export default function ClientRole({
                   <span>알아두면 좋을 법률 정보</span>
                   <ChevronRight className="w-4 h-4 text-[#7e7e8f] transition-transform group-hover:translate-x-1" />
                 </h3>
-                <span className="text-xs text-brand dark:text-brand-light font-bold hover:underline shrink-0">
+                <span className="text-sm text-brand dark:text-brand-light font-bold hover:underline shrink-0">
                   더 많은 정보 보기 →
                 </span>
               </div>
@@ -2784,7 +2784,7 @@ export default function ClientRole({
                           <span>•</span>
                           <span>조회 {art.views}</span>
                         </div>
-                        <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">
+                        <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">
                           {art.title}
                         </h4>
                         <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
@@ -2919,7 +2919,7 @@ export default function ClientRole({
         {/* Notice Section */}
         <div className="space-y-2 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-xs text-slate-900 dark:text-slate-250 flex items-center gap-1.5">
+            <h4 className="font-bold text-sm text-slate-900 dark:text-slate-250 flex items-center gap-1.5">
               <span>📋</span> 공지사항
             </h4>
             <button 

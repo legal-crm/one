@@ -16,7 +16,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
           <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
           <span className="font-bold text-sm text-slate-600 dark:text-slate-400">{platformConfig.siteLogoText || "주식회사 my김변"}</span>
         </div>
-        <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-xs text-slate-500 dark:text-slate-500">
+        <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-sm text-slate-500 dark:text-slate-500">
           <div className="flex-1 flex-col justify-start items-start gap-2 inline-flex">
             <div className="self-stretch justify-start items-center gap-1.5 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400">
               <span>{platformConfig.siteLogoText || "주식회사 my김변"}</span>
@@ -35,7 +35,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
             </p>
           </div>
           <div className="flex-1 flex-col justify-start items-start md:items-end gap-2 inline-flex">
-            <div className="self-stretch justify-start md:justify-end items-center gap-1.5 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400 text-[13px] sm:text-xs">
+            <div className="self-stretch justify-start md:justify-end items-center gap-2 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400 text-sm">
               {onNavigate && (
                 <>
                   <span 

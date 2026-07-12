@@ -93,7 +93,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
               {/* 전문 분야 태그 */}
               <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 pt-1">
                 {lawyer.fields.map(f => (
-                  <span key={f} className="bg-white/10 border border-white/10 text-white/80 text-[12px] px-2.5 py-1 rounded-lg font-bold">#{f}</span>
+                  <span key={f} className="bg-white/10 border border-white/10 text-white/80 text-xs px-2.5 py-1 rounded-lg font-bold">#{f}</span>
                 ))}
               </div>
 
@@ -112,7 +112,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 py-3 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
+                className={`flex-1 py-3 text-sm sm:text-base font-bold transition-all cursor-pointer relative ${
                   activeTab === tab.key
                     ? 'text-white'
                     : 'text-white/40 hover:text-white/70'
@@ -145,7 +145,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                 ].map(stat => (
                   <div key={stat.label} className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 space-y-1.5">
                     <stat.icon className={`w-5 h-5 mx-auto ${stat.color}`} />
-                    <div className="text-lg sm:text-xl font-black text-slate-900">{stat.value}</div>
+                    <div className="text-xl sm:text-2xl font-black text-slate-900">{stat.value}</div>
                     <div className="text-[12px] text-slate-500 font-bold uppercase">{stat.label}</div>
                   </div>
                 ))}
@@ -153,16 +153,16 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
 
               {/* 변호사 소개 */}
               <div className="bg-gradient-to-r from-brand/5 to-indigo-500/5 border border-brand/10 rounded-2xl p-5 space-y-3">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-brand" />
                   변호사 소개
                 </h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{lawyer.bio}</p>
+                <p className="text-sm text-slate-600 leading-relaxed font-medium">{lawyer.bio}</p>
               </div>
 
               {/* 최근 활동 */}
               <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-3">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-emerald-500" />
                   최근 활동
                 </h3>
@@ -174,7 +174,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
 
               {/* 전담 서비스 */}
               <div className="space-y-3">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-brand" />
                   전담 서비스 안내
                 </h3>
@@ -188,8 +188,8 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                     <div key={svc.title} className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3 hover:border-brand/20 hover:shadow-sm transition-all">
                       <span className="text-lg">{svc.emoji}</span>
                       <div>
-                        <h4 className="font-bold text-xs text-slate-900">{svc.title}</h4>
-                        <p className="text-[13px] text-slate-500 mt-0.5">{svc.desc}</p>
+                        <h4 className="font-bold text-sm text-slate-900">{svc.title}</h4>
+                        <p className="text-sm text-slate-500 mt-0.5 font-medium">{svc.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -203,13 +203,13 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
             <div className="space-y-6 animate-fadeIn">
               {/* 전문 분야 상세 */}
               <div className="space-y-3">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <Scale className="w-4 h-4 text-brand" />
                   전문 분야
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {(lawyer.specialties || lawyer.fields).map(s => (
-                    <span key={s} className="bg-brand/5 border border-brand/15 text-brand text-xs px-3 py-1.5 rounded-lg font-bold">{s}</span>
+                    <span key={s} className="bg-brand/5 border border-brand/15 text-brand text-sm px-3 py-1.5 rounded-lg font-bold">{s}</span>
                   ))}
                 </div>
               </div>
@@ -226,7 +226,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                   <div key={row.label} className="flex items-start gap-4 px-5 py-4">
                     <div className="flex items-center gap-2 w-24 shrink-0">
                       <row.icon className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="text-xs text-slate-500 font-bold">{row.label}</span>
+                      <span className="text-sm text-slate-500 font-bold">{row.label}</span>
                     </div>
                     <div className="flex-1 text-left">
                       {row.list ? (
@@ -248,7 +248,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
 
               {/* 인증 뱃지 */}
               <div className="space-y-3">
-                <h3 className="font-bold text-sm text-slate-900">인증 뱃지</h3>
+                <h3 className="font-bold text-base text-slate-900">인증 뱃지</h3>
                 <div className="flex flex-wrap gap-3">
                   {[
                     { label: '대한변협 등록', sub: '도산법 전문', icon: '⚖️' },
@@ -258,7 +258,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                     <div key={badge.label} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs">
                       <span className="text-2xl">{badge.icon}</span>
                       <div>
-                        <div className="text-xs font-bold text-slate-900">{badge.label}</div>
+                        <div className="text-sm font-bold text-slate-900">{badge.label}</div>
                         <div className="text-[12px] text-brand font-bold">{badge.sub}</div>
                       </div>
                     </div>
@@ -310,7 +310,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                           {review.author.charAt(0)}
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-slate-700">{review.author}</span>
+                          <span className="text-sm font-bold text-slate-700">{review.author}</span>
                           <div className="flex gap-0.5">
                             {[1,2,3,4,5].map(i => (
                               <Star key={i} className={`w-3 h-3 ${i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
@@ -323,7 +323,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                         <span className="text-[12px] text-slate-300">{review.date}</span>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed pl-10">{review.content}</p>
+                    <p className="text-sm text-slate-600 leading-relaxed pl-10 font-medium">{review.content}</p>
                   </div>
                 ))}
               </div>
@@ -345,7 +345,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
           </div>
           <button
             onClick={() => onConsult(lawyer.id)}
-            className="flex-1 sm:flex-none bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-brand/20 cursor-pointer text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
+            className="flex-1 sm:flex-none bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-brand/20 cursor-pointer text-base flex items-center justify-center gap-2 active:scale-[0.98]"
           >
             <span>이 변호사에게 무료 상담 신청</span>
             <ChevronRight className="w-4 h-4" />

@@ -209,7 +209,7 @@ export default function LandingPage({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.7 }}
-            className="text-lg sm:text-xl text-slate-300 mb-3 max-w-2xl mx-auto font-medium"
+            className="text-xl sm:text-2xl text-slate-300 mb-3 max-w-2xl mx-auto font-medium"
           >
             내 채무 상황을 분석하고, 끝까지 관리해줄 전담 변호사를 만나세요.
           </motion.p>
@@ -217,7 +217,7 @@ export default function LandingPage({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.85 }}
-            className="text-sm text-indigo-400 mb-10 tracking-wide font-semibold"
+            className="text-base text-indigo-400 mb-10 tracking-wide font-semibold"
           >
             ※ 지금 단계에서는 일체의 비용 없이 상황 체크 및 초기 정보 정리가 시작됩니다.
           </motion.p>
@@ -234,7 +234,7 @@ export default function LandingPage({
               whileTap={{ scale: 0.97 }}
               className="relative group inline-flex items-center gap-3 px-10 py-5
                           bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600
-                          rounded-2xl text-lg sm:text-xl font-bold text-white
+                          rounded-2xl text-xl sm:text-2xl font-bold text-white
                           shadow-2xl shadow-indigo-500/25 hover:shadow-indigo-500/40
                           transition-shadow duration-300 cursor-pointer"
             >
@@ -263,7 +263,7 @@ export default function LandingPage({
               '실시간 법원 기준 적용',
               '개인정보 없이 즉시 확인',
             ].map((text, i) => (
-              <span key={i} className="flex items-center gap-2 text-sm text-slate-500">
+              <span key={i} className="flex items-center gap-2 text-base text-slate-500">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 {text}
               </span>
@@ -305,7 +305,7 @@ export default function LandingPage({
               </span>{' '}
               중이신가요?
             </h2>
-            <p className="text-slate-600 text-base sm:text-lg">
+            <p className="text-slate-600 text-lg sm:text-xl">
               혼자 고민하지 마세요. 같은 걱정을 하셨던 분들이 이미 해결하셨습니다.
             </p>
           </motion.div>
@@ -333,7 +333,7 @@ export default function LandingPage({
                                   bg-gradient-to-br from-indigo-500/5 to-purple-500/5
                                   transition-opacity duration-300 pointer-events-none" />
                   <span className="text-3xl mb-4 block">{item.emoji}</span>
-                  <p className="relative text-slate-300 text-base sm:text-lg font-medium leading-relaxed">
+                  <p className="relative text-slate-300 text-lg sm:text-xl font-medium leading-relaxed">
                     {item.text}
                   </p>
                 </motion.div>
@@ -377,7 +377,7 @@ export default function LandingPage({
               </span>
               이 아닙니다
             </h2>
-            <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto">
+            <p className="text-slate-600 text-lg sm:text-xl max-w-2xl mx-auto">
               불필요한 상담 연결 없이, 내 상황에 맞는 전략을 먼저 확인합니다.
             </p>
           </motion.div>
@@ -429,8 +429,8 @@ export default function LandingPage({
                   >
                     <item.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
+                  <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                  <p className="text-base text-slate-400 leading-relaxed">{item.desc}</p>
                 </motion.div>
               </StaggerChild>
             ))}
@@ -492,8 +492,8 @@ export default function LandingPage({
                     <item.icon className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
+                    <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                    <p className="text-base text-slate-400 leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export default function LandingPage({
               </span>
               이면 내 상태를 확인할 수 있습니다
             </h2>
-            <p className="text-slate-600 text-base sm:text-lg">
+            <p className="text-slate-600 text-lg sm:text-xl">
               복잡한 절차 없이, 3단계로 끝납니다.
             </p>
           </motion.div>
@@ -584,7 +584,7 @@ export default function LandingPage({
                                     px-3 py-1 rounded-full mb-3">
                     {item.desc}
                   </span>
-                  <p className="text-sm text-slate-500 leading-relaxed max-w-[240px] mx-auto">
+                  <p className="text-base text-slate-400 leading-relaxed max-w-[240px] mx-auto">
                     {item.detail}
                   </p>
                 </div>
@@ -605,7 +605,7 @@ export default function LandingPage({
               whileTap={{ scale: 0.97 }}
               className="inline-flex items-center gap-3 px-8 py-4
                           bg-gradient-to-r from-indigo-600 to-purple-600
-                          rounded-xl text-base sm:text-lg font-bold text-white
+                          rounded-xl text-lg sm:text-xl font-bold text-white
                           shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30
                           transition-shadow duration-300 cursor-pointer"
             >
@@ -700,10 +700,10 @@ export default function LandingPage({
                     </div>
 
                     {/* Content */}
-                    <p className="text-sm text-slate-500 leading-relaxed mb-3 line-clamp-3">
+                    <p className="text-base text-slate-400 leading-relaxed mb-3 line-clamp-3">
                       "{review.content}"
                     </p>
-                    <p className="text-xs text-slate-600">— {review.author}</p>
+                    <p className="text-sm text-slate-600">— {review.author}</p>
                   </motion.div>
                 </StaggerChild>
               );
@@ -727,8 +727,8 @@ export default function LandingPage({
                 <div key={i} className="flex items-center gap-3">
                   <span className="text-2xl">{stat.emoji}</span>
                   <div className="text-left">
-                    <p className="text-xs text-slate-600">{stat.label}</p>
-                    <p className="text-lg font-bold text-white">{stat.value}</p>
+                    <p className="text-sm text-slate-600">{stat.label}</p>
+                    <p className="text-xl font-bold text-white">{stat.value}</p>
                   </div>
                 </div>
               ))}
@@ -739,7 +739,7 @@ export default function LandingPage({
           <div className="text-center mt-8">
             <button
               onClick={() => onNavigate('reviews')}
-              className="inline-flex items-center gap-2 text-sm text-slate-500
+              className="inline-flex items-center gap-2 text-base text-slate-500
                           hover:text-indigo-400 transition-colors cursor-pointer"
             >
               성공 사례 더보기
@@ -769,7 +769,7 @@ export default function LandingPage({
               </span>
               를 추천해드립니다
             </h2>
-            <p className="text-slate-600 text-base sm:text-lg">
+            <p className="text-slate-600 text-lg sm:text-xl">
               결과에 따라 가장 적합한 전문가를 자동 매칭합니다.
             </p>
           </motion.div>
@@ -795,14 +795,14 @@ export default function LandingPage({
                       {initials}
                     </div>
 
-                    <h3 className="text-lg font-bold text-white mb-1">
+                    <h3 className="text-xl font-bold text-white mb-1">
                       {lawyer.name} <span className="text-slate-500 font-normal">변호사</span>
                     </h3>
-                    <p className="text-sm text-slate-600 mb-3">
+                    <p className="text-base text-slate-500 mb-3">
                       {lawyer.region} | {lawyer.fields.join('·')} 전문
                     </p>
 
-                    <div className="flex items-center justify-center gap-3 text-xs text-slate-500">
+                    <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
                       <span className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5" />
                         매칭 {lawyer.matchedCount}건
@@ -822,9 +822,9 @@ export default function LandingPage({
             initial={{ opacity: 0 }}
             animate={expertInView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="text-center text-sm text-slate-600"
+            className="text-center text-base text-slate-600"
           >
-            <HeartHandshake className="inline w-4 h-4 mr-1 -mt-0.5" />
+            <HeartHandshake className="inline w-5 h-5 mr-1 -mt-0.5" />
             전문가는 진단 결과에 따라 자동 매칭됩니다
           </motion.p>
         </div>
@@ -868,7 +868,7 @@ export default function LandingPage({
               whileTap={{ scale: 0.97 }}
               className="relative group inline-flex items-center gap-3 px-10 py-5 mb-6
                           bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600
-                          rounded-2xl text-lg sm:text-xl font-bold text-white
+                          rounded-2xl text-xl sm:text-2xl font-bold text-white
                           shadow-2xl shadow-indigo-500/25 hover:shadow-indigo-500/40
                           transition-shadow duration-300 cursor-pointer"
             >
@@ -884,7 +884,7 @@ export default function LandingPage({
               </span>
             </motion.button>
 
-            <p className="text-sm text-slate-600 tracking-wide">
+            <p className="text-base text-slate-600 tracking-wide">
               소요시간 1분 · 회원가입 불필요 · 결과 즉시 확인
             </p>
           </motion.div>

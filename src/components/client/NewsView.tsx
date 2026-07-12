@@ -43,16 +43,16 @@ export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews 
   return (
     <div className="space-y-8 animate-fadeIn text-left">
       {/* Page Header */}
-      <div className="bg-[#0F172A] border border-slate-800 rounded-3xl p-6 md:p-10 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-[#0F172A] border border-slate-800 rounded-3xl p-8 md:p-12 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
         <div className="absolute left-1/3 bottom-0 w-80 h-80 bg-brand/10 rounded-full blur-3xl -ml-20 -mb-20"></div>
         <div className="max-w-2xl relative z-10 space-y-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-200 text-xs font-extrabold rounded-full border border-indigo-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-200 text-sm font-extrabold rounded-full border border-indigo-500/30">
             <BookOpen className="w-3.5 h-3.5 text-brand" />
             <span>알아두면 좋을 법률 정보</span>
           </span>
-          <h1 className="text-2xl md:text-3.5xl font-black tracking-tight leading-tight">my김변 법률 정보 &amp; 뉴스 센터</h1>
-          <p className="text-slate-350 text-xs md:text-sm leading-relaxed">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">my김변 법률 정보 &amp; 뉴스 센터</h1>
+          <p className="text-slate-350 text-sm md:text-base leading-relaxed">
             대한변협 등록 도산 전문 변호인단이 집필한 고품격 법률 칼럼과 뉴스입니다.<br/>
             최신 회생 실무 기준과 탕감 노하우를 확인하고 빚 독촉 위기를 신속하게 해결해 보세요.
           </p>
@@ -69,15 +69,15 @@ export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews 
               placeholder="관심 있는 키워드나 제목을 입력해 검색하세요 (예: 코인, 압류)"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              className="w-full bg-[#F8FAFC] dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full py-2 pl-9 pr-4 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 text-slate-900 dark:text-slate-100 placeholder:text-slate-450"
+              className="w-full bg-[#F8FAFC] dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full py-2.5 pl-9 pr-4 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-brand/20 text-slate-900 dark:text-slate-100 placeholder:text-slate-450"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-2.5 text-xs text-slate-405 hover:text-slate-700 font-bold">초기화</button>
+              <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-2.5 text-sm text-slate-405 hover:text-slate-700 font-bold">초기화</button>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
             {NEWS_CATEGORIES.map(cat => (
-              <button key={cat} type="button" onClick={() => { setCategoryFilter(cat); setPage(1); }} className={`text-xs px-3.5 py-1.5 rounded-full font-bold transition-all ${categoryFilter === cat ? 'bg-brand text-white border-brand shadow-sm shadow-brand/10' : 'bg-[#F8FAFC] dark:bg-slate-950 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850'}`}>
+              <button key={cat} type="button" onClick={() => { setCategoryFilter(cat); setPage(1); }} className={`text-sm px-3.5 py-1.5 rounded-full font-bold transition-all ${categoryFilter === cat ? 'bg-brand text-white border-brand shadow-sm shadow-brand/10' : 'bg-[#F8FAFC] dark:bg-slate-950 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850'}`}>
                 {cat}
               </button>
             ))}
@@ -90,7 +90,7 @@ export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews 
         <div className="py-16 text-center text-slate-600 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 space-y-2">
           <BookOpen className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 opacity-55 animate-pulse" />
           <p className="text-sm">검색 결과에 맞는 법률 칼럼이 존재하지 않습니다.</p>
-          <p className="text-xs font-semibold text-[#7e7e8f]">다른 단어로 검색하시거나 카테고리를 변경해 보세요.</p>
+          <p className="text-sm font-semibold text-[#7e7e8f]">다른 단어로 검색하시거나 카테고리를 변경해 보세요.</p>
         </div>
       ) : (
         <div className="space-y-8">
@@ -100,19 +100,19 @@ export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews 
                 <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-950 shrink-0">
                   <img src={art.imageUrl} alt={art.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   {art.badge && (
-                    <span className={`absolute top-3.5 left-3.5 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${art.badge === 'HOT' ? 'bg-orange-500' : art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>{art.badge}</span>
+                    <span className={`absolute top-3.5 left-3.5 text-xs font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${art.badge === 'HOT' ? 'bg-orange-500' : art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>{art.badge}</span>
                   )}
                 </div>
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold"><span>{art.category}</span><span>•</span><span>조회 {art.views}</span></div>
-                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-850 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">{art.title}</h4>
-                    <p className="text-[13px] text-slate-600 dark:text-slate-405 leading-relaxed line-clamp-2 text-left">{art.excerpt}</p>
+                    <div className="flex items-center gap-1.5 text-sm text-slate-500 font-bold"><span>{art.category}</span><span>•</span><span>조회 {art.views}</span></div>
+                    <h4 className="font-semibold text-base sm:text-lg text-slate-850 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">{art.title}</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-405 leading-relaxed line-clamp-2 text-left">{art.excerpt}</p>
                   </div>
                   <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-auto">
                     <div className="flex items-center gap-2">
                       <img src={art.authorAvatar} alt={art.authorName} className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" />
-                      <span className="text-[12px] font-extrabold text-[#484760] dark:text-slate-400">By {art.authorName}</span>
+                      <span className="text-sm font-bold text-[#484760] dark:text-slate-400">By {art.authorName}</span>
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-slate-350 dark:text-slate-655 transition-transform group-hover:translate-x-1" />
                   </div>
