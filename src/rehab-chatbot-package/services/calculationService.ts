@@ -94,6 +94,7 @@ export interface RehabUserInput {
     monthlyFixedExpenses?: number;     // 월 고정 지출 합계 (통신비, 보험료, 교통비 등)
     retirementPensionType?: 'pension' | 'none' | 'unknown'; // 퇴직연금 가입 유형
     retirementPay?: number;                                 // 예상 퇴직금 총액
+    clientNote?: string;                                    // 의뢰인 추가 메모/특이사항
 }
 
 /**

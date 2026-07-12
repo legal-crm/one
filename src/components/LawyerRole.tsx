@@ -1488,6 +1488,19 @@ export default function LawyerRole({
                             ))}
                           </div>
                         )}
+
+                        {/* 의뢰인 메모 */}
+                        {r.financialProfile.clientNote && (
+                          <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-lg p-3 mt-1">
+                            <div className="flex items-start gap-2">
+                              <span className="text-base shrink-0">📝</span>
+                              <div>
+                                <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
+                                <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line">{r.financialProfile.clientNote}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Right: Quick action panel to "솔루션 및 비용 제안" */}

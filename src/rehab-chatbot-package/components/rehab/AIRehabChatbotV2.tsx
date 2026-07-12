@@ -170,6 +170,7 @@ type ChatStep =
     | 'debt_amount_detail'    // 채무 유형별 금액 개별 입력 단계 (NEW)
     | 'legal_actions'         // V2.1: 법적 조치 경험
     | 'monthly_expenses'      // V2.1: 월 고정 지출
+    | 'client_note'           // 의뢰인 추가 메모/특이사항 (NEW)
     | 'result';
 
 // 재산 항목 타입
@@ -3252,11 +3253,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // 24개월 특례 조건 저장
                 const updatedInputWithSpecial = { ...userInput, specialCondition: value as any };
                 setUserInput(updatedInputWithSpecial);
-                calculateResult(updatedInputWithSpecial);
+                goToClientNote(updatedInputWithSpecial as any);
                 break;
 
             case 'prior_rehab_detail':
-                calculateResult(userInput);
+                goToClientNote();
                 break;
 
             case 'prior_credit_recovery':
@@ -3268,12 +3269,12 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     );
                     goToStep('prior_credit_recovery_amount');
                 } else {
-                    calculateResult(userInput);
+                    goToClientNote();
                 }
                 break;
 
             case 'prior_credit_recovery_amount':
-                calculateResult(userInput);
+                goToClientNote();
                 break;
 
             // ── V2.1 신규 단계 ──
@@ -3422,9 +3423,32 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
             }
 
+            case 'client_note': {
+                const noteText = value === 'skip' ? '' : String(value).trim();
+                if (noteText) {
+                    setUserInput(prev => ({ ...prev, clientNote: noteText }));
+                    const updatedInput = { ...userInput, clientNote: noteText };
+                    calculateResult(updatedInput as RehabUserInput);
+                } else {
+                    calculateResult(userInput as RehabUserInput);
+                }
+                break;
+            }
+
 
         }
     }, [userInput, addBotMessage, selectedAssets, currentAssetIndex, assetValues, spouseSelectedAssets, currentSpouseAssetIndex, spouseAssetValues, shouldUseBlock, messages.length]);
+
+    // 결과 계산 전 의뢰인 메모 입력 스텝으로 이동하는 헬퍼
+    const goToClientNote = useCallback((inputOverride?: Partial<RehabUserInput>) => {
+        if (inputOverride) setUserInput(prev => ({ ...prev, ...inputOverride }));
+        goToStep('client_note');
+        addBotMessage(
+            '거의 다 끝났어요! 마지막으로 변호사에게 미리 전달하고 싶은 내용이 있으면 자유롭게 적어주세요. 😊\n\n예: 궁금한 점, 특이사항, 현재 급한 상황 등\n\n(없으면 \'건너뛰기\'를 눌러주세요)',
+            [{ label: '건너뛰기', value: 'skip' }],
+            'text'
+        );
+    }, [addBotMessage, goToStep]);
 
     // 결과 계산 (V2.1 강화: 5단계 프로그레스 애니메이션)
     const calculateResult = useCallback((input: RehabUserInput) => {
