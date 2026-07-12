@@ -135,6 +135,7 @@ export default function LawyerRole({
   // Login form state
   const [loginId, setLoginId] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
+  const [showServiceGuide, setShowServiceGuide] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
 
   // Signup form state
@@ -961,7 +962,215 @@ export default function LawyerRole({
               </div>
             </form>
           )}
+
+          {/* 변호사 가입 안내 버튼 */}
+          <button
+            type="button"
+            onClick={() => setShowServiceGuide(true)}
+            className="w-full border border-brand/30 text-brand font-bold py-3 rounded-2xl text-sm hover:bg-brand/5 transition-colors mt-2"
+          >
+            변호사 가입 안내
+          </button>
         </div>
+
+        {/* ── 서비스 안내 모달 (풀스크린) ── */}
+        {showServiceGuide && (
+          <div className="fixed inset-0 z-[100] bg-white overflow-y-auto animate-fadeIn">
+            {/* 상단 네비 */}
+            <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3">
+              <div className="max-w-5xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="로고" className="w-8 h-8 rounded-lg object-cover" />
+                  <span className="font-black text-lg text-slate-900">{platformConfig.siteLogoText || 'my김변'} <span className="text-brand">for Lawyers</span></span>
+                </div>
+                <button onClick={() => setShowServiceGuide(false)} className="text-slate-400 hover:text-slate-600 text-2xl font-bold transition-colors">✕</button>
+              </div>
+            </header>
+
+            {/* 히어로 */}
+            <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white py-20 md:py-28">
+              <div className="absolute inset-0">
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand/20 rounded-full blur-[100px]" />
+                <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-violet-500/15 rounded-full blur-[80px]" />
+              </div>
+              <div className="relative z-10 max-w-4xl mx-auto px-4 text-center space-y-6">
+                <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  변호사 전용 파트너 플랫폼
+                </div>
+                <h1 className="text-3xl md:text-5xl font-black leading-tight">
+                  의뢰인이 <span className="text-brand-light">먼저 찾아오는</span><br />회생·파산 전문 플랫폼
+                </h1>
+                <p className="text-base md:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                  의뢰인이 AI 자가진단을 완료하고, 채무 구조 데이터를 정리한 상태로 변호사님께 상담을 요청합니다.<br />
+                  더 이상 기초 상담에 시간을 낭비하지 마세요.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <button onClick={() => { setShowServiceGuide(false); setAuthMode('signup'); }} className="bg-brand hover:bg-brand-hover text-white font-bold px-8 py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
+                    지금 무료로 시작하기
+                  </button>
+                  <button onClick={() => setShowServiceGuide(false)} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-3.5 rounded-2xl text-sm transition-all">
+                    로그인 하기
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* 핵심 가치 3가지 */}
+            <section className="py-16 md:py-20 bg-white">
+              <div className="max-w-5xl mx-auto px-4">
+                <div className="text-center space-y-3 mb-12">
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900">왜 {platformConfig.siteLogoText || 'my김변'}인가요?</h2>
+                  <p className="text-sm text-slate-500 max-w-lg mx-auto">단순 사건 중개가 아닙니다. 의뢰인의 채무 데이터를 사전 정리해서 변호사님의 업무 효율을 극대화합니다.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                    { icon: '📊', title: 'AI 사전 진단 데이터', desc: '의뢰인이 상담 전 AI 챗봇으로 채무 구조를 입력합니다. 총 채무, 소득, 자산, 부양가족 등 핵심 데이터가 정리된 상태로 전달됩니다.', color: 'from-indigo-500/10 to-violet-500/10' },
+                    { icon: '⚖️', title: '정밀 시뮬레이션 리포트', desc: '2026년 법원 기준 생계비, 청산가치, 변제금을 자동 계산한 리포트와 함께 의뢰인이 도착합니다. 기초 상담 시간이 70% 절감됩니다.', color: 'from-emerald-500/10 to-teal-500/10' },
+                    { icon: '💼', title: '솔루션 제안 경쟁 입찰', desc: '최대 3명의 변호사가 의뢰인에게 솔루션과 비용을 제안합니다. 전문성으로 승부하세요. 실력 있는 변호사가 더 많은 사건을 수임합니다.', color: 'from-amber-500/10 to-orange-500/10' }
+                  ].map((item, i) => (
+                    <div key={i} className={`rounded-2xl bg-gradient-to-br ${item.color} p-6 md:p-8 space-y-4 group hover:shadow-lg transition-all`}>
+                      <div className="text-4xl group-hover:scale-110 transition-transform">{item.icon}</div>
+                      <h3 className="font-bold text-lg text-slate-900">{item.title}</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* 사용법 4단계 */}
+            <section className="py-16 md:py-20 bg-slate-50">
+              <div className="max-w-5xl mx-auto px-4">
+                <div className="text-center space-y-3 mb-12">
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900">이용 방법</h2>
+                  <p className="text-sm text-slate-500">가입부터 수임까지 4단계로 간단합니다.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { step: '01', title: '회원가입', desc: '변호사 등록증을 첨부하여 가입 신청', icon: '📝' },
+                    { step: '02', title: '승인 완료', desc: '관리자가 자격을 확인하고 계정 활성화', icon: '✅' },
+                    { step: '03', title: '상담 요청 수신', desc: 'AI 진단 완료 의뢰인의 상담 요청이 도착', icon: '🔔' },
+                    { step: '04', title: '솔루션 제안 & 수임', desc: '변제금·비용 제안서를 보내고 사건 수임', icon: '🤝' }
+                  ].map((item, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 text-center space-y-3 hover:shadow-md hover:border-brand/20 transition-all">
+                      <div className="text-3xl">{item.icon}</div>
+                      <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand/10 text-brand text-xs font-black">{item.step}</div>
+                      <h4 className="font-bold text-sm text-slate-900">{item.title}</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* CRM 기능 소개 */}
+            <section className="py-16 md:py-20 bg-white">
+              <div className="max-w-5xl mx-auto px-4">
+                <div className="text-center space-y-3 mb-12">
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900">변호사 전용 CRM 기능</h2>
+                  <p className="text-sm text-slate-500">사건 관리부터 의뢰인 소통까지, 하나의 플랫폼에서.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { icon: '📋', title: '오픈/지정 상담 대시보드', desc: '의뢰인의 채무 구조, 소득, 리스크 플래그를 한눈에 파악' },
+                    { icon: '💬', title: '실시간 채팅 상담', desc: '의뢰인과 1:1 채팅으로 추가 정보 확인 및 상담 진행' },
+                    { icon: '📑', title: '솔루션 제안서 발송', desc: '예상 변제금, 탕감률, 수임 비용을 정리한 제안서 전송' },
+                    { icon: '📊', title: '사건 진행 관리', desc: '수임 → 접수 → 보정 → 인가까지 단계별 사건 관리' },
+                    { icon: '👥', title: '의뢰인 CRM', desc: '의뢰인 연락처, 상담 이력, 진행 상태를 통합 관리' },
+                    { icon: '📞', title: '050 안심번호', desc: '의뢰인 개인정보 보호를 위한 가상 전화번호 자동 발급' }
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3.5 bg-slate-50 rounded-xl p-4 hover:bg-slate-100 transition-colors">
+                      <span className="text-2xl shrink-0">{item.icon}</span>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900">{item.title}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed mt-1">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* 비용 안내 */}
+            <section className="py-16 md:py-20 bg-gradient-to-br from-brand/5 to-violet-500/5">
+              <div className="max-w-3xl mx-auto px-4 text-center space-y-8">
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900">합리적인 비용 구조</h2>
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 md:p-10 space-y-6">
+                  <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-bold px-4 py-1.5 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    초기 비용 0원
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">가입비·월정액 없음. 수임 성공 시에만 과금.</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                    사건을 수임하지 않으면 비용이 발생하지 않습니다.<br />
+                    변호사님의 리스크를 최소화하는 성과 기반 과금 구조입니다.
+                  </p>
+                  <div className="grid grid-cols-3 gap-4 pt-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-brand">0원</div>
+                      <div className="text-xs text-slate-500 mt-1">가입비</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-brand">0원</div>
+                      <div className="text-xs text-slate-500 mt-1">월정액</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-emerald-600">성과형</div>
+                      <div className="text-xs text-slate-500 mt-1">수임 시 과금</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* FAQ */}
+            <section className="py-16 md:py-20 bg-white">
+              <div className="max-w-3xl mx-auto px-4">
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900 text-center mb-10">자주 묻는 질문</h2>
+                <div className="space-y-3">
+                  {[
+                    { q: '어떤 분야의 변호사가 가입할 수 있나요?', a: '현재 개인회생·파산·신용회복 전문 변호사님을 대상으로 운영하고 있습니다. 향후 다른 법률 분야로 확장 예정입니다.' },
+                    { q: '의뢰인은 어떻게 유입되나요?', a: '온라인 광고, SEO, SNS 마케팅을 통해 채무 문제로 고민하는 의뢰인이 플랫폼에 유입됩니다. AI 자가진단을 거쳐 채무 데이터가 정리된 상태로 상담을 요청합니다.' },
+                    { q: '한 건에 여러 변호사가 제안할 수 있나요?', a: '네, 최대 3명의 변호사가 솔루션 제안서를 보낼 수 있습니다. 의뢰인이 제안서를 비교하고 최종 선택합니다.' },
+                    { q: '계정 승인은 얼마나 걸리나요?', a: '변호사 등록증 확인 후 평균 1~2 영업일 이내에 승인됩니다.' },
+                    { q: '기존 사무소 홈페이지와 병행 사용이 가능한가요?', a: '물론입니다. 기존 채널은 유지하시면서 추가 사건 수임 채널로 활용하시면 됩니다.' }
+                  ].map((item, i) => (
+                    <details key={i} className="group bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                      <summary className="flex items-center justify-between p-4 cursor-pointer font-bold text-sm text-slate-900 hover:bg-slate-100 transition-colors">
+                        <span>{item.q}</span>
+                        <span className="text-slate-400 group-open:rotate-180 transition-transform text-lg">▾</span>
+                      </summary>
+                      <div className="px-4 pb-4 text-sm text-slate-600 leading-relaxed">{item.a}</div>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* CTA */}
+            <section className="py-16 md:py-20 bg-slate-900 text-white text-center">
+              <div className="max-w-3xl mx-auto px-4 space-y-6">
+                <h2 className="text-2xl md:text-3xl font-black">지금 바로 시작하세요</h2>
+                <p className="text-sm text-slate-400">가입비 0원, 월정액 0원. AI가 정리한 의뢰인 데이터로 더 효율적인 수임을 경험하세요.</p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button onClick={() => { setShowServiceGuide(false); setAuthMode('signup'); }} className="bg-brand hover:bg-brand-hover text-white font-bold px-10 py-4 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
+                    무료 회원가입
+                  </button>
+                  <button onClick={() => setShowServiceGuide(false)} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-10 py-4 rounded-2xl text-sm transition-all">
+                    로그인 페이지로 돌아가기
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* 푸터 */}
+            <footer className="bg-slate-950 text-slate-500 text-xs text-center py-8 px-4">
+              <p>© 2026 {platformConfig.siteLogoText || 'my김변'}. 도산 전문 법률 대리인 통합 플랫폼.</p>
+              <p className="mt-1">문의: partner@mykim.law | 사업자등록번호: 000-00-00000</p>
+            </footer>
+          </div>
+        )}
       </div>
     );
   }
