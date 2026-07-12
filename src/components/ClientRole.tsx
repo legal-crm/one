@@ -2284,43 +2284,40 @@ export default function ClientRole({
             </div>
             </section>
 
-            {/* ── Sector 4: 상황별 채무관리 방향성 진단 (다크 그라디언트 차별화) ────────── */}
-            <section className="w-full py-14 md:py-20 bg-gradient-to-br from-slate-900 via-indigo-950/90 to-slate-950 relative overflow-hidden">
-              {/* 배경 장식 블러 */}
-              <div className="absolute top-0 right-0 w-80 h-80 bg-brand/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-violet-500/[0.07] rounded-full blur-[120px] -ml-24 -mb-24 pointer-events-none" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/[0.03] rounded-full blur-[100px] pointer-events-none" />
+            {/* ── Sector 4: 상황별 채무관리 방향성 진단 (인디고 틴트 차별화) ────────── */}
+            <section className="w-full py-14 md:py-20 bg-gradient-to-b from-indigo-50/70 via-white to-violet-50/40 dark:from-slate-900 dark:via-slate-950 dark:to-indigo-950/30 relative overflow-hidden">
+              {/* 배경 장식 */}
+              <div className="absolute top-0 right-0 w-72 h-72 bg-indigo-200/30 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-80 h-80 bg-violet-200/20 rounded-full blur-[90px] -ml-20 -mb-20 pointer-events-none" />
 
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 {/* 섹션 헤더 */}
                 <div className="text-center space-y-3 mb-10">
-                  <div className="inline-flex items-center gap-2 bg-white/[0.08] border border-white/[0.1] text-indigo-300 text-xs font-bold px-4 py-1.5 rounded-full">
+                  <div className="inline-flex items-center gap-2 bg-brand/[0.08] border border-brand/15 text-brand dark:text-brand-light text-xs font-bold px-4 py-1.5 rounded-full">
                     <HeartHandshake className="w-3.5 h-3.5" />
                     <span>상황별 채무관리 방향 체크</span>
                   </div>
-                  <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-tight">
+                  <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
                     나의 채무 유형을 선택해 주세요
                   </h3>
-                  <p className="text-base text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
+                  <p className="text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
                     해당되는 상황을 클릭하면 즉시 관리 방향과 해결 전략을 안내합니다
                   </p>
                 </div>
 
                 {/* 카드 그리드 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 md:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-3.5">
                   {Object.values(remedyData).map((item, idx) => {
-                    // 테마컬러별 스타일 매핑
                     const colorStyles = {
-                      red:     { bar: 'border-l-red-500',     iconBg: 'from-red-500/20 to-red-600/10',     iconText: 'text-red-400',     hoverGlow: 'hover:shadow-red-500/10',     countText: 'text-red-400/70' },
-                      indigo:  { bar: 'border-l-indigo-500',  iconBg: 'from-indigo-500/20 to-indigo-600/10', iconText: 'text-indigo-400',  hoverGlow: 'hover:shadow-indigo-500/10',  countText: 'text-indigo-400/70' },
-                      amber:   { bar: 'border-l-amber-500',   iconBg: 'from-amber-500/20 to-amber-600/10',  iconText: 'text-amber-400',   hoverGlow: 'hover:shadow-amber-500/10',   countText: 'text-amber-400/70' },
-                      purple:  { bar: 'border-l-purple-500',  iconBg: 'from-purple-500/20 to-purple-600/10', iconText: 'text-purple-400',  hoverGlow: 'hover:shadow-purple-500/10',  countText: 'text-purple-400/70' },
-                      orange:  { bar: 'border-l-orange-500',  iconBg: 'from-orange-500/20 to-orange-600/10', iconText: 'text-orange-400',  hoverGlow: 'hover:shadow-orange-500/10',  countText: 'text-orange-400/70' },
-                      emerald: { bar: 'border-l-emerald-500', iconBg: 'from-emerald-500/20 to-emerald-600/10', iconText: 'text-emerald-400', hoverGlow: 'hover:shadow-emerald-500/10', countText: 'text-emerald-400/70' },
-                      rose:    { bar: 'border-l-rose-500',    iconBg: 'from-rose-500/20 to-rose-600/10',    iconText: 'text-rose-400',    hoverGlow: 'hover:shadow-rose-500/10',    countText: 'text-rose-400/70' },
+                      red:     { bar: 'border-l-red-400',     iconBg: 'bg-red-50 dark:bg-red-950/30',       iconText: 'text-red-500',     hoverBorder: 'hover:border-red-200 dark:hover:border-red-800/40',     countText: 'text-red-400' },
+                      indigo:  { bar: 'border-l-indigo-400',  iconBg: 'bg-indigo-50 dark:bg-indigo-950/30',  iconText: 'text-indigo-500',  hoverBorder: 'hover:border-indigo-200 dark:hover:border-indigo-800/40',  countText: 'text-indigo-400' },
+                      amber:   { bar: 'border-l-amber-400',   iconBg: 'bg-amber-50 dark:bg-amber-950/30',   iconText: 'text-amber-500',   hoverBorder: 'hover:border-amber-200 dark:hover:border-amber-800/40',   countText: 'text-amber-500' },
+                      purple:  { bar: 'border-l-purple-400',  iconBg: 'bg-purple-50 dark:bg-purple-950/30',  iconText: 'text-purple-500',  hoverBorder: 'hover:border-purple-200 dark:hover:border-purple-800/40',  countText: 'text-purple-400' },
+                      orange:  { bar: 'border-l-orange-400',  iconBg: 'bg-orange-50 dark:bg-orange-950/30',  iconText: 'text-orange-500',  hoverBorder: 'hover:border-orange-200 dark:hover:border-orange-800/40',  countText: 'text-orange-400' },
+                      emerald: { bar: 'border-l-emerald-400', iconBg: 'bg-emerald-50 dark:bg-emerald-950/30', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200 dark:hover:border-emerald-800/40', countText: 'text-emerald-400' },
+                      rose:    { bar: 'border-l-rose-400',    iconBg: 'bg-rose-50 dark:bg-rose-950/30',     iconText: 'text-rose-500',    hoverBorder: 'hover:border-rose-200 dark:hover:border-rose-800/40',     countText: 'text-rose-400' },
                     };
-                    const cs = colorStyles[item.themeColor as keyof typeof colorStyles] || { bar: 'border-l-brand', iconBg: 'from-brand/20 to-indigo-600/10', iconText: 'text-brand-light', hoverGlow: 'hover:shadow-brand/10', countText: 'text-brand-light/70' };
-                    // 사례 건수 (시드 기반 고정값)
+                    const cs = colorStyles[item.themeColor as keyof typeof colorStyles] || { bar: 'border-l-brand', iconBg: 'bg-brand-light dark:bg-brand/10', iconText: 'text-brand', hoverBorder: 'hover:border-brand/30', countText: 'text-brand' };
                     const caseCounts = [127, 89, 156, 73, 94, 61, 112, 143, 48];
                     const caseCount = caseCounts[idx] || 80;
 
@@ -2328,23 +2325,23 @@ export default function ClientRole({
                       <div
                         key={item.id}
                         onClick={() => handleCategoryClick(item.id)}
-                        className={`group relative bg-white/[0.05] hover:bg-white/[0.10] backdrop-blur-md border border-white/[0.08] hover:border-white/[0.18] rounded-xl overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl ${cs.hoverGlow} border-l-2 ${cs.bar}`}
+                        className={`group bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-0.5 hover:shadow-lg shadow-sm ${cs.hoverBorder} border-l-[3px] ${cs.bar}`}
                       >
-                        <div className="flex items-center gap-4 p-4 sm:p-5">
+                        <div className="flex items-center gap-3.5 p-4 sm:p-[18px]">
                           {/* 아이콘 */}
-                          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300 ${cs.iconText}`}>
-                            {renderRemedyIcon(item.iconName, 'w-5 h-5')}
+                          <div className={`w-10 h-10 rounded-lg ${cs.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300 ${cs.iconText}`}>
+                            {renderRemedyIcon(item.iconName, 'w-[18px] h-[18px]')}
                           </div>
 
                           {/* 텍스트 */}
-                          <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex-1 min-w-0 space-y-0.5">
                             <div className="flex items-center gap-1.5">
-                              <h5 className="font-semibold text-sm sm:text-[15px] text-white/90 truncate">{item.title}</h5>
+                              <h5 className="font-semibold text-[15px] text-slate-900 dark:text-slate-100 truncate">{item.title}</h5>
                               {item.id === 'tax_delinquency' && (
                                 <span className="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">중요</span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-400 font-medium line-clamp-1 leading-relaxed">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 leading-relaxed">
                               {item.subtitle}
                             </p>
                             <span className={`text-[11px] font-semibold ${cs.countText}`}>
@@ -2353,7 +2350,7 @@ export default function ClientRole({
                           </div>
 
                           {/* 화살표 */}
-                          <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white/70 group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-brand group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
                         </div>
                       </div>
                     );
@@ -2362,8 +2359,8 @@ export default function ClientRole({
 
                 {/* 하단 안내 */}
                 <div className="text-center pt-8">
-                  <p className="text-sm text-slate-500 font-medium">
-                    ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-indigo-400 font-bold">3분</span>이면 완료됩니다
+                  <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
+                    ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-brand font-bold">3분</span>이면 완료됩니다
                   </p>
                 </div>
               </div>
