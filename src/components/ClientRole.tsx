@@ -2366,68 +2366,93 @@ export default function ClientRole({
               </div>
             </section>
 
-            {/* ── Sector 5: 무료 관리 범위 ─────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* 6. Section 5: 전담 변호사 무료 관리 범위 (Free Care Scope) */}
-            <div className="pt-4">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50/80 via-white to-violet-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-100/60 dark:border-slate-800 p-8 md:p-12">
-                {/* Subtle background decorations */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-brand/[0.04] rounded-full blur-3xl -mr-16 -mt-16" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-violet-400/[0.04] rounded-full blur-3xl -ml-12 -mb-12" />
-
-                <div className="relative z-10 space-y-8">
-                  {/* Header */}
-                  <div className="text-center space-y-3">
-                    <div className="inline-flex items-center gap-2 bg-brand/10 border border-brand/15 text-brand dark:text-brand-light text-[12px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
-                      <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
-                      초기 채무 체크 무료
-                    </div>
-                    <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-tight">
-                      돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
-                    </h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
-                      바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
-                    </p>
+            {/* ── Sector 5: 무료 관리 범위 (아이콘 스포트라이트 차별화) ─── */}
+            <section className="w-full py-14 md:py-20 bg-white dark:bg-slate-900">
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                {/* 헤더 */}
+                <div className="text-center space-y-3 mb-12">
+                  <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    전부 무료
                   </div>
+                  <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white leading-tight">
+                    돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
+                  </h3>
+                  <p className="text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
+                    바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
+                  </p>
+                </div>
 
-                  {/* Feature Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                {/* 벤토 그리드: 상단 2개 대형 + 하단 3개 */}
+                <div className="space-y-3 md:space-y-4">
+                  {/* 상단 2개 — 대형 카드 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     {[
-                      { icon: '🔍', title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크' },
-                      { icon: '🧭', title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인' },
-                      { icon: '🛡️', title: '압류 위험 사전 점검', desc: '독촉이 얼마나 심해질지, 통장이나 월급이 묶일 수 있는지 미리 확인' },
-                      { icon: '💰', title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지, 어떤 서류가 필요한지 안내' },
-                      { icon: '📋', title: '신청 적격 사전 심사', desc: '최근 빌린 돈을 어디에 썼는지 보고, 신청이 잘 통과될지 미리 점검' },
+                      { emoji: '🔍', title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크', accent: 'from-indigo-500/10 to-violet-500/10 dark:from-indigo-500/15 dark:to-violet-500/15' },
+                      { emoji: '🧭', title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인', accent: 'from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/15 dark:to-teal-500/15' },
                     ].map((item, i) => (
-                      <div
-                        key={i}
-                        className="group bg-white/80 dark:bg-white/[0.04] backdrop-blur-sm border border-slate-200/60 dark:border-white/[0.08] rounded-2xl p-5 hover:shadow-lg hover:border-brand/20 dark:hover:border-brand/30 transition-all duration-300"
-                      >
-                        <div className="flex items-start gap-3.5">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand/10 to-violet-500/10 dark:from-brand/20 dark:to-violet-500/20 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform duration-300">
-                            {item.icon}
+                      <div key={i} className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-50/50 dark:from-slate-800/50 dark:to-slate-800/30 p-6 md:p-8 transition-all duration-300 hover:shadow-md">
+                        {/* 배경 이모지 장식 */}
+                        <div className="absolute -right-4 -bottom-4 text-[80px] md:text-[100px] leading-none opacity-[0.06] dark:opacity-[0.04] select-none pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                          {item.emoji}
+                        </div>
+                        <div className="relative z-10 flex items-start gap-4">
+                          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.accent} flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                            {item.emoji}
                           </div>
                           <div className="space-y-1.5 min-w-0">
-                            <h5 className="font-bold text-sm text-slate-900 dark:text-white/90">{item.title}</h5>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                            <h5 className="font-bold text-base text-slate-900 dark:text-white">{item.title}</h5>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Bottom hint */}
-                  <div className="text-center pt-2">
-                    <p className="text-[13px] text-slate-500 font-semibold">
-                      ✦ 상담 신청 전, 사전 체크로 나의 상황을 먼저 정리해 보세요
-                    </p>
+                  {/* 하단 3개 — 컴팩트 카드 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+                    {[
+                      { emoji: '🛡️', title: '압류 위험 사전 점검', desc: '통장이나 월급이 묶일 수 있는지 미리 확인', accent: 'from-amber-500/10 to-orange-500/10 dark:from-amber-500/15 dark:to-orange-500/15' },
+                      { emoji: '💰', title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지 안내', accent: 'from-rose-500/10 to-pink-500/10 dark:from-rose-500/15 dark:to-pink-500/15' },
+                      { emoji: '📋', title: '신청 적격 사전 심사', desc: '신청이 잘 통과될지 미리 점검', accent: 'from-sky-500/10 to-cyan-500/10 dark:from-sky-500/15 dark:to-cyan-500/15' },
+                    ].map((item, i) => (
+                      <div key={i} className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-50/50 dark:from-slate-800/50 dark:to-slate-800/30 p-5 md:p-6 transition-all duration-300 hover:shadow-md text-center sm:text-left">
+                        {/* 배경 이모지 장식 */}
+                        <div className="absolute -right-2 -bottom-2 text-[60px] leading-none opacity-[0.05] dark:opacity-[0.03] select-none pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                          {item.emoji}
+                        </div>
+                        <div className="relative z-10 flex flex-col items-center sm:items-start gap-3">
+                          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${item.accent} flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                            {item.emoji}
+                          </div>
+                          <div className="space-y-1">
+                            <h5 className="font-bold text-sm text-slate-900 dark:text-white">{item.title}</h5>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            </div>
+                {/* 하단 CTA */}
+                <div className="text-center pt-10">
+                  <button
+                    onClick={() => {
+                      setRequestType('open');
+                      setRequestStep(1);
+                      setActiveTab('request');
+                    }}
+                    className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold px-8 py-3.5 rounded-2xl text-sm transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98]"
+                  >
+                    <span>무료 사전 체크 시작하기</span>
+                    <span className="text-white/60 dark:text-slate-400">→</span>
+                  </button>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-3">
+                    ✦ 비용은 전혀 없어요. 부담 없이 내 상황부터 확인해 보세요
+                  </p>
+                </div>
+              </div>
             </section>
 
             {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
