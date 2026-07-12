@@ -1204,6 +1204,15 @@ export default function LawyerRole({
                             }`}>
                               {r.requestType === 'direct' ? '단독지명' : '오픈형'}
                             </span>
+                            {r.entryCategory && (
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                                r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
+                                r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
+                                'bg-slate-100 text-slate-500 border border-slate-200'
+                              }`}>
+                                {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
+                              </span>
+                            )}
                             <span className="text-xs font-bold text-slate-700">{r.clientName}</span>
                           </div>
                           <span className="text-[12px] text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</span>
@@ -1387,10 +1396,19 @@ export default function LawyerRole({
                       
                       {/* Left: Client detailed debt statistics query */}
                       <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="bg-brand/10 text-brand font-bold px-2 py-0.5 rounded text-[12px]">
                             {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
                           </span>
+                          {r.entryCategory && (
+                            <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                              r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
+                              r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
+                              'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}>
+                              {r.entryCategory.type === 'debt_type' ? '💳 관심 채무: ' : r.entryCategory.type === 'solution' ? '⚖️ 관심 해결방법: ' : ''}{r.entryCategory.label}
+                            </span>
+                          )}
                           <span className="text-xs text-slate-500">의뢰인: <strong>{r.clientName}</strong></span>
                           <span className="text-xs text-slate-600">|</span>
                           <span className="text-xs text-slate-500">등록일: {new Date(r.createdAt).toLocaleString()}</span>

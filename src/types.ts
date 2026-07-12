@@ -262,6 +262,12 @@ export interface ConsultRequest {
   safeNumber?: string;
   safeNumberAssignedAt?: string;
   safeNumberExpiresAt?: string;
+  // 의뢰인 진입 카테고리 (변호사 측에서만 표시)
+  entryCategory?: {
+    type: 'debt_type' | 'solution' | 'general';  // 채무유형 / 해결방법 / 일반
+    id: string;       // remedyData key 또는 solutionType
+    label: string;    // 표시 이름 (예: "카드론·리볼빙 연체", "개인회생")
+  };
 }
 
 // ── 변호사 솔루션/비용 제안서 ──
