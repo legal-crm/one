@@ -628,24 +628,24 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           {/* 좌측: 테이블 */}
           <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse table-fixed">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
-                    <th className="p-2.5 w-8">
+                    <th className="p-2.5 w-[36px]">
                       <input type="checkbox" checked={selectedIds.size === pagedRequests.length && pagedRequests.length > 0} onChange={handleSelectAll}
                         className="rounded border-slate-300" />
                     </th>
-                    <th className="p-2.5 cursor-pointer hover:text-slate-600" onClick={() => handleSort('clientName')}>
+                    <th className="p-2.5 w-[30%] cursor-pointer hover:text-slate-600" onClick={() => handleSort('clientName')}>
                       고객명 {sortField === 'clientName' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="p-2.5 cursor-pointer hover:text-slate-600" onClick={() => handleSort('crmStatus')}>
+                    <th className="p-2.5 w-[12%] cursor-pointer hover:text-slate-600 text-center" onClick={() => handleSort('crmStatus')}>
                       상태 {sortField === 'crmStatus' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="p-2.5">담당자</th>
-                    <th className="p-2.5 cursor-pointer hover:text-slate-600 text-right" onClick={() => handleSort('debtTotal')}>
+                    <th className="p-2.5 w-[12%] text-center">담당자</th>
+                    <th className="p-2.5 w-[15%] cursor-pointer hover:text-slate-600 text-right" onClick={() => handleSort('debtTotal')}>
                       총 채무 {sortField === 'debtTotal' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="p-2.5 cursor-pointer hover:text-slate-600 text-right" onClick={() => handleSort('createdAt')}>
+                    <th className="p-2.5 w-[15%] cursor-pointer hover:text-slate-600 text-right" onClick={() => handleSort('createdAt')}>
                       등록일 {sortField === 'createdAt' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
                   </tr>
@@ -659,28 +659,28 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       <tr key={r.id}
                         className={`cursor-pointer transition-colors ${isSelected ? 'bg-brand/5' : 'hover:bg-slate-50'}`}
                         onClick={() => setSelectedId(r.id)}>
-                        <td className="p-2.5" onClick={e => e.stopPropagation()}>
+                        <td className="p-2.5 w-[36px]" onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => handleToggleSelect(r.id)} className="rounded border-slate-300" />
                         </td>
                         <td className="p-2.5">
-                          <div className="font-bold text-slate-900">{r.clientName}</div>
-                          <div className="text-[12px] text-slate-500 font-mono">{getDisplayPhoneNumber(r)}</div>
+                          <div className="font-bold text-slate-900 truncate">{r.clientName}</div>
+                          <div className="text-[11px] text-slate-400 truncate">{getDisplayPhoneNumber(r)}</div>
                         </td>
-                        <td className="p-2.5">
-                          <span className={`text-[12px] px-2 py-0.5 rounded border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold`}>
+                        <td className="p-2.5 text-center">
+                          <span className={`text-[11px] px-2 py-0.5 rounded border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold whitespace-nowrap`}>
                             {sc.emoji} {sc.label}
                           </span>
                         </td>
-                        <td className="p-2.5">
-                          <div className="flex items-center gap-1">
+                        <td className="p-2.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
                             {getStaffRoleBadge(ext.assignedLawyerId)}
-                            <span className="text-[12px] text-slate-600">{getStaffName(ext.assignedLawyerId)}</span>
+                            <span className="text-[11px] text-slate-600 truncate">{getStaffName(ext.assignedLawyerId)}</span>
                           </div>
                         </td>
-                        <td className="p-2.5 text-right font-bold text-red-500 text-[13px]">
+                        <td className="p-2.5 text-right font-bold text-red-500 text-[13px] whitespace-nowrap">
                           {r.financialProfile.debtTotal.toLocaleString()}만
                         </td>
-                        <td className="p-2.5 text-right text-[12px] text-slate-500">
+                        <td className="p-2.5 text-right text-[11px] text-slate-500">
                           <div>{new Date(r.createdAt).toLocaleDateString()}</div>
                           <div className="text-slate-350">{timeAgo(ext.lastActivityAt)}</div>
                         </td>
