@@ -1523,7 +1523,7 @@ export default function LawyerRole({
               
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-1 bg-slate-100 hover:bg-slate-100 text-slate-450 hover:text-white px-2.5 py-1.5 rounded-[200px] border border-slate-200 text-[12px] transition-colors"
+                className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-450 hover:text-slate-800 px-2.5 py-1.5 rounded-[200px] border border-slate-200 text-[12px] transition-colors"
               >
                 <LogOut className="w-3 h-3" />
                 <span>로그아웃</span>
@@ -1539,7 +1539,7 @@ export default function LawyerRole({
               <button 
                 onClick={() => setActiveTab('dashboard')}
                 className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'dashboard' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                  activeTab === 'dashboard' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
                 }`}
               >
                 <BarChart2 className="w-4 h-4" />
@@ -1551,7 +1551,7 @@ export default function LawyerRole({
               <button 
                 onClick={() => setActiveTab('open-requests')}
                 className={`relative pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'open-requests' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                  activeTab === 'open-requests' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
@@ -1568,7 +1568,7 @@ export default function LawyerRole({
               <button 
                 onClick={() => setActiveTab('client-crm')}
                 className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'client-crm' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                  activeTab === 'client-crm' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
                 }`}
               >
                 <Users className="w-4 h-4" />
@@ -1583,7 +1583,7 @@ export default function LawyerRole({
               <button 
                 onClick={() => setActiveTab('cases')}
                 className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'cases' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                  activeTab === 'cases' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
                 }`}
               >
                 <FolderHeart className="w-4 h-4" />
@@ -1598,7 +1598,7 @@ export default function LawyerRole({
               <button 
                 onClick={() => setActiveTab('billing')}
                 className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'billing' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                  activeTab === 'billing' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
                 }`}
               >
                 <CreditCard className="w-4 h-4" />
@@ -1610,7 +1610,7 @@ export default function LawyerRole({
               <button 
                 onClick={() => setActiveTab('staff-management')}
                 className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 relative ${
-                  activeTab === 'staff-management' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                  activeTab === 'staff-management' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
                 }`}
               >
                 <Shield className="w-4 h-4" />
@@ -1630,7 +1630,7 @@ export default function LawyerRole({
               <button 
                 onClick={() => setActiveTab('settings')}
                 className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'settings' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                  activeTab === 'settings' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
                 }`}
               >
                 <Settings className="w-4 h-4" />
