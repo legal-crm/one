@@ -1079,3 +1079,54 @@ export interface PopupConfig {
   disableOverlay: boolean;
 }
 
+
+
+// ═══════════════════════════════════════════════════════
+// 알림 시스템 (Notification System)
+// ═══════════════════════════════════════════════════════
+
+export type NotificationChannelType = 'telegram' | 'email' | 'browser_push' | 'sms' | 'kakao';
+export type NotificationChannelStatus = 'connected' | 'disconnected' | 'coming_soon';
+
+export interface NotificationChannel {
+  type: NotificationChannelType;
+  enabled: boolean;
+  status: NotificationChannelStatus;
+  config: Record<string, string>;
+}
+
+export interface NotificationLog {
+  id: string;
+  channel: NotificationChannelType;
+  type: 'new_consult' | 'remind' | 'escalation' | 'test';
+  sentAt: string;
+  status: 'sent' | 'failed';
+  detail: string;
+  errorMessage?: string;
+}
+
+export interface NotificationSettings {
+  telegram: {
+    botToken: string;
+    chatId: string;
+    connected: boolean;
+  };
+  email: {
+    senderGmail: string;
+    senderAppPassword: string;
+    recipientEmails: string[];
+    enabled: boolean;
+  };
+  browserPush: {
+    enabled: boolean;
+    permission: string;
+  };
+  sms: {
+    enabled: false;
+    status: 'coming_soon';
+  };
+  kakao: {
+    enabled: false;
+    status: 'coming_soon';
+  };
+}
