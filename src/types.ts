@@ -106,6 +106,22 @@ export const STAFF_ROLE_CONFIG: Record<StaffRole, { label: string; color: string
 // 직원 상태
 export type StaffMemberStatus = 'pending' | 'active' | 'suspended' | 'removed';
 
+// 초대 토큰
+export interface InviteToken {
+  token: string;
+  role: StaffRole;
+  email?: string;              // 지정된 이메일 (선택)
+  expiresAt: string;           // 만료 시각 (ISO)
+  createdBy: string;           // 생성한 관리자 ID
+  createdAt: string;
+  usedBy?: string;             // 사용한 직원 ID
+  usedAt?: string;             // 사용 시각
+  isUsed: boolean;
+}
+
+// 인증 제공자 타입
+export type AuthProvider = 'email' | 'google';
+
 // 법무법인 직원
 export interface StaffMember {
   id: string;
@@ -115,7 +131,7 @@ export interface StaffMember {
   phone?: string;
   avatar?: string;
   isActive: boolean;
-  assignedCount: number;  // 현재 담당 건수
+  assignedCount: number;       // 현재 담당 건수
   createdAt: string;
   permissions: StaffPermissions;
   status: StaffMemberStatus;   // 직원 상태 (승인대기/활성/정지/강퇴)
@@ -124,6 +140,13 @@ export interface StaffMember {
   removedAt?: string;          // 강퇴 일시
   removalReason?: string;      // 강퇴 사유
   lastActiveAt?: string;       // 마지막 활동 일시
+  // ── 인증 관련 필드 (Phase 1) ──
+  authEmail?: string;          // 인증용 이메일 (로그인 ID)
+  authProvider?: AuthProvider; // 인증 방식 (email / google)
+  supabaseUserId?: string;     // Supabase Auth user.id
+  linkedUserId?: string;       // 기존 User(변호사) 체계 연결 ID
+  inviteToken?: string;        // 초대 시 사용된 토큰
+  passwordLastChanged?: string;// 비밀번호 최종 변경 일시
 }
 
 export interface StaffPermissions {

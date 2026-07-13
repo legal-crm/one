@@ -4,6 +4,8 @@ import {
   AlertTriangle, ArrowRightLeft, Search, Filter, ChevronDown, ChevronUp,
   Briefcase, Activity, Mail, Phone, RotateCcw, Trash2, ShieldCheck
 } from 'lucide-react';
+import { generateInviteToken, buildInviteUrl, loadInviteTokens } from '../../services/inviteService';
+import type { InviteToken } from '../../types';
 import type {
   ConsultRequest, User, StaffMember, StaffRole, StaffMemberStatus,
   StaffActivityLog, StaffActivityType, CrmClientExtension, StaffPermissions
@@ -16,7 +18,7 @@ import {
   approveStaffMember, rejectStaffMember, suspendStaffMember,
   reactivateStaffMember, removeStaffMemberWithReason,
   createStaffActivityLog, loadStaffActivityLogs, saveStaffActivityLog,
-  loadCrmData, saveCrmClient,
+  loadCrmData, saveCrmClient, updateStaffPermissions,
   type CrmDataStore
 } from '../../services/crmService';
 
@@ -57,6 +59,15 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const [inviteEmail, setInviteEmail] = useState('');
   const [invitePhone, setInvitePhone] = useState('');
   const [inviteRole, setInviteRole] = useState<StaffRole>('CONSULTANT');
+
+  // ── 초대 링크 ──
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState('');
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+  const [showInviteLinkMode, setShowInviteLinkMode] = useState(false);
+
+  // ── 직원 상세 패널 ──
+  const [selectedStaffDetail, setSelectedStaffDetail] = useState<StaffMember | null>(null);
+  const [editPermissions, setEditPermissions] = useState<StaffPermissions | null>(null);
 
   // ── 강퇴 모달 ──
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -146,6 +157,26 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     setInviteName(''); setInviteEmail(''); setInvitePhone(''); setInviteRole('CONSULTANT');
   };
 
+  // ── 핸들러: 초대 링크 생성 ──
+  const handleGenerateInviteLink = async () => {
+    const token = await generateInviteToken(
+      inviteRole,
+      activeLawyer.id,
+      inviteEmail.trim() || undefined
+    );
+    const url = buildInviteUrl(token.token);
+    setGeneratedInviteUrl(url);
+    setInviteLinkCopied(false);
+    recordActivity('system', '시스템', 'staff_invited', `${STAFF_ROLE_CONFIG[inviteRole].label} 역할의 초대 링크가 생성되었습니다.`);
+  };
+
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(generatedInviteUrl).then(() => {
+      setInviteLinkCopied(true);
+      setTimeout(() => setInviteLinkCopied(false), 3000);
+    });
+  };
+
   // ── 핸들러: 승인 ──
   const handleApprove = async (member: StaffMember) => {
     await approveStaffMember(member.id);
@@ -230,6 +261,18 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     alert(`${transferredCount}건의 사건이 ${toStaff.name}에게 성공적으로 이관되었습니다.`);
   };
 
+  // ── 핸들러: 역할 변경 ──
+  const handleRoleChange = async (member: StaffMember, newRole: StaffRole) => {
+    if (member.role === newRole) return;
+    if (!confirm(`${member.name}님의 역할을 ${STAFF_ROLE_CONFIG[member.role].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경하시겠습니까?\n권한이 새 역할의 기본값으로 초기화됩니다.`)) return;
+    
+    const oldRole = member.role;
+    const updatedMember = { ...member, role: newRole, permissions: DEFAULT_PERMISSIONS[newRole] };
+    await saveStaffMember(updatedMember);
+    setStaffMembers(prev => prev.map(m => m.id === member.id ? updatedMember : m));
+    recordActivity(member.id, member.name, 'role_changed', `${member.name}님의 역할이 ${STAFF_ROLE_CONFIG[oldRole].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경되었습니다.`);
+  };
+
   // ── 필터된 직원 목록 ──
   const filteredActiveStaff = useMemo(() => {
     return allManagedStaff.filter(m => {
@@ -291,6 +334,15 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slideInRight {
+          animation: slideInRight 0.3s ease-out;
+        }
+      `}</style>
       {/* ── 페이지 헤더 ── */}
       <div className="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -437,7 +489,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                             {member.name.charAt(0)}
                           </div>
                           <div>
-                            <span className="font-bold text-slate-900">{member.name}</span>
+                            <span className="font-bold text-slate-900 cursor-pointer hover:text-brand transition-colors" onClick={() => { setSelectedStaffDetail(member); setEditPermissions({...member.permissions}); }}>{member.name}</span>
                             {member.phone && <div className="text-[11px] text-slate-400">{member.phone}</div>}
                           </div>
                         </div>
@@ -452,6 +504,16 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                         <div className="flex items-center justify-end gap-1.5">
                           {member.role !== 'OWNER' && (
                             <>
+                              <select
+                                value={member.role}
+                                onChange={e => handleRoleChange(member, e.target.value as StaffRole)}
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-600 focus:outline-none focus:ring-1 focus:ring-brand/30 mr-1"
+                              >
+                                <option value="LAWYER">담당 변호사</option>
+                                <option value="CONSULTANT">상담 직원</option>
+                                <option value="STAFF">사무 직원</option>
+                                <option value="ACCOUNTING">경리 직원</option>
+                              </select>
                               {member.status === 'active' && (
                                 <button
                                   onClick={() => handleSuspend(member)}
@@ -679,45 +741,104 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-[12px] text-slate-600 font-bold block">이름 *</label>
-                <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
-                  placeholder="직원 이름 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[12px] text-slate-600 font-bold block">이메일</label>
-                <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                  placeholder="이메일 주소" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[12px] text-slate-600 font-bold block">연락처</label>
-                <input type="tel" value={invitePhone} onChange={e => setInvitePhone(e.target.value)}
-                  placeholder="010-XXXX-XXXX" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[12px] text-slate-600 font-bold block">역할 지정</label>
-                <select value={inviteRole} onChange={e => setInviteRole(e.target.value as StaffRole)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
-                  <option value="LAWYER">담당 변호사</option>
-                  <option value="CONSULTANT">상담 직원</option>
-                  <option value="STAFF">사무 직원</option>
-                  <option value="ACCOUNTING">경리 직원</option>
-                </select>
-              </div>
+            {/* 모드 탭 */}
+            <div className="flex border-b border-slate-200">
+              <button
+                onClick={() => { setShowInviteLinkMode(false); setGeneratedInviteUrl(''); }}
+                className={`flex-1 py-2 text-xs font-bold transition-colors ${!showInviteLinkMode ? 'text-brand border-b-2 border-brand' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                직접 초대
+              </button>
+              <button
+                onClick={() => setShowInviteLinkMode(true)}
+                className={`flex-1 py-2 text-xs font-bold transition-colors ${showInviteLinkMode ? 'text-brand border-b-2 border-brand' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                🔗 초대 링크
+              </button>
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <button onClick={handleInviteStaff}
-                disabled={!inviteName.trim()}
-                className="flex-1 bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none">
-                초대하기
-              </button>
-              <button onClick={() => setShowInviteModal(false)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold border border-slate-200 transition-colors">
-                취소
-              </button>
-            </div>
+            {showInviteLinkMode ? (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[12px] text-slate-600 font-bold block">역할 지정 *</label>
+                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value as StaffRole)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                    <option value="LAWYER">담당 변호사</option>
+                    <option value="CONSULTANT">상담 직원</option>
+                    <option value="STAFF">사무 직원</option>
+                    <option value="ACCOUNTING">경리 직원</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[12px] text-slate-600 font-bold block">이메일 (선택)</label>
+                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                    placeholder="특정 이메일로 제한 (선택사항)" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  <p className="text-[11px] text-slate-400">입력하면 해당 이메일로만 가입 가능합니다.</p>
+                </div>
+                <button onClick={handleGenerateInviteLink}
+                  className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors">
+                  🔗 초대 링크 생성 (48시간 유효)
+                </button>
+                {generatedInviteUrl && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                    <label className="text-[11px] text-slate-500 font-bold block">생성된 초대 링크</label>
+                    <div className="flex gap-2">
+                      <input type="text" readOnly value={generatedInviteUrl}
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-[11px] text-slate-600 font-mono select-all" />
+                      <button onClick={handleCopyInviteLink}
+                        className={`px-3 py-2 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
+                          inviteLinkCopied ? 'bg-emerald-500 text-white' : 'bg-brand/10 text-brand hover:bg-brand/20 border border-brand/20'
+                        }`}>
+                        {inviteLinkCopied ? '✓ 복사됨' : '복사'}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-amber-500 font-medium">⏰ 이 링크는 48시간 후 만료됩니다.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[12px] text-slate-600 font-bold block">이름 *</label>
+                    <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
+                      placeholder="직원 이름 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[12px] text-slate-600 font-bold block">이메일</label>
+                    <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                      placeholder="이메일 주소" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[12px] text-slate-600 font-bold block">연락처</label>
+                    <input type="tel" value={invitePhone} onChange={e => setInvitePhone(e.target.value)}
+                      placeholder="010-XXXX-XXXX" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[12px] text-slate-600 font-bold block">역할 지정</label>
+                    <select value={inviteRole} onChange={e => setInviteRole(e.target.value as StaffRole)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                      <option value="LAWYER">담당 변호사</option>
+                      <option value="CONSULTANT">상담 직원</option>
+                      <option value="STAFF">사무 직원</option>
+                      <option value="ACCOUNTING">경리 직원</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button onClick={handleInviteStaff}
+                    disabled={!inviteName.trim()}
+                    className="flex-1 bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none">
+                    초대하기
+                  </button>
+                  <button onClick={() => setShowInviteModal(false)}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold border border-slate-200 transition-colors">
+                    취소
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -817,6 +938,142 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold border border-slate-200 transition-colors">
                 취소
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* 패널: 직원 상세 프로필 */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {selectedStaffDetail && editPermissions && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm animate-fadeIn" onClick={() => setSelectedStaffDetail(null)}>
+          <div className="bg-white w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slideInRight" onClick={e => e.stopPropagation()}>
+            {/* 헤더 */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
+              <h4 className="font-extrabold text-slate-900">직원 상세 정보</h4>
+              <button onClick={() => setSelectedStaffDetail(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* 프로필 카드 */}
+              <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold border-2 ${
+                  selectedStaffDetail.role === 'OWNER' ? 'bg-amber-100 text-amber-600 border-amber-300' :
+                  selectedStaffDetail.role === 'LAWYER' ? 'bg-blue-100 text-blue-600 border-blue-300' :
+                  selectedStaffDetail.role === 'CONSULTANT' ? 'bg-emerald-100 text-emerald-600 border-emerald-300' :
+                  'bg-slate-100 text-slate-600 border-slate-300'
+                }`}>
+                  {selectedStaffDetail.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-bold text-slate-900 text-lg">{selectedStaffDetail.name}</div>
+                  <div className="mt-1">{renderRoleBadge(selectedStaffDetail.role)}</div>
+                </div>
+              </div>
+
+              {/* 기본 정보 */}
+              <div className="space-y-3">
+                <h5 className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><Users className="w-4 h-4 text-brand" /> 기본 정보</h5>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white border border-slate-200 rounded-xl p-3">
+                    <span className="text-slate-400 block mb-0.5">이메일</span>
+                    <span className="font-bold text-slate-700">{selectedStaffDetail.email || selectedStaffDetail.authEmail || '미등록'}</span>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3">
+                    <span className="text-slate-400 block mb-0.5">연락처</span>
+                    <span className="font-bold text-slate-700">{selectedStaffDetail.phone || '미등록'}</span>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3">
+                    <span className="text-slate-400 block mb-0.5">가입일</span>
+                    <span className="font-bold text-slate-700">{formatDate(selectedStaffDetail.createdAt)}</span>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3">
+                    <span className="text-slate-400 block mb-0.5">상태</span>
+                    {renderStatusBadge(selectedStaffDetail.status)}
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3">
+                    <span className="text-slate-400 block mb-0.5">인증 방식</span>
+                    <span className="font-bold text-slate-700">{selectedStaffDetail.authProvider === 'google' ? '🔵 Google' : selectedStaffDetail.authProvider === 'email' ? '📧 이메일' : '미설정'}</span>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3">
+                    <span className="text-slate-400 block mb-0.5">담당 사건</span>
+                    <span className="font-bold text-slate-700">{staffCaseCounts[selectedStaffDetail.id] || 0}건</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 권한 토글 */}
+              {selectedStaffDetail.role !== 'OWNER' && (
+                <div className="space-y-3">
+                  <h5 className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><Shield className="w-4 h-4 text-brand" /> 개별 권한 설정</h5>
+                  <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
+                    {([
+                      { key: 'viewAllClients' as keyof StaffPermissions, label: '전체 고객 조회', desc: '모든 고객 정보를 열람할 수 있습니다.' },
+                      { key: 'editClientInfo' as keyof StaffPermissions, label: '고객 정보 수정', desc: '고객의 연락처, 이름 등을 수정합니다.' },
+                      { key: 'changeStatus' as keyof StaffPermissions, label: '상태 변경', desc: 'CRM 상태를 변경할 수 있습니다.' },
+                      { key: 'assignCases' as keyof StaffPermissions, label: '사건 배정/이관', desc: '사건을 다른 직원에게 배정합니다.' },
+                      { key: 'manageStaff' as keyof StaffPermissions, label: '직원 관리', desc: '직원을 초대/승인/탈퇴 처리합니다.' },
+                      { key: 'writeNotes' as keyof StaffPermissions, label: '상담 메모 작성', desc: '상담 노트를 작성할 수 있습니다.' },
+                      { key: 'manageBilling' as keyof StaffPermissions, label: '수임료 관리', desc: '수임료 정보를 열람/수정합니다.' },
+                      { key: 'deleteClients' as keyof StaffPermissions, label: '고객 삭제', desc: '고객 데이터를 삭제할 수 있습니다.' },
+                    ]).map(perm => (
+                      <div key={perm.key} className="flex items-center justify-between p-3 hover:bg-slate-50/50 transition-colors">
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-700">{perm.label}</div>
+                          <div className="text-[11px] text-slate-400">{perm.desc}</div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditPermissions(prev => prev ? { ...prev, [perm.key]: !prev[perm.key] } : prev);
+                          }}
+                          className={`relative w-10 h-[22px] rounded-full transition-colors shrink-0 ml-3 ${
+                            editPermissions[perm.key] ? 'bg-brand' : 'bg-slate-200'
+                          }`}
+                        >
+                          <span className={`absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform ${
+                            editPermissions[perm.key] ? 'translate-x-5' : 'translate-x-[2px]'
+                          }`} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await updateStaffPermissions(selectedStaffDetail.id, editPermissions);
+                      setStaffMembers(prev => prev.map(m => m.id === selectedStaffDetail.id ? { ...m, permissions: editPermissions } : m));
+                      recordActivity(selectedStaffDetail.id, selectedStaffDetail.name, 'permission_changed', `${selectedStaffDetail.name}님의 개별 권한이 변경되었습니다.`);
+                      alert('권한이 저장되었습니다.');
+                    }}
+                    className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    권한 변경 저장
+                  </button>
+                </div>
+              )}
+
+              {/* 최근 활동 이력 */}
+              <div className="space-y-3">
+                <h5 className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><Activity className="w-4 h-4 text-brand" /> 최근 활동</h5>
+                <div className="space-y-2">
+                  {activityLogs.filter(log => log.staffId === selectedStaffDetail.id).slice(0, 10).map(log => {
+                    const typeInfo = ACTIVITY_TYPE_LABELS[log.type] || { label: log.type, emoji: '📌', color: 'text-slate-400' };
+                    return (
+                      <div key={log.id} className="bg-white border border-slate-100 rounded-lg p-2.5 text-xs flex items-start gap-2">
+                        <span>{typeInfo.emoji}</span>
+                        <div className="min-w-0">
+                          <span className="text-slate-600">{log.description}</span>
+                          <div className="text-[11px] text-slate-400 mt-0.5">{formatDate(log.createdAt)}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {activityLogs.filter(log => log.staffId === selectedStaffDetail.id).length === 0 && (
+                    <div className="text-center text-slate-400 text-xs py-4">활동 이력이 없습니다.</div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -12,6 +12,12 @@ import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 import CrmTab from './lawyer/CrmTab';
 import StaffManagementTab from './lawyer/StaffManagementTab';
+import { usePermissions } from '../hooks/usePermissions';
+import type { StaffMember, StaffRole as StaffRoleType } from '../types';
+import { DEFAULT_PERMISSIONS } from '../types';
+import { validateInviteToken, consumeInviteToken } from '../services/inviteService';
+import { loadStaffMembers } from '../services/crmService';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   if (req.phoneConsultationRequested) {
@@ -94,6 +100,17 @@ export default function LawyerRole({
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
+  // Invite token states
+  const [inviteToken, setInviteToken] = useState<string>('');
+  const [inviteTokenValid, setInviteTokenValid] = useState<boolean>(false);
+  const [inviteTokenRole, setInviteTokenRole] = useState<StaffRoleType>('CONSULTANT');
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+
+  // Active staff member (for RBAC)
+  const [activeStaffMember, setActiveStaffMember] = useState<StaffMember | null>(null);
+  const permissionCtx = usePermissions(activeStaffMember);
+
   // Dynamically sync document title
   useEffect(() => {
     if (platformConfig.siteTitle) {
@@ -131,6 +148,40 @@ export default function LawyerRole({
       }
     }
   }, [isLoggedIn, activeLawyer, members]);
+
+  // Detect invite token from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get('invite');
+    if (invite) {
+      setInviteToken(invite);
+      setAuthMode('signup');
+      validateInviteToken(invite).then(result => {
+        if (result.valid && result.token) {
+          setInviteTokenValid(true);
+          setInviteTokenRole(result.token.role);
+          setSignupRole(result.token.role === 'OWNER' ? 'LAWYER' : result.token.role as any);
+        } else {
+          alert(result.error || '유효하지 않은 초대 링크입니다.');
+          setInviteTokenValid(false);
+        }
+      });
+    }
+  }, []);
+
+  // Load staff member data for RBAC
+  useEffect(() => {
+    if (isLoggedIn && activeLawyer) {
+      loadStaffMembers().then(members => {
+        const found = members.find(m => m.linkedUserId === activeLawyer.id || m.authEmail === activeLawyer.id);
+        if (found) {
+          setActiveStaffMember(found);
+        } else {
+          setActiveStaffMember(null);
+        }
+      });
+    }
+  }, [isLoggedIn, activeLawyer]);
   
   // Login form state
   const [loginId, setLoginId] = useState<string>('');
@@ -368,13 +419,7 @@ export default function LawyerRole({
       } else if (currentMember.status === 'dormant') {
         if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
           setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
-          onLogActivity(
-            currentMember.id,
-            currentMember.alias,
-            'LAWYER',
-            'LOGIN',
-            `변호사 휴면 계정 수동 휴면 해제 성공`
-          );
+          onLogActivity(currentMember.id, currentMember.alias, 'LAWYER', 'LOGIN', `변호사 휴면 계정 수동 휴면 해제 성공`);
         } else {
           return;
         }
@@ -392,7 +437,7 @@ export default function LawyerRole({
     setMembers(prev => prev.map(m => m.id === found.id ? { ...m, lastActiveAt: new Date().toISOString() } : m));
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupId.trim() || !signupPassword.trim() || !signupName.trim()) {
       setSignupError('필수 입력 항목(* 표시)을 모두 입력해주세요.');
@@ -410,21 +455,26 @@ export default function LawyerRole({
       return;
     }
 
+    let resolvedRole = signupRole;
+    if (inviteToken && inviteTokenValid) {
+      resolvedRole = inviteTokenRole as any;
+    }
+
     const newLawyer: User = {
       id: signupId.trim(),
       lawFirmId: 'firm-1',
-      teamId: signupRole === 'LAWYER' ? 'team-1' : 'team-1',
-      name: signupName.trim() + (signupRole === 'LAWYER' ? ' 변호사' : ' 실장'),
-      role: signupRole,
+      teamId: resolvedRole === 'LAWYER' ? 'team-1' : 'team-1',
+      name: signupName.trim() + (resolvedRole === 'LAWYER' ? ' 변호사' : ' 실장'),
+      role: resolvedRole,
       fields: signupFields,
       region: signupRegion,
       avatar: avatarImageData || signupAvatar,
       avatarData: avatarImageData || undefined,
-      bio: signupBio.trim() || `${signupName.trim()} ${signupRole === 'LAWYER' ? '변호사' : '실장'}입니다.`,
+      bio: signupBio.trim() || `${signupName.trim()} ${resolvedRole === 'LAWYER' ? '변호사' : '실장'}입니다.`,
       recentActivity: '신규 회원 가입 완료',
       matchedCount: 0,
       password: signupPassword,
-      approved: false, // New lawyer accounts must be approved by the admin portal
+      approved: false,
       licenseImageData: licenseImageData || undefined,
       licenseNumber: signupLicenseNumber.trim() || undefined,
       licenseStatus: 'pending'
@@ -432,19 +482,46 @@ export default function LawyerRole({
 
     setLawyers(prev => [...prev, newLawyer]);
 
-    // Create a new Member for admin tracking
     const newMember: Member = {
       id: signupId.trim(),
       email: signupId.trim() + '@rehablaw.com',
-      alias: signupName.trim() + (signupRole === 'LAWYER' ? ' 변호사' : ' 실장'),
-      role: signupRole as MemberRole,
+      alias: signupName.trim() + (resolvedRole === 'LAWYER' ? ' 변호사' : ' 실장'),
+      role: resolvedRole as MemberRole,
       createdAt: new Date().toISOString(),
       loginChannel: 'email',
-      status: 'pending', // Awaiting admin approval
+      status: 'pending',
       lastActiveAt: new Date().toISOString()
     };
     setMembers(prev => [...prev, newMember]);
     onLogActivity(newMember.id, newMember.alias, newMember.role, 'SIGNUP', '로펌 CRM 파트너 신규 가입 신청 완료 (자격 심사 대기)');
+
+    if (inviteToken && inviteTokenValid) {
+      try {
+        const { saveStaffMember } = await import('../services/crmService');
+        const newStaff: StaffMember = {
+          id: `staff-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          name: signupName.trim() + (resolvedRole === 'LAWYER' ? ' 변호사' : ''),
+          role: inviteTokenRole,
+          email: signupId.trim(),
+          isActive: false,
+          assignedCount: 0,
+          createdAt: new Date().toISOString(),
+          permissions: DEFAULT_PERMISSIONS[inviteTokenRole],
+          status: 'pending',
+          authEmail: signupId.trim(),
+          authProvider: 'email',
+          linkedUserId: signupId.trim(),
+          inviteToken: inviteToken,
+        };
+        await saveStaffMember(newStaff);
+        await consumeInviteToken(inviteToken, newStaff.id);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('invite');
+        window.history.replaceState({}, '', url.toString());
+      } catch (err) {
+        console.warn('[Signup] 초대 토큰 연동 실패:', err);
+      }
+    }
 
     alert('회원가입이 완료되었습니다!\n\n관리자가 변호사 등록증을 확인한 후 승인 처리됩니다.\n승인 완료 후 로그인이 가능합니다.');
     setAuthMode('login');
@@ -459,12 +536,156 @@ export default function LawyerRole({
     setLicenseImageData('');
     setAvatarPreview('');
     setAvatarImageData('');
+    setInviteToken('');
+    setInviteTokenValid(false);
+  };
+
+  // Google OAuth 콜백 처리 (리다이렉트 후 세션 매핑)
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const user = session.user;
+        const email = user.email || '';
+        const provider = user.app_metadata?.provider || 'email';
+        
+        // 기존 변호사 계정과 매칭 시도
+        const matchedLawyer = lawyers.find(l => 
+          l.id.toLowerCase() === email.toLowerCase() ||
+          l.name.toLowerCase().includes(email.split('@')[0].toLowerCase())
+        );
+        
+        if (matchedLawyer) {
+          localStorage.setItem('legal_crm_lawyer_session', matchedLawyer.id);
+          setActiveLawyer(matchedLawyer);
+          setIsLoggedIn(true);
+        } else {
+          // 신규 Google 사용자 — StaffMember로 등록
+          try {
+            const { saveStaffMember: saveSM } = await import('../services/crmService');
+            const newStaff: StaffMember = {
+              id: `staff-google-${Date.now()}`,
+              name: user.user_metadata?.full_name || email.split('@')[0],
+              role: 'CONSULTANT' as StaffRoleType,
+              email: email,
+              avatar: user.user_metadata?.avatar_url,
+              isActive: false,
+              assignedCount: 0,
+              createdAt: new Date().toISOString(),
+              permissions: DEFAULT_PERMISSIONS['CONSULTANT'],
+              status: 'pending',
+              authEmail: email,
+              authProvider: provider === 'google' ? 'google' : 'email',
+              supabaseUserId: user.id,
+            };
+            await saveSM(newStaff);
+          } catch (err) {
+            console.warn('[OAuth] StaffMember 생성 실패:', err);
+          }
+          alert('Google 계정으로 가입되었습니다.\n관리자 승인 후 로그인이 가능합니다.');
+        }
+      }
+    });
+    return () => { listener?.subscription?.unsubscribe(); };
+  }, [lawyers]);
+
+  // 비밀번호 변경 상태
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // 비밀번호 변경 핸들러
+  const handlePasswordChange = async () => {
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      alert('새 비밀번호를 입력해주세요.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+    if (newPassword.length < 4) {
+      alert('비밀번호는 4자리 이상으로 설정해주세요.');
+      return;
+    }
+    
+    // 현재 비밀번호 확인
+    if (activeLawyer.password && activeLawyer.password !== currentPassword) {
+      alert('현재 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    // 로컬 비밀번호 업데이트
+    setLawyers(prev => prev.map(l => 
+      l.id === activeLawyer.id ? { ...l, password: newPassword } : l
+    ));
+    setActiveLawyer(prev => ({ ...prev, password: newPassword }));
+
+    // Supabase Auth 비밀번호 업데이트 (설정된 경우)
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.auth.updateUser({ password: newPassword });
+      } catch (err) {
+        console.warn('[Auth] Supabase 비밀번호 업데이트 실패:', err);
+      }
+    }
+
+    alert('비밀번호가 성공적으로 변경되었습니다.');
+    setShowPasswordChange(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    onLogActivity(activeLawyer.id, activeLawyer.name, activeLawyer.role as MemberRole, 'LOGIN', '비밀번호 변경 완료');
+  };
+
+  // Google OAuth 로그인
+  const handleGoogleLogin = async () => {
+    if (!isSupabaseConfigured) {
+      alert('Google 로그인을 사용하려면 Supabase 설정이 필요합니다.\n.env 파일에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해주세요.');
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '?role=lawyer'
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      alert(`Google 로그인 실패: ${err.message || err}`);
+    }
+  };
+
+  // 비밀번호 찾기
+  const handlePasswordReset = async () => {
+    if (!resetEmail.trim()) {
+      alert('비밀번호를 재설정할 이메일 주소를 입력해주세요.');
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      alert('비밀번호 재설정은 Supabase 설정이 필요합니다.');
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: window.location.origin + '?role=lawyer'
+      });
+      if (error) throw error;
+      alert('비밀번호 재설정 링크가 이메일로 발송되었습니다.\n이메일을 확인해주세요.');
+      setShowPasswordReset(false);
+      setResetEmail('');
+    } catch (err: any) {
+      alert(`비밀번호 재설정 실패: ${err.message || err}`);
+    }
   };
 
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {
       localStorage.removeItem('legal_crm_lawyer_session');
       setIsLoggedIn(false);
+      setActiveStaffMember(null);
       if (lawyers.length > 0) {
         setActiveLawyer(lawyers[0]);
       }
@@ -751,62 +972,121 @@ export default function LawyerRole({
           </div>
 
           {authMode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4 text-left">
+            <div className="space-y-4 text-left">
               <h3 className="font-extrabold text-sm text-slate-900 border-b border-slate-200 pb-2">로그인</h3>
+
+              {/* 초대 링크 배너 */}
+              {inviteToken && inviteTokenValid && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span><strong>초대 링크가 확인되었습니다!</strong> 아래에서 회원가입을 완료해주세요. 역할: {inviteTokenRole === 'LAWYER' ? '담당 변호사' : inviteTokenRole === 'CONSULTANT' ? '상담 직원' : inviteTokenRole === 'STAFF' ? '사무 직원' : '경리 직원'}</span>
+                </div>
+              )}
+
+              {/* Google 로그인 */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+              >
+                <span className="w-5 h-5 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full">G</span>
+                <span>Google 계정으로 로그인</span>
+              </button>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink mx-3 text-slate-400 text-[11px] font-bold">또는 이메일로 로그인</span>
+                <div className="flex-grow border-t border-slate-200"></div>
+              </div>
+
               {loginError && (
                 <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-xl">
                   {loginError}
                 </div>
               )}
-              <div className="space-y-1.5">
-                <label className="text-[12px] text-slate-600 block uppercase font-bold">아이디 (이름 또는 ID)</label>
-                <input 
-                  type="text" 
-                  placeholder="예: 1 또는 김우진 또는 lawyer-1"
-                  value={loginId}
-                  onChange={(e) => setLoginId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[12px] text-slate-600 block uppercase font-bold">비밀번호</label>
-                <input 
-                  type="password" 
-                  placeholder="비밀번호 입력 (기본: 1)"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
-                />
-              </div>
 
-              {/* Quick test login info */}
-              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[13px] text-slate-600 space-y-1">
-                <span className="font-bold text-slate-600 block">🔑 테스트 로그인 계정 정보</span>
-                <div>• 아이디: <strong className="text-slate-900">1</strong> / 비밀번호: <strong className="text-slate-900">1</strong></div>
-                <div>• (또는 변호사명: <strong className="text-slate-700">김우진</strong> / 비밀번호: <strong className="text-slate-700">1234</strong>)</div>
-              </div>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] text-slate-600 block uppercase font-bold">아이디 (이름 또는 ID)</label>
+                  <input 
+                    type="text" 
+                    placeholder="예: 1 또는 김우진 또는 lawyer-1"
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] text-slate-600 block uppercase font-bold">비밀번호</label>
+                  <input 
+                    type="password" 
+                    placeholder="비밀번호 입력 (기본: 1)"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
+                  />
+                </div>
 
-              <div className="flex gap-2 pt-1">
-                <button 
-                  type="submit"
-                  className="flex-1 bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md"
-                >
-                  로그인
-                </button>
-                <button 
+                {/* Quick test login info */}
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[13px] text-slate-600 space-y-1">
+                  <span className="font-bold text-slate-600 block">🔑 테스트 로그인 계정 정보</span>
+                  <div>• 아이디: <strong className="text-slate-900">1</strong> / 비밀번호: <strong className="text-slate-900">1</strong></div>
+                  <div>• (또는 변호사명: <strong className="text-slate-700">김우진</strong> / 비밀번호: <strong className="text-slate-700">1234</strong>)</div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md"
+                  >
+                    로그인
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
+                      localStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
+                      setActiveLawyer(demoLawyer);
+                      setIsLoggedIn(true);
+                    }}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3 rounded-[200px] text-xs border border-slate-200 transition-colors"
+                  >
+                    테스트 계정 1초 로그인
+                  </button>
+                </div>
+              </form>
+
+              {/* 비밀번호 찾기 */}
+              <div className="text-center">
+                <button
                   type="button"
-                  onClick={() => {
-                    const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
-                    localStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
-                    setActiveLawyer(demoLawyer);
-                    setIsLoggedIn(true);
-                  }}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3 rounded-[200px] text-xs border border-slate-200 transition-colors"
+                  onClick={() => setShowPasswordReset(!showPasswordReset)}
+                  className="text-xs text-slate-400 hover:text-brand transition-colors font-medium"
                 >
-                  테스트 계정 1초 로그인
+                  비밀번호를 잊으셨나요?
                 </button>
               </div>
-              <div className="text-center pt-2 text-xs text-slate-500">
+              {showPasswordReset && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fadeIn">
+                  <p className="text-xs text-slate-600">가입 시 사용한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.</p>
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    placeholder="이메일 주소 입력"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    className="w-full bg-slate-700 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    비밀번호 재설정 링크 발송
+                  </button>
+                </div>
+              )}
+
+              <div className="text-center pt-1 text-xs text-slate-500">
                 계정이 없으신가요?{' '}
                 <button 
                   type="button" 
@@ -816,7 +1096,7 @@ export default function LawyerRole({
                   회원가입하기
                 </button>
               </div>
-            </form>
+            </div>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4 text-left max-h-[450px] overflow-y-auto pr-1 scrollbar-hide">
               <h3 className="font-extrabold text-sm text-slate-900 border-b border-slate-200 pb-2">회원가입</h3>
@@ -1250,90 +1530,103 @@ export default function LawyerRole({
           </div>
         </header>
 
-        {/* Primary tab navigation row */}
+        {/* Primary tab navigation row — RBAC 가드 적용 */}
         <div className="bg-white border-b border-slate-200 px-4">
           <div className="w-full flex overflow-x-auto gap-4 py-2 text-xs font-semibold scrollbar-hide">
-            <button 
-              onClick={() => setActiveTab('dashboard')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'dashboard' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <BarChart2 className="w-4 h-4" />
-              <span>종합 대시보드</span>
-            </button>
+            {permissionCtx.canAccessTab('dashboard') && (
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'dashboard' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                }`}
+              >
+                <BarChart2 className="w-4 h-4" />
+                <span>종합 대시보드</span>
+              </button>
+            )}
             
-            <button 
-              onClick={() => setActiveTab('open-requests')}
-              className={`relative pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'open-requests' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>신규 상담 요청</span>
-              {totalOpenRequestsCount > 0 && (
-                <span className="bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[11px] animate-pulse">
-                  {totalOpenRequestsCount}
+            {permissionCtx.canAccessTab('open-requests') && (
+              <button 
+                onClick={() => setActiveTab('open-requests')}
+                className={`relative pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'open-requests' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                }`}
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>신규 상담 요청</span>
+                {totalOpenRequestsCount > 0 && (
+                  <span className="bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[11px] animate-pulse">
+                    {totalOpenRequestsCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {permissionCtx.canAccessTab('client-crm') && (
+              <button 
+                onClick={() => setActiveTab('client-crm')}
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'client-crm' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>고객 관리 (CRM)</span>
+                <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 text-[11px]">
+                  {requests.length}
                 </span>
-              )}
-            </button>
+              </button>
+            )}
 
+            {permissionCtx.canAccessTab('cases') && (
+              <button 
+                onClick={() => setActiveTab('cases')}
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'cases' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                }`}
+              >
+                <FolderHeart className="w-4 h-4" />
+                <span>진행 중인 수임 사건 (SaaS)</span>
+                <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 text-[11px]">
+                  {totalCasesCount}
+                </span>
+              </button>
+            )}
 
-            <button 
-              onClick={() => setActiveTab('client-crm')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'client-crm' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>고객 관리 (CRM)</span>
-              <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 text-[11px]">
-                {requests.length}
-              </span>
-            </button>
+            {permissionCtx.canAccessTab('billing') && (
+              <button 
+                onClick={() => setActiveTab('billing')}
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'billing' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                }`}
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>이용 요금제 / 빌링</span>
+              </button>
+            )}
 
-            <button 
-              onClick={() => setActiveTab('cases')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'cases' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <FolderHeart className="w-4 h-4" />
-              <span>진행 중인 수임 사건 (SaaS)</span>
-              <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 text-[11px]">
-                {totalCasesCount}
-              </span>
-            </button>
+            {permissionCtx.canAccessTab('staff-management') && (
+              <button 
+                onClick={() => setActiveTab('staff-management')}
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'staff-management' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>직원 관리</span>
+              </button>
+            )}
 
-            <button 
-              onClick={() => setActiveTab('billing')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'billing' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>이용 요금제 / 빌링</span>
-            </button>
-
-            <button 
-              onClick={() => setActiveTab('staff-management')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'staff-management' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              <span>직원 관리</span>
-            </button>
-
-            <button 
-              onClick={() => setActiveTab('settings')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'settings' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>알림 및 연동 설정</span>
-            </button>
+            {permissionCtx.canAccessTab('settings') && (
+              <button 
+                onClick={() => setActiveTab('settings')}
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'settings' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>알림 및 연동 설정</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -2452,6 +2745,67 @@ export default function LawyerRole({
               <span className="bg-brand/10 border border-brand/20 text-brand text-[12px] font-extrabold px-3 py-1 rounded-[200px] whitespace-nowrap self-start md:self-center">
                 SaaS Enterprise 가동 중
               </span>
+            </div>
+
+            {/* ── 보안 설정: 비밀번호 변경 ── */}
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-brand" />
+                  <span>비밀번호 및 보안 설정</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordChange(!showPasswordChange)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${
+                    showPasswordChange ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-brand/10 text-brand border-brand/20 hover:bg-brand/20'
+                  }`}
+                >
+                  {showPasswordChange ? '접기' : '비밀번호 변경'}
+                </button>
+              </div>
+
+              {showPasswordChange && (
+                <div className="space-y-3 animate-fadeIn border-t border-slate-100 pt-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] text-slate-600 font-bold block">현재 비밀번호</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={e => setCurrentPassword(e.target.value)}
+                      placeholder="현재 사용 중인 비밀번호"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] text-slate-600 font-bold block">새 비밀번호</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="새 비밀번호 (4자리 이상)"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] text-slate-600 font-bold block">새 비밀번호 확인</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      placeholder="새 비밀번호를 다시 입력"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePasswordChange}
+                    className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors shadow-md"
+                  >
+                    비밀번호 변경 저장
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
