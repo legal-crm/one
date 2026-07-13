@@ -109,6 +109,7 @@ export default function LawyerRole({
 
   // Active staff member (for RBAC)
   const [activeStaffMember, setActiveStaffMember] = useState<StaffMember | null>(null);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const permissionCtx = usePermissions(activeStaffMember);
 
   // Dynamically sync document title
@@ -173,6 +174,7 @@ export default function LawyerRole({
   useEffect(() => {
     if (isLoggedIn && activeLawyer) {
       loadStaffMembers().then(members => {
+        setStaffMembers(members);
         const found = members.find(m => m.linkedUserId === activeLawyer.id || m.authEmail === activeLawyer.id);
         if (found) {
           setActiveStaffMember(found);
@@ -1607,12 +1609,20 @@ export default function LawyerRole({
             {permissionCtx.canAccessTab('staff-management') && (
               <button 
                 onClick={() => setActiveTab('staff-management')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 relative ${
                   activeTab === 'staff-management' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
                 }`}
               >
                 <Shield className="w-4 h-4" />
                 <span>직원 관리</span>
+                {(() => {
+                  const pendingCount = staffMembers.filter(m => m.status === 'pending').length;
+                  return pendingCount > 0 ? (
+                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
+                      {pendingCount}
+                    </span>
+                  ) : null;
+                })()}
               </button>
             )}
 

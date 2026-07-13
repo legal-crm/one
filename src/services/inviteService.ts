@@ -194,3 +194,16 @@ export function cleanupExpiredTokens(): void {
   );
   setLocalData(INVITE_STORAGE_KEY, valid);
 }
+
+// ── 초대 토큰 수동 만료 ──
+
+export async function expireInviteToken(token: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    await supabase.from('invite_tokens').update({ expires_at: new Date().toISOString() }).eq('token', token);
+  }
+  const tokens = getLocalData<InviteToken[]>(INVITE_STORAGE_KEY, []);
+  const updated = tokens.map(t =>
+    t.token === token ? { ...t, expiresAt: new Date().toISOString() } : t
+  );
+  setLocalData(INVITE_STORAGE_KEY, updated);
+}

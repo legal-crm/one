@@ -4,14 +4,14 @@ import {
   AlertTriangle, ArrowRightLeft, Search, Filter, ChevronDown, ChevronUp,
   Briefcase, Activity, Mail, Phone, RotateCcw, Trash2, ShieldCheck
 } from 'lucide-react';
-import { generateInviteToken, buildInviteUrl, loadInviteTokens } from '../../services/inviteService';
-import type { InviteToken } from '../../types';
+import { generateInviteToken, buildInviteUrl, loadInviteTokens, expireInviteToken } from '../../services/inviteService';
+import type { InviteToken, CustomStaffRole } from '../../types';
 import type {
   ConsultRequest, User, StaffMember, StaffRole, StaffMemberStatus,
   StaffActivityLog, StaffActivityType, CrmClientExtension, StaffPermissions
 } from '../../types';
 import {
-  STAFF_ROLE_CONFIG, DEFAULT_PERMISSIONS
+  STAFF_ROLE_CONFIG, DEFAULT_PERMISSIONS, registerCustomRole, loadCustomRoles, deleteCustomRole
 } from '../../types';
 import {
   loadStaffMembers, saveStaffMember, deleteStaffMember,
@@ -44,7 +44,7 @@ interface StaffManagementTabProps {
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
 }
 
-type SubSection = 'pending' | 'active' | 'cases' | 'logs';
+type SubSection = 'pending' | 'active' | 'cases' | 'logs' | 'invite-links';
 
 export default function StaffManagementTab({ requests, lawyers, activeLawyer, setRequests }: StaffManagementTabProps) {
   // ── Core State ──
@@ -84,10 +84,21 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const [logFilter, setLogFilter] = useState<string>('all');
   const [logStaffFilter, setLogStaffFilter] = useState<string>('all');
 
+  // ── 초대 링크 관리 ──
+  const [inviteTokens, setInviteTokens] = useState<InviteToken[]>([]);
+
+  // ── 커스텀 역할 ──
+  const [customRoles, setCustomRoles] = useState<CustomStaffRole[]>([]);
+  const [showCustomRoleForm, setShowCustomRoleForm] = useState(false);
+  const [newRoleId, setNewRoleId] = useState('');
+  const [newRoleLabel, setNewRoleLabel] = useState('');
+  const [newRoleColor, setNewRoleColor] = useState('text-teal-400');
+  const [newRoleBg, setNewRoleBg] = useState('bg-teal-500/10');
+  const [newRoleBorder, setNewRoleBorder] = useState('border-teal-500/20');
+
   // ── 초기 로드 ──
   useEffect(() => {
     loadStaffMembers().then(members => {
-      // 기존 데이터 호환: status 필드 없는 직원에게 기본값 추가
       const normalized = members.map(m => ({
         ...m,
         status: (m.status || (m.isActive ? 'active' : 'pending')) as StaffMemberStatus,
@@ -96,6 +107,10 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     });
     setActivityLogs(loadStaffActivityLogs());
     loadCrmData().then(setCrmData);
+    // 초대 링크 로드
+    setInviteTokens(loadInviteTokens());
+    // 커스텀 역할 로드
+    setCustomRoles(loadCustomRoles());
   }, []);
 
   // ── 파생 데이터 ──
@@ -361,27 +376,30 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
         </button>
       </div>
 
-      {/* ── 서브 네비게이션 ── */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      {/* ── 서브 네비게이션 (모바일 반응형) ── */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {([
-          { key: 'pending' as SubSection, label: '승인 대기', icon: Clock, count: pendingStaff.length },
-          { key: 'active' as SubSection, label: '승인된 사용자', icon: Users, count: allManagedStaff.length },
-          { key: 'cases' as SubSection, label: '사건 배정 현황', icon: Briefcase, count: undefined },
-          { key: 'logs' as SubSection, label: '활동 이력', icon: Activity, count: undefined },
+          { key: 'pending' as SubSection, label: '승인 대기', icon: Clock, count: pendingStaff.length, pulse: pendingStaff.length > 0 },
+          { key: 'active' as SubSection, label: '승인된 사용자', icon: Users, count: allManagedStaff.length, pulse: false },
+          { key: 'invite-links' as SubSection, label: '초대 링크', icon: Mail, count: inviteTokens.filter(t => !t.isUsed && new Date(t.expiresAt) > new Date()).length, pulse: false },
+          { key: 'cases' as SubSection, label: '사건 배정', icon: Briefcase, count: undefined, pulse: false },
+          { key: 'logs' as SubSection, label: '활동 이력', icon: Activity, count: undefined, pulse: false },
         ]).map(item => (
           <button
             key={item.key}
             onClick={() => setActiveSection(item.key)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 border ${
+            className={`px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[11px] md:text-xs font-bold flex items-center gap-1 md:gap-1.5 transition-all shrink-0 border ${
               activeSection === item.key
                 ? 'bg-brand/5 text-brand border-brand/20 shadow-sm'
                 : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
-            <item.icon className="w-3.5 h-3.5" />
-            <span>{item.label}</span>
+            <item.icon className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            <span className="hidden sm:inline">{item.label}</span>
+            <span className="sm:hidden">{item.label.substring(0, 2)}</span>
             {item.count !== undefined && item.count > 0 && (
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                item.pulse ? 'bg-red-500 text-white animate-pulse' :
                 activeSection === item.key ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-500'
               }`}>
                 {item.count}
@@ -942,6 +960,200 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
           </div>
         </div>
       )}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* 섹션 5: 초대 링크 관리 */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {activeSection === 'invite-links' && (
+        <div className="space-y-4 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h4 className="font-extrabold text-slate-900 text-sm">🔗 발급된 초대 링크 목록</h4>
+            <button
+              onClick={() => { setShowInviteModal(true); setShowInviteLinkMode(true); }}
+              className="bg-brand hover:bg-brand-hover text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 self-start"
+            >
+              <UserPlus className="w-3.5 h-3.5" /> 새 초대 링크 생성
+            </button>
+          </div>
+
+          {inviteTokens.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">발급된 초대 링크가 없습니다.</div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-3 font-bold text-slate-500">역할</th>
+                    <th className="text-left p-3 font-bold text-slate-500 hidden sm:table-cell">이메일 제한</th>
+                    <th className="text-left p-3 font-bold text-slate-500">상태</th>
+                    <th className="text-left p-3 font-bold text-slate-500 hidden md:table-cell">만료</th>
+                    <th className="text-left p-3 font-bold text-slate-500">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {inviteTokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(token => {
+                    const isExpired = new Date(token.expiresAt) <= new Date();
+                    const status = token.isUsed ? 'used' : isExpired ? 'expired' : 'active';
+                    return (
+                      <tr key={token.token} className="hover:bg-slate-50/50">
+                        <td className="p-3">{renderRoleBadge(token.role)}</td>
+                        <td className="p-3 text-slate-600 hidden sm:table-cell">{token.email || <span className="text-slate-300">제한 없음</span>}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                            status === 'active' ? 'bg-emerald-50 text-emerald-500 border border-emerald-200' :
+                            status === 'used' ? 'bg-blue-50 text-blue-500 border border-blue-200' :
+                            'bg-slate-50 text-slate-400 border border-slate-200'
+                          }`}>
+                            {status === 'active' ? '활성' : status === 'used' ? '사용됨' : '만료'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-500 hidden md:table-cell">{new Date(token.expiresAt).toLocaleDateString('ko-KR')} {new Date(token.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="p-3">
+                          <div className="flex gap-1">
+                            {status === 'active' && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(buildInviteUrl(token.token));
+                                    alert('초대 링크가 복사되었습니다.');
+                                  }}
+                                  className="bg-brand/10 text-brand px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-brand/20 transition-colors"
+                                >
+                                  복사
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (confirm('이 초대 링크를 만료 처리하시겠습니까?')) {
+                                      await expireInviteToken(token.token);
+                                      const updated = loadInviteTokens();
+                                      setInviteTokens(updated);
+                                    }
+                                  }}
+                                  className="bg-red-50 text-red-500 px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors"
+                                >
+                                  만료
+                                </button>
+                              </>
+                            )}
+                            {status !== 'active' && (
+                              <span className="text-slate-300 text-[10px]">—</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* 커스텀 역할 관리 */}
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-extrabold text-slate-900 text-sm">🏷️ 커스텀 역할 관리</h4>
+              <button
+                onClick={() => setShowCustomRoleForm(!showCustomRoleForm)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 transition-colors"
+              >
+                {showCustomRoleForm ? '접기' : '+ 새 역할 추가'}
+              </button>
+            </div>
+
+            {showCustomRoleForm && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fadeIn">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-500 font-bold block">역할 ID (영문 대문자)</label>
+                    <input type="text" value={newRoleId} onChange={e => setNewRoleId(e.target.value.toUpperCase().replace(/[^A-Z_]/g, ''))}
+                      placeholder="예: INTERN" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-500 font-bold block">표시 이름</label>
+                    <input type="text" value={newRoleLabel} onChange={e => setNewRoleLabel(e.target.value)}
+                      placeholder="예: 인턴" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-500 font-bold block">테마 색상</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20', label: '청록' },
+                      { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', label: '주황' },
+                      { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', label: '하늘' },
+                      { color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', label: '장미' },
+                      { color: 'text-lime-400', bg: 'bg-lime-500/10', border: 'border-lime-500/20', label: '연두' },
+                      { color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20', label: '보라' },
+                    ].map(opt => (
+                      <button key={opt.color} type="button"
+                        onClick={() => { setNewRoleColor(opt.color); setNewRoleBg(opt.bg); setNewRoleBorder(opt.border); }}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
+                          newRoleColor === opt.color ? `${opt.bg} ${opt.color} ${opt.border} ring-2 ring-brand/30` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!newRoleId || !newRoleLabel) { alert('역할 ID와 이름을 입력해주세요.'); return; }
+                    if (['OWNER','LAWYER','CONSULTANT','STAFF','ACCOUNTING'].includes(newRoleId)) { alert('기본 역할과 동일한 ID는 사용할 수 없습니다.'); return; }
+                    const newRole: CustomStaffRole = {
+                      id: newRoleId,
+                      label: newRoleLabel,
+                      color: newRoleColor,
+                      bgColor: newRoleBg,
+                      borderColor: newRoleBorder,
+                      basePermissions: { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true, manageBilling: false, deleteClients: false },
+                      createdAt: new Date().toISOString(),
+                    };
+                    registerCustomRole(newRole);
+                    setCustomRoles(loadCustomRoles());
+                    setNewRoleId(''); setNewRoleLabel('');
+                    setShowCustomRoleForm(false);
+                    recordActivity('system', '시스템', 'role_changed', `커스텀 역할 "${newRoleLabel}" (${newRoleId})이 생성되었습니다.`);
+                  }}
+                  className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
+                >
+                  역할 생성
+                </button>
+              </div>
+            )}
+
+            {/* 기존 + 커스텀 역할 목록 */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {['OWNER','LAWYER','CONSULTANT','STAFF','ACCOUNTING'].map(role => {
+                const cfg = STAFF_ROLE_CONFIG[role];
+                return (
+                  <div key={role} className={`${cfg.bgColor} border ${cfg.borderColor} rounded-xl p-3 text-center`}>
+                    <span className={`text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
+                    <div className="text-[10px] text-slate-400 mt-0.5">기본 역할</div>
+                  </div>
+                );
+              })}
+              {customRoles.map(role => (
+                <div key={role.id} className={`${role.bgColor} border ${role.borderColor} rounded-xl p-3 text-center relative group`}>
+                  <span className={`text-xs font-bold ${role.color}`}>{role.label}</span>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{role.id}</div>
+                  <button
+                    onClick={() => {
+                      if (confirm(`"${role.label}" 역할을 삭제하시겠습니까?`)) {
+                        deleteCustomRole(role.id);
+                        setCustomRoles(loadCustomRoles());
+                      }
+                    }}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 패널: 직원 상세 프로필 */}
       {/* ══════════════════════════════════════════════════════════ */}

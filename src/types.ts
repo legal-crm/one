@@ -93,15 +93,81 @@ export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; emoji: string
 };
 
 // 직원 역할 체계
-export type StaffRole = 'OWNER' | 'LAWYER' | 'CONSULTANT' | 'STAFF' | 'ACCOUNTING';
+export type StaffRole = 'OWNER' | 'LAWYER' | 'CONSULTANT' | 'STAFF' | 'ACCOUNTING' | string;
 
-export const STAFF_ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bgColor: string; borderColor: string }> = {
+// 커스텀 역할 인터페이스
+export interface CustomStaffRole {
+  id: string;           // 역할 키 (예: 'INTERN')
+  label: string;        // 표시 이름 (예: '인턴')
+  color: string;        // 텍스트 컬러 클래스
+  bgColor: string;      // 배경 컬러 클래스
+  borderColor: string;  // 테두리 컬러 클래스
+  basePermissions: StaffPermissions; // 기본 권한
+  createdAt: string;
+}
+
+// 기본 역할 설정
+const BUILTIN_ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
   OWNER:       { label: '대표 변호사', color: 'text-amber-400',   bgColor: 'bg-amber-500/10',   borderColor: 'border-amber-500/20' },
   LAWYER:      { label: '담당 변호사', color: 'text-blue-400',    bgColor: 'bg-blue-500/10',    borderColor: 'border-blue-500/20' },
   CONSULTANT:  { label: '상담 직원',   color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/20' },
   STAFF:       { label: '사무 직원',   color: 'text-purple-400',  bgColor: 'bg-purple-500/10',  borderColor: 'border-purple-500/20' },
   ACCOUNTING:  { label: '경리 직원',   color: 'text-pink-400',    bgColor: 'bg-pink-500/10',    borderColor: 'border-pink-500/20' },
 };
+
+// 런타임 커스텀 역할 레지스트리
+const _customRoles: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {};
+
+export function registerCustomRole(role: CustomStaffRole) {
+  _customRoles[role.id] = { label: role.label, color: role.color, bgColor: role.bgColor, borderColor: role.borderColor };
+  // localStorage 동기화
+  const saved = loadCustomRoles();
+  if (!saved.find(r => r.id === role.id)) {
+    saved.push(role);
+    localStorage.setItem('staff_custom_roles', JSON.stringify(saved));
+  }
+}
+
+export function loadCustomRoles(): CustomStaffRole[] {
+  try {
+    return JSON.parse(localStorage.getItem('staff_custom_roles') || '[]');
+  } catch { return []; }
+}
+
+export function deleteCustomRole(roleId: string) {
+  delete _customRoles[roleId];
+  const saved = loadCustomRoles().filter(r => r.id !== roleId);
+  localStorage.setItem('staff_custom_roles', JSON.stringify(saved));
+}
+
+// 초기화: localStorage에서 커스텀 역할 로드
+try {
+  loadCustomRoles().forEach(r => {
+    _customRoles[r.id] = { label: r.label, color: r.color, bgColor: r.bgColor, borderColor: r.borderColor };
+  });
+} catch {}
+
+// 통합 역할 설정 조회 (빌트인 + 커스텀)
+export const STAFF_ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = new Proxy(
+  {} as Record<string, { label: string; color: string; bgColor: string; borderColor: string }>,
+  {
+    get(_, key: string) {
+      return BUILTIN_ROLE_CONFIG[key] || _customRoles[key] || { label: key, color: 'text-slate-400', bgColor: 'bg-slate-500/10', borderColor: 'border-slate-500/20' };
+    },
+    has(_, key: string) {
+      return key in BUILTIN_ROLE_CONFIG || key in _customRoles;
+    },
+    ownKeys() {
+      return [...Object.keys(BUILTIN_ROLE_CONFIG), ...Object.keys(_customRoles)];
+    },
+    getOwnPropertyDescriptor(_, key: string) {
+      if (key in BUILTIN_ROLE_CONFIG || key in _customRoles) {
+        return { configurable: true, enumerable: true, value: BUILTIN_ROLE_CONFIG[key] || _customRoles[key] };
+      }
+      return undefined;
+    }
+  }
+);
 
 // 직원 상태
 export type StaffMemberStatus = 'pending' | 'active' | 'suspended' | 'removed';
@@ -160,13 +226,25 @@ export interface StaffPermissions {
   deleteClients: boolean;      // 고객 삭제
 }
 
-export const DEFAULT_PERMISSIONS: Record<StaffRole, StaffPermissions> = {
+const BUILTIN_DEFAULT_PERMISSIONS: Record<string, StaffPermissions> = {
   OWNER:       { viewAllClients: true,  editClientInfo: true,  changeStatus: true,  assignCases: true,  manageStaff: true,  writeNotes: true,  manageBilling: true,  deleteClients: true },
   LAWYER:      { viewAllClients: false, editClientInfo: true,  changeStatus: true,  assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
   CONSULTANT:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
   STAFF:       { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
   ACCOUNTING:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: false, manageBilling: true,  deleteClients: false },
 };
+
+export const DEFAULT_PERMISSIONS: Record<string, StaffPermissions> = new Proxy(
+  {} as Record<string, StaffPermissions>,
+  {
+    get(_, key: string) {
+      if (BUILTIN_DEFAULT_PERMISSIONS[key]) return BUILTIN_DEFAULT_PERMISSIONS[key];
+      const custom = loadCustomRoles().find(r => r.id === key);
+      if (custom) return custom.basePermissions;
+      return BUILTIN_DEFAULT_PERMISSIONS['STAFF']; // fallback
+    }
+  }
+);
 
 // CRM 활동 로그
 export type CrmActivityType = 
