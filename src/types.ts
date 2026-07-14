@@ -931,6 +931,25 @@ export interface AdBanner {
   gradient: string;
 }
 
+export interface AdOrder {
+  id: string;
+  lawyerId: string;
+  lawyerName: string;
+  productId: string;
+  productName: string;
+  contractMonths: number;
+  monthlyPrice: number;
+  totalPrice: number;
+  status: 'pending' | 'paid' | 'active' | 'expired' | 'cancelled';
+  requestedAt: string;
+  paidAt?: string;
+  activatedAt?: string;
+  expiresAt?: string;
+  depositorName?: string;
+  bankNote?: string;
+  region?: string;
+}
+
 export interface Notice {
   id: string;
   title: string;

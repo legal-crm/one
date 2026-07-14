@@ -7,8 +7,8 @@ import {
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server,
   Edit2, Plus, Save, RotateCcw
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig } from '../types';
-import { platformPlans } from '../data';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig, AdOrder } from '../types';
+import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
 import RehabSettingsPanel from './RehabSettingsPanel';
@@ -75,7 +75,9 @@ export default function AdminRole({
 }: AdminRoleProps) {
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
-  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited'>('overview');
+  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders'>('overview');
+  const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(mockAdOrders);
+  const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
 
   // Members tab states
   const [memberSearch, setMemberSearch] = useState<string>('');
@@ -1741,6 +1743,14 @@ export default function AdminRole({
                 >
                   ⚠️ 정지/이탈 대리인 정산 (Exited Partners)
                 </button>
+                <button
+                  onClick={() => setBillingSubTab('adorders')}
+                  className={`pb-2 border-b-2 transition-all cursor-pointer ${
+                    billingSubTab === 'adorders' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
+                  }`}
+                >
+                  📢 광고 신청/입금 관리
+                </button>
               </div>
 
               {/* OVERVIEW SUBTAB */}
@@ -2058,6 +2068,76 @@ export default function AdminRole({
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {billingSubTab === 'adorders' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
+                      <span className="text-[11px] text-amber-400/80 font-bold block uppercase">입금 대기</span>
+                      <strong className="text-xl font-black text-amber-400">{adminAdOrders.filter(o => o.status === 'pending').length}건</strong>
+                      <p className="text-[12px] text-slate-600">{adminAdOrders.filter(o => o.status === 'pending').reduce((s,o) => s + o.totalPrice, 0).toLocaleString()}원</p>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
+                      <span className="text-[11px] text-emerald-400/80 font-bold block uppercase">활성 광고</span>
+                      <strong className="text-xl font-black text-emerald-400">{adminAdOrders.filter(o => o.status === 'active').length}건</strong>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
+                      <span className="text-[11px] text-indigo-400/80 font-bold block uppercase">이달 광고 매출</span>
+                      <strong className="text-xl font-black text-indigo-400">{adminAdOrders.filter(o => o.status === 'active').reduce((s,o) => s + o.monthlyPrice, 0).toLocaleString()}원</strong>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-slate-500/20 space-y-2">
+                      <span className="text-[11px] text-slate-400/80 font-bold block uppercase">취소/만료</span>
+                      <strong className="text-xl font-black text-slate-400">{adminAdOrders.filter(o => o.status === 'cancelled' || o.status === 'expired').length}건</strong>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-slate-400">상태 필터:</span>
+                    {[{v:'all',l:'전체'},{v:'pending',l:'입금대기'},{v:'active',l:'활성'},{v:'cancelled',l:'취소'}].map(f => (
+                      <button key={f.v} onClick={() => setAdOrderFilter(f.v)} className={`text-[11px] px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${adOrderFilter === f.v ? 'bg-indigo-600 text-white' : 'bg-[#0B0F19] text-slate-400 border border-[#1E293B]/60 hover:text-white'}`}>{f.l}</button>
+                    ))}
+                  </div>
+                  <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">신청일</th>
+                            <th className="p-3">변호사</th>
+                            <th className="p-3">상품명</th>
+                            <th className="p-3">계약기간</th>
+                            <th className="p-3">총 금액</th>
+                            <th className="p-3">입금자명</th>
+                            <th className="p-3">상태</th>
+                            <th className="p-3 text-right">액션</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {adminAdOrders.filter(o => adOrderFilter === 'all' || o.status === adOrderFilter).map(order => (
+                            <tr key={order.id} className="hover:bg-[#0B0F19]/20 transition-colors">
+                              <td className="p-3 text-slate-400 font-mono text-[11px]">{new Date(order.requestedAt).toLocaleDateString('ko-KR')}</td>
+                              <td className="p-3 font-bold text-white">{order.lawyerName}</td>
+                              <td className="p-3 text-slate-300">{order.productName}{order.region && <span className="text-emerald-400 ml-1">({order.region})</span>}</td>
+                              <td className="p-3 text-slate-400">{order.contractMonths}개월</td>
+                              <td className="p-3 font-bold text-indigo-400">{order.totalPrice.toLocaleString()}원</td>
+                              <td className="p-3 text-slate-300">{order.depositorName || '-'}</td>
+                              <td className="p-3"><span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : order.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-500 border-slate-700'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-500'}`}></span>{order.status === 'pending' ? '입금대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
+                              <td className="p-3 text-right">{order.status === 'pending' && (<button onClick={() => setAdminAdOrders(prev => prev.map(o => o.id === order.id ? {...o, status: 'active' as const, paidAt: new Date().toISOString(), activatedAt: new Date().toISOString()} : o))} className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm">입금 확인</button>)}{order.status === 'active' && (<span className="text-[11px] text-emerald-400 font-bold">✅ 활성 중</span>)}{order.status === 'cancelled' && (<span className="text-[11px] text-slate-500">취소됨</span>)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center gap-4">
+                    <span className="text-lg">🏦</span>
+                    <div>
+                      <span className="text-[11px] text-slate-500 block">입금 안내 계좌</span>
+                      <span className="text-sm font-black text-white">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
+                      <span className="text-[11px] text-slate-400 ml-2">예금주: {BANK_ACCOUNT_INFO.holder}</span>
+                    </div>
                   </div>
                 </div>
               )}
