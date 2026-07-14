@@ -6,6 +6,7 @@ import {
   Sparkles, Scale, HeartHandshake, Zap, Search, AlertTriangle
 } from 'lucide-react';
 import { SuccessReview, User as LawyerType, MainBanner, Notice, PlatformConfig } from '../../types';
+import { adBanners } from '../../data';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface LandingPageProps {
@@ -119,6 +120,18 @@ export default function LandingPage({
     const interval = setInterval(() => setPulse((p) => !p), 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // ── 광고 배너 슬라이드 ────────────────────────────────────────────────────────────
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const [shuffledBanners] = useState(() => [...adBanners].sort(() => Math.random() - 0.5));
+
+  useEffect(() => {
+    if (shuffledBanners.length === 0) return;
+    const timer = setInterval(() => {
+      setCurrentBanner(prev => (prev + 1) % shuffledBanners.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [shuffledBanners.length]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -283,6 +296,103 @@ export default function LandingPage({
           </div>
         </motion.div>
       </div>
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          AD BANNER SLIDE — 메인 배너 광고 (상품 1)
+          ═══════════════════════════════════════════════════════════════════════ */}
+      {shuffledBanners.length > 0 && (
+        <section className="relative py-6 px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="relative overflow-hidden rounded-2xl shadow-2xl shadow-black/30">
+              {/* Banner slides */}
+              <div
+                className="flex transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{ transform: `translateX(-${currentBanner * 100}%)` }}
+              >
+                {shuffledBanners.map((banner) => (
+                  <div
+                    key={banner.id}
+                    className={`w-full shrink-0 bg-gradient-to-r ${banner.gradient} relative overflow-hidden`}
+                  >
+                    {/* Decorative elements */}
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+                    <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
+                    
+                    <div className="relative z-10 flex items-center gap-6 p-8 sm:p-10 min-h-[200px]">
+                      {/* AD Label */}
+                      <div className="absolute top-4 left-4">
+                        <span className="bg-black/20 backdrop-blur-sm text-white/90 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/10">
+                          AD 광고
+                        </span>
+                      </div>
+
+                      {/* Lawyer avatar */}
+                      <div className="shrink-0 hidden sm:block">
+                        <img
+                          src={banner.lawyerAvatar}
+                          alt={banner.lawyerName}
+                          className="w-24 h-24 rounded-2xl object-cover border-2 border-white/20 shadow-lg"
+                        />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 space-y-2 pt-4 sm:pt-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white/90 text-sm font-bold">{banner.lawyerName}</span>
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
+                          {banner.title}
+                        </h3>
+                        <p className="text-white/70 text-sm">{banner.subtitle}</p>
+                        <p className="text-white/50 text-xs italic">"{banner.tagline}"</p>
+                      </div>
+
+                      {/* CTA */}
+                      <div className="shrink-0 hidden md:block">
+                        <button
+                          onClick={() => onNavigate('lawyers')}
+                          className="bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white font-bold text-sm px-6 py-3 rounded-xl border border-white/20 transition-all hover:scale-105 cursor-pointer"
+                        >
+                          프로필 보기 →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Navigation arrows */}
+              <button
+                onClick={() => setCurrentBanner(prev => prev === 0 ? shuffledBanners.length - 1 : prev - 1)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer z-20"
+              >
+                <ChevronRight className="w-5 h-5 rotate-180" />
+              </button>
+              <button
+                onClick={() => setCurrentBanner(prev => (prev + 1) % shuffledBanners.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer z-20"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Dot indicators */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                {shuffledBanners.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentBanner(idx)}
+                    className={`h-2 rounded-full transition-all cursor-pointer ${
+                      idx === currentBanner
+                        ? 'bg-white w-6'
+                        : 'bg-white/40 hover:bg-white/60 w-2'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ════════════════════════════════════════════════════════════════════════
           SECTION 2 — EMPATHY

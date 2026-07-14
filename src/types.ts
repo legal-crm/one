@@ -450,6 +450,8 @@ export interface User {
   totalCases?: number; // 누적 수임 건수
   avgRepaymentRate?: number; // 평균 변제율 (%)
   courtJurisdiction?: string; // 관할 법원
+  adTier?: 'top' | 'regional' | 'basic' | null; // 광고 등급
+  adRegion?: string; // 지역 상단 노출 구매 지역
 }
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';
@@ -916,6 +918,17 @@ export interface MainBanner {
   badge: string;
   color: string;
   image: string;
+}
+
+export interface AdBanner {
+  id: string;
+  lawyerId: string;
+  lawyerName: string;
+  lawyerAvatar: string;
+  title: string;
+  subtitle: string;
+  tagline: string;
+  gradient: string;
 }
 
 export interface Notice {

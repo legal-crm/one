@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig 
 } from '../types';
-import { platformPlans, mockLawyers } from '../data';
+import { platformPlans, adProducts, mockLawyers } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 import CrmTab from './lawyer/CrmTab';
@@ -2697,72 +2697,312 @@ export default function LawyerRole({
         {/* TAB 5: BILLING & SUBSCRIPTIONS */}
         {activeTab === 'billing' && (
           <div className="space-y-8 animate-fadeIn">
-            {/* Top overview plan status */}
+            {/* ═══════════════════════════════════════════ */}
+            {/* Section 1: Current Subscription Status */}
+            {/* ═══════════════════════════════════════════ */}
             <div className="bg-gradient-to-r from-indigo-950 to-slate-950 p-6 rounded-xl border border-indigo-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md">
               <div className="space-y-1.5">
                 <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-wider">ACTIVE SUBSCRIPTION</span>
                 <h2 className="text-xl font-black text-white">동원 법무분소: <span className="text-indigo-400">Team SaaS Pro 요금제 사용 중</span></h2>
-                <p className="text-xs text-slate-500">다음 결제 예정일: 2026년 06월 25일 (월 800,000 원 자동 승인)</p>
+                <p className="text-xs text-slate-500">다음 결제 예정일: 2026년 07월 25일 (월 800,000 원 자동 승인)</p>
               </div>
-
-              <div className="bg-slate-100 text-slate-600 p-4 rounded-lg border border-slate-200 text-xs flex gap-6">
+              <div className="bg-white/5 backdrop-blur-sm text-slate-300 p-4 rounded-lg border border-white/10 text-xs flex gap-6">
                 <div>
-                  <span className="text-[12px] text-slate-600 block">이달 소진 매칭참여수</span>
-                  <strong className="text-base text-brand">14 / 20건</strong>
+                  <span className="text-[12px] text-slate-400 block">이용 중인 광고 상품</span>
+                  <strong className="text-base text-amber-400">2건</strong>
                 </div>
-                <div className="border-l border-slate-200 pl-6">
-                  <span className="text-[12px] text-slate-600 block">누적 가형 충전 충전금</span>
-                  <strong className="text-base text-brand">35,000 원</strong>
+                <div className="border-l border-white/10 pl-6">
+                  <span className="text-[12px] text-slate-400 block">이달 광고비 합계</span>
+                  <strong className="text-base text-emerald-400">600,000 원</strong>
+                </div>
+                <div className="border-l border-white/10 pl-6">
+                  <span className="text-[12px] text-slate-400 block">SaaS 구독료</span>
+                  <strong className="text-base text-indigo-400">800,000 원</strong>
                 </div>
               </div>
             </div>
 
-            {/* List of plans to showcase pricing mock structures */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {platformPlans.map((plan, idx) => (
-                <div key={idx} className={`bg-slate-50 rounded-xl p-6 border flex flex-col justify-between gap-6 relative ${plan.color}`}>
-                  {plan.popular && (
-                    <span className="absolute -top-3 left-4 bg-brand text-white text-[12px] font-bold px-2 py-0.5 rounded-full border border-brand-light shadow">
-                      가장 많은 로펌 선택
-                    </span>
-                  )}
+            {/* ═══════════════════════════════════════════ */}
+            {/* Section 2: 광고 상품 */}
+            {/* ═══════════════════════════════════════════ */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-brand" />
+                  <h3 className="font-extrabold text-lg text-slate-900">광고 상품</h3>
+                  <span className="bg-brand/10 text-brand text-[11px] font-bold px-2 py-0.5 rounded-full">노출 광고 전용</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 -mt-2">마이김변 플랫폼에서 변호사 프로필 노출을 강화하는 광고 상품입니다. 모든 광고는 월 정액 과금이며, 고객 직접 선택 구조로 운영됩니다.</p>
 
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="text-lg font-black text-slate-900">{plan.name}</h3>
-                      <p className="text-slate-600 text-xs">수임료 과세 중계 불가 원칙 준수</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {adProducts.map((product) => (
+                  <div key={product.id} className={`bg-white rounded-xl border ${product.borderColor} overflow-hidden hover:shadow-lg transition-all duration-300 group`}>
+                    {/* Card Header */}
+                    <div className={`bg-gradient-to-r ${product.color} p-4 text-white relative overflow-hidden`}>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                      <div className="relative z-10 flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{product.icon}</span>
+                            <span className="font-extrabold text-sm">{product.name}</span>
+                          </div>
+                          <p className="text-white/80 text-[11px]">{product.location}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          product.badge === 'PREMIUM' ? 'bg-white/20 text-white border border-white/30' :
+                          product.badge === 'REGIONAL' ? 'bg-emerald-300/20 text-emerald-100 border border-emerald-300/30' :
+                          'bg-blue-300/20 text-blue-100 border border-blue-300/30'
+                        }`}>{product.badge}</span>
+                      </div>
+                      <div className="relative z-10 mt-3 flex items-end justify-between">
+                        <div>
+                          <span className="text-2xl font-black">{product.priceLabel}</span>
+                          <span className="text-white/60 text-[11px] ml-1">(VAT 별도)</span>
+                        </div>
+                        {product.maxSlots && (
+                          <div className="text-right">
+                            <span className="text-[10px] text-white/60 block">구좌 현황</span>
+                            <span className="text-sm font-bold">{product.usedSlots}/{product.maxSlots}</span>
+                          </div>
+                        )}
+                        {!product.maxSlots && (
+                          <div className="text-right">
+                            <span className="text-[10px] text-white/60 block">구좌 제한</span>
+                            <span className="text-sm font-bold">무제한</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Slot progress bar */}
+                      {product.maxSlots && (
+                        <div className="relative z-10 mt-2">
+                          <div className="w-full bg-white/20 rounded-full h-1.5">
+                            <div className="bg-white rounded-full h-1.5 transition-all" style={{ width: `${((product.usedSlots || 0) / product.maxSlots) * 100}%` }} />
+                          </div>
+                          <span className="text-[10px] text-white/50 mt-0.5 block">
+                            {product.maxSlots - (product.usedSlots || 0)}구좌 남음
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="text-xl font-bold text-brand">{plan.price}</div>
+                    {/* Card Body */}
+                    <div className="p-4 space-y-3">
+                      <p className="text-xs text-slate-600 leading-relaxed">{product.description}</p>
 
-                    <ul className="text-xs space-y-2 text-slate-500">
-                      {plan.features.map((feat, i) => (
-                        <li key={i} className="flex gap-1.5 items-start">
-                          <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                          <span className="leading-tight">{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
+                      <ul className="space-y-1.5">
+                        {product.features.map((feat, i) => (
+                          <li key={i} className="flex gap-1.5 items-start text-[12px] text-slate-600">
+                            <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                            <span className="leading-tight">{feat}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Discount tiers */}
+                      {product.discounts.length > 0 && (
+                        <div className="bg-slate-50 rounded-lg p-3 space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                            <Tag className="w-3 h-3" /> 장기 계약 할인
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {product.discounts.map((d, i) => (
+                              <span key={i} className="bg-white border border-slate-200 text-[10px] text-slate-600 px-2 py-1 rounded-lg">
+                                {d.months}개월 <strong className="text-brand">{d.rate}%↓</strong> {d.price}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ad label notice */}
+                      <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200/60 rounded-lg p-2">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                        <span className="text-[10px] text-amber-700 leading-tight">
+                          본 상품은 고객에게 <strong>"광고"</strong> 라벨이 명확히 표시되며, 같은 등급 내 <strong>랜덤 셔플 정렬</strong>로 운영됩니다.
+                        </span>
+                      </div>
+
+                      <button className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r ${product.color} text-white hover:opacity-90 shadow-sm hover:shadow-md`}>
+                        광고 신청하기
+                      </button>
+                    </div>
                   </div>
-
-                  <button className={`w-full py-2.5 rounded-[200px] text-xs font-bold transition-all ${
-                    plan.name === 'Pro' 
-                    ? 'bg-brand hover:bg-brand-hover text-white ring-2 ring-brand/20 shadow' 
-                    : 'bg-slate-100 hover:bg-slate-850 text-slate-600 border border-slate-200'
-                  }`}>
-                    {plan.name === 'Pro' ? '현재 요금제 이용 중' : '요금제 업그레이드 문의'}
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            {/* Banned details for security */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs h-auto space-y-2 text-slate-500 leading-normal">
-              <span className="font-bold text-slate-700 block text-[13px] uppercase tracking-wide">💡 회생/파산 수임 연계 빌링 법적 안전장치</span>
-              <p>
-                본 Legal CRM은 변호사법 위반을 피하기 위해 **개인회생 수임 성공(계약 성사)에 따른 배분 수수료를 절대 징수하지 않습니다**.
-                월 고정 요금제로 책정되는 SaaS 구독료 및 매칭 참여 시 차감되는 클릭 광고 차감 수수료(참여 1건당 무관 소진) 방식만으로 운영되어 사후 보증 및 로펌 운영 안전성이 100% 보장됩니다.
+            {/* ═══════════════════════════════════════════ */}
+            {/* Section 3: 노출 위치 미리보기 */}
+            {/* ═══════════════════════════════════════════ */}
+            <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4">
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-brand" />
+                <h4 className="font-extrabold text-sm text-slate-900">변호사 찾기 페이지 광고 노출 구조</h4>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 font-mono text-[11px] text-slate-600 space-y-2 overflow-x-auto">
+                <div className="border-2 border-violet-400/40 rounded-lg p-3 bg-violet-50/50">
+                  <span className="text-violet-600 font-bold flex items-center gap-1 mb-1">🔝 상단 노출 광고 (월 30만원)</span>
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="bg-white border border-violet-200 px-3 py-1.5 rounded-lg text-[10px] text-violet-500">[ 광고 ] 변호사A 카드</span>
+                    <span className="bg-white border border-violet-200 px-3 py-1.5 rounded-lg text-[10px] text-violet-500">[ 광고 ] 변호사B 카드</span>
+                    <span className="bg-white border border-violet-200 px-3 py-1.5 rounded-lg text-[10px] text-violet-500">[ 광고 ] 변호사C 카드</span>
+                    <span className="bg-white/50 border border-dashed border-violet-200 px-3 py-1.5 rounded-lg text-[10px] text-violet-300">... 최대 6구좌</span>
+                  </div>
+                </div>
+                <div className="border-2 border-emerald-400/40 rounded-lg p-3 bg-emerald-50/50">
+                  <span className="text-emerald-600 font-bold flex items-center gap-1 mb-1">📍 지역 상단 노출 (월 20만원) — 지역 필터 적용 시 표시</span>
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="bg-white border border-emerald-200 px-3 py-1.5 rounded-lg text-[10px] text-emerald-500">[ 광고 ] 지역 변호사D 카드</span>
+                    <span className="bg-white border border-emerald-200 px-3 py-1.5 rounded-lg text-[10px] text-emerald-500">[ 광고 ] 지역 변호사E 카드</span>
+                    <span className="bg-white/50 border border-dashed border-emerald-200 px-3 py-1.5 rounded-lg text-[10px] text-emerald-300">... 지역당 최대 4구좌</span>
+                  </div>
+                </div>
+                <div className="border-2 border-blue-400/40 rounded-lg p-3 bg-blue-50/50">
+                  <span className="text-blue-600 font-bold flex items-center gap-1 mb-1">📋 기본 노출 광고 (월 10만원) — 일반 목록 인라인</span>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg text-[10px] text-blue-600 font-bold">🔵 [ 광고 ] 변호사F — 확장 카드</span>
+                      <span className="text-[9px] text-blue-400">← 프로필 사진 · 전문분야 · 리뷰 · 한줄소개</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-[10px] text-slate-400">⚪ 무료 회원 변호사G — 기본 카드</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg text-[10px] text-blue-600 font-bold">🔵 [ 광고 ] 변호사H — 확장 카드</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-[10px] text-slate-400">⚪ 무료 회원 변호사I — 기본 카드</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                <Info className="w-3 h-3" /> 정렬 순서: 상단 노출 → 지역 상단(필터 시) → 기본 노출 → 무료 회원 | 같은 등급 내 랜덤 셔플
               </p>
+            </div>
+
+            {/* ═══════════════════════════════════════════ */}
+            {/* Section 4: SaaS 요금제 */}
+            {/* ═══════════════════════════════════════════ */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-indigo-500" />
+                <h3 className="font-extrabold text-lg text-slate-900">SaaS CRM 요금제</h3>
+                <span className="bg-indigo-100 text-indigo-600 text-[11px] font-bold px-2 py-0.5 rounded-full">월 정액 구독</span>
+              </div>
+              <p className="text-xs text-slate-500 -mt-2">사건 관리 · 팀 협업 · 문서 자동화 등 CRM 핵심 기능에 대한 구독 요금제입니다.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {platformPlans.map((plan, idx) => (
+                  <div key={idx} className={`bg-white rounded-xl p-6 border-2 flex flex-col justify-between gap-5 relative transition-all hover:shadow-lg ${plan.color}`}>
+                    {plan.popular && (
+                      <span className="absolute -top-3 left-4 bg-brand text-white text-[12px] font-bold px-3 py-0.5 rounded-full border border-brand-light shadow-md">
+                        가장 많은 로펌 선택
+                      </span>
+                    )}
+
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900">{plan.name}</h3>
+                        <p className="text-slate-500 text-[11px]">월 정액 구독 · 수임료 과세 중계 불가 원칙 준수</p>
+                      </div>
+
+                      <div className="text-xl font-black text-brand">{plan.price}</div>
+
+                      <ul className="text-xs space-y-2 text-slate-600">
+                        {plan.features.map((feat, i) => (
+                          <li key={i} className="flex gap-1.5 items-start">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                            <span className="leading-tight">{feat}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      plan.name === 'Pro' 
+                      ? 'bg-brand hover:bg-brand-hover text-white ring-2 ring-brand/20 shadow-md' 
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'
+                    }`}>
+                      {plan.name === 'Pro' ? '✅ 현재 이용 중' : '요금제 업그레이드 문의'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ═══════════════════════════════════════════ */}
+            {/* Section 5: 법적 안전장치 & 결제 안내 */}
+            {/* ═══════════════════════════════════════════ */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 법적 안전장치 */}
+              <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-5 rounded-xl border border-slate-200 space-y-3">
+                <span className="font-extrabold text-slate-800 text-[13px] flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-brand" /> 법적 안전장치 (변호사법 준수)
+                </span>
+                <ul className="space-y-2 text-[12px] text-slate-600">
+                  <li className="flex gap-2 items-start">
+                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>모든 광고 영역에 <strong className="text-slate-800">"광고" 라벨</strong> 상시 표시</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>같은 등급 내 <strong className="text-slate-800">랜덤 셔플 정렬</strong> (광고비 순 정렬 금지)</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span><strong className="text-slate-800">고객 직접 선택</strong> 구조만 운영 (매칭·배정 없음)</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>상담 건당 과금 · 수임 성공 수수료 <strong className="text-red-500">절대 없음</strong></span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>고객 연락처 열람권 판매 <strong className="text-red-500">절대 없음</strong></span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>사건 정보 기반 변호사 자동 추천 <strong className="text-red-500">절대 없음</strong></span>
+                  </li>
+                </ul>
+                <div className="flex items-start gap-1.5 bg-blue-50 border border-blue-200/60 rounded-lg p-2 mt-2">
+                  <Info className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                  <span className="text-[10px] text-blue-700 leading-tight">
+                    법무부 「변호사검색서비스 운영 가이드라인」(2025.05.27) 및 변호사법 제109조 준수
+                  </span>
+                </div>
+              </div>
+
+              {/* 결제 / 환불 안내 */}
+              <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 p-5 rounded-xl border border-slate-200 space-y-3">
+                <span className="font-extrabold text-slate-800 text-[13px] flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-indigo-500" /> 결제 및 환불 정책
+                </span>
+                <div className="space-y-3 text-[12px] text-slate-600">
+                  <div>
+                    <span className="font-bold text-slate-700 block mb-1">결제 수단</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="bg-white border border-slate-200 px-2 py-1 rounded text-[11px]">💳 신용/체크카드 (자동결제)</span>
+                      <span className="bg-white border border-slate-200 px-2 py-1 rounded text-[11px]">🏦 계좌이체</span>
+                      <span className="bg-white border border-slate-200 px-2 py-1 rounded text-[11px]">📄 세금계산서 발행</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700 block mb-1">결제 사이클</span>
+                    <p className="text-[11px] text-slate-500">계약 시작일 기준 매월 동일일 자동 결제 · 익월 5일 세금계산서 발행</p>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700 block mb-1">환불 정책</span>
+                    <ul className="space-y-1 text-[11px] text-slate-500">
+                      <li>• 결제 후 7일 이내 + 노출 100회 미만: <strong className="text-emerald-600">전액 환불</strong></li>
+                      <li>• 결제 후 7일 이후: 잔여 일수 일할 계산 환불</li>
+                      <li>• 광고 소재 심사 반려 (수정 불가 시): <strong className="text-emerald-600">전액 환불</strong></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
