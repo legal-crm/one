@@ -898,8 +898,26 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 break;
 
             case 'work_location':
+                const workLocVal = value as string;
+                const detectedWorkCourt = getCourtNameForAddress(workLocVal, policyConfig || DEFAULT_POLICY_CONFIG_2026);
+
+                if (detectedWorkCourt === 'Default') {
+                    const currentEmpType = userInput.employmentType;
+                    const errorMsg = currentEmpType === 'business'
+                        ? '죄송합니다. 입력하신 사업장 지역을 확인하기 어렵습니다.\n\n정확한 구/시 단위 지역명을 입력해주세요.\n(예: 서울 강남구, 경기 수원시, 부산 해운대구)'
+                        : currentEmpType === 'freelancer' || currentEmpType === 'daily'
+                            ? '죄송합니다. 입력하신 근무 지역을 확인하기 어렵습니다.\n\n정확한 구/시 단위 지역명을 입력해주세요.\n(예: 서울 마포구, 대전 유성구, 수원시)'
+                            : '죄송합니다. 입력하신 직장 지역을 확인하기 어렵습니다.\n\n정확한 구/시 단위 지역명을 입력해주세요.\n(예: 서울 강남구, 경기 수원시, 인천 부평구)';
+                    addBotMessage(
+                        errorMsg,
+                        undefined,
+                        'text'
+                    );
+                    return;
+                }
+
                 // 근무지역 저장
-                setUserInput(prev => ({ ...prev, workLocation: value as string }));
+                setUserInput(prev => ({ ...prev, workLocation: workLocVal }));
                 const empType = userInput.employmentType;
 
                 if (empType === 'both') {
