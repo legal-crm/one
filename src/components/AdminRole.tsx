@@ -105,10 +105,6 @@ export default function AdminRole({
   // Site Content sub-navigation state
   const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry' | 'diagnosis' | 'popup'>('news');
 
-  // CRUD states for Diagnosis Config
-  const [diagQuestions, setDiagQuestions] = useState<DiagnosisQuestion[]>(DEFAULT_DIAGNOSIS_QUESTIONS);
-  const [editingDiagIdx, setEditingDiagIdx] = useState<number | null>(null);
-  const [diagSaving, setDiagSaving] = useState(false);
 
   // CRUD states for Notices
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
@@ -2444,12 +2440,7 @@ export default function AdminRole({
                 >
                   🙋 1:1 문의 내역 관리
                 </button>
-                <button 
-                  onClick={() => setContentSubTab('diagnosis')}
-                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'diagnosis' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
-                >
-                  🧪 진단 문항 관리
-                </button>
+
                 <button 
                   onClick={() => setContentSubTab('popup')}
                   className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'popup' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
@@ -3749,8 +3740,8 @@ export default function AdminRole({
                 );
               })()}
 
-              {/* 7. DIAGNOSIS CONFIG CRUD SECTION */}
-              {contentSubTab === 'diagnosis' && (
+              {/* 7. DIAGNOSIS CONFIG CRUD SECTION — 삭제됨 (간이 진단 미사용) */}
+              {false && (
                 <div className="space-y-6 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div>
