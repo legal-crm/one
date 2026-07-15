@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent } from 'lucide-react';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2 } from 'lucide-react';
 import type { ConsultRequest } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
@@ -34,8 +34,34 @@ export default function MyPageView({
   onStartDiagnosis,
   requests,
   onNavigateToChat,
-  isCompact = false
 }: MyPageViewProps) {
+
+  // 다중 전달사항 로컬 편집 상태
+  const [newNoteInput, setNewNoteInput] = useState('');
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState('');
+
+  const handleAddMypageNote = () => {
+    if (!newNoteInput.trim()) return;
+    const currentNotes = profile?.clientNotes || (profile?.clientNote ? [profile.clientNote] : []);
+    handleFieldChange('clientNotes', [...currentNotes, newNoteInput.trim()]);
+    setNewNoteInput('');
+  };
+
+  const handleSaveMypageNote = (idx: number) => {
+    if (!editingNoteValue.trim()) return;
+    const currentNotes = profile?.clientNotes || (profile?.clientNote ? [profile.clientNote] : []);
+    const updated = currentNotes.map((note, i) => i === idx ? editingNoteValue.trim() : note);
+    handleFieldChange('clientNotes', updated);
+    setEditingNoteIndex(null);
+    setEditingNoteValue('');
+  };
+
+  const handleDeleteMypageNote = (idx: number) => {
+    const currentNotes = profile?.clientNotes || (profile?.clientNote ? [profile.clientNote] : []);
+    const updated = currentNotes.filter((_, i) => i !== idx);
+    handleFieldChange('clientNotes', updated);
+  };
 
   // 자가진단 데이터가 아예 없는 경우
   if (!activeRequest || !activeRequest.financialProfile || !activeResult) {
@@ -927,6 +953,113 @@ export default function MyPageView({
                   ))}
                 </div>
                 <span className="text-[11px] text-slate-500 block">※ 해당 항목을 클릭하여 선택/해제합니다. 복수 선택 가능합니다.</span>
+              </div>
+            </div>
+
+            {/* 7. 의뢰인 추가 메모/전달사항 */}
+            <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">7. 의뢰인 추가 메모 / 전달사항</h4>
+              
+              <div className="space-y-3">
+                {/* 입력 및 추가 버튼 */}
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={newNoteInput}
+                    onChange={(e) => setNewNoteInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddMypageNote();
+                      }
+                    }}
+                    placeholder="변호사에게 추가로 전달하고 싶은 특이사항이나 궁금한 점을 입력하세요."
+                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddMypageNote}
+                    className="px-4 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>추가</span>
+                  </button>
+                </div>
+
+                {/* 등록된 메모 목록 */}
+                {(profile.clientNotes && profile.clientNotes.length > 0) ? (
+                  <div className="space-y-2">
+                    {profile.clientNotes.map((note, index) => (
+                      <div 
+                        key={index}
+                        className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 flex items-center justify-between gap-3 text-xs font-semibold"
+                      >
+                        {editingNoteIndex === index ? (
+                          <div className="flex-1 flex gap-2">
+                            <input 
+                              type="text"
+                              value={editingNoteValue}
+                              onChange={(e) => setEditingNoteValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleSaveMypageNote(index);
+                                }
+                              }}
+                              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-850 dark:text-white"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveMypageNote(index)}
+                              className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg shrink-0 cursor-pointer"
+                            >
+                              저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingNoteIndex(null)}
+                              className="px-2.5 py-1.5 bg-slate-400 hover:bg-slate-500 text-white text-[10px] font-bold rounded-lg shrink-0 cursor-pointer"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-slate-850 dark:text-slate-200 leading-relaxed break-all">
+                              • {note}
+                            </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNoteIndex(index);
+                                  setEditingNoteValue(note);
+                                }}
+                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg text-slate-400 hover:text-slate-650 transition-colors cursor-pointer"
+                                title="수정"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMypageNote(index)}
+                                className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                title="삭제"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-5 text-center text-xs text-slate-400 dark:text-slate-500 font-bold bg-slate-50/30 dark:bg-slate-950/10 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                    등록된 전달사항이 없습니다. 위 입력창에 적어 하나씩 추가해 보세요.
+                  </div>
+                )}
               </div>
             </div>
 

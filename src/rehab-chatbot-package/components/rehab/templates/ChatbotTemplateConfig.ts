@@ -67,7 +67,8 @@ export type InteractiveBlockType =
     | 'multi_select'    // 다중 선택 (체크)
     | 'date_picker'     // 날짜 선택
     | 'contact_input'   // 연락처 입력 (전화/이메일)
-    | 'cta_button';     // CTA 버튼
+    | 'cta_button'      // CTA 버튼
+    | 'client_notes_multi'; // 의뢰인 다중 전달사항 입력 (NEW)
 
 // Interactive Block 옵션
 export interface InteractiveBlockOption {

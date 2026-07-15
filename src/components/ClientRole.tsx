@@ -1637,6 +1637,7 @@ export default function ClientRole({
         input.retirementPensionType === 'unknown' ? '[확인 필요] 예상 퇴직금 조회 및 퇴직연금 가입 여부 확인 요망 (챗봇 모름 선택)' : '',
         input.clientNote || ''
       ].filter(Boolean).join('\n') || undefined,
+      clientNotes: input.clientNotes || (input.clientNote ? [input.clientNote] : []),
       housingType: input.housingType,
       housingContractHolder: input.housingContractHolder,
       depositLoan: input.depositLoan,
@@ -1762,9 +1763,11 @@ export default function ClientRole({
     intakeData.retirementPensionType === 'unknown' ? '\n• ⚠️ [확인 필요] 예상 퇴직금 조회 및 퇴직연금 가입 여부 확인 요망 (챗봇 모름 선택)' : ''
   }
 • 현재 법적 조치: ${legalActionsStr}
-${intakeData.notes ? `
+${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 [4. 의뢰인 전달 메모]
-• ${intakeData.notes}` : ''}
+• ${intakeData.clientNotes.join('\n• ')}` : (intakeData.notes ? `
+[4. 의뢰인 전달 메모]
+• ${intakeData.notes}` : '')}
 
 ----------------------------------
 💡 변호사 실무 검토 요지:
@@ -1807,7 +1810,8 @@ ${intakeData.notes ? `
         legalActions: intakeData.legalActions,
         retirementPensionType: intakeData.retirementPensionType,
         retirementPay: intakeData.retirementPay ? Math.round(intakeData.retirementPay / 10000) : undefined,
-        clientNote: intakeData.notes || undefined
+        clientNote: intakeData.notes || undefined,
+        clientNotes: intakeData.clientNotes || (intakeData.notes ? [intakeData.notes] : [])
       },
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };

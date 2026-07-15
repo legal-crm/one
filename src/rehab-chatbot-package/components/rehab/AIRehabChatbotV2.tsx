@@ -3424,10 +3424,17 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             }
 
             case 'client_note': {
-                const noteText = value === 'skip' ? '' : String(value).trim();
-                if (noteText) {
-                    setUserInput(prev => ({ ...prev, clientNote: noteText }));
-                    const updatedInput = { ...userInput, clientNote: noteText };
+                let notes: string[] = [];
+                if (Array.isArray(value)) {
+                    notes = value;
+                } else if (value && value !== 'skip') {
+                    notes = [String(value).trim()];
+                }
+
+                const noteText = notes.join('\n');
+                if (notes.length > 0) {
+                    setUserInput(prev => ({ ...prev, clientNote: noteText, clientNotes: notes }));
+                    const updatedInput = { ...userInput, clientNote: noteText, clientNotes: notes };
                     calculateResult(updatedInput as RehabUserInput);
                 } else {
                     calculateResult(userInput as RehabUserInput);
@@ -3445,8 +3452,19 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         goToStep('client_note');
         addBotMessage(
             '거의 다 끝났어요! 마지막으로 변호사에게 미리 전달하고 싶은 내용이 있으면 자유롭게 적어주세요. 😊\n\n예: 궁금한 점, 특이사항, 현재 급한 상황 등\n\n(없으면 \'건너뛰기\'를 눌러주세요)',
-            [{ label: '건너뛰기', value: 'skip' }],
-            'text'
+            undefined,
+            'text',
+            false,
+            {
+                type: 'client_notes_multi',
+                title: '변호사에게 전달할 상황 작성',
+                description: '하고 싶은 말씀이나 특별한 상황(최근 채무 독촉 등)을 자유롭게 적어 추가해 주세요.',
+                placeholder: '내용을 적고 추가 버튼을 누르세요.',
+                buttonLabel: '자가진단 완료하고 분석하기',
+                cancelLabel: '건너뛰기',
+                required: false
+            },
+            'client_note'
         );
     }, [addBotMessage, goToStep]);
 
@@ -3845,7 +3863,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             msg.id === messageId ? { ...msg, blockState: { status: 'completed', value, summary: '입력 완료' } } : msg
         ));
 
-
+        // client_note 단계 처리
+        if (currentStep === 'client_note') {
+            processStep('client_note', value);
+            return;
+        }
 
         // Multi Select 처리 (자산)
         if (currentStep === 'assets_select' || currentStep === 'spouse_assets_select') {
@@ -3924,6 +3946,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             setMessages(prev => prev.map(msg =>
                                 msg.id === id ? { ...msg, blockState: { status: 'cancelled' } } : msg
                             ));
+                            if (currentStep === 'client_note') {
+                                processStep('client_note', 'skip');
+                            }
                         }}
                     />
                 </motion.div>

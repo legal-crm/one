@@ -63,6 +63,7 @@ export interface FinancialProfile {
   housingContractHolder?: 'self' | 'spouse' | 'others'; // 주택 계약 명의자
   housingType?: 'rent' | 'jeonse' | 'owned' | 'free'; // 거주 형태
   clientNote?: string;     // 의뢰인 추가 메모/특이사항 (변호사에게만 표시)
+  clientNotes?: string[];   // 의뢰인 전달 사항 다중 메모 리스트
 }
 
 export type RequestType = 'direct' | 'open' | 'direct_multi';
@@ -710,6 +711,7 @@ export interface IntakeData {
   debts: DebtItem[];
   consultationLogs: ConsultationLog[];
   notes?: string;
+  clientNotes?: string[];
   speculativeLoss?: number; // 1년 이내 투자 손실 (원 단위)
   gamblingLoss?: number;    // 1년 이내 도박 채무 (원 단위)
   legalActions?: string[];

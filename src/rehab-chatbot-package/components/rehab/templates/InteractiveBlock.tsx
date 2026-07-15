@@ -20,7 +20,10 @@ import {
     ChevronRight,
     AlertCircle,
     CheckCircle2,
-    User
+    User,
+    Plus,
+    Trash2,
+    Edit
 } from 'lucide-react';
 import {
     InteractiveBlockConfig,
@@ -54,6 +57,14 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
     const [phoneValue, setPhoneValue] = useState<string>('');
     const [emailValue, setEmailValue] = useState<string>('');
     const [error, setError] = useState<string | null>(state.error || null);
+
+    // 다중 메모 입력 상태
+    const [notesList, setNotesList] = useState<string[]>(
+        Array.isArray(state.value) ? (state.value as string[]) : []
+    );
+    const [noteInput, setNoteInput] = useState<string>('');
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [editNoteInput, setEditNoteInput] = useState<string>('');
 
     // 초기 010 설정
     React.useEffect(() => {
@@ -89,6 +100,10 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
             }
             if (config.type === 'multi_select' && (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0))) {
                 setError('최소 하나 이상 선택해주세요.');
+                return false;
+            }
+            if (config.type === 'client_notes_multi' && notesList.length === 0) {
+                setError('전달사항을 하나 이상 입력하거나 추가해주세요.');
                 return false;
             }
             if (config.type === 'contact_input') {
@@ -132,7 +147,7 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
 
         setError(null);
         return true;
-    }, [config, selectedValue, phoneValue, emailValue]);
+    }, [config, selectedValue, phoneValue, emailValue, nameValue, notesList]);
 
     // 제출 핸들러
     const handleSubmit = useCallback(() => {
@@ -145,6 +160,9 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
             case 'multi_select':
             case 'date_picker':
                 value = selectedValue!;
+                break;
+            case 'client_notes_multi':
+                value = notesList;
                 break;
             case 'contact_input':
                 const contactData: any = {};
@@ -422,6 +440,152 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
         </div>
     );
 
+    // 다중 메모 입력 렌더링
+    const renderClientNotesMulti = () => {
+        const handleAddNote = () => {
+            if (!noteInput.trim()) return;
+            setNotesList(prev => [...prev, noteInput.trim()]);
+            setNoteInput('');
+            setError(null);
+        };
+
+        const handleStartEdit = (index: number, content: string) => {
+            setEditingIndex(index);
+            setEditNoteInput(content);
+        };
+
+        const handleSaveEdit = (index: number) => {
+            if (!editNoteInput.trim()) return;
+            setNotesList(prev => prev.map((n, i) => i === index ? editNoteInput.trim() : n));
+            setEditingIndex(null);
+            setEditNoteInput('');
+        };
+
+        const handleDeleteNote = (index: number) => {
+            setNotesList(prev => prev.filter((_, i) => i !== index));
+            if (editingIndex === index) {
+                setEditingIndex(null);
+                setEditNoteInput('');
+            }
+        };
+
+        return (
+            <div className="p-4 space-y-4 text-left">
+                {/* 입력창 + 추가버튼 */}
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={noteInput}
+                        onChange={(e) => setNoteInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddNote();
+                            }
+                        }}
+                        placeholder={config.placeholder || "내용을 입력하고 추가를 누르세요."}
+                        className="flex-1 px-3.5 py-2 rounded-xl border outline-none text-sm transition-all"
+                        style={{
+                            backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+                            borderColor: isDark ? '#334155' : '#e2e8f0',
+                            color: isDark ? '#e2e8f0' : '#1e293b'
+                        }}
+                    />
+                    <button
+                        type="button"
+                        onClick={handleAddNote}
+                        className="px-3.5 py-2 rounded-xl text-white font-extrabold text-sm flex items-center justify-center gap-1 hover:brightness-110 active:scale-95 transition-all cursor-pointer shrink-0"
+                        style={{ backgroundColor: colors.primary }}
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>추가</span>
+                    </button>
+                </div>
+
+                {/* 추가된 메모 리스트 */}
+                {notesList.length > 0 ? (
+                    <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                        {notesList.map((note, index) => (
+                            <div
+                                key={index}
+                                className="flex items-center justify-between gap-3 p-3 rounded-xl border text-sm transition-all"
+                                style={{
+                                    backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+                                    borderColor: isDark ? '#334155' : '#f1f5f9'
+                                }}
+                            >
+                                {editingIndex === index ? (
+                                    <div className="flex-1 flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={editNoteInput}
+                                            onChange={(e) => setEditNoteInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleSaveEdit(index);
+                                                }
+                                            }}
+                                            className="flex-1 px-2.5 py-1 rounded-lg border outline-none text-xs"
+                                            style={{
+                                                backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                                                borderColor: isDark ? '#475569' : '#e2e8f0',
+                                                color: isDark ? '#e2e8f0' : '#1e293b'
+                                            }}
+                                            autoFocus
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSaveEdit(index)}
+                                            className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer shrink-0"
+                                        >
+                                            저장
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditingIndex(null)}
+                                            className="px-2 py-1 bg-slate-400 hover:bg-slate-500 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer shrink-0"
+                                        >
+                                            취소
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="flex-1 leading-relaxed text-slate-700 dark:text-slate-300 font-medium break-all text-[13px]">
+                                            • {note}
+                                        </span>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleStartEdit(index, note)}
+                                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-650 dark:hover:text-slate-300 transition-all cursor-pointer"
+                                                title="수정"
+                                            >
+                                                <Edit className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteNote(index)}
+                                                className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-all cursor-pointer"
+                                                title="삭제"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-50/50 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                        작성된 전달사항이 없습니다.<br />위 입력창에 적어 하나씩 추가해주세요.
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     // CTA 버튼 렌더링
     const renderCTAButton = () => (
         <div className="p-4">
@@ -449,6 +613,8 @@ const InteractiveBlock: React.FC<InteractiveBlockProps> = ({
                 return renderSingleSelect();
             case 'multi_select':
                 return renderMultiSelect();
+            case 'client_notes_multi':
+                return renderClientNotesMulti();
             case 'date_picker':
                 return renderDatePicker();
             case 'contact_input':

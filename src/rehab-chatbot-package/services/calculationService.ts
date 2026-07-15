@@ -95,6 +95,7 @@ export interface RehabUserInput {
     retirementPensionType?: 'pension' | 'none' | 'unknown'; // 퇴직연금 가입 유형
     retirementPay?: number;                                 // 예상 퇴직금 총액
     clientNote?: string;                                    // 의뢰인 추가 메모/특이사항
+    clientNotes?: string[];                                   // 의뢰인 추가 메모 리스트
 }
 
 /**

@@ -1957,6 +1957,29 @@ export default function LawyerRole({
                           <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{r.content}</p>
                         </div>
 
+                        {/* 의뢰인 메모 */}
+                        {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
+                          <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-lg p-3 mt-1">
+                            <div className="flex items-start gap-2">
+                              <span className="text-base shrink-0">📝</span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
+                                {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
+                                  <ul className="space-y-1 text-left list-none">
+                                    {r.financialProfile.clientNotes.map((note, index) => (
+                                      <li key={index} className="text-[13px] text-slate-700 leading-relaxed break-all">
+                                        • {note}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Calculations Panel */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-lg text-[13px] text-slate-500 border border-slate-855">
                           <div>• 총 가계 채무: <strong className="text-red-500 font-extrabold">{r.financialProfile.debtTotal.toLocaleString()}만 원</strong></div>
@@ -2028,13 +2051,23 @@ export default function LawyerRole({
                         )}
 
                         {/* 의뢰인 메모 */}
-                        {r.financialProfile.clientNote && (
+                        {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
                           <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-lg p-3 mt-1">
                             <div className="flex items-start gap-2">
                               <span className="text-base shrink-0">📝</span>
-                              <div>
+                              <div className="flex-1 min-w-0">
                                 <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
-                                <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line">{r.financialProfile.clientNote}</p>
+                                {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
+                                  <ul className="space-y-1 text-left list-none">
+                                    {r.financialProfile.clientNotes.map((note, index) => (
+                                      <li key={index} className="text-[13px] text-slate-700 leading-relaxed break-all">
+                                        • {note}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
+                                )}
                               </div>
                             </div>
                           </div>
