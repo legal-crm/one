@@ -34,6 +34,7 @@ export default function MyPageView({
   onStartDiagnosis,
   requests,
   onNavigateToChat,
+  isCompact = false
 }: MyPageViewProps) {
 
   // 다중 전달사항 로컬 편집 상태
