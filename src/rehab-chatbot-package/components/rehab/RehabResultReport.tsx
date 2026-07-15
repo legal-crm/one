@@ -44,10 +44,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-    const [loginPromptAction, setLoginPromptAction] = useState<'pdf' | 'share'>('pdf');
+    const [loginPromptAction, setLoginPromptAction] = useState<'pdf' | 'share' | 'consultation'>('pdf');
 
     // 로그인 필요 액션 게이트
-    const requireLogin = (action: 'pdf' | 'share') => {
+    const requireLogin = (action: 'pdf' | 'share' | 'consultation') => {
         if (!isLoggedIn) {
             setLoginPromptAction(action);
             setShowLoginPrompt(true);
@@ -1260,7 +1260,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                         <motion.button
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
-                            onClick={onConsultation}
+                            onClick={() => { if (!requireLogin('consultation')) onConsultation?.(); }}
                             className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#7264FF]/20"
                         >
                             <Sparkles className="w-4 h-4 text-white" />
@@ -1316,12 +1316,14 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     <Shield className="w-7 h-7 text-[#7264FF]" />
                                 </div>
                                 <h3 className="text-lg font-extrabold text-slate-900 mb-2">
-                                    {loginPromptAction === 'pdf' ? '로그인이 필요합니다' : '로그인이 필요합니다'}
+                                    로그인이 필요합니다
                                 </h3>
                                 <p className="text-sm text-slate-500 leading-relaxed mb-5">
-                                    {loginPromptAction === 'pdf'
-                                        ? '진단 결과를 PDF로 저장하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
-                                        : '진단 결과를 공유하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'}
+                                    {loginPromptAction === 'consultation'
+                                        ? '전담 변호사를 선택하고 상담을 요청하려면 로그인이 필요합니다. 로그인 후 진단 결과가 내 관리방에 안전하게 저장됩니다.'
+                                        : loginPromptAction === 'pdf'
+                                            ? '진단 결과를 PDF로 저장하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
+                                            : '진단 결과를 공유하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'}
                                 </p>
                                 <div className="flex gap-2">
                                     <button
