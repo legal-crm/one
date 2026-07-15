@@ -41,7 +41,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
         onClick={e => e.stopPropagation()}
       >
         {/* ── 상단 버튼들 ── */}
-        <div className="absolute top-5 right-5 sm:top-6 sm:right-6 z-50 flex items-center gap-2">
+        <div className="absolute top-8 right-8 z-50 flex items-center gap-2">
           {onToggleFavorite && (
             <button onClick={onToggleFavorite} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               isFavorite ? 'bg-rose-500/80 hover:bg-rose-500' : 'bg-black/30 hover:bg-black/50'
