@@ -657,8 +657,8 @@ export default function AdminRole({
         </header>
 
         {/* Tab row */}
-        <div className="bg-[#161B26] border-b border-[#1E293B]/60 px-4">
-          <div className="w-full flex overflow-x-auto gap-4 py-2 text-xs font-semibold scrollbar-hide">
+        <div className="bg-[#161B26] border-b border-[#1E293B]/60 px-4 relative">
+          <div className="w-full flex overflow-x-auto gap-3 py-2 text-xs font-semibold scrollbar-hide pr-8" style={{maskImage: 'linear-gradient(to right, black 92%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 92%, transparent 100%)'}}>
             <button 
               onClick={() => setActiveTab('dashboard')}
               className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
@@ -711,7 +711,7 @@ export default function AdminRole({
               }`}
             >
               <Sparkles className="w-4 h-4" />
-              <span>사이트 콘텐츠 제어</span>
+              <span>콘텐츠 제어</span>
             </button>
 
             <button 
@@ -721,7 +721,7 @@ export default function AdminRole({
               }`}
             >
               <Lock className="w-4 h-4" />
-              <span>⚖️ 매칭 정책 설정</span>
+              <span>매칭 정책</span>
             </button>
 
             <button 
@@ -731,8 +731,11 @@ export default function AdminRole({
               }`}
             >
               <Activity className="w-4 h-4" />
-              <span>회원 및 활동 모니터링</span>
+              <span>회원 모니터링</span>
             </button>
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-8 flex items-center justify-center pointer-events-none bg-gradient-to-l from-[#161B26] to-transparent">
+            <span className="text-slate-500 text-sm">›</span>
           </div>
         </div>
 
