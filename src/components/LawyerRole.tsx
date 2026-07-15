@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder 
@@ -18,6 +18,7 @@ import { DEFAULT_PERMISSIONS } from '../types';
 import { validateInviteToken, consumeInviteToken } from '../services/inviteService';
 import { loadStaffMembers } from '../services/crmService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCorpNum, type LawyerBusinessInfo } from '../services/taxInvoiceService';
 import {
   loadNotificationSettings, saveNotificationSettings, loadNotificationLogs,
   testTelegramConnection, sendEmailNotification, formatEmailConsultHtml,
@@ -81,6 +82,13 @@ export default function LawyerRole({
   const [adModalRegion, setAdModalRegion] = useState('');
   const [adModalStep, setAdModalStep] = useState<'select' | 'done'>('select');
   const [adOrders, setAdOrders] = useState<AdOrder[]>(mockAdOrders);
+
+  // 세금계산서 / 사업자 정보 상태
+  const [bizInfo, setBizInfo] = useState<LawyerBusinessInfo | null>(() => loadLawyerBusinessInfo());
+  const [bizFormOpen, setBizFormOpen] = useState(false);
+  const [bizForm, setBizForm] = useState({ corpNum: '', corpName: '', ceoName: '', bizType: '전문서비스업', bizClass: '법률서비스', addr: '', taxEmail: '' });
+  const [bizCheckResult, setBizCheckResult] = useState<string | null>(null);
+  const [bizSaving, setBizSaving] = useState(false);
   
   // Mobile UI navigation controls
   const [mobilePane, setMobilePane] = useState<'threads' | 'chat' | 'crm'>('threads');
@@ -3072,7 +3080,139 @@ export default function LawyerRole({
                 </div>
               </div>
             )}
+
+          {/* ========== 세금계산서 섹션 ========== */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                    <Receipt className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900">전자세금계산서</h3>
+                    <p className="text-xs text-slate-500">광고비 입금 시 자동 발행 · 국세청 자동 전송</p>
+                  </div>
+                </div>
+                {bizInfo && (
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                    <Check className="w-3 h-3" />사업자 등록 완료
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6">
+              {/* 사업자 정보 미등록 시 등록 안내 */}
+              {!bizInfo && !bizFormOpen && (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
+                    <FileText className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-700 mb-1">사업자 정보를 등록해주세요</h4>
+                  <p className="text-xs text-slate-500 mb-4">세금계산서 자동 발행을 위해 법률사무소 사업자 정보가 필요합니다.</p>
+                  <button onClick={() => setBizFormOpen(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-600/20">
+                    🏢 사업자 정보 등록
+                  </button>
+                </div>
+              )}
+
+              {/* 사업자 정보 등록 폼 */}
+              {bizFormOpen && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Receipt className="w-4 h-4 text-indigo-600" />사업자 정보 등록</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">사업자등록번호 *</label>
+                      <div className="flex gap-2">
+                        <input type="text" value={bizForm.corpNum} onChange={e => setBizForm(p => ({...p, corpNum: e.target.value}))} placeholder="000-00-00000" maxLength={12} className="flex-1 p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                        <button onClick={async () => { setBizCheckResult('확인 중...'); const r = await checkCorpNum(bizForm.corpNum); setBizCheckResult(r.ok ? '✅ 정상 사업자' : `❌ ${r.error}`); }} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-xl transition-colors whitespace-nowrap">확인</button>
+                      </div>
+                      {bizCheckResult && <p className="text-[11px] mt-1 font-bold text-slate-500">{bizCheckResult}</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">상호 (법률사무소명) *</label>
+                      <input type="text" value={bizForm.corpName} onChange={e => setBizForm(p => ({...p, corpName: e.target.value}))} placeholder="법무법인 ○○" className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">대표자명 *</label>
+                      <input type="text" value={bizForm.ceoName} onChange={e => setBizForm(p => ({...p, ceoName: e.target.value}))} placeholder="홍길동" className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">세금계산서 수신 이메일 *</label>
+                      <input type="email" value={bizForm.taxEmail} onChange={e => setBizForm(p => ({...p, taxEmail: e.target.value}))} placeholder="tax@lawfirm.com" className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-bold text-slate-600 block mb-1">사업장 주소</label>
+                      <input type="text" value={bizForm.addr} onChange={e => setBizForm(p => ({...p, addr: e.target.value}))} placeholder="서울특별시 강남구..." className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => { setBizFormOpen(false); setBizCheckResult(null); }} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-xl transition-colors">취소</button>
+                    <button
+                      disabled={!bizForm.corpNum || !bizForm.corpName || !bizForm.ceoName || !bizForm.taxEmail || bizSaving}
+                      onClick={() => {
+                        setBizSaving(true);
+                        const info: LawyerBusinessInfo = { ...bizForm };
+                        saveLawyerBusinessInfo(info);
+                        setBizInfo(info);
+                        setBizFormOpen(false);
+                        setBizSaving(false);
+                        setBizCheckResult(null);
+                      }}
+                      className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      <Save className="w-4 h-4" />사업자 정보 저장
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 사업자 정보 등록 완료 시 */}
+              {bizInfo && !bizFormOpen && (
+                <div className="space-y-4">
+                  <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-slate-500">등록된 사업자 정보</span>
+                      <button onClick={() => { setBizForm({corpNum: bizInfo.corpNum, corpName: bizInfo.corpName, ceoName: bizInfo.ceoName, bizType: bizInfo.bizType, bizClass: bizInfo.bizClass, addr: bizInfo.addr, taxEmail: bizInfo.taxEmail}); setBizFormOpen(true); }} className="text-[11px] font-bold text-indigo-600 hover:text-indigo-500">수정</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-slate-400">사업자번호</span> <span className="font-bold text-slate-700 ml-1">{formatCorpNum(bizInfo.corpNum)}</span></div>
+                      <div><span className="text-slate-400">상호</span> <span className="font-bold text-slate-700 ml-1">{bizInfo.corpName}</span></div>
+                      <div><span className="text-slate-400">대표자</span> <span className="font-bold text-slate-700 ml-1">{bizInfo.ceoName}</span></div>
+                      <div><span className="text-slate-400">이메일</span> <span className="font-bold text-slate-700 ml-1">{bizInfo.taxEmail}</span></div>
+                    </div>
+                  </div>
+
+                  {/* 세금계산서 발행 이력 */}
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-600" />발행 내역</h4>
+                    {adOrders.filter(o => o.taxInvoice).length === 0 ? (
+                      <div className="text-center py-6 text-xs text-slate-400">
+                        아직 발행된 세금계산서가 없습니다.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {adOrders.filter(o => o.taxInvoice).map(order => (
+                          <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-slate-700">{order.productName}</p>
+                              <p className="text-[11px] text-slate-400">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : ''}</p>
+                            </div>
+                            <div className="text-right space-y-0.5">
+                              <p className="text-xs font-extrabold text-indigo-600">{order.taxInvoice?.totalAmount.toLocaleString()}원</p>
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">발행완료</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+        </div>
         )}
 
 
