@@ -76,7 +76,8 @@ export default function AdminRole({
 }: AdminRoleProps) {
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
-  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders'>('overview');
+  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice'>('overview');
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(mockAdOrders);
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
   // 세금계산서 발행 확인 모달
@@ -1755,6 +1756,14 @@ export default function AdminRole({
                 >
                   📢 광고 신청/입금 관리
                 </button>
+                <button
+                  onClick={() => setBillingSubTab('taxinvoice')}
+                  className={`pb-2 border-b-2 transition-all cursor-pointer ${
+                    billingSubTab === 'taxinvoice' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
+                  }`}
+                >
+                  📄 세금계산서 내역
+                </button>
               </div>
 
               {/* OVERVIEW SUBTAB */}
@@ -2290,6 +2299,106 @@ export default function AdminRole({
                   )}
                 </div>
               )}
+
+              {/* TAX INVOICE HISTORY SUBTAB */}
+              {billingSubTab === 'taxinvoice' && (() => {
+                const invoicedOrders = adminAdOrders.filter(o => o.taxInvoice);
+                const totalSupply = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.supplyCost || 0), 0);
+                const totalTax = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.tax || 0), 0);
+                const totalAmount = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.totalAmount || 0), 0);
+                const thisMonth = new Date().getMonth();
+                const thisMonthOrders = invoicedOrders.filter(o => o.taxInvoice?.issuedAt && new Date(o.taxInvoice.issuedAt).getMonth() === thisMonth);
+                return (
+                  <div className="space-y-6">
+                    {/* Stats */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
+                        <span className="text-[11px] text-indigo-400/80 font-bold block uppercase">총 발행 건수</span>
+                        <strong className="text-xl font-black text-indigo-400">{invoicedOrders.length}건</strong>
+                      </div>
+                      <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
+                        <span className="text-[11px] text-emerald-400/80 font-bold block uppercase">총 공급가액</span>
+                        <strong className="text-xl font-black text-emerald-400">{totalSupply.toLocaleString()}원</strong>
+                        <p className="text-[11px] text-slate-600">부가세: {totalTax.toLocaleString()}원</p>
+                      </div>
+                      <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
+                        <span className="text-[11px] text-amber-400/80 font-bold block uppercase">총 발행 금액</span>
+                        <strong className="text-xl font-black text-amber-400">{totalAmount.toLocaleString()}원</strong>
+                      </div>
+                      <div className="bg-[#111622] p-5 rounded-2xl border border-violet-500/20 space-y-2">
+                        <span className="text-[11px] text-violet-400/80 font-bold block uppercase">이달 발행</span>
+                        <strong className="text-xl font-black text-violet-400">{thisMonthOrders.length}건</strong>
+                        <p className="text-[11px] text-slate-600">{thisMonthOrders.reduce((s, o) => s + (o.taxInvoice?.totalAmount || 0), 0).toLocaleString()}원</p>
+                      </div>
+                    </div>
+
+                    {/* Invoice Table */}
+                    <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                              <th className="p-3">발행일</th>
+                              <th className="p-3">변호사</th>
+                              <th className="p-3">광고 상품</th>
+                              <th className="p-3 text-right">공급가액</th>
+                              <th className="p-3 text-right">부가세</th>
+                              <th className="p-3 text-right">합계</th>
+                              <th className="p-3">국세청확인번호</th>
+                              <th className="p-3">상태</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#1E293B]/30">
+                            {invoicedOrders.length === 0 ? (
+                              <tr><td colSpan={8} className="p-8 text-center text-slate-600 font-semibold">발행된 세금계산서가 없습니다.</td></tr>
+                            ) : invoicedOrders.map(order => (
+                              <React.Fragment key={order.id}>
+                                <tr className="hover:bg-[#0B0F19]/20 transition-colors cursor-pointer" onClick={() => setExpandedInvoiceId(expandedInvoiceId === order.id ? null : order.id)}>
+                                  <td className="p-3 text-slate-400 font-mono text-[11px]">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : '-'}</td>
+                                  <td className="p-3 font-bold text-white">{order.lawyerName}</td>
+                                  <td className="p-3 text-slate-300">{order.productName}</td>
+                                  <td className="p-3 text-right text-slate-300">{(order.taxInvoice?.supplyCost || 0).toLocaleString()}원</td>
+                                  <td className="p-3 text-right text-slate-400">{(order.taxInvoice?.tax || 0).toLocaleString()}원</td>
+                                  <td className="p-3 text-right font-bold text-indigo-400">{(order.taxInvoice?.totalAmount || 0).toLocaleString()}원</td>
+                                  <td className="p-3 font-mono text-[11px] text-slate-400">{order.taxInvoice?.ntsConfirmNum || '-'}</td>
+                                  <td className="p-3"><span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>발행완료</span></td>
+                                </tr>
+                                {expandedInvoiceId === order.id && (
+                                  <tr>
+                                    <td colSpan={8} className="p-0">
+                                      <div className="bg-[#0B0F19] p-4 border-t border-[#1E293B]/30">
+                                        <div className="flex items-start gap-6">
+                                          <div className="space-y-1.5 flex-1">
+                                            <span className="text-[10px] text-indigo-400 font-bold uppercase block">공급받는 자 (변호사) 사업자 정보</span>
+                                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                                              <div><span className="text-slate-600">사업자번호</span> <span className="text-white font-mono ml-1">{order.buyerCorpNum || '미등록'}</span></div>
+                                              <div><span className="text-slate-600">상호</span> <span className="text-white ml-1">{order.buyerCorpName || '미등록'}</span></div>
+                                              <div><span className="text-slate-600">대표자</span> <span className="text-white ml-1">{order.buyerCEOName || '미등록'}</span></div>
+                                              <div><span className="text-slate-600">이메일</span> <span className="text-white ml-1">{order.buyerEmail || '미등록'}</span></div>
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1.5">
+                                            <span className="text-[10px] text-indigo-400 font-bold uppercase block">발행 상세</span>
+                                            <div className="grid grid-cols-1 gap-1 text-xs">
+                                              <div><span className="text-slate-600">주문 ID</span> <span className="text-slate-400 font-mono ml-1">{order.id}</span></div>
+                                              <div><span className="text-slate-600">계약기간</span> <span className="text-white ml-1">{order.contractMonths}개월</span></div>
+                                              <div><span className="text-slate-600">입금확인일</span> <span className="text-white ml-1">{order.paidAt ? new Date(order.paidAt).toLocaleDateString('ko-KR') : '-'}</span></div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
             </div>
           )}
