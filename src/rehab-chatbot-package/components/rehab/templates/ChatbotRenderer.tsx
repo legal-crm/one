@@ -768,7 +768,14 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             { label: '+1천만', value: 1000 },
                             { label: '+100만', value: 100 },
                             { label: '+10만', value: 10 },
-                        ].map((btn, idx) => (
+                        ].filter(btn => {
+                            const stepId = lastBotMsg?.stepId;
+                            const isExcludedStep = stepId === 'rent_cost' || stepId === 'income_salary' || stepId === 'income_business';
+                            if (isExcludedStep && (btn.label === '+1억' || btn.label === '+5천만')) {
+                                return false;
+                            }
+                            return true;
+                        }).map((btn, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => addAmount(btn.value)}
