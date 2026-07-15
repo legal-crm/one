@@ -261,7 +261,7 @@ export default function MyPageView({
               </span>
               <h3 className="font-black text-2xl md:text-3xl text-white tracking-tight">나의 실시간 채무조정 상태</h3>
             </div>
-            <p className="text-sm text-slate-400 leading-relaxed max-w-md lg:text-right">
+            <p className="text-sm text-slate-300 leading-relaxed max-w-md lg:text-right font-medium">
               하단 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다.
             </p>
           </div>
@@ -339,8 +339,8 @@ export default function MyPageView({
                   style={{ width: `${Math.min(100, Math.round((activeResult.totalRepayment / Math.max(1, activeResult.liquidationValue)) * 100))}%` }}
                 />
               </div>
-              <span className="text-[11px] text-slate-500 block leading-relaxed text-left">
-                * 법상 내 재산(<span className="font-bold text-slate-400">{formatCurrency(activeResult.liquidationValue)}</span>)보다 3년 총 상환액(<span className="font-bold text-slate-400">{formatCurrency(activeResult.totalRepayment)}</span>)이 많아야 하므로 기준을 초과하면 안전합니다.
+              <span className="text-[11px] text-slate-400 block leading-relaxed text-left font-medium">
+                * 법상 내 재산(<span className="font-bold text-slate-200">{formatCurrency(activeResult.liquidationValue)}</span>)보다 3년 총 상환액(<span className="font-bold text-slate-200">{formatCurrency(activeResult.totalRepayment)}</span>)이 많아야 하므로 기준을 초과하면 안전합니다.
               </span>
             </div>
 
@@ -365,8 +365,8 @@ export default function MyPageView({
                   style={{ width: `${Math.min(100, Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100))}%` }}
                 />
               </div>
-              <span className="text-[11px] text-slate-500 block leading-relaxed text-left">
-                * 월 평균 실수령액 중 의뢰인 가구의 의식주를 위해 법적으로 확보된 생계비(<span className="font-bold text-slate-400">{formatCurrency(activeResult.recognizedLivingCost)}</span>)의 비율입니다.
+              <span className="text-[11px] text-slate-400 block leading-relaxed text-left font-medium">
+                * 월 평균 실수령액 중 의뢰인 가구의 의식주를 위해 법적으로 확보된 생계비(<span className="font-bold text-slate-200">{formatCurrency(activeResult.recognizedLivingCost)}</span>)의 비율입니다.
               </span>
             </div>
           </div>
@@ -386,7 +386,7 @@ export default function MyPageView({
             </div>
           )}
 
-          <div className="relative z-10 text-[11px] md:text-xs text-slate-500 leading-relaxed text-left pt-4 border-t border-white/10 mt-4 flex items-start gap-2">
+          <div className="relative z-10 text-[11px] md:text-xs text-slate-400 leading-relaxed text-left pt-4 border-t border-white/10 mt-4 flex items-start gap-2 font-medium">
             <AlertTriangle className="w-4 h-4 text-amber-500/80 shrink-0 mt-0.5" />
             <span>이 시뮬레이션 결과는 법원 실무 기준을 근거로 계산된 가상 수치이며, 실제 법원의 인가 결정 및 세부 변제율 조정을 위해 변호사 서류 소명이 수반되어야 합니다.</span>
           </div>
