@@ -37,11 +37,11 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
   return (
     <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/60 backdrop-blur-sm animate-fadeIn overflow-y-auto" onClick={onClose}>
       <div
-        className="relative w-full max-w-[720px] my-4 sm:my-8 bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-fadeIn"
+        className="relative w-full max-w-[720px] mt-14 mb-4 sm:mt-20 sm:mb-8 bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-fadeIn"
         onClick={e => e.stopPropagation()}
       >
         {/* ── 상단 버튼들 ── */}
-        <div className="absolute top-20 right-6 z-50 flex items-center gap-2">
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
           {onToggleFavorite && (
             <button onClick={onToggleFavorite} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               isFavorite ? 'bg-rose-500/80 hover:bg-rose-500' : 'bg-black/30 hover:bg-black/50'
