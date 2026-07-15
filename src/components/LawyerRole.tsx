@@ -1913,6 +1913,42 @@ export default function LawyerRole({
                 })()}
               </div>
 
+            {/* 🤝 전담 선임 고객 관리 */}
+            <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">🤝 전담 선임 고객</h3>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">활성 2명</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">취소 1명</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { id: 'appt-1', clientName: '홍길*', status: 'active' as const, appointedAt: '2026-07-10T14:30:00Z', cancelReason: '' },
+                  { id: 'appt-3', clientName: '박영*', status: 'active' as const, appointedAt: '2026-07-14T16:00:00Z', cancelReason: '' },
+                  { id: 'appt-2', clientName: '김철*', status: 'cancelled' as const, appointedAt: '2026-07-05T09:00:00Z', cancelReason: '응답이 너무 느려요' },
+                ].map(appt => (
+                  <div key={appt.id} className={`flex items-center justify-between p-3 rounded-xl border ${appt.status === 'active' ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                        {appt.clientName[0]}
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
+                        <span className="text-[11px] text-slate-400">선임일: {new Date(appt.appointedAt).toLocaleDateString('ko-KR')}</span>
+                        {appt.status === 'cancelled' && appt.cancelReason && (
+                          <span className="text-[11px] text-red-400 block">취소 사유: {appt.cancelReason}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
+                      {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             </div>
           </div>
         )}

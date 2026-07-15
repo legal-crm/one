@@ -80,6 +80,9 @@ export default function ChatView({
   const [showProfilePanel, setShowProfilePanel] = useState<boolean>(false);
   const [isBidExpanded, setIsBidExpanded] = useState<boolean>(false);
   const [showPhoneConsultModal, setShowPhoneConsultModal] = useState<boolean>(false);
+  const [showAppointModal, setShowAppointModal] = useState<boolean>(false);
+  const [showCelebration, setShowCelebration] = useState<boolean>(false);
+  const [isAppointed, setIsAppointed] = useState<boolean>(false);
   const currentRequest = requests.find(r => r.id === activeChatReqId);
   const activeChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
 
@@ -459,6 +462,98 @@ export default function ChatView({
                 );
               })}
             </div>
+
+            {/* 🤝 전담 변호사 선임 CTA */}
+            {currentRequest && currentRequest.selectedLawyerId && !isAppointed && activeChatMessages.length >= 2 && (
+              <div className="mx-4 mb-2 p-3 bg-gradient-to-r from-amber-50 to-emerald-50 dark:from-amber-950/30 dark:to-emerald-950/30 border border-amber-200/60 dark:border-amber-700/30 rounded-2xl flex items-center justify-between gap-3 animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🤝</span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 dark:text-white block">이 변호사님을 나의 전담 변호사로 선임할 수 있어요</span>
+                    <span className="text-[11px] text-slate-500">무료 · 언제든 변경 가능</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAppointModal(true)}
+                  className="shrink-0 px-4 py-2 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95"
+                >
+                  전담 선임하기
+                </button>
+              </div>
+            )}
+
+            {/* 선임 확인 모달 */}
+            {showAppointModal && currentRequest && (() => {
+              const lawyer = currentRequest.selectedLawyerId ? { name: currentRequest.title?.replace(' 변호사 전담 매칭', '') || '담당 변호사' } : null;
+              return (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowAppointModal(false)}>
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 animate-fadeIn" onClick={e => e.stopPropagation()}>
+                    <div className="text-4xl">🤝</div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                      {lawyer?.name} 변호사님을<br/>나의 전담 변호사로 선임할까요?
+                    </h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      선임하시면 {lawyer?.name} 변호사님이 당신의 채무 상담, 서류 준비,<br/>법원 진행까지 끝까지 함께합니다.
+                    </p>
+                    <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-3 text-left">
+                      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                        <span>✅</span><span>무료이며, 언제든 변경할 수 있어요</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 mt-1">
+                        <span>🔔</span><span>변호사님에게 알림이 전달돼요</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowAppointModal(false)} className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer">다음에 할게요</button>
+                      <button onClick={() => {
+                        setShowAppointModal(false);
+                        setIsAppointed(true);
+                        setShowCelebration(true);
+                        setTimeout(() => setShowCelebration(false), 4000);
+                      }} className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer transform active:scale-95">네, 선임할게요!</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 🎉 축하 모달 */}
+            {showCelebration && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center space-y-5 animate-fadeIn relative overflow-hidden">
+                  {/* 파티클 배경 */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {[...Array(20)].map((_, i) => (
+                      <div key={i} className="absolute animate-bounce" style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        fontSize: `${12 + Math.random() * 16}px`,
+                        animationDelay: `${Math.random() * 2}s`,
+                        animationDuration: `${1 + Math.random() * 2}s`,
+                        opacity: 0.6 + Math.random() * 0.4
+                      }}>
+                        {['🎉', '✨', '🤝', '⭐', '💛', '🎊'][Math.floor(Math.random() * 6)]}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="relative z-10 space-y-4">
+                    <div className="text-5xl">🎉✨🤝</div>
+                    <h3 className="text-xl font-black bg-gradient-to-r from-amber-500 to-emerald-500 bg-clip-text text-transparent">
+                      전담 파트너가 되었습니다!
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                      이제부터 채무 상담, 서류 준비,<br/>법원 진행까지 <strong>끝까지 함께</strong>합니다.
+                    </p>
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/30 rounded-xl p-3">
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1.5">🔔 변호사님에게도 알림이 전달되었어요</span>
+                    </div>
+                    <button onClick={() => setShowCelebration(false)} className="w-full py-3 bg-gradient-to-r from-amber-500 to-emerald-500 text-white rounded-xl text-sm font-bold shadow-md cursor-pointer transform active:scale-95 transition-all">
+                      💬 전담 변호사와 대화하기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Chat Input Bar */}
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2.5">

@@ -1120,6 +1120,76 @@ export default function AdminRole({
                 </div>
               </div>
 
+              {/* 🤝 전담 선임 현황 + 취소 사유 분석 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">🤝 전담 선임 현황</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-center">
+                      <strong className="text-lg font-black text-emerald-400 block">3명</strong>
+                      <span className="text-[11px] text-emerald-400/70 font-bold">활성 선임</span>
+                    </div>
+                    <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 text-center">
+                      <strong className="text-lg font-black text-indigo-400 block">2명</strong>
+                      <span className="text-[11px] text-indigo-400/70 font-bold">이달 신규</span>
+                    </div>
+                    <div className="bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center">
+                      <strong className="text-lg font-black text-red-400 block">2건</strong>
+                      <span className="text-[11px] text-red-400/70 font-bold">취소</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 mt-2">
+                    {[
+                      { name: '홍길*', lawyer: '이소민', status: 'active', date: '07/10' },
+                      { name: '박영*', lawyer: '김영수', status: 'active', date: '07/14' },
+                      { name: '이민*', lawyer: '최은서', status: 'active', date: '07/13' },
+                      { name: '김철*', lawyer: '이소민', status: 'cancelled', date: '07/05', reason: '응답 느림' },
+                      { name: '정수*', lawyer: '김영수', status: 'cancelled', date: '06/28', reason: '비용 부담' },
+                    ].map((a, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:bg-[#0B0F19]/30">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full ${a.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                          <span className="text-white font-bold">{a.name}</span>
+                          <span className="text-slate-600">→</span>
+                          <span className="text-slate-400">{a.lawyer}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-600 font-mono text-[11px]">{a.date}</span>
+                          {a.reason && <span className="text-red-400 text-[11px]">{a.reason}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">📊 취소 사유 분석</h3>
+                  <p className="text-[11px] text-slate-600">서비스 고도화를 위한 취소 원인 통계</p>
+                  <div className="space-y-3">
+                    {[
+                      { reason: '응답이 너무 느려요', count: 2, pct: 40, color: 'bg-red-500' },
+                      { reason: '비용이 부담되어요', count: 1, pct: 20, color: 'bg-amber-500' },
+                      { reason: '다른 변호사 희망', count: 1, pct: 20, color: 'bg-indigo-500' },
+                      { reason: '상담 불만족', count: 1, pct: 20, color: 'bg-slate-500' },
+                    ].map((item, i) => (
+                      <div key={i} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300 font-bold">{item.reason}</span>
+                          <span className="text-slate-500">{item.count}건 ({item.pct}%)</span>
+                        </div>
+                        <div className="w-full bg-[#0B0F19] rounded-full h-2">
+                          <div className={`${item.color} h-2 rounded-full transition-all`} style={{ width: `${item.pct}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-[#0B0F19] rounded-xl p-3 border border-[#1E293B]/30 mt-2">
+                    <span className="text-[11px] text-amber-400 font-bold flex items-center gap-1">💡 인사이트</span>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">"응답 속도"가 취소 원인 1위입니다. 변호사 응답 SLA 정책 도입을 검토하세요.</p>
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 

@@ -751,6 +751,76 @@ export const BANK_ACCOUNT_INFO = {
   holder: '진성호(몬스터랩)',
 };
 
+// ── 전담 변호사 선임 Mock Data ──
+import type { LawyerAppointment } from './types';
+export const mockAppointments: LawyerAppointment[] = [
+  {
+    id: 'appt-1',
+    clientId: 'user-1',
+    clientName: '홍길*',
+    lawyerId: 'lawyer-2',
+    lawyerName: '이소민',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256',
+    lawyerRegion: '서울/경기',
+    status: 'active',
+    appointedAt: '2026-07-10T14:30:00Z',
+    consultRequestId: 'req-1',
+  },
+  {
+    id: 'appt-2',
+    clientId: 'user-2',
+    clientName: '김철*',
+    lawyerId: 'lawyer-2',
+    lawyerName: '이소민',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256',
+    lawyerRegion: '서울/경기',
+    status: 'cancelled',
+    appointedAt: '2026-07-05T09:00:00Z',
+    cancelledAt: '2026-07-12T11:20:00Z',
+    cancelReason: '응답이 너무 느려요',
+    cancelDetail: '3일째 답변을 못 받았어요',
+    consultRequestId: 'req-2',
+  },
+  {
+    id: 'appt-3',
+    clientId: 'user-3',
+    clientName: '박영*',
+    lawyerId: 'lawyer-1',
+    lawyerName: '김영수',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=256',
+    lawyerRegion: '서울',
+    status: 'active',
+    appointedAt: '2026-07-14T16:00:00Z',
+    consultRequestId: 'req-3',
+  },
+  {
+    id: 'appt-4',
+    clientId: 'user-4',
+    clientName: '이민*',
+    lawyerId: 'lawyer-3',
+    lawyerName: '최은서',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256',
+    lawyerRegion: '수원/인천',
+    status: 'active',
+    appointedAt: '2026-07-13T10:15:00Z',
+    consultRequestId: 'req-4',
+  },
+  {
+    id: 'appt-5',
+    clientId: 'user-5',
+    clientName: '정수*',
+    lawyerId: 'lawyer-1',
+    lawyerName: '김영수',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=256',
+    lawyerRegion: '서울',
+    status: 'cancelled',
+    appointedAt: '2026-06-28T08:00:00Z',
+    cancelledAt: '2026-07-08T14:30:00Z',
+    cancelReason: '비용이 부담되어요',
+    consultRequestId: 'req-5',
+  },
+];
+
 export const mockAdOrders: AdOrder[] = [
   {
     id: 'ado-1',

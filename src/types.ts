@@ -345,6 +345,32 @@ export interface CrmClientExtension {
   lastActivityAt: string;
 }
 
+// ── 전담 변호사 선임 ──
+export interface LawyerAppointment {
+  id: string;
+  clientId: string;
+  clientName: string;
+  lawyerId: string;
+  lawyerName: string;
+  lawyerAvatar: string;
+  lawyerRegion?: string;
+  status: 'active' | 'cancelled';
+  appointedAt: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  cancelDetail?: string;
+  consultRequestId: string;
+}
+
+export const APPOINTMENT_CANCEL_REASONS = [
+  '다른 변호사님과 상담해보고 싶어요',
+  '응답이 너무 느려요',
+  '상담 내용이 만족스럽지 않아요',
+  '비용이 부담되어요',
+  '더 이상 법률 도움이 필요없어요',
+  '기타',
+] as const;
+
 
 export interface ConsultRequest {
   id: string;
