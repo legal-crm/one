@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft } from 'lucide-react';
-import { ConsultRequest } from '../../types';
-import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent } from 'lucide-react';
+import type { ConsultRequest } from '../../types';
+import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 
@@ -222,107 +222,145 @@ export default function MyPageView({
       <div className="flex flex-col gap-5">
         
         {/* TOP: 실시간 채무조정 상태 (가로 배치) */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 md:p-6 shadow-xl border border-slate-800">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <div className="space-y-0.5">
-              <span className="text-[12px] text-brand-light font-bold uppercase tracking-wider block">
-                ⚙️ 나의 예상 감면액 실시간 분석
+        <div className="relative bg-slate-950/80 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-2xl shadow-slate-950/70 overflow-hidden">
+          {/* 네온 글로우 백그라운드 데코 */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-brand/10 rounded-full blur-[100px] pointer-events-none -mr-24 -mt-24"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none -ml-24 -mb-24"></div>
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 mb-6">
+            <div className="space-y-2 text-left">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-black bg-brand/15 text-brand rounded-full border border-brand/20 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-brand" /> 나의 예상 감면액 실시간 분석
               </span>
-              <h3 className="font-extrabold text-base md:text-lg">나의 실시간 채무조정 상태</h3>
+              <h3 className="font-black text-2xl md:text-3xl text-white tracking-tight">나의 실시간 채무조정 상태</h3>
             </div>
-            <p className="text-[12px] text-slate-500 leading-relaxed max-w-md">
+            <p className="text-sm text-slate-400 leading-relaxed max-w-md lg:text-right">
               하단 진단 폼에서 항목을 수정하면, 법원 기준 최우선변제금 공제와 가구원 생계비가 즉시 다시 연산됩니다.
             </p>
           </div>
 
           {/* 주요 3대 지표 카드 - 가로 배치 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
-              <div className="text-left space-y-0.5">
-                <span className="text-[11px] text-slate-450 font-bold block">나의 총 채무액</span>
-                <span className="text-[12px] text-slate-350 font-medium">원금 합계</span>
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* 카드 1: 나의 총 채무액 */}
+            <div className="group backdrop-blur-md bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.12] p-5 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-white/[0.01]">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
+                <Coins className="w-6 h-6" />
               </div>
-              <span className="font-black text-amber-400 text-base md:text-lg">
-                {formatCurrency(totalDebtValue)}
-              </span>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
-              <div className="text-left space-y-0.5">
-                <span className="text-[11px] text-slate-450 font-bold block">매달 법원에 갚는 돈 (월 변제금)</span>
-                <span className="text-[12px] text-slate-350 font-medium">생계비 제외 후 월 납입금</span>
-              </div>
-              <span className="font-black text-brand-light text-base md:text-lg">
-                {formatCurrency(activeResult.monthlyPayment)} / 월
-              </span>
-            </div>
-
-            <div className="bg-brand/10 border border-brand/20 rounded-2xl p-4 flex items-center justify-between">
-              <div className="text-left space-y-0.5">
-                <span className="text-[11px] text-brand-light font-bold block">예상 조정 가능 금액 (변호사 검토 필요)</span>
-                <span className="text-[12px] text-slate-300 font-medium">법적으로 면제되는 빚 액수</span>
-              </div>
-              <div className="text-right">
-                <span className="font-black text-emerald-400 text-base md:text-lg block">
-                  ★ {formatCurrency(activeResult.totalDebtReduction)}
+              <div className="flex-1 text-left min-w-0">
+                <span className="text-[11px] text-slate-400 font-bold block uppercase tracking-wider">나의 총 채무액</span>
+                <span className="text-xs text-slate-500 font-medium block mt-0.5">원금 합계</span>
+                <span className="font-black text-amber-400 text-xl md:text-2xl block mt-1.5 truncate">
+                  {formatCurrency(totalDebtValue)}
                 </span>
-                <span className="text-[12px] text-emerald-350/80 font-bold">
-                  전체 채무의 {activeResult.debtReductionRate}% 면제!
+              </div>
+            </div>
+
+            {/* 카드 2: 매달 법원에 갚는 돈 (월 변제금) */}
+            <div className="group backdrop-blur-md bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-brand/35 p-5 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-brand/5">
+              <div className="w-12 h-12 rounded-xl bg-brand/10 flex items-center justify-center text-brand shrink-0 group-hover:scale-110 transition-transform">
+                <CreditCard className="w-6 h-6" />
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <span className="text-[11px] text-slate-400 font-bold block uppercase tracking-wider">월 변제금 (예상)</span>
+                <span className="text-xs text-slate-500 font-medium block mt-0.5">생계비 제외 후 납입금</span>
+                <span className="font-black text-brand-light text-xl md:text-2xl block mt-1.5 truncate">
+                  {formatCurrency(activeResult.monthlyPayment)} <span className="text-xs font-bold text-slate-455">/ 월</span>
+                </span>
+              </div>
+            </div>
+
+            {/* 카드 3: 예상 조정 가능 금액 (가장 강조) */}
+            <div className="group bg-gradient-to-br from-emerald-500/12 via-emerald-500/5 to-transparent border border-emerald-500/30 shadow-lg shadow-emerald-500/5 p-5 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/10">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">예상 감면액 (면제액)</span>
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">
+                    {activeResult.debtReductionRate}% 감면!
+                  </span>
+                </div>
+                <span className="text-xs text-slate-400 font-medium block mt-0.5">법적으로 탕감되는 빚 액수</span>
+                <span className="font-black text-emerald-400 text-xl md:text-2xl block mt-1.5 truncate">
+                  {formatCurrency(activeResult.totalDebtReduction)}
                 </span>
               </div>
             </div>
           </div>
 
           {/* 실시간 프로그레스 그래프 - 가로 2열 배치 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/5">
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 pt-5 border-t border-white/10">
             {/* 1. 청산가치 충족성 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-[12px] text-slate-350">
-                <span className="flex items-center gap-1">⚖️ 청산가치 보장율 (재산 대비 변제 비율)</span>
-                <span className="font-bold text-[#10B981]">{Math.round((activeResult.totalRepayment / Math.max(1, activeResult.liquidationValue)) * 100)}%</span>
+            <div className="space-y-2.5 bg-white/[0.01] border border-white/[0.03] p-4.5 rounded-2xl">
+              <div className="flex justify-between items-center text-xs md:text-sm">
+                <span className="flex items-center gap-1.5 text-slate-300 font-semibold">
+                  <Scale className="w-4 h-4 text-slate-400" /> 청산가치 보장율 (재산 대비 변제 비율)
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-emerald-450 text-sm">{Math.round((activeResult.totalRepayment / Math.max(1, activeResult.liquidationValue)) * 100)}%</span>
+                  {activeResult.totalRepayment >= activeResult.liquidationValue ? (
+                    <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-1.5 py-0.5 rounded border border-emerald-500/30">충족 (안전)</span>
+                  ) : (
+                    <span className="bg-red-500/20 text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded border border-red-500/30 animate-pulse">미달 (조정 필요)</span>
+                  )}
+                </div>
               </div>
-              <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden p-[2px]">
                 <div 
-                  className="bg-gradient-to-r from-emerald-400 to-indigo-500 h-full rounded-full transition-all duration-500" 
+                  className="bg-gradient-to-r from-emerald-400 via-indigo-400 to-indigo-500 h-full rounded-full transition-all duration-500 shadow-glow" 
                   style={{ width: `${Math.min(100, Math.round((activeResult.totalRepayment / Math.max(1, activeResult.liquidationValue)) * 100))}%` }}
                 />
               </div>
-              <span className="text-[11px] text-slate-500 block leading-normal">
-                * 법상 내 재산({formatCurrency(activeResult.liquidationValue)})보다 3년 총 상환액({formatCurrency(activeResult.totalRepayment)})이 많아야 하므로 기준을 초과하면 안전합니다.
+              <span className="text-[11px] text-slate-500 block leading-relaxed text-left">
+                * 법상 내 재산(<span className="font-bold text-slate-400">{formatCurrency(activeResult.liquidationValue)}</span>)보다 3년 총 상환액(<span className="font-bold text-slate-400">{formatCurrency(activeResult.totalRepayment)}</span>)이 많아야 하므로 기준을 초과하면 안전합니다.
               </span>
             </div>
 
             {/* 2. 소득 대비 인정 생계비 비율 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-[12px] text-slate-350">
-                <span className="flex items-center gap-1">📊 소득 대비 생활비 확보율</span>
-                <span className="font-bold text-brand-light">{Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100)}%</span>
+            <div className="space-y-2.5 bg-white/[0.01] border border-white/[0.03] p-4.5 rounded-2xl">
+              <div className="flex justify-between items-center text-xs md:text-sm">
+                <span className="flex items-center gap-1.5 text-slate-300 font-semibold">
+                  <Percent className="w-4 h-4 text-slate-400" /> 소득 대비 생활비 확보율
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-brand-light text-sm">{Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100)}%</span>
+                  {Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100) >= 60 ? (
+                    <span className="bg-brand/20 text-brand-light text-[10px] font-black px-1.5 py-0.5 rounded border border-brand/35">안정적</span>
+                  ) : (
+                    <span className="bg-amber-500/20 text-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded border border-amber-500/30">부족 우려</span>
+                  )}
+                </div>
               </div>
-              <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden p-[2px]">
                 <div 
-                  className="bg-gradient-to-r from-brand-light to-emerald-400 h-full rounded-full transition-all duration-500" 
+                  className="bg-gradient-to-r from-brand-light to-emerald-400 h-full rounded-full transition-all duration-500 shadow-glow" 
                   style={{ width: `${Math.min(100, Math.round((activeResult.recognizedLivingCost / Math.max(1, activeResult.availableIncome + activeResult.recognizedLivingCost)) * 100))}%` }}
                 />
               </div>
-              <span className="text-[11px] text-slate-500 block leading-normal">
-                * 월 평균 실수령액 중 의뢰인 가구의 의식주를 위해 법적으로 확보된 금액({formatCurrency(activeResult.recognizedLivingCost)})의 비중입니다.
+              <span className="text-[11px] text-slate-500 block leading-relaxed text-left">
+                * 월 평균 실수령액 중 의뢰인 가구의 의식주를 위해 법적으로 확보된 생계비(<span className="font-bold text-slate-400">{formatCurrency(activeResult.recognizedLivingCost)}</span>)의 비율입니다.
               </span>
             </div>
           </div>
 
+          {/* 위험 표시 (riskFlags) */}
           {profile.riskFlags && profile.riskFlags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5 mt-3">
+            <div className="relative z-10 flex flex-col gap-2 pt-4 border-t border-white/10 mt-4">
               {profile.riskFlags.map(rf => (
-                <span key={rf} className="bg-red-500/10 border border-red-500/25 text-red-400 text-[12px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                  🚨 {rf}
-                </span>
+                <div key={rf} className="bg-red-500/10 border border-red-500/25 text-red-400 text-xs md:text-sm p-4 rounded-xl font-bold flex items-start gap-2.5 shadow-lg shadow-red-500/5 animate-pulse-subtle">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse mt-1.5 shrink-0"></span>
+                  <div className="text-left leading-normal">
+                    <span className="font-extrabold text-red-300 block mb-0.5">⚠️ 경고 알림</span>
+                    {rf}
+                  </div>
+                </div>
               ))}
             </div>
           )}
 
-          <div className="text-[12px] text-slate-500 leading-normal text-left pt-3 border-t border-white/5 mt-3 flex items-start gap-1">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="relative z-10 text-[11px] md:text-xs text-slate-500 leading-relaxed text-left pt-4 border-t border-white/10 mt-4 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500/80 shrink-0 mt-0.5" />
             <span>이 시뮬레이션 결과는 법원 실무 기준을 근거로 계산된 가상 수치이며, 실제 법원의 인가 결정 및 세부 변제율 조정을 위해 변호사 서류 소명이 수반되어야 합니다.</span>
           </div>
         </div>
