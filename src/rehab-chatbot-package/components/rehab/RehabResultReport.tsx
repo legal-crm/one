@@ -27,18 +27,34 @@ interface RehabResultReportProps {
     userInput: RehabUserInput;
     onClose: () => void;
     onConsultation?: () => void;
+    isLoggedIn?: boolean;
+    onShowAuthModal?: () => void;
 }
 
 const RehabResultReport: React.FC<RehabResultReportProps> = ({
     result,
     userInput,
     onClose,
-    onConsultation
+    onConsultation,
+    isLoggedIn = false,
+    onShowAuthModal
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
     const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'statistics' | 'simulation' | 'checklist'>('overview');
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+    const [loginPromptAction, setLoginPromptAction] = useState<'pdf' | 'share'>('pdf');
+
+    // 로그인 필요 액션 게이트
+    const requireLogin = (action: 'pdf' | 'share') => {
+        if (!isLoggedIn) {
+            setLoginPromptAction(action);
+            setShowLoginPrompt(true);
+            return true;
+        }
+        return false;
+    };
 
     // 전문가용 PDF 보고서 다운로드 기능 (jspdf + html2canvas)
     const handleDownloadPDF = async () => {
@@ -324,7 +340,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                             </div>
                             <div className="flex items-center gap-2">
                                 <motion.button
-                                    onClick={handleDownloadPDF}
+                                    onClick={() => { if (!requireLogin('pdf')) handleDownloadPDF(); }}
                                     disabled={isGeneratingPdf}
                                     className="p-1.5 text-slate-500 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
                                     title="PDF 저장"
@@ -332,7 +348,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     <Download className="w-4 h-4" />
                                 </motion.button>
                                 <motion.button
-                                    onClick={() => setIsShareModalOpen(true)}
+                                    onClick={() => { if (!requireLogin('share')) setIsShareModalOpen(true); }}
                                     className="p-1.5 text-slate-500 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors"
                                     title="보안 공유"
                                 >
@@ -1255,7 +1271,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                         {/* Save & Share Buttons */}
                         <div className="flex gap-2 mt-3 text-xs font-semibold">
                             <button
-                                onClick={handleDownloadPDF}
+                                onClick={() => { if (!requireLogin('pdf')) handleDownloadPDF(); }}
                                 disabled={isGeneratingPdf}
                                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200 disabled:opacity-55"
                             >
@@ -1263,7 +1279,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 {isGeneratingPdf ? 'PDF 생성 중...' : '전문가 PDF 다운로드'}
                             </button>
                             <button
-                                onClick={() => setIsShareModalOpen(true)}
+                                onClick={() => { if (!requireLogin('share')) setIsShareModalOpen(true); }}
                                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
                             >
                                 <Share2 className="w-3.5 h-3.5" />
@@ -1284,6 +1300,49 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                         result={result}
                         userInput={userInput}
                     />
+
+                    {/* Login Required Prompt Modal */}
+                    {showLoginPrompt && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4" onClick={() => setShowLoginPrompt(false)}>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#7264FF]/15 to-[#5b4cf5]/10 flex items-center justify-center">
+                                    <Shield className="w-7 h-7 text-[#7264FF]" />
+                                </div>
+                                <h3 className="text-lg font-extrabold text-slate-900 mb-2">
+                                    {loginPromptAction === 'pdf' ? '로그인이 필요합니다' : '로그인이 필요합니다'}
+                                </h3>
+                                <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                                    {loginPromptAction === 'pdf'
+                                        ? '진단 결과를 PDF로 저장하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
+                                        : '진단 결과를 공유하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'}
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowLoginPrompt(false)}
+                                        className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-xl transition-colors"
+                                    >
+                                        닫기
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowLoginPrompt(false);
+                                            onShowAuthModal?.();
+                                        }}
+                                        className="flex-1 py-2.5 bg-[#7264FF] hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-[#7264FF]/20"
+                                    >
+                                        로그인 하기
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
                 </motion.div>
             </motion.div >
         </AnimatePresence >,

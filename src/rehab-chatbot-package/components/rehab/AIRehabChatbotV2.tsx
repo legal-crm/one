@@ -198,6 +198,8 @@ interface AIRehabChatbotV2Props {
     introConfig?: RehabChatConfig['introConfig'];
     isStandalone?: boolean;
     disablePortal?: boolean; // NEW: For Admin Preview
+    isLoggedIn?: boolean;
+    onShowAuthModal?: () => void;
 }
 
 const ASSET_LABELS: Record<AssetType, string> = {
@@ -237,7 +239,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     interactiveBlockConfig,
     introConfig, // NEW prop
     isStandalone = false, // NEW prop from RehabChatButton
-    disablePortal = false // NEW prop
+    disablePortal = false, // NEW prop
+    isLoggedIn = false,
+    onShowAuthModal
 }) => {
     // 템플릿 색상 계산
     const templateInfo = getTemplateById(templateId);
@@ -4136,6 +4140,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         setShowResult(false);
                         onClose();
                     }}
+                    isLoggedIn={isLoggedIn}
+                    onShowAuthModal={onShowAuthModal}
                 />
             )}
         </>

@@ -2942,6 +2942,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 userText: '#ffffff',
                 botText: '#334155'
               }}
+              isLoggedIn={isLoggedIn}
+              onShowAuthModal={() => setShowAuthModal(true)}
             />
           </div>
         )}
