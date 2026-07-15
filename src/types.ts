@@ -950,6 +950,16 @@ export interface AdOrder {
   depositorName?: string;
   bankNote?: string;
   region?: string;
+  // 세금계산서 관련 필드
+  taxInvoice?: {
+    itemKey: string;
+    ntsConfirmNum: string;
+    issuedAt: string;
+    supplyCost: number;
+    tax: number;
+    totalAmount: number;
+    status: 'issued' | 'sent_nts' | 'failed';
+  };
 }
 
 export interface Notice {

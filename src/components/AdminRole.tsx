@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig, AdOrder } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
+import { issueTaxInvoice } from '../services/taxInvoiceService';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
 import RehabSettingsPanel from './RehabSettingsPanel';
@@ -78,6 +79,14 @@ export default function AdminRole({
   const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders'>('overview');
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(mockAdOrders);
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
+  // 세금계산서 발행 확인 모달
+  const [invoiceConfirmOrder, setInvoiceConfirmOrder] = useState<AdOrder | null>(null);
+  const [invoiceIssuing, setInvoiceIssuing] = useState(false);
+  const [invoiceBuyerCorpNum, setInvoiceBuyerCorpNum] = useState('');
+  const [invoiceBuyerCorpName, setInvoiceBuyerCorpName] = useState('');
+  const [invoiceBuyerCEO, setInvoiceBuyerCEO] = useState('');
+  const [invoiceBuyerEmail, setInvoiceBuyerEmail] = useState('');
+  const [invoiceAutoIssue, setInvoiceAutoIssue] = useState(true);
 
   // Members tab states
   const [memberSearch, setMemberSearch] = useState<string>('');
@@ -2124,7 +2133,7 @@ export default function AdminRole({
                               <td className="p-3 font-bold text-indigo-400">{order.totalPrice.toLocaleString()}원</td>
                               <td className="p-3 text-slate-300">{order.depositorName || '-'}</td>
                               <td className="p-3"><span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : order.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-500 border-slate-700'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-500'}`}></span>{order.status === 'pending' ? '입금대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
-                              <td className="p-3 text-right">{order.status === 'pending' && (<button onClick={() => setAdminAdOrders(prev => prev.map(o => o.id === order.id ? {...o, status: 'active' as const, paidAt: new Date().toISOString(), activatedAt: new Date().toISOString()} : o))} className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm">입금 확인</button>)}{order.status === 'active' && (<span className="text-[11px] text-emerald-400 font-bold">✅ 활성 중</span>)}{order.status === 'cancelled' && (<span className="text-[11px] text-slate-500">취소됨</span>)}</td>
+                              <td className="p-3 text-right">{order.status === 'pending' && (<button onClick={() => { setInvoiceConfirmOrder(order); setInvoiceBuyerCorpNum(''); setInvoiceBuyerCorpName(order.lawyerName + ' 법률사무소'); setInvoiceBuyerCEO(order.lawyerName); setInvoiceBuyerEmail(''); setInvoiceAutoIssue(true); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm">입금 확인</button>)}{order.status === 'active' && (<span className="text-[11px] text-emerald-400 font-bold">✅ 활성 중{order.taxInvoice ? ' (계산서 발행)' : ''}</span>)}{order.status === 'cancelled' && (<span className="text-[11px] text-slate-500">취소됨</span>)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -4641,6 +4650,180 @@ export default function AdminRole({
         </footer>
 
       </div>
+
+      {/* ===== 세금계산서 발행 확인 모달 ===== */}
+      {invoiceConfirmOrder && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => !invoiceIssuing && setInvoiceConfirmOrder(null)}>
+          <div className="bg-[#161B26] rounded-2xl border border-[#1E293B] shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white">입금 확인 및 세금계산서 발행</h3>
+                <p className="text-[11px] text-slate-500">광고를 활성화하고 세금계산서를 자동 발행합니다</p>
+              </div>
+            </div>
+
+            {/* 주문 정보 요약 */}
+            <div className="bg-[#0B0F19] rounded-xl p-4 mb-4 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">변호사</span>
+                <span className="text-white font-bold">{invoiceConfirmOrder.lawyerName}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">상품명</span>
+                <span className="text-white font-bold">{invoiceConfirmOrder.productName}{invoiceConfirmOrder.region && ` (${invoiceConfirmOrder.region})`}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">계약기간</span>
+                <span className="text-white font-bold">{invoiceConfirmOrder.contractMonths}개월</span>
+              </div>
+              <div className="border-t border-[#1E293B] my-2"></div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">공급가액</span>
+                <span className="text-indigo-400 font-bold">{Math.round(invoiceConfirmOrder.totalPrice / 1.1).toLocaleString()}원</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">부가세 (10%)</span>
+                <span className="text-indigo-400 font-bold">{Math.round(invoiceConfirmOrder.totalPrice - invoiceConfirmOrder.totalPrice / 1.1).toLocaleString()}원</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">합계</span>
+                <span className="text-emerald-400 font-extrabold text-sm">{invoiceConfirmOrder.totalPrice.toLocaleString()}원</span>
+              </div>
+            </div>
+
+            {/* 세금계산서 자동 발행 토글 */}
+            <div className="flex items-center gap-3 mb-4 bg-[#0B0F19] rounded-xl p-3">
+              <button 
+                onClick={() => setInvoiceAutoIssue(!invoiceAutoIssue)}
+                className={`w-10 h-5 rounded-full transition-all relative ${invoiceAutoIssue ? 'bg-emerald-500' : 'bg-slate-700'}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${invoiceAutoIssue ? 'left-5' : 'left-0.5'}`}></span>
+              </button>
+              <div>
+                <span className="text-xs font-bold text-white">세금계산서 자동 발행</span>
+                <span className="text-[10px] text-slate-500 block">PopBill API를 통해 국세청 자동 전송</span>
+              </div>
+            </div>
+
+            {/* 공급받는 자 정보 (세금계산서 발행 시) */}
+            {invoiceAutoIssue && (
+              <div className="space-y-3 mb-5">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">공급받는 자 (변호사) 정보</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-1">사업자등록번호 *</label>
+                    <input 
+                      type="text" value={invoiceBuyerCorpNum} 
+                      onChange={e => setInvoiceBuyerCorpNum(e.target.value.replace(/[^0-9-]/g, ''))}
+                      placeholder="000-00-00000" 
+                      className="w-full p-2.5 bg-[#0B0F19] border border-[#1E293B] rounded-lg text-xs text-white placeholder:text-slate-600 outline-none focus:border-indigo-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-1">상호 (법률사무소명) *</label>
+                    <input 
+                      type="text" value={invoiceBuyerCorpName} 
+                      onChange={e => setInvoiceBuyerCorpName(e.target.value)}
+                      className="w-full p-2.5 bg-[#0B0F19] border border-[#1E293B] rounded-lg text-xs text-white placeholder:text-slate-600 outline-none focus:border-indigo-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-1">대표자명 *</label>
+                    <input 
+                      type="text" value={invoiceBuyerCEO} 
+                      onChange={e => setInvoiceBuyerCEO(e.target.value)}
+                      className="w-full p-2.5 bg-[#0B0F19] border border-[#1E293B] rounded-lg text-xs text-white placeholder:text-slate-600 outline-none focus:border-indigo-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-1">세금계산서 수신 이메일</label>
+                    <input 
+                      type="email" value={invoiceBuyerEmail} 
+                      onChange={e => setInvoiceBuyerEmail(e.target.value)}
+                      placeholder="lawyer@example.com" 
+                      className="w-full p-2.5 bg-[#0B0F19] border border-[#1E293B] rounded-lg text-xs text-white placeholder:text-slate-600 outline-none focus:border-indigo-500" 
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 액션 버튼 */}
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setInvoiceConfirmOrder(null)} 
+                disabled={invoiceIssuing}
+                className="flex-1 py-2.5 bg-[#0B0F19] border border-[#1E293B] text-slate-400 text-xs font-bold rounded-xl hover:text-white transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button 
+                onClick={async () => {
+                  if (!invoiceConfirmOrder) return;
+                  setInvoiceIssuing(true);
+                  
+                  const supplyCost = Math.round(invoiceConfirmOrder.totalPrice / 1.1);
+                  const tax = invoiceConfirmOrder.totalPrice - supplyCost;
+                  
+                  let taxInvoiceData: AdOrder['taxInvoice'] = undefined;
+                  
+                  if (invoiceAutoIssue && invoiceBuyerCorpNum && invoiceBuyerCorpName && invoiceBuyerCEO) {
+                    try {
+                      const result = await issueTaxInvoice({
+                        orderId: invoiceConfirmOrder.id,
+                        itemName: `${invoiceConfirmOrder.productName} (${invoiceConfirmOrder.contractMonths}개월)`,
+                        supplyCost,
+                        tax,
+                        totalAmount: invoiceConfirmOrder.totalPrice,
+                        buyerCorpNum: invoiceBuyerCorpNum,
+                        buyerCorpName: invoiceBuyerCorpName,
+                        buyerCEOName: invoiceBuyerCEO,
+                        buyerEmail: invoiceBuyerEmail,
+                      });
+                      
+                      if (result.ok && result.data) {
+                        taxInvoiceData = {
+                          itemKey: result.data.itemKey,
+                          ntsConfirmNum: result.data.ntsConfirmNum,
+                          issuedAt: result.data.issuedAt,
+                          supplyCost,
+                          tax,
+                          totalAmount: invoiceConfirmOrder.totalPrice,
+                          status: 'issued',
+                        };
+                      }
+                    } catch (err) {
+                      console.error('세금계산서 발행 오류:', err);
+                    }
+                  }
+                  
+                  // 광고 활성화 + 세금계산서 정보 저장
+                  setAdminAdOrders(prev => prev.map(o => 
+                    o.id === invoiceConfirmOrder.id 
+                      ? { ...o, status: 'active' as const, paidAt: new Date().toISOString(), activatedAt: new Date().toISOString(), taxInvoice: taxInvoiceData } 
+                      : o
+                  ));
+                  
+                  setInvoiceIssuing(false);
+                  setInvoiceConfirmOrder(null);
+                }}
+                disabled={invoiceIssuing || (invoiceAutoIssue && (!invoiceBuyerCorpNum || !invoiceBuyerCorpName || !invoiceBuyerCEO))}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {invoiceIssuing ? (
+                  <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> 처리 중...</>
+                ) : (
+                  <><CheckCircle2 className="w-3.5 h-3.5" /> 입금확인{invoiceAutoIssue ? ' + 세금계산서 발행' : ''}</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
