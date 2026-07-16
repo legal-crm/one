@@ -1,4 +1,5 @@
 import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, PlatformConfig, PopupConfig, AdBanner, AdOrder } from './types';
+import type { LawyerAppointment } from './types';
 
 
 
@@ -752,7 +753,6 @@ export const BANK_ACCOUNT_INFO = {
 };
 
 // ── 전담 변호사 선임 Mock Data ──
-import type { LawyerAppointment } from './types';
 export const mockAppointments: LawyerAppointment[] = [
   {
     id: 'appt-1',
