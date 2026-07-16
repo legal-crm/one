@@ -571,10 +571,16 @@ export default function ClientRole({
     if (typeof window === 'undefined') return;
 
     // 첫 진입 시 초기 브라우저 히스토리 상태 강제 세팅
+    // OAuth 콜백(#access_token= 또는 ?code=)이면 Supabase가 처리할 수 있도록 URL을 건드리지 않는다
     if (!window.history.state) {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab') || 'landing';
-      window.history.replaceState({ tab: tabParam }, '', window.location.search || '?tab=landing');
+      const hash = window.location.hash;
+      const search = window.location.search;
+      const isOAuthCallback = hash.includes('access_token') || hash.includes('error') || search.includes('code=');
+      if (!isOAuthCallback) {
+        const params = new URLSearchParams(search);
+        const tabParam = params.get('tab') || 'landing';
+        window.history.replaceState({ tab: tabParam }, '', search || '?tab=landing');
+      }
     }
 
     const handlePopState = (event: PopStateEvent) => {
