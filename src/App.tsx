@@ -27,7 +27,6 @@ import SharedReportViewer from './components/client/SharedReportViewer';
 export default function App() {
   // Triple role state: 'client' | 'lawyer' | 'admin'
   const [currentRole, setCurrentRole] = useState<'client' | 'lawyer' | 'admin'>('client');
-  const [authDebug, setAuthDebug] = useState<string[]>([]);
 
   // Share report viewer states
   const [sharePayload, setSharePayload] = useState<string | null>(null);
@@ -37,36 +36,6 @@ export default function App() {
   const [isShaking, setIsShaking] = useState(false);
 
   useEffect(() => {
-    // 디버그 로깅 헬퍼
-    const addLog = (msg: string) => {
-      setAuthDebug(prev => [...prev, `${new Date().toLocaleTimeString()} - ${msg}`]);
-      console.log('[SUPABASE DEBUG]', msg);
-    };
-
-    addLog(`URL Hash: ${window.location.hash || '(none)'}`);
-    addLog(`URL Query: ${window.location.search || '(none)'}`);
-    addLog(`Supabase URL: ${import.meta.env.VITE_SUPABASE_URL || 'NOT SET'}`);
-    addLog(`Supabase Key: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'}`);
-
-    import('./supabaseClient').then(({ supabase }) => {
-      // Supabase Auth 상태 감지
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        addLog(`Event: ${event} | User: ${session?.user?.email || session?.user?.id || 'null'}`);
-      });
-
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          addLog(`getSession Error: ${error.message}`);
-        } else if (session) {
-          addLog(`Session found: ${session.user.email}`);
-        } else {
-          addLog(`No active session`);
-        }
-      });
-      
-      return () => subscription.unsubscribe();
-    }).catch(err => addLog(`Supabase import error: ${err.message}`));
-
     // OAuth 리다이렉트 후 URL에 남는 #access_token=... 또는 빈 # 제거
     if (window.location.hash) {
       const hash = window.location.hash;
@@ -538,35 +507,6 @@ export default function App() {
             popupConfig={popupConfig}
             setPopupConfig={setPopupConfig}
           />
-        )}
-      </div>
-
-      {/* AUTH DEBUG OVERLAY (가장 눈에 잘 띄게 화면 우측 상단에 배치) */}
-      <div style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        width: '320px',
-        maxHeight: '400px',
-        overflowY: 'auto',
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        color: '#39FF14',
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        padding: '12px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-        border: '2px solid #39FF14',
-        zIndex: 999999
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid #39FF14', paddingBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-          <span>🛠️ SUPABASE AUTH DEBUG</span>
-          <button onClick={() => setAuthDebug([])} style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: '10px' }}>[Clear]</button>
-        </div>
-        {authDebug.length === 0 ? (
-          <div style={{ color: '#888' }}>No logs yet...</div>
-        ) : (
-          authDebug.map((log, index) => <div key={index} style={{ marginBottom: '4px', wordBreak: 'break-all' }}>{log}</div>)
         )}
       </div>
 
