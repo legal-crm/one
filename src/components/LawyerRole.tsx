@@ -91,12 +91,6 @@ export default function LawyerRole({
   const [bizSaving, setBizSaving] = useState(false);
   const [tempFirmName, setTempFirmName] = useState('');
 
-  // Sync tempFirmName when activeLawyer changes
-  useEffect(() => {
-    if (activeLawyer) {
-      setTempFirmName(activeLawyer.firmName || '');
-    }
-  }, [activeLawyer]);
   
   // Mobile UI navigation controls
   const [mobilePane, setMobilePane] = useState<'threads' | 'chat' | 'crm'>('threads');
@@ -127,6 +121,13 @@ export default function LawyerRole({
       setActiveLawyer(lawyers[0]);
     }
   }, [lawyers, isLoggedIn]);
+
+  // Sync tempFirmName when activeLawyer changes
+  useEffect(() => {
+    if (activeLawyer) {
+      setTempFirmName(activeLawyer.firmName || '');
+    }
+  }, [activeLawyer]);
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
