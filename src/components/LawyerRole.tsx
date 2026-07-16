@@ -1531,13 +1531,18 @@ export default function LawyerRole({
         <header className="sticky top-0 z-40 bg-white backdrop-blur-md border-b border-slate-200 shadow-xl px-4 py-3">
           <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-8 h-8 rounded-lg object-cover" />
-              <div className="flex flex-col text-left">
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-black text-sm tracking-tight text-white">{(platformConfig.siteLogoText || "my김변")} 변호사 CRM</span>
-                  <span className="bg-brand/10 text-brand border border-brand/20 px-1.5 py-0.5 rounded font-extrabold text-[11px] tracking-wider uppercase">SaaS</span>
-                </div>
-                <span className="text-[12px] text-slate-500 mt-0.5">도산 전문 법률 대리인 지부</span>
+              <img 
+                src="./mykim_logo.png" 
+                alt="my김변 로고" 
+                className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" 
+              />
+              <div className="flex flex-col items-start leading-none">
+                <span className="font-extrabold text-base text-slate-900 flex items-center gap-1 font-brand tracking-tight">
+                  my김변
+                </span>
+                <span className="text-[13px] text-slate-500 mt-0.5 font-medium">
+                  나의 전담 채무관리 변호사
+                </span>
               </div>
               <span className="text-slate-700 text-xs hidden sm:inline ml-2 border-l border-slate-200 pl-3">팀: {activeLawyer.name.split(' ')[0]} 법률지부</span>
             </div>
