@@ -18,9 +18,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // 환경변수가 없으면 더미 클라이언트를 생성하여 런타임 에러 방지
+const authOptions = {
+  auth: {
+    flowType: 'implicit' as const,
+    detectSessionInUrl: true,
+    autoRefreshToken: true,
+    persistSession: true,
+  }
+};
+
 export const supabase: SupabaseClient = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createClient('https://placeholder.supabase.co', 'placeholder-key');
+  ? createClient(supabaseUrl, supabaseAnonKey, authOptions)
+  : createClient('https://placeholder.supabase.co', 'placeholder-key', authOptions);
 
 // Supabase 연결 상태 확인 유틸리티
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
