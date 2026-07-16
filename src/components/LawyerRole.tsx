@@ -7,7 +7,7 @@ import {
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder 
 } from '../types';
-import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
+import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, mockLawFirms } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 import CrmTab from './lawyer/CrmTab';
@@ -89,6 +89,14 @@ export default function LawyerRole({
   const [bizForm, setBizForm] = useState({ corpNum: '', corpName: '', ceoName: '', bizType: '전문서비스업', bizClass: '법률서비스', addr: '', taxEmail: '' });
   const [bizCheckResult, setBizCheckResult] = useState<string | null>(null);
   const [bizSaving, setBizSaving] = useState(false);
+  const [tempFirmName, setTempFirmName] = useState('');
+
+  // Sync tempFirmName when activeLawyer changes
+  useEffect(() => {
+    if (activeLawyer) {
+      setTempFirmName(activeLawyer.firmName || (mockLawFirms.find(f => f.id === activeLawyer.lawFirmId)?.name) || '');
+    }
+  }, [activeLawyer]);
   
   // Mobile UI navigation controls
   const [mobilePane, setMobilePane] = useState<'threads' | 'chat' | 'crm'>('threads');
@@ -673,6 +681,23 @@ export default function LawyerRole({
     setNewPassword('');
     setConfirmPassword('');
     onLogActivity(activeLawyer.id, activeLawyer.name, activeLawyer.role as MemberRole, 'LOGIN', '비밀번호 변경 완료');
+  };
+
+  // 소속 법률사무소 / 법인 설정 저장
+  const handleSaveFirmName = () => {
+    const trimmed = tempFirmName.trim();
+    if (!trimmed) {
+      alert('소속 명칭을 입력해주세요.');
+      return;
+    }
+
+    setLawyers(prev => prev.map(l => 
+      l.id === activeLawyer.id ? { ...l, firmName: trimmed } : l
+    ));
+    setActiveLawyer(prev => ({ ...prev, firmName: trimmed }));
+
+    alert('소속 법률사무소/법인 명칭이 저장되었습니다.');
+    onLogActivity(activeLawyer.id, activeLawyer.name, activeLawyer.role as MemberRole, 'SETTINGS', `소속 명칭 설정 변경: ${trimmed}`);
   };
 
   // Google OAuth 로그인
@@ -1544,7 +1569,9 @@ export default function LawyerRole({
                   나의 전담 채무관리 변호사
                 </span>
               </div>
-              <span className="text-slate-700 text-xs hidden sm:inline ml-2 border-l border-slate-200 pl-3">팀: {activeLawyer.name.split(' ')[0]} 법률지부</span>
+              <span className="text-slate-700 text-xs hidden sm:inline ml-2 border-l border-slate-200 pl-3">
+                {activeLawyer.firmName || (mockLawFirms.find(f => f.id === activeLawyer.lawFirmId)?.name) || (activeLawyer.name.split(' ')[0] + " 법률지부")}
+              </span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -3295,6 +3322,41 @@ export default function LawyerRole({
               <span className="bg-brand/10 border border-brand/20 text-brand text-[12px] font-extrabold px-3 py-1 rounded-[200px] whitespace-nowrap self-start md:self-center">
                 SaaS Enterprise 가동 중
               </span>
+            </div>
+
+            {/* ── 소속 법률사무소 / 법인 설정 ── */}
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-brand" />
+                    <span>소속 법률사무소 / 법인 명칭 설정</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 text-left">
+                    변호사 어드민 헤더 및 플랫폼 노출용 소속 법무법인 또는 사무소의 명칭을 입력하거나 수정합니다.
+                  </p>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+                <div className="flex-1 space-y-1.5 text-left">
+                  <label className="text-[12px] text-slate-600 font-bold block">소속 명칭 입력 (예: 법무법인 보광, 이준법률사무소)</label>
+                  <input
+                    type="text"
+                    value={tempFirmName}
+                    onChange={e => setTempFirmName(e.target.value)}
+                    placeholder="소속 명칭을 입력해주세요"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30 font-bold text-slate-800"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveFirmName}
+                  className="bg-brand hover:bg-brand-hover text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition-colors shrink-0 flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>설정 저장</span>
+                </button>
+              </div>
             </div>
 
             {/* ── 보안 설정: 비밀번호 변경 ── */}

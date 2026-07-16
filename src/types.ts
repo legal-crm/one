@@ -453,6 +453,7 @@ export interface User {
   lawFirmId: string;
   teamId: string;
   name: string;
+  firmName?: string; // 소속 법률사무소/법인 명칭 (직접 설정 가능)
   role: UserRole;
   fields: string[];
   region: string;
