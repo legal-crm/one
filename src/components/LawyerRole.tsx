@@ -3073,7 +3073,7 @@ export default function LawyerRole({
             {/* AD ORDER MODAL */}
             {adModalProduct && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAdModalProduct(null)}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200" onClick={e => e.stopPropagation()}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200" onClick={e => e.stopPropagation()}>
                   {adModalStep === 'select' && (
                     <>
                       <div className={`bg-gradient-to-r ${adModalProduct.color} p-6 text-white`}>
