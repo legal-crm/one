@@ -38,9 +38,18 @@ export default function App() {
   useEffect(() => {
     // OAuth 리다이렉트 후 URL에 남는 #access_token=... 또는 빈 # 제거
     if (window.location.hash) {
-      // Supabase가 세션을 처리한 후 해시를 비워도 '#'만 남는 경우 정리
-      const cleanUrl = window.location.pathname + window.location.search;
-      window.history.replaceState({}, document.title, cleanUrl);
+      const hash = window.location.hash;
+      const isOAuthToken = hash.includes('access_token') || hash.includes('error') || hash.includes('refresh_token');
+      if (isOAuthToken) {
+        // Supabase가 해시 토큰을 파싱할 수 있도록 1.5초 대기 후 제거
+        setTimeout(() => {
+          const cleanUrl = window.location.pathname + window.location.search;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }, 1500);
+      } else {
+        const cleanUrl = window.location.pathname + window.location.search;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
     }
 
     const params = new URLSearchParams(window.location.search);

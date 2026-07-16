@@ -994,23 +994,14 @@ export default function ClientRole({
     return () => clearTimeout(timer);
   }, [calcIncome, calcDebt, calcDependents, activeTab]);
 
-  const [authDebug, setAuthDebug] = useState<string[]>([]);
+  // OTP and Verification Simulation States
+
+
 
   useEffect(() => {
-    const logs: string[] = [];
-    const addLog = (msg: string) => { logs.push(msg); setAuthDebug([...logs]); console.log('[AUTH DEBUG]', msg); };
-
-    addLog(`URL hash: ${window.location.hash ? window.location.hash.substring(0, 80) + '...' : '(none)'}`);
-    addLog(`URL search: ${window.location.search || '(none)'}`);
-    addLog(`Supabase URL: ${import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET'}`);
-    addLog(`Supabase Key: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'}`);
-
     // Check initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        addLog(`getSession ERROR: ${error.message}`);
-      } else if (session?.user) {
-        addLog(`getSession OK: user=${session.user.email || session.user.id}`);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
         setIsLoggedIn(true);
         const metaAlias = session.user.user_metadata?.alias;
         if (metaAlias) {
@@ -1022,14 +1013,11 @@ export default function ClientRole({
             data: { alias: generatedAlias }
           });
         }
-      } else {
-        addLog('getSession: NO session');
       }
     });
 
     // Listen to changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      addLog(`onAuthStateChange: event=${event}, user=${session?.user?.email || session?.user?.id || 'null'}`);
       if (session?.user) {
         setIsLoggedIn(true);
         const metaAlias = session.user.user_metadata?.alias;
@@ -3078,14 +3066,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (<AuthModal onClose={() => setShowAuthModal(false)} onLoginSuccess={(alias,ep,ch) => { setIsLoggedIn(true); setUserAlias(alias); setShowAuthModal(false); recordClientLogin(alias,ep,ch); }} />)}
-      {/* TEMP AUTH DEBUG PANEL */}
-      {authDebug.length > 0 && (
-        <div style={{position:'fixed',bottom:10,left:10,zIndex:9999,background:'rgba(0,0,0,0.9)',color:'#0f0',padding:12,borderRadius:8,fontSize:11,fontFamily:'monospace',maxWidth:500,maxHeight:200,overflow:'auto'}}>
-          <div style={{fontWeight:'bold',marginBottom:4,color:'#ff0'}}>🔍 AUTH DEBUG (임시)</div>
-          {authDebug.map((log, i) => <div key={i}>{log}</div>)}
-          <div style={{color:'#aaa',marginTop:4}}>isLoggedIn: {String(isLoggedIn)} | alias: {userAlias || '(none)'}</div>
-        </div>
-      )}
 
 
 

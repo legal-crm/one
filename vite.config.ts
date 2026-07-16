@@ -27,7 +27,7 @@ export default defineConfig(() => {
       minify: 'esbuild' as const,
     },
     esbuild: {
-      drop: [],
+      drop: process.env.NODE_ENV === 'production' ? ['console' as const, 'debugger' as const] : [],
     },
   };
 });
