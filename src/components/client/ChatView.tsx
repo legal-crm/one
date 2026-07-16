@@ -82,7 +82,12 @@ export default function ChatView({
   const [showPhoneConsultModal, setShowPhoneConsultModal] = useState<boolean>(false);
   const [showAppointModal, setShowAppointModal] = useState<boolean>(false);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
-  const [isAppointed, setIsAppointed] = useState<boolean>(false);
+  const [appointedLawyerId, setAppointedLawyerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
+  }, [activeChatReqId]);
+
   const currentRequest = requests.find(r => r.id === activeChatReqId);
   const activeChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
 
@@ -429,7 +434,10 @@ export default function ChatView({
               let badgeColor = '';
               let badgeText = '';
 
-              if (isAppointed) {
+              const isCurrentAppointed = currentRequest.selectedLawyerId && appointedLawyerId === currentRequest.selectedLawyerId;
+              const isOtherAppointed = appointedLawyerId && currentRequest.selectedLawyerId && appointedLawyerId !== currentRequest.selectedLawyerId;
+
+              if (isCurrentAppointed) {
                 step = 3;
                 title = '전담 변호사 매칭 완료';
                 desc = `${currentRequest.title?.replace(' 변호사 전담 매칭', '') || '담당'} 변호사님이 의뢰인님의 전담 변호사로 지정되어 안전 보호 및 채무 관리가 제공 중입니다.`;
@@ -437,6 +445,16 @@ export default function ChatView({
                 borderClass = 'border-emerald-200/60 dark:border-emerald-800/40';
                 badgeColor = 'bg-emerald-500 text-white';
                 badgeText = '선임 완료';
+              } else if (isOtherAppointed) {
+                step = 2;
+                const appointedReq = requests.find(r => r.selectedLawyerId === appointedLawyerId);
+                const appointedLawyerName = appointedReq ? appointedReq.title?.replace(' 변호사 전담 매칭', '') : '다른 변호사';
+                title = '다른 전담 변호사 지정 중';
+                desc = `현재 이미 전담 변호사(${appointedLawyerName} 변호사님)가 선임되어 있습니다. 새로운 변호사님을 지정하려면 기존 전담 방에서 먼저 매칭을 해지해 주세요.`;
+                bannerBg = 'bg-gradient-to-r from-red-50 to-slate-50 dark:from-red-955/10 dark:to-slate-900/10';
+                borderClass = 'border-red-200/60 dark:border-red-800/30';
+                badgeColor = 'bg-red-500 text-white';
+                badgeText = '선임 제한';
               } else if (proposals.length > 0 || currentRequest.status === 'responding' || currentRequest.status === 'counseling') {
                 step = 2;
                 title = '전담 변호사 지정 대기 중';
@@ -556,24 +574,77 @@ export default function ChatView({
               })}
             </div>
 
-            {/* 🤝 전담 변호사 선임 CTA */}
-            {currentRequest && currentRequest.selectedLawyerId && !isAppointed && activeChatMessages.length >= 2 && (
-              <div className="mx-4 mb-2 p-3 bg-gradient-to-r from-amber-50 to-emerald-50 dark:from-amber-950/30 dark:to-emerald-950/30 border border-amber-200/60 dark:border-amber-700/30 rounded-2xl flex items-center justify-between gap-3 animate-fadeIn">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🤝</span>
-                  <div>
-                    <span className="text-xs font-bold text-slate-800 dark:text-white block">이 변호사님을 나의 전담 변호사로 선임할 수 있어요</span>
-                    <span className="text-[11px] text-slate-500">무료 · 언제든 변경 가능</span>
+            {/* 🤝 전담 변호사 선임/해지 CTA 및 중복 방지 배너 */}
+            {currentRequest && currentRequest.selectedLawyerId && activeChatMessages.length >= 2 && (() => {
+              const isCurrentAppointed = appointedLawyerId === currentRequest.selectedLawyerId;
+              
+              if (appointedLawyerId && !isCurrentAppointed) {
+                // 다른 변호사가 이미 선임된 상태
+                return (
+                  <div className="mx-4 mb-2 p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔒</span>
+                      <div className="text-left">
+                        <span className="text-xs font-bold text-slate-800 dark:text-white block">이미 다른 전담 변호사가 선임되어 있습니다</span>
+                        <span className="text-[11px] text-slate-500">새로운 변호사를 선임하려면 기존 전담 변호사 방에서 매칭을 먼저 해지해 주세요.</span>
+                      </div>
+                    </div>
+                    <button
+                      disabled
+                      className="shrink-0 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 text-xs font-bold rounded-xl cursor-not-allowed border border-slate-200 dark:border-slate-700"
+                    >
+                      선임 제한됨
+                    </button>
                   </div>
+                );
+              }
+
+              if (isCurrentAppointed) {
+                // 현재 변호사가 선임된 상태 -> 해지 버튼 제공
+                return (
+                  <div className="mx-4 mb-2 p-3.5 bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/35 rounded-2xl flex items-center justify-between gap-3 animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">👑</span>
+                      <div className="text-left">
+                        <span className="text-xs font-bold text-slate-800 dark:text-white block">현재 이 변호사님이 전담 변호사로 선임되어 있습니다</span>
+                        <span className="text-[11px] text-slate-500">해지 시 다른 변호사를 자유롭게 전담 선임하실 수 있습니다.</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm("정말 전담 지정을 해지하시겠습니까? 해지 시 다른 변호사를 전담 변호사로 선임하실 수 있습니다.")) {
+                          localStorage.removeItem('legal_crm_appointed_lawyer_id');
+                          setAppointedLawyerId(null);
+                          alert("전담 지정이 해지되었습니다.");
+                        }
+                      }}
+                      className="shrink-0 px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-955/40 text-red-650 dark:text-red-400 text-xs font-bold rounded-xl transition-all border border-red-200 dark:border-red-900 cursor-pointer"
+                    >
+                      전담 지정 해지
+                    </button>
+                  </div>
+                );
+              }
+
+              // 선임되지 않은 상태 -> 선임 신청 버튼 제공
+              return (
+                <div className="mx-4 mb-2 p-3.5 bg-gradient-to-r from-amber-50 to-emerald-50 dark:from-amber-950/30 dark:to-emerald-950/30 border border-amber-200/60 dark:border-amber-700/30 rounded-2xl flex items-center justify-between gap-3 animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🤝</span>
+                    <div className="text-left">
+                      <span className="text-xs font-bold text-slate-800 dark:text-white block">이 변호사님을 나의 전담 변호사로 선임할 수 있어요</span>
+                      <span className="text-[11px] text-slate-500">무료 · 언제든 해지 후 다른 변호사로 변경 가능</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAppointModal(true)}
+                    className="shrink-0 px-4 py-2 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95"
+                  >
+                    전담 선임하기
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowAppointModal(true)}
-                  className="shrink-0 px-4 py-2 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95"
-                >
-                  전담 선임하기
-                </button>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 선임 확인 모달 */}
             {showAppointModal && currentRequest && (() => {
@@ -600,7 +671,10 @@ export default function ChatView({
                       <button onClick={() => setShowAppointModal(false)} className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer">다음에 할게요</button>
                       <button onClick={() => {
                         setShowAppointModal(false);
-                        setIsAppointed(true);
+                        if (currentRequest.selectedLawyerId) {
+                          localStorage.setItem('legal_crm_appointed_lawyer_id', currentRequest.selectedLawyerId);
+                          setAppointedLawyerId(currentRequest.selectedLawyerId);
+                        }
                         setShowCelebration(true);
                         setTimeout(() => setShowCelebration(false), 4000);
                       }} className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer transform active:scale-95">네, 선임할게요!</button>
