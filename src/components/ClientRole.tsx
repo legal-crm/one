@@ -8,7 +8,7 @@ import {
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { calculateRehabPlan } from '../rehabEngine';
-import AIRehabChatbotV2 from '../rehab-chatbot-package/components/rehab/AIRehabChatbotV2';
+const AIRehabChatbotV2 = React.lazy(() => import('../rehab-chatbot-package/components/rehab/AIRehabChatbotV2'));
 import { RehabUserInput, RehabCalculationResult, calculateRepayment } from '../rehab-chatbot-package/services/calculationService';
 import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances, ExtraLivingCost, ConsultationLog } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
@@ -17,25 +17,28 @@ import { formatKoreanCurrency, formatNumber } from '../utils';
 import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
 import { supabase } from '../supabaseClient';
-import ReviewsView from './client/ReviewsView';
 import PopupContainer from './popup/PopupContainer';
-import CalculatorView from './client/CalculatorView';
-import QnAView from './client/QnAView';
-import ChatView from './client/ChatView';
-import NewsView from './client/NewsView';
-import NoticesView from './client/NoticesView';
-import LawyersView from './client/LawyersView';
-import AuthModal from './client/AuthModal';
-import MyPageView from './client/MyPageView';
-import MySettingsView from './client/MySettingsView';
-import InquiryView from './client/InquiryView';
+
+const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
+const CalculatorView = React.lazy(() => import('./client/CalculatorView'));
+const QnAView = React.lazy(() => import('./client/QnAView'));
+const ChatView = React.lazy(() => import('./client/ChatView'));
+const NewsView = React.lazy(() => import('./client/NewsView'));
+const NoticesView = React.lazy(() => import('./client/NoticesView'));
+const LawyersView = React.lazy(() => import('./client/LawyersView'));
+const AuthModal = React.lazy(() => import('./client/AuthModal'));
+const MyPageView = React.lazy(() => import('./client/MyPageView'));
+const MySettingsView = React.lazy(() => import('./client/MySettingsView'));
+const InquiryView = React.lazy(() => import('./client/InquiryView'));
 
 import ClientFooter from './client/ClientFooter';
-import TermsModal from './client/TermsModal';
+const TermsModal = React.lazy(() => import('./client/TermsModal'));
 import MobileGNB from './client/MobileGNB';
-import RemedyModal from './client/RemedyModal';
-import NewsDetailModal from './client/NewsDetailModal';
-import SolutionDetailModal, { SolutionType } from './client/SolutionDetailModal';
+const RemedyModal = React.lazy(() => import('./client/RemedyModal'));
+const NewsDetailModal = React.lazy(() => import('./client/NewsDetailModal'));
+
+import type { SolutionType } from './client/SolutionDetailModal';
+const SolutionDetailModal = React.lazy(() => import('./client/SolutionDetailModal'));
 
 
 interface RemedyPreset {
@@ -2910,130 +2913,137 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
  
         {activeTab !== 'landing' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* TAB: 탕감액 계산기 */}
-        {activeTab === 'calculator' && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); setActiveTab('request'); }} />)}
+          <React.Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-24 space-y-4 animate-fadeIn">
+              <div className="w-10 h-10 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
+              <p className="text-xs text-slate-500 font-bold">페이지를 로딩하고 있습니다...</p>
+            </div>
+          }>
+            {/* TAB: 탕감액 계산기 */}
+            {activeTab === 'calculator' && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); setActiveTab('request'); }} />)}
 
 
-        {/* TAB: SUCCESS TESTIMONIALS/REVIEWS */}
-        {activeTab === 'reviews' && (<ReviewsView reviews={reviews} onReviewClick={handleReviewClick} />)}
+            {/* TAB: SUCCESS TESTIMONIALS/REVIEWS */}
+            {activeTab === 'reviews' && (<ReviewsView reviews={reviews} onReviewClick={handleReviewClick} />)}
 
-        {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
-        {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
+            {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
+            {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
 
-        {/* TAB: MYPAGE (개인 설정 및 1:1 문의) */}
-        {activeTab === 'mypage' && (
-          <MySettingsView
-            isLoggedIn={isLoggedIn}
-            userAlias={userAlias}
-            setUserAlias={setUserAlias}
-            isEditingAlias={isEditingAlias}
-            setIsEditingAlias={setIsEditingAlias}
-            tempAlias={tempAlias}
-            setTempAlias={setTempAlias}
-            inquiries={inquiries}
-            onNavigateToTab={setActiveTab}
-            onShowAuthModal={() => setShowAuthModal(true)}
-            onLogout={async () => {
-              await supabase.auth.signOut();
-              setIsLoggedIn(false);
-              setUserAlias('');
-              
-              localStorage.removeItem('legal_crm_client_id');
-              localStorage.removeItem('legal_crm_requests');
-              localStorage.removeItem('legal_crm_messages');
-              localStorage.removeItem('legal_crm_inquiries');
-              localStorage.removeItem('legal_crm_client_alias');
-              
-              setRequests([]);
-              setMessages([]);
-              setInquiries([]);
-              
-              alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
-              setActiveTab('landing');
-            }}
-          />
-        )}
-
-        {/* TAB: LEGAL NEWS & TIPS BOARD */}
-        {activeTab === 'news' && (<NewsView newsArticles={newsArticles} onSelectArticle={(art) => setSelectedArticle(art)} onUpdateViews={(id) => setNewsArticles(prev => prev.map(x => x.id === id ? {...x, views: x.views+1} : x))} />)}
-
-
-        {/* TAB: LIVE Q&A CASE STUDIES */}
-        {activeTab === 'qna' && (<QnAView qas={qas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); setRequestStep(3); setActiveTab('request'); }} />)}
-
-        {/* TAB 1-B: NOTICES TAB */}
-        {activeTab === 'notices' && (<NoticesView notices={notices} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}
-
-
-        {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
-        {activeTab === 'request' && (
-          <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[600px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden relative shadow-2xl">
-            <AIRehabChatbotV2
-              isOpen={true}
-              disablePortal={true}
-              onClose={() => {
-                if (pendingChatbotData) {
-                  const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
-                  setPendingChatbotData(null); // Reset pending state
-                  handleIntakeSubmit(mappedData);
-                } else {
+            {/* TAB: MYPAGE (개인 설정 및 1:1 문의) */}
+            {activeTab === 'mypage' && (
+              <MySettingsView
+                isLoggedIn={isLoggedIn}
+                userAlias={userAlias}
+                setUserAlias={setUserAlias}
+                isEditingAlias={isEditingAlias}
+                setIsEditingAlias={setIsEditingAlias}
+                tempAlias={tempAlias}
+                setTempAlias={setTempAlias}
+                inquiries={inquiries}
+                onNavigateToTab={setActiveTab}
+                onShowAuthModal={() => setShowAuthModal(true)}
+                onLogout={async () => {
+                  await supabase.auth.signOut();
+                  setIsLoggedIn(false);
+                  setUserAlias('');
+                  
+                  localStorage.removeItem('legal_crm_client_id');
+                  localStorage.removeItem('legal_crm_requests');
+                  localStorage.removeItem('legal_crm_messages');
+                  localStorage.removeItem('legal_crm_inquiries');
+                  localStorage.removeItem('legal_crm_client_alias');
+                  
+                  setRequests([]);
+                  setMessages([]);
+                  setInquiries([]);
+                  
+                  alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
                   setActiveTab('landing');
-                }
-              }}
-              onComplete={(res, input) => {
-                setPendingChatbotData({ res, input });
-              }}
-              templateId="gradient"
-              themeMode="light"
-              characterName="김변"
-              customColors={{
-                primary: '#7264FF',
-                secondary: '#f8f7ff',
-                accent: '#5b4cf5',
-                headerText: '#ffffff',
-                userText: '#ffffff',
-                botText: '#334155'
-              }}
-              isLoggedIn={isLoggedIn}
-              onShowAuthModal={() => setShowAuthModal(true)}
-            />
-          </div>
-        )}
+                }}
+              />
+            )}
 
-        {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
-        {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} />)}
+            {/* TAB: LEGAL NEWS & TIPS BOARD */}
+            {activeTab === 'news' && (<NewsView newsArticles={newsArticles} onSelectArticle={(art) => setSelectedArticle(art)} onUpdateViews={(id) => setNewsArticles(prev => prev.map(x => x.id === id ? {...x, views: x.views+1} : x))} />)}
 
-        {activeTab === 'chat' && (
-          <ChatView 
-            requests={requests} 
-            messages={messages} 
-            activeChatReqId={activeChatReqId} 
-            chatInput={chatInput} 
-            phoneConsultNum={phoneConsultNum} 
-            useSafeNumber050={useSafeNumber050} 
-            isLoggedIn={isLoggedIn} 
-            userAlias={userAlias} 
-            debtBanks={debtBanks} 
-            debtCards={debtCards} 
-            debtPersonals={debtPersonals} 
-            onSetActiveChatReqId={setActiveChatReqId} 
-            onSetChatInput={setChatInput} 
-            onSetPhoneConsultNum={setPhoneConsultNum} 
-            onSetUseSafeNumber050={setUseSafeNumber050} 
-            onSetActiveTab={setActiveTab} 
-            onSetRequests={setRequests} 
-            onSendChat={handleSendChat} 
-            onAddMessage={onAddMessage} 
-            activeRequest={activeRequest}
-            activeResult={activeResult}
-            onUpdateFinancialProfile={handleUpdateFinancialProfile}
-            setUserAlias={setUserAlias}
-            isEditingAlias={isEditingAlias}
-            setIsEditingAlias={setIsEditingAlias}
-            tempAlias={tempAlias}
-            setTempAlias={setTempAlias}
-          />
-        )}
+
+            {/* TAB: LIVE Q&A CASE STUDIES */}
+            {activeTab === 'qna' && (<QnAView qas={qas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); setRequestStep(3); setActiveTab('request'); }} />)}
+
+            {/* TAB 1-B: NOTICES TAB */}
+            {activeTab === 'notices' && (<NoticesView notices={notices} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}
+
+
+            {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
+            {activeTab === 'request' && (
+              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[600px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden relative shadow-2xl">
+                <AIRehabChatbotV2
+                  isOpen={true}
+                  disablePortal={true}
+                  onClose={() => {
+                    if (pendingChatbotData) {
+                      const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
+                      setPendingChatbotData(null); // Reset pending state
+                      handleIntakeSubmit(mappedData);
+                    } else {
+                      setActiveTab('landing');
+                    }
+                  }}
+                  onComplete={(res, input) => {
+                    setPendingChatbotData({ res, input });
+                  }}
+                  templateId="gradient"
+                  themeMode="light"
+                  characterName="김변"
+                  customColors={{
+                    primary: '#7264FF',
+                    secondary: '#f8f7ff',
+                    accent: '#5b4cf5',
+                    headerText: '#ffffff',
+                    userText: '#ffffff',
+                    botText: '#334155'
+                  }}
+                  isLoggedIn={isLoggedIn}
+                  onShowAuthModal={() => setShowAuthModal(true)}
+                />
+              </div>
+            )}
+
+            {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
+            {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} />)}
+
+            {activeTab === 'chat' && (
+              <ChatView 
+                requests={requests} 
+                messages={messages} 
+                activeChatReqId={activeChatReqId} 
+                chatInput={chatInput} 
+                phoneConsultNum={phoneConsultNum} 
+                useSafeNumber050={useSafeNumber050} 
+                isLoggedIn={isLoggedIn} 
+                userAlias={userAlias} 
+                debtBanks={debtBanks} 
+                debtCards={debtCards} 
+                debtPersonals={debtPersonals} 
+                onSetActiveChatReqId={setActiveChatReqId} 
+                onSetChatInput={setChatInput} 
+                onSetPhoneConsultNum={setPhoneConsultNum} 
+                onSetUseSafeNumber050={setUseSafeNumber050} 
+                onSetActiveTab={setActiveTab} 
+                onSetRequests={setRequests} 
+                onSendChat={handleSendChat} 
+                onAddMessage={onAddMessage} 
+                activeRequest={activeRequest}
+                activeResult={activeResult}
+                onUpdateFinancialProfile={handleUpdateFinancialProfile}
+                setUserAlias={setUserAlias}
+                isEditingAlias={isEditingAlias}
+                setIsEditingAlias={setIsEditingAlias}
+                tempAlias={tempAlias}
+                setTempAlias={setTempAlias}
+              />
+            )}
+          </React.Suspense>
         </div>
         )}
 

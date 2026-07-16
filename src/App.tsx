@@ -18,8 +18,8 @@ import {
 } from './data';
 import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, PlatformConfig, PopupConfig } from './types';
 import ClientRole from './components/ClientRole';
-import LawyerRole from './components/LawyerRole';
-import AdminRole from './components/AdminRole';
+const LawyerRole = React.lazy(() => import('./components/LawyerRole'));
+const AdminRole = React.lazy(() => import('./components/AdminRole'));
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
 import { decryptReport } from './utils';
 import SharedReportViewer from './components/client/SharedReportViewer';
@@ -434,80 +434,87 @@ export default function App() {
       
       {/* Role View Render */}
       <div className="flex-1">
-        {currentRole === 'client' ? (
-          <ClientRole 
-            requests={requests}
-            setRequests={setRequests}
-            messages={messages}
-            setMessages={setMessages}
-            lawyers={lawyers}
-            onAddMessage={handleAddMessage}
-            newsArticles={newsArticles}
-            setNewsArticles={setNewsArticles}
-            qas={qas}
-            setQas={setQas}
-            reviews={reviews}
-            setReviews={setReviews}
-            banners={banners}
-            setBanners={setBanners}
-            notices={notices}
-            setNotices={setNotices}
-            matchingCooldownHours={matchingCooldownHours}
-            members={members}
-            setMembers={setMembers}
-            onLogActivity={handleLogActivity}
-            platformConfig={platformConfig}
-            inquiries={inquiries}
-            setInquiries={setInquiries}
-            popupConfig={popupConfig}
-          />
-        ) : currentRole === 'lawyer' ? (
-          <LawyerRole 
-            requests={requests}
-            setRequests={setRequests}
-            messages={messages}
-            setMessages={setMessages}
-            lawyers={lawyers}
-            setLawyers={setLawyers}
-            onAddMessage={handleAddMessage}
-            cases={cases}
-            setCases={setCases}
-            members={members}
-            setMembers={setMembers}
-            onLogActivity={handleLogActivity}
-            platformConfig={platformConfig}
-          />
-        ) : (
-          <AdminRole 
-            requests={requests}
-            setRequests={setRequests}
-            lawyers={lawyers}
-            setLawyers={setLawyers}
-            newsArticles={newsArticles}
-            setNewsArticles={setNewsArticles}
-            qas={qas}
-            setQas={setQas}
-            reviews={reviews}
-            setReviews={setReviews}
-            banners={banners}
-            setBanners={setBanners}
-            notices={notices}
-            setNotices={setNotices}
-            matchingCooldownHours={matchingCooldownHours}
-            setMatchingCooldownHours={setMatchingCooldownHours}
-            members={members}
-            setMembers={setMembers}
-            activityLogs={activityLogs}
-            setActivityLogs={setActivityLogs}
-            onLogActivity={handleLogActivity}
-            platformConfig={platformConfig}
-            setPlatformConfig={setPlatformConfig}
-            inquiries={inquiries}
-            setInquiries={setInquiries}
-            popupConfig={popupConfig}
-            setPopupConfig={setPopupConfig}
-          />
-        )}
+        <React.Suspense fallback={
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="text-xs text-slate-500 font-bold">권한 페이지를 불러오고 있습니다...</p>
+          </div>
+        }>
+          {currentRole === 'client' ? (
+            <ClientRole 
+              requests={requests}
+              setRequests={setRequests}
+              messages={messages}
+              setMessages={setMessages}
+              lawyers={lawyers}
+              onAddMessage={handleAddMessage}
+              newsArticles={newsArticles}
+              setNewsArticles={setNewsArticles}
+              qas={qas}
+              setQas={setQas}
+              reviews={reviews}
+              setReviews={setReviews}
+              banners={banners}
+              setBanners={setBanners}
+              notices={notices}
+              setNotices={setNotices}
+              matchingCooldownHours={matchingCooldownHours}
+              members={members}
+              setMembers={setMembers}
+              onLogActivity={handleLogActivity}
+              platformConfig={platformConfig}
+              inquiries={inquiries}
+              setInquiries={setInquiries}
+              popupConfig={popupConfig}
+            />
+          ) : currentRole === 'lawyer' ? (
+            <LawyerRole 
+              requests={requests}
+              setRequests={setRequests}
+              messages={messages}
+              setMessages={setMessages}
+              lawyers={lawyers}
+              setLawyers={setLawyers}
+              onAddMessage={handleAddMessage}
+              cases={cases}
+              setCases={setCases}
+              members={members}
+              setMembers={setMembers}
+              onLogActivity={handleLogActivity}
+              platformConfig={platformConfig}
+            />
+          ) : (
+            <AdminRole 
+              requests={requests}
+              setRequests={setRequests}
+              lawyers={lawyers}
+              setLawyers={setLawyers}
+              newsArticles={newsArticles}
+              setNewsArticles={setNewsArticles}
+              qas={qas}
+              setQas={setQas}
+              reviews={reviews}
+              setReviews={setReviews}
+              banners={banners}
+              setBanners={setBanners}
+              notices={notices}
+              setNotices={setNotices}
+              matchingCooldownHours={matchingCooldownHours}
+              setMatchingCooldownHours={setMatchingCooldownHours}
+              members={members}
+              setMembers={setMembers}
+              activityLogs={activityLogs}
+              setActivityLogs={setActivityLogs}
+              onLogActivity={handleLogActivity}
+              platformConfig={platformConfig}
+              setPlatformConfig={setPlatformConfig}
+              inquiries={inquiries}
+              setInquiries={setInquiries}
+              popupConfig={popupConfig}
+              setPopupConfig={setPopupConfig}
+            />
+          )}
+        </React.Suspense>
       </div>
 
       <Toaster position="top-center" richColors closeButton />
