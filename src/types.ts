@@ -1024,7 +1024,7 @@ export interface ActivityLog {
   memberId: string;
   memberName: string;
   role: MemberRole;
-  action: 'SIGNUP' | 'LOGIN' | 'CALCULATE' | 'CONSULT_REQUEST' | 'CHAT_SEND' | 'STATUS_CHANGE' | 'ADMIN_ACTION' | 'WITHDRAWAL' | 'QNA_BROWSE';
+  action: 'SIGNUP' | 'LOGIN' | 'CALCULATE' | 'CONSULT_REQUEST' | 'CHAT_SEND' | 'STATUS_CHANGE' | 'ADMIN_ACTION' | 'WITHDRAWAL' | 'QNA_BROWSE' | 'SETTINGS';
   details: string;
   ipAddress: string;
   createdAt: string;

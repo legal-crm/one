@@ -7,7 +7,7 @@ import {
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder 
 } from '../types';
-import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, mockLawFirms } from '../data';
+import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 import CrmTab from './lawyer/CrmTab';
@@ -94,7 +94,7 @@ export default function LawyerRole({
   // Sync tempFirmName when activeLawyer changes
   useEffect(() => {
     if (activeLawyer) {
-      setTempFirmName(activeLawyer.firmName || (mockLawFirms.find(f => f.id === activeLawyer.lawFirmId)?.name) || '');
+      setTempFirmName(activeLawyer.firmName || '');
     }
   }, [activeLawyer]);
   
@@ -1569,9 +1569,11 @@ export default function LawyerRole({
                   나의 전담 채무관리 변호사
                 </span>
               </div>
-              <span className="text-slate-700 text-xs hidden sm:inline ml-2 border-l border-slate-200 pl-3">
-                {activeLawyer.firmName || (mockLawFirms.find(f => f.id === activeLawyer.lawFirmId)?.name) || (activeLawyer.name.split(' ')[0] + " 법률지부")}
-              </span>
+              {activeLawyer.firmName && (
+                <span className="text-slate-700 text-xs hidden sm:inline ml-2 border-l border-slate-200 pl-3">
+                  {activeLawyer.firmName}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
