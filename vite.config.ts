@@ -25,6 +25,13 @@ export default defineConfig(() => {
       target: 'es2020',
       // console.*, debugger 제거
       minify: 'esbuild' as const,
+      rollupOptions: {
+        output: {
+          generatedCode: {
+            constBindings: false,
+          },
+        },
+      },
     },
     esbuild: {
       drop: process.env.NODE_ENV === 'production' ? ['console' as const, 'debugger' as const] : [],
