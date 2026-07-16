@@ -611,9 +611,16 @@ export default function ClientRole({
     // 뒤로 가기/앞으로 가기 이벤트에 의한 탭 변경 시 pushState 중복 호출 방지
     if (isPopStateRef.current) return;
 
+    // OAuth 콜백 토큰 정보가 URL에 포함되어 있는 경우, pushState가 주소를 덮어써서 
+    // Supabase 인증 처리를 방해하지 않도록 스킵합니다.
+    const hash = window.location.hash;
+    const search = window.location.search;
+    const isOAuthCallback = hash.includes('access_token') || hash.includes('error') || search.includes('code=');
+    if (isOAuthCallback) return;
+
     const currentState = window.history.state;
     if (!currentState || currentState.tab !== activeTab) {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(search);
       params.set('tab', activeTab);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.pushState({ tab: activeTab }, '', newUrl);
