@@ -27,6 +27,7 @@ import NoticesView from './client/NoticesView';
 import LawyersView from './client/LawyersView';
 import AuthModal from './client/AuthModal';
 import MyPageView from './client/MyPageView';
+import MySettingsView from './client/MySettingsView';
 import InquiryView from './client/InquiryView';
 
 import ClientFooter from './client/ClientFooter';
@@ -1998,7 +1999,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* Auth section */}
             {isLoggedIn ? (
               <div className="flex items-center gap-1.5 lg:gap-2.5 ml-1 lg:ml-2 pl-2 lg:pl-3 border-l border-slate-200 dark:border-slate-800">
-                <div className="flex flex-col items-end hidden lg:flex whitespace-nowrap shrink-0">
+                <div 
+                  onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  className="flex flex-col items-end hidden lg:flex whitespace-nowrap shrink-0 cursor-pointer hover:opacity-80 transition-all"
+                  title="마이페이지로 이동"
+                >
                   <span className="text-[13px] lg:text-sm font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
                     👤 <span className="text-brand dark:text-brand-light whitespace-nowrap">{userAlias}</span>님
                   </span>
@@ -2914,6 +2919,40 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
         {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
         {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
+
+        {/* TAB: MYPAGE (개인 설정 및 1:1 문의) */}
+        {activeTab === 'mypage' && (
+          <MySettingsView
+            isLoggedIn={isLoggedIn}
+            userAlias={userAlias}
+            setUserAlias={setUserAlias}
+            isEditingAlias={isEditingAlias}
+            setIsEditingAlias={setIsEditingAlias}
+            tempAlias={tempAlias}
+            setTempAlias={setTempAlias}
+            inquiries={inquiries}
+            onNavigateToTab={setActiveTab}
+            onShowAuthModal={() => setShowAuthModal(true)}
+            onLogout={async () => {
+              await supabase.auth.signOut();
+              setIsLoggedIn(false);
+              setUserAlias('');
+              
+              localStorage.removeItem('legal_crm_client_id');
+              localStorage.removeItem('legal_crm_requests');
+              localStorage.removeItem('legal_crm_messages');
+              localStorage.removeItem('legal_crm_inquiries');
+              localStorage.removeItem('legal_crm_client_alias');
+              
+              setRequests([]);
+              setMessages([]);
+              setInquiries([]);
+              
+              alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
+              setActiveTab('landing');
+            }}
+          />
+        )}
 
         {/* TAB: LEGAL NEWS & TIPS BOARD */}
         {activeTab === 'news' && (<NewsView newsArticles={newsArticles} onSelectArticle={(art) => setSelectedArticle(art)} onUpdateViews={(id) => setNewsArticles(prev => prev.map(x => x.id === id ? {...x, views: x.views+1} : x))} />)}
