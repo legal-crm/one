@@ -4,27 +4,45 @@ import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } fro
 import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import MyPageView from './MyPageView';
 
+interface BannerProps {
+  onClose: () => void;
+}
+
 // [SECURITY] 법률상담 비밀유지 + 보안 안내 배너
-function ChatPrivacyBanner() {
+function ChatPrivacyBanner({ onClose }: BannerProps) {
   return (
-    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4 py-3 text-[13px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-2.5 items-start shadow-sm text-left">
+    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4 py-3 text-[13px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-2.5 items-start shadow-sm text-left relative pr-8">
       <Shield className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
       <div>
         <strong>🔒 법률상담 비밀 보장</strong>
         <span className="block mt-0.5 text-indigo-600/80 dark:text-indigo-400/80">이 채팅은 법률상담을 위한 비밀 대화입니다. 상담 내용은 전담 변호사와 고객만 확인할 수 있으며, 플랫폼 운영자는 원문 내용을 열람하지 않습니다.</span>
       </div>
+      <button 
+        onClick={onClose}
+        className="absolute top-2.5 right-2.5 p-1 rounded-lg text-indigo-500 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/50 cursor-pointer transition-colors"
+        title="닫기"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }
 
 // Inline ChatDisclaimer component
-function ChatDisclaimer() {
+function ChatDisclaimer({ onClose }: BannerProps) {
   return (
-    <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3.5 text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium flex gap-2 items-start shadow-sm text-left">
+    <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3.5 text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium flex gap-2 items-start shadow-sm text-left relative pr-8">
       <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
       <div>
         <strong>주의사항:</strong> 대화 중 오가는 상담 내용은 강력하게 암호화되어 안전하게 보호됩니다. 공식 선임계약 체결 전의 법률 상담은 참고용으로만 효력을 지니며, 모든 선임비용 결제 및 계약은 본 플랫폼 외부에서 변호사와 직접 조율하여 안전하게 체결하여 주시기 바랍니다.
       </div>
+      <button 
+        onClick={onClose}
+        className="absolute top-2.5 right-2.5 p-1 rounded-lg text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/50 cursor-pointer transition-colors"
+        title="닫기"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }
@@ -87,6 +105,37 @@ export default function ChatView({
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
   }, [activeChatReqId]);
+
+  const [showPrivacyBanner, setShowPrivacyBanner] = useState<boolean>(true);
+  const [showDisclaimerBanner, setShowDisclaimerBanner] = useState<boolean>(true);
+
+  useEffect(() => {
+    const privacyDismissTime = localStorage.getItem('legal_crm_dismiss_privacy_banner');
+    if (privacyDismissTime) {
+      const isExpired = Date.now() - parseInt(privacyDismissTime, 10) > 3600000;
+      setShowPrivacyBanner(isExpired);
+    } else {
+      setShowPrivacyBanner(true);
+    }
+
+    const disclaimerDismissTime = localStorage.getItem('legal_crm_dismiss_disclaimer_banner');
+    if (disclaimerDismissTime) {
+      const isExpired = Date.now() - parseInt(disclaimerDismissTime, 10) > 3600000;
+      setShowDisclaimerBanner(isExpired);
+    } else {
+      setShowDisclaimerBanner(true);
+    }
+  }, [activeChatReqId]);
+
+  const handleClosePrivacyBanner = () => {
+    localStorage.setItem('legal_crm_dismiss_privacy_banner', Date.now().toString());
+    setShowPrivacyBanner(false);
+  };
+
+  const handleCloseDisclaimerBanner = () => {
+    localStorage.setItem('legal_crm_dismiss_disclaimer_banner', Date.now().toString());
+    setShowDisclaimerBanner(false);
+  };
 
   const currentRequest = requests.find(r => r.id === activeChatReqId);
   const activeChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);
@@ -530,10 +579,12 @@ export default function ChatView({
             })()}
 
             {/* [SECURITY] Privacy + Disclaimer */}
-            <div className="p-4 bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 space-y-2">
-              <ChatPrivacyBanner />
-              <ChatDisclaimer />
-            </div>
+            {(showPrivacyBanner || showDisclaimerBanner) && (
+              <div className="p-4 bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 space-y-2">
+                {showPrivacyBanner && <ChatPrivacyBanner onClose={handleClosePrivacyBanner} />}
+                {showDisclaimerBanner && <ChatDisclaimer onClose={handleCloseDisclaimerBanner} />}
+              </div>
+            )}
 
             {/* Messages feed */}
             <div ref={chatFeedRef} className="flex-1 min-h-0 overflow-y-auto p-5 space-y-6 scrollbar-hide bg-slate-50/[0.15] dark:bg-slate-950/[0.05]">
