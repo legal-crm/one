@@ -2132,7 +2132,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   {
                     step: 'Step 3',
                     title: '3. 나만의 관리방',
-                    desc: '내 상황에 딱 맞는 방법으로, 전문가와 1:1 채팅으로 처음부터 끝까지 함께해요',
+                    desc: '가장 신뢰가 가는 변호사를 선임하고 무료로 채무 관리를 받아보세요',
                     icon: '💬',
                   }
                 ].map((item, idx) => (
