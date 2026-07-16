@@ -418,6 +418,99 @@ export default function ChatView({
               </div>
             </div>
 
+            {/* 🤝 전담 변호사 매칭 및 수임 상태 스테이터스 바 */}
+            {currentRequest && (() => {
+              // 3단계 매칭 라이프사이클 분기
+              let step = 1;
+              let title = '';
+              let desc = '';
+              let bannerBg = '';
+              let borderClass = '';
+              let badgeColor = '';
+              let badgeText = '';
+
+              if (isAppointed) {
+                step = 3;
+                title = '전담 변호사 매칭 완료';
+                desc = `${currentRequest.title?.replace(' 변호사 전담 매칭', '') || '담당'} 변호사님이 의뢰인님의 전담 변호사로 지정되어 안전 보호 및 채무 관리가 제공 중입니다.`;
+                bannerBg = 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20';
+                borderClass = 'border-emerald-200/60 dark:border-emerald-800/40';
+                badgeColor = 'bg-emerald-500 text-white';
+                badgeText = '선임 완료';
+              } else if (proposals.length > 0 || currentRequest.status === 'responding' || currentRequest.status === 'counseling') {
+                step = 2;
+                title = '전담 변호사 지정 대기 중';
+                desc = '도산 전문 변호사와의 1:1 비밀 상담이 가능합니다. 충분히 상담 후 아래 [전담 선임하기] 버튼을 통해 나의 전담 변호사로 지정해 주세요.';
+                bannerBg = 'bg-gradient-to-r from-amber-50 to-indigo-50/30 dark:from-amber-950/20 dark:to-indigo-950/10';
+                borderClass = 'border-amber-200/60 dark:border-amber-800/30';
+                badgeColor = 'bg-amber-500 text-white animate-pulse';
+                badgeText = '선임 대기';
+              } else {
+                step = 1;
+                title = '전담 변호사 매칭 대기 중';
+                desc = '의뢰인님의 재정 진단 요약 리포트를 바탕으로 도산 전문 변호사단이 맞춤형 채무 솔루션을 준비 중입니다 (평균 10분 소요).';
+                bannerBg = 'bg-gradient-to-r from-slate-50 to-indigo-50/20 dark:from-slate-900 dark:to-indigo-950/10';
+                borderClass = 'border-slate-200 dark:border-slate-800';
+                badgeColor = 'bg-brand text-white';
+                badgeText = '검토 중';
+              }
+
+              return (
+                <div className={`mx-4 mt-4 p-4 md:p-5 border rounded-2xl ${bannerBg} ${borderClass} transition-all duration-300 shadow-sm text-left flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] ${badgeColor} px-2 py-0.5 rounded-full font-bold`}>
+                        {badgeText}
+                      </span>
+                      <h4 className="font-extrabold text-sm md:text-base text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        {step === 3 ? '👑' : step === 2 ? '🤝' : '🔄'} {title}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium max-w-2xl">
+                      {desc}
+                    </p>
+                  </div>
+
+                  {/* Stepper UI */}
+                  <div className="flex items-center gap-1.5 shrink-0 bg-white/60 dark:bg-slate-900/60 px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 self-start md:self-auto">
+                    {/* Step 1 */}
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] flex items-center justify-center font-bold">
+                        ✓
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">진단제출</span>
+                    </div>
+                    <span className="text-slate-300 dark:text-slate-700 text-[10px] font-semibold">&rarr;</span>
+
+                    {/* Step 2 */}
+                    <div className="flex items-center gap-1">
+                      <div className={`w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold ${
+                        step >= 2 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                      }`}>
+                        {step > 2 ? '✓' : '2'}
+                      </div>
+                      <span className={`text-[10px] font-bold ${
+                        step >= 2 ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'
+                      }`}>1:1상담</span>
+                    </div>
+                    <span className="text-slate-300 dark:text-slate-700 text-[10px] font-semibold">&rarr;</span>
+
+                    {/* Step 3 */}
+                    <div className="flex items-center gap-1">
+                      <div className={`w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold ${
+                        step === 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                      }`}>
+                        {step === 3 ? '✓' : '3'}
+                      </div>
+                      <span className={`text-[10px] font-bold ${
+                        step === 3 ? 'text-slate-750 dark:text-slate-200' : 'text-slate-400'
+                      }`}>전담지정</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* [SECURITY] Privacy + Disclaimer */}
             <div className="p-4 bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 space-y-2">
               <ChatPrivacyBanner />
