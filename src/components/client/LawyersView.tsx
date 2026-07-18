@@ -345,7 +345,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                   <span className="text-xs text-slate-400 font-medium">({freeLawyers.length}명)</span>
                   <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">무료 회원</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {freePaginated.map(l => (
                     <div
                       key={l.id}
