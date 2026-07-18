@@ -346,41 +346,41 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                     <div
                       key={l.id}
                       onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)}
-                      className={`bg-slate-50/80 border border-slate-100 rounded-xl p-3.5 flex items-center gap-3.5 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all cursor-pointer group/file relative ${
+                      className={`bg-slate-50/80 border border-slate-100 rounded-2xl p-5 flex items-center gap-4 hover:bg-white hover:border-slate-200 hover:shadow-md transition-all cursor-pointer group/file relative ${
                         selectionMode && selectedLawyerIds.includes(l.id)
                           ? 'border-brand ring-2 ring-brand/20 bg-brand/5'
                           : ''
                       }`}
                     >
                       {selectionMode && (
-                        <div className={`absolute top-2 right-2 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all z-10 ${
+                        <div className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all z-10 ${
                           selectedLawyerIds.includes(l.id)
                             ? 'bg-brand border-brand'
                             : 'bg-white border-slate-300'
                         }`}>
                           {selectedLawyerIds.includes(l.id) && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
                         </div>
                       )}
                       <div className="relative shrink-0">
-                        <img src={l.avatar} alt={l.name} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-[1.5px] border-white rounded-full"></span>
+                        <img src={l.avatar} alt={l.name} className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-sm text-slate-900 truncate">{l.name}</span>
-                          <span className="text-[10px] text-slate-400 font-medium shrink-0">{l.courtJurisdiction || l.region}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-base text-slate-900 truncate">{l.name}</span>
+                          <span className="text-xs text-slate-400 font-medium shrink-0">{l.courtJurisdiction || l.region}</span>
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {l.fields.slice(0, 3).map(f => (
-                            <span key={f} className="text-[10px] text-slate-500 font-bold px-1.5 py-0.5 bg-white border border-slate-100 rounded">{f}</span>
+                            <span key={f} className="text-xs text-slate-500 font-bold px-2 py-0.5 bg-white border border-slate-100 rounded-md">{f}</span>
                           ))}
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-300 shrink-0 group-hover/file:text-slate-500 transition-colors" />
+                      <ChevronRight className="w-5 h-5 text-slate-300 shrink-0 group-hover/file:text-slate-500 transition-colors" />
                     </div>
                   ))}
                 </div>
