@@ -272,9 +272,6 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                         : 'border-blue-100 dark:border-blue-800 ring-1 ring-blue-100'
                     }`}>
                       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-400/30 to-transparent"></div>
-                      <span className="absolute top-3 right-3 bg-blue-50 text-blue-500 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-blue-200 z-10">
-                        광고
-                      </span>
                       {selectionMode && (
                         <div className={`absolute top-4 right-4 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 z-10 ${
                           selectedLawyerIds.includes(l.id)
@@ -299,6 +296,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             <span className="text-sm text-slate-500 dark:text-slate-500 font-medium">{l.courtJurisdiction || l.region + ' 법원'} 전담 지원</span>
                           </div>
                           <div className="flex items-center gap-2">
+                            <span className="bg-blue-50 text-blue-500 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-blue-200">광고</span>
                             <button type="button" onClick={(e) => toggleFavorite(l.id, e)} className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer group/fav">
                               <Heart className={`w-4 h-4 transition-colors ${favorites.has(l.id) ? 'fill-rose-500 text-rose-500' : 'text-slate-300 group-hover/fav:text-rose-400'}`} />
                             </button>
