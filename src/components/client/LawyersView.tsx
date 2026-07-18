@@ -68,26 +68,22 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
     });
   };
 
-  const filtered = lawyers.filter(l => {
+  const filtered = useMemo(() => lawyers.filter(l => {
     const queryLower = searchQuery.toLowerCase();
     const matchesSearch = l.name.toLowerCase().includes(queryLower) || l.fields.some(f => f.toLowerCase().includes(queryLower)) || l.bio.toLowerCase().includes(queryLower);
     const matchesRegion = selectedRegion === '전체' || l.region.includes(selectedRegion);
     const matchesFav = !showFavoritesOnly || favorites.has(l.id);
     return matchesSearch && matchesRegion && matchesFav;
-  });
+  }), [lawyers, searchQuery, selectedRegion, showFavoritesOnly, favorites]);
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-
-  // ── 광고 등급별 변호사 분류 (랜덤 셔플) ──
+  // ── 광고 등급별 변호사 분류 (안정적 정렬) ──
   const topAdLawyers = useMemo(() => 
-    lawyers.filter(l => l.adTier === 'top').sort(() => Math.random() - 0.5)
+    lawyers.filter(l => l.adTier === 'top')
   , [lawyers]);
 
   // 유료 광고 변호사 (regional + basic) — 큰 카드로 표시, top 제외
   const paidLawyers = useMemo(() => {
-    return filtered.filter(l => l.adTier === 'regional' || l.adTier === 'basic')
-      .sort(() => Math.random() - 0.5);
+    return filtered.filter(l => l.adTier === 'regional' || l.adTier === 'basic');
   }, [filtered]);
 
   // 무료 변호사 (adTier 없음) — 컴팩트 카드로 표시, top 제외
