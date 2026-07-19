@@ -2983,12 +2983,8 @@ export default function LawyerRole({
                     <span className="bg-white/50 border border-dashed border-emerald-200 px-3 py-1.5 rounded-lg text-[10px] text-emerald-300">... 지역당 최대 4구좌</span>
                   </div>
                 </div>
-                <div className="border-2 border-blue-400/40 rounded-lg p-3 bg-blue-50/50">
-                  <span className="text-blue-600 font-bold flex items-center gap-1 mb-1">📋 기본 노출 광고 (월 10만원)</span>
-                  <span className="bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg text-[10px] text-blue-600 font-bold inline-block">🔵 [ 광고 ] 변호사F — 확장 카드</span>
-                </div>
               </div>
-              <p className="text-[11px] text-slate-400 flex items-center gap-1"><Info className="w-3 h-3" /> 정렬 순서: 상단 노출 → 지역 상단(필터 시) → 기본 노출 → 무료 회원 | 같은 등급 내 랜덤 셔플</p>
+              <p className="text-[11px] text-slate-400 flex items-center gap-1"><Info className="w-3 h-3" /> 정렬 순서: 상단 노출 → 지역 상단(필터 시) → 일반 회원 | 같은 등급 내 랜덤 셔플</p>
             </div>
 
             {/* Section 5: SaaS Plans */}
