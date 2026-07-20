@@ -114,6 +114,9 @@ export default function LandingPage({
   const expertRef = useRef<HTMLDivElement>(null);
   const expertInView = useInView(expertRef, { once: true, margin: '-60px' });
 
+  const showcaseRef = useRef<HTMLDivElement>(null);
+  const showcaseInView = useInView(showcaseRef, { once: true, margin: '-60px' });
+
   // ── Pulse animation for CTA ────────────────────────────────────────────────
   const [pulse, setPulse] = useState(true);
   useEffect(() => {
@@ -132,6 +135,22 @@ export default function LandingPage({
     }, 4000);
     return () => clearInterval(timer);
   }, [shuffledBanners.length]);
+
+  // ── 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 상품) ──
+  const [showcasePage, setShowcasePage] = useState(0);
+  const [showcaseHovered, setShowcaseHovered] = useState(false);
+  const shuffledShowcase = shuffledBanners; // 동일 셔플 순서 사용
+
+  useEffect(() => {
+    if (showcaseHovered || shuffledShowcase.length === 0) return;
+    const cardsPerPage = 3;
+    const totalPages = Math.ceil(shuffledShowcase.length / cardsPerPage);
+    if (totalPages <= 1) return;
+    const timer = setInterval(() => {
+      setShowcasePage(prev => (prev + 1) % totalPages);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [showcaseHovered, shuffledShowcase.length]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -725,6 +744,191 @@ export default function LandingPage({
           </motion.div>
         </div>
       </section>
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          SECTION 4.5 — PREMIUM LAWYER SHOWCASE AD (메인 배너 광고 · 월 50만원)
+          ═══════════════════════════════════════════════════════════════════════ */}
+      {shuffledShowcase.length > 0 && (() => {
+        const cardsPerPage = 3;
+        const totalPages = Math.ceil(shuffledShowcase.length / cardsPerPage);
+        const currentCards = shuffledShowcase.slice(
+          showcasePage * cardsPerPage,
+          showcasePage * cardsPerPage + cardsPerPage
+        );
+
+        return (
+          <section
+            ref={showcaseRef}
+            className="relative py-20 sm:py-28 px-6 overflow-hidden"
+            onMouseEnter={() => setShowcaseHovered(true)}
+            onMouseLeave={() => setShowcaseHovered(false)}
+          >
+            {/* ── Premium gradient background ── */}
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-[#1a1520] to-slate-950" />
+              <div
+                className="absolute inset-0 opacity-[0.07]"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(245,158,11,0.4), transparent),' +
+                    'radial-gradient(ellipse 40% 40% at 20% 80%, rgba(168,85,247,0.2), transparent),' +
+                    'radial-gradient(ellipse 40% 40% at 80% 20%, rgba(249,115,22,0.2), transparent)',
+                }}
+              />
+              {/* Subtle grid */}
+              <div
+                className="absolute inset-0 opacity-[0.02]"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                  backgroundSize: '40px 40px',
+                }}
+              />
+              {/* Top/bottom border accents */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/10 to-transparent" />
+            </div>
+
+            <div className="relative max-w-5xl mx-auto">
+              {/* ── Header ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={showcaseInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.7 }}
+                className="text-center mb-12"
+              >
+                {/* Badges */}
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/25 shadow-lg shadow-amber-500/5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-bold text-amber-400 tracking-wider">PREMIUM</span>
+                  </span>
+                  <span className="text-[11px] text-slate-600 font-medium flex items-center gap-1 select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
+                    AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-700 text-[9px] text-slate-500 font-bold">ⓘ</span>
+                  </span>
+                </div>
+
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+                  검증된{' '}
+                  <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
+                    전문 변호사
+                  </span>
+                  가 함께합니다
+                </h2>
+                <p className="text-slate-500 text-base sm:text-lg max-w-2xl mx-auto">
+                  회생·파산 분야에서 풍부한 경험을 갖춘 전담 변호사를 만나보세요.
+                </p>
+              </motion.div>
+
+              {/* ── Cards grid ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={showcaseInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.7, delay: 0.2 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8"
+              >
+                {currentCards.map((banner, i) => (
+                  <motion.div
+                    key={`showcase-${showcasePage}-${banner.id}`}
+                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.5, delay: i * 0.12 }}
+                  >
+                    <motion.div
+                      whileHover={{ y: -8, scale: 1.02 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      className="group relative rounded-2xl overflow-hidden cursor-pointer"
+                      onClick={() => onNavigate('lawyers')}
+                    >
+                      {/* Card layered bg */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${banner.gradient} opacity-15 group-hover:opacity-25 transition-opacity duration-500`} />
+                      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl" />
+                      <div className="absolute inset-0 border border-slate-700/40 group-hover:border-amber-500/30 rounded-2xl transition-colors duration-300" />
+
+                      {/* Hover shine */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/[0.04] to-transparent transition-opacity duration-500 pointer-events-none rounded-2xl" />
+
+                      <div className="relative z-10 p-6 sm:p-7">
+                        {/* Top row: AD label + stars */}
+                        <div className="flex items-center justify-between mb-5">
+                          <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-500/20">
+                            광고
+                          </span>
+                          <div className="flex gap-0.5">
+                            {[...Array(5)].map((_, s) => (
+                              <Star key={s} className="w-3 h-3 fill-amber-400/60 text-amber-400/60" />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Avatar */}
+                        <div className="flex justify-center mb-5">
+                          <div className="relative">
+                            <img
+                              src={banner.lawyerAvatar}
+                              alt={banner.lawyerName}
+                              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-slate-700/50 group-hover:border-amber-500/40 shadow-xl shadow-black/30 transition-colors duration-300"
+                            />
+                            <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
+                              <CheckCircle2 className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Info */}
+                        <div className="text-center space-y-2">
+                          <h3 className="text-lg font-bold text-white">
+                            {banner.lawyerName}
+                          </h3>
+                          <p className="text-sm font-semibold text-slate-300 leading-snug">
+                            {banner.title}
+                          </p>
+                          <p className="text-xs text-slate-500">{banner.subtitle}</p>
+                          <p className="text-[11px] text-amber-400/70 italic">"{banner.tagline}"</p>
+                        </div>
+
+                        {/* CTA */}
+                        <button className="mt-5 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/20 transition-all cursor-pointer active:scale-[0.98]">
+                          프로필 보기 →
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              {/* ── Page indicators ── */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-2 mb-6">
+                  {Array.from({ length: totalPages }).map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setShowcasePage(idx)}
+                      className={`h-2 rounded-full transition-all cursor-pointer ${
+                        idx === showcasePage
+                          ? 'bg-amber-400 w-6'
+                          : 'bg-slate-700 hover:bg-slate-600 w-2'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* ── Disclaimer ── */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={showcaseInView ? { opacity: 1 } : {}}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="text-center text-[11px] text-slate-600 leading-relaxed max-w-lg mx-auto"
+              >
+                <span className="text-amber-500/60">⚠</span>{' '}
+                본 영역은 변호사가 직접 등록한 유료 광고이며, 같은 등급 내{' '}
+                <strong className="text-slate-500">랜덤 셔플 정렬</strong>로 운영됩니다.
+              </motion.p>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ════════════════════════════════════════════════════════════════════════
           SECTION 5 — SOCIAL PROOF

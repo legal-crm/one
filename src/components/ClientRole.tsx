@@ -3,7 +3,8 @@ import {
   PlusCircle, Users, Scale, FileText, ChevronLeft, ChevronRight, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
-  Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2
+  Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2,
+  Star, Sparkles
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
@@ -14,7 +15,7 @@ import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances,
 import { DEFAULT_SETTINGS } from '../constants';
 import { fetchSettings } from '../services/settingsService';
 import { formatKoreanCurrency, formatNumber } from '../utils';
-import { mockLawyers, initialConsultRequests, initialConsultMessages } from '../data';
+import { mockLawyers, initialConsultRequests, initialConsultMessages, adBanners } from '../data';
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
 import { supabase } from '../supabaseClient';
 import PopupContainer from './popup/PopupContainer';
@@ -888,6 +889,22 @@ export default function ClientRole({
   const [bannerIndex, setBannerIndex] = useState<number>(0);
   const [openedQaId, setOpenedQaId] = useState<string | null>(null);
   const [homeSearchQuery, setHomeSearchQuery] = useState<string>('');
+
+  // 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 상품)
+  const [showcasePage, setShowcasePage] = useState(0);
+  const [showcaseHovered, setShowcaseHovered] = useState(false);
+  const [shuffledShowcaseAds] = useState(() => [...adBanners].sort(() => Math.random() - 0.5));
+
+  useEffect(() => {
+    if (showcaseHovered || shuffledShowcaseAds.length === 0) return;
+    const cardsPerPage = 3;
+    const totalPages = Math.ceil(shuffledShowcaseAds.length / cardsPerPage);
+    if (totalPages <= 1) return;
+    const timer = setInterval(() => {
+      setShowcasePage(prev => (prev + 1) % totalPages);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [showcaseHovered, shuffledShowcaseAds.length]);
 
   const [qnaSearchQuery, setQnaSearchQuery] = useState<string>('');
   const [qnaCategoryFilter, setQnaCategoryFilter] = useState<string>('전체');
@@ -2489,6 +2506,135 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </div>
               </div>
             </section>
+
+            {/* ── Sector 5.5: 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 · 월 50만원) ── */}
+            {shuffledShowcaseAds.length > 0 && (() => {
+              const cardsPerPage = 3;
+              const totalPages = Math.ceil(shuffledShowcaseAds.length / cardsPerPage);
+              const currentCards = shuffledShowcaseAds.slice(
+                showcasePage * cardsPerPage,
+                showcasePage * cardsPerPage + cardsPerPage
+              );
+
+              return (
+                <section
+                  className="w-full py-14 md:py-20 relative overflow-hidden"
+                  onMouseEnter={() => setShowcaseHovered(true)}
+                  onMouseLeave={() => setShowcaseHovered(false)}
+                >
+                  {/* Premium gradient background */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-amber-50/80 via-orange-50/40 to-white dark:from-amber-950/20 dark:via-slate-950 dark:to-slate-900 pointer-events-none" />
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-300/40 to-transparent dark:via-amber-500/20" />
+                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent dark:via-amber-500/10" />
+
+                  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <div className="text-center space-y-3 mb-10">
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/25 shadow-sm">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span className="text-xs font-bold text-amber-600 dark:text-amber-400 tracking-wider">PREMIUM</span>
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
+                          AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-300 dark:border-slate-700 text-[9px] text-slate-400 font-bold">ⓘ</span>
+                        </span>
+                      </div>
+                      <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                        검증된{' '}
+                        <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">전문 변호사</span>
+                        가 함께합니다
+                      </h3>
+                      <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto">
+                        회생·파산 분야에서 풍부한 경험을 갖춘 전담 변호사를 만나보세요.
+                      </p>
+                    </div>
+
+                    {/* Cards grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-8">
+                      {currentCards.map((banner) => (
+                        <div
+                          key={`showcase-${showcasePage}-${banner.id}`}
+                          onClick={() => setActiveTab('lawyers')}
+                          className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 animate-fadeIn"
+                        >
+                          {/* Top accent gradient strip */}
+                          <div className={`h-1.5 w-full bg-gradient-to-r ${banner.gradient}`} />
+
+                          <div className="p-5 md:p-6">
+                            {/* AD label + stars */}
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/30">
+                                광고
+                              </span>
+                              <div className="flex gap-0.5">
+                                {[...Array(5)].map((_, s) => (
+                                  <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Avatar */}
+                            <div className="flex justify-center mb-4">
+                              <div className="relative">
+                                <img
+                                  src={banner.lawyerAvatar}
+                                  alt={banner.lawyerName}
+                                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-slate-100 dark:border-slate-700 group-hover:border-amber-300 dark:group-hover:border-amber-500/40 shadow-lg transition-colors duration-300"
+                                />
+                                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-md">
+                                  <CheckCircle className="w-4 h-4 text-white" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Info */}
+                            <div className="text-center space-y-1.5">
+                              <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                                {banner.lawyerName}
+                              </h4>
+                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 leading-snug">
+                                {banner.title}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{banner.subtitle}</p>
+                              <p className="text-[11px] text-amber-600/70 dark:text-amber-400/70 italic">"{banner.tagline}"</p>
+                            </div>
+
+                            {/* CTA */}
+                            <button className="mt-4 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-sm transition-all cursor-pointer active:scale-[0.98]">
+                              프로필 보기 →
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Page indicators */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-center gap-2 mb-5">
+                        {Array.from({ length: totalPages }).map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setShowcasePage(idx)}
+                            className={`h-2 rounded-full transition-all cursor-pointer ${
+                              idx === showcasePage
+                                ? 'bg-amber-500 w-6'
+                                : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 w-2'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Disclaimer */}
+                    <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed max-w-lg mx-auto">
+                      <span className="text-amber-500/80">⚠</span>{' '}
+                      본 영역은 변호사가 직접 등록한 유료 광고이며, 같은 등급 내{' '}
+                      <strong className="text-slate-500 dark:text-slate-400">랜덤 셔플 정렬</strong>로 운영됩니다.
+                    </p>
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
             <section className="w-full py-10 md:py-14 bg-indigo-50/30 dark:bg-indigo-950/10 border-y border-indigo-100/50 dark:border-slate-800">
