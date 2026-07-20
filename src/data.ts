@@ -744,6 +744,7 @@ export const adBanners: AdBanner[] = [
     subtitle: '서울회생법원 인가율 98% | 누적 842건 수임',
     tagline: '채무 문제, 함께 해결합니다',
     gradient: 'from-indigo-600 via-violet-600 to-purple-700',
+    isActive: true,
   },
   {
     id: 'ad-banner-2',
@@ -754,6 +755,7 @@ export const adBanners: AdBanner[] = [
     subtitle: '주식·코인 손실 사건 최적 탕감 전략',
     tagline: '보정이 두렵지 않은 도산법 전문가',
     gradient: 'from-purple-600 via-fuchsia-600 to-pink-700',
+    isActive: true,
   },
   {
     id: 'ad-banner-3',
@@ -764,6 +766,7 @@ export const adBanners: AdBanner[] = [
     subtitle: '변제율 30% 이하 최다 인가 기록',
     tagline: '최저 변제율로 새출발을 시작하세요',
     gradient: 'from-sky-600 via-blue-600 to-indigo-700',
+    isActive: true,
   },
   {
     id: 'ad-banner-4',
@@ -774,6 +777,7 @@ export const adBanners: AdBanner[] = [
     subtitle: '가족 몰래 · 전세사기 피해 긴급 구제',
     tagline: '당신만을 위한 맞춤 케어를 약속합니다',
     gradient: 'from-rose-600 via-pink-600 to-fuchsia-700',
+    isActive: true,
   },
   {
     id: 'ad-banner-5',
@@ -784,6 +788,7 @@ export const adBanners: AdBanner[] = [
     subtitle: '면책 인가 성공률 98% · 누적 1,240건',
     tagline: '경기 지역 회생/파산의 든든한 파트너',
     gradient: 'from-emerald-600 via-teal-600 to-cyan-700',
+    isActive: true,
   },
 ];
 

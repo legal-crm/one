@@ -958,6 +958,7 @@ export interface AdBanner {
   subtitle: string;
   tagline: string;
   gradient: string;
+  isActive: boolean;
 }
 
 export interface AdOrder {

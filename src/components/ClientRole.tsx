@@ -893,7 +893,7 @@ export default function ClientRole({
   // 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 상품)
   const [showcasePage, setShowcasePage] = useState(0);
   const [showcaseHovered, setShowcaseHovered] = useState(false);
-  const [shuffledShowcaseAds] = useState(() => [...adBanners].sort(() => Math.random() - 0.5));
+  const [shuffledShowcaseAds] = useState(() => [...adBanners].filter(b => b.isActive !== false).sort(() => Math.random() - 0.5));
 
   useEffect(() => {
     if (showcaseHovered || shuffledShowcaseAds.length === 0) return;

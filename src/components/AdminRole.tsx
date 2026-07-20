@@ -7,8 +7,8 @@ import {
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server,
   Edit2, Plus, Save, RotateCcw, FileText, Receipt
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig, AdOrder } from '../types';
-import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner } from '../types';
+import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
 import { issueTaxInvoice } from '../services/taxInvoiceService';
@@ -104,7 +104,22 @@ export default function AdminRole({
   const [formImageUrl, setFormImageUrl] = useState<string>('');
 
   // Site Content sub-navigation state
-  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry' | 'diagnosis' | 'popup'>('news');
+  const [contentSubTab, setContentSubTab] = useState<'news' | 'qna' | 'reviews' | 'banner' | 'notice' | 'inquiry' | 'diagnosis' | 'popup' | 'adbanner'>('news');
+
+  // Ad Banner (프리미엄 변호사 쇼케이스 광고) CRUD states
+  const [adminAdBanners, setAdminAdBanners] = useState<AdBanner[]>(initialAdBanners);
+  const [editingAdBanner, setEditingAdBanner] = useState<AdBanner | null>(null);
+  const [isAdBannerCreateMode, setIsAdBannerCreateMode] = useState(false);
+  const [adBannerForm, setAdBannerForm] = useState({
+    lawyerId: '',
+    lawyerName: '',
+    lawyerAvatar: '',
+    title: '',
+    subtitle: '',
+    tagline: '',
+    gradient: 'from-indigo-600 via-violet-600 to-purple-700',
+    isActive: true,
+  });
 
 
   // CRUD states for Notices
@@ -2626,6 +2641,12 @@ export default function AdminRole({
                 >
                   🎯 팝업 관리
                 </button>
+                <button 
+                  onClick={() => { setContentSubTab('adbanner'); setIsAdBannerCreateMode(false); setEditingAdBanner(null); }}
+                  className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'adbanner' ? 'border-amber-500 text-amber-400 font-extrabold' : 'border-transparent hover:text-white'}`}
+                >
+                  ✨ 프리미엄 광고 관리
+                </button>
               </div>
 
               {/* 1. NEWS ARTICLE CRUD SECTION */}
@@ -3986,6 +4007,228 @@ export default function AdminRole({
               )}
 
               {/* 8. POPUP MANAGEMENT SECTION */}
+              {/* AD BANNER (프리미엄 변호사 쇼케이스) CRUD SECTION */}
+              {contentSubTab === 'adbanner' && (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Stats */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
+                      <span className="text-[11px] text-amber-400/80 font-bold block uppercase">전체 등록</span>
+                      <strong className="text-xl font-black text-amber-400">{adminAdBanners.length}건</strong>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
+                      <span className="text-[11px] text-emerald-400/80 font-bold block uppercase">활성 노출</span>
+                      <strong className="text-xl font-black text-emerald-400">{adminAdBanners.filter(b => b.isActive).length}건</strong>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-slate-500/20 space-y-2">
+                      <span className="text-[11px] text-slate-400/80 font-bold block uppercase">숨김 처리</span>
+                      <strong className="text-xl font-black text-slate-400">{adminAdBanners.filter(b => !b.isActive).length}건</strong>
+                    </div>
+                    <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
+                      <span className="text-[11px] text-indigo-400/80 font-bold block uppercase">월 광고 매출 (예상)</span>
+                      <strong className="text-xl font-black text-indigo-400">{(adminAdBanners.filter(b => b.isActive).length * 500000).toLocaleString()}원</strong>
+                    </div>
+                  </div>
+
+                  {/* Create button */}
+                  {!isAdBannerCreateMode && !editingAdBanner && (
+                    <button
+                      onClick={() => {
+                        setIsAdBannerCreateMode(true);
+                        setEditingAdBanner(null);
+                        setAdBannerForm({
+                          lawyerId: lawyers[0]?.id || '',
+                          lawyerName: lawyers[0]?.name || '',
+                          lawyerAvatar: lawyers[0]?.avatar || '',
+                          title: '', subtitle: '', tagline: '',
+                          gradient: 'from-indigo-600 via-violet-600 to-purple-700',
+                          isActive: true,
+                        });
+                      }}
+                      className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> 신규 프리미엄 광고 등록
+                    </button>
+                  )}
+
+                  {/* Creator / Editor Form */}
+                  {(isAdBannerCreateMode || editingAdBanner) && (
+                    <div className="bg-[#111622] p-6 rounded-2xl border border-amber-500/20 space-y-4 animate-slideDown">
+                      <h3 className="font-extrabold text-sm text-amber-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" />
+                        <span>{isAdBannerCreateMode ? '신규 프리미엄 광고 등록' : '프리미엄 광고 수정'}</span>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] text-slate-450 block uppercase font-bold">변호사 선택</label>
+                          <select
+                            value={adBannerForm.lawyerId}
+                            onChange={(e) => {
+                              const sel = lawyers.find(l => l.id === e.target.value);
+                              if (sel) setAdBannerForm(prev => ({ ...prev, lawyerId: sel.id, lawyerName: sel.name, lawyerAvatar: sel.avatar }));
+                            }}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            {lawyers.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] text-slate-450 block uppercase font-bold">그라데이션 컬러</label>
+                          <select
+                            value={adBannerForm.gradient}
+                            onChange={(e) => setAdBannerForm(prev => ({ ...prev, gradient: e.target.value }))}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
+                          >
+                            <option value="from-indigo-600 via-violet-600 to-purple-700">인디고 → 바이올렛</option>
+                            <option value="from-purple-600 via-fuchsia-600 to-pink-700">퍼플 → 핑크</option>
+                            <option value="from-sky-600 via-blue-600 to-indigo-700">스카이 → 인디고</option>
+                            <option value="from-rose-600 via-pink-600 to-fuchsia-700">로즈 → 푸시아</option>
+                            <option value="from-emerald-600 via-teal-600 to-cyan-700">에메랄드 → 시안</option>
+                            <option value="from-amber-600 via-orange-600 to-red-700">앰버 → 레드</option>
+                          </select>
+                        </div>
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[12px] text-slate-450 block uppercase font-bold">광고 타이틀 (굵은 제목)</label>
+                          <input type="text" placeholder="예: 회생·파산 전문 20년 경력" value={adBannerForm.title}
+                            onChange={(e) => setAdBannerForm(prev => ({ ...prev, title: e.target.value }))}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] text-slate-450 block uppercase font-bold">부제 (경력/실적)</label>
+                          <input type="text" placeholder="예: 서울회생법원 인가율 98%" value={adBannerForm.subtitle}
+                            onChange={(e) => setAdBannerForm(prev => ({ ...prev, subtitle: e.target.value }))}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] text-slate-450 block uppercase font-bold">태그라인 (캐치프레이즈)</label>
+                          <input type="text" placeholder="예: 채무 문제, 함께 해결합니다" value={adBannerForm.tagline}
+                            onChange={(e) => setAdBannerForm(prev => ({ ...prev, tagline: e.target.value }))}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
+                        </div>
+                        <div className="md:col-span-2 flex items-center gap-2 py-1">
+                          <input type="checkbox" id="adBannerIsActive" checked={adBannerForm.isActive}
+                            onChange={(e) => setAdBannerForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                            className="rounded border-[#1E293B] bg-[#07090E] text-amber-500 focus:ring-amber-500 w-4 h-4 cursor-pointer" />
+                          <label htmlFor="adBannerIsActive" className="text-slate-350 select-none cursor-pointer font-bold">
+                            ✅ 즉시 활성화 (홈페이지에 노출)
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Preview */}
+                      {adBannerForm.title && (
+                        <div className="bg-[#0B0F19] rounded-xl p-4 border border-[#1E293B]/40">
+                          <span className="text-[10px] text-amber-400 font-bold uppercase block mb-2">미리보기</span>
+                          <div className="flex items-center gap-4">
+                            <div className="relative">
+                              <img src={adBannerForm.lawyerAvatar || 'https://via.placeholder.com/80'} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-700" />
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-md bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-bold text-white">{adBannerForm.lawyerName || '변호사명'}</h4>
+                              <p className="text-xs font-semibold text-slate-300">{adBannerForm.title}</p>
+                              <p className="text-[11px] text-slate-500">{adBannerForm.subtitle}</p>
+                              <p className="text-[10px] text-amber-400/70 italic">"{adBannerForm.tagline}"</p>
+                            </div>
+                            <div className={`w-3 h-14 rounded-full bg-gradient-to-b ${adBannerForm.gradient}`} />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 justify-end pt-2">
+                        <button onClick={() => { setIsAdBannerCreateMode(false); setEditingAdBanner(null); }}
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer">취소하기</button>
+                        <button
+                          onClick={() => {
+                            if (!adBannerForm.title.trim() || !adBannerForm.lawyerName.trim()) { alert('변호사 선택과 광고 타이틀은 필수입니다.'); return; }
+                            if (isAdBannerCreateMode) {
+                              const nb: AdBanner = {
+                                id: `ad-banner-${Date.now()}`, lawyerId: adBannerForm.lawyerId, lawyerName: adBannerForm.lawyerName,
+                                lawyerAvatar: adBannerForm.lawyerAvatar, title: adBannerForm.title.trim(), subtitle: adBannerForm.subtitle.trim(),
+                                tagline: adBannerForm.tagline.trim(), gradient: adBannerForm.gradient, isActive: adBannerForm.isActive,
+                              };
+                              setAdminAdBanners(prev => [...prev, nb]);
+                              alert('프리미엄 광고가 등록되었습니다!');
+                            } else if (editingAdBanner) {
+                              setAdminAdBanners(prev => prev.map(b => b.id === editingAdBanner.id ? {
+                                ...b, lawyerId: adBannerForm.lawyerId, lawyerName: adBannerForm.lawyerName,
+                                lawyerAvatar: adBannerForm.lawyerAvatar, title: adBannerForm.title.trim(), subtitle: adBannerForm.subtitle.trim(),
+                                tagline: adBannerForm.tagline.trim(), gradient: adBannerForm.gradient, isActive: adBannerForm.isActive,
+                              } : b));
+                              alert('광고가 수정되었습니다!');
+                            }
+                            setIsAdBannerCreateMode(false); setEditingAdBanner(null);
+                          }}
+                          className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                        >{isAdBannerCreateMode ? '✍️ 광고 등록' : '💾 변경 사항 저장'}</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Table */}
+                  <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">프로필</th>
+                            <th className="p-3">변호사</th>
+                            <th className="p-3">광고 타이틀</th>
+                            <th className="p-3">부제</th>
+                            <th className="p-3">태그라인</th>
+                            <th className="p-3">컬러</th>
+                            <th className="p-3 text-center">노출 상태</th>
+                            <th className="p-3 text-right">관리</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E293B]/30">
+                          {adminAdBanners.map(banner => (
+                            <tr key={banner.id} className={`hover:bg-[#0B0F19]/25 transition-colors ${!banner.isActive ? 'opacity-50' : ''}`}>
+                              <td className="p-3"><img src={banner.lawyerAvatar} alt={banner.lawyerName} className="w-10 h-10 rounded-xl object-cover border border-[#1E293B]/45" /></td>
+                              <td className="p-3 font-bold text-white whitespace-nowrap">{banner.lawyerName}</td>
+                              <td className="p-3 text-slate-200 max-w-[150px] truncate font-semibold">{banner.title}</td>
+                              <td className="p-3 text-slate-500 max-w-[120px] truncate">{banner.subtitle}</td>
+                              <td className="p-3 text-amber-400/70 italic text-[11px] max-w-[100px] truncate">"{banner.tagline}"</td>
+                              <td className="p-3"><div className={`w-16 h-3 rounded-full bg-gradient-to-r ${banner.gradient}`} /></td>
+                              <td className="p-3 text-center">
+                                <button onClick={() => setAdminAdBanners(prev => prev.map(b => b.id === banner.id ? { ...b, isActive: !b.isActive } : b))}
+                                  className={`text-[11px] font-bold px-3 py-1 rounded-full border cursor-pointer transition-all ${banner.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'}`}>
+                                  {banner.isActive ? '✅ 노출 중' : '🚫 숨김'}
+                                </button>
+                              </td>
+                              <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                                <button onClick={() => { setEditingAdBanner(banner); setIsAdBannerCreateMode(false); setAdBannerForm({ lawyerId: banner.lawyerId, lawyerName: banner.lawyerName, lawyerAvatar: banner.lawyerAvatar, title: banner.title, subtitle: banner.subtitle, tagline: banner.tagline, gradient: banner.gradient, isActive: banner.isActive ?? true }); }}
+                                  className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer">수정</button>
+                                <button onClick={() => { if (confirm(`[${banner.lawyerName}] 프리미엄 광고를 삭제하시겠습니까?`)) { setAdminAdBanners(prev => prev.filter(b => b.id !== banner.id)); } }}
+                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer">삭제</button>
+                              </td>
+                            </tr>
+                          ))}
+                          {adminAdBanners.length === 0 && (
+                            <tr><td colSpan={8} className="p-8 text-center text-slate-600 font-semibold bg-[#111622]">등록된 프리미엄 광고가 없습니다.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="bg-[#111622] p-4 rounded-2xl border border-amber-500/10 flex items-start gap-3">
+                    <span className="text-lg">💡</span>
+                    <div className="space-y-1">
+                      <span className="text-[11px] text-amber-400 font-bold block">프리미엄 광고 운영 안내</span>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        이 광고는 의뢰인 홈페이지 중간("검증된 전문 변호사가 함께합니다" 섹션)에 카드 형태로 노출됩니다.<br/>
+                        활성 상태의 광고만 노출되며, 동일 등급 내 매 로드 시 <strong className="text-slate-400">랜덤 셔플 정렬</strong>로 운영됩니다.<br/>
+                        월 50만원 (부가세 별도) · 최대 슬롯 제한 없음. 숨김 토글로 즉시 노출/비노출 전환 가능.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {contentSubTab === 'popup' && (
                 <div className="space-y-6 animate-fadeIn">
                   <PopupEditor
