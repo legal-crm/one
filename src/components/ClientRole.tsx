@@ -37,6 +37,7 @@ const TermsModal = React.lazy(() => import('./client/TermsModal'));
 import MobileGNB from './client/MobileGNB';
 const RemedyModal = React.lazy(() => import('./client/RemedyModal'));
 const NewsDetailModal = React.lazy(() => import('./client/NewsDetailModal'));
+const LawyerProfileModal = React.lazy(() => import('./client/LawyerProfileModal'));
 
 import type { SolutionType } from './client/SolutionDetailModal';
 const SolutionDetailModal = React.lazy(() => import('./client/SolutionDetailModal'));
@@ -642,6 +643,23 @@ export default function ClientRole({
   const [isGnbHidden, setIsGnbHidden] = useState(false);
   // 챗봇(request) 탭에서는 항상 GNB 숨김
   const isChatbotActive = activeTab === 'request';
+
+  // ── 변호사 프로필 보기 상태 ──
+  const [selectedProfileLawyer, setSelectedProfileLawyer] = useState<LawyerType | null>(null);
+
+  const handleOpenLawyerProfile = (lawyerId: string) => {
+    const found = lawyers.find(l => l.id === lawyerId);
+    if (found) {
+      setSelectedProfileLawyer(found);
+    } else {
+      const mockFound = mockLawyers.find(l => l.id === lawyerId);
+      if (mockFound) {
+        setSelectedProfileLawyer(mockFound);
+      } else {
+        setActiveTab('lawyers');
+      }
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -2586,7 +2604,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       {currentCards.map((banner) => (
                         <div
                           key={`showcase-${showcasePage}-${banner.id}`}
-                          onClick={() => setActiveTab('lawyers')}
+                          onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
                           className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 animate-fadeIn"
                         >
                           {/* Top accent gradient strip */}
@@ -2632,7 +2650,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             </div>
 
                             {/* CTA */}
-                            <button className="mt-4 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-sm transition-all cursor-pointer active:scale-[0.98]">
+                            <button onClick={(e) => { e.stopPropagation(); handleOpenLawyerProfile(banner.lawyerId); }} className="mt-4 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-sm transition-all cursor-pointer active:scale-[0.98]">
                               프로필 보기 →
                             </button>
                           </div>
@@ -3316,6 +3334,26 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (<RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />)}
       {activeSolutionType && (<SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { const solutionLabels: Record<string, string> = { personal_rehabilitation: '개인회생', personal_bankruptcy: '개인파산', credit_recovery: '신용회복', workout: '워크아웃' }; setEntryCategory({ type: 'solution', id: activeSolutionType, label: solutionLabels[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onApplyConsult={(ctaTitle, ctaContent) => { const solutionLabels: Record<string, string> = { personal_rehabilitation: '개인회생', personal_bankruptcy: '개인파산', credit_recovery: '신용회복', workout: '워크아웃' }; setEntryCategory({ type: 'solution', id: activeSolutionType, label: solutionLabels[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
       {selectedArticle && (<NewsDetailModal article={selectedArticle} lawyers={lawyers} onClose={() => setSelectedArticle(null)} onConsultWithLawyer={(lawyerId, lawyerName, articleTitle) => { setRequestType('direct'); setSelectedLawyerId(lawyerId); setIncome(230); setDebtTotal(6500); setTitle(`[법률칼럼 지정상담] ${lawyerName}`); setContent(`안녕하세요, ${lawyerName} 변호사님이 집필하신 법률 칼럼 [${articleTitle}]을 깊이 감명 깊게 정독하고 상담을 접수합니다.\n\n칼럼에 실린 법률 가이드 내용에 의거하여, 저의 소득과 채무 상황에서 최우선적인 압류 방어 대책 및 개인회생 금지명령 개시 가능성을 1:1로 직접 정밀 진단받고 싶습니다.`); setRequestStep(2); setActiveTab('request'); setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
+
+      {selectedProfileLawyer && (
+        <React.Suspense fallback={null}>
+          <LawyerProfileModal
+            lawyer={selectedProfileLawyer}
+            onClose={() => setSelectedProfileLawyer(null)}
+            onConsult={(lawyerId) => {
+              const l = mockLawyers.find(x => x.id === lawyerId) || lawyers.find(x => x.id === lawyerId);
+              if (l) {
+                setTitle(l.name + ' 변호사 전담 매칭');
+              }
+              setSelectedLawyerId(lawyerId);
+              setRequestType('direct');
+              setSelectedProfileLawyer(null);
+              setRequestStep(1);
+              setActiveTab('request');
+            }}
+          />
+        </React.Suspense>
+      )}
 
       {/* Popup Container */}
       {popupConfig && (
