@@ -242,4 +242,15 @@
   .mobile-gnb-hidden {
     transform: translateY(100%);
   }
+
+  /* ── Mobile Chatbot: 텔레그램 방식 메시지 하단 정렬 (모바일 전용) ── */
+  @media (max-width: 767px) {
+    .chatbot-scroll-area {
+      display: flex;
+      flex-direction: column;
+    }
+    .chatbot-messages-inner {
+      margin-top: auto;
+    }
+  }
 }

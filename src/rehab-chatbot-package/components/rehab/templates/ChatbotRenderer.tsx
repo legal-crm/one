@@ -468,7 +468,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
 
         return (
             <div
-                className="flex-1 overflow-y-auto p-4 flex flex-col"
+                className="flex-1 overflow-y-auto p-4 chatbot-scroll-area"
                 style={{
                     backgroundColor: getBackgroundColor(),
                     paddingLeft: hasRail ? '72px' : hasTimeline ? '48px' : '16px'
@@ -504,7 +504,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                     />
                 )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: `${messageGap}px`, marginTop: 'auto' }}>
+                <div className="chatbot-messages-inner" style={{ display: 'flex', flexDirection: 'column', gap: `${messageGap}px` }}>
                     <AnimatePresence>
                         {groupedMessages.map((msg, idx) => (
                             <motion.div
