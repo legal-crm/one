@@ -335,7 +335,7 @@ export default function ChatView({
       </div>
 
       {/* Chat Workspace Grid */}
-      <div id="chat-workspace-grid" className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-premium border border-slate-200 dark:border-slate-800 min-h-[550px] h-[calc(100vh-14rem)] lg:h-[700px] transition-all">
+      <div id="chat-workspace-grid" className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-premium border border-slate-200 dark:border-slate-800 min-h-[550px] h-[calc(100dvh-10rem)] lg:h-[700px] transition-all">
         {/* LEFT RAIL (상담 목록) */}
         <div className={`border-r border-slate-100 dark:border-slate-800 flex flex-col h-full min-h-0 bg-slate-50/20 dark:bg-slate-900/40 transition-all ${showProfilePanel ? 'hidden' : 'flex lg:col-span-3'}`}>
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white/40 dark:bg-slate-900/60 backdrop-blur-sm">

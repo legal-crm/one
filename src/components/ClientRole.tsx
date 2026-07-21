@@ -638,6 +638,38 @@ export default function ClientRole({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ── 모바일 GNB 숨김 로직 ──
+  const [isGnbHidden, setIsGnbHidden] = useState(false);
+  // 챗봇(request) 탭에서는 항상 GNB 숨김
+  const isChatbotActive = activeTab === 'request';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let focusTimeout: ReturnType<typeof setTimeout>;
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        clearTimeout(focusTimeout);
+        setIsGnbHidden(true);
+      }
+    };
+
+    const handleFocusOut = () => {
+      focusTimeout = setTimeout(() => {
+        setIsGnbHidden(false);
+      }, 300);
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+      clearTimeout(focusTimeout);
+    };
+  }, []);
+
   const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
 
   const activeRequest = requests.find(r => r.clientId === 'client-temp') || requests[0];
@@ -2071,7 +2103,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full">
+      <main className={`flex-1 w-full ${isChatbotActive ? '' : 'pb-[70px] md:pb-0'}`}>
 
         {/* TAB 1: LANDING & INTRO */}
         {activeTab === 'landing' && (
@@ -3122,7 +3154,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
             {activeTab === 'request' && (
-              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[600px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden relative shadow-2xl">
+              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[calc(100dvh-4rem)] md:h-[600px] bg-slate-900 border border-slate-800 rounded-3xl md:rounded-3xl rounded-none overflow-hidden relative shadow-2xl">
+                {/* 모바일 뒤로가기 버튼 (GNB 숨겨진 상태) */}
+                <button
+                  onClick={() => setActiveTab('landing')}
+                  className="md:hidden absolute top-3 left-3 z-30 flex items-center gap-1 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-full text-white text-xs font-semibold hover:bg-white/20 transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>돌아가기</span>
+                </button>
                 <AIRehabChatbotV2
                   isOpen={true}
                   disablePortal={true}
@@ -3271,7 +3311,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
 
-      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭'); }} onNavigateToLawyers={() => { setActiveTab('lawyers'); }} onNavigateToQna={() => { setActiveTab('qna'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭'); }} />
+      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭'); }} onNavigateToLawyers={() => { setActiveTab('lawyers'); }} onNavigateToQna={() => { setActiveTab('qna'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭'); }} isHidden={isChatbotActive || isGnbHidden} />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (<RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />)}
       {activeSolutionType && (<SolutionDetailModal solutionType={activeSolutionType} onClose={() => setActiveSolutionType(null)} onStartDiagnosis={() => { const solutionLabels: Record<string, string> = { personal_rehabilitation: '개인회생', personal_bankruptcy: '개인파산', credit_recovery: '신용회복', workout: '워크아웃' }; setEntryCategory({ type: 'solution', id: activeSolutionType, label: solutionLabels[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onApplyConsult={(ctaTitle, ctaContent) => { const solutionLabels: Record<string, string> = { personal_rehabilitation: '개인회생', personal_bankruptcy: '개인파산', credit_recovery: '신용회복', workout: '워크아웃' }; setEntryCategory({ type: 'solution', id: activeSolutionType, label: solutionLabels[activeSolutionType] || activeSolutionType }); setActiveSolutionType(null); setTitle(ctaTitle); setContent(ctaContent); setRequestType('open'); setRequestStep(3); setActiveTab('request'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}

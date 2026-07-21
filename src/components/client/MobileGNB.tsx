@@ -8,9 +8,10 @@ interface MobileGNBProps {
   onStartDiagnosis: () => void;
   onNavigateToLawyers: () => void;
   onNavigateToQna: () => void;
+  isHidden?: boolean;
 }
 
-export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult, onStartDiagnosis, onNavigateToLawyers, onNavigateToQna }: MobileGNBProps) {
+export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult, onStartDiagnosis, onNavigateToLawyers, onNavigateToQna, isHidden = false }: MobileGNBProps) {
   const navItems = [
     {
       key: 'landing',
@@ -51,7 +52,7 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult,
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around py-2.5 pb-safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+    <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around py-2.5 pb-safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.06)] transition-transform duration-300 ease-in-out ${isHidden ? 'translate-y-full' : ''}`}>
       {navItems.map((item) => {
         const Icon = item.icon;
         return (

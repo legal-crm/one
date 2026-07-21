@@ -70,6 +70,10 @@
     word-break: keep-all;
     line-height: 1.65; /* 로톡 행간 수준 (1.5~1.6) */
   }
+
+  :root {
+    --mobile-gnb-height: 70px;
+  }
 }
 
 
@@ -220,5 +224,22 @@
 
   .press-scale:active {
     transform: scale(0.98);
+  }
+
+  /* ── Mobile GNB Helpers ── */
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-content-safe {
+    padding-bottom: calc(var(--mobile-gnb-height) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-gnb-slide {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-gnb-hidden {
+    transform: translateY(100%);
   }
 }
