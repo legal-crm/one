@@ -70,8 +70,8 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-full sm:max-w-md w-full shadow-2xl p-6 md:p-8 space-y-4 relative overflow-hidden text-left animate-slideUp sm:animate-fadeIn max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
+      <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-full sm:max-w-md w-full shadow-2xl p-6 md:p-8 space-y-4 relative text-left animate-slideUp sm:animate-fadeIn max-h-[85dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
@@ -79,7 +79,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
             <h3 className="font-bold text-2xl text-slate-900 dark:text-white mt-1">로그인 및 회원가입</h3>
             <p className="text-sm text-slate-600 mt-1 font-medium">채무 사실 노출을 막기 위해 가명 닉네임과 가명 발신자 알림 시스템이 자동으로 활성화됩니다.</p>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors">
+          <button onClick={handleClose} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -135,7 +135,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
         </div>
 
         {/* Lawyer Login Redirect */}
-        <div className="text-center pt-1">
+        <div className="text-center pt-1 pb-2">
           <button
             type="button"
             onClick={() => { window.location.href = '?role=lawyer'; }}
