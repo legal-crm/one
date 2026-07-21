@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { SuccessReview, User as LawyerType, MainBanner, Notice, PlatformConfig } from '../../types';
 import { adBanners } from '../../data';
+import LawyerProfileModal from './LawyerProfileModal';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface LandingPageProps {
@@ -140,6 +141,18 @@ export default function LandingPage({
   const [showcasePage, setShowcasePage] = useState(0);
   const [showcaseHovered, setShowcaseHovered] = useState(false);
   const shuffledShowcase = shuffledBanners; // 동일 셔플 순서 사용
+
+  // ── 변호사 프로필 모달 ──
+  const [profileLawyer, setProfileLawyer] = useState<LawyerType | null>(null);
+
+  const openLawyerProfile = (lawyerId: string) => {
+    const found = lawyers.find(l => l.id === lawyerId);
+    if (found) {
+      setProfileLawyer(found);
+    } else {
+      onNavigate('lawyers');
+    }
+  };
 
   useEffect(() => {
     if (showcaseHovered || shuffledShowcase.length === 0) return;
@@ -369,7 +382,7 @@ export default function LandingPage({
                       {/* CTA */}
                       <div className="shrink-0 hidden md:block">
                         <button
-                          onClick={() => onNavigate('lawyers')}
+                          onClick={(e) => { e.stopPropagation(); openLawyerProfile(banner.lawyerId); }}
                           className="bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white font-bold text-sm px-6 py-3 rounded-xl border border-white/20 transition-all hover:scale-105 cursor-pointer"
                         >
                           프로필 보기 →
@@ -838,7 +851,7 @@ export default function LandingPage({
                       whileHover={{ y: -8, scale: 1.02 }}
                       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       className="group relative rounded-2xl overflow-hidden cursor-pointer"
-                      onClick={() => onNavigate('lawyers')}
+                      onClick={() => openLawyerProfile(banner.lawyerId)}
                     >
                       {/* Card layered bg */}
                       <div className={`absolute inset-0 bg-gradient-to-br ${banner.gradient} opacity-15 group-hover:opacity-25 transition-opacity duration-500`} />
@@ -888,7 +901,7 @@ export default function LandingPage({
                         </div>
 
                         {/* CTA */}
-                        <button className="mt-5 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/20 transition-all cursor-pointer active:scale-[0.98]">
+                        <button onClick={(e) => { e.stopPropagation(); openLawyerProfile(banner.lawyerId); }} className="mt-5 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/20 transition-all cursor-pointer active:scale-[0.98]">
                           프로필 보기 →
                         </button>
                       </div>
@@ -1209,6 +1222,18 @@ export default function LandingPage({
           FOOTER SPACER
           ═══════════════════════════════════════════════════════════════════════ */}
       <div className="h-16 bg-slate-950" />
+
+      {/* ── 변호사 프로필 모달 ── */}
+      {profileLawyer && (
+        <LawyerProfileModal
+          lawyer={profileLawyer}
+          onClose={() => setProfileLawyer(null)}
+          onConsult={(lawyerId) => {
+            setProfileLawyer(null);
+            onNavigate('lawyers');
+          }}
+        />
+      )}
     </div>
   );
 }
