@@ -840,7 +840,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             onChange={(e) => onInputChange(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
                             placeholder="입력해주세요..."
-                            className="flex-1 px-4 py-3 border outline-none focus:ring-2 transition-all"
+                            className="flex-1 min-w-0 px-4 py-3 border outline-none focus:ring-2 transition-all"
                             style={{
                                 backgroundColor: isDark ? '#334155' : '#f8fafc',
                                 color: isDark ? '#f1f5f9' : '#1e293b',
@@ -852,7 +852,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={onSubmit}
-                            className="p-3 transition-all"
+                            className="p-3 transition-all flex-shrink-0"
                             style={{
                                 backgroundColor: colors.primary,
                                 color: colors.headerText,
@@ -916,7 +916,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                         onKeyDown={(e) => e.key === 'Enter' && !isComposerLocked && onSubmit()}
                         placeholder={isComposerLocked ? "블록 입력 대기 중..." : "입력해주세요..."}
                         disabled={isComposerLocked}
-                        className="flex-1 px-4 py-3 border outline-none focus:ring-2 transition-all"
+                        className="flex-1 min-w-0 px-4 py-3 border outline-none focus:ring-2 transition-all"
                         style={{
                             backgroundColor: isDark ? '#334155' : '#f8fafc',
                             color: isDark ? '#f1f5f9' : '#1e293b',
@@ -931,7 +931,7 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                         whileTap={isComposerLocked ? {} : { scale: 0.95 }}
                         onClick={onSubmit}
                         disabled={isComposerLocked}
-                        className="p-3 transition-all"
+                        className="p-3 transition-all flex-shrink-0"
                         style={{
                             backgroundColor: colors.primary,
                             color: colors.headerText,
