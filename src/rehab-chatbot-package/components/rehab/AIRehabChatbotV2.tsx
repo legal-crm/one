@@ -432,9 +432,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 return [...updated, newMessage];
             });
             setIsTyping(false);
-            if (inputType === 'number' || inputType === 'text' || inputType === 'address' || inputType === 'money') {
-                setTimeout(() => inputRef.current?.focus(), 100);
-            }
+            // 모바일 키보드 유지: 항상 입력 필드에 포커스 복원
+            setTimeout(() => inputRef.current?.focus(), 100);
         }, 600);
     }, []);
 
@@ -3570,6 +3569,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
         addUserMessage(displayContent);
         setInputValue('');
+        // 모바일 키보드 유지: 제출 직후 포커스 복원
+        requestAnimationFrame(() => inputRef.current?.focus());
 
         setTimeout(() => {
             processStep(currentStep, value);
