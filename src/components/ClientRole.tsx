@@ -688,6 +688,22 @@ export default function ClientRole({
     };
   }, []);
 
+  // ── 모바일 키보드 대응: visualViewport API ──
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const handleResize = () => {
+      const vh = window.visualViewport!.height;
+      document.documentElement.style.setProperty('--chatbot-vh', `${vh}px`);
+    };
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    handleResize();
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
+    };
+  }, []);
+
   const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
 
   const activeRequest = requests.find(r => r.clientId === 'client-temp') || requests[0];
@@ -3108,7 +3124,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
  
  
         {activeTab !== 'landing' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${activeTab === 'request' ? 'py-0 px-0 md:py-6 md:px-4' : 'py-6'}`}>
           <React.Suspense fallback={
             <div className="flex flex-col items-center justify-center py-24 space-y-4 animate-fadeIn">
               <div className="w-10 h-10 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
@@ -3172,15 +3188,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
             {activeTab === 'request' && (
-              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[calc(100dvh-4rem)] md:h-[600px] bg-slate-900 border border-slate-800 rounded-3xl md:rounded-3xl rounded-none overflow-hidden relative shadow-2xl">
-                {/* 모바일 뒤로가기 버튼 (GNB 숨겨진 상태) */}
-                <button
-                  onClick={() => setActiveTab('landing')}
-                  className="md:hidden absolute top-3 left-3 z-30 flex items-center gap-1 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-full text-white text-xs font-semibold hover:bg-white/20 transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>돌아가기</span>
-                </button>
+              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[var(--chatbot-vh,100dvh)] md:h-[600px] bg-slate-900 border-0 md:border md:border-slate-800 rounded-none md:rounded-3xl overflow-hidden relative shadow-2xl">
                 <AIRehabChatbotV2
                   isOpen={true}
                   disablePortal={true}
