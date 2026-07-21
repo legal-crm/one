@@ -75,9 +75,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <span className="text-xs bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light px-2 py-0.5 rounded font-semibold uppercase tracking-wider">의뢰인 스텔스 보안</span>
             <h3 className="font-bold text-2xl text-slate-900 dark:text-white mt-1">로그인 및 회원가입</h3>
-            <p className="text-sm text-slate-600 mt-1 font-medium">채무 사실 노출을 막기 위해 가명 닉네임과 가명 발신자 알림 시스템이 자동으로 활성화됩니다.</p>
           </div>
           <button onClick={handleClose} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors shrink-0">
             <X className="w-4 h-4" />
