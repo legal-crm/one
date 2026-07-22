@@ -3191,38 +3191,76 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
             {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
 
-            {/* TAB: MYPAGE (개인 설정 및 1:1 문의) */}
+            {/* TAB: MYPAGE (채무 진단 대시보드 + 개인 설정) */}
             {activeTab === 'mypage' && (
-              <MySettingsView
-                isLoggedIn={isLoggedIn}
-                userAlias={userAlias}
-                setUserAlias={setUserAlias}
-                isEditingAlias={isEditingAlias}
-                setIsEditingAlias={setIsEditingAlias}
-                tempAlias={tempAlias}
-                setTempAlias={setTempAlias}
-                inquiries={inquiries}
-                onNavigateToTab={setActiveTab}
-                onShowAuthModal={() => setShowAuthModal(true)}
-                onLogout={async () => {
-                  await supabase.auth.signOut();
-                  setIsLoggedIn(false);
-                  setUserAlias('');
-                  
-                  localStorage.removeItem('legal_crm_client_id');
-                  localStorage.removeItem('legal_crm_requests');
-                  localStorage.removeItem('legal_crm_messages');
-                  localStorage.removeItem('legal_crm_inquiries');
-                  localStorage.removeItem('legal_crm_client_alias');
-                  
-                  setRequests([]);
-                  setMessages([]);
-                  setInquiries([]);
-                  
-                  alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
-                  setActiveTab('landing');
-                }}
-              />
+              <div className="space-y-6">
+                {/* 채무 진단 대시보드 */}
+                {activeRequest?.financialProfile ? (
+                  <MyPageView
+                    userAlias={userAlias}
+                    setUserAlias={setUserAlias}
+                    isEditingAlias={isEditingAlias}
+                    setIsEditingAlias={setIsEditingAlias}
+                    tempAlias={tempAlias}
+                    setTempAlias={setTempAlias}
+                    activeRequest={activeRequest}
+                    activeResult={activeResult}
+                    onUpdateFinancialProfile={handleUpdateFinancialProfile}
+                    onStartDiagnosis={() => setActiveTab('request')}
+                    requests={clientRequests}
+                    onNavigateToChat={() => setActiveTab('chat')}
+                    isCompact={false}
+                  />
+                ) : (
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-brand/10 rounded-full flex items-center justify-center">
+                      <FileText className="w-8 h-8 text-brand" />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 진단 내역이 없습니다</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      "1분 채무 진단 시작하기"를 통해 나의 채무 현황을 분석해 보세요.
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('request')}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white font-bold rounded-xl transition-all"
+                    >
+                      채무 진단 시작하기
+                    </button>
+                  </div>
+                )}
+
+                {/* 계정 설정 */}
+                <MySettingsView
+                  isLoggedIn={isLoggedIn}
+                  userAlias={userAlias}
+                  setUserAlias={setUserAlias}
+                  isEditingAlias={isEditingAlias}
+                  setIsEditingAlias={setIsEditingAlias}
+                  tempAlias={tempAlias}
+                  setTempAlias={setTempAlias}
+                  inquiries={inquiries}
+                  onNavigateToTab={setActiveTab}
+                  onShowAuthModal={() => setShowAuthModal(true)}
+                  onLogout={async () => {
+                    await supabase.auth.signOut();
+                    setIsLoggedIn(false);
+                    setUserAlias('');
+                    
+                    localStorage.removeItem('legal_crm_client_id');
+                    localStorage.removeItem('legal_crm_requests');
+                    localStorage.removeItem('legal_crm_messages');
+                    localStorage.removeItem('legal_crm_inquiries');
+                    localStorage.removeItem('legal_crm_client_alias');
+                    
+                    setRequests([]);
+                    setMessages([]);
+                    setInquiries([]);
+                    
+                    alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
+                    setActiveTab('landing');
+                  }}
+                />
+              </div>
             )}
 
             {/* TAB: LEGAL NEWS & TIPS BOARD */}
