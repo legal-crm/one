@@ -172,6 +172,17 @@
     </script>
   </head>
   <body>
+    <script>
+      // [DEBUG] React 로드 전 OAuth 콜백 URL 캡처
+      (function(){
+        var h = location.hash, s = location.search;
+        if (h || s) {
+          console.log('[PRE-REACT] URL 캡처:', location.href);
+          console.log('[PRE-REACT] hash:', h.substring(0,80));
+          console.log('[PRE-REACT] search:', s);
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
