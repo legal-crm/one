@@ -704,9 +704,16 @@ export default function ClientRole({
     };
   }, []);
 
-  const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
+  const currentClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+  const clientRequests = React.useMemo(() => {
+    return requests.filter(r => 
+      r.clientId === currentClientId || 
+      (!isLoggedIn && r.clientId === 'client-temp') || 
+      (isLoggedIn && userAlias && r.clientName === userAlias)
+    );
+  }, [requests, currentClientId, isLoggedIn, userAlias]);
 
-  const activeRequest = requests.find(r => r.clientId === 'client-temp') || requests[0];
+  const activeRequest = clientRequests.find(r => r.id === activeChatReqId) || clientRequests[0];
 
   const activeResult = React.useMemo(() => {
     if (!activeRequest || !activeRequest.financialProfile) return undefined;
@@ -1005,6 +1012,9 @@ export default function ClientRole({
       targetId = `client-${Date.now()}`;
       localStorage.setItem('legal_crm_client_id', targetId);
     }
+    
+    // 익명(client-temp) 상태에서 진행했던 진단/상담 요청이 있다면 로그인한 계정(targetId)으로 이전 바인딩
+    setRequests(prev => prev.map(r => r.clientId === 'client-temp' ? { ...r, clientId: targetId!, clientName: alias } : r));
     
     setMembers(prev => {
       const exists = prev.find(m => m.id === targetId || m.alias === alias);
@@ -3238,7 +3248,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {activeTab === 'chat' && (
               <ChatView 
-                requests={requests} 
+                requests={clientRequests} 
                 messages={messages} 
                 activeChatReqId={activeChatReqId} 
                 chatInput={chatInput} 

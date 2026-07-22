@@ -195,15 +195,27 @@ export default function App() {
     const savedLogs = localStorage.getItem('legal_crm_activity_logs');
 
     if (savedRequests) {
-      setRequests(JSON.parse(savedRequests));
+      try {
+        const parsed = JSON.parse(savedRequests);
+        const filtered = parsed.filter((r: any) => r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3');
+        setRequests(filtered);
+      } catch {
+        setRequests([]);
+      }
     } else {
-      setRequests(initialConsultRequests);
+      setRequests([]);
     }
 
     if (savedMessages) {
-      setMessages(JSON.parse(savedMessages));
+      try {
+        const parsed = JSON.parse(savedMessages);
+        const filtered = parsed.filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3');
+        setMessages(filtered);
+      } catch {
+        setMessages([]);
+      }
     } else {
-      setMessages(initialConsultMessages);
+      setMessages([]);
     }
 
     if (savedCases) {
@@ -242,15 +254,11 @@ export default function App() {
 
   // Sync state to localStorage whenever it updates
   useEffect(() => {
-    if (requests.length > 0) {
-      localStorage.setItem('legal_crm_requests', JSON.stringify(requests));
-    }
+    localStorage.setItem('legal_crm_requests', JSON.stringify(requests));
   }, [requests]);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem('legal_crm_messages', JSON.stringify(messages));
-    }
+    localStorage.setItem('legal_crm_messages', JSON.stringify(messages));
   }, [messages]);
 
   useEffect(() => {
