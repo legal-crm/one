@@ -1055,6 +1055,11 @@ export default function ClientRole({
 
 
   useEffect(() => {
+    // OAuth 리다이렉트 콜백인지 판별 (페이지 최초 로드 시점에 한 번만 체크)
+    const hash = window.location.hash;
+    const search = window.location.search;
+    const isOAuthCallback = hash.includes('access_token') || hash.includes('refresh_token') || search.includes('code=');
+
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -1062,6 +1067,10 @@ export default function ClientRole({
         const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
         setUserAlias(metaAlias);
         recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
+        // OAuth 리다이렉트로 돌아온 경우에만 채팅 탭으로 자동 이동
+        if (isOAuthCallback) {
+          setActiveTab('chat');
+        }
       }
     });
 
@@ -1072,6 +1081,11 @@ export default function ClientRole({
         const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
         setUserAlias(metaAlias);
         recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
+        // SIGNED_IN 이벤트: 실제 로그인(OAuth 포함)일 때만 채팅 탭으로 이동
+        // INITIAL_SESSION / TOKEN_REFRESHED: 기존 세션 복원이므로 탭 변경 안 함
+        if (event === 'SIGNED_IN') {
+          setActiveTab('chat');
+        }
       } else {
         setIsLoggedIn(false);
         setUserAlias('');
