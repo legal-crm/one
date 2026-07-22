@@ -713,7 +713,7 @@ export default function ClientRole({
     );
   }, [requests, currentClientId, isLoggedIn, userAlias]);
 
-  const activeRequest = clientRequests.find(r => r.id === activeChatReqId) || clientRequests[0];
+  const activeRequest = clientRequests.find(r => r.clientId === 'client-temp') || clientRequests[0];
 
   const activeResult = React.useMemo(() => {
     if (!activeRequest || !activeRequest.financialProfile) return undefined;
