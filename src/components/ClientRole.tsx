@@ -3318,17 +3318,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         </div>
       </div>
 
-      <ClientFooter 
-        platformConfig={platformConfig} 
-        onShowTerms={(type) => { setTermsModalType(type); setShowTermsModal(true); }} 
-        onNavigate={(tab) => { 
-          setActiveTab(tab as any); 
-          if (tab === 'notices') {
-            setSelectedNoticeId(null);
-          }
-          window.scrollTo({ top: 0, behavior: 'smooth' }); 
-        }}
-      />
+      {!isChatbotActive && (
+        <ClientFooter 
+          platformConfig={platformConfig} 
+          onShowTerms={(type) => { setTermsModalType(type); setShowTermsModal(true); }} 
+          onNavigate={(tab) => { 
+            setActiveTab(tab as any); 
+            if (tab === 'notices') {
+              setSelectedNoticeId(null);
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+          }}
+        />
+      )}
 
       {showTermsModal && (<TermsModal termsModalType={termsModalType} platformConfig={platformConfig} onClose={() => setShowTermsModal(false)} />)}
 
