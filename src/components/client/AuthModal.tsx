@@ -90,17 +90,6 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
 
         {/* Social & Quick Stealth Login Section */}
         <div className="space-y-2.5">
-          <button 
-            type="button"
-            onClick={() => {
-              const quickAlias = userAlias.trim() || ("새출발_" + Math.floor(100 + Math.random() * 900));
-              onLoginSuccess(quickAlias, `${quickAlias}@stealth.mykim.kr`, 'email');
-            }} 
-            className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-brand/20 text-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
-          >
-            <Lock className="w-4 h-4" />
-            <span>⚡ 3초 스텔스 가명으로 즉시 시작하기</span>
-          </button>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button onClick={() => handleSocialLogin('Google')} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs text-xs cursor-pointer">
