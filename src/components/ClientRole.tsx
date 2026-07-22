@@ -2156,25 +2156,32 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
           <div className="animate-fadeIn text-left">
 
             {/* ── Sector 1: Hero ─────────────────────────────── */}
-            <section className="w-full py-10 md:py-16 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/20">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <section className="w-full py-12 md:py-20 bg-mesh-glow border-b border-slate-200/60 dark:border-slate-800/80 relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             {/* 1. Hero Section (Platform Pitch & Identity) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
-                <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">
-                  빚 걱정, 혼자 하지 마세요<br />
-                  <span className="bg-gradient-to-r from-brand to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">전담 변호사가 관리해 드려요</span>
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/40 text-brand dark:text-brand-light text-xs font-extrabold tracking-wide uppercase shadow-sm">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                  </span>
+                  <span>100% 비밀보호 · 1분 안심 진단 시스템</span>
+                </div>
+
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight text-slate-900 dark:text-white">
+                  채무 독촉 차단부터,<br />
+                  <span className="text-gradient-brand">나의 전담 변호사가 다 관리해 드려요</span>
                 </h1>
                 
-                <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base font-medium leading-relaxed max-w-xl">
-                  지금 내 상황이 어떤지 먼저 무료로 살펴보고,<br />
-                  어떻게 하면 좋을지 전담변호사가 함께 찾아드려요.
+                <p className="text-slate-600 dark:text-slate-300 text-base md:text-lg font-medium leading-relaxed max-w-xl">
+                  이름 없이 1분 만에 내 탕감율과 예상 변제금을 확인하고,<br />
+                  신뢰할 수 있는 1:1 전담 변호사와 바로 연결해 보세요.
                 </p>
 
-
                 {/* Unified CTA Button */}
-                <div className="flex flex-col gap-3 pt-2 w-full max-w-md">
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 w-full max-w-md">
                   <button
                     onClick={() => {
                       setRequestType('open');
@@ -2182,34 +2189,43 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       setActiveTab('request');
                       onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [1분 채무관리 체크 시작하기] 버튼 클릭');
                     }}
-                    className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold px-6 py-4.5 rounded-2xl shadow-lg shadow-brand/10 hover:shadow-brand/20 hover:scale-[1.01] active:scale-[0.99] transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-sm md:text-base"
+                    className="w-full sm:w-auto flex-1 bg-gradient-to-r from-brand via-indigo-600 to-indigo-700 hover:from-brand-hover hover:to-indigo-800 text-white font-extrabold px-7 py-4 rounded-2xl shadow-lg shadow-brand/25 hover:shadow-brand/40 hover:scale-[1.02] active:scale-[0.98] transition-all text-center flex items-center justify-center gap-2.5 group cursor-pointer text-base"
                   >
-                    <span>1분 채무관리 체크 시작하기</span>
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    <span>1분 채무 진단 시작하기</span>
+                    <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('lawyers')}
+                    className="w-full sm:w-auto px-6 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm transition-all text-center shrink-0 cursor-pointer shadow-xs hover:shadow-sm"
+                  >
+                    전담 변호사 목록
                   </button>
                 </div>
               </div>
 
               {/* Right Column: 핵심 약속 & 프로세스 안내 */}
-              <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200 flex items-center gap-1.5">
-                    🤝 my김변의 약속
+              <div className="lg:col-span-5 glass-card glass-card-interactive rounded-3xl p-6 sm:p-7 space-y-5">
+                <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-3.5">
+                  <h4 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="text-xl">🛡️</span> my김변 안심 서비스 약속
                   </h4>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                    스텔스 보증
+                  </span>
                 </div>
 
                 <div className="space-y-3">
                   {[
-                    { icon: '💬', title: '초기 체크 무료', desc: '채무 체크는 비용 없이 이용 가능합니다. 상담 조건은 변호사별로 다를 수 있습니다.' },
-                    { icon: '🔒', title: '익명 상담 보장', desc: '실명 없이도 상담 가능. 내 이름,전화번호도 노출되지 않아요.' },
-                    { icon: '⚖️', title: '변호사 직접 선택', desc: '고객이 직접 선택한 변호사와 1:1 전담 상담방을 만들 수 있습니다.' },
-                    { icon: '🛡️', title: '상담 내용 암호화', desc: '변호사와의 대화는 별도 암호화되어 관리되며, 운영자도 열람할 수 없습니다.' },
+                    { icon: '💬', title: '초기 진단 무료 진행', desc: '채무 진단 및 탕감 비율 산출은 일체 비용 없이 무료로 제공됩니다.' },
+                    { icon: '🔒', title: '100% 익명성 보장', desc: '실명, 주민번호 노출 없이 스텔스 가명으로 안전하게 상담 가능합니다.' },
+                    { icon: '⚖️', title: '1:1 전담 변호사 직접 지정', desc: '의뢰인이 직접 신뢰하는 변호사를 선택하여 전담 상담방을 개설합니다.' },
+                    { icon: '🛡️', title: '종단간 상담 데이터 암호화', desc: '모든 상담 데이터는 최고 등급 암호화 처리되며 외부 유출이 차단됩니다.' },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all">
-                      <span className="text-lg shrink-0 mt-0.5">{item.icon}</span>
+                    <div key={idx} className="flex items-start gap-3.5 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all">
+                      <span className="text-xl shrink-0 mt-0.5">{item.icon}</span>
                       <div>
                         <span className="text-sm font-bold text-slate-900 dark:text-white block">{item.title}</span>
-                        <span className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed">{item.desc}</span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium block mt-0.5">{item.desc}</span>
                       </div>
                     </div>
                   ))}
@@ -2221,45 +2237,52 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 2: 3단계 프로세스 ────────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
+            <section className="w-full py-12 md:py-16 bg-white dark:bg-slate-900/60 border-y border-slate-200/60 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
-            <div className="space-y-6 text-center">
-              <div className="space-y-1">
-                <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
-                  이렇게 3단계면 끝이에요
+            <div className="space-y-8 text-center">
+              <div className="space-y-2">
+                <span className="text-xs font-extrabold text-brand uppercase tracking-widest bg-brand/10 dark:bg-brand/20 px-3 py-1 rounded-full border border-brand/20">SIMPLE & FAST</span>
+                <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                  단 3단계로 시작하는 신속 채무 클리닝
                 </h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
                   {
-                    step: 'Step 1',
-                    title: '1. 내 상황 체크',
-                    desc: '빚이 얼마나 있는지, 독촉이 오는지 — 이름 없이 1분 만에 확인해보세요',
+                    step: 'STEP 01',
+                    title: '1분 셀프 채무 진단',
+                    desc: '채무 규모와 수입 상태를 입력하면 예상 탕감율과 월 변제금이 즉시 산출됩니다.',
                     icon: '🔍',
+                    badge: '무료 진행'
                   },
                   {
-                    step: 'Step 2',
-                    title: '2. 전문가 검토 요청',
-                    desc: '고객이 선택한 최대 3명의 변호사에게 익명으로 검토를 요청할 수 있어요',
+                    step: 'STEP 02',
+                    title: '전담 변호사 매칭 선택',
+                    desc: '원하는 전문 변호사를 직접 선택하여 익명으로 채무 솔루션을 요청합니다.',
                     icon: '👥',
+                    badge: '최대 3명'
                   },
                   {
-                    step: 'Step 3',
-                    title: '3. 나만의 관리방',
-                    desc: '가장 신뢰가 가는 변호사를 선임하고 무료로 채무 관리를 받아보세요',
-                    icon: '💬',
+                    step: 'STEP 03',
+                    title: '프라이빗 전담 관리방',
+                    desc: '독촉 차단 금지명령부터 맞춤 변제안까지 1:1 전담 비밀 공간에서 케어받으세요.',
+                    icon: '🔒',
+                    badge: '100% 비밀'
                   }
                 ].map((item, idx) => (
-                  <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl text-left hover:border-brand/50 transition-all duration-300 shadow-sm hover:shadow-md flex flex-col justify-between min-h-[160px] group hover-lift-sm transition-card">
-                    <div className="space-y-2">
+                  <div key={idx} className="glass-card glass-card-interactive p-6 rounded-3xl text-left hover:border-brand/40 transition-all duration-300 flex flex-col justify-between min-h-[190px] group relative overflow-hidden">
+                    <div className="space-y-3 relative z-10">
                       <div className="flex justify-between items-center">
-                        <span className="text-[12px] text-brand dark:text-brand-light font-black tracking-wider uppercase">{item.step}</span>
-                        <span className="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                        <span className="text-xs font-black text-brand dark:text-brand-light tracking-wider uppercase bg-brand/10 px-2.5 py-1 rounded-lg">{item.step}</span>
+                        <span className="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">{item.badge}</span>
                       </div>
-                      <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200">{item.title}</h4>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                      <div className="flex items-center gap-2.5 pt-1">
+                        <span className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                        <h4 className="font-extrabold text-base text-slate-900 dark:text-white">{item.title}</h4>
+                      </div>
+                      <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                     </div>
                   </div>
                 ))}

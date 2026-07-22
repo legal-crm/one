@@ -346,17 +346,26 @@ export default function ChatView({
               접수 완료된 채무 체크 및 상담 목록입니다.
             </p>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 scrollbar-hide">
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 scrollbar-hide flex flex-col">
             {requests.length === 0 ? (
-              <div className="p-8 text-center space-y-3">
-                <p className="text-slate-500 dark:text-slate-500 text-xs font-medium">
-                  작성 완료된 상담 요청이 없습니다.
-                </p>
+              <div className="p-8 text-center space-y-4 my-auto">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand/20 to-indigo-500/10 text-brand dark:text-brand-light flex items-center justify-center mx-auto shadow-sm border border-brand/20">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-slate-900 dark:text-white text-base font-extrabold tracking-tight">
+                    등록된 채무 관리방이 없습니다
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed max-w-xs mx-auto">
+                    이름 없이 1분 만에 채무 진단을 진행하고<br />나만의 전담 변호사 관리방을 개설해 보세요.
+                  </p>
+                </div>
                 <button 
                   onClick={() => onSetActiveTab('request')} 
-                  className="inline-flex text-xs text-brand hover:text-brand-hover font-bold cursor-pointer transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-md shadow-brand/20 hover:scale-105 cursor-pointer mt-1"
                 >
-                  무료 채무 체크 바로가기 &rarr;
+                  <span>1분 무료 진단 시작하기</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             ) : requests.map(r => {
