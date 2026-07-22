@@ -1567,7 +1567,7 @@ export default function LawyerRole({
                   my김변
                 </span>
                 <span className="text-[13px] text-slate-500 mt-0.5 font-medium">
-                  나의 전담 채무관리 변호사
+                  나의 채무관리 변호사
                 </span>
               </div>
               {activeLawyer.firmName && (

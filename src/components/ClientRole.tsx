@@ -2010,7 +2010,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   my김변
                 </span>
                 <span className={`text-[11px] lg:text-[12px] text-slate-500 dark:text-slate-500 font-medium whitespace-nowrap ${isLoggedIn ? 'hidden xl:block' : 'hidden sm:block'}`}>
-                  나의 전담 채무관리 변호사
+                  나의 채무관리 변호사
                 </span>
               </div>
             </div>
