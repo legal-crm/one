@@ -1060,39 +1060,56 @@ export default function ClientRole({
     const search = window.location.search;
     const isOAuthCallback = hash.includes('access_token') || hash.includes('refresh_token') || search.includes('code=');
 
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setIsLoggedIn(true);
-        const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
-        setUserAlias(metaAlias);
-        recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
-        // OAuth 리다이렉트로 돌아온 경우에만 채팅 탭으로 자동 이동
-        if (isOAuthCallback) {
-          setActiveTab('chat');
+    console.log('[Auth] 초기화 시작', { isOAuthCallback, hash: hash.substring(0, 50), search });
+
+    // 세션 확인 함수
+    const checkSession = (label: string) => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log(`[Auth] ${label} getSession 결과:`, session ? `user=${session.user.email}` : 'null');
+        if (session?.user) {
+          setIsLoggedIn(true);
+          const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
+          setUserAlias(metaAlias);
+          recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
+          if (isOAuthCallback) {
+            console.log('[Auth] OAuth 콜백 감지 → chat 탭으로 이동');
+            setActiveTab('chat');
+          }
         }
-      }
-    });
+      }).catch(err => console.error(`[Auth] ${label} getSession 에러:`, err));
+    };
+
+    // 즉시 세션 확인
+    checkSession('즉시');
+
+    // implicit flow 타이밍 보정: Supabase _initialize()가 완료된 후 재확인
+    const retryTimer = setTimeout(() => checkSession('500ms 재시도'), 500);
+    const retryTimer2 = setTimeout(() => checkSession('2000ms 재시도'), 2000);
 
     // Listen to changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Auth] onAuthStateChange:', event, session ? `user=${session.user.email}` : 'null');
       if (session?.user) {
         setIsLoggedIn(true);
         const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
         setUserAlias(metaAlias);
         recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
         // SIGNED_IN 이벤트: 실제 로그인(OAuth 포함)일 때만 채팅 탭으로 이동
-        // INITIAL_SESSION / TOKEN_REFRESHED: 기존 세션 복원이므로 탭 변경 안 함
         if (event === 'SIGNED_IN') {
+          console.log('[Auth] SIGNED_IN 이벤트 → chat 탭으로 이동');
           setActiveTab('chat');
         }
       } else {
-        setIsLoggedIn(false);
-        setUserAlias('');
+        if (event !== 'INITIAL_SESSION') {
+          setIsLoggedIn(false);
+          setUserAlias('');
+        }
       }
     });
 
     return () => {
+      clearTimeout(retryTimer);
+      clearTimeout(retryTimer2);
       subscription.unsubscribe();
     };
   }, []);

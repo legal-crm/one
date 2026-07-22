@@ -2,32 +2,20 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // ============================================================
-// [SECURITY] Supabase 크레덴셜을 환경변수에서만 로드합니다.
-// .env 파일에 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY를 설정하세요.
-// 소스코드에 API 키를 하드코딩하지 않습니다.
+// Supabase 크레덴셜 (Anon Key는 공개 키이므로 클라이언트 번들에 포함해도 안전합니다)
+// 환경변수가 있으면 우선 사용, 없으면 프로덕션 기본값 사용
 // ============================================================
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xgmmvpmoyywpttuslwkh.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhnbW12cG1veXl3cHR0dXNsd2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MzU1MDIsImV4cCI6MjA5NTMxMTUwMn0.j9zOJQgczrW0XeJgiUnTFs9TRpJXnsw3eIgBd0zaxVA';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '[SECURITY] Supabase 환경변수가 설정되지 않았습니다. ' +
-    '.env 파일에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해주세요. ' +
-    'DB 관련 기능(진단 결과 저장 등)이 비활성화됩니다.'
-  );
-}
-
-// 환경변수가 없으면 더미 클라이언트를 생성하여 런타임 에러 방지
-export const supabase: SupabaseClient = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        flowType: 'implicit',        // PKCE 대신 implicit 사용 (hash 기반, 코드 교환 불필요)
-        detectSessionInUrl: true,     // URL 파라미터에서 세션 자동 감지
-        autoRefreshToken: true,
-        persistSession: true,
-      }
-    })
-  : createClient('https://placeholder.supabase.co', 'placeholder-key');
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    flowType: 'implicit',        // hash 기반 OAuth (코드 교환 불필요)
+    detectSessionInUrl: true,     // URL에서 세션 자동 감지
+    autoRefreshToken: true,
+    persistSession: true,
+  }
+});
 
 // Supabase 연결 상태 확인 유틸리티
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isSupabaseConfigured = true;
