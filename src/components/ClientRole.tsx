@@ -1055,61 +1055,66 @@ export default function ClientRole({
 
 
   useEffect(() => {
-    // OAuth 리다이렉트 콜백인지 판별 (페이지 최초 로드 시점에 한 번만 체크)
-    const hash = window.location.hash;
-    const search = window.location.search;
-    const isOAuthCallback = hash.includes('access_token') || hash.includes('refresh_token') || search.includes('code=');
+    // OAuth 플래그 확인 (AuthModal에서 리다이렉트 전에 설정)
+    const pendingOAuth = localStorage.getItem('pending_oauth_login');
+    const isPendingOAuth = !!pendingOAuth;
+    
+    console.log('[Auth] 초기화', { isPendingOAuth, url: window.location.href.substring(0, 80) });
 
-    console.log('[Auth] 초기화 시작', { isOAuthCallback, hash: hash.substring(0, 50), search });
-
-    // 세션 확인 함수
-    const checkSession = (label: string) => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log(`[Auth] ${label} getSession 결과:`, session ? `user=${session.user.email}` : 'null');
-        if (session?.user) {
-          setIsLoggedIn(true);
-          const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
-          setUserAlias(metaAlias);
-          recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
-          if (isOAuthCallback) {
-            console.log('[Auth] OAuth 콜백 감지 → chat 탭으로 이동');
-            setActiveTab('chat');
-          }
-        }
-      }).catch(err => console.error(`[Auth] ${label} getSession 에러:`, err));
+    // 세션 감지 시 처리 함수
+    const handleSession = (session: any, source: string) => {
+      if (!session?.user) return;
+      console.log(`[Auth] ${source}: 세션 감지 user=${session.user.email}`);
+      setIsLoggedIn(true);
+      const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
+      setUserAlias(metaAlias);
+      recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
+      
+      // OAuth 리다이렉트 직후이면 chat 탭으로 이동
+      if (isPendingOAuth) {
+        console.log('[Auth] OAuth 로그인 완료 → chat 탭으로 이동');
+        localStorage.removeItem('pending_oauth_login');
+        setActiveTab('chat');
+      }
     };
 
-    // 즉시 세션 확인
-    checkSession('즉시');
+    // 1) getSession 즉시 확인
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[Auth] getSession:', session ? `user=${session.user.email}` : 'null');
+      handleSession(session, 'getSession');
+    }).catch(err => console.error('[Auth] getSession 에러:', err));
 
-    // implicit flow 타이밍 보정: Supabase _initialize()가 완료된 후 재확인
-    const retryTimer = setTimeout(() => checkSession('500ms 재시도'), 500);
-    const retryTimer2 = setTimeout(() => checkSession('2000ms 재시도'), 2000);
+    // 2) 지연 재시도 (Supabase _initialize 완료 대기)
+    const retry1 = setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) handleSession(session, '1초 재시도');
+      });
+    }, 1000);
 
-    // Listen to changes
+    const retry2 = setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) handleSession(session, '3초 재시도');
+        else if (isPendingOAuth) {
+          console.log('[Auth] 3초 후에도 세션 없음 - OAuth 플래그 정리');
+          localStorage.removeItem('pending_oauth_login');
+        }
+      });
+    }, 3000);
+
+    // 3) 실시간 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[Auth] onAuthStateChange:', event, session ? `user=${session.user.email}` : 'null');
       if (session?.user) {
-        setIsLoggedIn(true);
-        const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
-        setUserAlias(metaAlias);
-        recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
-        // SIGNED_IN 이벤트: 실제 로그인(OAuth 포함)일 때만 채팅 탭으로 이동
-        if (event === 'SIGNED_IN') {
-          console.log('[Auth] SIGNED_IN 이벤트 → chat 탭으로 이동');
-          setActiveTab('chat');
-        }
-      } else {
-        if (event !== 'INITIAL_SESSION') {
-          setIsLoggedIn(false);
-          setUserAlias('');
-        }
+        handleSession(session, `onAuthStateChange(${event})`);
+      } else if (event === 'SIGNED_OUT') {
+        setIsLoggedIn(false);
+        setUserAlias('');
       }
     });
 
     return () => {
-      clearTimeout(retryTimer);
-      clearTimeout(retryTimer2);
+      clearTimeout(retry1);
+      clearTimeout(retry2);
       subscription.unsubscribe();
     };
   }, []);

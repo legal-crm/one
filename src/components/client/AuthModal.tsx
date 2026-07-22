@@ -21,14 +21,20 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
   const handleSocialLogin = async (provider: string) => {
     const supabaseProvider = provider === 'Google' ? 'google' : provider === '카카오' ? 'kakao' : 'naver';
     try {
+      // OAuth 리다이렉트 전 플래그 저장 (돌아왔을 때 OAuth 로그인 감지용)
+      localStorage.setItem('pending_oauth_login', Date.now().toString());
       const { error } = await supabase.auth.signInWithOAuth({
         provider: supabaseProvider as any,
         options: {
           redirectTo: window.location.origin
         }
       });
-      if (error) throw error;
+      if (error) {
+        localStorage.removeItem('pending_oauth_login');
+        throw error;
+      }
     } catch (err: any) {
+      localStorage.removeItem('pending_oauth_login');
       alert(`${provider} 로그인 시작 실패: ${err.message || err}`);
     }
   };
