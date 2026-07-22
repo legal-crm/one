@@ -2224,72 +2224,32 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </div>
               </div>
 
-              {/* Right Column: Interactive Mini Calculator */}
+              {/* Right Column: 핵심 약속 & 프로세스 안내 */}
               <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl shadow-sm p-6 sm:p-7 space-y-5">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
-                  <Calculator className="w-6 h-6 text-[#1E3A5F]" />
-                  <h4 className="font-bold text-lg text-slate-900">
-                    30초 탕감 예상 조회
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-[#1E3A5F]" /> my김변 안심 서비스 약속
                   </h4>
+                  <span className="text-xs font-bold text-[#10B981] bg-[#ECFDF5] px-2.5 py-1 rounded-md border border-[#10B981]/20">
+                    스텔스 보증
+                  </span>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <label className="text-sm font-medium text-slate-700">총 채무액</label>
-                      <span className="text-sm font-bold text-[#3B82F6]">{formatNumber(calcDebt)}만원</span>
+                <div className="space-y-3">
+                  {[
+                    { icon: <MessageSquare className="w-5 h-5 text-[#3B82F6]" />, title: '초기 진단 무료 진행', desc: '채무 진단 및 탕감 비율 산출은 일체 비용 없이 무료로 제공됩니다.' },
+                    { icon: <Lock className="w-5 h-5 text-[#10B981]" />, title: '100% 익명성 보장', desc: '실명, 주민번호 노출 없이 스텔스 가명으로 안전하게 상담 가능합니다.' },
+                    { icon: <Users className="w-5 h-5 text-[#1E3A5F]" />, title: '1:1 전담 변호사 직접 지정', desc: '의뢰인이 직접 신뢰하는 변호사를 선택하여 전담 상담방을 개설합니다.' },
+                    { icon: <ShieldCheck className="w-5 h-5 text-slate-500" />, title: 'SSL/TLS 암호화 통신 보호', desc: '모든 상담 데이터는 SSL/TLS 암호화 전송 및 서버 암호화 저장으로 안전하게 보호됩니다.' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3.5 p-3.5 rounded-xl border border-slate-100 bg-[#F8FAFC] hover:bg-white hover:border-slate-200 transition-all">
+                      <span className="shrink-0 mt-0.5">{item.icon}</span>
+                      <div>
+                        <span className="text-sm font-bold text-slate-900 block">{item.title}</span>
+                        <span className="text-xs text-slate-500 leading-relaxed font-medium block mt-0.5">{item.desc}</span>
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="1000"
-                      max="50000"
-                      step="100"
-                      value={calcDebt}
-                      onChange={(e) => setCalcDebt(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B82F6]"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <label className="text-sm font-medium text-slate-700">월 소득</label>
-                      <span className="text-sm font-bold text-[#3B82F6]">{formatNumber(calcIncome)}만원</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1000"
-                      step="10"
-                      value={calcIncome}
-                      onChange={(e) => setCalcIncome(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B82F6]"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <label className="text-sm font-medium text-slate-700">부양 가족</label>
-                      <span className="text-sm font-bold text-[#3B82F6]">{calcDependents}명</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="5"
-                      step="1"
-                      value={calcDependents}
-                      onChange={(e) => setCalcDependents(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B82F6]"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-slate-100">
-                  <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-700">예상 탕감율</span>
-                    <span className="text-2xl font-black text-[#1E3A5F]">
-                      {calcDebt > 0 ? Math.max(0, Math.min(90, Math.floor(((calcDebt - Math.max(0, calcIncome - (calcDependents + 1) * 125) * 36) / calcDebt) * 100))) : 0}%
-                    </span>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
