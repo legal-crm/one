@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { MessageSquare, Send, Users, Phone, Shield, Clock, AlertTriangle, Award, FileText, X } from 'lucide-react';
+import { MessageSquare, Send, Users, Phone, Shield, ShieldCheck, Clock, AlertTriangle, Award, FileText, X } from 'lucide-react';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } from '../../types';
 import { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import MyPageView from './MyPageView';
