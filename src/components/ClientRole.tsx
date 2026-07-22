@@ -704,55 +704,7 @@ export default function ClientRole({
     };
   }, []);
 
-  const currentClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-  const clientRequests = React.useMemo(() => {
-    return requests.filter(r => 
-      r.clientId === currentClientId || 
-      (!isLoggedIn && r.clientId === 'client-temp') || 
-      (isLoggedIn && userAlias && r.clientName === userAlias)
-    );
-  }, [requests, currentClientId, isLoggedIn, userAlias]);
-
-  const activeRequest = clientRequests.find(r => r.clientId === 'client-temp') || clientRequests[0];
-
-  const activeResult = React.useMemo(() => {
-    if (!activeRequest || !activeRequest.financialProfile) return undefined;
-    const profile = activeRequest.financialProfile;
-    const userInput: RehabUserInput = {
-      address: profile.residenceRegion || '서울',
-      workLocation: undefined,
-      age: 35,
-      employmentType: profile.jobType === 'SALARIED' ? 'salary' :
-                      profile.jobType === 'BUSINESS' ? 'business' :
-                      profile.jobType === 'DAILY' ? 'daily' :
-                      profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
-      monthlyIncome: (profile.income || 0) * 10000,
-      familySize: (profile.dependents || 0) + 1,
-      spouseAssets: (profile.spouseAsset || 0) * 10000,
-      rentCost: (profile.rentCost || 0) * 10000,
-      deposit: (profile.rentalDeposit || 0) * 10000,
-      depositLoan: (profile.depositLoan || 0) * 10000,
-      housingType: profile.housingType,
-      housingContractHolder: profile.housingContractHolder,
-      myAssets: Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000,
-      totalDebt: (profile.debtTotal || 0) * 10000,
-      priorityDebt: (profile.priorityDebt || 0) * 10000,
-      speculativeLoss: (profile.speculativeLoss || 0) * 10000,
-      gamblingLoss: (profile.gamblingLoss || 0) * 10000,
-      retirementPensionType: profile.retirementPensionType || 'unknown',
-      retirementPay: (profile.retirementPay || 0) * 10000,
-      isMarried: profile.maritalStatus === 'MARRIED',
-      maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
-      minorChildren: profile.dependents || 0,
-      legalActions: profile.legalActions || []
-    };
-    try {
-      return calculateRepayment(userInput);
-    } catch (e) {
-      console.error(e);
-      return undefined;
-    }
-  }, [activeRequest]);
+  const [pendingChatbotData, setPendingChatbotData] = useState<{ res: RehabCalculationResult; input: RehabUserInput } | null>(null);
 
   const handleUpdateFinancialProfile = (updatedProfile: FinancialProfile) => {
     if (!activeRequest) return;
@@ -1203,6 +1155,56 @@ export default function ClientRole({
   const [reviewCategoryFilter, setReviewCategoryFilter] = useState<string>('전체');
   const [reviewSearchQuery, setReviewSearchQuery] = useState<string>('');
   const [reviewPage, setReviewPage] = useState<number>(1);
+
+  const currentClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+  const clientRequests = React.useMemo(() => {
+    return requests.filter(r => 
+      r.clientId === currentClientId || 
+      (!isLoggedIn && r.clientId === 'client-temp') || 
+      (isLoggedIn && userAlias && r.clientName === userAlias)
+    );
+  }, [requests, currentClientId, isLoggedIn, userAlias]);
+
+  const activeRequest = clientRequests.find(r => r.clientId === 'client-temp') || clientRequests[0];
+
+  const activeResult = React.useMemo(() => {
+    if (!activeRequest || !activeRequest.financialProfile) return undefined;
+    const profile = activeRequest.financialProfile;
+    const userInput: RehabUserInput = {
+      address: profile.residenceRegion || '서울',
+      workLocation: undefined,
+      age: 35,
+      employmentType: profile.jobType === 'SALARIED' ? 'salary' :
+                      profile.jobType === 'BUSINESS' ? 'business' :
+                      profile.jobType === 'DAILY' ? 'daily' :
+                      profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
+      monthlyIncome: (profile.income || 0) * 10000,
+      familySize: (profile.dependents || 0) + 1,
+      spouseAssets: (profile.spouseAsset || 0) * 10000,
+      rentCost: (profile.rentCost || 0) * 10000,
+      deposit: (profile.rentalDeposit || 0) * 10000,
+      depositLoan: (profile.depositLoan || 0) * 10000,
+      housingType: profile.housingType,
+      housingContractHolder: profile.housingContractHolder,
+      myAssets: Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000,
+      totalDebt: (profile.debtTotal || 0) * 10000,
+      priorityDebt: (profile.priorityDebt || 0) * 10000,
+      speculativeLoss: (profile.speculativeLoss || 0) * 10000,
+      gamblingLoss: (profile.gamblingLoss || 0) * 10000,
+      retirementPensionType: profile.retirementPensionType || 'unknown',
+      retirementPay: (profile.retirementPay || 0) * 10000,
+      isMarried: profile.maritalStatus === 'MARRIED',
+      maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
+      minorChildren: profile.dependents || 0,
+      legalActions: profile.legalActions || []
+    };
+    try {
+      return calculateRepayment(userInput);
+    } catch (e) {
+      console.error(e);
+      return undefined;
+    }
+  }, [activeRequest]);
 
 
 
