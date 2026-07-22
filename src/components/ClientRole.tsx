@@ -3362,7 +3362,16 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       {/* Auth Modal (로그인 / 회원가입) */}
       {showAuthModal && (
         <React.Suspense fallback={null}>
-          <AuthModal onClose={() => setShowAuthModal(false)} onLoginSuccess={(alias,ep,ch) => { setIsLoggedIn(true); setUserAlias(alias); setShowAuthModal(false); recordClientLogin(alias,ep,ch); }} />
+          <AuthModal 
+            onClose={() => setShowAuthModal(false)} 
+            onLoginSuccess={(alias,ep,ch) => { 
+              setIsLoggedIn(true); 
+              setUserAlias(alias); 
+              setShowAuthModal(false); 
+              recordClientLogin(alias,ep,ch); 
+              setActiveTab('chat');
+            }} 
+          />
         </React.Suspense>
       )}
 
