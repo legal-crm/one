@@ -2244,7 +2244,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     { icon: '💬', title: '초기 진단 무료 진행', desc: '채무 진단 및 탕감 비율 산출은 일체 비용 없이 무료로 제공됩니다.' },
                     { icon: '🔒', title: '100% 익명성 보장', desc: '실명, 주민번호 노출 없이 스텔스 가명으로 안전하게 상담 가능합니다.' },
                     { icon: '⚖️', title: '1:1 전담 변호사 직접 지정', desc: '의뢰인이 직접 신뢰하는 변호사를 선택하여 전담 상담방을 개설합니다.' },
-                    { icon: '🛡️', title: '종단간 상담 데이터 암호화', desc: '모든 상담 데이터는 최고 등급 암호화 처리되며 외부 유출이 차단됩니다.' },
+                    { icon: '🛡️', title: 'SSL/TLS 암호화 통신 보호', desc: '모든 상담 데이터는 SSL/TLS 암호화 전송 및 서버 암호화 저장으로 안전하게 보호됩니다.' },
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3.5 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all">
                       <span className="text-xl shrink-0 mt-0.5">{item.icon}</span>
