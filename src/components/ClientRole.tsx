@@ -2046,7 +2046,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 onClick={() => setActiveTab('landing')}
                 className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'landing' 
-                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    ? 'bg-[#1E3A5F]/5 border-[#1E3A5F]/20 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
@@ -2061,7 +2061,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 }}
                 className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'request' 
-                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    ? 'bg-[#1E3A5F]/5 border-[#1E3A5F]/20 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
@@ -2071,14 +2071,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 onClick={() => setActiveTab('chat')}
                 className={`relative whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'chat' 
-                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    ? 'bg-[#1E3A5F]/5 border-[#1E3A5F]/20 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
                 내 관리방
                 <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1E3A5F] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1E3A5F]"></span>
                 </span>
               </button>
 
@@ -2086,7 +2086,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 onClick={() => setActiveTab('lawyers')}
                 className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'lawyers' 
-                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    ? 'bg-[#1E3A5F]/5 border-[#1E3A5F]/20 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
@@ -2099,7 +2099,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 }}
                 className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'qna' 
-                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
+                    ? 'bg-[#1E3A5F]/5 border-[#1E3A5F]/20 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
                 }`}
               >
@@ -2116,7 +2116,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   title="마이페이지로 이동"
                 >
                   <span className="text-[12px] lg:text-[13px] font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-                    👤 <span className="text-brand dark:text-brand-light whitespace-nowrap">{userAlias}</span>님
+                    👤 <span className="text-[#1E3A5F] whitespace-nowrap">{userAlias}</span>님
                   </span>
                   <span className="text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-semibold leading-none">
                     스텔스 보호중
@@ -2126,7 +2126,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className={`whitespace-nowrap flex items-center gap-1 px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-bold transition-all shrink-0 cursor-pointer border ${
                     activeTab === 'mypage'
-                      ? 'bg-brand/10 border-brand/30 text-brand dark:text-brand-light font-bold shadow-sm'
+                      ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/30 text-[#1E3A5F] font-bold shadow-sm'
                       : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-transparent'
                   }`}
                   title="마이페이지"
@@ -2163,7 +2163,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             ) : (
               <button 
                 onClick={() => setShowAuthModal(true)}
-                className="ml-2 flex items-center gap-1.5 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-2xl text-sm font-bold transition-all shadow-sm hover:shadow-brand-sm whitespace-nowrap shrink-0"
+                className="ml-2 flex items-center gap-1.5 px-5 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-lg text-sm font-bold transition-all shadow-sm whitespace-nowrap shrink-0"
               >
                 <Lock className="w-4 h-4" />
                 <span>로그인 및 회원가입</span>
@@ -2370,7 +2370,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   {/* Large Card (2x1) */}
                   <div className="col-span-2 bg-[#EFF6FF] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
                     <div className="w-12 h-12 bg-white dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4 shadow-sm">
-                      <BarChart3 className="w-6 h-6 text-brand" />
+                      <BarChart3 className="w-6 h-6 text-[#1E3A5F]" />
                     </div>
                     <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">채무 현황 한눈에 파악</h4>
                     <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -2433,7 +2433,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setRequestStep(1);
                     setActiveTab('request');
                   }}
-                  className="w-full sm:w-auto px-8 bg-brand hover:bg-brand-hover text-white text-center font-bold py-3.5 rounded-lg text-sm transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 mx-auto"
+                  className="w-full sm:w-auto px-8 bg-[#1E3A5F] hover:bg-[#163152] text-white text-center font-bold py-3.5 rounded-lg text-sm transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 mx-auto"
                 >
                   <span>나도 이렇게 관리받고 싶어요</span>
                   <ArrowRight className="w-4 h-4 text-white/70" />
@@ -2448,7 +2448,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* 섹션 헤더 */}
                 <div className="text-center space-y-3 mb-10">
-                  <div className="inline-flex items-center gap-2 bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-md">
+                  <div className="inline-flex items-center gap-2 bg-[#EEF4FA] text-[#1E3A5F] text-xs font-bold px-3 py-1 rounded-md">
                     <HeartHandshake className="w-3.5 h-3.5" />
                     <span>상황별 채무관리 방향 체크</span>
                   </div>
@@ -2506,7 +2506,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <span className={`text-xs font-semibold ${cs.countText}`}>
                               상담사례 {caseCount}건+
                             </span>
-                            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-brand transition-colors" />
+                            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#3B82F6] transition-colors" />
                           </div>
                         </div>
                       </div>
@@ -2517,7 +2517,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 {/* 하단 안내 */}
                 <div className="text-center pt-8">
                   <p className="text-sm text-slate-500 font-medium">
-                    ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-brand font-bold">3분</span>이면 완료됩니다
+                    ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-[#3B82F6] font-bold">3분</span>이면 완료됩니다
                   </p>
                 </div>
               </div>
@@ -2808,11 +2808,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                           </div>
                         </div>
                         {/* Target audience */}
-                        <p className="text-sm text-brand dark:text-brand-light font-semibold">{item.sub}</p>
+                        <p className="text-sm text-[#3B82F6] font-semibold">{item.sub}</p>
                         {/* Description */}
                         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                       </div>
-                      <span className="text-[13px] font-bold text-brand/50 dark:text-brand-light/50 group-hover:text-brand dark:group-hover:text-brand-light transition-colors flex items-center gap-1.5 pt-1">
+                      <span className="text-[13px] font-bold text-[#1E3A5F]/50 group-hover:text-[#1E3A5F] transition-colors flex items-center gap-1.5 pt-1">
                         자세히 보기
                         <span className="transition-transform group-hover:translate-x-1">→</span>
                       </span>
@@ -2965,7 +2965,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         >
                           <div className="space-y-2 text-left">
                             <div className="flex items-center gap-2.5">
-                              <span className="bg-brand-light text-brand dark:bg-brand/10 dark:text-blue-400 text-[12px] font-semibold px-2.5 py-0.5 rounded-md">
+                              <span className="bg-[#EEF4FA] text-[#1E3A5F] text-[12px] font-semibold px-2.5 py-0.5 rounded-md">
                                 {qa.category}
                               </span>
                               <span className="text-[12px] text-slate-500 font-semibold">
@@ -2981,7 +2981,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             </h4>
                           </div>
                           
-                          <span className="text-xs font-bold text-brand shrink-0 select-none pt-1">
+                          <span className="text-xs font-bold text-[#3B82F6] shrink-0 select-none pt-1">
                             {isOpen ? '닫기 ▲' : '답변보기 ▼'}
                           </span>
                         </div>
@@ -3015,7 +3015,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   setRequestStep(3); // Go directly to submit step
                                   setActiveTab('request');
                                 }}
-                                className="bg-brand hover:bg-brand text-white font-bold px-4 py-2 rounded-xl text-[12px] transition-colors"
+                                className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-4 py-2 rounded-lg text-[12px] transition-colors"
                               >
                                 이 변호사에게 유사건 즉시 상담 신청
                               </button>
@@ -3034,7 +3034,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setActiveTab('qna');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-brand-light font-bold rounded-2xl text-sm transition-all shadow-md group cursor-pointer active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all shadow-sm group cursor-pointer active:scale-[0.98]"
                 >
                   <span>⚖️ 실시간 고민 해결 상담사례 전체보기 (더보기)</span>
                   <span className="transition-transform group-hover:translate-x-1">→</span>
@@ -3058,11 +3058,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 className="flex items-center justify-between gap-1 text-left cursor-pointer group"
               >
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-brand" />
+                  <BookOpen className="w-5 h-5 text-[#1E3A5F]" />
                   <span>알아두면 좋을 법률 정보</span>
                   <ChevronRight className="w-4 h-4 text-[#7e7e8f] transition-transform group-hover:translate-x-1" />
                 </h3>
-                <span className="text-sm text-brand dark:text-brand-light font-bold hover:underline shrink-0">
+                <span className="text-sm text-[#3B82F6] font-bold hover:underline shrink-0">
                   더 많은 정보 보기 →
                 </span>
               </div>
@@ -3101,7 +3101,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                           <span>•</span>
                           <span>조회 {art.views}</span>
                         </div>
-                        <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-slate-200 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-brand dark:group-hover:text-brand-light transition-colors text-left">
+                        <h4 className="font-semibold text-sm sm:text-base text-slate-900 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-[#3B82F6] transition-colors text-left">
                           {art.title}
                         </h4>
                         <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
@@ -3176,8 +3176,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   />
                 ) : (
                   <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-brand/10 rounded-full flex items-center justify-center">
-                      <FileText className="w-8 h-8 text-brand" />
+                    <div className="w-16 h-16 mx-auto bg-[#EEF4FA] rounded-full flex items-center justify-center">
+                      <FileText className="w-8 h-8 text-[#1E3A5F]" />
                     </div>
                     <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 진단 내역이 없습니다</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -3185,7 +3185,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     </p>
                     <button
                       onClick={() => setActiveTab('request')}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white font-bold rounded-xl transition-all"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg transition-all"
                     >
                       채무 진단 시작하기
                     </button>
@@ -3340,7 +3340,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   setSelectedNoticeId(notice.id);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex items-center gap-2 cursor-pointer hover:text-brand dark:hover:text-brand-light group transition-colors"
+                className="flex items-center gap-2 cursor-pointer hover:text-[#3B82F6] group transition-colors"
               >
                 {notice.isImportant && (
                   <span className="bg-red-500 text-white font-semibold text-[12px] px-1.5 py-0.5 rounded-sm shrink-0">중요</span>
