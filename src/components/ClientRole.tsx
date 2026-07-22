@@ -1058,23 +1058,10 @@ export default function ClientRole({
     // OAuth 플래그 확인 (AuthModal에서 리다이렉트 전에 설정)
     const pendingOAuth = localStorage.getItem('pending_oauth_login');
     const isPendingOAuth = !!pendingOAuth;
-    const hashBackup = sessionStorage.getItem('_oauth_hash_backup');
-    
-    console.log('[Auth] 초기화', { isPendingOAuth, hashBackup: !!hashBackup, url: window.location.href.substring(0, 80) });
-
-    // [진단] OAuth 리다이렉트 직후인 경우 상태 알림
-    if (isPendingOAuth || hashBackup) {
-      alert('[진단 2/3] React 인증 시작\n\n' +
-        'pending_oauth_login: ' + (isPendingOAuth ? '✅ 있음' : '❌ 없음') + '\n' +
-        'hash_backup: ' + (hashBackup ? '✅ 있음 (토큰 감지됨)' : '❌ 없음') + '\n' +
-        'URL: ' + window.location.href.substring(0, 60) + '\n\n' +
-        'getSession() 결과를 확인합니다...');
-    }
 
     // 세션 감지 시 처리 함수
-    const handleSession = (session: any, source: string) => {
+    const handleSession = (session: any, _source: string) => {
       if (!session?.user) return;
-      console.log(`[Auth] ${source}: 세션 감지 user=${session.user.email}`);
       setIsLoggedIn(true);
       const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
       setUserAlias(metaAlias);
@@ -1082,55 +1069,27 @@ export default function ClientRole({
       
       // OAuth 리다이렉트 직후이면 chat 탭으로 이동
       if (isPendingOAuth) {
-        console.log('[Auth] OAuth 로그인 완료 → chat 탭으로 이동');
         localStorage.removeItem('pending_oauth_login');
-        sessionStorage.removeItem('_oauth_hash_backup');
         setActiveTab('chat');
       }
     };
 
     // 1) getSession 즉시 확인
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[Auth] getSession:', session ? `user=${session.user.email}` : 'null');
-      
-      // [진단] getSession 결과 알림
-      if (isPendingOAuth || hashBackup) {
-        alert('[진단 3/3] getSession 결과\n\n' +
-          '세션: ' + (session?.user ? '✅ ' + session.user.email : '❌ null (세션 없음)') + '\n\n' +
-          (session?.user 
-            ? '로그인 성공! chat 탭으로 이동합니다.' 
-            : 'Supabase가 토큰을 처리하지 못했습니다.\n1초/3초 재시도를 기다려주세요...'));
-      }
-      
       handleSession(session, 'getSession');
-    }).catch(err => {
-      console.error('[Auth] getSession 에러:', err);
-      if (isPendingOAuth || hashBackup) {
-        alert('[진단 에러] getSession 실패!\n\n' + (err?.message || err));
-      }
-    });
+    }).catch(_err => { /* silent */ });
 
     // 2) 지연 재시도 (Supabase _initialize 완료 대기)
     const retry1 = setTimeout(() => {
       supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log('[Auth] 1초 재시도:', session ? `user=${session.user.email}` : 'null');
-        if (session?.user) {
-          if (isPendingOAuth) alert('[진단] 1초 재시도 성공!\n\n' + session.user.email);
-          handleSession(session, '1초 재시도');
-        }
+        if (session?.user) handleSession(session, '1초 재시도');
       });
     }, 1000);
 
     const retry2 = setTimeout(() => {
       supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log('[Auth] 3초 재시도:', session ? `user=${session.user.email}` : 'null');
-        if (session?.user) {
-          if (isPendingOAuth) alert('[진단] 3초 재시도 성공!\n\n' + session.user.email);
-          handleSession(session, '3초 재시도');
-        } else if (isPendingOAuth) {
-          alert('[진단 실패] 3초 후에도 세션 없음!\n\n' +
-            'Supabase가 #access_token을 처리하지 못했습니다.\n' +
-            'hash_backup: ' + (sessionStorage.getItem('_oauth_hash_backup') ? '있음' : '없음'));
+        if (session?.user) handleSession(session, '3초 재시도');
+        else if (isPendingOAuth) {
           localStorage.removeItem('pending_oauth_login');
         }
       });
@@ -1138,7 +1097,6 @@ export default function ClientRole({
 
     // 3) 실시간 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[Auth] onAuthStateChange:', event, session ? `user=${session.user.email}` : 'null');
       if (session?.user) {
         handleSession(session, `onAuthStateChange(${event})`);
       } else if (event === 'SIGNED_OUT') {
