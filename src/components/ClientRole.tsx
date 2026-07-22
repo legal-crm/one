@@ -1943,7 +1943,17 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };
     
-    // 요청을 바로 저장하지 않고 pending에 보관 → 변호사 선택 페이지로 이동
+    // 진단 완료 즉시 requests에 저장 (내 관리방에서 채무 현황 확인 가능)
+    // 변호사 선택 시 기존 request를 업데이트
+    setRequests(prev => {
+      const existingIdx = prev.findIndex(r => r.id === newRequest.id || (r.clientId === 'client-temp' && r.status === 'requested'));
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = newRequest;
+        return updated;
+      }
+      return [newRequest, ...prev];
+    });
     setPendingNewRequest(newRequest);
 
     // Log calculation activity
