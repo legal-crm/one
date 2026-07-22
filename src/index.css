@@ -1,57 +1,67 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════
-   DESIGN TOKEN SYSTEM
+   DESIGN TOKEN SYSTEM — Premium Upgrade v2.0
+   Deep Navy + Trust Blue + Hope Green
+   Inspired by: Linear, Vercel, Toss, Stripe
    ═══════════════════════════════════════════════ */
 
 @theme {
   /* ── Typography ── */
   --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 
-  /* ── Font Size Scale Override (로톡 벤치마킹 v2) ── */
-  --font-size-xs: 0.8125rem;              /* 13px — 라벨/태그/캡션 전용 */
+  /* ── Font Size Scale (로톡 벤치마킹 v2) ── */
+  --font-size-xs: 0.8125rem;              /* 13px */
   --font-size-xs--line-height: 1.25rem;   /* 20px */
-  --font-size-sm: 0.9375rem;              /* 15px — 보조 설명 */
+  --font-size-sm: 0.9375rem;              /* 15px */
   --font-size-sm--line-height: 1.5rem;    /* 24px */
-  --font-size-base: 1.0625rem;            /* 17px — 본문 */
-  --font-size-base--line-height: 1.75rem; /* 28px ↑ 행간 강화 */
-  --font-size-lg: 1.25rem;                /* 20px ↑ — 카드제목/H3 (로톡: 18~20px) */
+  --font-size-base: 1.0625rem;            /* 17px */
+  --font-size-base--line-height: 1.75rem; /* 28px */
+  --font-size-lg: 1.25rem;                /* 20px */
   --font-size-lg--line-height: 1.875rem;  /* 30px */
-  --font-size-xl: 1.5rem;                 /* 24px ↑ — H2급 (로톡: 24~28px) */
+  --font-size-xl: 1.5rem;                 /* 24px */
   --font-size-xl--line-height: 2rem;      /* 32px */
-  --font-size-2xl: 1.75rem;               /* 28px ↑ — H1급 (로톡: 32~36px) */
+  --font-size-2xl: 1.75rem;               /* 28px */
   --font-size-2xl--line-height: 2.375rem; /* 38px */
 
-  /* ── Brand Colors ── */
-  --color-brand: #7264FF;
-  --color-brand-hover: #5b4cf5;
-  --color-brand-light: #f0efff;
-  --color-brand-deep: #4338ca;
+  /* ── Brand Colors (Deep Navy System) ── */
+  --color-brand: #1E3A5F;           /* Deep Navy — 주 브랜드 */
+  --color-brand-hover: #163152;     /* Navy Hover */
+  --color-brand-light: #EEF4FA;     /* Navy Tint Background */
+  --color-brand-deep: #0F2440;      /* Extra Deep Navy */
 
-  /* ── Semantic Text Colors (대비 강화 · 가독성 개선) ── */
-  --color-text-primary: #0f172a;     /* slate-900 · 더 진한 기본 텍스트 */
-  --color-text-secondary: #334155;   /* slate-700 · 보조 텍스트 대비 강화 */
-  --color-text-muted: #64748b;       /* slate-500 · 뮤트 텍스트도 읽기 쉽게 */
-  --color-text-subtle: #94a3b8;      /* slate-400 · 서브틀 텍스트 한 단계 진하게 */
+  /* ── Accent Colors ── */
+  --color-accent: #3B82F6;          /* Trust Blue — CTA, 인터랙티브 */
+  --color-accent-hover: #2563EB;    /* Blue Hover */
+  --color-accent-light: #EFF6FF;    /* Blue Tint */
+  --color-success: #10B981;         /* Hope Green — 재기/성공 */
+  --color-success-hover: #059669;   /* Green Hover */
+  --color-success-light: #ECFDF5;   /* Green Tint */
+
+  /* ── Semantic Text Colors ── */
+  --color-text-primary: #0f172a;     /* slate-900 */
+  --color-text-secondary: #334155;   /* slate-700 */
+  --color-text-muted: #64748b;       /* slate-500 */
+  --color-text-subtle: #94a3b8;      /* slate-400 */
 
   /* ── Semantic Border Colors ── */
   --color-border-default: #e2e8f0;   /* slate-200 */
   --color-border-subtle: #f1f5f9;    /* slate-100 */
   --color-border-strong: #cbd5e1;    /* slate-300 */
 
-  /* ── Shadow System (4 tiers) ── */
+  /* ── Shadow System (3-tier simplified) ── */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04);
 
-  /* ── Premium / Glow Shadows ── */
-  --shadow-premium: 0 8px 30px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.02);
-  --shadow-glow: 0 0 20px rgba(114, 100, 255, 0.15);
-  --shadow-glow-hover: 0 0 30px rgba(114, 100, 255, 0.3);
-  --shadow-brand-sm: 0 2px 12px rgba(114, 100, 255, 0.12);
-  --shadow-brand-md: 0 4px 20px rgba(114, 100, 255, 0.2);
+  /* ── Accent Shadows ── */
+  --shadow-premium: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.12);
+  --shadow-glow-hover: 0 0 30px rgba(59, 130, 246, 0.2);
+  --shadow-brand-sm: 0 2px 12px rgba(30, 58, 95, 0.1);
+  --shadow-brand-md: 0 4px 20px rgba(30, 58, 95, 0.15);
 }
 
 
@@ -68,7 +78,7 @@
   body {
     letter-spacing: -0.01em;
     word-break: keep-all;
-    line-height: 1.65; /* 로톡 행간 수준 (1.5~1.6) */
+    line-height: 1.65;
   }
 
   :root {
@@ -83,66 +93,86 @@
 
 @layer utilities {
 
-  /* ── FinTech Mesh Glow Backgrounds ── */
+  /* ── Subtle Section Background (replaces mesh-glow) ── */
   .bg-mesh-glow {
     background-image: 
-      radial-gradient(at 5% 5%, rgba(114, 100, 255, 0.07) 0px, transparent 50%),
-      radial-gradient(at 95% 95%, rgba(99, 102, 241, 0.06) 0px, transparent 50%),
-      radial-gradient(at 50% 30%, rgba(168, 85, 247, 0.03) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.04) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(30, 58, 95, 0.03) 0px, transparent 50%);
   }
 
   .dark .bg-mesh-glow {
     background-image: 
-      radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.15) 0px, transparent 60%),
-      radial-gradient(at 90% 90%, rgba(114, 100, 255, 0.12) 0px, transparent 60%),
-      radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.05) 0px, transparent 60%);
+      radial-gradient(at 10% 10%, rgba(59, 130, 246, 0.08) 0px, transparent 60%),
+      radial-gradient(at 90% 90%, rgba(30, 58, 95, 0.06) 0px, transparent 60%);
   }
 
-  /* ── Ultra-Glassmorphic Cards ── */
+  /* ── Clean Card Style (replaces glass-card) ── */
   .glass-card {
-    background: rgba(255, 255, 255, 0.82);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(226, 232, 240, 0.85);
-    box-shadow: 0 10px 32px -4px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   }
 
   .dark .glass-card {
-    background: rgba(15, 23, 42, 0.82);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(51, 65, 85, 0.6);
-    box-shadow: 0 10px 32px -4px rgba(0, 0, 0, 0.3);
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 
   .glass-card-interactive {
-    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
-                box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
-                border-color 0.28s ease;
+    transition: transform 0.2s ease, 
+                box-shadow 0.2s ease, 
+                border-color 0.2s ease;
   }
   .glass-card-interactive:hover {
-    transform: translateY(-3px);
-    border-color: rgba(114, 100, 255, 0.35);
-    box-shadow: 0 16px 40px -8px rgba(114, 100, 255, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
   }
 
-  /* ── Typography Gradient Utilities ── */
+  /* ── Typography Gradient (Restrained) ── */
   .text-gradient-brand {
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 35%, #4338ca 70%, #7264ff 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #1E3A5F 60%, #3B82F6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .dark .text-gradient-brand {
-    background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 40%, #a5b4fc 80%, #c7d2fe 100%);
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #93c5fd 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .text-gradient-accent {
-    background: linear-gradient(135deg, #4338ca 0%, #7264ff 50%, #818cf8 100%);
+    background: linear-gradient(135deg, #1E3A5F 0%, #3B82F6 60%, #60a5fa 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+  }
+
+  /* ── Cursor Spotlight Effect (Phase 3) ── */
+  .card-spotlight {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-spotlight::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(59, 130, 246, 0.04), transparent 40%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+  }
+  .card-spotlight:hover::before {
+    opacity: 1;
+  }
+
+  /* ── Count-up Animation Helper ── */
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   /* ── Fade In Up (primary entrance) ── */
@@ -159,7 +189,7 @@
 
   /* ── Fade In Scale ── */
   @keyframes fadeInScale {
-    from { opacity: 0; transform: scale(0.96); }
+    from { opacity: 0; transform: scale(0.97); }
     to   { opacity: 1; transform: scale(1); }
   }
 
@@ -172,6 +202,12 @@
   /* ── Slide Up (modal entrance) ── */
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Slide In From Bottom (Floating CTA) ── */
+  @keyframes slideInBottom {
+    from { opacity: 0; transform: translateY(100%); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
@@ -196,10 +232,25 @@
     animation: slideUp 0.4s ease-out both;
   }
 
-  /* ── Stagger delay system (use with style="--i: N") ── */
+  .animate-slideInBottom {
+    animation: slideInBottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* ── Stagger delay system ── */
   .stagger-item {
     animation: fadeInUp 0.45s ease-out both;
-    animation-delay: calc(var(--i, 0) * 60ms);
+    animation-delay: calc(var(--i, 0) * 80ms);
+  }
+
+  /* ── Section Reveal (Intersection Observer) ── */
+  .reveal-section {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+  .reveal-section.is-visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 
 
@@ -242,29 +293,29 @@
     -webkit-appearance: none;
     appearance: none;
     margin-top: -5px;
-    background-color: #7264FF;
+    background-color: #3B82F6;
     height: 16px;
     width: 16px;
     border-radius: 50%;
     border: 2px solid white;
-    box-shadow: 0 4px 10px rgba(114, 100, 255, 0.4);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
     transition: all 0.15s ease-in-out;
   }
 
   input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.25);
-    background-color: #5b4cf5;
-    box-shadow: 0 4px 15px rgba(114, 100, 255, 0.7);
+    transform: scale(1.2);
+    background-color: #2563EB;
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.5);
   }
 
   /* Slider color variants */
   .slider-amber::-webkit-slider-thumb {
     background-color: #f59e0b !important;
-    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35) !important;
   }
   .slider-amber::-webkit-slider-thumb:hover {
     background-color: #d97706 !important;
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.7) !important;
+    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.5) !important;
   }
 
 
@@ -273,7 +324,7 @@
      ═══════════════════════════════════════════════ */
 
   .transition-card {
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
 
   .hover-lift:hover {
@@ -305,7 +356,7 @@
     transform: translateY(100%);
   }
 
-  /* ── Mobile Chatbot: 텔레그램 방식 메시지 하단 정렬 (모바일 전용) ── */
+  /* ── Mobile Chatbot ── */
   @media (max-width: 767px) {
     .chatbot-scroll-area {
       display: flex;
@@ -314,5 +365,16 @@
     .chatbot-messages-inner {
       margin-top: auto;
     }
+  }
+
+  /* ── Tabular Nums for Financial Data ── */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Floating CTA Bar ── */
+  .floating-cta {
+    animation: slideInBottom 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
   }
 }

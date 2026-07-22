@@ -4,7 +4,7 @@ import {
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2,
-  Star, Sparkles
+  Star, Sparkles, BarChart3, Shield, ShieldAlert, Calculator, ClipboardCheck, Compass
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
@@ -2181,79 +2181,115 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
           <div className="animate-fadeIn text-left">
 
             {/* ── Sector 1: Hero ─────────────────────────────── */}
-            <section className="w-full py-12 md:py-20 bg-mesh-glow border-b border-slate-200/60 dark:border-slate-800/80 relative overflow-hidden">
+            <section className="w-full py-12 md:py-20 bg-[#F8FAFC] border-b border-slate-200 relative overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             {/* 1. Hero Section (Platform Pitch & Identity) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/40 text-brand dark:text-brand-light text-xs font-extrabold tracking-wide uppercase shadow-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
-                  </span>
-                  <span>100% 비밀보호 · 1분 안심 진단 시스템</span>
+                <div className="text-sm text-slate-500 font-medium">
+                  ✓ 1분 무료 진단 · ✓ 100% 익명 · ✓ SSL 암호화
                 </div>
 
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight text-slate-900 dark:text-white">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight text-[#0f172a]">
                   채무 독촉 차단부터,<br />
-                  <span className="text-gradient-brand">나의 전담 변호사가 다 관리해 드려요</span>
+                  나의 전담 변호사가 다 관리해 드려요
                 </h1>
                 
-                <p className="text-slate-600 dark:text-slate-300 text-base md:text-lg font-medium leading-relaxed max-w-xl">
+                <p className="text-slate-600 text-base md:text-lg font-medium leading-relaxed max-w-xl">
                   이름 없이 1분 만에 내 탕감율과 예상 변제금을 확인하고,<br />
                   신뢰할 수 있는 1:1 전담 변호사와 바로 연결해 보세요.
                 </p>
 
                 {/* Unified CTA Button */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 w-full max-w-md">
+                <div className="flex flex-col sm:flex-row items-center gap-4 pt-3 w-full max-w-md">
                   <button
                     onClick={() => {
                       setRequestType('open');
                       setRequestStep(1);
                       setActiveTab('request');
-                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [1분 채무관리 체크 시작하기] 버튼 클릭');
+                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [1분 채무 진단 시작하기] 버튼 클릭');
                     }}
-                    className="w-full sm:w-auto flex-1 bg-gradient-to-r from-brand via-indigo-600 to-indigo-700 hover:from-brand-hover hover:to-indigo-800 text-white font-extrabold px-7 py-4 rounded-2xl shadow-lg shadow-brand/25 hover:shadow-brand/40 hover:scale-[1.02] active:scale-[0.98] transition-all text-center flex items-center justify-center gap-2.5 group cursor-pointer text-base"
+                    className="w-full sm:w-auto flex-1 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-lg transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base"
                   >
                     <span>1분 채무 진단 시작하기</span>
                     <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                   </button>
                   <button
                     onClick={() => setActiveTab('lawyers')}
-                    className="w-full sm:w-auto px-6 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm transition-all text-center shrink-0 cursor-pointer shadow-xs hover:shadow-sm"
+                    className="w-full sm:w-auto text-[#3B82F6] hover:underline font-bold text-sm transition-all text-center cursor-pointer"
                   >
-                    전담 변호사 목록
+                    전담 변호사 목록 보기
                   </button>
                 </div>
               </div>
 
-              {/* Right Column: 핵심 약속 & 프로세스 안내 */}
-              <div className="lg:col-span-5 glass-card glass-card-interactive rounded-3xl p-6 sm:p-7 space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-3.5">
-                  <h4 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="text-xl">🛡️</span> my김변 안심 서비스 약속
+              {/* Right Column: Interactive Mini Calculator */}
+              <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl shadow-sm p-6 sm:p-7 space-y-5">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
+                  <Calculator className="w-6 h-6 text-[#1E3A5F]" />
+                  <h4 className="font-bold text-lg text-slate-900">
+                    30초 탕감 예상 조회
                   </h4>
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                    스텔스 보증
-                  </span>
                 </div>
 
-                <div className="space-y-3">
-                  {[
-                    { icon: '💬', title: '초기 진단 무료 진행', desc: '채무 진단 및 탕감 비율 산출은 일체 비용 없이 무료로 제공됩니다.' },
-                    { icon: '🔒', title: '100% 익명성 보장', desc: '실명, 주민번호 노출 없이 스텔스 가명으로 안전하게 상담 가능합니다.' },
-                    { icon: '⚖️', title: '1:1 전담 변호사 직접 지정', desc: '의뢰인이 직접 신뢰하는 변호사를 선택하여 전담 상담방을 개설합니다.' },
-                    { icon: '🛡️', title: 'SSL/TLS 암호화 통신 보호', desc: '모든 상담 데이터는 SSL/TLS 암호화 전송 및 서버 암호화 저장으로 안전하게 보호됩니다.' },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3.5 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all">
-                      <span className="text-xl shrink-0 mt-0.5">{item.icon}</span>
-                      <div>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white block">{item.title}</span>
-                        <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium block mt-0.5">{item.desc}</span>
-                      </div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-sm font-medium text-slate-700">총 채무액</label>
+                      <span className="text-sm font-bold text-[#3B82F6]">{formatNumber(calcDebt)}만원</span>
                     </div>
-                  ))}
+                    <input
+                      type="range"
+                      min="1000"
+                      max="50000"
+                      step="100"
+                      value={calcDebt}
+                      onChange={(e) => setCalcDebt(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B82F6]"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-sm font-medium text-slate-700">월 소득</label>
+                      <span className="text-sm font-bold text-[#3B82F6]">{formatNumber(calcIncome)}만원</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1000"
+                      step="10"
+                      value={calcIncome}
+                      onChange={(e) => setCalcIncome(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B82F6]"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-sm font-medium text-slate-700">부양 가족</label>
+                      <span className="text-sm font-bold text-[#3B82F6]">{calcDependents}명</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="1"
+                      value={calcDependents}
+                      onChange={(e) => setCalcDependents(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B82F6]"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-100">
+                  <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-700">예상 탕감율</span>
+                    <span className="text-2xl font-black text-[#1E3A5F]">
+                      {calcDebt > 0 ? Math.max(0, Math.min(90, Math.floor(((calcDebt - Math.max(0, calcIncome - (calcDependents + 1) * 125) * 36) / calcDebt) * 100))) : 0}%
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2262,52 +2298,50 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 2: 3단계 프로세스 ────────────────────── */}
-            <section className="w-full py-12 md:py-16 bg-white dark:bg-slate-900/60 border-y border-slate-200/60 dark:border-slate-800">
+            <section className="w-full py-16 bg-white border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
-            <div className="space-y-8 text-center">
-              <div className="space-y-2">
-                <span className="text-xs font-extrabold text-brand uppercase tracking-widest bg-brand/10 dark:bg-brand/20 px-3 py-1 rounded-full border border-brand/20">SIMPLE & FAST</span>
-                <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            <div className="space-y-12 text-center">
+              <div>
+                <h3 className="text-2xl md:text-3xl font-black text-[#0f172a] tracking-tight">
                   단 3단계로 시작하는 신속 채무 클리닝
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="relative flex flex-col md:flex-row items-start justify-between gap-6 md:gap-0">
+                {/* Connecting Line (Hidden on mobile) */}
+                <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-[2px] bg-slate-200 z-0"></div>
+                
                 {[
                   {
-                    step: 'STEP 01',
+                    step: '1',
                     title: '1분 셀프 채무 진단',
                     desc: '채무 규모와 수입 상태를 입력하면 예상 탕감율과 월 변제금이 즉시 산출됩니다.',
-                    icon: '🔍',
-                    badge: '무료 진행'
+                    icon: <Search className="w-6 h-6" />
                   },
                   {
-                    step: 'STEP 02',
+                    step: '2',
                     title: '전담 변호사 매칭 선택',
                     desc: '원하는 전문 변호사를 직접 선택하여 익명으로 채무 솔루션을 요청합니다.',
-                    icon: '👥',
-                    badge: '최대 3명'
+                    icon: <Users className="w-6 h-6" />
                   },
                   {
-                    step: 'STEP 03',
+                    step: '3',
                     title: '프라이빗 전담 관리방',
                     desc: '독촉 차단 금지명령부터 맞춤 변제안까지 1:1 전담 비밀 공간에서 케어받으세요.',
-                    icon: '🔒',
-                    badge: '100% 비밀'
+                    icon: <Lock className="w-6 h-6" />
                   }
                 ].map((item, idx) => (
-                  <div key={idx} className="glass-card glass-card-interactive p-6 rounded-3xl text-left hover:border-brand/40 transition-all duration-300 flex flex-col justify-between min-h-[190px] group relative overflow-hidden">
-                    <div className="space-y-3 relative z-10">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-black text-brand dark:text-brand-light tracking-wider uppercase bg-brand/10 px-2.5 py-1 rounded-lg">{item.step}</span>
-                        <span className="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">{item.badge}</span>
+                  <div key={idx} className="relative z-10 flex-1 flex flex-col items-center text-center px-4">
+                    <div className="w-10 h-10 bg-[#1E3A5F] text-white rounded-full flex items-center justify-center font-bold text-lg mb-4 shadow-sm">
+                      {item.step}
+                    </div>
+                    <div className="bg-white border border-slate-200 p-6 rounded-xl w-full h-full shadow-sm flex flex-col items-center">
+                      <div className="flex justify-center mb-4 text-[#1E3A5F] bg-slate-50 p-3 rounded-full">
+                        {item.icon}
                       </div>
-                      <div className="flex items-center gap-2.5 pt-1">
-                        <span className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</span>
-                        <h4 className="font-extrabold text-base text-slate-900 dark:text-white">{item.title}</h4>
-                      </div>
-                      <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                      <h4 className="font-bold text-lg text-[#0f172a] mb-2">{item.title}</h4>
+                      <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -2318,9 +2352,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 3: 대시보드 미리보기 ──────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-gradient-to-b from-indigo-50/50 to-slate-50/80 dark:from-slate-900 dark:to-slate-950">
+            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* 4. Section 3: 내 채무관리 대시보드 미리보기 (Dashboard Preview) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
@@ -2331,147 +2364,91 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </p>
               </div>
 
-              {/* 모니터 프레임 */}
-              <div className="max-w-3xl mx-auto">
-                {/* 모니터 상단 베젤 */}
-                <div className="bg-[#1a1a2e] rounded-t-2xl px-4 py-2 flex items-center justify-between border-x border-t border-slate-700/60">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
-                  </div>
-                  <div className="flex-1 max-w-xs mx-auto bg-slate-800/80 rounded-lg px-3 py-1 flex items-center justify-center gap-1.5">
-                    <span className="text-[11px] leading-none">🔒</span>
-                    <span className="text-[11px] text-slate-500 font-medium truncate leading-none">legal-rehab.co.kr/my-room</span>
-                  </div>
-                  <div className="w-16"></div>
-                </div>
-
-                {/* 모니터 화면 */}
-                <div className="bg-[#f8fafc] dark:bg-[#0f172a] border-x border-b border-slate-700/60 rounded-b-lg overflow-hidden">
-                  <div className="grid grid-cols-12 min-h-[340px]">
-                    
-                    {/* 좌측 사이드바 - 채무관리방 목록 */}
-                    <div className="col-span-4 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
-                      <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-[11px] font-black text-brand uppercase tracking-widest">나의 채무관리방</span>
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <div className="px-2 py-1.5">
-                          <div className="bg-brand/5 border border-brand/20 rounded-xl px-2.5 py-2 mb-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-slate-900 dark:text-slate-200 truncate">카드빚 + 대출 과다</span>
-                              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded-full font-bold">상담중</span>
-                              <span className="text-[10px] text-slate-500">김우진 변호사</span>
-                            </div>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-2.5 py-2 opacity-60">
-                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate block">코인 투자 실패 상담</span>
-                            <span className="text-[10px] text-slate-500 mt-0.5 block">완료됨 · 이소민 변호사</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="px-2.5 py-2 border-t border-slate-100 dark:border-slate-800">
-                        <div className="bg-brand/5 rounded-xl px-2 py-1.5 text-center">
-                          <span className="text-[10px] font-bold text-brand">+ 새 상담 신청</span>
-                        </div>
-                      </div>
+              {/* Bento Grid Layout */}
+              <div className="max-w-4xl mx-auto pt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Large Card (2x1) */}
+                  <div className="col-span-2 bg-[#EFF6FF] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-12 h-12 bg-white dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4 shadow-sm">
+                      <BarChart3 className="w-6 h-6 text-brand" />
                     </div>
-
-                    {/* 우측 채팅 영역 */}
-                    <div className="col-span-8 flex flex-col bg-white dark:bg-slate-900">
-                      <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold text-brand uppercase tracking-widest block">ACTIVE</span>
-                          <span className="text-[12px] font-bold text-slate-900 dark:text-slate-200">카드빚 + 대출 과다 채무조정</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded-lg font-bold border border-indigo-100 dark:border-indigo-900">📞 전화상담</span>
-                          <span className="text-[10px] bg-brand text-white px-2 py-1 rounded-lg font-bold">📄 리포트 수정</span>
-                        </div>
-                      </div>
-                      <div className="flex-1 px-3 py-3 space-y-2.5 overflow-hidden bg-slate-50/30 dark:bg-slate-950/10">
-                        <div className="flex flex-col items-start space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold px-0.5">
-                            <span className="text-slate-700 dark:text-slate-300">김우진 변호사</span>
-                            <span>오전 10:14</span>
-                          </div>
-                          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
-                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">안녕하세요, 김우진 변호사입니다. 제출해 주신 자료를 검토한 결과를 말씀드리겠습니다.</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-start space-y-0.5">
-                          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-none px-3 py-2 max-w-[85%] shadow-sm">
-                            <p className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-medium">재산이 다소 많아 개인회생은 어렵지만, 워크아웃 신청은 충분히 가능합니다. 이자 감면과 상환기간 조정으로 부담을 줄일 수 있어요.</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold px-0.5">
-                            <span className="text-slate-700 dark:text-slate-300">나 (의뢰인)</span>
-                            <span>오후 01:32</span>
-                          </div>
-                          <div className="bg-brand text-white rounded-2xl rounded-tr-none px-3 py-2 max-w-[70%] shadow-sm">
-                            <p className="text-[11px] leading-relaxed font-medium">워크아웃이요? 자세히 알려주세요!</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
-                        <div className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
-                          <span className="text-[11px] text-slate-500">담당 변호사에게 메시지 보내기...</span>
-                        </div>
-                        <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center shrink-0">
-                          <span className="text-white text-[12px]">▶</span>
-                        </div>
-                      </div>
-                    </div>
+                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">채무 현황 한눈에 파악</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                      흩어져 있는 모든 채무를 한 번에 조회하고<br className="hidden md:block" />
+                      실시간 상환 일정을 관리하세요.
+                    </p>
                   </div>
-                </div>
 
-                {/* 모니터 스탠드 */}
-                <div className="flex justify-center">
-                  <div className="w-20 h-5 bg-gradient-to-b from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 rounded-b-lg"></div>
-                </div>
-                <div className="flex justify-center -mt-0.5">
-                  <div className="w-36 h-2 bg-gradient-to-b from-slate-400 to-slate-300 dark:from-slate-800 dark:to-slate-700 rounded-b-xl"></div>
+                  {/* 1x1 Card */}
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 bg-indigo-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
+                      <TrendingDown className="w-5 h-5 text-indigo-500" />
+                    </div>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">탕감율</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                      내 조건에 맞는<br />예상 탕감액 확인
+                    </p>
+                  </div>
+
+                  {/* 1x1 Card */}
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 bg-red-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
+                      <Shield className="w-5 h-5 text-red-500" />
+                    </div>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">독촉 차단</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                      법적 대리인 선임으로<br />추심 즉시 중단
+                    </p>
+                  </div>
+
+                  {/* 1x1 Card */}
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 bg-amber-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
+                      <Scale className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">변호사 매칭</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                      전문 변호사와<br />1:1 비밀 상담
+                    </p>
+                  </div>
+
+                  {/* 1x1 Card */}
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 bg-emerald-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
+                      <Lock className="w-5 h-5 text-emerald-500" />
+                    </div>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">비밀 보호</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                      가족과 직장에<br />절대 비밀 보장
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* 하단 CTA */}
-              <div className="max-w-2xl mx-auto pt-4">
+              <div className="max-w-2xl mx-auto pt-8">
                 <button 
                   onClick={() => {
                     setRequestType('open');
                     setRequestStep(1);
                     setActiveTab('request');
                   }}
-                  className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-center font-bold py-3.5 rounded-2xl text-sm transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-brand/20 hover:shadow-brand/30 flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-8 bg-brand hover:bg-brand-hover text-white text-center font-bold py-3.5 rounded-lg text-sm transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 mx-auto"
                 >
                   <span>나도 이렇게 관리받고 싶어요</span>
-                  <span className="text-white/70">→</span>
+                  <ArrowRight className="w-4 h-4 text-white/70" />
                 </button>
               </div>
             </div>
-                {/* 글로우 효과 */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-brand/15 rounded-full blur-3xl"></div>
             </div>
             </section>
 
-            {/* ── Sector 4: 상황별 채무관리 방향성 진단 (인디고 틴트 차별화) ────────── */}
-            <section className="w-full py-14 md:py-20 bg-gradient-to-b from-indigo-50/70 via-white to-violet-50/40 dark:from-slate-900 dark:via-slate-950 dark:to-indigo-950/30 relative overflow-hidden">
-              {/* 배경 장식 */}
-              <div className="absolute top-0 right-0 w-72 h-72 bg-indigo-200/30 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-80 h-80 bg-violet-200/20 rounded-full blur-[90px] -ml-20 -mb-20 pointer-events-none" />
-
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* ── Sector 4: 상황별 채무관리 방향성 진단 ────────── */}
+            <section className="w-full py-14 md:py-20 bg-slate-50 dark:bg-slate-950">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* 섹션 헤더 */}
                 <div className="text-center space-y-3 mb-10">
-                  <div className="inline-flex items-center gap-2 bg-brand/[0.08] border border-brand/15 text-brand dark:text-brand-light text-xs font-bold px-4 py-1.5 rounded-full">
+                  <div className="inline-flex items-center gap-2 bg-brand/10 text-brand text-xs font-bold px-3 py-1 rounded-md">
                     <HeartHandshake className="w-3.5 h-3.5" />
                     <span>상황별 채무관리 방향 체크</span>
                   </div>
@@ -2484,18 +2461,18 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </div>
 
                 {/* 카드 그리드 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {Object.values(remedyData).map((item, idx) => {
                     const colorStyles = {
-                      red:     { bar: 'border-l-red-400',     iconBg: 'bg-red-50 dark:bg-red-950/30',       iconText: 'text-red-500',     hoverBorder: 'hover:border-red-200 dark:hover:border-red-800/40',     countText: 'text-red-400' },
-                      indigo:  { bar: 'border-l-indigo-400',  iconBg: 'bg-indigo-50 dark:bg-indigo-950/30',  iconText: 'text-indigo-500',  hoverBorder: 'hover:border-indigo-200 dark:hover:border-indigo-800/40',  countText: 'text-indigo-400' },
-                      amber:   { bar: 'border-l-amber-400',   iconBg: 'bg-amber-50 dark:bg-amber-950/30',   iconText: 'text-amber-500',   hoverBorder: 'hover:border-amber-200 dark:hover:border-amber-800/40',   countText: 'text-amber-500' },
-                      purple:  { bar: 'border-l-purple-400',  iconBg: 'bg-purple-50 dark:bg-purple-950/30',  iconText: 'text-purple-500',  hoverBorder: 'hover:border-purple-200 dark:hover:border-purple-800/40',  countText: 'text-purple-400' },
-                      orange:  { bar: 'border-l-orange-400',  iconBg: 'bg-orange-50 dark:bg-orange-950/30',  iconText: 'text-orange-500',  hoverBorder: 'hover:border-orange-200 dark:hover:border-orange-800/40',  countText: 'text-orange-400' },
-                      emerald: { bar: 'border-l-emerald-400', iconBg: 'bg-emerald-50 dark:bg-emerald-950/30', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200 dark:hover:border-emerald-800/40', countText: 'text-emerald-400' },
-                      rose:    { bar: 'border-l-rose-400',    iconBg: 'bg-rose-50 dark:bg-rose-950/30',     iconText: 'text-rose-500',    hoverBorder: 'hover:border-rose-200 dark:hover:border-rose-800/40',     countText: 'text-rose-400' },
+                      red:     { iconBg: 'bg-red-50 dark:bg-red-950/50',       iconText: 'text-red-500',     hoverBorder: 'hover:border-red-200', countText: 'text-red-500' },
+                      indigo:  { iconBg: 'bg-indigo-50 dark:bg-indigo-950/50',  iconText: 'text-indigo-500',  hoverBorder: 'hover:border-indigo-200', countText: 'text-indigo-500' },
+                      amber:   { iconBg: 'bg-amber-50 dark:bg-amber-950/50',   iconText: 'text-amber-500',   hoverBorder: 'hover:border-amber-200', countText: 'text-amber-500' },
+                      purple:  { iconBg: 'bg-purple-50 dark:bg-purple-950/50',  iconText: 'text-purple-500',  hoverBorder: 'hover:border-purple-200', countText: 'text-purple-500' },
+                      orange:  { iconBg: 'bg-orange-50 dark:bg-orange-950/50',  iconText: 'text-orange-500',  hoverBorder: 'hover:border-orange-200', countText: 'text-orange-500' },
+                      emerald: { iconBg: 'bg-emerald-50 dark:bg-emerald-950/50', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200', countText: 'text-emerald-500' },
+                      rose:    { iconBg: 'bg-rose-50 dark:bg-rose-950/50',     iconText: 'text-rose-500',    hoverBorder: 'hover:border-rose-200', countText: 'text-rose-500' },
                     };
-                    const cs = colorStyles[item.themeColor as keyof typeof colorStyles] || { bar: 'border-l-brand', iconBg: 'bg-brand-light dark:bg-brand/10', iconText: 'text-brand', hoverBorder: 'hover:border-brand/30', countText: 'text-brand' };
+                    const cs = colorStyles[item.themeColor as keyof typeof colorStyles] || { iconBg: 'bg-slate-100 dark:bg-slate-800', iconText: 'text-slate-600', hoverBorder: 'hover:border-slate-300', countText: 'text-slate-500' };
                     const caseCounts = [127, 89, 156, 73, 94, 61, 112, 143, 48];
                     const caseCount = caseCounts[idx] || 80;
 
@@ -2503,32 +2480,34 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       <div
                         key={item.id}
                         onClick={() => handleCategoryClick(item.id)}
-                        className={`group bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-0.5 hover:shadow-lg shadow-sm ${cs.hoverBorder} border-l-[3px] ${cs.bar}`}
+                        className={`group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md ${cs.hoverBorder}`}
                       >
-                        <div className="flex items-center gap-3.5 p-4 sm:p-[18px]">
-                          {/* 아이콘 */}
-                          <div className={`w-10 h-10 rounded-lg ${cs.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300 ${cs.iconText}`}>
-                            {renderRemedyIcon(item.iconName, 'w-[18px] h-[18px]')}
+                        <div className="p-5 flex flex-col h-full">
+                          {/* 상단 아이콘 */}
+                          <div className={`w-10 h-10 rounded-full ${cs.iconBg} flex items-center justify-center mb-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${cs.iconText}`}>
+                            {renderRemedyIcon(item.iconName, 'w-5 h-5')}
                           </div>
-
+                          
                           {/* 텍스트 */}
-                          <div className="flex-1 min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <h5 className="font-semibold text-[15px] text-slate-900 dark:text-slate-100 truncate">{item.title}</h5>
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-bold text-base text-slate-900 dark:text-slate-100">{item.title}</h5>
                               {item.id === 'tax_delinquency' && (
-                                <span className="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">중요</span>
+                                <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-md shrink-0">중요</span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 leading-relaxed">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium line-clamp-2 leading-relaxed">
                               {item.subtitle}
                             </p>
-                            <span className={`text-[11px] font-semibold ${cs.countText}`}>
-                              상담사례 {caseCount}건+
-                            </span>
                           </div>
 
-                          {/* 화살표 */}
-                          <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-brand group-hover:translate-x-0.5 transition-all duration-300 shrink-0" />
+                          {/* 하단 통계 및 화살표 */}
+                          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <span className={`text-xs font-semibold ${cs.countText}`}>
+                              상담사례 {caseCount}건+
+                            </span>
+                            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-brand transition-colors" />
+                          </div>
                         </div>
                       </div>
                     );
@@ -2537,22 +2516,18 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                 {/* 하단 안내 */}
                 <div className="text-center pt-8">
-                  <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
+                  <p className="text-sm text-slate-500 font-medium">
                     ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-brand font-bold">3분</span>이면 완료됩니다
                   </p>
                 </div>
               </div>
             </section>
 
-            {/* ── Sector 5: 무료 관리 범위 (아이콘 스포트라이트 차별화) ─── */}
-            <section className="w-full py-14 md:py-20 bg-white dark:bg-slate-900">
+            {/* ── Sector 5: 무료 관리 범위 ─── */}
+            <section className="w-full py-14 md:py-20 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
               <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* 헤더 */}
-                <div className="text-center space-y-3 mb-12">
-                  <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    전부 무료
-                  </div>
+                <div className="text-center space-y-3 mb-10">
                   <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white leading-tight">
                     돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
                   </h3>
@@ -2562,25 +2537,21 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </div>
 
                 {/* 벤토 그리드: 상단 2개 대형 + 하단 3개 */}
-                <div className="space-y-3 md:space-y-4">
+                <div className="space-y-4">
                   {/* 상단 2개 — 대형 카드 */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
-                      { emoji: '🔍', title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크', accent: 'from-indigo-500/10 to-violet-500/10 dark:from-indigo-500/15 dark:to-violet-500/15' },
-                      { emoji: '🧭', title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인', accent: 'from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/15 dark:to-teal-500/15' },
+                      { icon: Search, title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크', color: 'text-indigo-500', bg: 'bg-indigo-50' },
+                      { icon: Compass, title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인', color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     ].map((item, i) => (
-                      <div key={i} className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-50/50 dark:from-slate-800/50 dark:to-slate-800/30 p-6 md:p-8 transition-all duration-300 hover:shadow-md">
-                        {/* 배경 이모지 장식 */}
-                        <div className="absolute -right-4 -bottom-4 text-[80px] md:text-[100px] leading-none opacity-[0.06] dark:opacity-[0.04] select-none pointer-events-none group-hover:scale-110 transition-transform duration-500">
-                          {item.emoji}
-                        </div>
-                        <div className="relative z-10 flex items-start gap-4">
-                          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.accent} flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                            {item.emoji}
+                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 md:p-8 transition-all hover:shadow-md">
+                        <div className="flex flex-col items-start gap-4">
+                          <div className={`w-12 h-12 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
+                            <item.icon className={`w-6 h-6 ${item.color}`} />
                           </div>
-                          <div className="space-y-1.5 min-w-0">
-                            <h5 className="font-bold text-base text-slate-900 dark:text-white">{item.title}</h5>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                          <div className="space-y-2">
+                            <h5 className="font-bold text-lg text-slate-900 dark:text-white">{item.title}</h5>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -2588,24 +2559,20 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </div>
 
                   {/* 하단 3개 — 컴팩트 카드 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
-                      { emoji: '🛡️', title: '압류 위험 사전 점검', desc: '통장이나 월급이 묶일 수 있는지 미리 확인', accent: 'from-amber-500/10 to-orange-500/10 dark:from-amber-500/15 dark:to-orange-500/15' },
-                      { emoji: '💰', title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지 안내', accent: 'from-rose-500/10 to-pink-500/10 dark:from-rose-500/15 dark:to-pink-500/15' },
-                      { emoji: '📋', title: '신청 적격 사전 심사', desc: '신청이 잘 통과될지 미리 점검', accent: 'from-sky-500/10 to-cyan-500/10 dark:from-sky-500/15 dark:to-cyan-500/15' },
+                      { icon: ShieldAlert, title: '압류 위험 사전 점검', desc: '통장이나 월급이 묶일 수 있는지 미리 확인', color: 'text-amber-500', bg: 'bg-amber-50' },
+                      { icon: Calculator, title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지 안내', color: 'text-rose-500', bg: 'bg-rose-50' },
+                      { icon: ClipboardCheck, title: '신청 적격 사전 심사', desc: '신청이 잘 통과될지 미리 점검', color: 'text-sky-500', bg: 'bg-sky-50' },
                     ].map((item, i) => (
-                      <div key={i} className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-50/50 dark:from-slate-800/50 dark:to-slate-800/30 p-5 md:p-6 transition-all duration-300 hover:shadow-md text-center sm:text-left">
-                        {/* 배경 이모지 장식 */}
-                        <div className="absolute -right-2 -bottom-2 text-[60px] leading-none opacity-[0.05] dark:opacity-[0.03] select-none pointer-events-none group-hover:scale-110 transition-transform duration-500">
-                          {item.emoji}
-                        </div>
-                        <div className="relative z-10 flex flex-col items-center sm:items-start gap-3">
-                          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${item.accent} flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                            {item.emoji}
+                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 transition-all hover:shadow-md text-left">
+                        <div className="flex flex-col items-start gap-3">
+                          <div className={`w-10 h-10 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
+                            <item.icon className={`w-5 h-5 ${item.color}`} />
                           </div>
                           <div className="space-y-1">
-                            <h5 className="font-bold text-sm text-slate-900 dark:text-white">{item.title}</h5>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                            <h5 className="font-bold text-base text-slate-900 dark:text-white">{item.title}</h5>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -2621,12 +2588,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       setRequestStep(1);
                       setActiveTab('request');
                     }}
-                    className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold px-8 py-3.5 rounded-2xl text-sm transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98]"
+                    className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-8 py-3.5 rounded-lg text-sm transition-all shadow-sm cursor-pointer active:scale-[0.98]"
                   >
                     <span>무료 사전 체크 시작하기</span>
-                    <span className="text-white/60 dark:text-slate-400">→</span>
+                    <ArrowRight className="w-4 h-4 text-white/70" />
                   </button>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-3">
+                  <p className="text-sm text-slate-500 font-medium mt-4">
                     ✦ 비용은 전혀 없어요. 부담 없이 내 상황부터 확인해 보세요
                   </p>
                 </div>
@@ -2644,33 +2611,21 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
               return (
                 <section
-                  className="w-full py-14 md:py-20 relative overflow-hidden"
+                  className="w-full py-14 md:py-20 bg-[#F8FAFC] border-y border-slate-200"
                   onMouseEnter={() => setShowcaseHovered(true)}
                   onMouseLeave={() => setShowcaseHovered(false)}
                 >
-                  {/* Premium gradient background */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-amber-50/80 via-orange-50/40 to-white dark:from-amber-950/20 dark:via-slate-950 dark:to-slate-900 pointer-events-none" />
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-300/40 to-transparent dark:via-amber-500/20" />
-                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent dark:via-amber-500/10" />
 
                   <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="text-center space-y-3 mb-10">
-                      <div className="flex items-center justify-center gap-3">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/25 shadow-sm">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                          <span className="text-xs font-bold text-amber-600 dark:text-amber-400 tracking-wider">PREMIUM</span>
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
-                          AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-300 dark:border-slate-700 text-[9px] text-slate-400 font-bold">ⓘ</span>
-                        </span>
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-[11px] text-slate-400 font-medium">AD 광고</span>
                       </div>
-                      <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-                        검증된{' '}
-                        <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">전문 변호사</span>
-                        가 함께합니다
+                      <h3 className="text-2xl md:text-3xl font-bold text-[#0f172a] tracking-tight">
+                        검증된 <span className="text-[#1E3A5F]">전문 변호사</span>가 함께합니다
                       </h3>
-                      <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto">
+                      <p className="text-sm md:text-base text-slate-500 font-medium max-w-lg mx-auto">
                         회생·파산 분야에서 풍부한 경험을 갖춘 전담 변호사를 만나보세요.
                       </p>
                     </div>
@@ -2681,17 +2636,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         <div
                           key={`showcase-${showcasePage}-${banner.id}`}
                           onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
-                          className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 animate-fadeIn"
+                          className="group relative bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer hover:-translate-y-1"
                         >
-                          {/* Top accent gradient strip */}
-                          <div className={`h-1.5 w-full bg-gradient-to-r ${banner.gradient}`} />
+                          {/* Top accent strip */}
+                          <div className="h-1 w-full bg-[#1E3A5F]" />
 
                           <div className="p-5 md:p-6">
-                            {/* AD label + stars */}
+                            {/* Rating */}
                             <div className="flex items-center justify-between mb-4">
-                              <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/30">
-                                광고
-                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium">광고</span>
                               <div className="flex gap-0.5">
                                 {[...Array(5)].map((_, s) => (
                                   <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />
@@ -2705,10 +2658,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                 <img
                                   src={banner.lawyerAvatar}
                                   alt={banner.lawyerName}
-                                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-slate-100 dark:border-slate-700 group-hover:border-amber-300 dark:group-hover:border-amber-500/40 shadow-lg transition-colors duration-300"
+                                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border-2 border-slate-100 group-hover:border-[#3B82F6]/30 shadow-sm transition-colors duration-200"
                                 />
-                                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-md">
-                                  <CheckCircle className="w-4 h-4 text-white" />
+                                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center shadow-sm">
+                                  <CheckCircle className="w-3.5 h-3.5 text-white" />
                                 </div>
                               </div>
                             </div>
@@ -2726,7 +2679,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             </div>
 
                             {/* CTA */}
-                            <button onClick={(e) => { e.stopPropagation(); handleOpenLawyerProfile(banner.lawyerId); }} className="mt-4 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-sm transition-all cursor-pointer active:scale-[0.98]">
+                            <button onClick={(e) => { e.stopPropagation(); handleOpenLawyerProfile(banner.lawyerId); }} className="mt-4 w-full py-2.5 rounded-lg text-sm font-bold bg-[#EEF4FA] text-[#1E3A5F] border border-[#1E3A5F]/10 hover:bg-[#1E3A5F] hover:text-white transition-all cursor-pointer active:scale-[0.98]">
                               프로필 보기 →
                             </button>
                           </div>
@@ -2763,7 +2716,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             })()}
 
             {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-indigo-50/30 dark:bg-indigo-950/10 border-y border-indigo-100/50 dark:border-slate-800">
+            <section className="w-full py-10 md:py-14 bg-white border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
             <div className="space-y-6 text-center">
@@ -2873,18 +2826,18 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 7: 성공 후기 ─────────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-slate-50 dark:bg-slate-900/50">
+            <section className="w-full py-10 md:py-14 bg-[#F8FAFC] border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 8. Section 7: 실제 사례/콘텐츠 (Success reviews & News) */}
             <div className="space-y-4 text-left">
               <div className="flex items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <HeartHandshake className="w-5 h-5 text-brand" />
+                <h3 className="font-bold text-lg text-[#0f172a] flex items-center gap-2">
+                  <HeartHandshake className="w-5 h-5 text-[#1E3A5F]" />
                   <span>실제 채무 해결 성공 후기</span>
                 </h3>
                 <button
                   onClick={() => setActiveTab('reviews')}
-                  className="text-sm text-brand dark:text-brand-light font-bold hover:underline shrink-0"
+                  className="text-sm text-[#3B82F6] font-bold hover:underline shrink-0"
                 >
                   후기 더 보기 →
                 </button>
@@ -2906,7 +2859,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       >
                         {reviews.slice(0, Math.min(reviews.length, 5)).map(rev => (
                           <div key={rev.id} className="w-full sm:w-1/2 lg:w-1/3 shrink-0 px-2.5">
-                            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
+                            <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
                               <div className="space-y-3 text-left">
                                 <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white leading-snug line-clamp-1">
                                   {rev.title}
@@ -2961,7 +2914,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             onClick={() => setActiveReviewIdx(idx)}
                             className={`w-2 h-2 rounded-full transition-all ${
                               safeActiveIdx === idx 
-                                ? 'bg-brand w-4' 
+                                ? 'bg-[#1E3A5F] w-4' 
                                 : 'bg-slate-300 dark:bg-slate-700 hover:bg-slate-400'
                             }`}
                             aria-label={`Go to slide ${idx + 1}`}
@@ -2978,13 +2931,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 8: 고민 해결 상담사례 ─────────────── */}
-            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900">
+            <section className="w-full py-10 md:py-14 bg-white border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
             <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-brand" />
+                <h3 className="font-bold text-lg text-[#0f172a] flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-[#1E3A5F]" />
                   <span>실시간 고민 해결 상담사례</span>
                 </h3>
                 <span className="text-sm text-slate-500">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
