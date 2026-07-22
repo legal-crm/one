@@ -2003,23 +2003,23 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         {/* Dynamic Client Header */}
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 w-full transition-all duration-300">
           <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('landing')}>
-              <img src="./mykim_logo.png" alt="my김변 로고" className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" />
-              <div className="flex flex-col items-start leading-none">
+            <div className="flex items-center gap-2 sm:gap-2.5 cursor-pointer shrink-0 min-w-0" onClick={() => setActiveTab('landing')}>
+              <img src="./mykim_logo.png" alt="my김변 로고" className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform shrink-0" />
+              <div className="flex flex-col items-start leading-tight shrink-0 whitespace-nowrap">
                 <span className="font-extrabold text-base text-slate-900 dark:text-slate-100 flex items-center gap-1 font-brand tracking-tight">
                   my김변
                 </span>
-                <span className="text-[13px] text-slate-500 dark:text-slate-500 mt-0.5 font-medium">
+                <span className={`text-[11px] lg:text-[12px] text-slate-500 dark:text-slate-500 font-medium whitespace-nowrap ${isLoggedIn ? 'hidden xl:block' : 'hidden sm:block'}`}>
                   나의 전담 채무관리 변호사
                 </span>
               </div>
             </div>
 
-          <nav className="flex items-center gap-1 lg:gap-1.5">
-            <div className="hidden md:flex items-center gap-1 lg:gap-1.5">
+          <nav className="flex items-center gap-1 lg:gap-1.5 shrink-0">
+            <div className="hidden md:flex items-center gap-0.5 lg:gap-1">
               <button 
                 onClick={() => setActiveTab('landing')}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
+                className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'landing' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -2034,7 +2034,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   setActiveTab('request');
                   onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭');
                 }}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
+                className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'request' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -2044,7 +2044,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </button>
               <button 
                 onClick={() => setActiveTab('chat')}
-                className={`relative whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
+                className={`relative whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'chat' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -2059,7 +2059,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
               <button 
                 onClick={() => setActiveTab('lawyers')}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
+                className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'lawyers' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -2072,7 +2072,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   setActiveTab('qna');
                   onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭');
                 }}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
+                className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'qna' 
                     ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
                     : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
@@ -2080,45 +2080,33 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               >
                 고민상담 Q&A
               </button>
-              {/* 성공사례 메뉴 숨김 처리
-              <button 
-                onClick={() => setActiveTab('reviews')}
-                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-sm lg:text-[15px] transition-all duration-200 border ${
-                  activeTab === 'reviews' 
-                    ? 'bg-brand/5 border-brand/20 text-brand dark:text-brand-light font-bold shadow-[0_2px_10px_rgba(114,100,255,0.08)]' 
-                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white font-semibold'
-                }`}
-              >
-                성공사례
-              </button>
-              */}
             </div>
  
             {/* Auth section */}
             {isLoggedIn ? (
-              <div className="flex items-center gap-1.5 lg:gap-2.5 ml-1 lg:ml-2 pl-2 lg:pl-3 border-l border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 lg:gap-2 ml-1 pl-2 border-l border-slate-200 dark:border-slate-800 shrink-0">
                 <div 
                   onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="flex flex-col items-end hidden lg:flex whitespace-nowrap shrink-0 cursor-pointer hover:opacity-80 transition-all"
+                  className="flex flex-col items-end hidden xl:flex whitespace-nowrap shrink-0 cursor-pointer hover:opacity-80 transition-all"
                   title="마이페이지로 이동"
                 >
-                  <span className="text-[13px] lg:text-sm font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+                  <span className="text-[12px] lg:text-[13px] font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
                     👤 <span className="text-brand dark:text-brand-light whitespace-nowrap">{userAlias}</span>님
                   </span>
-                  <span className="text-[13px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-semibold leading-none">
+                  <span className="text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-semibold leading-none">
                     스텔스 보호중
                   </span>
                 </div>
                 <button 
                   onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`whitespace-nowrap flex items-center gap-1.5 px-3 lg:px-4 py-2 rounded-xl text-sm font-bold transition-all shrink-0 cursor-pointer border ${
+                  className={`whitespace-nowrap flex items-center gap-1 px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-bold transition-all shrink-0 cursor-pointer border ${
                     activeTab === 'mypage'
                       ? 'bg-brand/10 border-brand/30 text-brand dark:text-brand-light font-bold shadow-sm'
                       : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-transparent'
                   }`}
                   title="마이페이지"
                 >
-                  <User className="w-4 h-4" />
+                  <User className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   <span className="hidden sm:inline">마이페이지</span>
                 </button>
                 <button 
@@ -2141,9 +2129,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     
                     alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
                   }}
-                  className="whitespace-nowrap flex items-center gap-1.5 px-3 lg:px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-bold transition-all shrink-0 cursor-pointer"
+                  className="whitespace-nowrap flex items-center gap-1 px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs lg:text-sm font-bold transition-all shrink-0 cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   <span className="hidden sm:inline">로그아웃</span>
                 </button>
               </div>
