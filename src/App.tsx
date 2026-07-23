@@ -197,7 +197,12 @@ export default function App() {
     if (savedRequests) {
       try {
         const parsed = JSON.parse(savedRequests);
-        const filtered = parsed.filter((r: any) => r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3');
+        // 보안: 익명(client-temp) 진단 데이터는 localStorage에서 로드하지 않음
+        // 로그인 없이 민감한 채무 정보가 노출되는 것을 방지
+        const filtered = parsed.filter((r: any) => 
+          r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3' &&
+          r.clientId !== 'client-temp'
+        );
         setRequests(filtered);
       } catch {
         setRequests([]);
@@ -254,7 +259,9 @@ export default function App() {
 
   // Sync state to localStorage whenever it updates
   useEffect(() => {
-    localStorage.setItem('legal_crm_requests', JSON.stringify(requests));
+    // 보안: client-temp(익명) 데이터는 localStorage에 영구 저장하지 않음
+    const persistableRequests = requests.filter((r: any) => r.clientId !== 'client-temp');
+    localStorage.setItem('legal_crm_requests', JSON.stringify(persistableRequests));
   }, [requests]);
 
   useEffect(() => {

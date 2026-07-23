@@ -3236,6 +3236,35 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} />)}
 
             {activeTab === 'chat' && (
+              !isLoggedIn && clientRequests.length === 0 ? (
+                /* 보안 게이트: 비로그인 + 데이터 없음 → 로그인 유도 */
+                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                    <Lock className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                    로그인이 필요합니다
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm leading-relaxed">
+                    내 관리방은 개인정보 보호를 위해 로그인 후 이용할 수 있습니다.<br />
+                    먼저 상황 체크를 하시면 현재 세션에서 결과를 확인할 수 있습니다.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowAuthModal(true)}
+                      className="px-6 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all cursor-pointer"
+                    >
+                      로그인 / 회원가입
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('request'); }}
+                      className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-sm transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      내 상황 체크하기
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <ChatView 
                 requests={clientRequests} 
                 messages={messages} 
@@ -3265,6 +3294,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 tempAlias={tempAlias}
                 setTempAlias={setTempAlias}
               />
+              )
             )}
           </React.Suspense>
         </div>
