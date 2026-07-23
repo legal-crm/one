@@ -2258,17 +2258,17 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 2: 3단계 프로세스 ────────────────────── */}
-            <section className="w-full py-16 bg-white border-b border-slate-200">
+            <section className="w-full py-10 md:py-16 bg-white border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 3. Section 2: 3단계 프로세스 (3-Step Guide) */}
-            <div className="space-y-12 text-center">
+            <div className="space-y-6 md:space-y-12 text-center">
               <div>
-                <h3 className="text-2xl md:text-3xl font-black text-[#0f172a] tracking-tight">
+                <h3 className="text-xl md:text-3xl font-black text-[#0f172a] tracking-tight">
                   단 3단계로 시작하는 신속 채무 클리닝
                 </h3>
               </div>
 
-              <div className="relative flex flex-col md:flex-row items-start justify-between gap-6 md:gap-0">
+              <div className="relative flex flex-row items-start justify-between gap-2 md:gap-0">
                 {/* Connecting Line (Hidden on mobile) */}
                 <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-[2px] bg-slate-200 z-0"></div>
                 
@@ -2292,16 +2292,16 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     icon: <Lock className="w-6 h-6" />
                   }
                 ].map((item, idx) => (
-                  <div key={idx} className="relative z-10 flex-1 flex flex-col items-center text-center px-4">
-                    <div className="w-10 h-10 bg-[#1E3A5F] text-white rounded-full flex items-center justify-center font-bold text-lg mb-4 shadow-sm">
+                  <div key={idx} className="relative z-10 flex-1 flex flex-col items-center text-center px-1 md:px-4">
+                    <div className="w-7 h-7 md:w-10 md:h-10 bg-[#1E3A5F] text-white rounded-full flex items-center justify-center font-bold text-xs md:text-lg mb-2 md:mb-4 shadow-sm">
                       {item.step}
                     </div>
-                    <div className="bg-white border border-slate-200 p-6 rounded-xl w-full h-full shadow-sm flex flex-col items-center">
-                      <div className="flex justify-center mb-4 text-[#1E3A5F] bg-slate-50 p-3 rounded-full">
+                    <div className="bg-white border border-slate-200 p-3 md:p-6 rounded-xl w-full h-full shadow-sm flex flex-col items-center">
+                      <div className="flex justify-center mb-2 md:mb-4 text-[#1E3A5F] bg-slate-50 p-2 md:p-3 rounded-full">
                         {item.icon}
                       </div>
-                      <h4 className="font-bold text-lg text-[#0f172a] mb-2">{item.title}</h4>
-                      <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+                      <h4 className="font-bold text-xs md:text-lg text-[#0f172a] mb-1 md:mb-2">{item.title}</h4>
+                      <p className="hidden md:block text-sm text-slate-600 leading-relaxed">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -2312,73 +2312,73 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 3: 대시보드 미리보기 ──────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-white dark:bg-slate-900">
+            <section className="w-full py-6 md:py-14 bg-white dark:bg-slate-900">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="space-y-6 text-center">
+            <div className="space-y-4 md:space-y-6 text-center">
               <div className="space-y-1">
-                <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
+                <h3 className="text-lg md:text-2xl font-bold text-slate-900 dark:text-white">
                   내 채무 상태를 한곳에서 관리합니다
                 </h3>
-                <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium">
+                <p className="text-xs md:text-base text-slate-600 dark:text-slate-400 font-medium">
                   진단을 마치거나 변호사를 지정하면 나만의 비밀 대시보드 관리방이 실시간 개설됩니다.
                 </p>
               </div>
 
               {/* Bento Grid Layout */}
-              <div className="max-w-4xl mx-auto pt-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="max-w-4xl mx-auto pt-3 md:pt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4">
                   {/* Large Card (2x1) */}
-                  <div className="col-span-2 bg-[#EFF6FF] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
-                    <div className="w-12 h-12 bg-white dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4 shadow-sm">
-                      <BarChart3 className="w-6 h-6 text-[#1E3A5F]" />
+                  <div className="col-span-2 bg-[#EFF6FF] dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 md:p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-9 h-9 md:w-12 md:h-12 bg-white dark:bg-slate-700 rounded-lg flex items-center justify-center mb-2 md:mb-4 shadow-sm">
+                      <BarChart3 className="w-4 h-4 md:w-6 md:h-6 text-[#1E3A5F]" />
                     </div>
-                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">채무 현황 한눈에 파악</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    <h4 className="text-sm md:text-lg font-bold text-slate-900 dark:text-white mb-1 md:mb-2">채무 현황 한눈에 파악</h4>
+                    <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 font-medium">
                       흩어져 있는 모든 채무를 한 번에 조회하고<br className="hidden md:block" />
                       실시간 상환 일정을 관리하세요.
                     </p>
                   </div>
 
                   {/* 1x1 Card */}
-                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 bg-indigo-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
-                      <TrendingDown className="w-5 h-5 text-indigo-500" />
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 md:p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-2 md:mb-4">
+                      <TrendingDown className="w-4 h-4 md:w-5 md:h-5 text-indigo-500" />
                     </div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">탕감율</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white mb-1 md:mb-2">탕감율</h4>
+                    <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 font-medium">
                       내 조건에 맞는<br />예상 탕감액 확인
                     </p>
                   </div>
 
                   {/* 1x1 Card */}
-                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 bg-red-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
-                      <Shield className="w-5 h-5 text-red-500" />
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 md:p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-red-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-2 md:mb-4">
+                      <Shield className="w-4 h-4 md:w-5 md:h-5 text-red-500" />
                     </div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">독촉 차단</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white mb-1 md:mb-2">독촉 차단</h4>
+                    <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 font-medium">
                       법적 대리인 선임으로<br />추심 즉시 중단
                     </p>
                   </div>
 
                   {/* 1x1 Card */}
-                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 bg-amber-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
-                      <Scale className="w-5 h-5 text-amber-500" />
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 md:p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-2 md:mb-4">
+                      <Scale className="w-4 h-4 md:w-5 md:h-5 text-amber-500" />
                     </div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">변호사 매칭</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white mb-1 md:mb-2">변호사 매칭</h4>
+                    <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 font-medium">
                       전문 변호사와<br />1:1 비밀 상담
                     </p>
                   </div>
 
                   {/* 1x1 Card */}
-                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 bg-emerald-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-4">
-                      <Lock className="w-5 h-5 text-emerald-500" />
+                  <div className="col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 md:p-6 flex flex-col items-start justify-center text-left hover:shadow-md transition-shadow">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-50 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-2 md:mb-4">
+                      <Lock className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" />
                     </div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">비밀 보호</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white mb-1 md:mb-2">비밀 보호</h4>
+                    <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 font-medium">
                       가족과 직장에<br />절대 비밀 보장
                     </p>
                   </div>
@@ -2386,7 +2386,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </div>
 
               {/* 하단 CTA */}
-              <div className="max-w-2xl mx-auto pt-8">
+              <div className="max-w-2xl mx-auto pt-5 md:pt-8">
                 <button 
                   onClick={() => {
                     setRequestType('open');
@@ -2404,24 +2404,24 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 4: 상황별 채무관리 방향성 진단 ────────── */}
-            <section className="w-full py-14 md:py-20 bg-slate-50 dark:bg-slate-950">
+            <section className="w-full py-10 md:py-20 bg-slate-50 dark:bg-slate-950">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* 섹션 헤더 */}
-                <div className="text-center space-y-3 mb-10">
+                <div className="text-center space-y-2 md:space-y-3 mb-5 md:mb-10">
                   <div className="inline-flex items-center gap-2 bg-[#EEF4FA] text-[#1E3A5F] text-xs font-bold px-3 py-1 rounded-md">
                     <HeartHandshake className="w-3.5 h-3.5" />
                     <span>상황별 채무관리 방향 체크</span>
                   </div>
-                  <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                  <h3 className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
                     나의 채무 유형을 선택해 주세요
                   </h3>
-                  <p className="text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
+                  <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
                     해당되는 상황을 클릭하면 즉시 관리 방향과 해결 전략을 안내합니다
                   </p>
                 </div>
 
                 {/* 카드 그리드 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 md:gap-4">
                   {Object.values(remedyData).map((item, idx) => {
                     const colorStyles = {
                       red:     { iconBg: 'bg-red-50 dark:bg-red-950/50',       iconText: 'text-red-500',     hoverBorder: 'hover:border-red-200', countText: 'text-red-500' },
@@ -2442,31 +2442,31 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         onClick={() => handleCategoryClick(item.id)}
                         className={`group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md ${cs.hoverBorder}`}
                       >
-                        <div className="p-5 flex flex-col h-full">
+                        <div className="p-3 md:p-5 flex flex-col h-full">
                           {/* 상단 아이콘 */}
-                          <div className={`w-10 h-10 rounded-full ${cs.iconBg} flex items-center justify-center mb-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${cs.iconText}`}>
-                            {renderRemedyIcon(item.iconName, 'w-5 h-5')}
+                          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${cs.iconBg} flex items-center justify-center mb-2 md:mb-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${cs.iconText}`}>
+                            {renderRemedyIcon(item.iconName, 'w-4 h-4 md:w-5 md:h-5')}
                           </div>
                           
                           {/* 텍스트 */}
-                          <div className="flex-1 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <h5 className="font-bold text-base text-slate-900 dark:text-slate-100">{item.title}</h5>
+                          <div className="flex-1 space-y-1 md:space-y-1.5">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <h5 className="font-bold text-sm md:text-base text-slate-900 dark:text-slate-100">{item.title}</h5>
                               {item.id === 'tax_delinquency' && (
                                 <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-md shrink-0">중요</span>
                               )}
                             </div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium line-clamp-2 leading-relaxed">
+                            <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 font-medium line-clamp-2 leading-relaxed">
                               {item.subtitle}
                             </p>
                           </div>
 
                           {/* 하단 통계 및 화살표 */}
-                          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            <span className={`text-xs font-semibold ${cs.countText}`}>
+                          <div className="mt-2 pt-2 md:mt-4 md:pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <span className={`text-[10px] md:text-xs font-semibold ${cs.countText}`}>
                               상담사례 {caseCount}건+
                             </span>
-                            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#3B82F6] transition-colors" />
+                            <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400 group-hover:text-[#3B82F6] transition-colors" />
                           </div>
                         </div>
                       </div>
@@ -2484,34 +2484,34 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── Sector 5: 무료 관리 범위 ─── */}
-            <section className="w-full py-14 md:py-20 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+            <section className="w-full py-10 md:py-20 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
               <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* 헤더 */}
-                <div className="text-center space-y-3 mb-10">
-                  <h3 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white leading-tight">
+                <div className="text-center space-y-2 md:space-y-3 mb-6 md:mb-10">
+                  <h3 className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white leading-tight">
                     돈 한 푼 안 들어요,<br className="sm:hidden" /> 먼저 상황부터 살펴볼게요
                   </h3>
-                  <p className="text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
+                  <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
                     바로 계약하는 게 아니에요. 지금 내 상황에서 뭘 할 수 있는지, 비용 없이 먼저 알아보는 거예요.
                   </p>
                 </div>
 
                 {/* 벤토 그리드: 상단 2개 대형 + 하단 3개 */}
-                <div className="space-y-4">
+                <div className="space-y-2.5 md:space-y-4">
                   {/* 상단 2개 — 대형 카드 */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2.5 md:gap-4">
                     {[
                       { icon: Search, title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크', color: 'text-indigo-500', bg: 'bg-indigo-50' },
                       { icon: Compass, title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인', color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     ].map((item, i) => (
-                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 md:p-8 transition-all hover:shadow-md">
-                        <div className="flex flex-col items-start gap-4">
-                          <div className={`w-12 h-12 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
-                            <item.icon className={`w-6 h-6 ${item.color}`} />
+                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 md:p-8 transition-all hover:shadow-md">
+                        <div className="flex flex-col items-start gap-2 md:gap-4">
+                          <div className={`w-9 h-9 md:w-12 md:h-12 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
+                            <item.icon className={`w-4 h-4 md:w-6 md:h-6 ${item.color}`} />
                           </div>
-                          <div className="space-y-2">
-                            <h5 className="font-bold text-lg text-slate-900 dark:text-white">{item.title}</h5>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                          <div className="space-y-1 md:space-y-2">
+                            <h5 className="font-bold text-sm md:text-lg text-slate-900 dark:text-white">{item.title}</h5>
+                            <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -2519,20 +2519,20 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </div>
 
                   {/* 하단 3개 — 컴팩트 카드 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-2.5 md:gap-4">
                     {[
                       { icon: ShieldAlert, title: '압류 위험 사전 점검', desc: '통장이나 월급이 묶일 수 있는지 미리 확인', color: 'text-amber-500', bg: 'bg-amber-50' },
                       { icon: Calculator, title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지 안내', color: 'text-rose-500', bg: 'bg-rose-50' },
                       { icon: ClipboardCheck, title: '신청 적격 사전 심사', desc: '신청이 잘 통과될지 미리 점검', color: 'text-sky-500', bg: 'bg-sky-50' },
                     ].map((item, i) => (
-                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 transition-all hover:shadow-md text-left">
-                        <div className="flex flex-col items-start gap-3">
-                          <div className={`w-10 h-10 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
-                            <item.icon className={`w-5 h-5 ${item.color}`} />
+                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 md:p-6 transition-all hover:shadow-md text-left">
+                        <div className="flex flex-col items-start gap-2 md:gap-3">
+                          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
+                            <item.icon className={`w-4 h-4 md:w-5 md:h-5 ${item.color}`} />
                           </div>
-                          <div className="space-y-1">
-                            <h5 className="font-bold text-base text-slate-900 dark:text-white">{item.title}</h5>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                          <div className="space-y-0.5 md:space-y-1">
+                            <h5 className="font-bold text-xs md:text-base text-slate-900 dark:text-white">{item.title}</h5>
+                            <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -2541,7 +2541,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </div>
 
                 {/* 하단 CTA */}
-                <div className="text-center pt-10">
+                <div className="text-center pt-6 md:pt-10">
                   <button
                     onClick={() => {
                       setRequestType('open');
