@@ -2315,7 +2315,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
             {/* ── Sector 4: 상황별 채무관리 방향성 진단 (Premium Bento Grid) ────────── */}
-            <section className="w-full py-12 md:py-20 bg-gradient-to-b from-slate-50 via-white to-slate-50/80 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
+            <section className="w-full py-10 md:py-20 bg-gradient-to-b from-slate-50 via-white to-slate-50/80 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
               {/* 배경 장식 글로우 (비대칭 배치 — Anti-AI) */}
               <div className="absolute top-16 -right-24 w-72 h-72 bg-[#3B82F6]/[0.06] rounded-full blur-[80px] pointer-events-none" />
               <div className="absolute -bottom-20 left-1/4 w-56 h-56 bg-rose-200/20 rounded-full blur-[60px] pointer-events-none" />
@@ -2327,10 +2327,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     <HeartHandshake className="w-3.5 h-3.5" />
                     <span>STEP 1 · 상황별 채무관리 방향 체크</span>
                   </div>
-                  <h3 className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                  <h3 className="text-xl md:text-3xl font-bold text-[#0f172a] dark:text-white tracking-tight leading-tight">
                     나의 채무 유형을 선택해 주세요
                   </h3>
-                  <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
+                  <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
                     해당 상황을 클릭하면 <strong className="text-slate-700 dark:text-slate-300">관리 방향과 해결 전략</strong>을 즉시 안내합니다
                   </p>
                 </div>
@@ -2418,8 +2418,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
                                 </div>
                                 <div className="flex-1 space-y-1">
-                                  <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{item.title}</h5>
-                                  <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.subtitle}</p>
+                                  <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
+                                  <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
                                 </div>
                                 <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
                                   <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
@@ -2454,8 +2454,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
                                 </div>
                                 <div className="flex-1 space-y-1">
-                                  <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{item.title}</h5>
-                                  <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.subtitle}</p>
+                                  <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
+                                  <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
                                 </div>
                                 <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
                                   <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
@@ -2490,8 +2490,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
                                 </div>
                                 <div className="flex-1 space-y-1">
-                                  <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{item.title}</h5>
-                                  <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.subtitle}</p>
+                                  <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
+                                  <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
                                 </div>
                                 <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
                                   <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
@@ -2517,11 +2517,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{bannerItem.title}</h5>
+                              <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{bannerItem.title}</h5>
                               <span className="text-[9px] md:text-[10px] bg-amber-500 text-white font-bold px-1.5 md:px-2 py-0.5 rounded-md shrink-0">중요</span>
                               <span className="hidden md:inline text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-100/80 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 px-2 py-0.5 rounded-md">소멸시효 긴급 검토</span>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5 line-clamp-1">
                               {bannerItem.subtitle} · 사례 {caseCounts[8]}건+
                             </p>
                           </div>
@@ -2534,7 +2534,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                 {/* 하단 안내 */}
                 <div className="text-center pt-6 md:pt-8">
-                  <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
+                  <p className="text-sm text-slate-500 dark:text-slate-500 font-medium">
                     ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-[#3B82F6] font-bold">3분</span>이면 완료됩니다
                   </p>
                 </div>
