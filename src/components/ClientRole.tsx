@@ -2473,114 +2473,87 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* ── Sector 5.5: 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 · 월 50만원) ── */}
             {shuffledShowcaseAds.length > 0 && (() => {
-              const cardsPerPage = 3;
-              const totalPages = Math.ceil(shuffledShowcaseAds.length / cardsPerPage);
-              const currentCards = shuffledShowcaseAds.slice(
-                showcasePage * cardsPerPage,
-                showcasePage * cardsPerPage + cardsPerPage
-              );
+              const totalPages = shuffledShowcaseAds.length;
+              const banner = shuffledShowcaseAds[showcasePage % totalPages];
 
               return (
                 <section
-                  className="w-full py-14 md:py-20 bg-[#F8FAFC] border-y border-slate-200"
+                  className="w-full py-12 md:py-16 bg-[#F8FAFC] border-y border-slate-200"
                   onMouseEnter={() => setShowcaseHovered(true)}
                   onMouseLeave={() => setShowcaseHovered(false)}
                 >
-
-                  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Header */}
-                    <div className="text-center space-y-3 mb-10">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-[11px] text-slate-400 font-medium">AD 광고</span>
-                      </div>
-                      <h3 className="text-2xl md:text-3xl font-bold text-[#0f172a] tracking-tight">
-                        검증된 <span className="text-[#1E3A5F]">전문 변호사</span>가 함께합니다
-                      </h3>
-                      <p className="text-sm md:text-base text-slate-500 font-medium max-w-lg mx-auto">
-                        회생·파산 분야에서 풍부한 경험을 갖춘 전담 변호사를 만나보세요.
-                      </p>
-                    </div>
-
-                    {/* Cards grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-8">
-                      {currentCards.map((banner) => (
-                        <div
-                          key={`showcase-${showcasePage}-${banner.id}`}
-                          onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
-                          className="group relative bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer hover:-translate-y-1"
-                        >
-                          {/* Top accent strip */}
-                          <div className="h-1 w-full bg-[#1E3A5F]" />
-
-                          <div className="p-5 md:p-6">
-                            {/* Rating */}
-                            <div className="flex items-center justify-between mb-4">
-                              <span className="text-[10px] text-slate-400 font-medium">광고</span>
-                              <div className="flex gap-0.5">
-                                {[...Array(5)].map((_, s) => (
-                                  <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Avatar */}
-                            <div className="flex justify-center mb-4">
-                              <div className="relative">
-                                <img
-                                  src={banner.lawyerAvatar}
-                                  alt={banner.lawyerName}
-                                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border-2 border-slate-100 group-hover:border-[#3B82F6]/30 shadow-sm transition-colors duration-200"
-                                />
-                                <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center shadow-sm">
-                                  <CheckCircle className="w-3.5 h-3.5 text-white" />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Info */}
-                            <div className="text-center space-y-1.5">
-                              <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                                {banner.lawyerName}
-                              </h4>
-                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 leading-snug">
-                                {banner.title}
-                              </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">{banner.subtitle}</p>
-                              <p className="text-[11px] text-amber-600/70 dark:text-amber-400/70 italic">"{banner.tagline}"</p>
-                            </div>
-
-                            {/* CTA */}
-                            <button onClick={(e) => { e.stopPropagation(); handleOpenLawyerProfile(banner.lawyerId); }} className="mt-4 w-full py-2.5 rounded-lg text-sm font-bold bg-[#EEF4FA] text-[#1E3A5F] border border-[#1E3A5F]/10 hover:bg-[#1E3A5F] hover:text-white transition-all cursor-pointer active:scale-[0.98]">
-                              프로필 보기 →
-                            </button>
+                  <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-col md:flex-row items-stretch min-h-[320px]">
+                      
+                      {/* Left: Text Info & CTA */}
+                      <div className="flex-1 p-8 md:p-10 lg:p-12 flex flex-col justify-center relative z-20">
+                        <div className="mb-4">
+                          <span className="inline-block bg-white/10 text-white/80 text-[10px] font-bold px-2.5 py-1 rounded-sm uppercase tracking-wider mb-3">
+                            프리미엄 광고
+                          </span>
+                          <h3 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
+                            {banner.title}
+                          </h3>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl md:text-2xl font-black text-white">{banner.lawyerName}</span>
+                            <span className="text-sm md:text-base text-slate-300 font-medium">{banner.subtitle}</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Page indicators */}
-                    {totalPages > 1 && (
-                      <div className="flex justify-center gap-2 mb-5">
-                        {Array.from({ length: totalPages }).map((_, idx) => (
+                        
+                        <p className="text-lg text-slate-300/90 font-light italic mb-8 border-l-4 border-amber-500 pl-4 break-keep">
+                          "{banner.tagline}"
+                        </p>
+                        
+                        <div>
                           <button
-                            key={idx}
-                            onClick={() => setShowcasePage(idx)}
-                            className={`h-2 rounded-full transition-all cursor-pointer ${
-                              idx === showcasePage
-                                ? 'bg-amber-500 w-6'
-                                : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 w-2'
-                            }`}
-                          />
-                        ))}
+                            onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
+                            className="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-8 py-3.5 rounded-lg text-sm md:text-base transition-all shadow-md hover:shadow-lg cursor-pointer"
+                          >
+                            <span>프로필 보기 →</span>
+                          </button>
+                        </div>
                       </div>
-                    )}
 
+                      {/* Right: Avatar */}
+                      <div className="relative w-full md:w-[280px] lg:w-[320px] h-64 md:h-auto overflow-hidden shrink-0">
+                        {/* Background subtle gradient for image */}
+                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-l from-[#2B3E50] via-[#2B3E50]/60 to-transparent z-10" />
+                        <img
+                          src={banner.lawyerAvatar}
+                          alt={banner.lawyerName}
+                          className="w-full h-full object-cover object-top"
+                        />
+                      </div>
+                      
+                      {/* Navigation Overlays */}
+                      <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 flex items-center gap-3 z-20">
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => setShowcasePage((prev) => (prev === 0 ? totalPages - 1 : prev - 1))}
+                            className="w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => setShowcasePage((prev) => (prev + 1) % totalPages)}
+                            className="w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <div className="bg-black/40 px-3 py-1.5 rounded-full text-[11px] font-medium text-white/90 backdrop-blur-sm border border-white/10">
+                          {showcasePage + 1} / {totalPages}
+                        </div>
+                      </div>
+                    </div>
+                    
                     {/* Disclaimer */}
-                    <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed max-w-lg mx-auto">
-                      <span className="text-amber-500/80">⚠</span>{' '}
-                      본 영역은 변호사가 직접 등록한 유료 광고이며, 같은 등급 내{' '}
-                      <strong className="text-slate-500 dark:text-slate-400">랜덤 셔플 정렬</strong>로 운영됩니다.
-                    </p>
+                    <div className="mt-5 flex items-center justify-center gap-1.5">
+                      <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold">AD</span>
+                      <p className="text-[11px] text-slate-400">
+                        본 영역은 변호사가 직접 등록한 유료 광고이며, 랜덤 셔플 정렬로 운영됩니다.
+                      </p>
+                    </div>
                   </div>
                 </section>
               );
