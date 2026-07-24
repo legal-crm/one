@@ -2314,80 +2314,227 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
 
-            {/* ── Sector 4: 상황별 채무관리 방향성 진단 ────────── */}
-            <section className="w-full py-10 md:py-20 bg-slate-50 dark:bg-slate-950">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* ── Sector 4: 상황별 채무관리 방향성 진단 (Premium Bento Grid) ────────── */}
+            <section className="w-full py-12 md:py-20 bg-gradient-to-b from-slate-50 via-white to-slate-50/80 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
+              {/* 배경 장식 글로우 (비대칭 배치 — Anti-AI) */}
+              <div className="absolute top-16 -right-24 w-72 h-72 bg-[#3B82F6]/[0.06] rounded-full blur-[80px] pointer-events-none" />
+              <div className="absolute -bottom-20 left-1/4 w-56 h-56 bg-rose-200/20 rounded-full blur-[60px] pointer-events-none" />
+
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 {/* 섹션 헤더 */}
-                <div className="text-center space-y-2 md:space-y-3 mb-5 md:mb-10">
-                  <div className="inline-flex items-center gap-2 bg-[#EEF4FA] text-[#1E3A5F] text-xs font-bold px-3 py-1 rounded-md">
+                <div className="text-center space-y-2.5 md:space-y-3 mb-6 md:mb-10">
+                  <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#EEF4FA] to-indigo-50 border border-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-4 py-1.5 rounded-full">
                     <HeartHandshake className="w-3.5 h-3.5" />
-                    <span>상황별 채무관리 방향 체크</span>
+                    <span>STEP 1 · 상황별 채무관리 방향 체크</span>
                   </div>
                   <h3 className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
                     나의 채무 유형을 선택해 주세요
                   </h3>
-                  <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
-                    해당되는 상황을 클릭하면 즉시 관리 방향과 해결 전략을 안내합니다
+                  <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
+                    해당 상황을 클릭하면 <strong className="text-slate-700 dark:text-slate-300">관리 방향과 해결 전략</strong>을 즉시 안내합니다
                   </p>
                 </div>
 
-                {/* 카드 그리드 */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 md:gap-4">
-                  {Object.values(remedyData).map((item, idx) => {
-                    const colorStyles = {
-                      red:     { iconBg: 'bg-red-50 dark:bg-red-950/50',       iconText: 'text-red-500',     hoverBorder: 'hover:border-red-200', countText: 'text-red-500' },
-                      indigo:  { iconBg: 'bg-indigo-50 dark:bg-indigo-950/50',  iconText: 'text-indigo-500',  hoverBorder: 'hover:border-indigo-200', countText: 'text-indigo-500' },
-                      amber:   { iconBg: 'bg-amber-50 dark:bg-amber-950/50',   iconText: 'text-amber-500',   hoverBorder: 'hover:border-amber-200', countText: 'text-amber-500' },
-                      purple:  { iconBg: 'bg-purple-50 dark:bg-purple-950/50',  iconText: 'text-purple-500',  hoverBorder: 'hover:border-purple-200', countText: 'text-purple-500' },
-                      orange:  { iconBg: 'bg-orange-50 dark:bg-orange-950/50',  iconText: 'text-orange-500',  hoverBorder: 'hover:border-orange-200', countText: 'text-orange-500' },
-                      emerald: { iconBg: 'bg-emerald-50 dark:bg-emerald-950/50', iconText: 'text-emerald-500', hoverBorder: 'hover:border-emerald-200', countText: 'text-emerald-500' },
-                      rose:    { iconBg: 'bg-rose-50 dark:bg-rose-950/50',     iconText: 'text-rose-500',    hoverBorder: 'hover:border-rose-200', countText: 'text-rose-500' },
-                    };
-                    const cs = colorStyles[item.themeColor as keyof typeof colorStyles] || { iconBg: 'bg-slate-100 dark:bg-slate-800', iconText: 'text-slate-600', hoverBorder: 'hover:border-slate-300', countText: 'text-slate-500' };
-                    const caseCounts = [127, 89, 156, 73, 94, 61, 112, 143, 48];
-                    const caseCount = caseCounts[idx] || 80;
+                {/* 벤토 비대칭 카드 그리드 */}
+                {(() => {
+                  const items = Object.values(remedyData);
+                  const caseCounts = [127, 89, 156, 73, 94, 61, 112, 143, 48];
+                  
+                  const colorMap: Record<string, { iconBg: string; iconBorder: string; iconText: string; gradBar: string; hoverGlow: string; badgeBg: string; badgeText: string }> = {
+                    red:     { iconBg: 'from-red-50 to-rose-100/80', iconBorder: 'border-red-200/50', iconText: 'text-red-500', gradBar: 'from-red-400 via-rose-400 to-red-300', hoverGlow: 'group-hover:bg-red-100/40', badgeBg: 'bg-red-50 border-red-100/60', badgeText: 'text-red-500' },
+                    indigo:  { iconBg: 'from-indigo-50 to-indigo-100/80', iconBorder: 'border-indigo-200/50', iconText: 'text-indigo-500', gradBar: 'from-indigo-400 via-blue-400 to-indigo-300', hoverGlow: 'group-hover:bg-indigo-100/40', badgeBg: 'bg-indigo-50 border-indigo-100/60', badgeText: 'text-indigo-500' },
+                    amber:   { iconBg: 'from-amber-50 to-amber-100/80', iconBorder: 'border-amber-200/50', iconText: 'text-amber-500', gradBar: 'from-amber-400 via-orange-300 to-amber-300', hoverGlow: 'group-hover:bg-amber-100/40', badgeBg: 'bg-amber-50 border-amber-100/60', badgeText: 'text-amber-600' },
+                    purple:  { iconBg: 'from-purple-50 to-violet-100/80', iconBorder: 'border-purple-200/50', iconText: 'text-purple-500', gradBar: 'from-purple-400 via-violet-400 to-purple-300', hoverGlow: 'group-hover:bg-purple-100/40', badgeBg: 'bg-purple-50 border-purple-100/60', badgeText: 'text-purple-500' },
+                    orange:  { iconBg: 'from-orange-50 to-amber-100/80', iconBorder: 'border-orange-200/50', iconText: 'text-orange-500', gradBar: 'from-orange-400 via-amber-400 to-orange-300', hoverGlow: 'group-hover:bg-orange-100/40', badgeBg: 'bg-orange-50 border-orange-100/60', badgeText: 'text-orange-500' },
+                    emerald: { iconBg: 'from-emerald-50 to-teal-100/80', iconBorder: 'border-emerald-200/50', iconText: 'text-emerald-500', gradBar: 'from-emerald-400 via-teal-400 to-emerald-300', hoverGlow: 'group-hover:bg-emerald-100/40', badgeBg: 'bg-emerald-50 border-emerald-100/60', badgeText: 'text-emerald-500' },
+                    rose:    { iconBg: 'from-rose-50 to-pink-100/80', iconBorder: 'border-rose-200/50', iconText: 'text-rose-500', gradBar: 'from-rose-400 via-pink-400 to-rose-300', hoverGlow: 'group-hover:bg-rose-100/40', badgeBg: 'bg-rose-50 border-rose-100/60', badgeText: 'text-rose-500' },
+                  };
 
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => handleCategoryClick(item.id)}
-                        className={`group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md ${cs.hoverBorder}`}
-                      >
-                        <div className="p-3 md:p-5 flex flex-col h-full">
-                          {/* 상단 아이콘 */}
-                          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${cs.iconBg} flex items-center justify-center mb-2 md:mb-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${cs.iconText}`}>
-                            {renderRemedyIcon(item.iconName, 'w-4 h-4 md:w-5 md:h-5')}
-                          </div>
-                          
-                          {/* 텍스트 */}
-                          <div className="flex-1 space-y-1 md:space-y-1.5">
-                            <div className="flex items-center gap-1 md:gap-2">
-                              <h5 className="font-bold text-sm md:text-base text-slate-900 dark:text-slate-100">{item.title}</h5>
-                              {item.id === 'tax_delinquency' && (
-                                <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-md shrink-0">중요</span>
-                              )}
+                  // Hero = card_loan (idx 0), Banner = tax_delinquency (idx 8)
+                  const heroItem = items[0];
+                  const heroCs = colorMap[heroItem.themeColor] || colorMap.indigo;
+                  const bannerItem = items[8]; // tax_delinquency
+                  const bannerCs = colorMap[bannerItem.themeColor] || colorMap.amber;
+                  const standardItems = items.slice(1, 8); // idx 1~7
+
+                  return (
+                    <div className="card-stagger space-y-3 md:space-y-4">
+                      {/* Row 1: Hero (2col) + Standard (1col) */}
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                        {/* ── Hero Card: 카드론·리볼빙 연체 ── */}
+                        <div
+                          onClick={() => handleCategoryClick(heroItem.id)}
+                          className="col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F2440] via-[#1E3A5F] to-[#162D4A] border border-slate-600/30 p-5 md:p-7 cursor-pointer card-hero-depth hover:-translate-y-0.5 transition-all duration-500"
+                        >
+                          {/* 배경 글로우 */}
+                          <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/[0.07] rounded-full blur-3xl pointer-events-none" />
+                          <div className="absolute bottom-0 left-8 w-28 h-28 bg-indigo-400/[0.05] rounded-full blur-2xl pointer-events-none" />
+
+                          <div className="relative z-10 flex items-start justify-between gap-4">
+                            <div className="space-y-2.5 md:space-y-3 flex-1">
+                              {/* 뱃지 라인 */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="inline-flex items-center gap-1.5 bg-red-500/15 border border-red-500/25 text-red-300 text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                                  가장 많은 상담
+                                </span>
+                                <span className="text-slate-500 text-[10px] md:text-[11px] font-medium">사례 {caseCounts[0]}건+</span>
+                              </div>
+                              {/* 제목 */}
+                              <h4 className="text-base md:text-xl font-bold text-white leading-snug">{heroItem.title}</h4>
+                              <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-sm">
+                                {heroItem.subtitle}
+                              </p>
+                              {/* CTA */}
+                              <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-white/50 group-hover:text-white/90 transition-colors pt-1">
+                                <span>관리 방향 확인하기</span>
+                                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                              </div>
                             </div>
-                            <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 font-medium line-clamp-2 leading-relaxed">
-                              {item.subtitle}
-                            </p>
-                          </div>
-
-                          {/* 하단 통계 및 화살표 */}
-                          <div className="mt-2 pt-2 md:mt-4 md:pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            <span className={`text-[10px] md:text-xs font-semibold ${cs.countText}`}>
-                              상담사례 {caseCount}건+
-                            </span>
-                            <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400 group-hover:text-[#3B82F6] transition-colors" />
+                            {/* 아이콘 */}
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-red-500/15 transition-all duration-300">
+                              {renderRemedyIcon(heroItem.iconName, 'w-6 h-6 md:w-7 md:h-7 text-red-400 stroke-[1.5]')}
+                            </div>
                           </div>
                         </div>
+
+                        {/* ── 첫 번째 표준 카드 (은행·저축은행) ── */}
+                        {(() => {
+                          const item = standardItems[0];
+                          const cs = colorMap[item.themeColor] || colorMap.indigo;
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => handleCategoryClick(item.id)}
+                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col"
+                            >
+                              <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
+                              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
+                              <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+                                    {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{item.title}</h5>
+                                  <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.subtitle}</p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                                  <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
+                                    사례 {caseCounts[1]}건+
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Row 2: 3개 표준 카드 (대부업, 연대보증, 주식코인) */}
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                        {standardItems.slice(1, 4).map((item, idx) => {
+                          const cs = colorMap[item.themeColor] || colorMap.indigo;
+                          const caseCount = caseCounts[idx + 2];
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => handleCategoryClick(item.id)}
+                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col"
+                            >
+                              <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
+                              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
+                              <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+                                    {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{item.title}</h5>
+                                  <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.subtitle}</p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                                  <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
+                                    사례 {caseCount}건+
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Row 3: 3개 표준 카드 (일용직, 급여압류, 개인회생/파산) */}
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                        {standardItems.slice(4, 7).map((item, idx) => {
+                          const cs = colorMap[item.themeColor] || colorMap.indigo;
+                          const caseCount = caseCounts[idx + 5];
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => handleCategoryClick(item.id)}
+                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col"
+                            >
+                              <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
+                              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
+                              <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+                                    {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{item.title}</h5>
+                                  <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.subtitle}</p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                                  <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
+                                    사례 {caseCount}건+
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Row 4: 세금 체납 풀 와이드 배너 카드 */}
+                      <div
+                        onClick={() => handleCategoryClick(bannerItem.id)}
+                        className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-50/80 via-white to-amber-50/60 dark:from-amber-950/20 dark:via-slate-900 dark:to-amber-950/10 border border-amber-200/60 dark:border-amber-800/30 p-4 md:p-5 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700/50 card-depth hover:-translate-y-0.5 transition-all duration-300"
+                      >
+                        <div className={`accent-bar-reveal bg-gradient-to-r ${bannerCs.gradBar} rounded-t-xl`} />
+                        <div className="relative z-10 flex items-center gap-3 md:gap-4">
+                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100/80 border border-amber-200/60 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                            {renderRemedyIcon(bannerItem.iconName, 'w-5 h-5 md:w-6 md:h-6 text-amber-600 stroke-[1.75]')}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h5 className="font-bold text-sm md:text-[15px] text-slate-900 dark:text-slate-100">{bannerItem.title}</h5>
+                              <span className="text-[9px] md:text-[10px] bg-amber-500 text-white font-bold px-1.5 md:px-2 py-0.5 rounded-md shrink-0">중요</span>
+                              <span className="hidden md:inline text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-100/80 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 px-2 py-0.5 rounded-md">소멸시효 긴급 검토</span>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                              {bannerItem.subtitle} · 사례 {caseCounts[8]}건+
+                            </p>
+                          </div>
+                          <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-slate-300 dark:text-slate-600 group-hover:text-amber-500 group-hover:translate-x-1 transition-all duration-300 shrink-0" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* 하단 안내 */}
-                <div className="text-center pt-8">
-                  <p className="text-sm text-slate-500 font-medium">
+                <div className="text-center pt-6 md:pt-8">
+                  <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
                     ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-[#3B82F6] font-bold">3분</span>이면 완료됩니다
                   </p>
                 </div>
