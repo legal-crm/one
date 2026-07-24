@@ -2616,7 +2616,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </div>
             </section>
 
-            {/* ── Sector 5: 무료 관리 범위 ─── */}
             <section className="w-full py-10 md:py-20 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
               <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* 헤더 */}
@@ -2629,48 +2628,40 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </p>
                 </div>
 
-                {/* 벤토 그리드: 상단 2개 대형 + 하단 3개 */}
-                <div className="space-y-2.5 md:space-y-4">
-                  {/* 상단 2개 — 대형 카드 */}
-                  <div className="grid grid-cols-2 gap-2.5 md:gap-4">
-                    {[
-                      { icon: Search, title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크', color: 'text-indigo-500', bg: 'bg-indigo-50' },
-                      { icon: Compass, title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    ].map((item, i) => (
-                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 md:p-8 transition-all hover:shadow-md">
-                        <div className="flex flex-col items-start gap-2 md:gap-4">
-                          <div className={`w-9 h-9 md:w-12 md:h-12 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
-                            <item.icon className={`w-4 h-4 md:w-6 md:h-6 ${item.color}`} />
-                          </div>
-                          <div className="space-y-1 md:space-y-2">
-                            <h5 className="font-bold text-sm md:text-lg text-slate-900 dark:text-white">{item.title}</h5>
-                            <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                {/* 체크리스트 인라인 레이아웃 (박스 없음) */}
+                <div className="max-w-2xl mx-auto">
+                  {[
+                    { icon: Search, title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크', color: 'text-indigo-500', checkBg: 'bg-indigo-500' },
+                    { icon: Compass, title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인', color: 'text-emerald-500', checkBg: 'bg-emerald-500' },
+                    { icon: ShieldAlert, title: '압류 위험 사전 점검', desc: '통장이나 월급이 묶일 수 있는지 미리 확인', color: 'text-amber-500', checkBg: 'bg-amber-500' },
+                    { icon: Calculator, title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지 안내', color: 'text-rose-500', checkBg: 'bg-rose-500' },
+                    { icon: ClipboardCheck, title: '신청 적격 사전 심사', desc: '신청이 잘 통과될지 미리 점검', color: 'text-sky-500', checkBg: 'bg-sky-500' },
+                  ].map((item, i, arr) => (
+                    <div key={i}>
+                      <div className="flex items-center gap-3.5 md:gap-5 py-4 md:py-5 group">
+                        {/* 체크 원형 */}
+                        <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full ${item.checkBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <Check className="w-4 h-4 md:w-[18px] md:h-[18px] text-white stroke-[2.5]" />
+                        </div>
+                        {/* 아이콘 */}
+                        <div className="shrink-0">
+                          <item.icon className={`w-5 h-5 ${item.color}`} />
+                        </div>
+                        {/* 텍스트 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col md:flex-row md:items-center md:gap-3">
+                            <h5 className="font-bold text-sm md:text-base text-slate-900 dark:text-white shrink-0">{item.title}</h5>
+                            <span className="hidden md:block w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium truncate">{item.desc}</p>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* 하단 3개 — 컴팩트 카드 */}
-                  <div className="grid grid-cols-3 gap-2.5 md:gap-4">
-                    {[
-                      { icon: ShieldAlert, title: '압류 위험 사전 점검', desc: '통장이나 월급이 묶일 수 있는지 미리 확인', color: 'text-amber-500', bg: 'bg-amber-50' },
-                      { icon: Calculator, title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지 안내', color: 'text-rose-500', bg: 'bg-rose-50' },
-                      { icon: ClipboardCheck, title: '신청 적격 사전 심사', desc: '신청이 잘 통과될지 미리 점검', color: 'text-sky-500', bg: 'bg-sky-50' },
-                    ].map((item, i) => (
-                      <div key={i} className="group overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 md:p-6 transition-all hover:shadow-md text-left">
-                        <div className="flex flex-col items-start gap-2 md:gap-3">
-                          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg ${item.bg} dark:bg-slate-800 flex items-center justify-center shrink-0`}>
-                            <item.icon className={`w-4 h-4 md:w-5 md:h-5 ${item.color}`} />
-                          </div>
-                          <div className="space-y-0.5 md:space-y-1">
-                            <h5 className="font-bold text-xs md:text-base text-slate-900 dark:text-white">{item.title}</h5>
-                            <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      {/* 구분선 */}
+                      {i < arr.length - 1 && (
+                        <div className="h-px bg-slate-100 dark:bg-slate-800 ml-[46px] md:ml-[52px]" />
+                      )}
+                    </div>
+                  ))}
                 </div>
 
                 {/* 하단 CTA */}
