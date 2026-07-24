@@ -2628,40 +2628,39 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </p>
                 </div>
 
-                {/* 체크리스트 인라인 레이아웃 (박스 없음) */}
-                <div className="max-w-2xl mx-auto">
-                  {[
-                    { icon: Search, title: '채무 위험도 분석', desc: '지금 빚이 얼마나 있고, 얼마나 밀렸는지 위험도 체크', color: 'text-indigo-500', checkBg: 'bg-indigo-500' },
-                    { icon: Compass, title: '최적 해결 방법 탐색', desc: '나한테 맞는 해결 방법이 뭔지 첫 번째 확인', color: 'text-emerald-500', checkBg: 'bg-emerald-500' },
-                    { icon: ShieldAlert, title: '압류 위험 사전 점검', desc: '통장이나 월급이 묶일 수 있는지 미리 확인', color: 'text-amber-500', checkBg: 'bg-amber-500' },
-                    { icon: Calculator, title: '생활비 보호 설계', desc: '생활비를 얼마까지 지킬 수 있는지 안내', color: 'text-rose-500', checkBg: 'bg-rose-500' },
-                    { icon: ClipboardCheck, title: '신청 적격 사전 심사', desc: '신청이 잘 통과될지 미리 점검', color: 'text-sky-500', checkBg: 'bg-sky-500' },
-                  ].map((item, i, arr) => (
-                    <div key={i}>
-                      <div className="flex items-center gap-3.5 md:gap-5 py-4 md:py-5 group">
-                        {/* 체크 원형 */}
-                        <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full ${item.checkBg} flex items-center justify-center shrink-0 shadow-sm`}>
-                          <Check className="w-4 h-4 md:w-[18px] md:h-[18px] text-white stroke-[2.5]" />
-                        </div>
-                        {/* 아이콘 */}
-                        <div className="shrink-0">
-                          <item.icon className={`w-5 h-5 ${item.color}`} />
-                        </div>
-                        {/* 텍스트 */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-col md:flex-row md:items-center md:gap-3">
-                            <h5 className="font-bold text-sm md:text-base text-slate-900 dark:text-white shrink-0">{item.title}</h5>
-                            <span className="hidden md:block w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
-                            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium truncate">{item.desc}</p>
-                          </div>
-                        </div>
+                {/* 틴트 배경 패널 + 필 태그 플로우 */}
+                <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-[#EEF4FA]/60 to-slate-50 dark:from-slate-800/50 dark:via-slate-800/30 dark:to-slate-800/50 p-6 md:p-10">
+                  {/* 상단 라벨 */}
+                  <div className="text-center mb-5 md:mb-7">
+                    <span className="inline-flex items-center gap-1.5 text-[#1E3A5F] dark:text-slate-300 text-xs font-bold">
+                      <Shield className="w-3.5 h-3.5" />
+                      무료로 제공되는 사전 분석 항목
+                    </span>
+                  </div>
+
+                  {/* 필 태그 플로우 — 중앙 정렬, 자연스럽게 줄바꿈 */}
+                  <div className="flex flex-wrap items-center justify-center gap-2.5 md:gap-3">
+                    {[
+                      { icon: Search, title: '채무 위험도 분석', color: 'text-indigo-500', pillBg: 'bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/20', pillShadow: 'shadow-sm hover:shadow-md hover:shadow-indigo-100/50' },
+                      { icon: Compass, title: '최적 해결 방법 탐색', color: 'text-emerald-500', pillBg: 'bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20', pillShadow: 'shadow-sm hover:shadow-md hover:shadow-emerald-100/50' },
+                      { icon: ShieldAlert, title: '압류 위험 사전 점검', color: 'text-amber-500', pillBg: 'bg-white dark:bg-slate-900 hover:bg-amber-50 dark:hover:bg-amber-950/20', pillShadow: 'shadow-sm hover:shadow-md hover:shadow-amber-100/50' },
+                      { icon: Calculator, title: '생활비 보호 설계', color: 'text-rose-500', pillBg: 'bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/20', pillShadow: 'shadow-sm hover:shadow-md hover:shadow-rose-100/50' },
+                      { icon: ClipboardCheck, title: '신청 적격 사전 심사', color: 'text-sky-500', pillBg: 'bg-white dark:bg-slate-900 hover:bg-sky-50 dark:hover:bg-sky-950/20', pillShadow: 'shadow-sm hover:shadow-md hover:shadow-sky-100/50' },
+                    ].map((item, i) => (
+                      <div
+                        key={i}
+                        className={`inline-flex items-center gap-2 md:gap-2.5 px-4 py-2.5 md:px-5 md:py-3 rounded-full ${item.pillBg} ${item.pillShadow} transition-all duration-300 cursor-default`}
+                      >
+                        <item.icon className={`w-4 h-4 md:w-[18px] md:h-[18px] ${item.color} shrink-0`} />
+                        <span className="font-bold text-xs md:text-sm text-slate-900 dark:text-white whitespace-nowrap">{item.title}</span>
                       </div>
-                      {/* 구분선 */}
-                      {i < arr.length - 1 && (
-                        <div className="h-px bg-slate-100 dark:bg-slate-800 ml-[46px] md:ml-[52px]" />
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+
+                  {/* 하단 부연 */}
+                  <p className="text-center text-xs md:text-sm text-slate-400 dark:text-slate-500 font-medium mt-5 md:mt-7">
+                    위 항목은 모두 <strong className="text-slate-600 dark:text-slate-300">무료</strong>로 진행되며, 상담 계약과 무관합니다
+                  </p>
                 </div>
 
                 {/* 하단 CTA */}
