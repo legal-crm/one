@@ -3246,7 +3246,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             { label: '🔘 해당 없음', value: 'none' },
                             { label: '📋 기초생활수급자', value: 'basic_recipient' },
                             { label: '♿ 심한 장애(1~3급)', value: 'severe_disability' },
-                            { label: '👴 만 70세 이상', value: 'elderly' }
+                            { label: '👴 만 70세 이상', value: 'elderly' },
+                            { label: '👨‍👧 한부모 가족', value: 'single_parent' },
+                            { label: '🏠 전세사기 피해자', value: 'rent_fraud' }
                         ],
                         'buttons'
                     );

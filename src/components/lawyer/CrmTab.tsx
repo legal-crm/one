@@ -796,7 +796,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           <div className="flex justify-between"><span>혼인 상태</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : selectedClient.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
                           {selectedClient.financialProfile.specialCondition && selectedClient.financialProfile.specialCondition !== 'none' && (
                             <div className="bg-emerald-50 border border-emerald-200 p-1.5 rounded text-[12px] text-emerald-600 font-bold text-center mt-1">
-                              ⚡ 24개월 특례: {selectedClient.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : selectedClient.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : '고령자'}
+                              ⚡ 24개월 특례: {selectedClient.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : selectedClient.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : selectedClient.financialProfile.specialCondition === 'single_parent' ? '한부모 가족' : selectedClient.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 피해자' : '고령자'}
                             </div>
                           )}
                         </div>

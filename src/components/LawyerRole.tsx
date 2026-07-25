@@ -1848,7 +1848,7 @@ export default function LawyerRole({
                             <span className="text-slate-500 block text-[11px] font-bold">{r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? '⚡ 특례' : '거주형태'}</span>
                             <span className={`font-bold ${r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? 'text-emerald-500' : 'text-slate-700'}`}>
                               {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none'
-                                ? (r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급 (24개월)' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애 (24개월)' : '고령자 (24개월)')
+                                ? (r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급 (24개월)' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애 (24개월)' : r.financialProfile.specialCondition === 'single_parent' ? '한부모 (24개월)' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 (24개월)' : '고령자 (24개월)')
                                 : (r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-')}
                             </span>
                           </div>
@@ -2094,7 +2094,7 @@ export default function LawyerRole({
                             {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
                               <div className="col-span-2 sm:col-span-4 mt-1 border-t border-emerald-200/50 pt-1">
                                 <span className="bg-emerald-500/10 text-emerald-600 text-[11px] px-2 py-0.5 rounded font-black border border-emerald-500/20">
-                                  ⚡ 24개월 특례 해당: {r.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : '고령자 (70세 이상)'}
+                                  ⚡ 24개월 특례 해당: {r.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : r.financialProfile.specialCondition === 'single_parent' ? '한부모 가족' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 피해자' : '고령자 (70세 이상)'}
                                 </span>
                               </div>
                             )}
@@ -2369,7 +2369,7 @@ export default function LawyerRole({
                       {/* 24개월 특례 표시 */}
                       {currentChatRequest.financialProfile.specialCondition && currentChatRequest.financialProfile.specialCondition !== 'none' && (
                         <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded text-[12px] text-emerald-400 font-bold text-center">
-                          ⚡ 24개월 특례 해당: {currentChatRequest.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : currentChatRequest.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : '고령자 (70세 이상)'}
+                          ⚡ 24개월 특례 해당: {currentChatRequest.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : currentChatRequest.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : currentChatRequest.financialProfile.specialCondition === 'single_parent' ? '한부모 가족' : currentChatRequest.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 피해자' : '고령자 (70세 이상)'}
                         </div>
                       )}
 

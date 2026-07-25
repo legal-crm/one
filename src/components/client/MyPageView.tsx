@@ -902,6 +902,8 @@ export default function MyPageView({
                     { label: '기초수급자', value: 'basic_recipient' },
                     { label: '중증장애인', value: 'severe_disability' },
                     { label: '65세 이상 고령', value: 'elderly' },
+                    { label: '한부모 가족', value: 'single_parent' },
+                    { label: '전세사기 피해자', value: 'rent_fraud' },
                   ].map(item => (
                     <button
                       key={item.value}

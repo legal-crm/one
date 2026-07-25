@@ -1701,9 +1701,9 @@ export default function ClientRole({
     };
 
     const specialCircumstances: SpecialCircumstances = {
-      singleParent: false,
+      singleParent: input.specialCondition === 'single_parent',
       basicLivelihood: input.specialCondition === 'basic_recipient',
-      rentFraud: false,
+      rentFraud: input.specialCondition === 'rent_fraud',
       severeDisability: input.specialCondition === 'severe_disability'
     };
 
