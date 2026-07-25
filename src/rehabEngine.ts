@@ -1,4 +1,4 @@
-import { IntakeData, AppSettings, ComputeResponse, CalculationRow, Top3Item, PreferredPlan, Alert, RegionKey } from './types';
+import { IntakeData, AppSettings, ComputeResponse, CalculationRow, Top3Item, PreferredPlan, Alert, RegionKey, CalculationBreakdown } from './types';
 import { detectJurisdiction } from './utils';
 
 /**
@@ -470,13 +470,252 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     });
   }
 
+  // ─── Breakdown: 계산 과정 상세 데이터 수집 ───
+  const myIncome = data.incomeSources.reduce((sum, s) => sum + s.amount, 0);
+  const spouseIncomeVal = data.spouseIncome || 0;
+  const spouseIncomeRatioVal = myIncome > 0 && data.maritalStatus === 'married' ? spouseIncomeVal / myIncome : 0;
+  let childRecogRate = 1.0;
+  if (data.maritalStatus === 'married' && spouseIncomeVal > 0) {
+    const uL = settings.policy.spouseIncomeRatioUnder ?? 0.7;
+    const bL = settings.policy.spouseIncomeRatioBetween ?? 1.3;
+    if (spouseIncomeRatioVal < uL) childRecogRate = settings.policy.spouseIncomeRatioUnderRate ?? 1.0;
+    else if (spouseIncomeRatioVal <= bL) childRecogRate = settings.policy.spouseIncomeRatioBetweenRate ?? 0.5;
+    else childRecogRate = settings.policy.spouseIncomeRatioOverRate ?? 0.0;
+  }
+
+  const dependentRules: string[] = [];
+  if ((data.minorChildren || 0) > 0) dependentRules.push(`미성년 자녀 ${data.minorChildren}명 입력`);
+  if (data.maritalStatus === 'married' && spouseIncomeVal > 0) {
+    dependentRules.push(`배우자 소득 비율 ${Math.round(spouseIncomeRatioVal * 100)}% → 자녀 인정률 ${Math.round(childRecogRate * 100)}%`);
+  }
+  if (spouseAsDependant > 0) dependentRules.push('배우자 부양 인정: 미성년자녀/장애 有 + 연소득 100만원 이하');
+  if (adultChildrenCount > 0) dependentRules.push(`성년자녀 ${adultChildrenCount}명 (소득기준 충족)`);
+  dependentRules.push(`총 가구원수 = 1(본인) + ${totalDependents}(부양가족) = ${householdSize}인`);
+
+  // 주거비 breakdown
+  const householdSizeIntBd = Math.max(1, Math.round(householdSize));
+  let includedHousingBd = 0;
+  let housingLimitBd = 0;
+  if (courtConfig.allowAdditionalLivingCost) {
+    if (householdSizeIntBd <= 4) {
+      const hr = yearPolicy.housingCostLimits?.[region]?.[householdSizeIntBd];
+      if (hr) { includedHousingBd = hr.includedInMedian; housingLimitBd = hr.additionalLimit; }
+    } else {
+      includedHousingBd = Math.round(basicLivingCost * 0.178);
+      const r4 = yearPolicy.housingCostLimits?.[region]?.[4];
+      housingLimitBd = r4?.additionalLimit || 0;
+    }
+  }
+  const actualHousingBd = (data.monthlyRent || 0) + (extra.utilities || 0);
+  const housingRules: string[] = [];
+  housingRules.push(`실제 주거비: ${actualHousingBd.toLocaleString()}원 (월세 ${(data.monthlyRent||0).toLocaleString()} + 공과금 ${(extra.utilities||0).toLocaleString()})`);
+  housingRules.push(`기초생계비 포함 주거비: ${includedHousingBd.toLocaleString()}원 (${householdSizeIntBd <= 4 ? '의결사항 고정값' : '기초생계비 × 17.8%'})`);
+  housingRules.push(`초과분: ${Math.max(0, actualHousingBd - includedHousingBd).toLocaleString()}원`);
+  housingRules.push(`지역별 한도(${region}/${householdSizeIntBd}인): ${housingLimitBd.toLocaleString()}원`);
+  housingRules.push(`최종 인정: ${additionalHousing.toLocaleString()}원 = min(초과분, 한도)`);
+
+  // 교육비 breakdown
+  const minorCntBd = data.minorChildren || 0;
+  const eduLimitBd = yearPolicy.educationCost?.additionalLimit || 200000;
+  const specEduLimitBd = yearPolicy.specialEducationCost?.additionalLimit || 500000;
+  const eduRules: string[] = [];
+  eduRules.push(`미성년 자녀 ${minorCntBd}명 × 1인당 한도 ${eduLimitBd.toLocaleString()}원 = 총 한도 ${(eduLimitBd * minorCntBd).toLocaleString()}원`);
+  eduRules.push(`실제 교육비: ${(extra.education || 0).toLocaleString()}원 → 인정: ${additionalEducation.toLocaleString()}원`);
+
+  const specEduRules: string[] = [];
+  specEduRules.push(`미성년 자녀 ${minorCntBd}명 × 1인당 한도 ${specEduLimitBd.toLocaleString()}원 = 총 한도 ${(specEduLimitBd * minorCntBd).toLocaleString()}원`);
+  specEduRules.push(`실제 특수교육비: ${(extra.specialEducation || 0).toLocaleString()}원 → 인정: ${additionalSpecialEd.toLocaleString()}원`);
+
+  // 의료비 breakdown
+  const medSizeKey = Math.min(householdSizeIntBd, 4) as 1|2|3|4;
+  const includedMedicalBd = yearPolicy.medicalCostIncludedInMedian?.[medSizeKey] || 0;
+  const medRules: string[] = [];
+  medRules.push(`기초생계비 포함 의료비(${householdSizeIntBd}인): ${includedMedicalBd.toLocaleString()}원`);
+  medRules.push(`실제 의료비: ${(extra.medical || 0).toLocaleString()}원`);
+  medRules.push(`초과분 인정: ${additionalMedical.toLocaleString()}원`);
+
+  // 기타생계비 breakdown
+  const otherEligible = courtConfig.allowOtherLivingCost && totalMonthlyIncome > baseMedianIncome * (yearPolicy.highIncomeEarnerMultiplier || 1.5);
+  let otherEligibilityReason = '';
+  const otherRules: string[] = [];
+  if (!courtConfig.allowOtherLivingCost) {
+    otherEligibilityReason = '해당 법원은 기타생계비 인정 대상 아님';
+    otherRules.push('회생법원(서울/수원/부산/대전/대구/광주)만 기타생계비 인정 가능');
+  } else if (!otherEligible) {
+    otherEligibilityReason = `소득(${totalMonthlyIncome.toLocaleString()}) < 중위소득 150%(${Math.round(baseMedianIncome * 1.5).toLocaleString()}) → 미해당`;
+    otherRules.push('기타생계비 조건: 소득이 기준 중위소득의 150% 이상이어야 함');
+  } else {
+    otherEligibilityReason = '조건 충족';
+    otherRules.push('회생법원 관할 + 고소득(중위150%↑) + 변제율40%↑ 충족');
+  }
+
+  // 생계비 전체 rules
+  const livingRules: string[] = [];
+  livingRules.push(`${applyYear}년 ${householdSize}인가구 기준 중위소득: ${Math.round(baseMedianIncome).toLocaleString()}원`);
+  livingRules.push(`기본 생계비 = 중위소득 × 60% = ${basicLivingCost.toLocaleString()}원`);
+  const totalAdditional = additionalHousing + additionalEducation + additionalSpecialEd + additionalMedical + additionalOther;
+  livingRules.push(`추가 생계비 합계: ${totalAdditional.toLocaleString()}원`);
+  livingRules.push(`최종 인정 생계비: ${totalLivingCost.toLocaleString()}원`);
+
+  // 변제금 breakdown
+  const liqGuarantee36 = totalLiquidationValue > 0 ? Math.ceil(totalLiquidationValue / 36) : 0;
+  const repayRules: string[] = [];
+  repayRules.push(`가용소득 = 소득(${totalMonthlyIncome.toLocaleString()}) - 생계비(${totalLivingCost.toLocaleString()}) = ${disposable.toLocaleString()}원`);
+  repayRules.push(`최저변제액(${totalDebt < 50000000 ? '5천만 미만: 채무×5%' : '5천만 이상: 채무×3%+100만'}): 총 ${minTotalByDebtScale.toLocaleString()}원`);
+  repayRules.push(`청산가치 보장(36개월): 월 ${liqGuarantee36.toLocaleString()}원`);
+  repayRules.push(`일반 최소 월 변제금: ${generalMinMonthly.toLocaleString()}원`);
+  repayRules.push('월 변제금 = MAX(가용소득, 최저변제/기간, 청산가치보장, 일반최소)');
+
+  // 청산가치 breakdown
+  const liqItems: { label: string; amount: number; rule: string }[] = [];
+  const liqExemptions: { label: string; amount: number }[] = [];
+  let spouseAssetContrib = 0;
+  let retirementContrib = 0;
+  let retirementRule = '해당 없음';
+  let totalBeforeExempt = 0;
+  data.assets.forEach(asset => {
+    if (asset.isExempt) return;
+    let val = asset.marketValue;
+    let rule = '';
+    if (asset.type === 'severance') {
+      if (data.retirementPensionType === 'pension') {
+        rule = 'DB/DC형 연금 → 압류 불가, 청산가치 0원';
+        retirementRule = rule;
+        liqItems.push({ label: '퇴직금(연금형)', amount: 0, rule });
+        return;
+      } else {
+        retirementContrib = Math.round(val * 0.5);
+        rule = '비연금형 → 50%만 압류 가능';
+        retirementRule = rule;
+        liqItems.push({ label: '퇴직금', amount: retirementContrib, rule });
+        return;
+      }
+    }
+    if (asset.type === 'stock' && !courtConfig.includeCryptoStock) {
+      rule = '법원 정책: 코인/주식 청산가치 제외';
+      liqItems.push({ label: '코인/주식', amount: 0, rule });
+      return;
+    }
+    if (asset.hasPledge) val = Math.max(0, val - asset.loanBalance);
+    let exemptAmt = 0;
+    if (asset.type === 'deposit') {
+      const dr = yearPolicy.depositRules[region];
+      if (dr && asset.marketValue <= dr.limit) {
+        exemptAmt = Math.min(val, dr.deduct);
+        val = Math.max(0, val - dr.deduct);
+        rule = `소액임차보증금 면제(${region}): ${dr.deduct.toLocaleString()}원 공제`;
+      }
+    } else if (asset.type === 'insurance') {
+      exemptAmt = Math.min(val, yearPolicy.assetExemptions.insurance);
+      val = Math.max(0, val - yearPolicy.assetExemptions.insurance);
+      rule = `보험 면제: ${yearPolicy.assetExemptions.insurance.toLocaleString()}원 공제`;
+    }
+    if (exemptAmt > 0) liqExemptions.push({ label: asset.type, amount: exemptAmt });
+    totalBeforeExempt += asset.marketValue;
+    if (asset.owner === 'spouse') {
+      if (courtConfig.includeSpouseProperty) {
+        spouseAssetContrib += Math.round(val * 0.5);
+        val = Math.round(val * 0.5);
+        rule = (rule ? rule + ' / ' : '') + '배우자 재산 50% 반영';
+      } else {
+        val = 0;
+        rule = '법원 정책: 배우자 재산 미반영';
+      }
+    }
+    const typeLabels: Record<string, string> = { deposit: '임차보증금', realestate: '부동산', vehicle: '차량', savings: '예금/적금', stock: '주식/코인', insurance: '보험', other: '기타' };
+    liqItems.push({ label: typeLabels[asset.type] || asset.type, amount: val, rule: rule || '시가 기준 평가' });
+  });
+  const liqRules: string[] = [];
+  liqRules.push(`총 자산 시가: ${totalBeforeExempt.toLocaleString()}원`);
+  liqRules.push(`면제 적용 후 순 청산가치: ${totalLiquidationValue.toLocaleString()}원`);
+  liqRules.push('청산가치 보장 원칙: 총 변제금 ≥ 청산가치');
+
+  const breakdown: CalculationBreakdown = {
+    dependents: {
+      minorChildren: data.minorChildren || 0,
+      recognizedMinorChildren,
+      spouseAsDependant,
+      adultChildren: adultChildrenCount,
+      otherDependents,
+      totalDependents,
+      spouseIncomeRatio: spouseIncomeRatioVal,
+      childRecognitionRate: childRecogRate,
+      householdSize,
+      rules: dependentRules
+    },
+    livingCost: {
+      baseMedianIncome: Math.round(baseMedianIncome),
+      basicLivingCost,
+      householdSize,
+      housing: {
+        actualExpense: actualHousingBd,
+        includedInMedian: includedHousingBd,
+        additionalLimit: housingLimitBd,
+        recognized: additionalHousing,
+        region,
+        householdSizeUsed: householdSizeIntBd,
+        rules: housingRules
+      },
+      education: {
+        actualExpense: extra.education || 0,
+        limitPerChild: eduLimitBd,
+        childCount: minorCntBd,
+        recognized: additionalEducation,
+        rules: eduRules
+      },
+      specialEducation: {
+        actualExpense: extra.specialEducation || 0,
+        limitPerChild: specEduLimitBd,
+        childCount: minorCntBd,
+        recognized: additionalSpecialEd,
+        rules: specEduRules
+      },
+      medical: {
+        actualExpense: extra.medical || 0,
+        includedInMedian: includedMedicalBd,
+        recognized: additionalMedical,
+        rules: medRules
+      },
+      otherLiving: {
+        actualExpense: (extra.other || 0) + (data.monthlyInsurance || 0),
+        recognized: additionalOther,
+        eligible: otherEligible,
+        eligibilityReason: otherEligibilityReason,
+        rules: otherRules
+      },
+      totalAdditional,
+      totalLivingCost,
+      rules: livingRules
+    },
+    repayment: {
+      disposableIncome: disposable,
+      minTotalByDebtScale,
+      minRepaymentRule: totalDebt < 50000000 ? '총 채무 5천만원 미만: 채무 × 5%' : '총 채무 5천만원 이상: 채무 × 3% + 100만원',
+      generalMinMonthly,
+      liquidationValue: totalLiquidationValue,
+      liquidationGuaranteeMonthly36: liqGuarantee36,
+      rules: repayRules
+    },
+    liquidation: {
+      items: liqItems,
+      totalBeforeExemption: totalBeforeExempt,
+      exemptions: liqExemptions,
+      spouseAssetContribution: spouseAssetContrib,
+      spouseAssetRule: courtConfig.includeSpouseProperty ? '배우자 재산 50% 반영 (법원 정책)' : '배우자 재산 미반영',
+      retirementPayContribution: retirementContrib,
+      retirementPayRule: retirementRule,
+      totalLiquidationValue,
+      rules: liqRules
+    }
+  };
+
   return {
     caseId: 'SIMULATED',
     ownerId: data.ownerId || 'unknown',
     status: 'counseling',
     client: {
       name: data.clientName,
-      age: 30, // Default age for simulation
+      age: 30,
       monthlyIncome: totalMonthlyIncome,
       dependents: totalDependents,
       court: data.selectedCourt,
@@ -492,6 +731,7 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     rows,
     top3,
     preferred,
-    alerts
+    alerts,
+    breakdown
   };
 };

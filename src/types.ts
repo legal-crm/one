@@ -551,6 +551,96 @@ export interface PreferredPlan {
   why?: string;
 }
 
+// ─── 계산 과정 상세 분석 (보고서용) ───
+export interface BreakdownDependents {
+  minorChildren: number;
+  recognizedMinorChildren: number;
+  spouseAsDependant: number;
+  adultChildren: number;
+  otherDependents: number;
+  totalDependents: number;
+  spouseIncomeRatio: number;
+  childRecognitionRate: number;
+  householdSize: number;
+  rules: string[];
+}
+
+export interface BreakdownHousing {
+  actualExpense: number;
+  includedInMedian: number;
+  additionalLimit: number;
+  recognized: number;
+  region: string;
+  householdSizeUsed: number;
+  rules: string[];
+}
+
+export interface BreakdownEducation {
+  actualExpense: number;
+  limitPerChild: number;
+  childCount: number;
+  recognized: number;
+  rules: string[];
+}
+
+export interface BreakdownMedical {
+  actualExpense: number;
+  includedInMedian: number;
+  recognized: number;
+  rules: string[];
+}
+
+export interface BreakdownOtherLiving {
+  actualExpense: number;
+  recognized: number;
+  eligible: boolean;
+  eligibilityReason: string;
+  rules: string[];
+}
+
+export interface BreakdownLivingCost {
+  baseMedianIncome: number;
+  basicLivingCost: number;
+  householdSize: number;
+  housing: BreakdownHousing;
+  education: BreakdownEducation;
+  specialEducation: BreakdownEducation;
+  medical: BreakdownMedical;
+  otherLiving: BreakdownOtherLiving;
+  totalAdditional: number;
+  totalLivingCost: number;
+  rules: string[];
+}
+
+export interface BreakdownRepayment {
+  disposableIncome: number;
+  minTotalByDebtScale: number;
+  minRepaymentRule: string;
+  generalMinMonthly: number;
+  liquidationValue: number;
+  liquidationGuaranteeMonthly36: number;
+  rules: string[];
+}
+
+export interface BreakdownLiquidation {
+  items: { label: string; amount: number; rule: string }[];
+  totalBeforeExemption: number;
+  exemptions: { label: string; amount: number }[];
+  spouseAssetContribution: number;
+  spouseAssetRule: string;
+  retirementPayContribution: number;
+  retirementPayRule: string;
+  totalLiquidationValue: number;
+  rules: string[];
+}
+
+export interface CalculationBreakdown {
+  dependents: BreakdownDependents;
+  livingCost: BreakdownLivingCost;
+  repayment: BreakdownRepayment;
+  liquidation: BreakdownLiquidation;
+}
+
 export interface ComputeResponse {
   caseId: string;
   ownerId: string;
@@ -562,6 +652,7 @@ export interface ComputeResponse {
   top3: Top3Item[];
   preferred: PreferredPlan | null;
   alerts: Alert[];
+  breakdown?: CalculationBreakdown;
   contractId?: string;
   rawIntake?: IntakeData | null;
   portalPassword?: string;

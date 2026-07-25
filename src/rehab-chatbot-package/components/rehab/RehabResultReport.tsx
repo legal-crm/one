@@ -22,6 +22,17 @@ import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../config/rehabStatist
 import { CountUp, GlowingCard, AnimatedProgress, DonutChart, PulsingBadge } from './animations/ReportAnimations';
 import { ProcedureTimeline } from './ProcedureTimeline';
 
+const ExplainerCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border-l-4 border-indigo-400 p-4 rounded-r-xl my-4 space-y-2 text-slate-800 dark:text-slate-200">
+        <h4 className="text-[14px] font-bold flex items-center gap-1.5">
+            💡 {title}
+        </h4>
+        <div className="text-[13px] leading-relaxed">
+            {children}
+        </div>
+    </div>
+);
+
 interface RehabResultReportProps {
     result: RehabCalculationResult;
     userInput: RehabUserInput;
@@ -64,8 +75,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             const page2El = document.getElementById('pdf-page-2');
             const page3El = document.getElementById('pdf-page-3');
             const page4El = document.getElementById('pdf-page-4');
+            const page5El = document.getElementById('pdf-page-5');
+            const page6El = document.getElementById('pdf-page-6');
 
-            if (!page1El || !page2El || !page3El || !page4El) {
+            if (!page1El || !page2El || !page3El || !page4El || !page5El || !page6El) {
                 alert('PDF 템플릿을 찾을 수 없습니다.');
                 setIsGeneratingPdf(false);
                 return;
@@ -103,6 +116,22 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                 backgroundColor: '#ffffff'
             });
 
+            // 페이지 5 캡처
+            const canvas5 = await html2canvas(page5El, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            // 페이지 6 캡처
+            const canvas6 = await html2canvas(page6El, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
             // PDF 생성 (A4: 210mm x 297mm)
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgWidth = 210;
@@ -112,6 +141,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             const imgData2 = canvas2.toDataURL('image/jpeg', 1.0);
             const imgData3 = canvas3.toDataURL('image/jpeg', 1.0);
             const imgData4 = canvas4.toDataURL('image/jpeg', 1.0);
+            const imgData5 = canvas5.toDataURL('image/jpeg', 1.0);
+            const imgData6 = canvas6.toDataURL('image/jpeg', 1.0);
 
             pdf.addImage(imgData1, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
             pdf.addPage();
@@ -120,6 +151,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
             pdf.addImage(imgData3, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
             pdf.addPage();
             pdf.addImage(imgData4, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+            pdf.addPage();
+            pdf.addImage(imgData5, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+            pdf.addPage();
+            pdf.addImage(imgData6, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
 
             const date = new Date().toISOString().split('T')[0];
             pdf.save(`종합채무진단보고서_${userInput.name || '의뢰인'}_${date}.pdf`);
@@ -445,6 +480,28 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         </div>
                                     </div>
 
+                                    {(result as any).computeResponse?.breakdown && (
+                                        <ExplainerCard title="탕감률 계산 흐름도">
+                                            <div className="flex flex-wrap items-center gap-2 mt-2 font-semibold">
+                                                <div className="px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm text-center">
+                                                    총 채무<br/><span className="text-[#EF4444]">{formatCurrency(userInput.totalDebt)}</span>
+                                                </div>
+                                                <ArrowRight className="w-4 h-4 text-slate-400" />
+                                                <div className="px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm text-center">
+                                                    월 변제금<br/><span className="text-[#7264FF]">{formatCurrency(result.monthlyPayment)}</span><br/><span className="text-[10px] text-slate-500 font-normal">× {result.repaymentMonths}개월</span>
+                                                </div>
+                                                <ArrowRight className="w-4 h-4 text-slate-400" />
+                                                <div className="px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm text-center">
+                                                    총 변제금<br/><span className="text-[#10B981]">{formatCurrency(result.totalRepayment)}</span>
+                                                </div>
+                                                <ArrowRight className="w-4 h-4 text-slate-400" />
+                                                <div className="px-3 py-2 bg-indigo-50/50 rounded-lg border border-indigo-200 shadow-sm text-center">
+                                                    탕감률<br/><span className="text-indigo-600 font-bold">{result.debtReductionRate}%</span>
+                                                </div>
+                                            </div>
+                                        </ExplainerCard>
+                                    )}
+
                                     {/* 조정 제도별 적합도 진단 */}
                                     <div className="space-y-3">
                                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -642,6 +699,36 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 💡 {userInput.dependentReason}
                                             </div>
                                         )}
+
+                                        {(result as any).computeResponse?.breakdown?.dependents && (
+                                            <ExplainerCard title="부양가족 인정 과정 설명">
+                                                <div className="space-y-2 mt-2">
+                                                    {((result as any).computeResponse.breakdown.dependents.rules || []).map((rule: string, i: number) => (
+                                                        <div key={i} className="flex gap-2">
+                                                            <Check className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
+                                                            <span>{rule}</span>
+                                                        </div>
+                                                    ))}
+                                                    <div className="flex flex-wrap items-center gap-2 mt-3 font-semibold text-center">
+                                                        <div className="px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm">
+                                                            미성년자녀<br/><span className="text-slate-700">{(result as any).computeResponse.breakdown.dependents.minorChildren}명</span>
+                                                        </div>
+                                                        <ArrowRight className="w-4 h-4 text-slate-400" />
+                                                        <div className="px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm">
+                                                            인정률 반영<br/><span className="text-[#7264FF]">{(result as any).computeResponse.breakdown.dependents.recognizedMinorChildren}명</span>
+                                                        </div>
+                                                        <ArrowRight className="w-4 h-4 text-slate-400" />
+                                                        <div className="px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm">
+                                                            배우자 부양<br/><span className="text-[#10B981]">{(result as any).computeResponse.breakdown.dependents.spouseAsDependant}명</span>
+                                                        </div>
+                                                        <ArrowRight className="w-4 h-4 text-slate-400" />
+                                                        <div className="px-3 py-2 bg-indigo-50/50 rounded-lg border border-indigo-200 shadow-sm">
+                                                            합계<br/><span className="text-indigo-600 font-bold">총 {(result as any).computeResponse.breakdown.dependents.totalDependents}명</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </ExplainerCard>
+                                        )}
                                     </div>
 
                                     {/* 자산 목록 및 법원 청산가치 평가 */}
@@ -823,6 +910,52 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 ※ <strong>월 변제금 공식</strong>: [월 실수령액] - [최종 인정 생계비] = [가용소득(월 변제금)]. 생계비가 크고 소득이 보정될수록 매달 갚을 돈은 낮아집니다.
                                             </p>
                                         </div>
+
+                                        {(result as any).computeResponse?.breakdown?.livingCost && (
+                                            <ExplainerCard title="생계비 구성 상세 설명">
+                                                {(() => {
+                                                    const lc = (result as any).computeResponse.breakdown.livingCost;
+                                                    return (
+                                                        <div className="space-y-3 mt-2">
+                                                            <div className="flex justify-between border-b border-indigo-200/50 pb-1.5">
+                                                                <span>기본 생계비 (중위소득 60%)</span>
+                                                                <span className="font-semibold">{formatCurrency(lc.basicLivingCost)}</span>
+                                                            </div>
+                                                            {lc.housing && lc.housing.recognized > 0 && (
+                                                                <div className="flex justify-between items-center">
+                                                                    <span>추가 주거비 (+{formatCurrency(lc.housing.recognized)})</span>
+                                                                    <span className="text-slate-500 text-[11px] text-right">실지출 {formatCurrency(lc.housing.actualExpense)} - 포함분 {formatCurrency(lc.housing.includedInMedian)}</span>
+                                                                </div>
+                                                            )}
+                                                            {lc.education && lc.education.recognized > 0 && (
+                                                                <div className="flex justify-between items-center">
+                                                                    <span>추가 교육비 (+{formatCurrency(lc.education.recognized)})</span>
+                                                                    <span className="text-slate-500 text-[11px] text-right">실지출 {formatCurrency(lc.education.actualExpense)}</span>
+                                                                </div>
+                                                            )}
+                                                            {lc.medical && lc.medical.recognized > 0 && (
+                                                                <div className="flex justify-between items-center">
+                                                                    <span>추가 의료비 (+{formatCurrency(lc.medical.recognized)})</span>
+                                                                    <span className="text-slate-500 text-[11px] text-right">실지출 {formatCurrency(lc.medical.actualExpense)} - 포함분 {formatCurrency(lc.medical.includedInMedian)}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex justify-between border-t border-indigo-200/50 pt-1.5 font-bold text-[#10B981]">
+                                                                <span>최종 인정 생계비 합계</span>
+                                                                <span>{formatCurrency(lc.totalLivingCost)}</span>
+                                                            </div>
+                                                            <div className="bg-white/50 p-2.5 mt-3 rounded-lg border border-indigo-100/50 space-y-1.5">
+                                                                {(lc.rules || []).map((rule: string, i: number) => (
+                                                                    <div key={i} className="flex gap-2">
+                                                                        <Check className="w-3.5 h-3.5 text-indigo-500 mt-0.5 shrink-0" />
+                                                                        <span className="text-[12px]">{rule}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </ExplainerCard>
+                                        )}
                                     </div>
 
                                     {/* 채무 명세 및 위험 채무 검토 */}
@@ -876,6 +1009,49 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                     )}
                                                 </div>
                                             </div>
+                                        )}
+
+                                        {(result as any).computeResponse?.breakdown?.repayment && (
+                                            <ExplainerCard title="변제금 결정 로직 설명">
+                                                {(() => {
+                                                    const rep = (result as any).computeResponse.breakdown.repayment;
+                                                    return (
+                                                        <div className="space-y-3 mt-2">
+                                                            <div className="grid grid-cols-1 gap-2">
+                                                                <div className={`p-2.5 rounded-lg border ${rep.minRepaymentRule?.includes('가용소득') ? 'bg-indigo-100/50 border-indigo-300' : 'bg-white/50 border-indigo-100/50'}`}>
+                                                                    <div className="flex justify-between font-semibold items-center">
+                                                                        <span className="text-[12px]">1. 가용소득 전액투입 (월)</span>
+                                                                        <span>{formatCurrency(rep.disposableIncome)}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className={`p-2.5 rounded-lg border ${rep.minRepaymentRule?.includes('최저변제') ? 'bg-indigo-100/50 border-indigo-300' : 'bg-white/50 border-indigo-100/50'}`}>
+                                                                    <div className="flex justify-between font-semibold items-center">
+                                                                        <span className="text-[12px]">2. 총 채무액 최저변제 보장 (월)</span>
+                                                                        <span>{formatCurrency(Math.round(rep.minTotalByDebtScale / Math.max(1, result.repaymentMonths)))}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className={`p-2.5 rounded-lg border ${rep.minRepaymentRule?.includes('청산가치') ? 'bg-indigo-100/50 border-indigo-300' : 'bg-white/50 border-indigo-100/50'}`}>
+                                                                    <div className="flex justify-between font-semibold items-center">
+                                                                        <span className="text-[12px]">3. 청산가치 보장 원칙 (월)</span>
+                                                                        <span>{formatCurrency(rep.liquidationGuaranteeMonthly36)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="bg-white p-2.5 rounded-lg text-indigo-800 font-bold text-center border border-indigo-200 mt-2 shadow-sm">
+                                                                👉 가장 큰 금액인 <span className="text-indigo-600 underline underline-offset-2">{formatCurrency(result.monthlyPayment)}</span>원이 최종 결정됨
+                                                            </div>
+                                                            <div className="bg-white/50 p-2.5 rounded-lg border border-indigo-100/50 space-y-1.5 mt-2">
+                                                                {(rep.rules || []).map((rule: string, i: number) => (
+                                                                    <div key={i} className="flex gap-2">
+                                                                        <Check className="w-3.5 h-3.5 text-indigo-500 mt-0.5 shrink-0" />
+                                                                        <span className="text-[12px]">{rule}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </ExplainerCard>
                                         )}
                                     </div>
                                 </motion.div>
@@ -1223,6 +1399,20 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             총 {formatCurrency(result.totalDebtReduction)} 탕감 · 월 {formatCurrency(Math.max(0, Math.round(userInput.totalDebt / 36) - result.monthlyPayment))} 절약
                                         </div>
                                     </div>
+
+                                    {(result as any).computeResponse?.preferred?.why && (
+                                        <ExplainerCard title="변제기간 결정 로직">
+                                            <div className="space-y-2 mt-2">
+                                                <p className="font-semibold text-indigo-700 flex items-center gap-1.5">
+                                                    <Check className="w-4 h-4" />
+                                                    추천 변제기간: {result.repaymentMonths}개월
+                                                </p>
+                                                <p className="bg-white/50 p-3 rounded-lg border border-indigo-100/50">
+                                                    {(result as any).computeResponse.preferred.why}
+                                                </p>
+                                            </div>
+                                        </ExplainerCard>
+                                    )}
                                 </motion.div>
                             )}
 
