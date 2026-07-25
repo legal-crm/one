@@ -457,7 +457,7 @@ const generateCourtConfigs = (): Record<string, CourtConfig> => {
             includeCryptoStock: !isSpecialized, 
             allow24Month: court === '서울회생법원' || court === '수원회생법원' || court === '부산회생법원', 
             allowAdditionalLivingCost: true, 
-            allowOtherLivingCost: false 
+            allowOtherLivingCost: isSpecialized 
         };
     });
     return configs;

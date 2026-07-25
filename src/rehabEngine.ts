@@ -38,9 +38,21 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     }
   }
 
+  // 배우자 부양가족 인정: (미성년자녀 또는 장애부양가족 有) AND (배우자 연소득 ≤ 100만원)
+  let spouseAsDependant = 0;
+  if (data.maritalStatus === 'married') {
+    const spouseAnnualIncome = (data.spouseIncome || 0) * 12;
+    const hasMinorOrDisabled = (data.minorChildren || 0) > 0 ||
+      data.specialCircumstances.severeDisability;
+    const spouseIncomeLimit = yearPolicy.adultChildDependentCriteria?.incomeLimit || 1000000;
+    if (hasMinorOrDisabled && spouseAnnualIncome <= spouseIncomeLimit) {
+      spouseAsDependant = 1;
+    }
+  }
+
   const adultChildrenCount = data.adultChildrenCount || 0;
   const otherDependents = data.otherDependents || 0;
-  const totalDependents = recognizedMinorChildren + adultChildrenCount + otherDependents;
+  const totalDependents = recognizedMinorChildren + adultChildrenCount + otherDependents + spouseAsDependant;
 
   // 2. Calculate Total Net Income (Monthly)
   const totalMonthlyIncome = data.incomeSources.reduce((sum, source) => sum + source.amount, 0);
@@ -138,20 +150,90 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   // Basic Living Cost is 60% of Median Income
   const basicLivingCost = Math.round(baseMedianIncome * 0.6);
 
-  // Additional living costs (월세, 보험료 등 추가 생계비)
-  const rent = data.monthlyRent || 0;
-  const insurance = data.monthlyInsurance || 0;
+  // ─── 추가 생계비 항목별 계산 (2026년 서울회생법원 생계비검토위원회 의결기준) ───
   const extra = data.extraLivingCost;
-  const extraSum = (extra.utilities || 0) + (extra.education || 0) + (extra.specialEducation || 0) + (extra.medical || 0) + (extra.other || 0);
+  let additionalHousing = 0;
+  let additionalEducation = 0;
+  let additionalSpecialEd = 0;
+  let additionalMedical = 0;
+  let additionalOther = 0;
 
-  // Total Allowed Living Cost (기본생계비 + 수동 추가 공제 적용)
-  let totalLivingCost = data.monthlyLivingCost > 0 ? data.monthlyLivingCost : basicLivingCost;
-  
   if (courtConfig.allowAdditionalLivingCost) {
-    totalLivingCost += rent + insurance + extraSum;
+    // ① 주거비: 실제 지출(월세+공과금) - 기초생계비 포함분, 지역×가구원수별 한도
+    const actualHousing = (data.monthlyRent || 0) + (extra.utilities || 0);
+    const householdSizeInt = Math.max(1, Math.round(householdSize));
+
+    let includedHousing = 0;
+    let housingAdditionalLimit = 0;
+
+    if (householdSizeInt <= 4) {
+      const housingRule = yearPolicy.housingCostLimits?.[region]?.[householdSizeInt];
+      if (housingRule) {
+        includedHousing = housingRule.includedInMedian;
+        housingAdditionalLimit = housingRule.additionalLimit;
+      }
+    } else {
+      // 5인 이상: 기초 생계비 × 17.8%, 추가 한도는 4인 기준 준용
+      includedHousing = Math.round(basicLivingCost * 0.178);
+      const rule4 = yearPolicy.housingCostLimits?.[region]?.[4];
+      housingAdditionalLimit = rule4?.additionalLimit || 0;
+    }
+
+    const housingExcess = Math.max(0, actualHousing - includedHousing);
+    additionalHousing = Math.min(housingExcess, housingAdditionalLimit);
+
+    // ② 교육비: 미성년 자녀 1인당 일반 20만 / 특수 50만 한도
+    const minorChildrenCount = data.minorChildren || 0;
+    const eduLimit = yearPolicy.educationCost?.additionalLimit || 200000;
+    const specialEduLimit = yearPolicy.specialEducationCost?.additionalLimit || 500000;
+
+    additionalEducation = Math.min(extra.education || 0, eduLimit * minorChildrenCount);
+    additionalSpecialEd = Math.min(extra.specialEducation || 0, specialEduLimit * minorChildrenCount);
+
+    // ③ 의료비: 가구원수별 기초생계비 포함분 초과액만 인정
+    const medicalSizeKey = Math.min(householdSizeInt, 4) as 1 | 2 | 3 | 4;
+    const includedMedical = yearPolicy.medicalCostIncludedInMedian?.[medicalSizeKey] || 0;
+    additionalMedical = Math.max(0, (extra.medical || 0) - includedMedical);
   }
 
-  // Clamp living cost so it cannot exceed total income (debtor must have at least some disposable income)
+  // ④ 기타생계비: 회생법원 관할 + 고소득(중위150%↑) + 변제율40%↑ 조건부 인정
+  if (courtConfig.allowOtherLivingCost) {
+    const actualOther = (extra.other || 0) + (data.monthlyInsurance || 0);
+    const highIncomeMultiplier = yearPolicy.highIncomeEarnerMultiplier || 1.5;
+    const repaymentThreshold = yearPolicy.highIncomeRepaymentRateThreshold || 0.4;
+
+    if (totalMonthlyIncome > baseMedianIncome * highIncomeMultiplier) {
+      // 최근 6개월 채무 비중 50% 초과 시 불인정
+      const recentDebtTotal = data.debts.filter(d => d.isRecent).reduce((sum, d) => sum + d.principal, 0);
+      const recentDebtRatio = totalDebt > 0 ? recentDebtTotal / totalDebt : 0;
+
+      if (recentDebtRatio <= 0.5) {
+        // 기준 중위소득 100% 한도 내에서 인정
+        const maxTotalLivingCost = baseMedianIncome; // 중위소득 100%
+        const currentBeforeOther = basicLivingCost + additionalHousing + additionalEducation + additionalSpecialEd + additionalMedical;
+        const remainingBudget = Math.max(0, maxTotalLivingCost - currentBeforeOther);
+        additionalOther = Math.min(actualOther, remainingBudget);
+
+        // 변제율 40% 유지 검증
+        const tentativeLivingCost = currentBeforeOther + additionalOther;
+        const tentativeDisposable = Math.max(0, totalMonthlyIncome - tentativeLivingCost);
+        const tentativeRepaymentRate = totalDebt > 0 ? (tentativeDisposable * 36) / totalDebt : 0;
+
+        if (tentativeRepaymentRate < repaymentThreshold) {
+          // 변제율 40% 유지하도록 기타생계비 축소
+          const minDisposable = Math.ceil((totalDebt * repaymentThreshold) / 36);
+          const maxAllowedLivingCost = totalMonthlyIncome - minDisposable;
+          additionalOther = Math.max(0, maxAllowedLivingCost - currentBeforeOther);
+        }
+      }
+    }
+  }
+
+  // Total Allowed Living Cost (기본생계비 + 항목별 추가 생계비)
+  let totalLivingCost = data.monthlyLivingCost > 0 ? data.monthlyLivingCost : basicLivingCost;
+  totalLivingCost += additionalHousing + additionalEducation + additionalSpecialEd + additionalMedical + additionalOther;
+
+  // Clamp living cost so it cannot exceed total income
   totalLivingCost = Math.min(totalLivingCost, totalMonthlyIncome);
 
   // Monthly Disposable Income (가용소득)
