@@ -133,12 +133,12 @@ function mapAnswersToIntakeData(answers: DiagnosisAnswers): IntakeData {
     incomeSources: [{
       id: 'diag-income-1',
       type: mapIncomeType(answers.q3_income),
-      amount: incomeAmount,
+      amount: incomeAmount * 10000,  // 만원 → 원 단위 변환
     }],
     debts: [{
       id: 'diag-debt-1',
       creditor: '추정 채무',
-      principal: debtAmount,
+      principal: debtAmount * 10000,  // 만원 → 원 단위 변환
       interest: 0,
       type: 'unsecured',
       isGamblingOrLuxury: false,
@@ -282,28 +282,55 @@ function interpretRehabResult(
   answers: DiagnosisAnswers
 ): { primary: StrategyRecommendation; secondary?: StrategyRecommendation; all: StrategyRecommendation[] } {
   const hasImpossible = result.alerts.some(a => a.type === 'impossible');
-  const hasNoIncome = result.alerts.some(a => a.type === 'income');
   const hasExcessCut = result.alerts.some(a => a.type === 'excess');
   const preferred = result.preferred;
-  
+
+  // ── 가용소득 기반 파산/회생 판정을 위한 핵심 변수 ──
+  // 핵심 기준: "소득에서 생계비를 뺀 가용소득이 채무를 변제할 수 있을 만큼 남아있는가"
+  const disposable = result.base.disposable;    // 가용소득 = 소득 - 생계비
+  const income = result.client.monthlyIncome;   // 월 소득
+  const living = result.base.living;            // 인정 생계비 (중위소득 60%)
+  const debtTotal = result.base.debtTotal;      // 총 채무
+
   let primary: StrategyRecommendation;
   let secondary: StrategyRecommendation | undefined;
 
   if (hasImpossible) {
-    // 청산가치 > 채무 → 회생 부적합
+    // 청산가치 > 채무 → 회생 부적합 (재산이 빚보다 많음)
     primary = buildStrategyRecommendation('NEGOTIATION', 'high');
     secondary = buildStrategyRecommendation('WAIT_AND_SEE', 'medium');
-  } else if (hasNoIncome || answers.q3_income === 'none') {
-    // 소득 없음 → 파산 추천
+
+  } else if (income <= 0 || answers.q3_income === 'none') {
+    // ── 완전 무소득 → 파산 추천 ──
     primary = buildStrategyRecommendation('BANKRUPTCY', 'high');
     secondary = buildStrategyRecommendation('FRESH_START', 'medium');
+
+  } else if (disposable <= 0) {
+    // ── 소득은 있으나 가용소득 = 0 ──
+    // 직장인이라도 월 소득이 최저생계비보다 적으면 파산 신청 가능
+    // 추가 생계비(월세, 교육비, 의료비) 부담으로 가용소득 0인 경우도 파산 가능
+    if (income <= living) {
+      // 소득 ≤ 생계비 → 변제 능력 없음 → 파산이 현실적
+      primary = buildStrategyRecommendation('BANKRUPTCY', 'high');
+      secondary = buildStrategyRecommendation('FRESH_START', 'medium');
+    } else {
+      // 소득 > 기본 생계비이지만 추가 비용으로 가용소득 0
+      // → 추가 비용 조정 여지가 있으면 회생 가능성도 있음
+      primary = buildStrategyRecommendation('BANKRUPTCY', 'medium');
+      secondary = buildStrategyRecommendation('REHABILITATION', 'medium');
+    }
+
   } else if (preferred) {
-    // Look up needCutPct from matching row since PreferredPlan doesn't carry it
+    // ── 가용소득 > 0, preferred plan 존재 → plan 기반 판정 ──
     const matchingRow = result.rows.find(r => r.m === preferred.m);
     const cutPct = matchingRow ? matchingRow.needCutPct : 0;
-    
+
+    // 60개월 최대 변제 가능액으로 변제 가능성 판단
+    const maxRepay60 = disposable * 60;
+    const repayRatio = debtTotal > 0 ? maxRepay60 / debtTotal : 1;
+
     if (cutPct <= 0) {
-      // 정상 상환 가능 → 회생 최적
+      // 생계비 감액 없이 정상 상환 가능 → 회생 최적
       primary = buildStrategyRecommendation('REHABILITATION', 'high');
       secondary = buildStrategyRecommendation('NEGOTIATION', 'low');
     } else if (cutPct <= 0.15) {
@@ -315,10 +342,18 @@ function interpretRehabResult(
       primary = buildStrategyRecommendation('REHABILITATION', 'medium');
       secondary = buildStrategyRecommendation('BANKRUPTCY', 'medium');
     } else {
-      // 한도 초과 → 회생 매우 어려움
-      primary = buildStrategyRecommendation('BANKRUPTCY', 'high');
-      secondary = buildStrategyRecommendation('REHABILITATION', 'low');
+      // 한도 초과 (30% 이상 감액 필요)
+      if (repayRatio < 0.1) {
+        // 5년간 전액 변제해도 채무의 10% 미만 → 파산이 현실적
+        primary = buildStrategyRecommendation('BANKRUPTCY', 'high');
+        secondary = buildStrategyRecommendation('REHABILITATION', 'low');
+      } else {
+        // 변제는 어렵지만 일부 가능 → 상황에 따라
+        primary = buildStrategyRecommendation('BANKRUPTCY', 'medium');
+        secondary = buildStrategyRecommendation('REHABILITATION', 'medium');
+      }
     }
+
   } else if (hasExcessCut) {
     primary = buildStrategyRecommendation('BANKRUPTCY', 'medium');
     secondary = buildStrategyRecommendation('REHABILITATION', 'low');

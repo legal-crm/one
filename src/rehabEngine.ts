@@ -55,6 +55,24 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   data.assets.forEach(asset => {
     if (asset.isExempt) return; // Skip if marked exempt
 
+    // 퇴직금(severance): 연금형(pension)이면 압류 불가 → 청산가치 미반영
+    if (asset.type === 'severance' && data.retirementPensionType === 'pension') {
+      return;
+    }
+
+    // 퇴직금(severance): 비연금형이면 50%만 청산가치 반영 (법적으로 1/2만 압류 가능)
+    if (asset.type === 'severance' && data.retirementPensionType !== 'pension') {
+      const severanceValue = Math.round(asset.marketValue * 0.5);
+      totalLiquidationValue += severanceValue;
+      return;
+    }
+
+    // 코인/주식(stock): 법원별 설정에 따라 청산가치 포함/제외
+    // 서울/수원/부산/대전/대구/광주 회생법원은 코인·주식 청산가치 제외
+    if (asset.type === 'stock' && !courtConfig.includeCryptoStock) {
+      return;
+    }
+
     let value = asset.marketValue;
     
     // Subtract secured loan if it has a pledge
@@ -146,7 +164,20 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
                                  data.specialCircumstances.severeDisability;
   const allow2435 = courtConfig.allow24Month && hasSpecialCircumstance;
 
-  // 8. Simulation Rows for 24, 36, 48, 60 Months
+  // 8. 최저 변제액 제공의 원칙 (채무 규모 기준)
+  let minTotalByDebtScale = 0;
+  if (totalDebt < 50000000) {
+    // 총 채무 5,000만 원 미만: 채무 총액의 5% 이상
+    minTotalByDebtScale = Math.ceil(totalDebt * 0.05);
+  } else {
+    // 총 채무 5,000만 원 이상: 채무 총액의 3% + 100만 원 이상
+    minTotalByDebtScale = Math.ceil(totalDebt * 0.03) + 1000000;
+  }
+
+  // 일반 최소 월 변제금: 10만 원
+  const generalMinMonthly = 100000;
+
+  // 9. Simulation Rows for 24, 36, 48, 60 Months
   const simulatedMonths = allow2435 ? [24, 36, 48, 60] : [36, 48, 60];
   const rows: CalculationRow[] = [];
 
@@ -156,11 +187,27 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     
     // Monthly repayment must be at least the disposable income, or higher to guarantee liquidation value
     let monthly = Math.max(disposable, minMonthlyToGuaranteeLiq);
+
+    // 24개월 특례: 총 채무의 최소 20% 이상 변제 의무
+    if (m === 24) {
+      const minMonthlyFor20Pct = totalDebt > 0 ? Math.ceil((totalDebt * 0.2) / 24) : 0;
+      monthly = Math.max(monthly, minMonthlyFor20Pct);
+    }
+
+    // 최저 변제액 원칙 적용: 채무 규모별 최소 총 변제액 + 일반 최소 월 10만 원
+    const minMonthlyByDebtScale = Math.ceil(minTotalByDebtScale / m);
+    monthly = Math.max(monthly, minMonthlyByDebtScale, generalMinMonthly);
     
     // Monthly repayment cannot exceed total monthly income
     monthly = Math.min(monthly, totalMonthlyIncome);
-    
-    const total = monthly * m;
+
+    // 변제금 총액은 채무를 초과할 수 없음 → 초과 시 기간 단축
+    let actualM = m;
+    let total = monthly * m;
+    if (total > totalDebt && monthly > 0) {
+      actualM = Math.ceil(totalDebt / monthly);
+      total = totalDebt;
+    }
     
     // Calculate how much living cost the debtor must sacrifice
     let needCutPct = 0;
@@ -180,12 +227,22 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
       }
     }
 
-    if (monthly * m < totalLiquidationValue) {
+    // 채무 전액 변제 시 기간 단축됨을 표시
+    if (actualM < m) {
+      mode = `${actualM}개월 완납 (채무 전액 변제)`;
+    }
+
+    if (monthly * actualM < totalLiquidationValue) {
       mode = '청산가치 불만족 (기각)';
     }
 
+    // 24개월 특례: 총 변제액이 채무의 20% 미만이면 최소 변제 조건 미충족
+    if (m === 24 && total < Math.ceil(totalDebt * 0.2)) {
+      mode = '20% 최소 변제 미충족 (소득 부족)';
+    }
+
     rows.push({
-      m,
+      m: actualM,
       monthly,
       total,
       needCutPct,
@@ -198,18 +255,18 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     let label = `${row.m}개월 기본안`;
     let why = '청산가치 보장 및 가용소득 전액 변제';
     
-    if (row.m === 36) {
-      label = '36개월 표준 플랜';
-      why = '법정 표준 개인회생 변제 기간';
-    } else if (row.m === 48) {
-      label = '48개월 부담 경감 플랜';
-      why = '변제 기간을 연장하여 월 부담 최소화';
-    } else if (row.m === 60) {
-      label = '60개월 최장 연장 플랜';
-      why = '고액 채무 및 고가 자산 보유자 변제 보장';
-    } else if (row.m === 24) {
+    if (row.m <= 36 && row.m > 24) {
+      label = `${row.m}개월 ${row.m < 36 ? '단축' : '표준'} 플랜`;
+      why = row.m < 36 ? `채무 전액 변제로 ${row.m}개월 단축` : '법정 표준 개인회생 변제 기간';
+    } else if (row.m > 36 && row.m <= 48) {
+      label = `${row.m}개월 연장 플랜`;
+      why = '36개월로 청산가치 충족 불가 → 기간 연장으로 청산가치 변제';
+    } else if (row.m > 48) {
+      label = `${row.m}개월 최장 연장 플랜`;
+      why = '청산가치 충족을 위한 최장 기간 변제';
+    } else if (row.m <= 24) {
       label = '24개월 특례 단기 플랜';
-      why = '취약계층 특별 생계 지원 최단 기간 변제';
+      why = '취약계층 특별 생계 지원 최단 기간 변제 (총 채무의 20% 이상 변제 의무)';
     }
 
     const cutPct = Math.round(row.needCutPct * 100);
@@ -228,53 +285,69 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
   });
 
   // 10. Preferred Plan Choice
-  // Standard preference: 36 months if no cut is required, otherwise extend to 48 or 60 to minimize the cut percentage.
+  // 원칙: 36개월이 기본. 48/60개월 연장은 36개월로 청산가치를 충족하지 못할 때만.
   let preferred: PreferredPlan | null = null;
-  const plan36 = rows.find(r => r.m === 36);
-  const plan48 = rows.find(r => r.m === 48);
-  const plan60 = rows.find(r => r.m === 60);
-  const plan24 = rows.find(r => r.m === 24);
+  const plan24 = rows.find(r => r.m <= 24);
+  const plan36 = rows.find(r => r.m > 24 && r.m <= 36);
+  const plan48 = rows.find(r => r.m > 36 && r.m <= 48);
+  const plan60 = rows.find(r => r.m > 48 && r.m <= 60);
 
   if (plan24) {
+    const minTotal20Pct = Math.ceil(totalDebt * 0.2);
+    const meets20Pct = plan24.total >= minTotal20Pct;
     preferred = {
-      m: 24,
+      m: plan24.m,
       monthly: plan24.monthly,
       total: plan24.total,
-      mode: plan24.mode,
-      why: '취약계층을 위한 24개월 최단기 특별 탕감안 제공 대상'
-    };
-  } else if (plan36 && plan36.needCutPct === 0) {
-    preferred = {
-      m: 36,
-      monthly: plan36.monthly,
-      total: plan36.total,
-      mode: plan36.mode,
-      why: '추가 생계비 조정 없이 36개월 표준 기간 내 완료 가능한 플랜'
-    };
-  } else if (plan48 && plan48.needCutPct <= 0.1) {
-    preferred = {
-      m: 48,
-      monthly: plan48.monthly,
-      total: plan48.total,
-      mode: plan48.mode,
-      why: '월 생계비 감액 부담을 10% 이하로 줄이기 위한 48개월 연장 플랜'
-    };
-  } else if (plan60) {
-    preferred = {
-      m: 60,
-      monthly: plan60.monthly,
-      total: plan60.total,
-      mode: plan60.mode,
-      why: '청산가치 보장 한도를 만족하기 위한 최장 60개월 변제 플랜'
+      mode: meets20Pct ? plan24.mode : '20% 최소 변제 미충족',
+      why: `취약계층 24개월 특례 (최소 변제: 총 채무의 20% = ${Math.round(minTotal20Pct).toLocaleString()}원 이상${meets20Pct ? ' ✅ 충족' : ' ❌ 미충족'})`
     };
   } else if (plan36) {
+    // 기본: 36개월 (또는 채무 전액 변제로 단축된 기간)
     preferred = {
-      m: 36,
+      m: plan36.m,
       monthly: plan36.monthly,
       total: plan36.total,
       mode: plan36.mode,
-      why: '36개월 표준 플랜'
+      why: plan36.m < 36
+        ? `가용소득으로 ${plan36.m}개월만에 채무 전액 변제 가능`
+        : '36개월 표준 변제 플랜'
     };
+
+    // 36개월로 청산가치를 충족하지 못할 때만 48/60개월 연장
+    // (청산가치가 높아 36개월 × 월변제로 부족한 경우)
+    if (totalLiquidationValue > 0) {
+      const baseMonthlyWithoutLiq = Math.max(disposable, Math.ceil(minTotalByDebtScale / 36), generalMinMonthly);
+      const liqMonthly36 = Math.ceil(totalLiquidationValue / 36);
+
+      if (liqMonthly36 > baseMonthlyWithoutLiq) {
+        // 청산가치 때문에 36개월 월변제가 높아짐 → 기간 연장으로 월 부담 완화
+        if (plan48) {
+          const liqMonthly48 = Math.ceil(totalLiquidationValue / 48);
+          if (liqMonthly48 <= baseMonthlyWithoutLiq) {
+            preferred = {
+              m: plan48.m, monthly: plan48.monthly, total: plan48.total, mode: plan48.mode,
+              why: `36개월로 청산가치(${totalLiquidationValue.toLocaleString()}원) 충족 불가 → 48개월 연장`
+            };
+          } else if (plan60) {
+            preferred = {
+              m: plan60.m, monthly: plan60.monthly, total: plan60.total, mode: plan60.mode,
+              why: `36개월로 청산가치(${totalLiquidationValue.toLocaleString()}원) 충족 불가 → 60개월 연장`
+            };
+          } else {
+            preferred = {
+              m: plan48.m, monthly: plan48.monthly, total: plan48.total, mode: plan48.mode,
+              why: `청산가치 충족을 위한 48개월 연장 (월 부담 완화)`
+            };
+          }
+        } else if (plan60) {
+          preferred = {
+            m: plan60.m, monthly: plan60.monthly, total: plan60.total, mode: plan60.mode,
+            why: `36개월로 청산가치(${totalLiquidationValue.toLocaleString()}원) 충족 불가 → 60개월 연장`
+          };
+        }
+      }
+    }
   }
 
   // 11. Alerts Generation
