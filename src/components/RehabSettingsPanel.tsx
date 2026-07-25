@@ -50,19 +50,24 @@ const RehabSettingsPanel: React.FC = () => {
         }
       }
 
-      // 2025년/2026년 최신 공식 데이터 자동 동기화 마이그레이션 (주거비 한도 포함)
+      // 2025년/2026년 최신 공식 데이터 자동 동기화 마이그레이션 (주거비, 의료비, 교육비 포함)
       const needs2026Sync = !data.yearlyPolicies[2026] 
         || data.yearlyPolicies[2026].medianIncome.values[1] !== 2564238 
-        || data.yearlyPolicies[2026].housingCostLimits?.Seoul?.[1]?.additionalLimit !== 589208;
+        || data.yearlyPolicies[2026].housingCostLimits?.Seoul?.[1]?.additionalLimit !== 589208
+        || data.yearlyPolicies[2026].medicalCostIncludedInMedian?.[1] !== 64619
+        || data.yearlyPolicies[2026].educationCost?.includedInMedian !== 89627;
       const needs2025Sync = !data.yearlyPolicies[2025] || data.yearlyPolicies[2025].medianIncome.values[5] !== 7108192;
       if (needs2026Sync || needs2025Sync) {
         data.yearlyPolicies[2025] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2025]));
         data.yearlyPolicies[2026] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2026]));
-        // 2027년 이후 주거비 한도도 0원으로 초기화 (정부 미발표 데이터)
+        // 2027년 이후 데이터 0원으로 초기화 (정부 미발표 데이터)
         for (const yearStr of Object.keys(data.yearlyPolicies)) {
           const yr = Number(yearStr);
           if (yr > 2026 && DEFAULT_SETTINGS.yearlyPolicies[yr]) {
             data.yearlyPolicies[yr].housingCostLimits = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].housingCostLimits));
+            data.yearlyPolicies[yr].medicalCostIncludedInMedian = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].medicalCostIncludedInMedian));
+            data.yearlyPolicies[yr].educationCost = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].educationCost));
+            data.yearlyPolicies[yr].specialEducationCost = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].specialEducationCost));
           }
         }
         changed = true;
@@ -589,15 +594,24 @@ const RehabSettingsPanel: React.FC = () => {
       return <div className="p-4 text-slate-600">선택된 연도의 공제 기준 데이터가 없습니다. 설정을 초기화하거나 다른 연도를 선택해주세요.</div>;
     }
 
-    const handleNestedChange = (category: keyof YearlyPolicy, field: string, value: string) => {
+    const formatWithComma = (value: number): string => {
+      if (value === 0) return '0';
+      return value.toLocaleString('ko-KR');
+    };
+
+    const parseCommaNumber = (str: string): number => {
+      return Number(str.replace(/,/g, '')) || 0;
+    };
+
+    const handleNestedChange = (category: keyof YearlyPolicy, field: string, value: number) => {
       if (!settings) return;
       const newPolicies = { ...settings.yearlyPolicies };
       const policy = newPolicies[selectedYear];
 
       if (category === 'medicalCostIncludedInMedian') {
-        (policy[category] as any)[field] = Number(value);
+        (policy[category] as any)[field] = value;
       } else {
-        (policy[category as 'assetExemptions' | 'educationCost' | 'specialEducationCost'] as any)[field] = Number(value);
+        (policy[category as 'assetExemptions' | 'educationCost' | 'specialEducationCost'] as any)[field] = value;
         // Recalculate total for education costs
         if (category === 'educationCost' || category === 'specialEducationCost') {
           const cat = policy[category as 'educationCost' | 'specialEducationCost'];
@@ -607,66 +621,167 @@ const RehabSettingsPanel: React.FC = () => {
       setSettings({ ...settings, yearlyPolicies: newPolicies });
     };
 
+    const isUnconfirmedYear = selectedYear > 2026;
+
     return (
       <div className="space-y-6">
+        {isUnconfirmedYear && (
+          <div className="bg-amber-950/50 border border-amber-700/60 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-amber-400 text-xl mt-0.5">⚠️</span>
+            <div>
+              <h4 className="font-bold text-amber-300 text-sm">{selectedYear}년 공제 기준 (의료비·교육비) — 정부 미발표</h4>
+              <p className="text-amber-200/70 text-xs mt-1 leading-relaxed">
+                의료비 포함분 및 교육비 공제 기준은 매년 정부가 고시하여 발표합니다. {selectedYear}년 기준은 아직 발표되지 않았으므로 
+                금액이 0원으로 표시됩니다. 정부 발표 후 이 화면에서 직접 입력해주세요.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isUnconfirmedYear && selectedYear === 2026 && (
+          <div className="bg-emerald-950/40 border border-emerald-700/40 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-emerald-400 text-xl mt-0.5">✅</span>
+            <div>
+              <h4 className="font-bold text-emerald-300 text-sm">{selectedYear}년 공제 기준 (의료비·교육비) — 정부 발표 확정</h4>
+              <p className="text-emerald-200/60 text-xs mt-1 leading-relaxed">
+                아래 금액은 {selectedYear}년 정부 고시 기준 확정 데이터입니다. (의료비 1인 64,619원 / 교육비 1인당 일반 20만 원, 특수 50만 원 추가 인정)
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
           <h3 className="font-bold text-lg mb-4 text-white">재산 산정 시 공제 금액</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>예금/적금 (현금 포함)</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.assetExemptions.deposit} onChange={e => handleNestedChange('assetExemptions', 'deposit', e.target.value)} />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.assetExemptions.deposit)} 
+                  onChange={e => handleNestedChange('assetExemptions', 'deposit', parseCommaNumber(e.target.value))} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
             <div>
               <label className={labelClass}>보험해약 환급금</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.assetExemptions.insurance} onChange={e => handleNestedChange('assetExemptions', 'insurance', e.target.value)} />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.assetExemptions.insurance)} 
+                  onChange={e => handleNestedChange('assetExemptions', 'insurance', parseCommaNumber(e.target.value))} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <h3 className="font-bold text-lg mb-4 text-white">자녀 교육비 인정 범위 (월)</h3>
+          <h3 className="font-bold text-lg mb-1 text-white">자녀 일반 교육비 인정 범위 (월, 자녀 1인당)</h3>
+          <p className="text-xs text-slate-500 mb-4">자녀 1명당 월 최대 20만 원 추가 인정되며, 기본 생계비 포함분(89,627원)과 합산되어 계산됩니다.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className={labelClass}>추가 교육비 인정 한도</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.educationCost.additionalLimit} onChange={e => handleNestedChange('educationCost', 'additionalLimit', e.target.value)} />
+              <label className={labelClass}>추가 교육비 인정 한도 (월 최대)</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.educationCost.additionalLimit)} 
+                  onChange={e => handleNestedChange('educationCost', 'additionalLimit', parseCommaNumber(e.target.value))} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
             <div>
               <label className={labelClass}>기준 중위소득 60% 포함분</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.educationCost.includedInMedian} onChange={e => handleNestedChange('educationCost', 'includedInMedian', e.target.value)} />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.educationCost.includedInMedian)} 
+                  onChange={e => handleNestedChange('educationCost', 'includedInMedian', parseCommaNumber(e.target.value))} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
             <div>
               <label className={labelClass}>총 인정 한도 (자동계산)</label>
-              <input type="number" className={inputClass + " bg-slate-950 text-slate-600"} value={currentYearPolicy.educationCost.totalLimit} readOnly />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass + " bg-slate-950 text-slate-600"} 
+                  value={formatWithComma(currentYearPolicy.educationCost.totalLimit)} 
+                  readOnly 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <h3 className="font-bold text-lg mb-4 text-white">특수 교육비 인정 범위 (월)</h3>
+          <h3 className="font-bold text-lg mb-1 text-white">특수 교육비 인정 범위 (월, 자녀 1인당)</h3>
+          <p className="text-xs text-slate-500 mb-4">신체적·정신적 장애 등으로 특수교육 필요 시 자녀 1명당 월 최대 50만 원 추가 인정됩니다.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className={labelClass}>추가 교육비 인정 한도</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.specialEducationCost.additionalLimit} onChange={e => handleNestedChange('specialEducationCost', 'additionalLimit', e.target.value)} />
+              <label className={labelClass}>추가 교육비 인정 한도 (월 최대)</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.specialEducationCost.additionalLimit)} 
+                  onChange={e => handleNestedChange('specialEducationCost', 'additionalLimit', parseCommaNumber(e.target.value))} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
             <div>
               <label className={labelClass}>기준 중위소득 60% 포함분</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.specialEducationCost.includedInMedian} onChange={e => handleNestedChange('specialEducationCost', 'includedInMedian', e.target.value)} />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.specialEducationCost.includedInMedian)} 
+                  onChange={e => handleNestedChange('specialEducationCost', 'includedInMedian', parseCommaNumber(e.target.value))} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
             <div>
               <label className={labelClass}>총 인정 한도 (자동계산)</label>
-              <input type="number" className={inputClass + " bg-slate-950 text-slate-600"} value={currentYearPolicy.specialEducationCost.totalLimit} readOnly />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass + " bg-slate-950 text-slate-600"} 
+                  value={formatWithComma(currentYearPolicy.specialEducationCost.totalLimit)} 
+                  readOnly 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <h3 className="font-bold text-lg mb-4 text-white">고정 의료비 (중위소득 60% 포함분)</h3>
-          <p className="text-sm text-slate-600 mb-4 -mt-2">의료비는 기준 중위소득 60%에 포함된 금액을 초과하는 부분에 대해 인정됩니다.</p>
+          <h3 className="font-bold text-lg mb-1 text-white">고정 의료비 (중위소득 60% 포함분)</h3>
+          <p className="text-xs text-slate-500 mb-4">의료비는 기준 중위소득 60%에 포함된 금액을 초과하는 부분에 대해 추가 생계비로 인정됩니다.</p>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map(size => (
               <div key={size}>
                 <label className={labelClass}>{size}인 가구</label>
-                <input type="number" className={inputClass} value={currentYearPolicy.medicalCostIncludedInMedian[size] || 0} onChange={e => handleNestedChange('medicalCostIncludedInMedian', String(size), e.target.value)} />
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    className={inputClass} 
+                    value={formatWithComma(currentYearPolicy.medicalCostIncludedInMedian[size] || 0)} 
+                    onChange={e => handleNestedChange('medicalCostIncludedInMedian', String(size), parseCommaNumber(e.target.value))} 
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+                </div>
               </div>
             ))}
           </div>
@@ -697,13 +812,35 @@ const RehabSettingsPanel: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>소득금액의 합계액 (연간)</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.adultChildDependentCriteria.incomeLimit}
-                onChange={e => { const newPolicies = { ...settings.yearlyPolicies }; newPolicies[selectedYear].adultChildDependentCriteria.incomeLimit = Number(e.target.value); setSettings({ ...settings, yearlyPolicies: newPolicies }); }} />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.adultChildDependentCriteria.incomeLimit)}
+                  onChange={e => { 
+                    const newPolicies = { ...settings.yearlyPolicies }; 
+                    newPolicies[selectedYear].adultChildDependentCriteria.incomeLimit = parseCommaNumber(e.target.value); 
+                    setSettings({ ...settings, yearlyPolicies: newPolicies }); 
+                  }} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
             <div>
               <label className={labelClass}>근로소득만 있는 경우 총급여액 (연간)</label>
-              <input type="number" className={inputClass} value={currentYearPolicy.adultChildDependentCriteria.grossIncomeLimit}
-                onChange={e => { const newPolicies = { ...settings.yearlyPolicies }; newPolicies[selectedYear].adultChildDependentCriteria.grossIncomeLimit = Number(e.target.value); setSettings({ ...settings, yearlyPolicies: newPolicies }); }} />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={inputClass} 
+                  value={formatWithComma(currentYearPolicy.adultChildDependentCriteria.grossIncomeLimit)}
+                  onChange={e => { 
+                    const newPolicies = { ...settings.yearlyPolicies }; 
+                    newPolicies[selectedYear].adultChildDependentCriteria.grossIncomeLimit = parseCommaNumber(e.target.value); 
+                    setSettings({ ...settings, yearlyPolicies: newPolicies }); 
+                  }} 
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+              </div>
             </div>
           </div>
         </div>

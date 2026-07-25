@@ -104,6 +104,15 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
         }
     };
 
+    // 2026년 정부 발표 의료비 및 교육비 (확정치)
+    const medicalCost2026: Record<number, number> = { 1: 64619, 2: 105822, 3: 135048, 4: 163667 };
+    const educationCost2026 = { additionalLimit: 200000, includedInMedian: 89627, totalLimit: 289627 };
+    const specialEducationCost2026 = { additionalLimit: 500000, includedInMedian: 89627, totalLimit: 589627 };
+
+    // 미확정 연도용 의료비 및 교육비 (정부 미발표 — 0원)
+    const emptyMedicalCost: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    const emptyEducationCost = { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 };
+
     for (const year of years) {
         const multiplier = Math.pow(annualIncrease, year - baseYear);
         let newMedianIncomeValues: Record<number, number> = {};
@@ -149,20 +158,32 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
             deposit: Math.round(baseAssetExemptions.deposit * multiplier), 
             insurance: Math.round(baseAssetExemptions.insurance * multiplier) 
         };
-        const newEducationCost = { 
-            additionalLimit: Math.round(baseEducationCost.additionalLimit * multiplier), 
-            includedInMedian: Math.round(baseEducationCost.includedInMedian * multiplier), 
-            totalLimit: Math.round(baseEducationCost.totalLimit * multiplier) 
-        };
-        const newSpecialEducationCost = { 
-            additionalLimit: Math.round(baseSpecialEducationCost.additionalLimit * multiplier), 
-            includedInMedian: Math.round(baseSpecialEducationCost.includedInMedian * multiplier), 
-            totalLimit: Math.round(baseSpecialEducationCost.totalLimit * multiplier) 
-        };
-        const newMedicalCostIncluded: Record<number, number> = {};
-        for (const key in baseMedicalCostIncluded) { 
-            newMedicalCostIncluded[key] = Math.round(baseMedicalCostIncluded[key as any] * multiplier); 
+
+        // 교육비 및 의료비: 2025/2026 확정 데이터, 2027+ 미확정(0원)
+        let newEducationCost = { ...emptyEducationCost };
+        let newSpecialEducationCost = { ...emptyEducationCost };
+        let newMedicalCostIncluded: Record<number, number> = { ...emptyMedicalCost };
+
+        if (year === 2025) {
+            newEducationCost = { 
+                additionalLimit: Math.round(baseEducationCost.additionalLimit * multiplier), 
+                includedInMedian: Math.round(baseEducationCost.includedInMedian * multiplier), 
+                totalLimit: Math.round(baseEducationCost.totalLimit * multiplier) 
+            };
+            newSpecialEducationCost = { 
+                additionalLimit: Math.round(baseSpecialEducationCost.additionalLimit * multiplier), 
+                includedInMedian: Math.round(baseSpecialEducationCost.includedInMedian * multiplier), 
+                totalLimit: Math.round(baseSpecialEducationCost.totalLimit * multiplier) 
+            };
+            for (const key in baseMedicalCostIncluded) { 
+                newMedicalCostIncluded[key] = Math.round(baseMedicalCostIncluded[key as any] * multiplier); 
+            }
+        } else if (year === 2026) {
+            newEducationCost = { ...educationCost2026 };
+            newSpecialEducationCost = { ...specialEducationCost2026 };
+            newMedicalCostIncluded = { ...medicalCost2026 };
         }
+
         const newAdultChildCriteria = { 
             minAge: baseAdultChildCriteria.minAge, 
             maxAge: baseAdultChildCriteria.maxAge, 
