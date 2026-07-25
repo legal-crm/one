@@ -50,10 +50,21 @@ const RehabSettingsPanel: React.FC = () => {
         }
       }
 
-      // 2025년/2026년 최신 공식 데이터 자동 동기화 마이그레이션
-      if (!data.yearlyPolicies[2026] || data.yearlyPolicies[2026].medianIncome.values[1] !== 2564238 || !data.yearlyPolicies[2025] || data.yearlyPolicies[2025].medianIncome.values[5] !== 7108192) {
+      // 2025년/2026년 최신 공식 데이터 자동 동기화 마이그레이션 (주거비 한도 포함)
+      const needs2026Sync = !data.yearlyPolicies[2026] 
+        || data.yearlyPolicies[2026].medianIncome.values[1] !== 2564238 
+        || data.yearlyPolicies[2026].housingCostLimits?.Seoul?.[1]?.additionalLimit !== 589208;
+      const needs2025Sync = !data.yearlyPolicies[2025] || data.yearlyPolicies[2025].medianIncome.values[5] !== 7108192;
+      if (needs2026Sync || needs2025Sync) {
         data.yearlyPolicies[2025] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2025]));
         data.yearlyPolicies[2026] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[2026]));
+        // 2027년 이후 주거비 한도도 0원으로 초기화 (정부 미발표 데이터)
+        for (const yearStr of Object.keys(data.yearlyPolicies)) {
+          const yr = Number(yearStr);
+          if (yr > 2026 && DEFAULT_SETTINGS.yearlyPolicies[yr]) {
+            data.yearlyPolicies[yr].housingCostLimits = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.yearlyPolicies[yr].housingCostLimits));
+          }
+        }
         changed = true;
       }
       
@@ -464,9 +475,46 @@ const RehabSettingsPanel: React.FC = () => {
 
       setSettings({...settings, yearlyPolicies: newPolicies});
     };
+
+    // 콤마 포맷 입력 핸들러
+    const formatWithComma = (value: number): string => {
+      if (value === 0) return '0';
+      return value.toLocaleString('ko-KR');
+    };
+
+    const parseCommaNumber = (str: string): number => {
+      return Number(str.replace(/,/g, '')) || 0;
+    };
+
+    const isUnconfirmedYear = selectedYear > 2026;
     
     return (
       <div className="space-y-6">
+        {isUnconfirmedYear && (
+          <div className="bg-amber-950/50 border border-amber-700/60 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-amber-400 text-xl mt-0.5">⚠️</span>
+            <div>
+              <h4 className="font-bold text-amber-300 text-sm">{selectedYear}년 주거비 한도 — 정부 미발표</h4>
+              <p className="text-amber-200/70 text-xs mt-1 leading-relaxed">
+                주거비 인정 한도는 매년 정부가 고시하여 발표합니다. {selectedYear}년 기준은 아직 발표되지 않았으므로 
+                모든 금액이 0원으로 표시됩니다. 정부 발표 후 이 화면에서 직접 입력해주세요.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isUnconfirmedYear && selectedYear === 2026 && (
+          <div className="bg-emerald-950/40 border border-emerald-700/40 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-emerald-400 text-xl mt-0.5">✅</span>
+            <div>
+              <h4 className="font-bold text-emerald-300 text-sm">{selectedYear}년 주거비 한도 — 정부 발표 확정</h4>
+              <p className="text-emerald-200/60 text-xs mt-1 leading-relaxed">
+                아래 금액은 {selectedYear}년 정부 고시 기준 확정 데이터입니다.
+              </p>
+            </div>
+          </div>
+        )}
+
         {(['Seoul', 'Overcrowded', 'Metro', 'Others'] as RegionKey[]).map(r => (
           <div key={r} className="bg-slate-900 p-6 rounded-xl border border-slate-800">
             <h3 className="font-bold text-lg mb-4 text-white">
@@ -489,13 +537,37 @@ const RehabSettingsPanel: React.FC = () => {
                       <tr key={size}>
                         <td className="px-4 py-3 font-medium">{size}인 가구</td>
                         <td className="px-4 py-3">
-                          <input type="number" className={inputClass} value={rule.additionalLimit} onChange={e => handleHousingChange(r, size, 'additionalLimit', Number(e.target.value))} />
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              className={inputClass} 
+                              value={formatWithComma(rule.additionalLimit)} 
+                              onChange={e => handleHousingChange(r, size, 'additionalLimit', parseCommaNumber(e.target.value))} 
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
-                          <input type="number" className={inputClass} value={rule.includedInMedian} onChange={e => handleHousingChange(r, size, 'includedInMedian', Number(e.target.value))} />
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              className={inputClass} 
+                              value={formatWithComma(rule.includedInMedian)} 
+                              onChange={e => handleHousingChange(r, size, 'includedInMedian', parseCommaNumber(e.target.value))} 
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
-                          <input type="number" className={inputClass + " bg-slate-950 text-slate-600"} value={rule.totalLimit} readOnly />
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              className={inputClass + " bg-slate-950 text-slate-600"} 
+                              value={formatWithComma(rule.totalLimit)} 
+                              readOnly 
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 text-xs pointer-events-none">원</span>
+                          </div>
                         </td>
                       </tr>
                     );

@@ -48,6 +48,62 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
     const baseMedicalCostIncluded = { 1: 60279, 2: 99103, 3: 126639, 4: 153664 };
     const baseAdultChildCriteria = { minAge: 19, maxAge: 21, incomeLimit: 1000000, grossIncomeLimit: 5000000 };
 
+    // 2026년 정부 발표 주거비 한도 (확정치)
+    const housingLimits2026: Record<RegionKey, Record<number, HousingCostRule>> = {
+        'Seoul': {
+            1: { additionalLimit: 589208, includedInMedian: 273861, totalLimit: 863069 },
+            2: { additionalLimit: 982013, includedInMedian: 448484, totalLimit: 1430497 },
+            3: { additionalLimit: 1253955, includedInMedian: 572345, totalLimit: 1826300 },
+            4: { additionalLimit: 1510789, includedInMedian: 693638, totalLimit: 2204427 },
+        },
+        'Overcrowded': {
+            1: { additionalLimit: 430122, includedInMedian: 273861, totalLimit: 703983 },
+            2: { additionalLimit: 716869, includedInMedian: 448484, totalLimit: 1165353 },
+            3: { additionalLimit: 915387, includedInMedian: 572345, totalLimit: 1487732 },
+            4: { additionalLimit: 1102876, includedInMedian: 693638, totalLimit: 1796514 },
+        },
+        'Metro': {
+            1: { additionalLimit: 229791, includedInMedian: 273861, totalLimit: 503652 },
+            2: { additionalLimit: 382985, includedInMedian: 448484, totalLimit: 831469 },
+            3: { additionalLimit: 489042, includedInMedian: 572345, totalLimit: 1061387 },
+            4: { additionalLimit: 589208, includedInMedian: 693638, totalLimit: 1282846 },
+        },
+        'Others': {
+            1: { additionalLimit: 176762, includedInMedian: 273861, totalLimit: 450623 },
+            2: { additionalLimit: 294604, includedInMedian: 448484, totalLimit: 743088 },
+            3: { additionalLimit: 376186, includedInMedian: 572345, totalLimit: 948531 },
+            4: { additionalLimit: 453237, includedInMedian: 693638, totalLimit: 1146875 },
+        }
+    };
+
+    // 미확정 연도용 주거비 한도 (정부 미발표 — 0원)
+    const emptyHousingLimits: Record<RegionKey, Record<number, HousingCostRule>> = {
+        'Seoul': {
+            1: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            2: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            3: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            4: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+        },
+        'Overcrowded': {
+            1: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            2: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            3: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            4: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+        },
+        'Metro': {
+            1: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            2: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            3: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            4: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+        },
+        'Others': {
+            1: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            2: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            3: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+            4: { additionalLimit: 0, includedInMedian: 0, totalLimit: 0 },
+        }
+    };
+
     for (const year of years) {
         const multiplier = Math.pow(annualIncrease, year - baseYear);
         let newMedianIncomeValues: Record<number, number> = {};
@@ -77,15 +133,18 @@ const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
             newDepositRules[key as RegionKey].limit = Math.round(baseDepositRules[key as RegionKey].limit * multiplier / 100000) * 100000;
             newDepositRules[key as RegionKey].deduct = Math.round(baseDepositRules[key as RegionKey].deduct * multiplier / 100000) * 100000;
         }
-        const newHousingLimits: Record<RegionKey, Record<number, HousingCostRule>> = JSON.parse(JSON.stringify(baseHousingLimits));
-        for (const regionKey in newHousingLimits) {
-            for (const sizeKey in newHousingLimits[regionKey as RegionKey]) {
-                const rule = newHousingLimits[regionKey as RegionKey][sizeKey];
-                rule.additionalLimit = Math.round(rule.additionalLimit * multiplier);
-                rule.includedInMedian = Math.round(rule.includedInMedian * multiplier);
-                rule.totalLimit = rule.additionalLimit + rule.includedInMedian;
-            }
+
+        // 주거비 한도: 2025/2026은 확정 데이터, 2027+ 미확정(0원)
+        let newHousingLimits: Record<RegionKey, Record<number, HousingCostRule>>;
+        if (year === 2025) {
+            newHousingLimits = JSON.parse(JSON.stringify(baseHousingLimits));
+        } else if (year === 2026) {
+            newHousingLimits = JSON.parse(JSON.stringify(housingLimits2026));
+        } else {
+            // 2027년 이후: 매년 정부가 발표하므로 미확정 상태로 0원 초기화
+            newHousingLimits = JSON.parse(JSON.stringify(emptyHousingLimits));
         }
+
         const newAssetExemptions = { 
             deposit: Math.round(baseAssetExemptions.deposit * multiplier), 
             insurance: Math.round(baseAssetExemptions.insurance * multiplier) 
