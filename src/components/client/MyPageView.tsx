@@ -479,14 +479,15 @@ export default function MyPageView({
               
               <div className="space-y-1">
                 <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">고용 형태</label>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                   {[
                     { label: '직장인', value: 'salary' },
                     { label: '사업자', value: 'business' },
                     { label: '프리랜서', value: 'freelancer' },
                     { label: '직장+사업', value: 'both' },
                     { label: '일용직', value: 'daily' },
-                    { label: '무직/수급', value: 'none' },
+                    { label: '무직', value: 'none' },
+                    { label: '기초수급자', value: 'basic_recipient' },
                   ].map(item => (
                     <button
                       key={item.value}
@@ -639,21 +640,31 @@ export default function MyPageView({
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주 주택 유형</label>
                   <select
-                    value={profile.rentalDeposit !== undefined && profile.rentalDeposit > 0 ? 'rent' : 'free'}
+                    value={profile.housingType || (profile.rentalDeposit !== undefined && profile.rentalDeposit > 0 ? 'rent' : 'free')}
                     onChange={(e) => {
-                      if (e.target.value === 'free') {
+                      const val = e.target.value;
+                      handleFieldChange('housingType', val);
+                      if (val === 'free') {
                         handleFieldChange('rentalDeposit', 0);
-                        handleFieldChange('housingType', 'free');
-                      } else {
-                        handleFieldChange('rentalDeposit', 1000); // Default placeholder
-                        handleFieldChange('housingType', 'rent');
-                        handleFieldChange('housingContractHolder', 'self');
+                        handleFieldChange('rentCost', 0);
+                      } else if (val === 'rent') {
+                        if (!profile.rentalDeposit) handleFieldChange('rentalDeposit', 1000);
+                        handleFieldChange('housingContractHolder', profile.housingContractHolder || 'self');
+                      } else if (val === 'jeonse') {
+                        if (!profile.rentalDeposit) handleFieldChange('rentalDeposit', 10000);
+                        handleFieldChange('rentCost', 0);
+                        handleFieldChange('housingContractHolder', profile.housingContractHolder || 'self');
+                      } else if (val === 'owned') {
+                        handleFieldChange('rentalDeposit', 0);
+                        handleFieldChange('rentCost', 0);
                       }
                     }}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
                   >
-                    <option value="rent">임차 (전세/월세 보증금 있음)</option>
-                    <option value="free">자가 또는 무상 거주 (보증금 없음)</option>
+                    <option value="rent">월세 (보증금+월세)</option>
+                    <option value="jeonse">전세 (보증금만)</option>
+                    <option value="owned">자가 (본인 소유)</option>
+                    <option value="free">무상 거주 (보증금 없음)</option>
                   </select>
                 </div>
 
@@ -930,11 +941,13 @@ export default function MyPageView({
 
               <div className="space-y-1">
                 <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">현재 법적 조치 상황</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {[
                     { label: '추심 전화/문자', value: 'collection_call' },
                     { label: '법원 지급명령', value: 'court_order' },
-                    { label: '재산 압류', value: 'seizure' },
+                    { label: '계좌/채권 압류', value: 'seizure' },
+                    { label: '부동산 압류', value: 'property_seizure' },
+                    { label: '신용등급 하락', value: 'credit_drop' },
                     { label: '급여 압류', value: 'wage_garnishment' },
                   ].map(item => (
                     <button
