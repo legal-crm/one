@@ -2,7 +2,9 @@ import React, { useRef, useEffect, useState } from 'react';
 import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award } from 'lucide-react';
 import MyPageView from './MyPageView';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } from '../../types';
-import { RehabCalculationResult, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
+import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
+
+const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 
 interface BannerProps {
   onClose: () => void;
@@ -128,6 +130,41 @@ export default function ChatView({
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
   }, [activeChatReqId]);
+
+  // financialProfile → RehabUserInput 재구성 (상세 진단서 표시용)
+  const reportUserInput: RehabUserInput | undefined = React.useMemo(() => {
+    const profile = activeRequest?.financialProfile;
+    if (!profile) return undefined;
+    return {
+      address: profile.residenceRegion || '서울',
+      workLocation: undefined,
+      age: 35,
+      employmentType: profile.jobType === 'SALARIED' ? 'salary' :
+                      profile.jobType === 'BUSINESS' ? 'business' :
+                      profile.jobType === 'DAILY' ? 'daily' :
+                      profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
+      monthlyIncome: (profile.income || 0) * 10000,
+      familySize: (profile.dependents || 0) + 1,
+      spouseAssets: (profile.spouseAsset || 0) * 10000,
+      rentCost: (profile.rentCost || 0) * 10000,
+      deposit: (profile.rentalDeposit || 0) * 10000,
+      depositLoan: (profile.depositLoan || 0) * 10000,
+      housingType: profile.housingType,
+      housingContractHolder: profile.housingContractHolder,
+      myAssets: Math.max(0, (profile.assetsTotal || 0) - (profile.rentalDeposit || 0) - (profile.spouseAsset || 0) - (profile.retirementPay || 0)) * 10000,
+      totalDebt: (profile.debtTotal || 0) * 10000,
+      priorityDebt: (profile.priorityDebt || 0) * 10000,
+      speculativeLoss: (profile.speculativeLoss || 0) * 10000,
+      gamblingLoss: (profile.gamblingLoss || 0) * 10000,
+      retirementPensionType: profile.retirementPensionType || 'unknown',
+      retirementPay: (profile.retirementPay || 0) * 10000,
+      isMarried: profile.maritalStatus === 'MARRIED',
+      maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
+      minorChildren: profile.dependents || 0,
+      legalActions: profile.legalActions || [],
+      name: profile.name || userAlias || '의뢰인',
+    };
+  }, [activeRequest]);
 
   const [showPrivacyBanner, setShowPrivacyBanner] = useState<boolean>(true);
   const [showDisclaimerBanner, setShowDisclaimerBanner] = useState<boolean>(true);
@@ -586,21 +623,25 @@ export default function ChatView({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <MyPageView 
-                userAlias={userAlias}
-                setUserAlias={setUserAlias}
-                isEditingAlias={isEditingAlias}
-                setIsEditingAlias={setIsEditingAlias}
-                tempAlias={tempAlias}
-                setTempAlias={setTempAlias}
-                activeRequest={activeRequest}
-                activeResult={activeResult}
-                onUpdateFinancialProfile={onUpdateFinancialProfile}
-                onStartDiagnosis={() => { setShowProfilePanel(false); onSetActiveTab('request'); }}
-                requests={requests}
-                onNavigateToChat={() => setShowProfilePanel(false)}
-                isCompact={true}
-              />
+              {activeResult && reportUserInput ? (
+                <React.Suspense fallback={
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
+                  </div>
+                }>
+                  <RehabResultReport
+                    result={activeResult}
+                    userInput={reportUserInput}
+                    onClose={() => setShowProfilePanel(false)}
+                    isLoggedIn={isLoggedIn}
+                  />
+                </React.Suspense>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <FileText className="w-12 h-12 text-slate-300 mb-4" />
+                  <p className="text-sm text-slate-500">진단 결과가 없습니다. 먼저 내 상황 체크를 진행해 주세요.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
