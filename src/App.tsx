@@ -36,6 +36,19 @@ export default function App() {
   const [isShaking, setIsShaking] = useState(false);
 
   useEffect(() => {
+    // [보안 마이그레이션] localStorage에 남아있는 기존 Supabase 세션 토큰 정리
+    // sessionStorage로 전환했으므로 localStorage의 세션 데이터는 더 이상 불필요
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } catch (_) { /* silent */ }
+
     // OAuth 리다이렉트 후 URL에 남는 #access_token=... 또는 빈 # 제거
     if (window.location.hash) {
       const hash = window.location.hash;

@@ -19,12 +19,30 @@ const noOpLock = async (
   return await fn();
 };
 
+// 세션 스토리지 어댑터: sessionStorage를 사용하여 브라우저(탭) 종료 시 세션이 자동 만료되도록 함
+// localStorage(기본값)는 브라우저를 닫아도 세션이 영구 유지되어 보안 문제 발생
+const sessionStorageAdapter = {
+  getItem: (key: string): string | null => {
+    return sessionStorage.getItem(key);
+  },
+  setItem: (key: string, value: string): void => {
+    sessionStorage.setItem(key, value);
+  },
+  removeItem: (key: string): void => {
+    sessionStorage.removeItem(key);
+  },
+};
+
 // Supabase 서버가 #access_token (implicit) 방식으로 응답하므로 클라이언트도 implicit으로 설정
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     flowType: 'implicit',
     detectSessionInUrl: true,
     lock: noOpLock as any,
+    storage: sessionStorageAdapter,
+    // persistSession은 true(기본값) 유지하되, storage를 sessionStorage로 교체하여
+    // 브라우저 탭이 열려 있는 동안만 세션 유지, 브라우저 종료 시 자동 삭제
+    persistSession: true,
   }
 });
 
