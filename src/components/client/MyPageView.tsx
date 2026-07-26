@@ -248,7 +248,8 @@ export default function MyPageView({
       {/* LIVE DIAGNOSTICS DASHBOARD - 상하 스택 레이아웃 */}
       <div className="flex flex-col gap-5">
         
-        {/* TOP: 실시간 채무조정 상태 (가로 배치) */}
+        {/* TOP: 실시간 채무조정 상태 (가로 배치) - 슬라이드 패널(isCompact)에서는 리포트가 위에 있으므로 숨김 */}
+        {!isCompact && (
         <div className="relative bg-slate-950/80 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-2xl shadow-slate-950/70 overflow-hidden">
           {/* 네온 글로우 백그라운드 데코 */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-brand/10 rounded-full blur-[100px] pointer-events-none -mr-24 -mt-24"></div>
@@ -391,6 +392,7 @@ export default function MyPageView({
             <span>이 시뮬레이션 결과는 법원 실무 기준을 근거로 계산된 가상 수치이며, 실제 법원의 인가 결정 및 세부 변제율 조정을 위해 변호사 서류 소명이 수반되어야 합니다.</span>
           </div>
         </div>
+        )}
 
         {/* BOTTOM: 상세 진단 정보 조회 및 수정 (전체 너비) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left">
