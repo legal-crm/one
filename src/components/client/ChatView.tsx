@@ -5,6 +5,7 @@ import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } fro
 import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
+const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 
 interface BannerProps {
   onClose: () => void;
@@ -662,6 +663,32 @@ export default function ChatView({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
+              {/* 의뢰인 종합 채무·자산 분석 리포트 (embedded) */}
+              {activeResult && reportUserInput ? (
+                <React.Suspense fallback={
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
+                  </div>
+                }>
+                  <RehabResultReport
+                    result={activeResult}
+                    userInput={reportUserInput}
+                    onClose={() => setShowProfilePanel(false)}
+                    isLoggedIn={isLoggedIn}
+                    embedded={true}
+                  />
+                </React.Suspense>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <FileText className="w-12 h-12 text-slate-300 mb-4" />
+                  <p className="text-sm text-slate-500">진단 결과가 없습니다. 먼저 내 상황 체크를 진행해 주세요.</p>
+                </div>
+              )}
+
+              {/* 구분선 */}
+              <div className="border-t-4 border-slate-100 dark:border-slate-800 my-2"></div>
+
+              {/* 하단 수정 폼 */}
               <MyPageView 
                 userAlias={userAlias}
                 setUserAlias={setUserAlias}

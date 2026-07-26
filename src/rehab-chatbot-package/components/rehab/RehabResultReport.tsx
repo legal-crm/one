@@ -40,6 +40,7 @@ interface RehabResultReportProps {
     onConsultation?: () => void;
     isLoggedIn?: boolean;
     onShowAuthModal?: () => void;
+    embedded?: boolean;
 }
 
 const RehabResultReport: React.FC<RehabResultReportProps> = ({
@@ -48,7 +49,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     onClose,
     onConsultation,
     isLoggedIn = false,
-    onShowAuthModal
+    onShowAuthModal,
+    embedded = false
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
     const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'statistics' | 'simulation' | 'checklist'>('overview');
@@ -274,30 +276,34 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         return value.toLocaleString();
     };
 
-    return createPortal(
-        <AnimatePresence>
+    const reportContent = (
+            <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
-                onClick={(e) => e.target === e.currentTarget && onClose()}
+                className={embedded ? 'w-full' : 'fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 overflow-y-auto'}
+                onClick={(e) => !embedded && e.target === e.currentTarget && onClose()}
             >
-                {/* Background Overlay */}
+                {/* Background Overlay - only in modal mode */}
+                {!embedded && (
                 <motion.div
                     className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                />
+                />)}
 
                 {/* Main Report Container */}
                 <motion.div
                     ref={reportRef}
-                    initial={{ opacity: 0, y: 40, scale: 0.98 }}
+                    initial={{ opacity: 0, y: embedded ? 0 : 40, scale: embedded ? 1 : 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 40, scale: 0.98 }}
+                    exit={{ opacity: 0, y: embedded ? 0 : 40, scale: embedded ? 1 : 0.98 }}
                     transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
-                    className="relative w-full max-w-xl my-4 bg-white border border-slate-200 rounded-2xl overflow-hidden max-h-[92vh] flex flex-col shadow-2xl text-slate-900"
+                    className={embedded 
+                        ? 'relative w-full bg-white overflow-hidden flex flex-col text-slate-900'
+                        : 'relative w-full max-w-xl my-4 bg-white border border-slate-200 rounded-2xl overflow-hidden max-h-[92vh] flex flex-col shadow-2xl text-slate-900'
+                    }
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* ========== DARK HEADER BAR ========== */}
@@ -1486,9 +1492,12 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     )}
                 </motion.div>
             </motion.div >
-        </AnimatePresence >,
-        document.body
-    );
+        </AnimatePresence >);
+
+    if (embedded) {
+        return reportContent;
+    }
+    return createPortal(reportContent, document.body);
 };
 
 export default RehabResultReport;
