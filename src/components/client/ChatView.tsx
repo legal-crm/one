@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award, Heart, Scale, Search, ArrowRight } from 'lucide-react';
 import MyPageView from './MyPageView';
-import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } from '../../types';
+import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile, User as UserType } from '../../types';
 import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
@@ -103,6 +103,7 @@ interface ChatViewProps {
   setIsEditingAlias: (v: boolean) => void;
   tempAlias: string;
   setTempAlias: (v: string) => void;
+  lawyers?: UserType[];
 }
 
 export default function ChatView({
@@ -118,7 +119,8 @@ export default function ChatView({
   isEditingAlias,
   setIsEditingAlias,
   tempAlias,
-  setTempAlias
+  setTempAlias,
+  lawyers = []
 }: ChatViewProps) {
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const [showProfilePanel, setShowProfilePanel] = useState<boolean>(false);
@@ -127,6 +129,8 @@ export default function ChatView({
   const [showAppointModal, setShowAppointModal] = useState<boolean>(false);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
   const [appointedLawyerId, setAppointedLawyerId] = useState<string | null>(null);
+  const [showFavLawyerModal, setShowFavLawyerModal] = useState<boolean>(false);
+  const [selectedFavLawyers, setSelectedFavLawyers] = useState<string[]>([]);
 
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
@@ -434,12 +438,9 @@ export default function ChatView({
                     try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
                     
                     if (favIds.length > 0) {
-                      // 좋아요한 변호사가 있음 → 변호사 찾기 페이지로 이동 (좋아요 필터 활성화)
-                      localStorage.setItem('lawyer_view_favorites_mode', 'true');
-                      onSetActiveTab('lawyers');
+                      setSelectedFavLawyers([]);
+                      setShowFavLawyerModal(true);
                     } else {
-                      // 좋아요한 변호사가 없음 → 안내 후 변호사 찾기로 이동
-                      localStorage.removeItem('lawyer_view_favorites_mode');
                       alert('먼저 마음에 드는 변호사를 ♥ 좋아요 해 주세요!\n변호사 찾기 페이지로 이동합니다.');
                       onSetActiveTab('lawyers');
                     }
@@ -784,6 +785,141 @@ export default function ChatView({
            </div>
         </div>
       )}
+      {/* =========================================================================
+          FAVORITE LAWYER SELECTION MODAL
+          ========================================================================= */}
+      {showFavLawyerModal && (() => {
+        const FAVORITES_KEY = 'lawyer_favorites';
+        let favIds: string[] = [];
+        try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
+        const favLawyers = lawyers.filter(l => favIds.includes(l.id));
+
+        return (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowFavLawyerModal(false)}></div>
+            <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col animate-fadeIn overflow-hidden">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="font-extrabold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
+                    좋아요 변호사 선택
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">최대 3명을 선택하여 무료 상담을 요청하세요</p>
+                </div>
+                <button onClick={() => setShowFavLawyerModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer">
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+
+              {/* Lawyer List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {favLawyers.length === 0 ? (
+                  <div className="text-center py-12 space-y-3">
+                    <Heart className="w-12 h-12 text-slate-200 mx-auto" />
+                    <p className="text-sm text-slate-500 font-medium">좋아요한 변호사가 없습니다</p>
+                    <button
+                      onClick={() => { setShowFavLawyerModal(false); onSetActiveTab('lawyers'); }}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold cursor-pointer"
+                    >
+                      <Search className="w-4 h-4" /> 변호사 찾기
+                    </button>
+                  </div>
+                ) : (
+                  favLawyers.map(lawyer => {
+                    const isSelected = selectedFavLawyers.includes(lawyer.id);
+                    return (
+                      <button
+                        key={lawyer.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedFavLawyers(prev => {
+                            if (prev.includes(lawyer.id)) return prev.filter(x => x !== lawyer.id);
+                            if (prev.length >= 3) { alert('최대 3명까지만 선택 가능합니다.'); return prev; }
+                            return [...prev, lawyer.id];
+                          });
+                        }}
+                        className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left cursor-pointer ${
+                          isSelected
+                            ? 'border-brand bg-brand/5 shadow-md shadow-brand/10'
+                            : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-slate-300'
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                          isSelected ? 'bg-brand border-brand' : 'border-slate-300 dark:border-slate-600'
+                        }`}>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                        </div>
+
+                        {/* Avatar */}
+                        {lawyer.avatar || lawyer.avatarData ? (
+                          <img src={lawyer.avatarData || lawyer.avatar} alt={lawyer.name} className="w-12 h-12 rounded-full object-cover shadow-sm border border-slate-100 shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-lg shrink-0">{lawyer.name.charAt(0)}</div>
+                        )}
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">{lawyer.name} 변호사</div>
+                          <div className="text-xs text-slate-500 truncate">{lawyer.firmName || '개인 변호사'} · {lawyer.region}</div>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {lawyer.fields.slice(0, 2).map((f, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-[10px] font-bold text-slate-600 dark:text-slate-300">{f}</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Heart */}
+                        <Heart className="w-4 h-4 text-rose-500 fill-rose-500 shrink-0" />
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              {favLawyers.length > 0 && (
+                <div className="p-4 border-t border-slate-100 dark:border-slate-800 shrink-0 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>선택된 변호사: <strong className="text-brand">{selectedFavLawyers.length}</strong> / 3명</span>
+                    <button
+                      onClick={() => { setShowFavLawyerModal(false); onSetActiveTab('lawyers'); }}
+                      className="text-brand font-bold hover:underline cursor-pointer"
+                    >
+                      + 더 많은 변호사 보기
+                    </button>
+                  </div>
+                  <button
+                    disabled={selectedFavLawyers.length === 0}
+                    onClick={() => {
+                      const selectedNames = selectedFavLawyers.map(id => lawyers.find(l => l.id === id)?.name).filter(Boolean);
+                      if (currentRequest) {
+                        onAddMessage(
+                          currentRequest.id,
+                          `${selectedNames.join(', ')} 변호사님에게 무료 상담을 요청했습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,
+                          'lawyer', 'system', '시스템 안내'
+                        );
+                      }
+                      setShowFavLawyerModal(false);
+                      alert(`${selectedNames.join(', ')} 변호사님에게 무료 상담 요청을 보냈습니다!`);
+                    }}
+                    className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
+                      selectedFavLawyers.length > 0
+                        ? 'bg-gradient-to-r from-brand to-indigo-600 text-white shadow-lg shadow-brand/20 cursor-pointer active:scale-[0.97]'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    선택한 {selectedFavLawyers.length}명에게 상담 요청 보내기
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
     </>
   );
 }

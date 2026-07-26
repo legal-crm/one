@@ -3254,6 +3254,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   activeRequest={activeRequest} activeResult={activeResult} onUpdateFinancialProfile={handleUpdateFinancialProfile}
                   setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias}
                   tempAlias={tempAlias} setTempAlias={setTempAlias}
+                  lawyers={mockLawyers}
                 />
               )
             )}
