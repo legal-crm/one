@@ -3,1009 +3,739 @@ import { Scale, Shield, Check, AlertTriangle, Landmark, Calendar, FileText, User
 import { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 
 interface PrintableReportTemplateProps {
-    result: RehabCalculationResult;
-    userInput: RehabUserInput;
+  result: RehabCalculationResult;
+  userInput: RehabUserInput;
 }
 
 export default function PrintableReportTemplate({ result, userInput }: PrintableReportTemplateProps) {
-    const today = new Date().toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+  const formatCurrency = (amount: number | undefined): string => {
+    if (amount === undefined) return '0원';
+    if (amount === 0) return '0원';
+    
+    const absAmount = Math.abs(amount);
+    const eok = Math.floor(absAmount / 100000000);
+    const remainder = absAmount % 100000000;
+    const man = Math.floor(remainder / 10000);
 
-    const formatCurrency = (amount: number | undefined): string => {
-        if (amount === undefined) return '0원';
-        if (amount === 0) return '0원';
-        
-        const absAmount = Math.abs(amount);
-        const eok = Math.floor(absAmount / 100000000);
-        const remainder = absAmount % 100000000;
-        const man = Math.floor(remainder / 10000);
+    let res = '';
+    if (eok > 0) res += `${eok}억 `;
+    if (man > 0) res += `${man.toLocaleString()}만`;
+    return `${res}원`.trim();
+  };
 
-        let res = '';
-        if (eok > 0) res += `${eok}억 `;
-        if (man > 0) res += `${man.toLocaleString()}만`;
-        return `${res}원`.trim();
-    };
+  const today = new Date();
+  const dateString = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
-    const hasSpeculative = userInput.speculativeLoss && userInput.speculativeLoss > 0;
-    const hasGambling = userInput.gamblingLoss && userInput.gamblingLoss > 0;
+  const hasSpeculative = userInput.speculativeLoss && userInput.speculativeLoss > 0;
+  const hasGambling = userInput.gamblingLoss && userInput.gamblingLoss > 0;
 
-    // 2026년 가구원수별 보건복지부 기준 중위소득 및 60% 생계비 데이터
-    const medianIncomes = [
-        { size: 1, median: 2564238, minLiving: 1538543 },
-        { size: 2, median: 4199292, minLiving: 2519575 },
-        { size: 3, median: 5359036, minLiving: 3215422 },
-        { size: 4, median: 6494738, minLiving: 3896843 },
-        { size: 5, median: 7556719, minLiving: 4534031 },
-        { size: 6, median: 8555952, minLiving: 5133571 },
-    ];
+  const medianIncomes = [
+    { size: 1, median: 2564238, minLiving: 1538543 },
+    { size: 2, median: 4199292, minLiving: 2519575 },
+    { size: 3, median: 5359036, minLiving: 3215422 },
+    { size: 4, median: 6494738, minLiving: 3896843 },
+    { size: 5, median: 7556719, minLiving: 4534031 },
+    { size: 6, median: 8555952, minLiving: 5133571 },
+  ];
 
-    return (
-        <div 
-            id="printable-pdf-report"
-            style={{
-                width: '794px',
-                fontFamily: "'Pretendard', 'Malgun Gothic', sans-serif",
-                color: '#1e293b',
-                backgroundColor: '#ffffff',
-                lineHeight: 1.5,
-                margin: 0,
-                padding: 0,
-                boxSizing: 'border-box'
-            }}
-        >
-            {/* ================= PAGE 1 (COVER & EXECUTIVE SUMMARY) ================= */}
-            <div 
-                id="pdf-page-1"
-                style={{
-                    width: '794px',
-                    height: '1120px',
-                    padding: '50px 45px',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    border: '15px double #1e1b4b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#ffffff',
-                    pageBreakAfter: 'always'
-                }}
-            >
-                {/* Top Confidential Mark */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', letterSpacing: '2px' }}>CONFIDENTIAL REPORT</span>
-                    <span style={{ fontSize: '10px', color: '#64748b' }}>법률 자문 및 채무조정 분석 리포트</span>
-                </div>
+  const PageWrapper = ({ children, pageNumber }: { children: React.ReactNode, pageNumber: number }) => (
+    <div
+      id={`pdf-page-${pageNumber}`}
+      style={{
+        width: '794px',
+        height: '1120px',
+        backgroundColor: '#ffffff',
+        position: 'relative',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: "'Pretendard', 'Malgun Gothic', sans-serif",
+        color: '#334155'
+      }}
+    >
+      <div style={{ height: '6px', backgroundColor: '#1e1b4b', width: '100%' }} />
+      <div style={{ padding: '40px 50px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '40px',
+          left: '50px',
+          right: '50px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '10.5px',
+          color: '#94a3b8',
+          fontFamily: "'Pretendard', 'Malgun Gothic', sans-serif"
+        }}
+      >
+        <span>CONFIDENTIAL · ROY LAW CRM SYSTEM</span>
+        <span>페이지 {pageNumber} / 7</span>
+      </div>
+    </div>
+  );
 
-                {/* Main Title Area */}
-                <div style={{ marginTop: '55px', textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
-                        <Shield style={{ width: '28px', height: '28px', color: '#312e81' }} />
-                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#312e81', letterSpacing: '3px' }}>ROY LAW CRM SERVICES</span>
-                    </div>
-                    
-                    <h1 style={{ 
-                        fontSize: '34px', 
-                        fontWeight: '900', 
-                        color: '#1e1b4b', 
-                        lineHeight: 1.3,
-                        margin: '10px 0 15px 0',
-                        letterSpacing: '-1px'
-                    }}>
-                        의뢰인 종합 채무조정 및<br />
-                        개인회생 정밀 진단 보고서
-                    </h1>
-                    
-                    <div style={{ width: '80px', height: '4px', backgroundColor: '#312e81', margin: '15px auto' }}></div>
-                    
-                    <p style={{ fontSize: '12px', color: '#475569', marginTop: '10px', lineHeight: 1.6 }}>
-                        본 보고서는 신청인의 소득, 자산 현황, 부양가족 및 채무 상황을 종합 검토하여<br />
-                        채무자회생법 기준 최적의 생계비 공제 혜택과 법원 인가 가능성을 정밀하게 산출한 문서입니다.
-                    </p>
-                </div>
+  const SectionHeader = ({ icon, title }: { icon: string, title: string }) => (
+    <div style={{
+      backgroundColor: '#1e1b4b',
+      color: '#ffffff',
+      padding: '10px 16px',
+      borderRadius: '6px',
+      fontSize: '16px',
+      fontWeight: 'bold',
+      marginBottom: '20px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    }}>
+      <span>{icon}</span>
+      <span>{title}</span>
+    </div>
+  );
 
-                {/* Client Info Block */}
-                <div style={{ 
-                    backgroundColor: '#f8fafc', 
-                    border: '1px solid #e2e8f0', 
-                    borderRadius: '10px', 
-                    padding: '20px 25px', 
-                    margin: '25px 0',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '12px'
-                }}>
-                    <div>
-                        <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '3px' }}>의뢰인 성명</div>
-                        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
-                            <User style={{ width: '15px', height: '15px', display: 'inline', marginRight: '4px', verticalAlign: 'text-bottom', color: '#312e81' }} />
-                            {userInput.name || '의뢰인'} 귀하
-                        </div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '3px' }}>진단 일자</div>
-                        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
-                            <Calendar style={{ width: '15px', height: '15px', display: 'inline', marginRight: '4px', verticalAlign: 'text-bottom', color: '#312e81' }} />
-                            {today}
-                        </div>
-                    </div>
-                    <div style={{ gridColumn: 'span 2', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-                        <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '3px' }}>신청 예정 관할 법원</div>
-                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#0f172a' }}>
-                            <Landmark style={{ width: '15px', height: '15px', display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom', color: '#312e81' }} />
-                            {result.courtName} (평균 개시결정 소요 기간: 약 {result.processingMonths}개월 내외)
-                        </div>
-                    </div>
-                </div>
-
-                {/* Executive Summary Box */}
-                <div style={{
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '12px',
-                    padding: '20px 24px',
-                    backgroundColor: '#f1f5f9'
-                }}>
-                    <h3 style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 12px 0', borderBottom: '2px solid #cbd5e1', paddingBottom: '6px' }}>
-                        I. 최종 분석 결과 요지 (Executive Summary)
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '15px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', borderRight: '1px solid #cbd5e1', paddingRight: '15px' }}>
-                            <div style={{ fontSize: '11px', color: '#475569' }}>예상 법정 승인 가능성</div>
-                            <div style={{ fontSize: '18px', fontWeight: '900', color: result.status === 'POSSIBLE' ? '#10b981' : result.status === 'DIFFICULT' ? '#f59e0b' : '#ef4444', marginTop: '4px' }}>
-                                {result.status === 'POSSIBLE' ? '개인회생 인가 유력' : result.status === 'DIFFICULT' ? '법리 보완 후 진행 권장' : '신청 불허 리스크 대상'}
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
-                                입력값 기준 예상 조정 비율: <strong style={{ color: '#312e81', fontSize: '14px' }}>{result.debtReductionRate}% (참고용, 변호사 검토 필요)</strong>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#334155', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>• 총 기존 채무액:</span>
-                                <span style={{ fontWeight: 'bold' }}>{formatCurrency(userInput.totalDebt)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>• 3년간 법원 총 변제액:</span>
-                                <span style={{ fontWeight: 'bold', color: '#10b981' }}>{formatCurrency(result.totalRepayment)}</span>
-                            </div>
-                            <div style={{ display: 'flex', borderTop: '1px dashed #cbd5e1', paddingTop: '4px', justifyContent: 'space-between' }}>
-                                <span>• 예상 조정 가능 채무액 (변호사 검토 필요):</span>
-                                <span style={{ fontWeight: 'bold', color: '#312e81' }}>{formatCurrency(result.totalDebtReduction)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Seal Emulation */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
-                    <div style={{
-                        width: '90px',
-                        height: '90px',
-                        borderRadius: '50%',
-                        border: '3px double #1e1b4b',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        color: '#1e1b4b',
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        boxSizing: 'border-box',
-                        background: 'radial-gradient(circle, #f8fafc 0%, #ffffff 100%)',
-                        boxShadow: '0 4px 8px rgba(30, 27, 75, 0.05)',
-                    }}>
-                        <Scale style={{ width: '20px', height: '20px', marginBottom: '2px', color: '#312e81' }} />
-                        <span style={{ fontSize: '7.5px', letterSpacing: '0.5px' }}>ROY LAW CRM</span>
-                        <span style={{ fontSize: '6.5px', color: '#64748b', fontWeight: 'normal' }}>CERTIFIED</span>
-                    </div>
-                </div>
-
-                {/* Footer Credits */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '9px', color: '#94a3b8' }}>
-                    <span>ROY LAW CRM SYSTEM V2.6</span>
-                    <span>본 보고서는 의뢰인 기초 진단용으로 변호사 면담의 기초 자료로 활용됩니다.</span>
-                </div>
-            </div>
-
-            {/* ================= PAGE 2 (생계비 및 부양가족 정밀 분석) ================= */}
-            <div 
-                id="pdf-page-2"
-                style={{
-                    width: '794px',
-                    height: '1120px',
-                    padding: '50px 45px',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    border: '15px double #1e1b4b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#ffffff',
-                    pageBreakAfter: 'always'
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#312e81' }}>II. 생계비 및 부양가족 정밀 분석</span>
-                    <span style={{ fontSize: '10px', color: '#64748b' }}>의뢰인: {userInput.name || '의뢰인'}</span>
-                </div>
-
-                <div style={{ flex: 1, marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    
-                    {/* 1. 용어 설명 */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '12px 15px', borderRadius: '8px', borderLeft: '4px solid #312e81' }}>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 5px 0' }}>💡 쉽게 풀어보는 용어 설명</h4>
-                        <p style={{ fontSize: '10.5px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
-                            <strong>법정 생계비:</strong> 채무자가 개인회생을 진행하는 동안 매달 빚을 갚기 전에, 나와 가족들의 생계를 유지하기 위해 법적으로 보장받는 생활비입니다. 이 생계비만큼은 소득에서 제외되어 압류되지 않으며 본인이 자유롭게 사용할 수 있습니다.
-                        </p>
-                    </div>
-
-                    {/* 2. 부양가족 기준 설명 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            1. 나의 부양가족 산정 근거와 산출 방법
-                        </h4>
-                        
-                        <div style={{ fontSize: '11px', color: '#334155', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <p style={{ margin: 0 }}>
-                                현재 의뢰인님의 인정 부양가족 수는 <strong>{userInput.familySize ? userInput.familySize - 1 : 0}명</strong>으로 진단되었습니다. 이에 따라 본인을 포함한 가구원 수는 총 <strong>{userInput.familySize || 1}인 가구</strong>로 법원에 신청하게 됩니다.
-                            </p>
-                            
-                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', backgroundColor: '#f8fafc' }}>
-                                <strong style={{ fontSize: '11px', color: '#1e1b4b', display: 'block', marginBottom: '6px' }}>📍 왜 이렇게 계산되나요? 부양가족 판정의 핵심 요건</strong>
-                                <ul style={{ margin: 0, paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <li><strong>미성년 자녀 (만 19세 미만):</strong> 본인이 부양의무를 지므로 원칙적으로 전원 부양가족으로 인정됩니다. (맞벌이 부부의 경우 원칙적으로 소득이 더 높은 사람에게 부양가족이 일괄 배정되거나 양 부부가 나누어 배정받게 됩니다.)</li>
-                                    <li><strong>고령 직계존속 (만 65세 이상 부모님):</strong> 주민등록상 동거 여부와 실질적 부양 여부, 그리고 부모님의 별도 소득 및 재산이 없거나 미미해야 부양가족으로 합산이 가능합니다.</li>
-                                    <li><strong>배우자 (원칙적 제외):</strong> 배우자는 경제활동을 할 수 있는 육체적 나이에 속할 경우 원칙적으로 부양가족에서 제외됩니다. (단, 장애, 만성 중증질환 등으로 근로능력이 전혀 없음을 법리적으로 소명하는 경우에만 인정받을 수 있습니다.)</li>
-                                </ul>
-                            </div>
-                            
-                            {userInput.familySize && userInput.familySize >= 2 ? (
-                                <p style={{ margin: 0, color: '#0f172a', fontWeight: 'bold' }}>
-                                    📝 의뢰인 상황 분석: 부양가족이 본인 외 {(userInput.familySize || 1) - 1}명이므로, 신청인 포함 총 {userInput.familySize}인 가구에 대한 생계비가 월 소득에서 기본 공제됩니다.
-                                </p>
-                            ) : (
-                                <p style={{ margin: 0, color: '#475569' }}>
-                                    📝 의뢰인 상황 분석: 단독 생계(1인 가구)로 산정되었으며, 추가 의료비나 주거비 특별 소명을 통해 생계비 추가 확대를 목표로 진행합니다.
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 3. 생계비 산정 기준 표 및 그래프 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            2. 2026년 기준 가구원수별 인정 생계비 (보건복지부 기준 60%)
-                        </h4>
-                        <p style={{ fontSize: '10px', color: '#64748b', marginTop: 0, marginBottom: '8px' }}>
-                            ※ 법률적 근거: 채무자회생법 제579조 제4호 및 각 회생법원 실무준칙에 의거, 국민기초생활보장법상 기준 중위소득의 60%를 기본 생계비로 정하고 있습니다.
-                        </p>
-                        
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px', textAlign: 'left', marginBottom: '10px' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
-                                    <th style={{ padding: '6px 8px', color: '#475569' }}>가구수</th>
-                                    <th style={{ padding: '6px 8px', color: '#475569', textAlign: 'right' }}>2026 기준 중위소득</th>
-                                    <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#312e81' }}>인정 생계비 (60% 공제액)</th>
-                                    <th style={{ padding: '6px 8px', color: '#475569' }}>적용 여부</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {medianIncomes.map((item) => {
-                                    const isCurrent = item.size === (userInput.familySize || 1);
-                                    return (
-                                        <tr key={item.size} style={{ 
-                                            borderBottom: '1px solid #f1f5f9',
-                                            backgroundColor: isCurrent ? '#f1f5f9' : 'transparent',
-                                            fontWeight: isCurrent ? 'bold' : 'normal'
-                                        }}>
-                                            <td style={{ padding: '6px 8px' }}>{item.size}인 가구</td>
-                                            <td style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b' }}>{item.median.toLocaleString()}원</td>
-                                            <td style={{ padding: '6px 8px', textAlign: 'right', color: '#312e81' }}>{item.minLiving.toLocaleString()}원</td>
-                                            <td style={{ padding: '6px 8px', color: isCurrent ? '#10b981' : '#cbd5e1' }}>
-                                                {isCurrent ? '★ 의뢰인 적용' : '미적용'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-
-                        {/* 생계비 공제 시각화 차트 (CSS) */}
-                        <div style={{ 
-                            border: '1px solid #e2e8f0', 
-                            borderRadius: '8px', 
-                            padding: '12px 15px', 
-                            backgroundColor: '#fafafa',
-                            marginTop: '5px'
-                        }}>
-                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e1b4b', display: 'block', marginBottom: '8px' }}>
-                                📊 월 소득 대비 생계비 확보 수준 ({userInput.familySize || 1}인 가구 기준)
-                            </span>
-                            
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {/* 월 소득 바 */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#475569', marginBottom: '3px' }}>
-                                        <span>내 월 평균 소득</span>
-                                        <span style={{ fontWeight: 'bold' }}>{formatCurrency(userInput.monthlyIncome)}</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '14px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <div style={{ width: '100%', height: '100%', backgroundColor: '#64748b' }}></div>
-                                    </div>
-                                </div>
-                                {/* 생계비 바 */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#1e1b4b', marginBottom: '3px' }}>
-                                        <span>인정 생활비 (법정 생계비 {formatCurrency(result.baseLivingCost)} + 추가 소명 생계비 {formatCurrency(result.additionalLivingCost)})</span>
-                                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>
-                                            {formatCurrency(result.baseLivingCost + result.additionalLivingCost)}
-                                        </span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '14px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <div style={{ 
-                                            width: `${Math.min(100, Math.round(((result.baseLivingCost + result.additionalLivingCost) / Math.max(1, userInput.monthlyIncome || 1)) * 100))}%`, 
-                                            height: '100%', 
-                                            backgroundColor: '#10b981' 
-                                        }}></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <p style={{ fontSize: '10px', color: '#64748b', margin: '8px 0 0 0', lineHeight: 1.4 }}>
-                                * 남는 자금(가용 소득): <strong>{formatCurrency(result.monthlyPayment)}</strong>가 월 변제금으로 도출되며, 이 금액으로 3년간 채무를 변제하고 남은 채무는 조정 대상이 될 수 있습니다. (실제 결과는 법원·변호사 검토에 따라 달라집니다)
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '9px', color: '#94a3b8' }}>
-                    <span>CONFIDENTIAL - ROY LAW CRM SYSTEM</span>
-                    <span>페이지 2 / 6</span>
-                </div>
-            </div>
-
-            {/* ================= PAGE 3 (자산 및 청산가치 정밀 평가) ================= */}
-            <div 
-                id="pdf-page-3"
-                style={{
-                    width: '794px',
-                    height: '1120px',
-                    padding: '50px 45px',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    border: '15px double #1e1b4b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#ffffff',
-                    pageBreakAfter: 'always'
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#312e81' }}>III. 보유자산 및 법원 청산가치 평가</span>
-                    <span style={{ fontSize: '10px', color: '#64748b' }}>의뢰인: {userInput.name || '의뢰인'}</span>
-                </div>
-
-                <div style={{ flex: 1, marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    
-                    {/* 1. 용어 및 원칙 설명 */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '12px 15px', borderRadius: '8px', borderLeft: '4px solid #312e81' }}>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 5px 0' }}>⚖️ 청산가치 보장 원칙이란 무엇인가요?</h4>
-                        <p style={{ fontSize: '10.5px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
-                            개인회생을 신청할 때, <strong>"내가 3년 동안 법원에 갚는 돈의 총합은 내 재산의 합계(청산가치)보다 반드시 많아야 한다"</strong>는 가장 핵심적인 법적 원칙입니다. 채권자들에게 채무자가 파산했을 때 배당받는 재산가치 이상을 갚아주도록 형평성을 보장하기 위함입니다. 따라서 재산 평가를 낮출 수 있는 법률적 공제 근거를 적극 소명하여 청산가치를 낮추는 것이 변제금을 낮추는 핵심 전략입니다.
-                        </p>
-                    </div>
-
-                    {/* 2. 자산 세부 산정 내역 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            1. 세부 자산별 산정 기준 및 법률 공제 근거
-                        </h4>
-                        
-                        <div style={{ fontSize: '10.5px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {/* 배우자 자산 설명 */}
-                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>• 배우자 재산</div>
-                                <div style={{ flex: 1 }}>
-                                    기본적으로 부부 공동 재산으로 보아 배우자 명의 재산의 50%를 합산하는 것이 일반 실무 기준입니다. 
-                                    하지만 <strong>서울/수원/부산회생법원</strong>의 경우, 실무준칙 개정으로 배우자 명의의 재산을 원칙적으로 채무자의 청산가치에 반영하지 않도록 규정(0% 반영)하고 있어, 해당 관할은 자산 평가에서 대단히 큰 혜택을 봅니다.
-                                </div>
-                            </div>
-                            
-                            {/* 퇴직금 및 퇴직연금 설명 */}
-                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>• 퇴직금 / 연금</div>
-                                <div style={{ flex: 1 }}>
-                                    일반 퇴직금은 향후 수령할 금액이므로 예상액의 50%가 청산가치에 들어갑니다. (나머지 50%는 법상 압류금지 재산). 
-                                    그러나 <strong>근로자퇴직급여 보장법</strong>에 따라 금융사에 적립되는 <strong>퇴직연금(DB형, DC형, IRP)</strong>은 법원 압류가 완전히 금지되어 청산가치에 <strong>전혀 반영되지 않습니다 (0% 반영)</strong>. 이 점을 정확히 소명하여 불필요한 자산 산입을 막아야 합니다.
-                                </div>
-                            </div>
-
-                            {/* 소액임차 보증금 설명 */}
-                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>• 소액 보증금 공제</div>
-                                <div style={{ flex: 1 }}>
-                                    주택임대차보호법에 근거하여, 채무자가 거주 중인 지역별 임차 보증금 중 법적으로 보호받아 청산가치에서 공제되는 면제재산 기준입니다.
-                                    <ul style={{ margin: '4px 0 0 0', paddingLeft: '15px', color: '#475569' }}>
-                                        <li><strong>서울특별시:</strong> 5,500만 원 공제</li>
-                                        <li><strong>수도권 과밀억제권역 (세종, 용인, 화성 포함):</strong> 4,850만 원 공제</li>
-                                        <li><strong>광역시 (안산, 광주, 파주, 평택 등 포함):</strong> 2,800만 원 공제</li>
-                                        <li><strong>기타 그 밖의 지역:</strong> 2,500만 원 공제</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. 자산 vs 3년 변제예정액 비교 차트 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            2. 나의 법적 청산가치 보장 충족성 검토 시각화
-                        </h4>
-                        
-                        <div style={{ 
-                            border: '1px solid #cbd5e1', 
-                            borderRadius: '8px', 
-                            padding: '12px 15px', 
-                            backgroundColor: '#f8fafc',
-                            marginTop: '5px'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '8px' }}>
-                                <span>⚖️ 청산가치(재산) vs 3년간 총 갚는 금액(총 변제액) 비교</span>
-                                <span style={{ color: result.totalRepayment >= result.liquidationValue ? '#10b981' : '#ef4444' }}>
-                                    {result.totalRepayment >= result.liquidationValue ? '보장 원칙 통과 (적합)' : '보완 및 변제조정 필요'}
-                                </span>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {/* 청산가치 */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#475569', marginBottom: '3px' }}>
-                                        <span>내 법적 재산 합계 (최종 청산가치)</span>
-                                        <span style={{ fontWeight: 'bold' }}>{formatCurrency(result.liquidationValue)}</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '14px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <div style={{ 
-                                            width: `${Math.min(100, Math.round((result.liquidationValue / Math.max(1, result.totalRepayment, result.liquidationValue)) * 100))}%`, 
-                                            height: '100%', 
-                                            backgroundColor: '#f59e0b' 
-                                        }}></div>
-                                    </div>
-                                </div>
-
-                                {/* 총 변제예정액 */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#1e1b4b', marginBottom: '3px' }}>
-                                        <span>3년(36개월) 동안 내가 총 법원에 갚을 돈</span>
-                                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>{formatCurrency(result.totalRepayment)}</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '14px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <div style={{ 
-                                            width: `${Math.min(100, Math.round((result.totalRepayment / Math.max(1, result.totalRepayment, result.liquidationValue)) * 100))}%`, 
-                                            height: '100%', 
-                                            backgroundColor: '#10b981' 
-                                        }}></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <p style={{ fontSize: '9.5px', color: '#64748b', margin: '8px 0 0 0', lineHeight: 1.4 }}>
-                                * 법률 검토 의견: 총 변제예정액({formatCurrency(result.totalRepayment)})이 청산가치({formatCurrency(result.liquidationValue)})보다 크므로 회생 조건이 성립됩니다. 만약 자산 평가액이 변제금보다 커질 경우 변제 개월수를 늘리거나 재산 평가 축소 전략을 병행해야 합니다.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '9px', color: '#94a3b8' }}>
-                    <span>CONFIDENTIAL - ROY LAW CRM SYSTEM</span>
-                    <span>페이지 3 / 6</span>
-                </div>
-            </div>
-
-            {/* ================= PAGE 4 (변제금 결정 과정 플로우차트) ================= */}
-            <div 
-                id="pdf-page-4"
-                style={{
-                    width: '794px',
-                    height: '1120px',
-                    padding: '50px 45px',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    border: '15px double #1e1b4b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#ffffff',
-                    pageBreakAfter: 'always'
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#312e81' }}>IV. 월 변제금 결정 과정 상세 분석</span>
-                    <span style={{ fontSize: '10px', color: '#64748b' }}>의뢰인: {userInput.name || '의뢰인'}</span>
-                </div>
-
-                <div style={{ flex: 1, marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    
-                    {/* 1. 변제금 결정 원리 설명 */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '12px 15px', borderRadius: '8px', borderLeft: '4px solid #312e81' }}>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 5px 0' }}>💡 월 변제금은 어떻게 결정되나요?</h4>
-                        <p style={{ fontSize: '10.5px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
-                            개인회생에서 월 변제금은 단순히 "소득 - 생계비"로 끝나지 않습니다. <strong>① 가용소득 전액 투입, ② 채무 규모별 최저변제 보장, ③ 청산가치 보장 원칙</strong> 세 가지 기준 중 <strong>가장 큰 금액</strong>이 최종 변제금으로 결정됩니다. 또한 월 10만 원 이상이어야 합니다.
-                        </p>
-                    </div>
-
-                    {/* 2. 가용소득 산출 과정 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            1. 가용소득 산출 과정 (소득 - 생계비 = 가용소득)
-                        </h4>
-                        <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            gap: '8px', 
-                            padding: '12px',
-                            backgroundColor: '#f1f5f9',
-                            borderRadius: '8px',
-                            fontSize: '11px',
-                            fontWeight: 'bold'
-                        }}>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 'normal' }}>월 실수령 소득</div>
-                                <div style={{ color: '#1e1b4b', fontSize: '13px' }}>{formatCurrency(userInput.monthlyIncome)}</div>
-                            </div>
-                            <span style={{ fontSize: '16px', color: '#64748b' }}>−</span>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 'normal' }}>최종 인정 생계비</div>
-                                <div style={{ color: '#10b981', fontSize: '13px' }}>{formatCurrency(result.recognizedLivingCost)}</div>
-                            </div>
-                            <span style={{ fontSize: '16px', color: '#64748b' }}>=</span>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#eef2ff', borderRadius: '6px', border: '2px solid #6366f1', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9px', color: '#4f46e5', fontWeight: 'normal' }}>① 가용소득 (월)</div>
-                                <div style={{ color: '#4f46e5', fontSize: '13px' }}>{formatCurrency(result.availableIncome)}</div>
-                            </div>
-                        </div>
-
-                        {/* 생계비 구성 상세 */}
-                        <div style={{ marginTop: '8px', fontSize: '10px', color: '#475569', lineHeight: 1.6 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', backgroundColor: '#f8fafc', borderRadius: '4px' }}>
-                                <span>• 기본 생계비 ({userInput.familySize || 1}인 가구 기준 중위소득 60%)</span>
-                                <span style={{ fontWeight: 'bold' }}>{formatCurrency(result.baseLivingCost)}</span>
-                            </div>
-                            {result.additionalLivingCost > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px' }}>
-                                    <span>• 추가 인정 생계비 (주거비/교육비/의료비)</span>
-                                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>+{formatCurrency(result.additionalLivingCost)}</span>
-                                </div>
-                            )}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', borderTop: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e1b4b' }}>
-                                <span>= 최종 인정 생계비 합계</span>
-                                <span>{formatCurrency(result.recognizedLivingCost)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. 세 기준 비교 플로우차트 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            2. 세 기준 비교 → 최종 변제금 결정 (MAX 원칙)
-                        </h4>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '10.5px' }}>
-                            {/* 기준 1: 가용소득 */}
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '10px', 
-                                padding: '10px 12px', 
-                                backgroundColor: result.availableIncome >= result.monthlyPayment ? '#eef2ff' : '#f8fafc',
-                                border: result.availableIncome >= result.monthlyPayment ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                                borderRadius: '8px'
-                            }}>
-                                <div style={{ fontWeight: 'bold', color: '#312e81', minWidth: '20px' }}>①</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 'bold', color: '#1e1b4b' }}>가용소득 전액 투입</div>
-                                    <div style={{ color: '#64748b', fontSize: '9.5px' }}>소득에서 생계비를 뺀 나머지를 전액 변제에 사용</div>
-                                </div>
-                                <div style={{ fontWeight: 'bold', color: '#312e81', fontSize: '13px' }}>월 {formatCurrency(result.availableIncome)}</div>
-                            </div>
-
-                            {/* 기준 2: 최저변제액 */}
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '10px', 
-                                padding: '10px 12px', 
-                                backgroundColor: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '8px'
-                            }}>
-                                <div style={{ fontWeight: 'bold', color: '#312e81', minWidth: '20px' }}>②</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 'bold', color: '#1e1b4b' }}>채무 규모별 최저변제 보장</div>
-                                    <div style={{ color: '#64748b', fontSize: '9.5px' }}>
-                                        {(userInput.totalDebt || 0) < 5000 
-                                            ? '총 채무 5천만 원 미만: 채무 × 5%' 
-                                            : '총 채무 5천만 원 이상: 채무 × 3% + 100만 원'
-                                        } ÷ {result.repaymentMonths}개월
-                                    </div>
-                                </div>
-                                <div style={{ fontWeight: 'bold', color: '#312e81', fontSize: '13px' }}>
-                                    월 {formatCurrency(Math.round(
-                                        ((userInput.totalDebt || 0) < 5000 
-                                            ? Math.ceil((userInput.totalDebt || 0) * 10000 * 0.05) 
-                                            : Math.ceil((userInput.totalDebt || 0) * 10000 * 0.03) + 1000000
-                                        ) / result.repaymentMonths / 10000
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* 기준 3: 청산가치 보장 */}
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '10px', 
-                                padding: '10px 12px', 
-                                backgroundColor: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '8px'
-                            }}>
-                                <div style={{ fontWeight: 'bold', color: '#312e81', minWidth: '20px' }}>③</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 'bold', color: '#1e1b4b' }}>청산가치 보장 원칙</div>
-                                    <div style={{ color: '#64748b', fontSize: '9.5px' }}>
-                                        총 청산가치 {formatCurrency(result.liquidationValue)} ÷ {result.repaymentMonths}개월
-                                    </div>
-                                </div>
-                                <div style={{ fontWeight: 'bold', color: '#312e81', fontSize: '13px' }}>
-                                    월 {formatCurrency(Math.round(result.liquidationValue / result.repaymentMonths))}
-                                </div>
-                            </div>
-
-                            {/* 하한선 */}
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '10px', 
-                                padding: '8px 12px', 
-                                backgroundColor: '#fefce8',
-                                border: '1px solid #fde68a',
-                                borderRadius: '8px'
-                            }}>
-                                <div style={{ fontWeight: 'bold', color: '#92400e', minWidth: '20px' }}>⚠️</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 'bold', color: '#92400e' }}>최소 변제금 하한선</div>
-                                    <div style={{ color: '#a16207', fontSize: '9.5px' }}>어떤 경우에도 월 10만 원 이상이어야 합니다</div>
-                                </div>
-                                <div style={{ fontWeight: 'bold', color: '#92400e', fontSize: '13px' }}>월 10만 원</div>
-                            </div>
-                        </div>
-
-                        {/* 결론 */}
-                        <div style={{ 
-                            marginTop: '10px', 
-                            padding: '12px 15px', 
-                            backgroundColor: '#312e81', 
-                            borderRadius: '8px', 
-                            textAlign: 'center',
-                            color: '#ffffff'
-                        }}>
-                            <div style={{ fontSize: '10px', opacity: 0.8, marginBottom: '4px' }}>위 ①②③ 중 가장 큰 금액 적용 (하한선 10만 원 보장)</div>
-                            <div style={{ fontSize: '16px', fontWeight: '900' }}>
-                                👉 최종 월 변제금: {formatCurrency(result.monthlyPayment)}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 4. 변제기간 및 총 변제금 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            3. 변제기간 결정 및 총 변제금 산출
-                        </h4>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '11px' }}>
-                            <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '3px' }}>변제기간</div>
-                                <div style={{ fontWeight: 'bold', color: '#1e1b4b', fontSize: '15px' }}>{result.repaymentMonths}개월</div>
-                                <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>({Math.round(result.repaymentMonths / 12 * 10) / 10}년)</div>
-                            </div>
-                            <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '3px' }}>월 변제금</div>
-                                <div style={{ fontWeight: 'bold', color: '#312e81', fontSize: '15px' }}>{formatCurrency(result.monthlyPayment)}</div>
-                            </div>
-                            <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '3px' }}>3년간 총 변제금</div>
-                                <div style={{ fontWeight: 'bold', color: '#10b981', fontSize: '15px' }}>{formatCurrency(result.totalRepayment)}</div>
-                            </div>
-                        </div>
-
-                        <div style={{ marginTop: '8px', fontSize: '10px', color: '#475569', lineHeight: 1.6 }}>
-                            <p style={{ margin: 0 }}>
-                                <strong>📌 변제기간 결정 기준:</strong> 기본 변제기간은 <strong>36개월(3년)</strong>입니다. 다만, 36개월 내에 청산가치를 충족하지 못하면 48개월 또는 60개월로 연장될 수 있습니다. 반대로, 변제금 총액이 채무 총액을 초과하면 기간이 단축됩니다.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* 5. 탕감 효과 요약 */}
-                    <div style={{ 
-                        border: '1px solid #cbd5e1', 
-                        borderRadius: '8px', 
-                        padding: '12px 15px', 
-                        backgroundColor: '#f0fdf4'
-                    }}>
-                        <h4 style={{ fontSize: '11px', fontWeight: 'bold', color: '#065f46', margin: '0 0 8px 0' }}>🎯 개인회생 탕감 효과 요약</h4>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '10.5px' }}>
-                            <div>
-                                <span style={{ color: '#475569' }}>총 채무액: </span>
-                                <strong style={{ color: '#ef4444' }}>{formatCurrency(userInput.totalDebt)}</strong>
-                            </div>
-                            <div>
-                                <span style={{ color: '#475569' }}>총 변제액: </span>
-                                <strong style={{ color: '#10b981' }}>{formatCurrency(result.totalRepayment)}</strong>
-                            </div>
-                            <div>
-                                <span style={{ color: '#475569' }}>예상 탕감액: </span>
-                                <strong style={{ color: '#312e81' }}>{formatCurrency(result.totalDebtReduction)}</strong>
-                            </div>
-                            <div>
-                                <span style={{ color: '#475569' }}>예상 탕감률: </span>
-                                <strong style={{ color: '#312e81', fontSize: '13px' }}>{result.debtReductionRate}%</strong>
-                            </div>
-                        </div>
-                        <p style={{ fontSize: '9px', color: '#64748b', margin: '6px 0 0 0' }}>
-                            * 상기 수치는 AI 진단 기준이며, 실제 법원 인가 결정에 따라 달라질 수 있습니다.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '9px', color: '#94a3b8' }}>
-                    <span>CONFIDENTIAL - ROY LAW CRM SYSTEM</span>
-                    <span>페이지 4 / 6</span>
-                </div>
-            </div>
-
-            {/* ================= PAGE 5 (법원 성향 및 변호사 상담 가이드) ================= */}
-            <div 
-                id="pdf-page-5"
-                style={{
-                    width: '794px',
-                    height: '1120px',
-                    padding: '50px 45px',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    border: '15px double #1e1b4b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#ffffff',
-                    pageBreakAfter: 'always'
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#312e81' }}>V. 관할법원 분석 및 대응 가이드</span>
-                    <span style={{ fontSize: '10px', color: '#64748b' }}>의뢰인: {userInput.name || '의뢰인'}</span>
-                </div>
-
-                <div style={{ flex: 1, marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    
-                    {/* 1. 투자/도박 채무 리스크 진단 */}
-                    <div style={{ 
-                        border: '1px solid #fca5a5', 
-                        backgroundColor: '#fffbeb', 
-                        borderRadius: '8px', 
-                        padding: '12px 15px', 
-                        fontSize: '11px' 
-                    }}>
-                        <div style={{ fontWeight: 'bold', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px' }}>
-                            <AlertTriangle style={{ width: '14px', height: '14px', color: '#b91c1c' }} />
-                            <span>1년 이내 투자·도박 채무 분석 및 리스크 진단</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', borderBottom: '1px solid #fca5a5', paddingBottom: '8px', marginBottom: '8px' }}>
-                            <div>
-                                <span style={{ color: '#7f1d1d' }}>• 주식/코인 투자 손실액: </span>
-                                <strong style={{ color: '#b91c1c' }}>{hasSpeculative ? formatCurrency(userInput.speculativeLoss) : '없음'}</strong>
-                            </div>
-                            <div>
-                                <span style={{ color: '#7f1d1d' }}>• 도박 및 사행성 채무액: </span>
-                                <strong style={{ color: '#b91c1c' }}>{hasGambling ? formatCurrency(userInput.gamblingLoss) : '없음'}</strong>
-                            </div>
-                        </div>
-                        <p style={{ color: '#7f1d1d', fontSize: '10px', margin: 0, lineHeight: 1.4 }}>
-                            <strong>법원별 판단 기조 비교:</strong><br />
-                            서울, 부산, 수원회생법원은 투자 손실금을 청산가치에 산입하지 않도록 명시하고 있으나, 그 외 지법(인천, 의정부, 춘천 등)은 손실금 대부분을 재산에 가산하도록 엄격하게 보정 권고를 내립니다. 의뢰인의 관할인 <strong>{result.courtName}</strong>의 판단 기조를 고려한 맞춤 변론 준비가 필수적입니다.
-                        </p>
-                    </div>
-
-                    {/* 2. 전담 변호사 상담을 위한 서류 준비 및 액션 가이드 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 8px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            🛡️ 변호사 상담 전 필수 자가 점검 및 준비사항
-                        </h4>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px', color: '#334155' }}>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                <Check style={{ width: '12px', height: '12px', color: '#10b981', marginTop: '2.5px', flexShrink: 0 }} />
-                                <span><strong>3개월간 주거래 통장 거래 내역 정리:</strong> 사용처 불분명 계좌 출금 내역 소명 자료 확보</span>
-                            </div>
-                            
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                <Check style={{ width: '12px', height: '12px', color: '#10b981', marginTop: '2.5px', flexShrink: 0 }} />
-                                <span><strong>퇴직연금 가입확인서 또는 예상 퇴직금 확인서:</strong> 금융기관의 연금 형태 확인 증명서 확보</span>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                <Check style={{ width: '12px', height: '12px', color: '#10b981', marginTop: '2.5px', flexShrink: 0 }} />
-                                <span><strong>부양가족 관련 증빙 서류:</strong> 등본, 가족관계증명서, 부모님 부양 시 소득 없음 확인 서류</span>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                <Check style={{ width: '12px', height: '12px', color: '#10b981', marginTop: '2.5px', flexShrink: 0 }} />
-                                <span><strong>특별 생계비 지출 증빙:</strong> 추가 주거비(임대차계약서, 월세 계좌 이체증), 정기 치료를 위한 진단서 및 영수증</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. 로이 로펌 회생 핵심 가이드 메시지 */}
-                    <div style={{ 
-                        border: '1px solid #e2e8f0', 
-                        borderRadius: '8px', 
-                        padding: '15px', 
-                        backgroundColor: '#f8fafc',
-                        fontSize: '11px'
-                    }}>
-                        <div style={{ fontWeight: 'bold', color: '#1e1b4b', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '8px' }}>
-                            <FileText style={{ width: '14px', height: '14px', color: '#312e81' }} />
-                            <span>전담 변호사 상담을 위한 AI 정밀 가이드</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {result.aiAdvice && result.aiAdvice.length > 0 ? (
-                                result.aiAdvice.map((advice, idx) => (
-                                    <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                        <Check style={{ width: '12px', height: '12px', color: '#10b981', marginTop: '2.5px', flexShrink: 0 }} />
-                                        <span style={{ color: '#334155' }}>{advice}</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <span style={{ color: '#64748b' }}>의뢰인님의 소득 요율 및 자산 내역은 일반적인 회생 범위에 잘 부합하므로 특별 기각 리스크 없이 순조롭게 진행될 확률이 큽니다.</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '9px', color: '#94a3b8' }}>
-                    <span>CONFIDENTIAL - ROY LAW CRM SYSTEM</span>
-                    <span>페이지 5 / 6</span>
-                </div>
-            </div>
-
-            {/* ================= PAGE 6 (용어 해설 + 주의사항 총정리) ================= */}
-            <div 
-                id="pdf-page-6"
-                style={{
-                    width: '794px',
-                    height: '1120px',
-                    padding: '50px 45px',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    border: '15px double #1e1b4b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#ffffff'
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#312e81' }}>VI. 핵심 용어 해설 및 주의사항 총정리</span>
-                    <span style={{ fontSize: '10px', color: '#64748b' }}>의뢰인: {userInput.name || '의뢰인'}</span>
-                </div>
-
-                <div style={{ flex: 1, marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    
-                    {/* 1. 핵심 용어 해설 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 10px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            📖 핵심 용어 해설 (알기 쉬운 법률 용어 사전)
-                        </h4>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '10.5px' }}>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>가용소득</div>
-                                <div style={{ color: '#334155' }}>매달 받는 소득에서 법원이 인정한 생계비를 뺀 나머지 금액입니다. 이 돈이 매달 빚을 갚는 데 사용됩니다.</div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>청산가치</div>
-                                <div style={{ color: '#334155' }}>만약 지금 당장 파산 선고를 받았을 때, 재산을 전부 팔아서 채권자들에게 나눠줄 수 있는 금액의 총합입니다. 개인회생에서는 이보다 더 많이 갚아야 합니다.</div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>최저변제액</div>
-                                <div style={{ color: '#334155' }}>채무 총액 대비 최소한으로 갚아야 하는 금액입니다. 5천만 원 미만은 채무의 5%, 5천만 원 이상은 채무의 3% + 100만 원이 기준입니다.</div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>기준 중위소득</div>
-                                <div style={{ color: '#334155' }}>보건복지부가 매년 고시하는 가구원수별 소득 기준입니다. 생계비 산정 시 이 금액의 60%가 기본 생계비로 인정됩니다.</div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>면제재산</div>
-                                <div style={{ color: '#334155' }}>법률로 보호받아 채권자에게 넘기지 않아도 되는 재산입니다. 소액임차보증금, 퇴직연금, 생활필수품 등이 해당됩니다.</div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>변제기간</div>
-                                <div style={{ color: '#334155' }}>법원이 정한 기간 동안 매달 일정 금액을 갚는 기간입니다. 기본 36개월(3년)이며, 특례 조건 시 24개월까지 단축 가능합니다.</div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>탕감률</div>
-                                <div style={{ color: '#334155' }}>총 채무 중 갚지 않아도 되는 비율입니다. 예를 들어 탕감률 80%는 전체 빚의 80%를 면제받는다는 의미입니다.</div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', padding: '6px 10px', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ minWidth: '100px', fontWeight: 'bold', color: '#312e81' }}>우선변제채권</div>
-                                <div style={{ color: '#334155' }}>개인회생으로도 감면되지 않는 채무입니다. 국세, 지방세, 4대 보험 체납금 등이 해당되며 변제기간 내 전액 변제해야 합니다.</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 2. 주의사항 총정리 */}
-                    <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e1b4b', margin: '0 0 10px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                            ⚠️ 주의사항 총정리
-                        </h4>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '10.5px' }}>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca', color: '#991b1b' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>1. 본 보고서의 법적 효력</div>
-                                <div style={{ fontSize: '10px', lineHeight: 1.5 }}>본 보고서는 AI 기반의 <strong>참고용 분석 자료</strong>이며, 법적 구속력이 없습니다. 실제 법원 결정은 담당 변호사의 법리 검토와 법원 심사를 거쳐 확정됩니다.</div>
-                            </div>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: '6px', border: '1px solid #fde68a', color: '#92400e' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>2. 수치 변동 가능성</div>
-                                <div style={{ fontSize: '10px', lineHeight: 1.5 }}>소득 변동, 추가 채무 발생, 자산 가치 변화 등에 따라 실제 변제금과 탕감률은 달라질 수 있습니다. 정확한 수치는 변호사 면담 시 확인해 주세요.</div>
-                            </div>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: '6px', border: '1px solid #fde68a', color: '#92400e' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>3. 신청 후 준수사항</div>
-                                <div style={{ fontSize: '10px', lineHeight: 1.5 }}>개인회생 개시 결정 후에는 <strong>추가 차입 금지, 변제금 연체 금지, 재산 처분 제한</strong> 등 법적 의무가 발생합니다. 위반 시 폐지(취소) 사유가 됩니다.</div>
-                            </div>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', color: '#065f46' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>4. 24개월 특례 조건 (2026년 기준)</div>
-                                <div style={{ fontSize: '10px', lineHeight: 1.5 }}>기초생활수급자, 중증장애인(1~3급), 만 70세 이상 고령자, 한부모 가족, 전세사기 피해자는 서울회생법원에서 <strong>24개월 단축 변제</strong>가 가능합니다.</div>
-                            </div>
-                            <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>5. 개인정보 보호</div>
-                                <div style={{ fontSize: '10px', lineHeight: 1.5 }}>본 보고서에 포함된 모든 개인정보 및 재정 데이터는 변호사-의뢰인 비밀유지 의무에 따라 보호됩니다. 무단 복제 및 배포를 금합니다.</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 발행 정보 */}
-                    <div style={{ 
-                        borderTop: '2px solid #1e1b4b', 
-                        paddingTop: '12px', 
-                        textAlign: 'center',
-                        fontSize: '10px',
-                        color: '#64748b'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                            <Shield style={{ width: '16px', height: '16px', color: '#312e81' }} />
-                            <span style={{ fontWeight: 'bold', color: '#312e81', letterSpacing: '2px', fontSize: '11px' }}>ROY LAW CRM SERVICES</span>
-                        </div>
-                        <p style={{ margin: 0, lineHeight: 1.5 }}>
-                            본 보고서는 {today} 기준으로 발행되었으며, AI 정밀 분석 엔진 V2.6에 의해 자동 생성되었습니다.<br />
-                            법률 검토 및 최종 확인은 담당 전문 변호사에 의해 수행되어야 합니다.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '9px', color: '#94a3b8' }}>
-                    <span>CONFIDENTIAL - ROY LAW CRM SYSTEM</span>
-                    <span>페이지 6 / 6</span>
-                </div>
-            </div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', backgroundColor: '#f1f5f9', padding: '20px' }}>
+      
+      {/* PAGE 1 */}
+      <PageWrapper pageNumber={1}>
+        <div style={{
+          backgroundColor: '#1e1b4b',
+          color: '#ffffff',
+          borderRadius: '12px',
+          padding: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '60px'
+        }}>
+          <Shield size={32} color="#ffffff" />
+          <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '1px' }}>ROY LAW CRM SERVICES</div>
         </div>
-    );
+
+        <div style={{ textAlign: 'center', marginBottom: '60px', flex: 1 }}>
+          <div style={{ fontSize: '40px', fontWeight: 900, color: '#1e1b4b', marginBottom: '16px' }}>
+            개인회생·파산 정밀 진단 보고서
+          </div>
+          <div style={{ fontSize: '14px', color: '#475569', lineHeight: 1.6 }}>
+            본 보고서는 입력하신 데이터를 바탕으로 AI와 회생 전문 알고리즘이 분석한 예상 결과입니다.<br/>
+            실제 법원 심사 과정에서는 다양한 변수에 의해 결과가 달라질 수 있습니다.
+          </div>
+        </div>
+
+        <div style={{
+          border: '1px solid #e2e8f0',
+          borderRadius: '10px',
+          padding: '24px',
+          marginBottom: '40px',
+          backgroundColor: '#f8fafc'
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <User size={20} color="#1e1b4b" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>의뢰인</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b' }}>{userInput.name} 님</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Calendar size={20} color="#1e1b4b" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>진단일자</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b' }}>{dateString}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Landmark size={20} color="#1e1b4b" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>관할법원</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b' }}>{result.courtName}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <FileText size={20} color="#1e1b4b" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>예상 소요기간</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b' }}>약 {result.processingMonths}개월</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '40px' }}>
+          <SectionHeader icon="📊" title="I. Executive Summary (요약)" />
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px', fontWeight: 'bold' }}>총 채무액</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626' }}>{formatCurrency(userInput.totalDebt)}</div>
+            </div>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px', fontWeight: 'bold' }}>총 변제예정액 ({result.repaymentMonths}개월)</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#059669' }}>{formatCurrency(result.totalRepayment)}</div>
+            </div>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px', fontWeight: 'bold' }}>예상 탕감액 ({result.debtReductionRate}%)</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4338ca' }}>{formatCurrency(result.totalDebtReduction)}</div>
+            </div>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px', fontWeight: 'bold' }}>인가 가능성</div>
+              <div style={{
+                padding: '8px 16px',
+                backgroundColor: result.status === '가능' ? '#dcfce7' : result.status === '위험' ? '#fee2e2' : '#fef9c3',
+                color: result.status === '가능' ? '#166534' : result.status === '위험' ? '#991b1b' : '#854d0e',
+                borderRadius: '20px',
+                fontWeight: 'bold',
+                fontSize: '18px'
+              }}>
+                {result.status}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'right', marginTop: 'auto', marginBottom: '40px', position: 'relative' }}>
+          <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.5, marginBottom: '20px', textAlign: 'center' }}>
+            * 본 진단은 법률적 효력을 갖는 확정 문서가 아니며, 신청 전 참고용으로만 사용하시기 바랍니다. <br/>
+            * 상세 상담을 통해 추가적인 공제 요건이나 특이사항을 검토할 것을 권장합니다.
+          </div>
+          
+          <div style={{ display: 'inline-block', position: 'relative' }}>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '8px' }}>
+              ROY LAW CRM 법률 분석 시스템
+            </div>
+            <div style={{ 
+              position: 'absolute', 
+              top: '-10px', 
+              right: '-30px', 
+              width: '70px', 
+              height: '70px', 
+              borderRadius: '50%', 
+              border: '2px solid #ef4444', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: '#ef4444',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              transform: 'rotate(-15deg)',
+              opacity: 0.6
+            }}>
+              공식진단
+            </div>
+          </div>
+        </div>
+      </PageWrapper>
+
+      {/* PAGE 2 */}
+      <PageWrapper pageNumber={2}>
+        <SectionHeader icon="🏠" title="II. 생계비 및 부양가족 정밀 분석" />
+        
+        <div style={{ borderLeft: '4px solid #4338ca', backgroundColor: '#eff6ff', padding: '14px', fontSize: '13px', lineHeight: 1.6, marginBottom: '20px', borderRadius: '0 8px 8px 0' }}>
+          <strong>기준 중위소득이란?</strong> 보건복지부에서 매년 고시하는 국민 가구소득의 중간값입니다. 개인회생에서는 원칙적으로 이 중위소득의 60%를 '최저생계비'로 인정하여, 소득에서 최저생계비를 공제한 나머지 금액을 월 변제금으로 산정합니다.
+        </div>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '10px' }}>
+          부양가족 산정 기준
+        </div>
+        <ul style={{ fontSize: '13px', lineHeight: 1.7, marginBottom: '30px', paddingLeft: '20px', color: '#475569' }}>
+          <li><strong>미성년 자녀:</strong> 만 19세 미만 자녀는 원칙적으로 부양가족으로 인정됩니다. 단, 배우자의 소득 유무에 따라 0.5명(50%)만 인정되기도 합니다.</li>
+          <li><strong>고령의 부모:</strong> 만 65세 이상 부모 중 소득이 없고 동거 중이거나 정기적 부양비 송금 내역이 있는 경우 예외적으로 인정될 수 있습니다.</li>
+          <li><strong>배우자:</strong> 배우자는 원칙적으로 부양가족에서 제외되나, 중증 질환, 임신, 장애 등 근로능력이 상실된 경우 진단서 첨부 시 인정 가능합니다.</li>
+        </ul>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '10px' }}>
+          2024년 기준 가구별 최저생계비표 (중위소득 60%)
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px', fontSize: '12px' }}>
+          <thead>
+            <tr>
+              <th style={{ backgroundColor: '#1e1b4b', color: '#ffffff', padding: '10px 14px', border: '1px solid #cbd5e1' }}>가구원 수</th>
+              <th style={{ backgroundColor: '#1e1b4b', color: '#ffffff', padding: '10px 14px', border: '1px solid #cbd5e1' }}>기준 중위소득 (100%)</th>
+              <th style={{ backgroundColor: '#1e1b4b', color: '#ffffff', padding: '10px 14px', border: '1px solid #cbd5e1' }}>최저생계비 (60%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {medianIncomes.map((item, idx) => {
+              const isCurrent = item.size === userInput.familySize;
+              return (
+                <tr key={idx} style={{ 
+                  backgroundColor: isCurrent ? '#e0e7ff' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc'),
+                  borderLeft: isCurrent ? '4px solid #4338ca' : 'none'
+                }}>
+                  <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: isCurrent ? 'bold' : 'normal' }}>
+                    {item.size}인 가구 {isCurrent && '(의뢰인)'}
+                  </td>
+                  <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'right' }}>
+                    {formatCurrency(item.median)}
+                  </td>
+                  <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'right', fontWeight: isCurrent ? 'bold' : 'normal', color: isCurrent ? '#4338ca' : 'inherit' }}>
+                    {formatCurrency(item.minLiving)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '15px' }}>
+          소득 대비 생계비 분석 그래프
+        </div>
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '30px', backgroundColor: '#ffffff' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '25px' }}>
+            <div style={{ width: '150px', fontSize: '13px', fontWeight: 'bold' }}>월 평균 소득</div>
+            <div style={{ flex: 1, backgroundColor: '#f1f5f9', height: '22px', borderRadius: '11px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '100%', backgroundColor: '#64748b' }} />
+            </div>
+            <div style={{ width: '120px', textAlign: 'right', fontSize: '12px', fontWeight: 'bold' }}>{formatCurrency(userInput.monthlyIncome)}</div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '25px' }}>
+            <div style={{ width: '150px', fontSize: '13px', fontWeight: 'bold' }}>인정 최저생계비</div>
+            <div style={{ flex: 1, backgroundColor: '#f1f5f9', height: '22px', borderRadius: '11px', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, (result.recognizedLivingCost / userInput.monthlyIncome) * 100)}%`, height: '100%', backgroundColor: '#059669' }} />
+            </div>
+            <div style={{ width: '120px', textAlign: 'right', fontSize: '12px', fontWeight: 'bold', color: '#059669' }}>{formatCurrency(result.recognizedLivingCost)}</div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ width: '150px', fontSize: '13px', fontWeight: 'bold' }}>가용 소득 (월 변제금)</div>
+            <div style={{ flex: 1, backgroundColor: '#f1f5f9', height: '22px', borderRadius: '11px', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, (result.availableIncome / userInput.monthlyIncome) * 100)}%`, height: '100%', backgroundColor: '#4338ca' }} />
+            </div>
+            <div style={{ width: '120px', textAlign: 'right', fontSize: '12px', fontWeight: 'bold', color: '#4338ca' }}>{formatCurrency(result.availableIncome)}</div>
+          </div>
+          
+        </div>
+      </PageWrapper>
+
+      {/* PAGE 3 */}
+      <PageWrapper pageNumber={3}>
+        <SectionHeader icon="💰" title="III. 보유자산 및 법원 청산가치 평가" />
+        
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', backgroundColor: '#f8fafc', marginBottom: '24px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '8px' }}>청산가치 보장의 원칙이란?</div>
+          <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
+            개인회생에서 가장 중요한 대원칙 중 하나로, "채무자가 회생을 통해 갚는 총 금액(현재가치 기준)이, 현재 가진 재산을 전부 팔아서 빚을 갚을 때(청산가치)보다 많아야 한다"는 원칙입니다. 따라서 본인의 재산 가치보다 적게 갚는 변제계획안은 법원에서 인가되지 않습니다.
+          </div>
+        </div>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '16px' }}>주요 자산별 청산가치 산정 기준</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🏠</span>
+              <span style={{ fontSize: '13px', fontWeight: 'bold' }}>부동산 및 임대차보증금</span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+              시세에서 담보대출액을 뺀 금액이 청산가치입니다. 보증금은 지역별 '소액임차보증금 최우선변제금'을 공제한 나머지 금액만 청산가치에 반영됩니다.
+            </div>
+          </div>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🚗</span>
+              <span style={{ fontSize: '13px', fontWeight: 'bold' }}>자동차 (차량)</span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+              SK엔카 등 중고차 시세 평균가에서 차량 담보대출 잔액을 공제한 환가가치가 청산가치로 산정됩니다.
+            </div>
+          </div>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '18px' }}>💸</span>
+              <span style={{ fontSize: '13px', fontWeight: 'bold' }}>보험 해약환급금 & 퇴직금</span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+              보험은 150만원 공제 후 나머지, 퇴직금은 민사집행법에 따라 50%만 청산가치에 포함됩니다.
+            </div>
+          </div>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🎲</span>
+              <span style={{ fontSize: '13px', fontWeight: 'bold' }}>사행성 손실 (주식/도박)</span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+              법원에 따라 주식/코인 손실금이나 도박 탕진액을 전액 청산가치(재산)에 산입하도록 명령할 수 있습니다.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '10px' }}>2024년 지역별 소액임차보증금 면제 범위 (참고)</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '32px', fontSize: '12px' }}>
+          <thead>
+            <tr>
+              <th style={{ backgroundColor: '#1e1b4b', color: '#ffffff', padding: '10px 14px', border: '1px solid #cbd5e1' }}>지역</th>
+              <th style={{ backgroundColor: '#1e1b4b', color: '#ffffff', padding: '10px 14px', border: '1px solid #cbd5e1' }}>보증금 범위</th>
+              <th style={{ backgroundColor: '#1e1b4b', color: '#ffffff', padding: '10px 14px', border: '1px solid #cbd5e1' }}>면제 재산(최우선변제금)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ backgroundColor: '#f1f5f9' }}>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>서울특별시</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center' }}>1억 6,500만원 이하</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center', color: '#4338ca', fontWeight: 'bold' }}>5,500만원</td>
+            </tr>
+            <tr style={{ backgroundColor: '#ffffff' }}>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>수도권 과밀억제권역 등</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center' }}>1억 4,500만원 이하</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center', color: '#0d9488', fontWeight: 'bold' }}>4,800만원</td>
+            </tr>
+            <tr style={{ backgroundColor: '#f8fafc' }}>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>광역시, 안산, 광주, 파주 등</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center' }}>8,500만원 이하</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: 'bold' }}>2,800만원</td>
+            </tr>
+            <tr style={{ backgroundColor: '#ffffff' }}>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>그 밖의 지역</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center' }}>7,500만원 이하</td>
+              <td style={{ padding: '10px 14px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: 'bold' }}>2,500만원</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '16px' }}>청산가치 보장 원칙 검증 결과</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+          <div style={{ border: '2px solid #e2e8f0', borderRadius: '12px', padding: '24px', flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>의뢰인의 산정된 청산가치 (재산)</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155' }}>{formatCurrency(result.liquidationValue)}</div>
+          </div>
+          
+          <div style={{ fontSize: '24px', color: '#94a3b8' }}>&lt;</div>
+          
+          <div style={{ border: '2px solid #4338ca', borderRadius: '12px', padding: '24px', flex: 1, textAlign: 'center', backgroundColor: '#eef2ff' }}>
+            <div style={{ fontSize: '14px', color: '#4338ca', marginBottom: '8px', fontWeight: 'bold' }}>총 변제예정액</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4338ca' }}>{formatCurrency(result.totalRepayment)}</div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', fontSize: '13px', color: '#059669', marginTop: '16px', fontWeight: 'bold' }}>
+          ✓ 총 변제액이 청산가치보다 커서 청산가치 보장 원칙을 충족합니다.
+        </div>
+      </PageWrapper>
+
+      {/* PAGE 4 */}
+      <PageWrapper pageNumber={4}>
+        <SectionHeader icon="⚖️" title="IV. 월 변제금 결정 과정 상세 분석" />
+        
+        <div style={{ fontSize: '13px', color: '#475569', marginBottom: '24px', lineHeight: 1.6, padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+          월 변제금은 '가용소득'을 기준으로 산정되나, 청산가치 보장 원칙 및 최저 변제액 규정에 따라 상향 조정될 수 있습니다. 아래는 최종 월 변제금이 결정되는 논리적 흐름입니다.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '140px', padding: '12px', backgroundColor: '#f1f5f9', borderRadius: '6px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold' }}>
+              월 평균 소득
+            </div>
+            <div style={{ flex: 1, borderBottom: '1px dashed #cbd5e1', position: 'relative' }}>
+              <div style={{ position: 'absolute', right: 0, top: '-8px' }}>▶</div>
+            </div>
+            <div style={{ width: '120px', textAlign: 'right', fontSize: '14px', fontWeight: 'bold' }}>
+              {formatCurrency(userInput.monthlyIncome)}
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '140px', padding: '12px', backgroundColor: '#f1f5f9', borderRadius: '6px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold' }}>
+              인정 최저생계비 (-)
+            </div>
+            <div style={{ flex: 1, borderBottom: '1px dashed #cbd5e1', position: 'relative' }}>
+              <div style={{ position: 'absolute', right: 0, top: '-8px' }}>▶</div>
+            </div>
+            <div style={{ width: '120px', textAlign: 'right', fontSize: '14px', fontWeight: 'bold', color: '#dc2626' }}>
+              - {formatCurrency(result.recognizedLivingCost)}
+            </div>
+          </div>
+
+          <div style={{ paddingLeft: '156px', fontSize: '12px', color: '#64748b' }}>
+            * 기본 생계비: {formatCurrency(result.baseLivingCost)}<br/>
+            * 추가 생계비(의료비, 주거비 등): {formatCurrency(result.additionalLivingCost)}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
+            <div style={{ width: '140px', padding: '12px', backgroundColor: '#e0e7ff', color: '#4338ca', borderRadius: '6px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold' }}>
+              기본 가용소득 (=)
+            </div>
+            <div style={{ flex: 1, borderBottom: '1px dashed #cbd5e1', position: 'relative' }}>
+              <div style={{ position: 'absolute', right: 0, top: '-8px' }}>▶</div>
+            </div>
+            <div style={{ width: '120px', textAlign: 'right', fontSize: '14px', fontWeight: 'bold', color: '#4338ca' }}>
+              {formatCurrency(result.availableIncome)}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '16px' }}>
+          변제금 결정 3대 요건 비교
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+          <div style={{ border: '1px solid #4338ca', backgroundColor: '#eef2ff', padding: '16px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#4338ca', color: '#ffffff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', marginRight: '16px' }}>1</div>
+            <div style={{ flex: 1, fontSize: '13px', fontWeight: 'bold' }}>가용소득에 따른 산정액</div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#4338ca' }}>{formatCurrency(result.availableIncome)} / 월</div>
+          </div>
+          
+          <div style={{ border: '1px solid #e2e8f0', padding: '16px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#94a3b8', color: '#ffffff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', marginRight: '16px' }}>2</div>
+            <div style={{ flex: 1, fontSize: '13px', color: '#475569' }}>청산가치 보장을 위한 최소 필요액 (추산)</div>
+            <div style={{ fontSize: '14px', color: '#475569' }}>{formatCurrency(Math.ceil(result.liquidationValue / result.repaymentMonths))} / 월</div>
+          </div>
+
+          <div style={{ border: '1px solid #e2e8f0', padding: '16px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#94a3b8', color: '#ffffff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', marginRight: '16px' }}>3</div>
+            <div style={{ flex: 1, fontSize: '13px', color: '#475569' }}>총 채무액 대비 최소 변제 기준액</div>
+            <div style={{ fontSize: '14px', color: '#475569' }}>{formatCurrency(Math.ceil((userInput.totalDebt * 0.05) / result.repaymentMonths))} / 월</div>
+          </div>
+        </div>
+
+        {(hasGambling || hasSpeculative) && (
+          <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '16px', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '24px' }}>
+            <AlertTriangle size={20} color="#d97706" style={{ marginTop: '2px' }} />
+            <div style={{ fontSize: '13px', color: '#b45309', lineHeight: 1.5 }}>
+              <strong>주의: 사행성 채무 특칙 적용 가능성</strong><br/>
+              도박이나 주식/코인 투자 손실금이 존재합니다. 법원 실무상 해당 손실금 전액을 청산가치에 반영하도록 보정권고가 나올 수 있으며, 이 경우 월 변제금이 대폭 상승하거나 인가가 어려울 수 있습니다.
+            </div>
+          </div>
+        )}
+
+        <div style={{ backgroundColor: '#1e1b4b', color: '#ffffff', borderRadius: '10px', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>최종 예상 월 변제금</div>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fde047' }}>{formatCurrency(result.monthlyPayment)}</div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '30px' }}>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '20px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>변제 기간</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#334155' }}>{result.repaymentMonths}개월</div>
+          </div>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '20px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>월 변제금</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#334155' }}>{formatCurrency(result.monthlyPayment)}</div>
+          </div>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '20px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>총 변제금</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#059669' }}>{formatCurrency(result.totalRepayment)}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '20px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#065f46', marginBottom: '12px', textAlign: 'center' }}>
+            💡 채무 탕감 요약
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: '#047857', marginBottom: '4px' }}>예상 탕감액</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#059669' }}>{formatCurrency(result.totalDebtReduction)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#047857', marginBottom: '4px' }}>탕감율</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#059669' }}>{result.debtReductionRate}%</div>
+            </div>
+          </div>
+        </div>
+
+      </PageWrapper>
+
+      {/* PAGE 5 */}
+      <PageWrapper pageNumber={5}>
+        <SectionHeader icon="🏛️" title="V. 관할법원 분석 및 대응 가이드" />
+        
+        <div style={{ 
+          backgroundColor: result.status === '위험' ? '#fef2f2' : '#f8fafc', 
+          border: `1px solid ${result.status === '위험' ? '#fca5a5' : '#e2e8f0'}`,
+          borderRadius: '10px', 
+          padding: '24px',
+          marginBottom: '32px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <Landmark size={24} color={result.status === '위험' ? '#ef4444' : '#1e1b4b'} />
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: result.status === '위험' ? '#b91c1c' : '#1e1b4b' }}>
+              관할법원: {result.courtName}
+            </div>
+          </div>
+          
+          <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.7, marginBottom: '20px' }}>
+            각 지방법원마다 개인회생 사건을 심사하는 실무 준칙과 엄격성이 다릅니다. 귀하의 관할인 <strong>{result.courtName}</strong>의 주요 특징과 심사 성향을 분석하여 최적의 인가 전략을 수립해야 합니다. 특히 최근 주식/코인 손실이나 과도한 최근 채무에 대해 보정명령이 강화되는 추세입니다.
+          </div>
+
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '12px' }}>
+            로이 변호사 체크리스트
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <Check size={16} color="#059669" style={{ marginTop: '3px', flexShrink: 0 }} />
+              <div style={{ fontSize: '13px', color: '#334155' }}>
+                <strong>최근 대출금 사용처 소명:</strong> 대출 발생일로부터 1년 이내의 채무 비중이 높을 경우, 생활비 등 필수적인 곳에 사용했다는 금융거래내역 증빙이 필수입니다.
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <Check size={16} color="#059669" style={{ marginTop: '3px', flexShrink: 0 }} />
+              <div style={{ fontSize: '13px', color: '#334155' }}>
+                <strong>추가 생계비 인정 여부:</strong> 월세, 고정 의료비 등 추가 생계비를 청구할 경우, 해당 법원의 실무상 인정 범위(보통 중위소득의 일정 비율 제한)를 확인해야 합니다.
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <Check size={16} color="#059669" style={{ marginTop: '3px', flexShrink: 0 }} />
+              <div style={{ fontSize: '13px', color: '#334155' }}>
+                <strong>변제금 상향 보정 대비:</strong> 인가 결정을 위해 법원이 월 변제금을 올리라는 보정명령을 내릴 수 있으며, 수용 가능한 마지노선을 미리 설정해야 합니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '20px' }}>🤖</span> AI 분석 종합 코멘트
+        </div>
+        
+        <div style={{ borderLeft: '4px solid #4338ca', backgroundColor: '#eef2ff', padding: '20px', borderRadius: '0 8px 8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {result.aiAdvice.map((advice, index) => (
+            <div key={index} style={{ fontSize: '13px', color: '#312e81', lineHeight: 1.6 }}>
+              • {advice}
+            </div>
+          ))}
+          {result.aiAdvice.length === 0 && (
+            <div style={{ fontSize: '13px', color: '#312e81' }}>
+              특별한 이상 징후가 발견되지 않았습니다. 통상적인 절차에 따라 진행이 가능할 것으로 예상됩니다.
+            </div>
+          )}
+        </div>
+
+      </PageWrapper>
+
+      {/* PAGE 6 */}
+      <PageWrapper pageNumber={6}>
+        <SectionHeader icon="📖" title="VI. 핵심 용어 해설" />
+        
+        <div style={{ fontSize: '13px', color: '#475569', marginBottom: '24px', padding: '0 8px' }}>
+          개인회생 절차에서 자주 사용되는 필수 법률 용어입니다. 절차 진행 중 법원의 문건이나 상담 시 도움이 될 수 있습니다.
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {[
+            {
+              term: '가용소득',
+              desc: '월 평균 소득에서 법원이 인정하는 최저생계비 및 추가생계비를 공제하고 남은 금액입니다. 원칙적으로 이 금액이 매월 납부해야 할 월 변제금이 됩니다.'
+            },
+            {
+              term: '청산가치',
+              desc: '채무자가 현재 보유하고 있는 모든 재산(부동산, 임차보증금, 차량, 예금, 보험해약환급금 등)을 처분했을 때 확보할 수 있는 총 금액을 의미합니다.'
+            },
+            {
+              term: '보정권고 / 보정명령',
+              desc: '법원이 신청서를 검토한 후 누락된 서류를 보완하거나, 미심쩍은 재산/채무 내역에 대해 소명하라고 요구하는 절차입니다. 기한 내 미제출 시 기각될 수 있습니다.'
+            },
+            {
+              term: '금지명령 / 중지명령',
+              desc: '개인회생 신청 직후 법원에 요청하여, 채권자들의 독촉, 압류, 추심 행위를 법적으로 금지시키는 명령입니다. 통상 접수 후 1~2주 내에 결정됩니다.'
+            },
+            {
+              term: '개시결정',
+              desc: '법원이 서류 심사를 마치고 본격적으로 회생 절차를 시작하겠다고 선언하는 것입니다. 이때부터 법원 계좌로 변제금을 납부하기 시작합니다.'
+            },
+            {
+              term: '인가결정',
+              desc: '채무자가 제출한 변제계획안을 법원이 최종적으로 확정하고 승인하는 절차입니다. 인가결정 후에는 채무가 확정되어 압류 등이 취소될 수 있습니다.'
+            },
+            {
+              term: '면책결정',
+              desc: '36~60개월의 변제 기간 동안 납부 의무를 모두 완료한 후, 나머지 갚지 못한 빚을 탕감(면제)받는 최종 절차입니다.'
+            },
+            {
+              term: '채권자집회',
+              desc: '인가결정 전 채무자가 법원에 출석하여 채권자들의 이의신청에 대해 답변하는 기일입니다. 실무상 채권자가 참석하는 경우는 매우 드뭅니다.'
+            }
+          ].map((item, idx) => (
+            <div key={idx} style={{ 
+              padding: '16px', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '8px', 
+              backgroundColor: idx % 4 === 1 || idx % 4 === 2 ? '#ffffff' : '#f8fafc'
+            }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#4338ca', marginBottom: '8px' }}>
+                {item.term}
+              </div>
+              <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                {item.desc}
+              </div>
+            </div>
+          ))}
+        </div>
+      </PageWrapper>
+
+      {/* PAGE 7 */}
+      <PageWrapper pageNumber={7}>
+        <SectionHeader icon="⚠️" title="VII. 주의사항 총정리" />
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '40px' }}>
+          
+          <div style={{ display: 'flex', gap: '16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '20px', borderRadius: '10px' }}>
+            <AlertTriangle size={24} color="#dc2626" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#991b1b', marginBottom: '6px' }}>1. 신청 전 대출 금지</div>
+              <div style={{ fontSize: '12px', color: '#7f1d1d', lineHeight: 1.5 }}>
+                개인회생을 앞두고 무리하게 추가 대출을 받거나 신용카드를 사용하는 것은 '사기회생죄'로 처벌받거나 기각 사유가 될 수 있습니다.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '20px', borderRadius: '10px' }}>
+            <Landmark size={24} color="#d97706" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#92400e', marginBottom: '6px' }}>2. 재산 은닉 및 염가 처분 절대 금지</div>
+              <div style={{ fontSize: '12px', color: '#78350f', lineHeight: 1.5 }}>
+                본인 명의의 부동산이나 차량을 지인에게 헐값에 넘기거나 명의를 변경하는 행위는 부인권 행사의 대상이 되며 심각한 불이익을 초래합니다.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '20px', borderRadius: '10px' }}>
+            <FileText size={24} color="#16a34a" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#166534', marginBottom: '6px' }}>3. 성실한 소명 서류 준비</div>
+              <div style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.5 }}>
+                법원의 보정명령에 대해 기한 내에 정확하고 투명한 금융자료를 제출하는 것이 인가율을 높이는 가장 핵심적인 요소입니다.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '20px', borderRadius: '10px' }}>
+            <User size={24} color="#2563eb" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', marginBottom: '6px' }}>4. 특정 채권자 편파 변제 금지</div>
+              <div style={{ fontSize: '12px', color: '#1e3a8a', lineHeight: 1.5 }}>
+                가족이나 지인의 빚만 먼저 갚아주는 행위(편파 변제)는 법원에서 부인권 행사 대상으로 보아 해당 금액만큼 청산가치에 강제 반영될 수 있습니다.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', padding: '20px', borderRadius: '10px' }}>
+            <Scale size={24} color="#9333ea" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#6b21a8', marginBottom: '6px' }}>5. 법률 전문가와의 지속적 소통</div>
+              <div style={{ fontSize: '12px', color: '#581c87', lineHeight: 1.5 }}>
+                진행 중 이직, 소득 변동, 이사 등 주요 변경 사항이 생기면 반드시 대리인 사무실에 즉각 통보하여 전략을 수정해야 합니다.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style={{ borderTop: '2px solid #1e1b4b', paddingTop: '40px', marginTop: 'auto', marginBottom: '60px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <Shield size={48} color="#1e1b4b" opacity={0.1} />
+          </div>
+          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '12px' }}>
+            ROY LAW CRM SERVICES
+          </div>
+          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
+            본 보고서는 ROY LAW CRM 시스템 알고리즘에 의해 자동 생성되었습니다.<br/>
+            발행일자: {dateString} | 문서번호: RLC-{today.getFullYear()}{String(today.getMonth()+1).padStart(2, '0')}{String(today.getDate()).padStart(2, '0')}-{Math.floor(Math.random() * 10000).toString().padStart(4, '0')}
+          </div>
+        </div>
+
+      </PageWrapper>
+    </div>
+  );
 }

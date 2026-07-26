@@ -71,90 +71,39 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     const handleDownloadPDF = async () => {
         setIsGeneratingPdf(true);
         try {
-            const page1El = document.getElementById('pdf-page-1');
-            const page2El = document.getElementById('pdf-page-2');
-            const page3El = document.getElementById('pdf-page-3');
-            const page4El = document.getElementById('pdf-page-4');
-            const page5El = document.getElementById('pdf-page-5');
-            const page6El = document.getElementById('pdf-page-6');
-
-            if (!page1El || !page2El || !page3El || !page4El || !page5El || !page6El) {
-                alert('PDF 템플릿을 찾을 수 없습니다.');
-                setIsGeneratingPdf(false);
-                return;
+            const totalPages = 7;
+            const pageElements: HTMLElement[] = [];
+            
+            for (let i = 1; i <= totalPages; i++) {
+                const el = document.getElementById(`pdf-page-${i}`);
+                if (!el) {
+                    alert('PDF 템플릿을 찾을 수 없습니다.');
+                    setIsGeneratingPdf(false);
+                    return;
+                }
+                pageElements.push(el);
             }
 
-            // 페이지 1 캡처
-            const canvas1 = await html2canvas(page1El, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-            });
-
-            // 페이지 2 캡처
-            const canvas2 = await html2canvas(page2El, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-            });
-
-            // 페이지 3 캡처
-            const canvas3 = await html2canvas(page3El, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-            });
-
-            // 페이지 4 캡처
-            const canvas4 = await html2canvas(page4El, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-            });
-
-            // 페이지 5 캡처
-            const canvas5 = await html2canvas(page5El, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-            });
-
-            // 페이지 6 캡처
-            const canvas6 = await html2canvas(page6El, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-            });
+            // 모든 페이지 캡처
+            const canvases = await Promise.all(
+                pageElements.map(el => html2canvas(el, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                }))
+            );
 
             // PDF 생성 (A4: 210mm x 297mm)
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgWidth = 210;
             const imgHeight = 297;
 
-            const imgData1 = canvas1.toDataURL('image/jpeg', 1.0);
-            const imgData2 = canvas2.toDataURL('image/jpeg', 1.0);
-            const imgData3 = canvas3.toDataURL('image/jpeg', 1.0);
-            const imgData4 = canvas4.toDataURL('image/jpeg', 1.0);
-            const imgData5 = canvas5.toDataURL('image/jpeg', 1.0);
-            const imgData6 = canvas6.toDataURL('image/jpeg', 1.0);
-
-            pdf.addImage(imgData1, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
-            pdf.addPage();
-            pdf.addImage(imgData2, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
-            pdf.addPage();
-            pdf.addImage(imgData3, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
-            pdf.addPage();
-            pdf.addImage(imgData4, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
-            pdf.addPage();
-            pdf.addImage(imgData5, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
-            pdf.addPage();
-            pdf.addImage(imgData6, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+            canvases.forEach((canvas, idx) => {
+                if (idx > 0) pdf.addPage();
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+            });
 
             const date = new Date().toISOString().split('T')[0];
             pdf.save(`종합채무진단보고서_${userInput.name || '의뢰인'}_${date}.pdf`);
