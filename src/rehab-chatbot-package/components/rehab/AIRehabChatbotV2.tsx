@@ -3189,7 +3189,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                                 { label: '🔒 급여/계좌 압류', value: 'seizure' },
                                 { label: '🏠 부동산 가압류', value: 'property_seizure' },
                                 { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
-                                { label: '✅ 해당 없음', value: 'none' }
+                                { label: '✅ 선택완료', value: 'done' },
+                                { label: '해당 없음', value: 'none' }
                             ],
                             'buttons',
                             true
@@ -3227,7 +3228,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             { label: '🔒 급여/계좌 압류', value: 'seizure' },
                             { label: '🏠 부동산 가압류', value: 'property_seizure' },
                             { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
-                            { label: '✅ 해당 없음', value: 'none' }
+                            { label: '✅ 선택완료', value: 'done' },
+                            { label: '해당 없음', value: 'none' }
                         ],
                         'buttons',
                         true
@@ -3552,20 +3554,35 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
     // 입력 처리
     const handleSubmit = useCallback(() => {
-        if (!inputValue.trim()) return;
+        const lastBotMessage = [...messages].reverse().find(msg => msg.type === 'bot');
 
-        const lastMessage = messages[messages.length - 1];
+        // multiSelect 모드에서 보내기 버튼을 누르면 선택된 항목들을 제출
+        if (!inputValue.trim() && lastBotMessage?.multiSelect && !lastBotMessage?.isAnswered) {
+            const selectedOptions = lastBotMessage.options?.filter(opt => opt.selected && opt.value !== 'done' && opt.value !== 'none') || [];
+            if (selectedOptions.length > 0) {
+                const selectedLabels = selectedOptions.map(opt => opt.label);
+                const selectedValues = selectedOptions.map(opt => String(opt.value));
+                const displayLabel = `${selectedLabels.join(', ')} 선택완료`;
+                addUserMessage(displayLabel);
+                setTimeout(() => {
+                    processStep(currentStep, selectedValues);
+                }, 300);
+            }
+            return;
+        }
+
+        if (!inputValue.trim()) return;
 
         // 입력값 파싱
         let value: string | number = inputValue;
-        if (lastMessage?.inputType === 'number' || lastMessage?.inputType === 'money') {
+        if (lastBotMessage?.inputType === 'number' || lastBotMessage?.inputType === 'money') {
             // 쉼표 제거 후 파싱
             value = parseFloat(inputValue.replace(/,/g, ''));
         }
 
         // 사용자 메시지 표시 (돈 관련 입력이면 한글 포맷팅)
         let displayContent = inputValue;
-        if (lastMessage?.inputType === 'money') {
+        if (lastBotMessage?.inputType === 'money') {
             displayContent = `${inputValue} (${formatTenThousandWon(value as number)})`;
         }
 
