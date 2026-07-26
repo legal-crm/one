@@ -297,11 +297,11 @@ export default function ChatView({
                 <div className="grid grid-cols-2 text-sm gap-4">
                   <div>
                     <span className="block text-xs text-slate-500">월 소득</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{currentRequest?.financialProfile.monthlyIncome.toLocaleString()}만원</strong>
+                    <strong className="text-slate-800 dark:text-slate-200">{(currentRequest?.financialProfile?.monthlyIncome ?? 0).toLocaleString()}만원</strong>
                   </div>
                   <div>
                     <span className="block text-xs text-slate-500">부양 가족</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{currentRequest?.financialProfile.dependents}명</strong>
+                    <strong className="text-slate-800 dark:text-slate-200">{currentRequest?.financialProfile?.dependents ?? 0}명</strong>
                   </div>
                 </div>
                 <div className="flex justify-end">
