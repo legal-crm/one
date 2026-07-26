@@ -443,18 +443,18 @@ export default function ChatView({
                       <div className="flex items-center gap-1.5">
                         <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] font-bold">확인 대기</span>
                         <button
-                          onClick={() => {
-                            if (confirm(`${lawyer.name} 변호사님에 대한 상담 요청을 취소하시겠습니까?`)) {
-                              setRequestedLawyerIds(prev => prev.filter(id => id !== lawyer.id));
-                              if (currentRequest) {
-                                onAddMessage(currentRequest.id, `${lawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
-                              }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setRequestedLawyerIds(prev => prev.filter(id => id !== lawyer.id));
+                            if (currentRequest) {
+                              onAddMessage(currentRequest.id, `${lawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
                             }
                           }}
-                          className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-300 hover:text-red-500 transition-colors cursor-pointer"
+                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                           title="취소"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
