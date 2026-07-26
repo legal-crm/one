@@ -132,6 +132,7 @@ export default function ChatView({
   const [showFavLawyerModal, setShowFavLawyerModal] = useState<boolean>(false);
   const [selectedFavLawyers, setSelectedFavLawyers] = useState<string[]>([]);
   const [requestedLawyerIds, setRequestedLawyerIds] = useState<string[]>([]);
+  const [cancelTargetLawyer, setCancelTargetLawyer] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
@@ -446,12 +447,7 @@ export default function ChatView({
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
-                            if (window.confirm(`${lawyer.name} 변호사님에 대한 상담 요청을 취소하시겠습니까?`)) {
-                              setRequestedLawyerIds(prev => prev.filter(id => id !== lawyer.id));
-                              if (currentRequest) {
-                                onAddMessage(currentRequest.id, `${lawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
-                              }
-                            }
+                            setCancelTargetLawyer({ id: lawyer.id, name: lawyer.name });
                           }}
                           className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                           title="취소"
@@ -813,6 +809,46 @@ export default function ChatView({
            </div>
         </div>
       )}
+      {/* =========================================================================
+          CANCEL CONFIRMATION MODAL
+          ========================================================================= */}
+      {cancelTargetLawyer && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setCancelTargetLawyer(null)}></div>
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 animate-fadeIn">
+            <div className="w-14 h-14 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-7 h-7 text-red-500" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white">상담 요청을 취소할까요?</h3>
+              <p className="text-sm text-slate-500 mt-1.5">
+                <strong className="text-slate-700 dark:text-slate-300">{cancelTargetLawyer.name}</strong> 변호사님에 대한<br />상담 요청이 취소됩니다
+              </p>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setCancelTargetLawyer(null)}
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+              >
+                아니요
+              </button>
+              <button
+                onClick={() => {
+                  setRequestedLawyerIds(prev => prev.filter(id => id !== cancelTargetLawyer.id));
+                  if (currentRequest) {
+                    onAddMessage(currentRequest.id, `${cancelTargetLawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
+                  }
+                  setCancelTargetLawyer(null);
+                }}
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 transition-colors cursor-pointer shadow-md shadow-red-500/20"
+              >
+                취소하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* =========================================================================
           FAVORITE LAWYER SELECTION MODAL
           ========================================================================= */}
