@@ -270,14 +270,23 @@ export default function ChatView({
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <span className="text-xl">📊</span> 채무 진단 현황
             </h2>
-            {currentRequest && (
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                currentRequest.status === 'requested' ? 'bg-amber-100 text-amber-700' : 
-                currentRequest.status === 'counseling' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
-              }`}>
-                {currentRequest.status === 'requested' ? '진단 대기' : currentRequest.status === 'counseling' ? '상담 진행 중' : '검토 중'}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowProfilePanel(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-brand shadow-sm hover:shadow-md transition-all cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                상세 진단서 보기/수정
+              </button>
+              {currentRequest && (
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  currentRequest.status === 'requested' ? 'bg-amber-100 text-amber-700' : 
+                  currentRequest.status === 'counseling' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {currentRequest.status === 'requested' ? '진단 대기' : currentRequest.status === 'counseling' ? '상담 진행 중' : '검토 중'}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -324,40 +333,6 @@ export default function ChatView({
                 {activeResult?.status === 'infeasible' ? '불가' : '매우 높음'}
               </div>
             </div>
-          </div>
-
-          <div className="pt-2">
-            <button 
-              onClick={() => setIsReportExpanded(!isReportExpanded)}
-              className="w-full py-2.5 flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
-            >
-              <span>📊 자세히 보기</span>
-              {isReportExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-            
-            {isReportExpanded && (
-              <div className="mt-4 p-4 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 space-y-4 animate-slideUp">
-                <div className="grid grid-cols-2 text-sm gap-4">
-                  <div>
-                    <span className="block text-xs text-slate-500">월 소득</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{(currentRequest?.financialProfile?.monthlyIncome ?? 0).toLocaleString()}만원</strong>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-slate-500">부양 가족</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{currentRequest?.financialProfile?.dependents ?? 0}명</strong>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <button 
-                    onClick={() => setShowProfilePanel(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-brand shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <FileText className="w-4 h-4" />
-                    📝 상세 진단서 보기/수정
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
