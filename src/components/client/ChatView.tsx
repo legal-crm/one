@@ -131,6 +131,7 @@ export default function ChatView({
   const [appointedLawyerId, setAppointedLawyerId] = useState<string | null>(null);
   const [showFavLawyerModal, setShowFavLawyerModal] = useState<boolean>(false);
   const [selectedFavLawyers, setSelectedFavLawyers] = useState<string[]>([]);
+  const [requestedLawyerNames, setRequestedLawyerNames] = useState<string[]>([]);
 
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
@@ -222,7 +223,7 @@ export default function ChatView({
   let currentStep = 1;
   if (isSelectedLawyer) {
     currentStep = 3;
-  } else if (proposals.length > 0) {
+  } else if (proposals.length > 0 || requestedLawyerNames.length > 0) {
     currentStep = 2;
   }
 
@@ -363,80 +364,59 @@ export default function ChatView({
         {/* =========================================================================
             ZONE B: 변호사 매칭 현황
             ========================================================================= */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm p-6 space-y-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="text-xl">🤝</span> 변호사 매칭 현황
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="text-lg">🤝</span> 변호사 매칭 현황
             </h2>
           </div>
 
-          {/* Stepper */}
-          <div className="flex items-center justify-between relative px-2">
-            <div className="absolute left-6 right-6 top-1/2 h-0.5 bg-slate-100 dark:bg-slate-800 -z-10"></div>
-            
-            {/* Step 1 */}
-            <div className="flex flex-col items-center gap-2 bg-white dark:bg-slate-900 px-2">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm transition-all ${
-                currentStep >= 1 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
-              } ${currentStep === 1 ? 'animate-customPulse ring-4 ring-emerald-500/20' : ''}`}>
-                {currentStep > 1 ? <Check className="w-5 h-5" /> : '1'}
-              </div>
-              <span className={`text-xs font-bold ${currentStep >= 1 ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400'}`}>진단완료</span>
-            </div>
-
-            {/* Step 2 */}
-            <div className="flex flex-col items-center gap-2 bg-white dark:bg-slate-900 px-2">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm transition-all ${
-                currentStep >= 2 ? 'bg-brand text-white' : 'bg-slate-100 text-slate-400'
-              } ${currentStep === 2 ? 'animate-customPulse ring-4 ring-brand/20' : ''}`}>
-                {currentStep > 2 ? <Check className="w-5 h-5" /> : '2'}
-              </div>
-              <span className={`text-xs font-bold ${currentStep >= 2 ? 'text-brand' : 'text-slate-400'}`}>매칭대기</span>
-            </div>
-
-            {/* Step 3 */}
-            <div className="flex flex-col items-center gap-2 bg-white dark:bg-slate-900 px-2">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm transition-all ${
-                currentStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'
-              } ${currentStep === 3 ? 'animate-customPulse ring-4 ring-indigo-600/20' : ''}`}>
-                3
-              </div>
-              <span className={`text-xs font-bold ${currentStep >= 3 ? 'text-indigo-600' : 'text-slate-400'}`}>상담시작</span>
-            </div>
+          {/* Compact Stepper */}
+          <div className="flex items-center gap-0">
+            {[
+              { step: 1, label: '진단완료', activeColor: 'bg-emerald-500', ringColor: 'ring-emerald-500/20', textColor: 'text-emerald-600' },
+              { step: 2, label: '매칭대기', activeColor: 'bg-brand', ringColor: 'ring-brand/20', textColor: 'text-brand' },
+              { step: 3, label: '상담시작', activeColor: 'bg-indigo-600', ringColor: 'ring-indigo-600/20', textColor: 'text-indigo-600' },
+            ].map(({ step, label, activeColor, ringColor, textColor }) => (
+              <React.Fragment key={step}>
+                {step > 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 transition-all ${currentStep >= step ? 'bg-slate-300 dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-800'}`}></div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                    currentStep >= step ? `${activeColor} text-white` : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  } ${currentStep === step ? `animate-customPulse ring-2 ${ringColor}` : ''}`}>
+                    {currentStep > step ? <Check className="w-3.5 h-3.5" /> : step}
+                  </div>
+                  <span className={`text-[11px] font-bold ${currentStep >= step ? textColor : 'text-slate-400'}`}>{label}</span>
+                </div>
+              </React.Fragment>
+            ))}
           </div>
 
           {/* Conditional Content for Zone B */}
-          <div className="pt-4 animate-fadeIn">
+          <div className="animate-fadeIn">
+            {/* Step 1: 매칭 전 - 변호사 수임 안내 */}
             {currentStep === 1 && proposals.length === 0 && (
-              <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 dark:from-slate-800/50 dark:via-slate-800/30 dark:to-indigo-950/20 rounded-2xl p-8 text-center space-y-5 border border-slate-200/60 dark:border-slate-700/50">
-                {/* 아이콘 영역 */}
-                <div className="relative mx-auto w-20 h-20">
-                  <div className="absolute inset-0 bg-brand/10 rounded-2xl rotate-6"></div>
-                  <div className="absolute inset-0 bg-brand/5 rounded-2xl -rotate-3"></div>
-                  <div className="relative w-20 h-20 bg-white dark:bg-slate-800 rounded-2xl shadow-lg flex items-center justify-center border border-slate-100 dark:border-slate-700">
-                    <Scale className="w-9 h-9 text-brand" />
+              <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 dark:from-slate-800/50 dark:via-slate-800/30 dark:to-indigo-950/20 rounded-2xl p-5 text-center space-y-3 border border-slate-200/60 dark:border-slate-700/50">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 bg-brand/10 rounded-xl rotate-6"></div>
+                    <div className="relative w-12 h-12 bg-white dark:bg-slate-800 rounded-xl shadow flex items-center justify-center border border-slate-100 dark:border-slate-700">
+                      <Scale className="w-6 h-6 text-brand" />
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">아직 변호사 매칭 전이에요</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">관심 있는 변호사를 선택하여 무료 상담을 요청해 보세요</p>
                   </div>
                 </div>
 
-                {/* 텍스트 */}
-                <div className="space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-[11px] font-bold">
-                    <Clock className="w-3 h-3" />
-                    매칭 대기 중
-                  </div>
-                  <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">아직 변호사 매칭 전이에요</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
-                    관심 있는 변호사를 선택하여<br />무료 상담을 요청해 보세요
-                  </p>
-                </div>
-
-                {/* CTA 버튼 */}
                 <button
                   onClick={() => {
                     const FAVORITES_KEY = 'lawyer_favorites';
                     let favIds: string[] = [];
                     try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
-                    
                     if (favIds.length > 0) {
                       setSelectedFavLawyers([]);
                       setShowFavLawyerModal(true);
@@ -445,17 +425,55 @@ export default function ChatView({
                       onSetActiveTab('lawyers');
                     }
                   }}
-                  className="inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-7 py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-brand/20 hover:shadow-brand/30 cursor-pointer transform active:scale-[0.97]"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-3 rounded-xl text-sm transition-all shadow-md shadow-brand/20 cursor-pointer active:scale-[0.97]"
                 >
-                  <Search className="w-4.5 h-4.5" />
+                  <Search className="w-4 h-4" />
                   무료 상담 변호사 수임하기
                   <ArrowRight className="w-4 h-4 text-white/70" />
                 </button>
-
-                {/* 하단 안내 */}
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
                   ♥ 좋아요한 변호사 중 최대 3명에게 무료 상담을 요청할 수 있어요
                 </p>
+              </div>
+            )}
+
+            {/* Step 2: 매칭대기 - 상담 요청 완료 상태 */}
+            {currentStep === 2 && requestedLawyerNames.length > 0 && proposals.length === 0 && (
+              <div className="bg-gradient-to-br from-brand/5 via-indigo-50/30 to-blue-50/20 dark:from-brand/10 dark:via-slate-800/30 dark:to-slate-800/20 rounded-2xl p-5 space-y-3 border border-brand/20 dark:border-brand/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-brand animate-customPulse" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">상담 요청을 보냈어요!</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">변호사님의 검토 후 제안서가 도착할 예정입니다</p>
+                  </div>
+                </div>
+
+                {/* 요청한 변호사 목록 */}
+                <div className="flex flex-wrap gap-2">
+                  {requestedLawyerNames.map((name, i) => (
+                    <div key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
+                      <div className="w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-[10px] font-extrabold">{name.charAt(0)}</div>
+                      {name} 변호사
+                    </div>
+                  ))}
+                </div>
+
+                {/* 취소 버튼 */}
+                <button
+                  onClick={() => {
+                    if (confirm('상담 요청을 취소하시겠습니까?')) {
+                      setRequestedLawyerNames([]);
+                      if (currentRequest) {
+                        onAddMessage(currentRequest.id, '상담 요청이 취소되었습니다.', 'lawyer', 'system', '시스템 안내');
+                      }
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-red-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-300 transition-all cursor-pointer"
+                >
+                  상담 요청 취소
+                </button>
               </div>
             )}
 
@@ -893,7 +911,7 @@ export default function ChatView({
                   <button
                     disabled={selectedFavLawyers.length === 0}
                     onClick={() => {
-                      const selectedNames = selectedFavLawyers.map(id => lawyers.find(l => l.id === id)?.name).filter(Boolean);
+                      const selectedNames = selectedFavLawyers.map(id => lawyers.find(l => l.id === id)?.name).filter(Boolean) as string[];
                       if (currentRequest) {
                         onAddMessage(
                           currentRequest.id,
@@ -901,8 +919,8 @@ export default function ChatView({
                           'lawyer', 'system', '시스템 안내'
                         );
                       }
+                      setRequestedLawyerNames(selectedNames);
                       setShowFavLawyerModal(false);
-                      alert(`${selectedNames.join(', ')} 변호사님에게 무료 상담 요청을 보냈습니다!`);
                     }}
                     className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
                       selectedFavLawyers.length > 0
