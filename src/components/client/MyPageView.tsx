@@ -245,11 +245,11 @@ export default function MyPageView({
       </div>
       )}
 
-      {/* LIVE DIAGNOSTICS DASHBOARD - 상하 스택 레이아웃 */}
+      {/* LIVE DIAGNOSTICS DASHBOARD - 마이페이지에서는 숨김, 내관리방 슬라이드 패널에서는 리포트가 대체 */}
       <div className="flex flex-col gap-5">
         
-        {/* TOP: 실시간 채무조정 상태 (가로 배치) - 슬라이드 패널(isCompact)에서는 리포트가 위에 있으므로 숨김 */}
-        {!isCompact && (
+        {/* TOP: 실시간 채무조정 상태 - 항상 숨김 (마이페이지: 제거, 슬라이드: 리포트가 대체) */}
+        {false && (
         <div className="relative bg-slate-950/80 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-2xl shadow-slate-950/70 overflow-hidden">
           {/* 네온 글로우 백그라운드 데코 */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-brand/10 rounded-full blur-[100px] pointer-events-none -mr-24 -mt-24"></div>
@@ -394,7 +394,8 @@ export default function MyPageView({
         </div>
         )}
 
-        {/* BOTTOM: 상세 진단 정보 조회 및 수정 (전체 너비) */}
+        {/* BOTTOM: 상세 진단 정보 조회 및 수정 - 슬라이드 패널(isCompact)에서만 표시 */}
+        {isCompact && (
         <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left">
           <div className="border-b border-slate-150 dark:border-slate-800 pb-3 flex justify-between items-center">
             <div>
@@ -1116,6 +1117,7 @@ export default function MyPageView({
             
           </div>
         </div>
+        )}
       </div>
     </div>
   );
