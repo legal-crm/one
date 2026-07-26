@@ -575,7 +575,7 @@ export default function ChatView({
             className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
             onClick={() => setShowProfilePanel(false)}
           ></div>
-          <div className="relative w-full md:w-[480px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-slideInRight">
+          <div className="relative w-full md:w-[640px] lg:w-[720px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-slideInRight">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
               <h2 className="font-bold text-lg text-slate-900 dark:text-white">상세 진단서</h2>
               <button 
