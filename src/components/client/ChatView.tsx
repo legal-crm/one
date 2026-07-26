@@ -446,9 +446,11 @@ export default function ChatView({
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
-                            setRequestedLawyerIds(prev => prev.filter(id => id !== lawyer.id));
-                            if (currentRequest) {
-                              onAddMessage(currentRequest.id, `${lawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
+                            if (window.confirm(`${lawyer.name} 변호사님에 대한 상담 요청을 취소하시겠습니까?`)) {
+                              setRequestedLawyerIds(prev => prev.filter(id => id !== lawyer.id));
+                              if (currentRequest) {
+                                onAddMessage(currentRequest.id, `${lawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
+                              }
                             }
                           }}
                           className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
