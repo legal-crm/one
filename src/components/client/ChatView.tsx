@@ -449,10 +449,9 @@ export default function ChatView({
                             e.preventDefault();
                             setCancelTargetLawyer({ id: lawyer.id, name: lawyer.name });
                           }}
-                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                          title="취소"
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border border-transparent hover:border-red-200 transition-all cursor-pointer"
                         >
-                          <X className="w-4 h-4" />
+                          상담 취소하기
                         </button>
                       </div>
                     </div>
