@@ -131,7 +131,7 @@ export default function ChatView({
   const [appointedLawyerId, setAppointedLawyerId] = useState<string | null>(null);
   const [showFavLawyerModal, setShowFavLawyerModal] = useState<boolean>(false);
   const [selectedFavLawyers, setSelectedFavLawyers] = useState<string[]>([]);
-  const [requestedLawyerNames, setRequestedLawyerNames] = useState<string[]>([]);
+  const [requestedLawyerIds, setRequestedLawyerIds] = useState<string[]>([]);
 
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
@@ -223,7 +223,7 @@ export default function ChatView({
   let currentStep = 1;
   if (isSelectedLawyer) {
     currentStep = 3;
-  } else if (proposals.length > 0 || requestedLawyerNames.length > 0) {
+  } else if (proposals.length > 0 || requestedLawyerIds.length > 0) {
     currentStep = 2;
   }
 
@@ -413,7 +413,9 @@ export default function ChatView({
             )}
 
             {/* Step 2: 매칭대기 - 상담 요청 완료 상태 */}
-            {currentStep === 2 && requestedLawyerNames.length > 0 && proposals.length === 0 && (
+            {currentStep === 2 && requestedLawyerIds.length > 0 && proposals.length === 0 && (() => {
+              const reqLawyers = requestedLawyerIds.map(id => lawyers.find(l => l.id === id)).filter(Boolean);
+              return (
               <div className="bg-gradient-to-br from-brand/5 via-indigo-50/30 to-blue-50/20 dark:from-brand/10 dark:via-slate-800/30 dark:to-slate-800/20 rounded-2xl p-5 space-y-3 border border-brand/20 dark:border-brand/30">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
@@ -421,36 +423,46 @@ export default function ChatView({
                   </div>
                   <div className="flex-1">
                     <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">상담 요청을 보냈어요!</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">변호사님의 검토 후 제안서가 도착할 예정입니다</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">변호사님이 확인하면 1:1 상담이 시작됩니다</p>
                   </div>
                 </div>
 
-                {/* 요청한 변호사 목록 */}
-                <div className="flex flex-wrap gap-2">
-                  {requestedLawyerNames.map((name, i) => (
-                    <div key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
-                      <div className="w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-[10px] font-extrabold">{name.charAt(0)}</div>
-                      {name} 변호사
+                {/* 요청한 변호사 목록 - 아바타 + 개별 취소 */}
+                <div className="space-y-2">
+                  {reqLawyers.map(lawyer => lawyer && (
+                    <div key={lawyer.id} className="flex items-center gap-3 px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+                      {lawyer.avatar || lawyer.avatarData ? (
+                        <img src={lawyer.avatarData || lawyer.avatar} alt={lawyer.name} className="w-9 h-9 rounded-full object-cover border border-slate-100 shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-sm shrink-0">{lawyer.name.charAt(0)}</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">{lawyer.name} 변호사</div>
+                        <div className="text-[10px] text-slate-400 truncate">{lawyer.firmName || '개인'} · {lawyer.region}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] font-bold">확인 대기</span>
+                        <button
+                          onClick={() => {
+                            if (confirm(`${lawyer.name} 변호사님에 대한 상담 요청을 취소하시겠습니까?`)) {
+                              setRequestedLawyerIds(prev => prev.filter(id => id !== lawyer.id));
+                              if (currentRequest) {
+                                onAddMessage(currentRequest.id, `${lawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
+                              }
+                            }
+                          }}
+                          className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-slate-300 hover:text-red-500 transition-colors cursor-pointer"
+                          title="취소"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
-
-                {/* 취소 버튼 */}
-                <button
-                  onClick={() => {
-                    if (confirm('상담 요청을 취소하시겠습니까?')) {
-                      setRequestedLawyerNames([]);
-                      if (currentRequest) {
-                        onAddMessage(currentRequest.id, '상담 요청이 취소되었습니다.', 'lawyer', 'system', '시스템 안내');
-                      }
-                    }
-                  }}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-red-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-300 transition-all cursor-pointer"
-                >
-                  상담 요청 취소
-                </button>
               </div>
-            )}
+              );
+            })()}
 
             {currentStep === 2 && !isSelectedLawyer && proposals.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -566,17 +578,38 @@ export default function ChatView({
           </div>
 
           {!isSelectedLawyer ? (
-            /* Locked State */
-            <div className="h-[300px] flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/30 relative overflow-hidden">
+            /* Locked / Waiting State */
+            <div className="h-[250px] flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/30 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white/80 dark:to-slate-900/80 z-10"></div>
-              <div className="z-20 text-center space-y-4 animate-slideUp">
-                <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-md mx-auto">
-                  <Lock className="w-8 h-8 text-slate-400" />
-                </div>
-                <div className="font-bold text-slate-600 dark:text-slate-300">
-                  변호사를 선택하시면 1:1 비밀 상담이 활성화됩니다
-                </div>
-                <ArrowUp className="w-6 h-6 text-brand animate-bounce mx-auto mt-4" />
+              <div className="z-20 text-center space-y-3 animate-slideUp">
+                {requestedLawyerIds.length > 0 ? (
+                  <>
+                    <div className="w-14 h-14 bg-brand/10 rounded-full flex items-center justify-center mx-auto">
+                      <MessageCircle className="w-7 h-7 text-brand animate-customPulse" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                        변호사님 확인 대기 중
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">확인이 완료되면 상담방이 활성화됩니다</div>
+                    </div>
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-brand animate-bounce" style={{animationDelay: '0ms'}}></div>
+                      <div className="w-2 h-2 rounded-full bg-brand animate-bounce" style={{animationDelay: '150ms'}}></div>
+                      <div className="w-2 h-2 rounded-full bg-brand animate-bounce" style={{animationDelay: '300ms'}}></div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-14 h-14 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-md mx-auto">
+                      <Lock className="w-7 h-7 text-slate-400" />
+                    </div>
+                    <div className="font-bold text-sm text-slate-600 dark:text-slate-300">
+                      변호사를 선택하시면 1:1 비밀 상담이 활성화됩니다
+                    </div>
+                    <ArrowUp className="w-5 h-5 text-brand animate-bounce mx-auto" />
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -894,7 +927,7 @@ export default function ChatView({
                           'lawyer', 'system', '시스템 안내'
                         );
                       }
-                      setRequestedLawyerNames(selectedNames);
+                      setRequestedLawyerIds(selectedFavLawyers);
                       setShowFavLawyerModal(false);
                     }}
                     className={`w-full py-3.5 rounded-2xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 ${
