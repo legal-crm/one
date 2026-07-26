@@ -171,9 +171,9 @@ export default function ChatView({
 
   const proposals: ConsultProposal[] = currentRequest?.proposals || [];
   
-  const totalDebt = (activeResult?.totalRepayment || 0) + (activeResult?.totalDebtReduction || 0);
-  const monthlyPayment = activeResult?.monthlyPayment || 0;
-  const reductionRate = activeResult?.debtReductionRate || 0;
+  const totalDebt = Math.round(((activeResult?.totalRepayment || 0) + (activeResult?.totalDebtReduction || 0)) / 10000);
+  const monthlyPayment = Math.round((activeResult?.monthlyPayment || 0) / 10000);
+  const reductionRate = Math.round(activeResult?.debtReductionRate || 0);
   const isSelectedLawyer = !!currentRequest?.selectedLawyerId;
   const isAppointed = currentRequest?.selectedLawyerId === appointedLawyerId;
 
@@ -244,7 +244,7 @@ export default function ChatView({
                 <DollarSign className="w-4 h-4" />
                 <span className="text-xs font-semibold text-slate-500">총 채무액</span>
               </div>
-              <div className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
                 <CountUp end={totalDebt} suffix="만" />
               </div>
             </div>
@@ -255,7 +255,7 @@ export default function ChatView({
                 <Percent className="w-4 h-4" />
                 <span className="text-xs font-semibold text-slate-500">예상 월 변제금</span>
               </div>
-              <div className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
                 <CountUp end={monthlyPayment} suffix="만" />
               </div>
             </div>
