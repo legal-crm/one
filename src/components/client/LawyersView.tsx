@@ -45,6 +45,15 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedLawyerIds, setSelectedLawyerIds] = useState<string[]>([]);
 
+  // ChatView에서 "무료 상담 변호사 수임하기" 클릭 시 좋아요 필터 자동 활성화
+  useEffect(() => {
+    const favMode = localStorage.getItem('lawyer_view_favorites_mode');
+    if (favMode === 'true') {
+      setShowFavoritesOnly(true);
+      localStorage.removeItem('lawyer_view_favorites_mode');
+    }
+  }, []);
+
   const toggleSelection = useCallback((id: string) => {
     setSelectedLawyerIds(prev => {
       if (prev.includes(id)) {

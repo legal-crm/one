@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award } from 'lucide-react';
+import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award, Heart, Scale, Search, ArrowRight } from 'lucide-react';
 import MyPageView from './MyPageView';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } from '../../types';
 import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
@@ -404,12 +404,57 @@ export default function ChatView({
           {/* Conditional Content for Zone B */}
           <div className="pt-4 animate-fadeIn">
             {currentStep === 1 && proposals.length === 0 && (
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-8 text-center space-y-4 border border-slate-100 dark:border-slate-800">
-                <div className="w-12 h-12 rounded-full border-4 border-brand/30 border-t-brand animate-spin mx-auto"></div>
-                <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white">전문 변호사 3인이 검토 중</h3>
-                  <p className="text-sm text-slate-500 mt-1">곧 최적의 솔루션과 견적을 제안해 드립니다.</p>
+              <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 dark:from-slate-800/50 dark:via-slate-800/30 dark:to-indigo-950/20 rounded-2xl p-8 text-center space-y-5 border border-slate-200/60 dark:border-slate-700/50">
+                {/* 아이콘 영역 */}
+                <div className="relative mx-auto w-20 h-20">
+                  <div className="absolute inset-0 bg-brand/10 rounded-2xl rotate-6"></div>
+                  <div className="absolute inset-0 bg-brand/5 rounded-2xl -rotate-3"></div>
+                  <div className="relative w-20 h-20 bg-white dark:bg-slate-800 rounded-2xl shadow-lg flex items-center justify-center border border-slate-100 dark:border-slate-700">
+                    <Scale className="w-9 h-9 text-brand" />
+                  </div>
                 </div>
+
+                {/* 텍스트 */}
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-[11px] font-bold">
+                    <Clock className="w-3 h-3" />
+                    매칭 대기 중
+                  </div>
+                  <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">아직 변호사 매칭 전이에요</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
+                    관심 있는 변호사를 선택하여<br />무료 상담을 요청해 보세요
+                  </p>
+                </div>
+
+                {/* CTA 버튼 */}
+                <button
+                  onClick={() => {
+                    const FAVORITES_KEY = 'lawyer_favorites';
+                    let favIds: string[] = [];
+                    try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
+                    
+                    if (favIds.length > 0) {
+                      // 좋아요한 변호사가 있음 → 변호사 찾기 페이지로 이동 (좋아요 필터 활성화)
+                      localStorage.setItem('lawyer_view_favorites_mode', 'true');
+                      onSetActiveTab('lawyers');
+                    } else {
+                      // 좋아요한 변호사가 없음 → 안내 후 변호사 찾기로 이동
+                      localStorage.removeItem('lawyer_view_favorites_mode');
+                      alert('먼저 마음에 드는 변호사를 ♥ 좋아요 해 주세요!\n변호사 찾기 페이지로 이동합니다.');
+                      onSetActiveTab('lawyers');
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-7 py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-brand/20 hover:shadow-brand/30 cursor-pointer transform active:scale-[0.97]"
+                >
+                  <Search className="w-4.5 h-4.5" />
+                  무료 상담 변호사 수임하기
+                  <ArrowRight className="w-4 h-4 text-white/70" />
+                </button>
+
+                {/* 하단 안내 */}
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                  ♥ 좋아요한 변호사 중 최대 3명에게 무료 상담을 요청할 수 있어요
+                </p>
               </div>
             )}
 
