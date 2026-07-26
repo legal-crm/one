@@ -1850,8 +1850,8 @@ export default function ClientRole({
     // Construct the new ConsultRequest (pending - not yet saved)
     const newRequest = {
       id: `req-${Date.now()}`,
-      clientId: 'client-temp',
-      clientName: isLoggedIn ? `${userAlias} (의뢰인)` : '익명 의뢰인',
+      clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
+      clientName: isLoggedIn ? userAlias : '익명 의뢰인',
       phone: intakeData.phoneNumber || '010-4567-8901',
       requestType: 'direct_multi' as const,
       maxParticipants: 3,
