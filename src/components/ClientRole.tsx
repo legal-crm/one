@@ -1944,12 +1944,24 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     };
     
     // 진단 완료 즉시 requests에 저장 (내 관리방에서 채무 현황 확인 가능)
-    // 변호사 선택 시 기존 request를 업데이트
+    // 재진단 시: 기존 건의 ID/채팅/변호사 선택을 보존하고 채무 정보만 업데이트
     setRequests(prev => {
-      const existingIdx = prev.findIndex(r => r.id === newRequest.id || (r.clientId === 'client-temp' && r.status === 'requested'));
+      const targetClientId = newRequest.clientId;
+      const existingIdx = prev.findIndex(r => 
+        r.id === newRequest.id || 
+        r.clientId === targetClientId
+      );
       if (existingIdx >= 0) {
+        const existing = prev[existingIdx];
         const updated = [...prev];
-        updated[existingIdx] = newRequest;
+        updated[existingIdx] = {
+          ...newRequest,
+          id: existing.id,
+          createdAt: existing.createdAt,
+          selectedLawyerId: existing.selectedLawyerId,
+          proposals: existing.proposals,
+          status: existing.status === 'counseling' ? 'counseling' : newRequest.status,
+        };
         return updated;
       }
       return [newRequest, ...prev];
@@ -3210,42 +3222,35 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
             {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
 
-            {/* TAB: MYPAGE (채무 진단 대시보드 + 개인 설정) */}
-            {activeTab === 'mypage' && (
+            {/* TAB: 내 관리방 (통합 3-Zone: 채무대시보드 + 변호사매칭 + 채팅 + 설정) */}
+            {(activeTab === 'mypage' || activeTab === 'chat') && (
               <div className="space-y-6">
-                {/* 채무 진단 대시보드 */}
-                {activeRequest?.financialProfile ? (
-                  <MyPageView
-                    userAlias={userAlias}
-                    setUserAlias={setUserAlias}
-                    isEditingAlias={isEditingAlias}
-                    setIsEditingAlias={setIsEditingAlias}
-                    tempAlias={tempAlias}
-                    setTempAlias={setTempAlias}
-                    activeRequest={activeRequest}
-                    activeResult={activeResult}
-                    onUpdateFinancialProfile={handleUpdateFinancialProfile}
-                    onStartDiagnosis={() => setActiveTab('request')}
-                    requests={clientRequests}
-                    onNavigateToChat={() => setActiveTab('chat')}
-                    isCompact={false}
-                  />
-                ) : (
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-[#EEF4FA] rounded-full flex items-center justify-center">
-                      <FileText className="w-8 h-8 text-[#1E3A5F]" />
+                {!isLoggedIn && clientRequests.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                      <Lock className="w-8 h-8 text-slate-400" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 진단 내역이 없습니다</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      "1분 채무 진단 시작하기"를 통해 나의 채무 현황을 분석해 보세요.
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">내 관리방</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm leading-relaxed">
+                      채무 진단을 먼저 진행하시면 나의 채무 현황, 변호사 매칭, 1:1 상담을 한 곳에서 관리할 수 있습니다.
                     </p>
-                    <button
-                      onClick={() => setActiveTab('request')}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg transition-all"
-                    >
-                      채무 진단 시작하기
-                    </button>
+                    <div className="flex gap-3">
+                      <button onClick={() => setShowAuthModal(true)} className="px-6 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all cursor-pointer">로그인 / 회원가입</button>
+                      <button onClick={() => setActiveTab('request')} className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-sm transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">내 상황 체크하기</button>
+                    </div>
                   </div>
+                ) : (
+                  <ChatView 
+                    requests={clientRequests} messages={messages} activeChatReqId={activeChatReqId} chatInput={chatInput}
+                    phoneConsultNum={phoneConsultNum} useSafeNumber050={useSafeNumber050} isLoggedIn={isLoggedIn} userAlias={userAlias}
+                    debtBanks={debtBanks} debtCards={debtCards} debtPersonals={debtPersonals}
+                    onSetActiveChatReqId={setActiveChatReqId} onSetChatInput={setChatInput} onSetPhoneConsultNum={setPhoneConsultNum}
+                    onSetUseSafeNumber050={setUseSafeNumber050} onSetActiveTab={setActiveTab} onSetRequests={setRequests}
+                    onSendChat={handleSendChat} onAddMessage={onAddMessage}
+                    activeRequest={activeRequest} activeResult={activeResult} onUpdateFinancialProfile={handleUpdateFinancialProfile}
+                    setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias}
+                    tempAlias={tempAlias} setTempAlias={setTempAlias}
+                  />
                 )}
 
                 {/* 계정 설정 */}
@@ -3331,67 +3336,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
             {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} />)}
 
-            {activeTab === 'chat' && (
-              !isLoggedIn && clientRequests.length === 0 ? (
-                /* 보안 게이트: 비로그인 + 데이터 없음 → 로그인 유도 */
-                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                    <Lock className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                    로그인이 필요합니다
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm leading-relaxed">
-                    내 관리방은 개인정보 보호를 위해 로그인 후 이용할 수 있습니다.<br />
-                    먼저 상황 체크를 하시면 현재 세션에서 결과를 확인할 수 있습니다.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowAuthModal(true)}
-                      className="px-6 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all cursor-pointer"
-                    >
-                      로그인 / 회원가입
-                    </button>
-                    <button
-                      onClick={() => { setActiveTab('request'); }}
-                      className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-sm transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      내 상황 체크하기
-                    </button>
-                  </div>
-                </div>
-              ) : (
-              <ChatView 
-                requests={clientRequests} 
-                messages={messages} 
-                activeChatReqId={activeChatReqId} 
-                chatInput={chatInput} 
-                phoneConsultNum={phoneConsultNum} 
-                useSafeNumber050={useSafeNumber050} 
-                isLoggedIn={isLoggedIn} 
-                userAlias={userAlias} 
-                debtBanks={debtBanks} 
-                debtCards={debtCards} 
-                debtPersonals={debtPersonals} 
-                onSetActiveChatReqId={setActiveChatReqId} 
-                onSetChatInput={setChatInput} 
-                onSetPhoneConsultNum={setPhoneConsultNum} 
-                onSetUseSafeNumber050={setUseSafeNumber050} 
-                onSetActiveTab={setActiveTab} 
-                onSetRequests={setRequests} 
-                onSendChat={handleSendChat} 
-                onAddMessage={onAddMessage} 
-                activeRequest={activeRequest}
-                activeResult={activeResult}
-                onUpdateFinancialProfile={handleUpdateFinancialProfile}
-                setUserAlias={setUserAlias}
-                isEditingAlias={isEditingAlias}
-                setIsEditingAlias={setIsEditingAlias}
-                tempAlias={tempAlias}
-                setTempAlias={setTempAlias}
-              />
-              )
-            )}
+
+
           </React.Suspense>
         </div>
         )}
