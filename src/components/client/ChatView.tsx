@@ -4,7 +4,7 @@ import MyPageView from './MyPageView';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile } from '../../types';
 import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 
-const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
+const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
 
 interface BannerProps {
   onClose: () => void;
@@ -615,35 +615,79 @@ export default function ChatView({
           <div className="relative w-full md:w-[640px] lg:w-[720px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-slideInRight">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
               <h2 className="font-bold text-lg text-slate-900 dark:text-white">상세 진단서</h2>
-              <button 
-                onClick={() => setShowProfilePanel(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {activeResult && reportUserInput && (
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const totalPages = 7;
+                        const pageElements: HTMLElement[] = [];
+                        for (let i = 1; i <= totalPages; i++) {
+                          const el = document.getElementById(`pdf-page-${i}`);
+                          if (el) pageElements.push(el);
+                        }
+                        if (pageElements.length === 0) {
+                          alert('PDF 템플릿을 준비 중입니다. 잠시 후 다시 시도해 주세요.');
+                          return;
+                        }
+                        const { default: html2canvas } = await import('html2canvas');
+                        const { default: jsPDF } = await import('jspdf');
+                        const canvases = await Promise.all(
+                          pageElements.map(el => html2canvas(el, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' }))
+                        );
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        canvases.forEach((canvas, idx) => {
+                          if (idx > 0) pdf.addPage();
+                          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        });
+                        pdf.save(`채무분석_리포트_${new Date().toISOString().slice(0,10)}.pdf`);
+                      } catch (err) {
+                        console.error('PDF generation error:', err);
+                        alert('PDF 생성 중 오류가 발생했습니다.');
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand/10 hover:bg-brand/20 text-brand rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    PDF 다운로드
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowProfilePanel(false)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {activeResult && reportUserInput ? (
-                <React.Suspense fallback={
-                  <div className="flex items-center justify-center py-20">
-                    <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
-                  </div>
-                }>
-                  <RehabResultReport
-                    result={activeResult}
-                    userInput={reportUserInput}
-                    onClose={() => setShowProfilePanel(false)}
-                    isLoggedIn={isLoggedIn}
-                  />
-                </React.Suspense>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <FileText className="w-12 h-12 text-slate-300 mb-4" />
-                  <p className="text-sm text-slate-500">진단 결과가 없습니다. 먼저 내 상황 체크를 진행해 주세요.</p>
-                </div>
-              )}
+              <MyPageView 
+                userAlias={userAlias}
+                setUserAlias={setUserAlias}
+                isEditingAlias={isEditingAlias}
+                setIsEditingAlias={setIsEditingAlias}
+                tempAlias={tempAlias}
+                setTempAlias={setTempAlias}
+                activeRequest={activeRequest}
+                activeResult={activeResult}
+                onUpdateFinancialProfile={onUpdateFinancialProfile}
+                onStartDiagnosis={() => { setShowProfilePanel(false); onSetActiveTab('request'); }}
+                requests={requests}
+                onNavigateToChat={() => setShowProfilePanel(false)}
+                isCompact={true}
+              />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 오프스크린 PDF 템플릿 (화면에 안 보이지만 html2canvas가 캡처) */}
+      {showProfilePanel && activeResult && reportUserInput && (
+        <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
+          <React.Suspense fallback={null}>
+            <PrintableReportTemplate result={activeResult} userInput={reportUserInput} />
+          </React.Suspense>
         </div>
       )}
 
