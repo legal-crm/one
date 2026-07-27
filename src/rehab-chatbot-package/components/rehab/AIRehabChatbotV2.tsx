@@ -120,6 +120,7 @@ type ChatStep =
     | 'child_support_receive'
     | 'child_support_pay'
     | 'minor_children'
+    | 'minor_children_custom'
     | 'housing_type'
     | 'rent_cost'
     | 'deposit_amount'
@@ -1914,11 +1915,41 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 const minorChildren = typeof value === 'number' ? value : parseInt(String(value), 10);
                 const safeMinorChildren = isNaN(minorChildren) ? 0 : minorChildren;
 
+                // 5명 이상을 선택한 경우 숫자를 직접 입력받는 질문을 하나 더 띄움
+                if (safeMinorChildren >= 5 || value === 5 || value === '5+') {
+                    goToStep('minor_children_custom');
+                    addBotMessage(
+                        '만 19세 미만 자녀가 총 몇 명인지 숫자로 직접 입력해 주세요.\n\n(예: 5, 6, 7...)',
+                        undefined,
+                        'number'
+                    );
+                    break;
+                }
+
                 // 가구원 수는 나중에 배우자 소득 기반으로 최종 계산됨
                 // 여기서는 일단 본인(1) + 미성년 자녀로 임시 설정 (미혼인 경우 최종값)
                 let familySize = 1 + safeMinorChildren;
 
                 setUserInput(prev => ({ ...prev, minorChildren: safeMinorChildren, familySize }));
+                goToStep('housing_type');
+                addBotMessage(
+                    '현재 거주 형태는 무엇인가요?',
+                    [
+                        { label: '🏠 월세', value: 'rent' },
+                        { label: '🏢 전세', value: 'jeonse' },
+                        { label: '🏡 자가(내 집)', value: 'owned' },
+                        { label: '👨‍👩‍👧 무상거주(친가 등)', value: 'free' }
+                    ],
+                    'buttons'
+                );
+                break;
+
+            case 'minor_children_custom':
+                const customMinor = typeof value === 'number' ? value : parseInt(String(value), 10);
+                const safeCustomMinor = isNaN(customMinor) || customMinor < 5 ? 5 : customMinor;
+
+                let customFamilySize = 1 + safeCustomMinor;
+                setUserInput(prev => ({ ...prev, minorChildren: safeCustomMinor, familySize: customFamilySize }));
                 goToStep('housing_type');
                 addBotMessage(
                     '현재 거주 형태는 무엇인가요?',
