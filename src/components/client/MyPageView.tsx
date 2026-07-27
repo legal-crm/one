@@ -414,9 +414,9 @@ export default function MyPageView({
 
           <div className="space-y-5">
             
-            {/* 0. 기본 인적 사항 */}
+            {/* 0. 기본 인적 사항 & 관할 법원 */}
             <div className="space-y-3.5">
-              <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 기본 인적 사항</h4>
+              <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 기본 인적 사항 및 거주/관할 법원</h4>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
@@ -440,7 +440,7 @@ export default function MyPageView({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">나이</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">나이 (만)</label>
                   <input 
                     type="number" 
                     value={profile.age || 0} 
@@ -452,24 +452,29 @@ export default function MyPageView({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주지 주소</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주지역 / 주소</label>
                   <input 
                     type="text" 
-                    value={profile.address || ''} 
-                    onChange={(e) => handleFieldChange('address', e.target.value)} 
-                    placeholder="서울특별시 강남구..."
+                    value={profile.residenceRegion || profile.address || ''} 
+                    onChange={(e) => {
+                      handleFieldChange('residenceRegion', e.target.value);
+                      handleFieldChange('address', e.target.value);
+                    }} 
+                    placeholder="서울특별시, 경기도 수원시 등"
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">근무지/사업장 주소</label>
-                  <input 
-                    type="text" 
-                    value={profile.workLocation || ''} 
-                    onChange={(e) => handleFieldChange('workLocation', e.target.value)} 
-                    placeholder="서울특별시 서초구..."
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">관할 회생 법원</label>
+                  <select 
+                    value={profile.selectedCourt || '서울회생법원'} 
+                    onChange={(e) => handleFieldChange('selectedCourt', e.target.value)} 
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                  />
+                  >
+                    {['서울회생법원', '수원회생법원', '부산회생법원', '인천지방법원', '대전지방법원', '대구지방법원', '광주지방법원', '전주지방법원', '청주지방법원', '춘천지방법원', '창원지방법원', '제주지방법원'].map(court => (
+                      <option key={court} value={court}>{court}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -489,20 +494,27 @@ export default function MyPageView({
                     { label: '일용직', value: 'daily' },
                     { label: '무직', value: 'none' },
                     { label: '기초수급자', value: 'basic_recipient' },
-                  ].map(item => (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => handleFieldChange('employmentType', item.value)}
-                      className={`py-2 px-1 rounded-xl border text-[10.5px] font-bold transition-all cursor-pointer ${
-                        profile.employmentType === item.value
-                        ? 'bg-brand border-brand text-white shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-855'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
+                  ].map(item => {
+                    const currentEmp = profile.employmentType || (profile.jobType === 'SALARIED' ? 'salary' : profile.jobType === 'BUSINESS' ? 'business' : 'salary');
+                    const isSelected = currentEmp === item.value;
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => {
+                          handleFieldChange('employmentType', item.value);
+                          handleFieldChange('jobType', item.value === 'business' ? 'BUSINESS' : 'SALARIED');
+                        }}
+                        className={`py-2 px-1 rounded-xl border text-[10.5px] font-bold transition-all cursor-pointer ${
+                          isSelected
+                          ? 'bg-brand border-brand text-white shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-855'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -836,7 +848,7 @@ export default function MyPageView({
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
               <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">5. 채무 구성 설정</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">은행/1금융권 대출 (만 원)</label>
                   <input 
@@ -856,9 +868,7 @@ export default function MyPageView({
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">캐피탈/대부/기타 채무 (만 원)</label>
                   <input 
@@ -868,7 +878,9 @@ export default function MyPageView({
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">국세/지방세/체납세금 (만 원)</label>
                   <input 
@@ -878,6 +890,20 @@ export default function MyPageView({
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                   <span className="text-[11px] text-[#EF4444] block">※ 국세 체납 채무는 우선변제 채무에 해당하여 회생 변제금에서 우선 순위 공제됩니다.</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">최근 1년 이내 신규 대출액 (만 원)</label>
+                  <input 
+                    type="number" 
+                    value={profile.debtTypes?.recentLoans || 0} 
+                    onChange={(e) => {
+                      const updatedDebtTypes = { ...profile.debtTypes, recentLoans: Math.max(0, Number(e.target.value)) };
+                      handleFieldChange('debtTypes', updatedDebtTypes);
+                    }} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 block">※ 1년 이내 신규 대출이 총 채무의 30% 초과 시 법관 정밀 검토 대상이 됩니다.</span>
                 </div>
               </div>
             </div>
