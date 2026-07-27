@@ -951,6 +951,7 @@ export default function ClientRole({
   const [senderNameOverride, setSenderNameOverride] = useState<string>('my김변');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [showLogoutSuccessModal, setShowLogoutSuccessModal] = useState<boolean>(false);
 
   // Email and Real Auth States
 
@@ -2166,7 +2167,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setMessages([]);
                     setInquiries([]);
                     
-                    alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
+                    setShowLogoutSuccessModal(true);
                   }}
                   className="whitespace-nowrap flex items-center gap-1 px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs lg:text-sm font-bold transition-all shrink-0 cursor-pointer"
                 >
@@ -3224,7 +3225,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setMessages([]);
                     setInquiries([]);
                     
-                    alert('안전하게 로그아웃되었으며, 이 브라우저의 개인 체크 및 상담 기록이 완전히 초기화되었습니다.');
+                    setShowLogoutSuccessModal(true);
                     setActiveTab('landing');
                   }}
                 />
@@ -3470,7 +3471,53 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         />
       )}
 
-      </div>
+      {/* 로그아웃 완료 커스텀 모달 */}
+      {showLogoutSuccessModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style={{ animation: 'fadeIn 0.3s ease-out forwards' }}>
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
+            style={{ animation: 'slideUp 0.3s ease-out forwards' }}
+          >
+            {/* 상단 그라데이션 헤더 */}
+            <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-5 text-center">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3">
+                <ShieldCheck className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-white font-extrabold text-base">안전하게 로그아웃되었습니다</h3>
+            </div>
+
+            {/* 본문 */}
+            <div className="p-5 text-center space-y-3">
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3 text-left space-y-1.5">
+                <p className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>개인 체크 및 상담 기록이 완전히 초기화되었습니다</span>
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>브라우저에 저장된 모든 데이터가 안전하게 삭제되었습니다</span>
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span>다른 사람이 이 기기를 사용해도 안전합니다</span>
+                </p>
+              </div>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => setShowLogoutSuccessModal(false)}
+                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
     </div>
   );
 }
