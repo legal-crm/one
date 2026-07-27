@@ -243,7 +243,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     isStandalone = false, // NEW prop from RehabChatButton
     disablePortal = false, // NEW prop
     isLoggedIn = false,
-    onShowAuthModal
+    onShowAuthModal,
+    onConsultation
 }) => {
     // 템플릿 색상 계산
     const templateInfo = getTemplateById(templateId);
@@ -4192,8 +4193,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     }}
                     onConsultation={() => {
                         setShowResult(false);
-                        if (props.onConsultation) {
-                            props.onConsultation();
+                        if (onConsultation) {
+                            onConsultation();
                         } else {
                             onClose();
                         }
