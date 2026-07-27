@@ -952,6 +952,27 @@ export default function ClientRole({
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showLogoutSuccessModal, setShowLogoutSuccessModal] = useState<boolean>(false);
+  const [showResetDiagnosisModal, setShowResetDiagnosisModal] = useState<boolean>(false);
+
+  // 진단 시작 클릭 처리 (기존 데이터가 있을 경우 커스텀 팝업)
+  const handleStartDiagnosisClick = () => {
+    const hasData = requests.length > 0 && requests.some(r => r.financialProfile);
+    if (hasData) {
+      setShowResetDiagnosisModal(true);
+    } else {
+      forceStartNewDiagnosis();
+    }
+  };
+
+  const forceStartNewDiagnosis = () => {
+    setRequests([]);
+    setPendingChatbotData(null);
+    localStorage.removeItem('legal_crm_requests');
+    setRequestType('open');
+    setRequestStep(1);
+    setActiveTab('request');
+    onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭');
+  };
 
   // Email and Real Auth States
 
@@ -2066,12 +2087,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 홈
               </button>
               <button 
-                onClick={() => {
-                  setRequestType('open');
-                  setRequestStep(1);
-                  setActiveTab('request');
-                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭');
-                }}
+                onClick={handleStartDiagnosisClick}
                 className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'request' 
                     ? 'bg-[#1E3A5F]/5 border-[#1E3A5F]/20 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
@@ -3245,7 +3261,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </p>
                   <div className="flex gap-3">
                     <button onClick={() => setShowAuthModal(true)} className="px-6 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all cursor-pointer">로그인 / 회원가입</button>
-                    <button onClick={() => setActiveTab('request')} className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-sm transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">내 상황 체크하기</button>
+                    <button onClick={handleStartDiagnosisClick} className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-sm transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">내 상황 체크하기</button>
                   </div>
                 </div>
               ) : (
@@ -3435,7 +3451,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         </React.Suspense>
       )}
 
-      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }} onStartDiagnosis={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭'); }} onNavigateToLawyers={() => { setActiveTab('lawyers'); }} onNavigateToQna={() => { setActiveTab('qna'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭'); }} isHidden={isChatbotActive || isGnbHidden} />
+      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={handleStartDiagnosisClick} onStartDiagnosis={handleStartDiagnosisClick} onNavigateToLawyers={() => { setActiveTab('lawyers'); }} onNavigateToQna={() => { setActiveTab('qna'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭'); }} isHidden={isChatbotActive || isGnbHidden} />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (
         <React.Suspense fallback={null}>
@@ -3490,6 +3506,61 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             setRequestStep(1);
           }}
         />
+      )}
+
+      {/* 기존 진단 데이터 존재 시 재진단 확인 커스텀 모달 */}
+      {showResetDiagnosisModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style={{ animation: 'fadeIn 0.3s ease-out forwards' }}>
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
+            style={{ animation: 'slideUp 0.3s ease-out forwards' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 상단 그라데이션 헤더 */}
+            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 p-5 text-center">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-white font-extrabold text-base">기존 진단 정보가 있습니다</h3>
+            </div>
+
+            {/* 본문 */}
+            <div className="p-5 text-center space-y-3">
+              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                이미 입력된 내 상황 체크 정보가 있습니다.<br />
+                <strong className="text-slate-900 dark:text-white">새로 진행하시겠습니까?</strong>
+              </p>
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 text-left">
+                <p className="text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5 leading-relaxed font-semibold">
+                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  <span>새로 진행하면 기존에 입력한 채무 및 자산 진단 데이터가 모두 초기화되어 삭제됩니다.</span>
+                </p>
+              </div>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div className="px-5 pb-5 flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowResetDiagnosisModal(false)}
+                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetDiagnosisModal(false);
+                  forceStartNewDiagnosis();
+                }}
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                새로 진단 시작하기
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 로그아웃 완료 커스텀 모달 */}
