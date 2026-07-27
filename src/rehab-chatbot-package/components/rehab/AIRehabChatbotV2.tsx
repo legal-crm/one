@@ -1040,7 +1040,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     // 배우자 소득은 변제금에 영향 없음 - 바로 배우자 재산 질문으로
                     goToStep('spouse_assets_select');
                     addBotMessage(
-                        '배우자 명의로 가지고 있는 재산이 있나요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                        '배우자 명의로 가지고 있는 재산이 있나요?\n\n(해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                         [
                             { label: '🚗 자동차', value: 'car' },
                             { label: '🏠 부동산', value: 'realEstate' },
@@ -1049,7 +1049,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             { label: '🛡️ 보험', value: 'insurance' },
                             { label: '📈 주식/코인', value: 'stocks' },
                             { label: '🏢 사업재산', value: 'businessAssets' },
-                            { label: '✅ 선택완료', value: 'done' },
+
                             { label: '❌ 없어요', value: 'none' }
                         ],
                         'buttons',
@@ -2222,7 +2222,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, educationCost: 0, monthlyFixedExpenses: 0 }));
                     goToStep('assets_select');
                     addBotMessage(
-                        '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                        '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                         [
                             { label: '🚗 자동차', value: 'car' },
                             { label: '🏠 부동산', value: 'realEstate' },
@@ -2232,7 +2232,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             { label: '📈 주식/코인', value: 'stocks' },
                             { label: '🏢 사업재산', value: 'businessAssets' },
                             { label: '💼 퇴직금', value: 'retirementPay' },
-                            { label: '✅ 선택완료', value: 'done' },
+
                             { label: '❌ 없어요', value: 'none' }
                         ],
                         'buttons',
@@ -2276,7 +2276,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, specialEducationCost: 0, monthlyFixedExpenses: 0 }));
                     goToStep('assets_select');
                     addBotMessage(
-                        '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                        '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                         [
                             { label: '🚗 자동차', value: 'car' },
                             { label: '🏠 부동산', value: 'realEstate' },
@@ -2286,7 +2286,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             { label: '📈 주식/코인', value: 'stocks' },
                             { label: '🏢 사업재산', value: 'businessAssets' },
                             { label: '💼 퇴직금', value: 'retirementPay' },
-                            { label: '✅ 선택완료', value: 'done' },
+
                             { label: '❌ 없어요', value: 'none' }
                         ],
                         'buttons',
@@ -2308,7 +2308,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, specialEducationCost: specialEduAmt, monthlyFixedExpenses: 0 }));
                 goToStep('assets_select');
                 addBotMessage(
-                    '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                    '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                     [
                         { label: '🚗 자동차', value: 'car' },
                         { label: '🏠 부동산', value: 'realEstate' },
@@ -2318,7 +2318,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '📈 주식/코인', value: 'stocks' },
                         { label: '🏢 사업재산', value: 'businessAssets' },
                         { label: '💼 퇴직금', value: 'retirementPay' },
-                        { label: '✅ 선택완료', value: 'done' },
+
                         { label: '❌ 없어요', value: 'none' }
                     ],
                     'buttons',
@@ -3003,7 +3003,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, creditCardDebt: 0 }));
                     goToStep('debt_types');
                     addBotMessage(
-                        '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (복수 선택 가능)',
+                        '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                         [
                             { label: '🏦 은행 대출', value: 'bank' },
                             { label: '💳 카드사/캐피탈', value: 'capital' },
@@ -3012,7 +3012,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                             { label: '👤 가족/지인', value: 'private' },
                             { label: '📱 기타', value: 'app_loan' },
                             { label: '🏢 보증채무', value: 'guarantee' },
-                            { label: '✅ 선택완료', value: 'done' }
+
                         ],
                         'buttons',
                         true
@@ -3025,7 +3025,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 // V2.1: 채무 유형 분류로 이동
                 goToStep('debt_types');
                 addBotMessage(
-                    '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (복수 선택 가능)',
+                    '많이 힘드셨을 거예요. 걱정 마세요, 대부분의 분들이 비슷한 상황에서 해결책을 찾으셨어요 🤝\n\n현재 **빚의 종류를 모두 선택**해주세요. (해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                     [
                         { label: '🏦 은행 대출', value: 'bank' },
                         { label: '💳 카드사/캐피탈', value: 'capital' },
@@ -3034,7 +3034,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '👤 가족/지인', value: 'private' },
                         { label: '📱 기타', value: 'app_loan' },
                         { label: '🏢 보증채무', value: 'guarantee' },
-                        { label: '✅ 선택완료', value: 'done' }
+
                     ],
                     'buttons',
                     true
@@ -3231,14 +3231,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setTimeout(() => {
                         goToStep('legal_actions');
                         addBotMessage(
-                            '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
+                            '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n(해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                             [
                                 { label: '📞 독촉 전화/문자', value: 'collection_call' },
                                 { label: '📄 지급명령/소장 수령', value: 'court_order' },
                                 { label: '🔒 급여/계좌 압류', value: 'seizure' },
                                 { label: '🏠 부동산 가압류', value: 'property_seizure' },
                                 { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
-                                { label: '✅ 선택완료', value: 'done' },
+    
                                 { label: '해당 없음', value: 'none' }
                             ],
                             'buttons',
@@ -3270,14 +3270,14 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setTimeout(() => {
                     goToStep('legal_actions');
                     addBotMessage(
-                        '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n해당하는 것을 모두 선택해주세요.',
+                        '혹시 현재 아래와 같은 법적 조치를 받고 계신 게 있나요?\n(해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                         [
                             { label: '📞 독촉 전화/문자', value: 'collection_call' },
                             { label: '📄 지급명령/소장 수령', value: 'court_order' },
                             { label: '🔒 급여/계좌 압류', value: 'seizure' },
                             { label: '🏠 부동산 가압류', value: 'property_seizure' },
                             { label: '⚠️ 신용등급 하락 통보', value: 'credit_drop' },
-                            { label: '✅ 선택완료', value: 'done' },
+
                             { label: '해당 없음', value: 'none' }
                         ],
                         'buttons',
@@ -3470,7 +3470,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, monthlyFixedExpenses }));
                 goToStep('assets_select');
                 addBotMessage(
-                    '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 "선택완료"를 눌러주세요)',
+                    '현재 본인 명의로 가지고 있는 재산이 있으신가요?\n\n(해당하는 항목을 모두 선택하고 보내기 버튼 눌러주세요)',
                     [
                         { label: '🚗 자동차', value: 'car' },
                         { label: '🏠 부동산', value: 'realEstate' },
@@ -3480,7 +3480,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '📈 주식/코인', value: 'stocks' },
                         { label: '🏢 사업재산', value: 'businessAssets' },
                         { label: '💼 퇴직금', value: 'retirementPay' },
-                        { label: '✅ 선택완료', value: 'done' },
+
                         { label: '❌ 없어요', value: 'none' }
                     ],
                     'buttons',
@@ -3611,7 +3611,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             if (selectedOptions.length > 0) {
                 const selectedLabels = selectedOptions.map(opt => opt.label);
                 const selectedValues = selectedOptions.map(opt => String(opt.value));
-                const displayLabel = `${selectedLabels.join(', ')} 선택완료`;
+                const displayLabel = `${selectedLabels.join(', ')} 선택 완료`;
                 addUserMessage(displayLabel);
                 setTimeout(() => {
                     processStep(currentStep, selectedValues);
@@ -3883,7 +3883,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     const selectedLabels = selectedOptions.map(opt => opt.label);
                     const selectedValues = selectedOptions.map(opt => String(opt.value));
                     
-                    const displayLabel = selectedLabels.length > 0 ? `${selectedLabels.join(', ')} 선택완료` : '선택완료';
+                    const displayLabel = selectedLabels.length > 0 ? `${selectedLabels.join(', ')} 선택 완료` : '선택 완료';
                     addUserMessage(displayLabel);
                     
                     setTimeout(() => {
