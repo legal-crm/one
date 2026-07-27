@@ -414,10 +414,11 @@ export default function MyPageView({
 
           <div className="space-y-5">
             
-            {/* 0. 기본 인적 사항 & 관할 법원 */}
+            {/* 0. 연령 및 거주/근무지 관할 법원 설정 */}
             <div className="space-y-3.5">
-              <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 연령 및 거주/관할 법원 설정</h4>
+              <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 연령 및 거주지 / 근무지 관할 법원 설정</h4>
               
+              {/* 거주지 관할 */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">나이 (만)</label>
@@ -429,7 +430,7 @@ export default function MyPageView({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주지역 / 주소</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주지역 / 거주지 주소</label>
                   <input 
                     type="text" 
                     value={profile.residenceRegion || profile.address || ''} 
@@ -437,23 +438,62 @@ export default function MyPageView({
                       handleFieldChange('residenceRegion', e.target.value);
                       handleFieldChange('address', e.target.value);
                     }} 
-                    placeholder="서울특별시, 경기도 수원시 등"
+                    placeholder="서울특별시, 경기도 남양주시 등"
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">관할 회생 법원</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주지 관할 회생 법원</label>
                   <select 
                     value={profile.selectedCourt || '서울회생법원'} 
                     onChange={(e) => handleFieldChange('selectedCourt', e.target.value)} 
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   >
-                    {['서울회생법원', '수원회생법원', '부산회생법원', '인천지방법원', '대전지방법원', '대구지방법원', '광주지방법원', '전주지방법원', '청주지방법원', '춘천지방법원', '창원지방법원', '제주지방법원'].map(court => (
+                    {['서울회생법원', '수원회생법원', '부산회생법원', '인천지방법원', '대전지방법원', '대구지방법원', '광주지방법원', '전주지방법원', '청주지방법원', '춘천지방법원', '창원지방법원', '제주지방법원', '의정부지방법원'].map(court => (
                       <option key={court} value={court}>{court}</option>
                     ))}
                   </select>
                 </div>
               </div>
+
+              {/* 근무지/사업장 관할 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                <div className="space-y-1">
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">근무회사 / 사업장명</label>
+                  <input 
+                    type="text" 
+                    value={profile.companyName || ''} 
+                    onChange={(e) => handleFieldChange('companyName', e.target.value)} 
+                    placeholder="(주)OOOO 또는 개인사업장"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">근무지역 / 사업장 주소</label>
+                  <input 
+                    type="text" 
+                    value={profile.workLocation || ''} 
+                    onChange={(e) => handleFieldChange('workLocation', e.target.value)} 
+                    placeholder="서울특별시 강남구, 경기도 성남시 등"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">근무지 관할 회생 법원</label>
+                  <select 
+                    value={profile.workplaceCourt || profile.selectedCourt || '서울회생법원'} 
+                    onChange={(e) => handleFieldChange('workplaceCourt', e.target.value)} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  >
+                    {['서울회생법원', '수원회생법원', '부산회생법원', '인천지방법원', '대전지방법원', '대구지방법원', '광주지방법원', '전주지방법원', '청주지방법원', '춘천지방법원', '창원지방법원', '제주지방법원', '의정부지방법원'].map(court => (
+                      <option key={court} value={court}>{court}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <span className="text-[11.5px] text-[#7264FF] font-semibold block pt-0.5">
+                💡 <strong>관할 법원 팁</strong>: 개인회생은 <strong>거주지 관할 법원</strong>과 <strong>근무지(사업장) 관할 법원</strong> 중 의뢰인에게 유리한 법원을 자유롭게 선택하여 신청할 수 있습니다.
+              </span>
             </div>
 
             {/* 1. 소득 및 고용 정보 */}
