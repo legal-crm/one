@@ -783,6 +783,19 @@ export default function ChatView({
                     onClose={() => setShowProfilePanel(false)}
                     isLoggedIn={isLoggedIn}
                     embedded={true}
+                    onConsultation={() => {
+                      setShowProfilePanel(false);
+                      // 좋아요 변호사 확인 (무료 상담 변호사 수임하기와 동일 로직)
+                      const FAVORITES_KEY = 'lawyer_favorites';
+                      let favIds: string[] = [];
+                      try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
+                      if (favIds.length > 0) {
+                        setSelectedFavLawyers([]);
+                        setShowFavLawyerModal(true);
+                      } else {
+                        setShowNoFavoritesModal(true);
+                      }
+                    }}
                   />
                 </React.Suspense>
               ) : (

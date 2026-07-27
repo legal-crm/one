@@ -3306,6 +3306,27 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   }}
                   isLoggedIn={isLoggedIn}
                   onShowAuthModal={() => setShowAuthModal(true)}
+                  onConsultation={() => {
+                    // 데이터 저장 (onClose와 동일)
+                    if (pendingChatbotData) {
+                      const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
+                      setPendingChatbotData(null);
+                      handleIntakeSubmit(mappedData);
+                      
+                      // handleIntakeSubmit이 lawyers 탭으로 이동시키므로,
+                      // 좋아요 변호사가 있으면 chat 탭으로 대신 이동 (무료상담 수임하기 플로우)
+                      const FAVORITES_KEY = 'lawyer_favorites';
+                      let favIds: string[] = [];
+                      try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
+                      if (favIds.length > 0) {
+                        // 좋아요 변호사 있음 → 내 관리방에서 수임하기 플로우 진행
+                        setTimeout(() => setActiveTab('chat'), 100);
+                      }
+                      // 좋아요 변호사 없음 → handleIntakeSubmit의 기본 동작(lawyers 탭)으로 이동
+                    } else {
+                      setActiveTab('landing');
+                    }
+                  }}
                 />
               </div>
             )}

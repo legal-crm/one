@@ -200,6 +200,7 @@ interface AIRehabChatbotV2Props {
     disablePortal?: boolean; // NEW: For Admin Preview
     isLoggedIn?: boolean;
     onShowAuthModal?: () => void;
+    onConsultation?: () => void;
 }
 
 const ASSET_LABELS: Record<AssetType, string> = {
@@ -4158,7 +4159,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     }}
                     onConsultation={() => {
                         setShowResult(false);
-                        onClose();
+                        if (props.onConsultation) {
+                            props.onConsultation();
+                        } else {
+                            onClose();
+                        }
                     }}
                     isLoggedIn={isLoggedIn}
                     onShowAuthModal={onShowAuthModal}
