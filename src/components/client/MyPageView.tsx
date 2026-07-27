@@ -430,6 +430,18 @@ export default function MyPageView({
                   />
                 </div>
                 <div className="space-y-1">
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">성별</label>
+                  <select
+                    value={profile.gender || ''}
+                    onChange={(e) => handleFieldChange('gender', e.target.value || undefined)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                  >
+                    <option value="">미선택</option>
+                    <option value="male">남성</option>
+                    <option value="female">여성</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주지역 / 거주지 주소</label>
                   <input 
                     type="text" 

@@ -838,6 +838,20 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     }
                 }
                 setUserInput(prev => ({ ...prev, age }));
+                goToStep('gender');
+                addBotMessage(
+                    '성별을 선택해 주세요.',
+                    [
+                        { label: '👨 남성', value: 'male' },
+                        { label: '👩 여성', value: 'female' }
+                    ],
+                    'buttons'
+                );
+                break;
+
+            case 'gender':
+                const genderValue = value as 'male' | 'female';
+                setUserInput(prev => ({ ...prev, gender: genderValue }));
                 goToStep('employment');
                 addBotMessage(
                     '현재 어떤 형태로 소득을 얻고 계신가요?',

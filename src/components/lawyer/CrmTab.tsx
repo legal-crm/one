@@ -787,7 +787,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[13px] text-slate-600">
                           <span className="text-[11px] font-black text-indigo-400 tracking-wide uppercase block">👤 인적사항</span>
                           {selectedClient.financialProfile.age && (
-                            <div className="flex justify-between"><span>나이</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.age}세</span></div>
+                            <div className="flex justify-between"><span>나이/성별</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.age}세 / {selectedClient.financialProfile.gender === 'male' ? '남성' : selectedClient.financialProfile.gender === 'female' ? '여성' : '미기재'}</span></div>
                           )}
                           <div className="flex justify-between"><span>부양가족</span><span className="font-bold text-slate-700">{selectedClient.financialProfile.dependents}명 ({selectedClient.financialProfile.dependents + 1}인 가구)</span></div>
                           {selectedClient.financialProfile.minorChildren !== undefined && (

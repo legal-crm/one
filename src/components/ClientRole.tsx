@@ -1558,6 +1558,7 @@ export default function ClientRole({
     const age = input.age || 35;
     const birthYear = 2026 - age;
     const birthDate = `${birthYear}-01-01`;
+    const gender = input.gender;
 
     let maritalStatus: IntakeData['maritalStatus'] = 'single';
     if (input.maritalStatus === 'married') {
@@ -1756,6 +1757,7 @@ export default function ClientRole({
       clientName: input.name || '익명 의뢰인',
       phoneNumber: input.phone || '010-0000-0000',
       birthDate,
+      gender,
       consultDate: new Date().toISOString().split('T')[0],
       applyYear: 2026,
       dbVendor: '온라인광고',
@@ -1961,7 +1963,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         retirementPensionType: intakeData.retirementPensionType,
         retirementPay: intakeData.retirementPay ? Math.round(intakeData.retirementPay / 10000) : undefined,
         clientNote: intakeData.notes || undefined,
-        clientNotes: intakeData.clientNotes || (intakeData.notes ? [intakeData.notes] : [])
+        clientNotes: intakeData.clientNotes || (intakeData.notes ? [intakeData.notes] : []),
+        gender: intakeData.gender
       },
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };

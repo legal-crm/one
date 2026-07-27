@@ -44,6 +44,7 @@ export interface FinancialProfile {
 
   // ── 챗봇 수집 항목 완전 동기화 필드 ──
   age?: number;             // 나이 (24개월 특례 확인용)
+  gender?: 'male' | 'female'; // 성별
   employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily'; // 고용 형태
   minorChildren?: number;   // 미성년 자녀 수
   childSupportReceived?: number; // 양육비 수령액 (이혼 시)
@@ -792,6 +793,7 @@ export interface IntakeData {
   clientName: string;
   phoneNumber: string;
   birthDate: string;
+  gender?: 'male' | 'female'; // 성별
   consultDate: string;
   applyYear?: number;
   dbVendor: string;

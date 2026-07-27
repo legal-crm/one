@@ -28,6 +28,7 @@ export interface RehabUserInput {
     address: string;           // 거주지 주소
     workLocation?: string;     // 근무지/사업장 지역 (관할 법원용)
     age?: number;              // 나이 (24개월 특례 확인용)
+    gender?: 'male' | 'female'; // 성별
 
     employmentType?: 'salary' | 'business' | 'freelancer' | 'both' | 'none' | 'daily' | 'basic_recipient'; // 고용 형태
     unemployedReason?: 'illness' | 'none'; // 무직/수급 사유 (질병/장애로 인한 근로불가 여부)

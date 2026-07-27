@@ -1830,7 +1830,7 @@ export default function LawyerRole({
                         <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 text-[13px]">
                           <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
                             <span className="text-slate-500 block text-[11px] font-bold">나이</span>
-                            <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '-'}</span>
+                            <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '-'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
                           </div>
                           <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
                             <span className="text-slate-500 block text-[11px] font-bold">가구원 수</span>
@@ -2069,7 +2069,7 @@ export default function LawyerRole({
 
                         {/* 인적사항 요약 패널 */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-blue-50/50 p-3 rounded-lg text-[13px] text-slate-500 border border-blue-100">
-                          <div>• 나이: <strong className="text-slate-700 font-semibold">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'}</strong></div>
+                          <div>• 나이/성별: <strong className="text-slate-700 font-semibold">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'} / {r.financialProfile.gender === 'male' ? '남성' : r.financialProfile.gender === 'female' ? '여성' : '미기재'}</strong></div>
                           <div>• 가구원 수: <strong className="text-slate-700 font-semibold">{r.financialProfile.dependents + 1}인 가구 (부양 {r.financialProfile.dependents}명)</strong></div>
                           <div>• 미성년 자녀: <strong className="text-slate-700 font-semibold">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '미기재'}</strong></div>
                           <div>• 혼인 상태: <strong className="text-slate-700 font-semibold">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</strong></div>
@@ -2352,7 +2352,7 @@ export default function LawyerRole({
                       <div className="flex justify-between"><span>의뢰인명:</span> <span className="font-bold text-white">{currentChatRequest.clientName}</span></div>
                       <div className="flex justify-between"><span>비상 연락처:</span> <span className="font-mono text-white">{getDisplayPhoneNumber(currentChatRequest)}</span></div>
                       {currentChatRequest.financialProfile.age && (
-                        <div className="flex justify-between"><span>나이:</span> <span className="text-white font-bold">{currentChatRequest.financialProfile.age}세</span></div>
+                        <div className="flex justify-between"><span>나이/성별:</span> <span className="text-white font-bold">{currentChatRequest.financialProfile.age}세 / {currentChatRequest.financialProfile.gender === 'male' ? '남성' : currentChatRequest.financialProfile.gender === 'female' ? '여성' : '미기재'}</span></div>
                       )}
                       <div className="flex justify-between"><span>월 소득계산:</span> <span className="font-bold text-brand">{currentChatRequest.financialProfile.income}만 원</span></div>
                       <div className="flex justify-between table-auto"><span>총 채무진단:</span> <span className="font-bold text-red-400">{currentChatRequest.financialProfile.debtTotal.toLocaleString()}만 원</span></div>
