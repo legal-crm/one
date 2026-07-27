@@ -953,6 +953,7 @@ export default function ClientRole({
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showLogoutSuccessModal, setShowLogoutSuccessModal] = useState<boolean>(false);
   const [showResetDiagnosisModal, setShowResetDiagnosisModal] = useState<boolean>(false);
+  const [chatModalTrigger, setChatModalTrigger] = useState<'fav' | 'no_fav' | null>(null);
 
   // 진단 시작 클릭 처리 (기존 데이터가 있을 경우 커스텀 팝업)
   const handleStartDiagnosisClick = () => {
@@ -1794,7 +1795,7 @@ export default function ClientRole({
     };
   };
 
-  const handleIntakeSubmit = (intakeData: IntakeData) => {
+  const handleIntakeSubmit = (intakeData: IntakeData, navigateToLawyers: boolean = true) => {
     if (!checkCooldown()) return;
     const result = calculateRehabPlan(intakeData, effectiveSettings);
     
@@ -2000,9 +2001,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       `정밀 자가진단 실행 (총 채무: ${formatKoreanCurrency(result.base.debtTotal)}, 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원)`
     );
 
-    // 변호사 선택 모드로 전환
+    // 변호사 선택 모드로 전환 (navigateToLawyers가 true일 때만 이동)
     setLawyerSelectionMode(true);
-    setActiveTab('lawyers');
+    if (navigateToLawyers) {
+      setActiveTab('lawyers');
+    }
   };
 
   const handleSendChat = () => {
@@ -3276,6 +3279,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias}
                   tempAlias={tempAlias} setTempAlias={setTempAlias}
                   lawyers={mockLawyers}
+                  initialModalTrigger={chatModalTrigger}
+                  onClearModalTrigger={() => setChatModalTrigger(null)}
                 />
               )
             )}
@@ -3300,14 +3305,16 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   onClose={() => {
                     if (pendingChatbotData) {
                       const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
-                      setPendingChatbotData(null); // Reset pending state
-                      handleIntakeSubmit(mappedData);
-                    } else {
-                      setActiveTab('landing');
+                      setPendingChatbotData(null);
+                      handleIntakeSubmit(mappedData, false);
                     }
+                    setActiveTab('landing');
                   }}
                   onComplete={(res, input) => {
                     setPendingChatbotData({ res, input });
+                    // 진단 완결 즉시 requests 및 localStorage에 자동 저장 (내 관리방 채무 현황 연동)
+                    const mappedData = mapChatbotDataToIntakeData(res, input);
+                    handleIntakeSubmit(mappedData, false);
                   }}
                   templateId="gradient"
                   themeMode="light"
@@ -3323,25 +3330,16 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   isLoggedIn={isLoggedIn}
                   onShowAuthModal={() => setShowAuthModal(true)}
                   onConsultation={() => {
-                    // 데이터 저장 (onClose와 동일)
-                    if (pendingChatbotData) {
-                      const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
-                      setPendingChatbotData(null);
-                      handleIntakeSubmit(mappedData);
-                      
-                      // handleIntakeSubmit이 lawyers 탭으로 이동시키므로,
-                      // 좋아요 변호사가 있으면 chat 탭으로 대신 이동 (무료상담 수임하기 플로우)
-                      const FAVORITES_KEY = 'lawyer_favorites';
-                      let favIds: string[] = [];
-                      try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
-                      if (favIds.length > 0) {
-                        // 좋아요 변호사 있음 → 내 관리방에서 수임하기 플로우 진행
-                        setTimeout(() => setActiveTab('chat'), 100);
-                      }
-                      // 좋아요 변호사 없음 → handleIntakeSubmit의 기본 동작(lawyers 탭)으로 이동
+                    // 좋아요 변호사 확인 (무료 상담 변호사 수임하기 플로우)
+                    const FAVORITES_KEY = 'lawyer_favorites';
+                    let favIds: string[] = [];
+                    try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
+                    if (favIds.length > 0) {
+                      setChatModalTrigger('fav');
                     } else {
-                      setActiveTab('landing');
+                      setChatModalTrigger('no_fav');
                     }
+                    setActiveTab('chat');
                   }}
                 />
               </div>

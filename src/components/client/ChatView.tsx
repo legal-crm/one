@@ -104,6 +104,8 @@ interface ChatViewProps {
   tempAlias: string;
   setTempAlias: (v: string) => void;
   lawyers?: UserType[];
+  initialModalTrigger?: 'fav' | 'no_fav' | null;
+  onClearModalTrigger?: () => void;
 }
 
 export default function ChatView({
@@ -120,7 +122,9 @@ export default function ChatView({
   setIsEditingAlias,
   tempAlias,
   setTempAlias,
-  lawyers = []
+  lawyers = [],
+  initialModalTrigger,
+  onClearModalTrigger
 }: ChatViewProps) {
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const [showProfilePanel, setShowProfilePanel] = useState<boolean>(false);
@@ -128,6 +132,18 @@ export default function ChatView({
   const [showPhoneConsultModal, setShowPhoneConsultModal] = useState<boolean>(false);
   const [showAppointModal, setShowAppointModal] = useState<boolean>(false);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
+
+  // 자동 모달 트리거 감지 (리포트 팝업 -> 내 전담 변호사 선택하기 클릭 시)
+  useEffect(() => {
+    if (initialModalTrigger === 'fav') {
+      setSelectedFavLawyers([]);
+      setShowFavLawyerModal(true);
+      if (onClearModalTrigger) onClearModalTrigger();
+    } else if (initialModalTrigger === 'no_fav') {
+      setShowNoFavoritesModal(true);
+      if (onClearModalTrigger) onClearModalTrigger();
+    }
+  }, [initialModalTrigger, onClearModalTrigger]);
   const [appointedLawyerId, setAppointedLawyerId] = useState<string | null>(null);
   const [showFavLawyerModal, setShowFavLawyerModal] = useState<boolean>(false);
   const [selectedFavLawyers, setSelectedFavLawyers] = useState<string[]>([]);
