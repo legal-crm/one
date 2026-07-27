@@ -257,13 +257,37 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         const hasPriority = (userInput.priorityDebt || 0) > 0;
 
         if (hasPriority) {
-            return { level: '매우 위급 (상)', color: '#EF4444', desc: '국세/세금 체납이 존재하여 즉시 재산 압류가 예상되는 위급 상태입니다.', bg: 'bg-red-500/10 text-red-400 border border-red-500/20' };
+            return { 
+                level: '매우 위급 (상)', 
+                color: '#EF4444', 
+                desc: '국세/세금 체납이 존재하여 즉시 재산 압류가 예상되는 위급 상태입니다.', 
+                bg: 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/40',
+                iconColor: 'text-red-500'
+            };
         } else if (hasRecentLoan) {
-            return { level: '위급 (중상)', color: '#F97316', desc: '최근 1년 이내 신규 대출 비율이 높아 금융사 집중 독촉이 우려되는 상태입니다.', bg: 'bg-orange-500/10 text-orange-400 border border-orange-500/20' };
+            return { 
+                level: '위급 (중상)', 
+                color: '#F97316', 
+                desc: '최근 1년 이내 신규 대출 비율이 높아 금융사 집중 독촉이 우려되는 상태입니다.', 
+                bg: 'bg-orange-50 text-orange-800 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/40',
+                iconColor: 'text-orange-500'
+            };
         } else if (hasSpeculative) {
-            return { level: '주의 (중)', color: '#F59E0B', desc: '주식/코인/사행성 손실 채무가 있어 법정 청산가치 소명이 필수적인 상태입니다.', bg: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' };
+            return { 
+                level: '주의 (중)', 
+                color: '#F59E0B', 
+                desc: '주식/코인/사행성 손실 채무가 있어 법정 청산가치 소명이 필수적인 상태입니다.', 
+                bg: 'bg-amber-50 text-amber-900 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40',
+                iconColor: 'text-amber-500'
+            };
         }
-        return { level: '보통 (하)', color: '#10B981', desc: '일반 신용 채무 상태로 가용소득 기반 조정 절차를 순차 진행하기에 적절합니다.', bg: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' };
+        return { 
+            level: '보통 (하)', 
+            color: '#10B981', 
+            desc: '일반 신용 채무 상태로 가용소득 기반 조정 절차를 순차 진행하기에 적절합니다.', 
+            bg: 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40',
+            iconColor: 'text-emerald-600 dark:text-emerald-400'
+        };
     }, [userInput]);
 
     // 3. 통화 포맷터 (만원 단위 변환 요약용)
@@ -393,10 +417,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 >
                                     {/* 위급성 경보 */}
                                     <div className={`p-4 rounded-xl flex items-start gap-3 ${urgency.bg}`}>
-                                        <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+                                        <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${urgency.iconColor}`} />
                                         <div>
-                                            <div className="text-xs font-bold">상담 시급성: {urgency.level}</div>
-                                            <div className="text-[13px] opacity-85 mt-0.5">{urgency.desc}</div>
+                                            <div className="text-xs font-extrabold">{`상담 시급성: ${urgency.level}`}</div>
+                                            <div className="text-[13px] font-medium mt-0.5 leading-snug">{urgency.desc}</div>
                                         </div>
                                     </div>
 
@@ -1373,16 +1397,23 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                             {/* 챗봇 리포트 원 의견 코멘트 */}
                             {activeReportTab !== 'checklist' && activeReportTab !== 'statistics' && activeReportTab !== 'simulation' && (result.aiAdvice.length > 0 || result.riskWarnings.length > 0) && (
-                                <div className="p-4 bg-slate-900/40 border border-slate-850 rounded-xl space-y-3">
-                                    <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                <div className="p-4 bg-indigo-50/70 dark:bg-slate-800/80 border border-indigo-100 dark:border-slate-700/80 rounded-xl space-y-3 shadow-xs">
+                                    <h4 className="text-xs font-extrabold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
                                         <Shield className="w-4 h-4 text-[#7264FF]" />
                                         AI 정밀 분석 핵심 소견
                                     </h4>
-                                    <div className="space-y-1.5">
-                                        {result.aiAdvice.slice(0, 3).map((advice, idx) => (
-                                            <p key={idx} className="text-xs text-slate-600 flex items-start gap-1.5">
-                                                <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
-                                                {advice}
+                                    <div className="space-y-2">
+                                        {result.aiAdvice.slice(0, 4).map((advice, idx) => (
+                                            <p key={idx} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                                <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                                                <span>
+                                                    {advice.split(/(\*\*.*?\*\*)/g).map((part, i) => {
+                                                        if (part.startsWith('**') && part.endsWith('**')) {
+                                                            return <strong key={i} className="font-extrabold text-slate-900 dark:text-white">{part.slice(2, -2)}</strong>;
+                                                        }
+                                                        return part;
+                                                    })}
+                                                </span>
                                             </p>
                                         ))}
                                     </div>
