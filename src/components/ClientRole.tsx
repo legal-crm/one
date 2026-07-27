@@ -2158,6 +2158,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     localStorage.removeItem('legal_crm_messages');
                     localStorage.removeItem('legal_crm_inquiries');
                     localStorage.removeItem('legal_crm_client_alias');
+                    localStorage.removeItem('lawyer_favorites');
+                    localStorage.removeItem('legal_crm_appointed_lawyer_id');
                     
                     // 메모리 상태 초기화
                     setRequests([]);
@@ -3215,6 +3217,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     localStorage.removeItem('legal_crm_messages');
                     localStorage.removeItem('legal_crm_inquiries');
                     localStorage.removeItem('legal_crm_client_alias');
+                    localStorage.removeItem('lawyer_favorites');
+                    localStorage.removeItem('legal_crm_appointed_lawyer_id');
                     
                     setRequests([]);
                     setMessages([]);
