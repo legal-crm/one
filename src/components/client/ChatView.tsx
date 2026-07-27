@@ -134,6 +134,7 @@ export default function ChatView({
   const [requestedLawyerIds, setRequestedLawyerIds] = useState<string[]>([]);
   const [cancelTargetLawyer, setCancelTargetLawyer] = useState<{id: string, name: string} | null>(null);
   const [showNoFavoritesModal, setShowNoFavoritesModal] = useState<boolean>(false);
+  const [showNeedCheckModal, setShowNeedCheckModal] = useState<boolean>(false);
 
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
@@ -422,6 +423,12 @@ export default function ChatView({
 
                 <button
                   onClick={() => {
+                    // 1. 내상황 체크 미완료 시 안내
+                    if (!activeResult) {
+                      setShowNeedCheckModal(true);
+                      return;
+                    }
+                    // 2. 좋아요 변호사 확인
                     const FAVORITES_KEY = 'lawyer_favorites';
                     let favIds: string[] = [];
                     try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
@@ -1057,6 +1064,66 @@ export default function ChatView({
               >
                 <Search className="w-3.5 h-3.5" />
                 변호사 찾기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 내상황 체크 필요 커스텀 모달 */}
+      {showNeedCheckModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setShowNeedCheckModal(false)}>
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 상단 그라데이션 헤더 */}
+            <div className="bg-gradient-to-r from-brand via-indigo-600 to-blue-600 p-5 text-center">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-white font-extrabold text-base">내 상황 체크가 필요해요</h3>
+            </div>
+
+            {/* 본문 */}
+            <div className="p-5 text-center space-y-3">
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                변호사에게 상담을 요청하려면<br />
+                먼저 <strong className="text-brand">내 상황 체크</strong>를 완료해 주세요.
+              </p>
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-left space-y-1.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-brand mt-0.5 flex-shrink-0" />
+                  <span>채무 현황 및 개인 상황 정보가 변호사에게 전달됩니다</span>
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-brand mt-0.5 flex-shrink-0" />
+                  <span>정확한 정보가 있어야 변호사도 실질적인 상담이 가능해요</span>
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-brand mt-0.5 flex-shrink-0" />
+                  <span>약 3분이면 간편하게 완료할 수 있어요</span>
+                </p>
+              </div>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div className="px-5 pb-5 flex gap-2.5">
+              <button
+                onClick={() => setShowNeedCheckModal(false)}
+                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                닫기
+              </button>
+              <button
+                onClick={() => {
+                  setShowNeedCheckModal(false);
+                  onSetActiveTab('request');
+                }}
+                className="flex-1 py-2.5 bg-brand hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                내 상황 체크하기
               </button>
             </div>
           </div>
