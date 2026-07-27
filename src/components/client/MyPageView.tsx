@@ -457,17 +457,7 @@ export default function MyPageView({
               </div>
 
               {/* 근무지/사업장 관할 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">근무회사 / 사업장명</label>
-                  <input 
-                    type="text" 
-                    value={profile.companyName || ''} 
-                    onChange={(e) => handleFieldChange('companyName', e.target.value)} 
-                    placeholder="(주)OOOO 또는 개인사업장"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">근무지역 / 사업장 주소</label>
                   <input 
