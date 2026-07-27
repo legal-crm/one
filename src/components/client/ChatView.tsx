@@ -290,51 +290,82 @@ export default function ChatView({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* 총 채무액 */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-              <div className="flex items-center gap-1.5 text-rose-500 mb-2">
-                <DollarSign className="w-4 h-4" />
-                <span className="text-xs font-semibold text-slate-500">총 채무액</span>
-              </div>
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
-                <CountUp end={totalDebt} suffix="만" />
+          {!activeResult ? (
+            /* 내상황 체크 미진행 시 CTA 배너 */
+            <div className="relative bg-gradient-to-br from-indigo-50 via-blue-50/60 to-violet-50/40 dark:from-indigo-950/30 dark:via-slate-800/40 dark:to-violet-950/20 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-900/40 overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 rounded-full -translate-y-8 translate-x-8"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-500/5 rounded-full translate-y-6 -translate-x-6"></div>
+              <div className="relative flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                <div className="flex-shrink-0 w-14 h-14 bg-white dark:bg-slate-800 rounded-2xl shadow-md flex items-center justify-center border border-indigo-100 dark:border-indigo-800">
+                  <ShieldCheck className="w-7 h-7 text-brand" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <h3 className="font-extrabold text-[15px] text-slate-900 dark:text-white">아직 내 상황 체크를 진행하지 않았어요</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">간단한 질문에 답하면 <strong className="text-brand">예상 감면율, 월 변제금, 인가 가능성</strong>을 바로 확인할 수 있어요.</p>
+                </div>
+                <button
+                  onClick={() => onSetActiveTab('request')}
+                  className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer"
+                >
+                  내 상황 체크하기
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
+          ) : (
+            /* 진단 결과 있을 때 통계 카드 */
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* 총 채무액 */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-rose-500 mb-2">
+                  <DollarSign className="w-4 h-4" />
+                  <span className="text-xs font-semibold text-slate-500">총 채무액</span>
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
+                  <CountUp end={totalDebt} suffix="만" />
+                </div>
+              </div>
 
-            {/* 월 변제금 */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-              <div className="flex items-center gap-1.5 text-emerald-500 mb-2">
-                <Percent className="w-4 h-4" />
-                <span className="text-xs font-semibold text-slate-500">예상 월 변제금</span>
+              {/* 월 변제금 */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-emerald-500 mb-2">
+                  <Percent className="w-4 h-4" />
+                  <span className="text-xs font-semibold text-slate-500">예상 월 변제금</span>
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
+                  <CountUp end={monthlyPayment} suffix="만" />
+                </div>
               </div>
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white truncate">
-                <CountUp end={monthlyPayment} suffix="만" />
-              </div>
-            </div>
 
-            {/* 예상 감면율 */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-              <div className="flex items-center gap-1.5 text-indigo-500 mb-2">
-                <TrendingDown className="w-4 h-4" />
-                <span className="text-xs font-semibold text-slate-500">예상 감면율</span>
+              {/* 예상 감면율 */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-indigo-500 mb-2">
+                  <TrendingDown className="w-4 h-4" />
+                  <span className="text-xs font-semibold text-slate-500">예상 감면율</span>
+                </div>
+                <div className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                  <CountUp end={reductionRate} suffix="%" />
+                </div>
               </div>
-              <div className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                <CountUp end={reductionRate} suffix="%" />
-              </div>
-            </div>
 
-            {/* 인가 가능성 */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-              <div className="flex items-center gap-1.5 text-brand mb-2">
-                <ShieldCheck className="w-4 h-4" />
-                <span className="text-xs font-semibold text-slate-500">인가 가능성</span>
-              </div>
-              <div className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white pt-1">
-                {activeResult?.status === 'infeasible' ? '불가' : '매우 높음'}
+              {/* 인가 가능성 */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-brand mb-2">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="text-xs font-semibold text-slate-500">인가 가능성</span>
+                </div>
+                <div className={`text-xl md:text-2xl font-bold pt-1 ${
+                  activeResult.status === 'POSSIBLE' ? 'text-emerald-600 dark:text-emerald-400' :
+                  activeResult.status === 'DIFFICULT' ? 'text-amber-600 dark:text-amber-400' :
+                  'text-red-600 dark:text-red-400'
+                }`}>
+                  {activeResult.status === 'POSSIBLE' ? '매우 높음' :
+                   activeResult.status === 'DIFFICULT' ? '보완 필요' :
+                   '불가'}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* =========================================================================
