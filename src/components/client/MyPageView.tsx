@@ -552,7 +552,7 @@ export default function MyPageView({
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
               <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">2. 가족 구성</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">결혼 상태</label>
                   <select
@@ -560,46 +560,40 @@ export default function MyPageView({
                     onChange={(e) => handleFieldChange('maritalStatus', e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
                   >
-                    <option value="SINGLE">미혼 (1인가구 기준)</option>
-                    <option value="MARRIED">기혼 (부부 자산 공동산정 기준)</option>
-                    <option value="DIVORCED">이혼 (양육/양육비 공제 기준)</option>
+                    <option value="SINGLE">미혼</option>
+                    <option value="MARRIED">기혼</option>
+                    <option value="DIVORCED">이혼</option>
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">미성년 자녀 수 (명)</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">만 19세 미만 자녀 수 (명)</label>
                   <input 
                     type="number" 
                     value={profile.minorChildren || 0} 
-                    onChange={(e) => handleFieldChange('minorChildren', Math.max(0, Number(e.target.value)))} 
+                    onChange={(e) => {
+                      const minor = Math.max(0, Number(e.target.value));
+                      handleFieldChange('minorChildren', minor);
+                      const other = profile.otherDependents || 0;
+                      handleFieldChange('dependents', minor + other);
+                    }} 
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">나를 제외하고 실제로 부양하는 가족 수 (명)</label>
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                  {[0, 0.5, 1, 1.5, 2, 2.5, 3].map(num => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => handleFieldChange('dependents', num)}
-                      className={`py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                        profile.dependents === num
-                        ? 'bg-brand border-brand text-white shadow-md'
-                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850'
-                      }`}
-                    >
-                      {num}명 ({num + 1}인)
-                    </button>
-                  ))}
+                <div className="space-y-1">
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">기타 부양가족 수 (명)</label>
+                  <input 
+                    type="number" 
+                    value={profile.otherDependents !== undefined ? profile.otherDependents : (profile.dependents ? Math.max(0, profile.dependents - (profile.minorChildren || 0)) : 0)} 
+                    onChange={(e) => {
+                      const other = Math.max(0, Number(e.target.value));
+                      handleFieldChange('otherDependents', other);
+                      handleFieldChange('dependents', (profile.minorChildren || 0) + other);
+                    }} 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+                  />
                 </div>
-                {profile.dependents !== undefined && activeResult && (
-                  <span className="text-[12px] text-brand block mt-1">
-                    💡 부양가족 {profile.dependents}명 ➡️ 본인 포함 {profile.dependents + 1}인 가구로 인정되어 2026 기준 최저 생계비 {formatCurrency(activeResult.baseLivingCost)}이 자동 공제됩니다.
-                  </span>
-                )}
               </div>
 
               {/* 기혼 시 배우자 소득 */}
