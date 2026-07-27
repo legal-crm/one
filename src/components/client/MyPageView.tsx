@@ -668,7 +668,7 @@ export default function MyPageView({
                         if (!profile.rentalDeposit) handleFieldChange('rentalDeposit', 10000);
                         handleFieldChange('rentCost', 0);
                         handleFieldChange('housingContractHolder', profile.housingContractHolder || 'self');
-                      } else if (val === 'owned') {
+                      } else if (val === 'owned' || val === 'dormitory') {
                         handleFieldChange('rentalDeposit', 0);
                         handleFieldChange('rentCost', 0);
                       }
@@ -679,6 +679,7 @@ export default function MyPageView({
                     <option value="jeonse">전세 (보증금만)</option>
                     <option value="owned">자가 (본인 소유)</option>
                     <option value="free">무상 거주 (보증금 없음)</option>
+                    <option value="dormitory">기숙사 / 사택</option>
                   </select>
                 </div>
 

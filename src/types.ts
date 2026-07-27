@@ -61,7 +61,7 @@ export interface FinancialProfile {
   clientName?: string;      // 고객명
   clientPhone?: string;     // 연락처
   housingContractHolder?: 'self' | 'spouse' | 'others'; // 주택 계약 명의자
-  housingType?: 'rent' | 'jeonse' | 'owned' | 'free'; // 거주 형태
+  housingType?: 'rent' | 'jeonse' | 'owned' | 'free' | 'dormitory'; // 거주 형태
   clientNote?: string;     // 의뢰인 추가 메모/특이사항 (변호사에게만 표시)
   clientNotes?: string[];   // 의뢰인 전달 사항 다중 메모 리스트
 }
@@ -840,7 +840,7 @@ export interface IntakeData {
   feeInstallments?: number;
   feeStartDate?: string;
   feeLoanInfo?: FeeLoanInfo;
-  housingType?: 'rent' | 'jeonse' | 'owned' | 'free'; // 거주 형태
+  housingType?: 'rent' | 'jeonse' | 'owned' | 'free' | 'dormitory'; // 거주 형태
   housingContractHolder?: 'self' | 'spouse' | 'others'; // 계약 명의자
   depositLoan?: number; // 보증금 대출금 (원 단위)
 }

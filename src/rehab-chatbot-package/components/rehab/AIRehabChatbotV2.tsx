@@ -1938,7 +1938,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '🏠 월세', value: 'rent' },
                         { label: '🏢 전세', value: 'jeonse' },
                         { label: '🏡 자가(내 집)', value: 'owned' },
-                        { label: '👨‍👩‍👧 무상거주(친가 등)', value: 'free' }
+                        { label: '👨‍👩‍👧 무상거주(친가 등)', value: 'free' },
+                        { label: '🏬 기숙사/사택', value: 'dormitory' }
                     ],
                     'buttons'
                 );
@@ -1957,14 +1958,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         { label: '🏠 월세', value: 'rent' },
                         { label: '🏢 전세', value: 'jeonse' },
                         { label: '🏡 자가(내 집)', value: 'owned' },
-                        { label: '👨‍👩‍👧 무상거주(친가 등)', value: 'free' }
+                        { label: '👨‍👩‍👧 무상거주(친가 등)', value: 'free' },
+                        { label: '🏬 기숙사/사택', value: 'dormitory' }
                     ],
                     'buttons'
                 );
                 break;
 
             case 'housing_type':
-                const housingType = value as 'rent' | 'jeonse' | 'owned' | 'free';
+                const housingType = value as 'rent' | 'jeonse' | 'owned' | 'free' | 'dormitory';
                 setUserInput(prev => ({ ...prev, housingType }));
 
                 if (housingType === 'rent') {

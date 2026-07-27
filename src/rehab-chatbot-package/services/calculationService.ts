@@ -51,7 +51,7 @@ export interface RehabUserInput {
     childSupportPaid?: number;     // 양육비 지급액
 
     // 주거 정보
-    housingType?: 'rent' | 'jeonse' | 'owned' | 'free'; // 거주 형태
+    housingType?: 'rent' | 'jeonse' | 'owned' | 'free' | 'dormitory'; // 거주 형태
     rentCost?: number;         // 월세
     deposit: number;           // 보증금/전세금
     depositLoan?: number;      // 보증금 대출금
