@@ -818,7 +818,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, address: addressVal }));
                 goToStep('age');
                 addBotMessage(
-                    '만 나이가 어떻게 되시나요?\n\n(모르시면 태어난 연도를 입력해주셔도 돼요. 예: 1990)',
+                    '태어난 연도를 입력해 주세요.\n\n(예: 1990)',
                     undefined,
                     'number'
                 );
