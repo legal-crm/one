@@ -133,6 +133,7 @@ export default function ChatView({
   const [selectedFavLawyers, setSelectedFavLawyers] = useState<string[]>([]);
   const [requestedLawyerIds, setRequestedLawyerIds] = useState<string[]>([]);
   const [cancelTargetLawyer, setCancelTargetLawyer] = useState<{id: string, name: string} | null>(null);
+  const [showNoFavoritesModal, setShowNoFavoritesModal] = useState<boolean>(false);
 
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
@@ -428,8 +429,7 @@ export default function ChatView({
                       setSelectedFavLawyers([]);
                       setShowFavLawyerModal(true);
                     } else {
-                      alert('먼저 마음에 드는 변호사를 ♥ 좋아요 해 주세요!\n변호사 찾기 페이지로 이동합니다.');
-                      onSetActiveTab('lawyers');
+                      setShowNoFavoritesModal(true);
                     }
                   }}
                   className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-3 rounded-xl text-sm transition-all shadow-md shadow-brand/20 cursor-pointer active:scale-[0.97]"
@@ -1013,6 +1013,55 @@ export default function ChatView({
           </div>
         );
       })()}
+
+      {/* 좋아요 변호사 없음 커스텀 모달 */}
+      {showNoFavoritesModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setShowNoFavoritesModal(false)}>
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 상단 그라데이션 헤더 */}
+            <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-brand p-5 text-center">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3">
+                <Heart className="w-7 h-7 text-white" fill="white" />
+              </div>
+              <h3 className="text-white font-extrabold text-base">좋아요한 변호사가 없어요</h3>
+            </div>
+
+            {/* 본문 */}
+            <div className="p-5 text-center space-y-3">
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                먼저 <strong className="text-brand">변호사 찾기</strong> 페이지에서<br />
+                마음에 드는 변호사를 <span className="text-rose-500 font-bold">♥ 좋아요</span> 해 주세요!
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                좋아요한 변호사 중 최대 3명에게 무료 상담을 요청할 수 있어요.
+              </p>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div className="px-5 pb-5 flex gap-2.5">
+              <button
+                onClick={() => setShowNoFavoritesModal(false)}
+                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                닫기
+              </button>
+              <button
+                onClick={() => {
+                  setShowNoFavoritesModal(false);
+                  onSetActiveTab('lawyers');
+                }}
+                className="flex-1 py-2.5 bg-brand hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Search className="w-3.5 h-3.5" />
+                변호사 찾기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </>
   );
