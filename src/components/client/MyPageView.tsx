@@ -416,29 +416,9 @@ export default function MyPageView({
             
             {/* 0. 기본 인적 사항 & 관할 법원 */}
             <div className="space-y-3.5">
-              <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 기본 인적 사항 및 거주/관할 법원</h4>
+              <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 연령 및 거주/관할 법원 설정</h4>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">이름</label>
-                  <input 
-                    type="text" 
-                    value={profile.clientName || ''} 
-                    onChange={(e) => handleFieldChange('clientName', e.target.value)} 
-                    placeholder="홍길동"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">연락처</label>
-                  <input 
-                    type="tel" 
-                    value={profile.clientPhone || ''} 
-                    onChange={(e) => handleFieldChange('clientPhone', e.target.value)} 
-                    placeholder="010-1234-5678"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                  />
-                </div>
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">나이 (만)</label>
                   <input 
@@ -448,9 +428,6 @@ export default function MyPageView({
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">거주지역 / 주소</label>
                   <input 
