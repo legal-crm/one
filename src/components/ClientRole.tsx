@@ -2448,36 +2448,36 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         {/* ── Hero Card: 카드론·리볼빙 연체 ── */}
                         <div
                           onClick={() => handleCategoryClick(heroItem.id)}
-                          className="col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F2440] via-[#1E3A5F] to-[#162D4A] border border-slate-600/30 p-5 md:p-7 cursor-pointer card-hero-depth hover:-translate-y-0.5 transition-all duration-500"
+                          className="lg:col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F2440] via-[#1E3A5F] to-[#162D4A] border border-slate-600/30 p-3.5 md:p-7 cursor-pointer card-hero-depth hover:-translate-y-0.5 transition-all duration-500"
                         >
                           {/* 배경 글로우 */}
                           <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/[0.07] rounded-full blur-3xl pointer-events-none" />
                           <div className="absolute bottom-0 left-8 w-28 h-28 bg-indigo-400/[0.05] rounded-full blur-2xl pointer-events-none" />
 
-                          <div className="relative z-10 flex items-start justify-between gap-4">
-                            <div className="space-y-2.5 md:space-y-3 flex-1">
+                          <div className="relative z-10 flex items-start justify-between gap-2 md:gap-4">
+                            <div className="space-y-1.5 md:space-y-3 flex-1 min-w-0">
                               {/* 뱃지 라인 */}
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="inline-flex items-center gap-1.5 bg-red-500/15 border border-red-500/25 text-red-300 text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                                <span className="inline-flex items-center gap-1 md:gap-1.5 bg-red-500/15 border border-red-500/25 text-red-300 text-[9px] md:text-[11px] font-bold px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-lg">
                                   <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                                   가장 많은 상담
                                 </span>
-                                <span className="text-slate-500 text-[10px] md:text-[11px] font-medium">사례 {caseCounts[0]}건+</span>
+                                <span className="text-slate-500 text-[9px] md:text-[11px] font-medium hidden md:inline">사례 {caseCounts[0]}건+</span>
                               </div>
                               {/* 제목 */}
-                              <h4 className="text-base md:text-xl font-bold text-white leading-snug">{heroItem.title}</h4>
-                              <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-sm">
+                              <h4 className="text-[13px] md:text-xl font-bold text-white leading-snug">{heroItem.title}</h4>
+                              <p className="hidden md:block text-sm text-slate-400 leading-relaxed max-w-sm">
                                 {heroItem.subtitle}
                               </p>
                               {/* CTA */}
-                              <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-white/50 group-hover:text-white/90 transition-colors pt-1">
+                              <div className="hidden md:flex items-center gap-2 text-sm font-semibold text-white/50 group-hover:text-white/90 transition-colors pt-1">
                                 <span>관리 방향 확인하기</span>
                                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                               </div>
                             </div>
                             {/* 아이콘 */}
-                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-red-500/15 transition-all duration-300">
-                              {renderRemedyIcon(heroItem.iconName, 'w-6 h-6 md:w-7 md:h-7 text-red-400 stroke-[1.5]')}
+                            <div className="w-9 h-9 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-red-500/15 transition-all duration-300">
+                              {renderRemedyIcon(heroItem.iconName, 'w-4 h-4 md:w-7 md:h-7 text-red-400 stroke-[1.5]')}
                             </div>
                           </div>
                         </div>
@@ -2490,23 +2490,23 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <div
                               key={item.id}
                               onClick={() => handleCategoryClick(item.id)}
-                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col"
+                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 md:p-5 flex flex-col"
                             >
                               <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
                               <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
                               <div className="relative z-10 flex flex-col h-full">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
-                                    {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                                <div className="flex items-start justify-between mb-2 md:mb-3">
+                                  <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+                                    {renderRemedyIcon(item.iconName, `w-4 h-4 md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
                                   </div>
                                   <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                  <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
+                                <div className="flex-1 space-y-0.5 md:space-y-1">
+                                  <h5 className="font-bold text-[13px] md:text-base text-[#0f172a] dark:text-slate-100 leading-snug">{item.title}</h5>
                                   <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
                                 </div>
-                                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                                  <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
+                                <div className="flex items-center gap-1.5 mt-2 md:mt-3 pt-2 md:pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                                  <span className={`text-[9px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-1.5 md:px-2 py-0.5 rounded-md`}>
                                     사례 {caseCounts[1]}건+
                                   </span>
                                   <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
