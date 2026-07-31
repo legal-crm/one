@@ -2655,7 +2655,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             })()}
 
             {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
-            <section className="w-full py-10 md:py-14 bg-white border-b border-slate-200">
+            <section className="w-full py-6 md:py-14 bg-white border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
             <div className="space-y-6 text-center">
@@ -2668,7 +2668,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </p>
               </div>
 
-              <div className="flex flex-wrap justify-center gap-5 text-left">
+              <div className="flex flex-wrap justify-center gap-2.5 md:gap-5 text-left">
                 {([
                   {
                     type: 'rehab' as SolutionType,
@@ -2731,27 +2731,27 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     desc: '체납된 세금의 유효 기간(소멸시효)이 만료되었는지 확인하고, 최저 생계비 이하 재산의 부당한 압류를 풀어 일상 복귀를 도와드립니다.'
                   }
                 ]).map((item, idx) => (
-                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className={`cursor-pointer bg-white dark:bg-slate-900 border ${item.borderColor} rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]`}>
+                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className={`cursor-pointer bg-white dark:bg-slate-900 border ${item.borderColor} rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden w-[calc(50%-6px)] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]`}>
                     {/* Accent top strip */}
                     <div className={`h-1 w-full bg-gradient-to-r ${item.accentColor}`} />
-                    <div className="p-5 md:p-6 flex flex-col justify-between flex-1 space-y-4">
-                      <div className="space-y-3">
+                    <div className="p-3 md:p-6 flex flex-col justify-between flex-1 space-y-2 md:space-y-4">
+                      <div className="space-y-1.5 md:space-y-3">
                         {/* Icon + Title row */}
-                        <div className="flex items-center gap-3">
-                          <div className={`w-11 h-11 rounded-xl ${item.iconBg} flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className={`w-8 h-8 md:w-11 md:h-11 rounded-lg md:rounded-xl ${item.iconBg} flex items-center justify-center text-base md:text-xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
                             <span className="drop-shadow-sm">{item.icon}</span>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-base text-slate-900 dark:text-white">{item.title}</h4>
-                            <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-[13px] md:text-base text-slate-900 dark:text-white">{item.title}</h4>
+                            <span className={`text-[9px] md:text-[12px] font-bold px-1.5 md:px-2 py-0.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>
                           </div>
                         </div>
                         {/* Target audience */}
-                        <p className="text-sm text-[#3B82F6] font-semibold">{item.sub}</p>
-                        {/* Description */}
-                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                        <p className="text-[11px] md:text-sm text-[#3B82F6] font-semibold leading-snug">{item.sub}</p>
+                        {/* Description - desktop only */}
+                        <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                       </div>
-                      <span className="text-[13px] font-bold text-[#1E3A5F]/50 group-hover:text-[#1E3A5F] transition-colors flex items-center gap-1.5 pt-1">
+                      <span className="hidden md:flex text-[13px] font-bold text-[#1E3A5F]/50 group-hover:text-[#1E3A5F] transition-colors items-center gap-1.5 pt-1">
                         자세히 보기
                         <span className="transition-transform group-hover:translate-x-1">→</span>
                       </span>
