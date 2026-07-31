@@ -2573,36 +2573,36 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
               return (
                 <section
-                  className="w-full py-6 md:py-10 bg-[#F8FAFC] border-y border-slate-200"
+                  className="w-full py-4 md:py-8 bg-[#F8FAFC] border-y border-slate-200"
                   onMouseEnter={() => setShowcaseHovered(true)}
                   onMouseLeave={() => setShowcaseHovered(false)}
                 >
                   <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-col md:flex-row items-stretch min-h-[200px] md:min-h-[240px]">
+                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-row items-stretch h-[140px] md:h-[180px]">
                       
                       {/* Left: Text Info & CTA */}
-                      <div className="flex-1 p-5 md:p-8 lg:p-10 flex flex-col justify-center relative z-20">
-                        <div className="mb-2 md:mb-3">
-                          <span className="inline-block bg-white/10 text-white/80 text-[9px] md:text-[10px] font-bold px-2 py-0.5 md:py-1 rounded-sm uppercase tracking-wider mb-2">
+                      <div className="flex-1 p-4 md:p-7 lg:p-8 flex flex-col justify-center relative z-20 min-w-0">
+                        <div className="mb-1 md:mb-2">
+                          <span className="inline-block bg-white/10 text-white/80 text-[8px] md:text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded-sm uppercase tracking-wider mb-1 md:mb-2">
                             프리미엄 광고
                           </span>
-                          <h3 className="text-lg md:text-2xl font-bold text-white mb-1 md:mb-2 leading-tight">
+                          <h3 className="text-sm md:text-xl font-bold text-white mb-0.5 md:mb-1 leading-tight truncate">
                             {banner.title}
                           </h3>
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <span className="text-base md:text-xl font-black text-white">{banner.lawyerName}</span>
-                            <span className="text-xs md:text-sm text-slate-300 font-medium">{banner.subtitle}</span>
+                          <div className="flex items-center gap-1.5 md:gap-2">
+                            <span className="text-xs md:text-lg font-black text-white">{banner.lawyerName}</span>
+                            <span className="text-[10px] md:text-sm text-slate-300 font-medium truncate">{banner.subtitle}</span>
                           </div>
                         </div>
                         
-                        <p className="text-sm md:text-base text-slate-300/90 font-light italic mb-4 md:mb-6 border-l-3 md:border-l-4 border-amber-500 pl-3 md:pl-4 break-keep">
+                        <p className="hidden md:block text-sm text-slate-300/90 font-light italic mb-4 border-l-3 border-amber-500 pl-3 break-keep">
                           "{banner.tagline}"
                         </p>
                         
                         <div>
                           <button
                             onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
-                            className="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-5 md:px-8 py-2.5 md:py-3 rounded-lg text-xs md:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-3 md:px-6 py-1.5 md:py-2.5 rounded-md md:rounded-lg text-[10px] md:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer"
                           >
                             <span>프로필 보기 →</span>
                           </button>
@@ -2610,9 +2610,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       </div>
 
                       {/* Right: Avatar */}
-                      <div className="relative w-full md:w-[220px] lg:w-[260px] h-44 md:h-auto overflow-hidden shrink-0">
+                      <div className="relative w-[120px] md:w-[200px] lg:w-[240px] overflow-hidden shrink-0">
                         {/* Background subtle gradient for image */}
-                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-l from-[#2B3E50] via-[#2B3E50]/60 to-transparent z-10" />
+                        <div className="absolute inset-0 bg-gradient-to-l from-[#2B3E50]/20 via-[#2B3E50]/50 to-transparent z-10" />
                         <img
                           src={banner.lawyerAvatar}
                           alt={banner.lawyerName}
@@ -2621,22 +2621,22 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       </div>
                       
                       {/* Navigation Overlays */}
-                      <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 flex items-center gap-3 z-20">
+                      <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 flex items-center gap-2 md:gap-3 z-20">
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => setShowcasePage((prev) => (prev === 0 ? totalPages - 1 : prev - 1))}
-                            className="w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
+                            className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
                           >
-                            <ChevronLeft className="w-5 h-5" />
+                            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                           </button>
                           <button
                             onClick={() => setShowcasePage((prev) => (prev + 1) % totalPages)}
-                            className="w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
+                            className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
                           >
-                            <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                           </button>
                         </div>
-                        <div className="bg-black/40 px-3 py-1.5 rounded-full text-[11px] font-medium text-white/90 backdrop-blur-sm border border-white/10">
+                        <div className="bg-black/40 px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[11px] font-medium text-white/90 backdrop-blur-sm border border-white/10">
                           {showcasePage + 1} / {totalPages}
                         </div>
                       </div>
