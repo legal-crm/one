@@ -893,12 +893,6 @@ export default function ClientRole({
   const [showcaseHovered, setShowcaseHovered] = useState(false);
   const [shuffledShowcaseAds] = useState(() => [...adBanners].filter(b => b.isActive !== false).sort(() => Math.random() - 0.5));
 
-  // Mobile Carousel States
-  const [carouselActiveRow2, setCarouselActiveRow2] = useState(0);
-  const [carouselActiveRow3, setCarouselActiveRow3] = useState(0);
-  const carouselRow2Ref = useRef<HTMLDivElement>(null);
-  const carouselRow3Ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (showcaseHovered || shuffledShowcaseAds.length === 0) return;
     const cardsPerPage = 3;
@@ -2447,17 +2441,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   const standardItems = items.slice(1); // idx 1~7 (bank_loan ~ tax_delinquency)
                   const caseCounts = [127, 89, 156, 73, 94, 61, 112, 48];
 
-                  // Mobile carousel scroll handler
-                  const handleCarouselScroll = (ref: React.RefObject<HTMLDivElement | null>, setter: (n: number) => void) => {
-                    const el = ref.current;
-                    if (!el) return;
-                    const scrollLeft = el.scrollLeft;
-                    const cardWidth = el.firstElementChild?.getBoundingClientRect().width || 1;
-                    const gap = 12;
-                    const idx = Math.round(scrollLeft / (cardWidth + gap));
-                    setter(idx);
-                  };
-
                   return (
                     <div className="card-stagger space-y-3 md:space-y-4">
                       {/* Row 1: Hero (2col) + Standard (1col) */}
@@ -2534,118 +2517,40 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         })()}
                       </div>
 
-                      {/* Row 2: 3개 표준 카드 (대부업, 연대보증, 주식코인) — 모바일: 수평 캐러셀 */}
-                      <div>
-                        <div
-                          ref={carouselRow2Ref}
-                          onScroll={() => handleCarouselScroll(carouselRow2Ref, setCarouselActiveRow2)}
-                          className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-1 md:mx-0 md:px-0 md:pb-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible"
-                        >
-                          {standardItems.slice(1, 4).map((item, idx) => {
-                            const cs = colorMap[item.themeColor] || colorMap.indigo;
-                            const caseCount = caseCounts[idx + 2];
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => handleCategoryClick(item.id)}
-                                className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col snap-center shrink-0 w-[72vw] md:w-auto md:shrink"
-                              >
-                                <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
-                                <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
-                                <div className="relative z-10 flex flex-col h-full">
-                                  <div className="flex items-start justify-between mb-3">
-                                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
-                                      {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
-                                    </div>
-                                    <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
+                      {/* Row 2+3: 6개 표준 카드 — 모바일: 컴팩트 2열 그리드 / 데스크톱: 3열 그리드 */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4">
+                        {standardItems.slice(1, 7).map((item, idx) => {
+                          const cs = colorMap[item.themeColor] || colorMap.indigo;
+                          const caseCount = caseCounts[idx + 2];
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => handleCategoryClick(item.id)}
+                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 md:p-5 flex flex-col"
+                            >
+                              <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
+                              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
+                              <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex items-start justify-between mb-2 md:mb-3">
+                                  <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+                                    {renderRemedyIcon(item.iconName, `w-4 h-4 md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
                                   </div>
-                                  <div className="flex-1 space-y-1">
-                                    <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                                    <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
-                                      사례 {caseCount}건+
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
-                                  </div>
+                                  <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
+                                </div>
+                                <div className="flex-1 space-y-0.5 md:space-y-1">
+                                  <h5 className="font-bold text-[13px] md:text-base text-[#0f172a] dark:text-slate-100 leading-snug">{item.title}</h5>
+                                  <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-2 md:mt-3 pt-2 md:pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                                  <span className={`text-[9px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-1.5 md:px-2 py-0.5 rounded-md`}>
+                                    사례 {caseCount}건+
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                        {/* 모바일 도트 인디케이터 */}
-                        <div className="flex justify-center gap-1.5 mt-2.5 md:hidden">
-                          {[0, 1, 2].map(i => (
-                            <button
-                              key={i}
-                              className={`h-1.5 rounded-full transition-all duration-300 ${carouselActiveRow2 === i ? 'w-5 bg-[#3B82F6]' : 'w-1.5 bg-slate-300 dark:bg-slate-600'}`}
-                              onClick={() => {
-                                const el = carouselRow2Ref.current;
-                                if (!el || !el.firstElementChild) return;
-                                const cardW = el.firstElementChild.getBoundingClientRect().width + 12;
-                                el.scrollTo({ left: cardW * i, behavior: 'smooth' });
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Row 3: 3개 표준 카드 (일용직, 급여압류, 세금체납) — 모바일: 수평 캐러셀 */}
-                      <div>
-                        <div
-                          ref={carouselRow3Ref}
-                          onScroll={() => handleCarouselScroll(carouselRow3Ref, setCarouselActiveRow3)}
-                          className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-1 md:mx-0 md:px-0 md:pb-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible"
-                        >
-                          {standardItems.slice(4, 7).map((item, idx) => {
-                            const cs = colorMap[item.themeColor] || colorMap.indigo;
-                            const caseCount = caseCounts[idx + 5];
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => handleCategoryClick(item.id)}
-                                className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col snap-center shrink-0 w-[72vw] md:w-auto md:shrink"
-                              >
-                                <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
-                                <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
-                                <div className="relative z-10 flex flex-col h-full">
-                                  <div className="flex items-start justify-between mb-3">
-                                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
-                                      {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
-                                    </div>
-                                    <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
-                                  </div>
-                                  <div className="flex-1 space-y-1">
-                                    <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                                    <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
-                                      사례 {caseCount}건+
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {/* 모바일 도트 인디케이터 */}
-                        <div className="flex justify-center gap-1.5 mt-2.5 md:hidden">
-                          {[0, 1, 2].map(i => (
-                            <button
-                              key={i}
-                              className={`h-1.5 rounded-full transition-all duration-300 ${carouselActiveRow3 === i ? 'w-5 bg-[#3B82F6]' : 'w-1.5 bg-slate-300 dark:bg-slate-600'}`}
-                              onClick={() => {
-                                const el = carouselRow3Ref.current;
-                                if (!el || !el.firstElementChild) return;
-                                const cardW = el.firstElementChild.getBoundingClientRect().width + 12;
-                                el.scrollTo({ left: cardW * i, behavior: 'smooth' });
-                              }}
-                            />
-                          ))}
-                        </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
