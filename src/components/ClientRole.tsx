@@ -2578,7 +2578,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   onMouseLeave={() => setShowcaseHovered(false)}
                 >
                   <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-row items-stretch h-[140px] md:h-[180px]">
+                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-row items-stretch h-[140px] md:h-[220px]">
                       
                       {/* Left: Text Info & CTA */}
                       <div className="flex-1 p-4 md:p-7 lg:p-8 flex flex-col justify-center relative z-20 min-w-0">
