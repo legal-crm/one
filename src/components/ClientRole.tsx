@@ -264,34 +264,7 @@ const remedyData: Record<string, RemedyInfo> = {
       content: '채권자동에 의한 예금 통장 압류 및 직장 급여 가압류 결정문이 송달되었습니다. 당장 가계 생계비 지출이 불가능해, 개인회생 접수와 함께 중지/금지명령을 통해 압류를 해제하고 생업을 유지하고 싶습니다.'
     }
   },
-  bankruptcy: {
-    id: 'bankruptcy',
-    title: '개인회생/파산 검토',
-    subtitle: '관리 방향: 무직·고령·질병 면책 전액 탕감 자격 판정',
-    remedyTitle: '법적 자격 심사 후 빚 100% 일시 탕감 및 신용 정보 기록 전면 면책 청구',
-    remedyDesc: '만 60세 이상의 고령자, 중증 장애 혹은 중증 질병으로 근로 활동을 아예 수행할 수 없어 최저생계비 이하로 거주하는 상태라면, 매달 나눠 갚는 개인회생 대신 채무 전액을 일시에 지워버리는 개인파산 및 면책을 청구하는 것이 최고의 솔루션입니다.',
-    guideTitle: '개인회생 vs 개인파산 선택 가이드라인',
-    guideDesc: '파산 면책은 청산할 보유 재산이 빚보다 적고 장래 소득 발생 능력이 없음이 객관적으로 입증되어야 인용됩니다. 무조건적인 파산 신청은 채무 면책 기각을 불러와 막대한 비용 손실만 낳을 수 있으므로 법적 자격 진단이 절대적으로 우선되어야 합니다. 재산 목록과 과거 사업 폐업 내역서를 정밀 세무 검토하여 단 1원도 갚지 않는 전액 파산 면책 판결을 완성합니다.',
-    iconName: 'Scale',
-    badgeText: '원금 이자 100% 전액 탕감',
-    themeColor: 'indigo',
-    preset: {
-      jobType: 'DAILY',
-      debtCause: 'OTHER',
-      harassmentLevel: 'LETTER',
-      creditorCount: 3,
-      debtBanks: 4000,
-      debtCards: 0,
-      debtPersonals: 3500,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 7500,
-      income: 80,
-      assetsTotal: 100,
-      title: '고령/폐업 자영업자 개인파산 및 면책 신청',
-      content: '질병 및 건강 악화, 혹은 사업 실패로 인해 앞으로 전혀 소득 활동을 할 수 없는 상황입니다. 보유 재산보다 빚이 훨씬 많아 더 이상 생계 및 상환을 지속할 수 없기에 개인파산을 통한 전액 면책을 희망합니다.'
-    }
-  },
+
   tax_delinquency: {
     id: 'tax_delinquency',
     title: '세금 체납',
@@ -302,7 +275,7 @@ const remedyData: Record<string, RemedyInfo> = {
     guideDesc: '세금 체납은 개인회생 신청 시 일반 신용채무와 달리 "우선권 있는 채권"으로 처리되어 변제기간 내 전액 납부를 요구하거나 기각을 내리며, 파산 시에도 "비면책 채권"에 해당하여 면책이 안 됩니다. 따라서 국세/지방세 해결의 실무 핵심은 징수행위의 적법성과 소멸시효가 실제로 중단되었는지 여부를 분석하는 것입니다. 전담 법률 대리인을 통해 국세청 유권해석에 기반한 계좌 압류 해제 및 소멸시효 권리 구제 절차를 밟아야 해결할 수 있습니다.',
     iconName: 'Scale',
     badgeText: '세금 소멸시효/압류 검토',
-    themeColor: 'amber',
+    themeColor: 'slate',
     preset: {
       jobType: 'FREELANCER',
       debtCause: 'BUSINESS',
@@ -919,6 +892,12 @@ export default function ClientRole({
   const [showcasePage, setShowcasePage] = useState(0);
   const [showcaseHovered, setShowcaseHovered] = useState(false);
   const [shuffledShowcaseAds] = useState(() => [...adBanners].filter(b => b.isActive !== false).sort(() => Math.random() - 0.5));
+
+  // Mobile Carousel States
+  const [carouselActiveRow2, setCarouselActiveRow2] = useState(0);
+  const [carouselActiveRow3, setCarouselActiveRow3] = useState(0);
+  const carouselRow2Ref = useRef<HTMLDivElement>(null);
+  const carouselRow3Ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (showcaseHovered || shuffledShowcaseAds.length === 0) return;
@@ -2450,7 +2429,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 {/* 벤토 비대칭 카드 그리드 */}
                 {(() => {
                   const items = Object.values(remedyData);
-                  const caseCounts = [127, 89, 156, 73, 94, 61, 112, 143, 48];
                   
                   const colorMap: Record<string, { iconBg: string; iconBorder: string; iconText: string; gradBar: string; hoverGlow: string; badgeBg: string; badgeText: string }> = {
                     red:     { iconBg: 'from-red-50 to-rose-100/80', iconBorder: 'border-red-200/50', iconText: 'text-red-500', gradBar: 'from-red-400 via-rose-400 to-red-300', hoverGlow: 'group-hover:bg-red-100/40', badgeBg: 'bg-red-50 border-red-100/60', badgeText: 'text-red-500' },
@@ -2460,14 +2438,25 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     orange:  { iconBg: 'from-orange-50 to-amber-100/80', iconBorder: 'border-orange-200/50', iconText: 'text-orange-500', gradBar: 'from-orange-400 via-amber-400 to-orange-300', hoverGlow: 'group-hover:bg-orange-100/40', badgeBg: 'bg-orange-50 border-orange-100/60', badgeText: 'text-orange-500' },
                     emerald: { iconBg: 'from-emerald-50 to-teal-100/80', iconBorder: 'border-emerald-200/50', iconText: 'text-emerald-500', gradBar: 'from-emerald-400 via-teal-400 to-emerald-300', hoverGlow: 'group-hover:bg-emerald-100/40', badgeBg: 'bg-emerald-50 border-emerald-100/60', badgeText: 'text-emerald-500' },
                     rose:    { iconBg: 'from-rose-50 to-pink-100/80', iconBorder: 'border-rose-200/50', iconText: 'text-rose-500', gradBar: 'from-rose-400 via-pink-400 to-rose-300', hoverGlow: 'group-hover:bg-rose-100/40', badgeBg: 'bg-rose-50 border-rose-100/60', badgeText: 'text-rose-500' },
+                    slate:   { iconBg: 'from-slate-100 to-slate-200/80', iconBorder: 'border-slate-300/50', iconText: 'text-slate-600', gradBar: 'from-slate-500 via-slate-400 to-slate-300', hoverGlow: 'group-hover:bg-slate-200/40', badgeBg: 'bg-slate-100 border-slate-200/60', badgeText: 'text-slate-600' },
                   };
 
-                  // Hero = card_loan (idx 0), Banner = tax_delinquency (idx 8)
+                  // Hero = card_loan (idx 0)
                   const heroItem = items[0];
                   const heroCs = colorMap[heroItem.themeColor] || colorMap.indigo;
-                  const bannerItem = items[8]; // tax_delinquency
-                  const bannerCs = colorMap[bannerItem.themeColor] || colorMap.amber;
-                  const standardItems = items.slice(1, 8); // idx 1~7
+                  const standardItems = items.slice(1); // idx 1~7 (bank_loan ~ tax_delinquency)
+                  const caseCounts = [127, 89, 156, 73, 94, 61, 112, 48];
+
+                  // Mobile carousel scroll handler
+                  const handleCarouselScroll = (ref: React.RefObject<HTMLDivElement | null>, setter: (n: number) => void) => {
+                    const el = ref.current;
+                    if (!el) return;
+                    const scrollLeft = el.scrollLeft;
+                    const cardWidth = el.firstElementChild?.getBoundingClientRect().width || 1;
+                    const gap = 12;
+                    const idx = Math.round(scrollLeft / (cardWidth + gap));
+                    setter(idx);
+                  };
 
                   return (
                     <div className="card-stagger space-y-3 md:space-y-4">
@@ -2545,99 +2534,117 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         })()}
                       </div>
 
-                      {/* Row 2: 3개 표준 카드 (대부업, 연대보증, 주식코인) */}
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                        {standardItems.slice(1, 4).map((item, idx) => {
-                          const cs = colorMap[item.themeColor] || colorMap.indigo;
-                          const caseCount = caseCounts[idx + 2];
-                          return (
-                            <div
-                              key={item.id}
-                              onClick={() => handleCategoryClick(item.id)}
-                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col"
-                            >
-                              <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
-                              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
-                              <div className="relative z-10 flex flex-col h-full">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
-                                    {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                      {/* Row 2: 3개 표준 카드 (대부업, 연대보증, 주식코인) — 모바일: 수평 캐러셀 */}
+                      <div>
+                        <div
+                          ref={carouselRow2Ref}
+                          onScroll={() => handleCarouselScroll(carouselRow2Ref, setCarouselActiveRow2)}
+                          className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-1 md:mx-0 md:px-0 md:pb-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible"
+                        >
+                          {standardItems.slice(1, 4).map((item, idx) => {
+                            const cs = colorMap[item.themeColor] || colorMap.indigo;
+                            const caseCount = caseCounts[idx + 2];
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => handleCategoryClick(item.id)}
+                                className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col snap-center shrink-0 w-[72vw] md:w-auto md:shrink"
+                              >
+                                <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
+                                <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
+                                <div className="relative z-10 flex flex-col h-full">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+                                      {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                                    </div>
+                                    <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
                                   </div>
-                                  <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                  <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
-                                  <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
-                                </div>
-                                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                                  <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
-                                    사례 {caseCount}건+
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
+                                  <div className="flex-1 space-y-1">
+                                    <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                                    <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
+                                      사례 {caseCount}건+
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+                        {/* 모바일 도트 인디케이터 */}
+                        <div className="flex justify-center gap-1.5 mt-2.5 md:hidden">
+                          {[0, 1, 2].map(i => (
+                            <button
+                              key={i}
+                              className={`h-1.5 rounded-full transition-all duration-300 ${carouselActiveRow2 === i ? 'w-5 bg-[#3B82F6]' : 'w-1.5 bg-slate-300 dark:bg-slate-600'}`}
+                              onClick={() => {
+                                const el = carouselRow2Ref.current;
+                                if (!el || !el.firstElementChild) return;
+                                const cardW = el.firstElementChild.getBoundingClientRect().width + 12;
+                                el.scrollTo({ left: cardW * i, behavior: 'smooth' });
+                              }}
+                            />
+                          ))}
+                        </div>
                       </div>
 
-                      {/* Row 3: 3개 표준 카드 (일용직, 급여압류, 개인회생/파산) */}
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                        {standardItems.slice(4, 7).map((item, idx) => {
-                          const cs = colorMap[item.themeColor] || colorMap.indigo;
-                          const caseCount = caseCounts[idx + 5];
-                          return (
-                            <div
-                              key={item.id}
-                              onClick={() => handleCategoryClick(item.id)}
-                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col"
-                            >
-                              <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
-                              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
-                              <div className="relative z-10 flex flex-col h-full">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
-                                    {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                      {/* Row 3: 3개 표준 카드 (일용직, 급여압류, 세금체납) — 모바일: 수평 캐러셀 */}
+                      <div>
+                        <div
+                          ref={carouselRow3Ref}
+                          onScroll={() => handleCarouselScroll(carouselRow3Ref, setCarouselActiveRow3)}
+                          className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-1 md:mx-0 md:px-0 md:pb-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible"
+                        >
+                          {standardItems.slice(4, 7).map((item, idx) => {
+                            const cs = colorMap[item.themeColor] || colorMap.indigo;
+                            const caseCount = caseCounts[idx + 5];
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => handleCategoryClick(item.id)}
+                                className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-4 md:p-5 flex flex-col snap-center shrink-0 w-[72vw] md:w-auto md:shrink"
+                              >
+                                <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
+                                <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
+                                <div className="relative z-10 flex flex-col h-full">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${cs.iconBg} border ${cs.iconBorder} flex items-center justify-center group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+                                      {renderRemedyIcon(item.iconName, `w-[18px] h-[18px] md:w-5 md:h-5 ${cs.iconText} stroke-[1.75]`)}
+                                    </div>
+                                    <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
                                   </div>
-                                  <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all duration-300" />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                  <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
-                                  <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
-                                </div>
-                                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                                  <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
-                                    사례 {caseCount}건+
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
+                                  <div className="flex-1 space-y-1">
+                                    <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{item.title}</h5>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                                    <span className={`text-[10px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-2 py-0.5 rounded-md`}>
+                                      사례 {caseCount}건+
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Row 4: 세금 체납 풀 와이드 배너 카드 */}
-                      <div
-                        onClick={() => handleCategoryClick(bannerItem.id)}
-                        className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-50/80 via-white to-amber-50/60 dark:from-amber-950/20 dark:via-slate-900 dark:to-amber-950/10 border border-amber-200/60 dark:border-amber-800/30 p-4 md:p-5 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700/50 card-depth hover:-translate-y-0.5 transition-all duration-300"
-                      >
-                        <div className={`accent-bar-reveal bg-gradient-to-r ${bannerCs.gradBar} rounded-t-xl`} />
-                        <div className="relative z-10 flex items-center gap-3 md:gap-4">
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100/80 border border-amber-200/60 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
-                            {renderRemedyIcon(bannerItem.iconName, 'w-5 h-5 md:w-6 md:h-6 text-amber-600 stroke-[1.75]')}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h5 className="font-bold text-sm md:text-base text-[#0f172a] dark:text-slate-100">{bannerItem.title}</h5>
-                              <span className="text-[9px] md:text-[10px] bg-amber-500 text-white font-bold px-1.5 md:px-2 py-0.5 rounded-md shrink-0">중요</span>
-                              <span className="hidden md:inline text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-100/80 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 px-2 py-0.5 rounded-md">소멸시효 긴급 검토</span>
-                            </div>
-                            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5 line-clamp-1">
-                              {bannerItem.subtitle} · 사례 {caseCounts[8]}건+
-                            </p>
-                          </div>
-                          <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-slate-300 dark:text-slate-600 group-hover:text-amber-500 group-hover:translate-x-1 transition-all duration-300 shrink-0" />
+                            );
+                          })}
+                        </div>
+                        {/* 모바일 도트 인디케이터 */}
+                        <div className="flex justify-center gap-1.5 mt-2.5 md:hidden">
+                          {[0, 1, 2].map(i => (
+                            <button
+                              key={i}
+                              className={`h-1.5 rounded-full transition-all duration-300 ${carouselActiveRow3 === i ? 'w-5 bg-[#3B82F6]' : 'w-1.5 bg-slate-300 dark:bg-slate-600'}`}
+                              onClick={() => {
+                                const el = carouselRow3Ref.current;
+                                if (!el || !el.firstElementChild) return;
+                                const cardW = el.firstElementChild.getBoundingClientRect().width + 12;
+                                el.scrollTo({ left: cardW * i, behavior: 'smooth' });
+                              }}
+                            />
+                          ))}
                         </div>
                       </div>
                     </div>
