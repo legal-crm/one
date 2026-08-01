@@ -3414,7 +3414,11 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({
                         ...prev,
                         priorityDebt: taxAmount,
-                        totalDebt: totalDebt
+                        totalDebt: totalDebt,
+                        debtTypeAmounts: {
+                            ...updatedValues,
+                            ...(prev.creditCardDebt && prev.creditCardDebt > 0 ? { credit_card: prev.creditCardDebt } : {}),
+                        },
                     }));
 
                     goToStep('debt_confirm');

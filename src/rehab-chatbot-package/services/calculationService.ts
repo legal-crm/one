@@ -91,6 +91,7 @@ export interface RehabUserInput {
 
     // ── 업그레이드 필드 (V2.1) ──
     debtTypes?: string[];              // 채무 유형별 분류 (bank, capital, savings_bank, private 등)
+    debtTypeAmounts?: Record<string, number>; // 채무 유형별 금액 맵 (bank: 30000000 등)
     legalActions?: string[];           // 현재 법적 조치 상황 (collection_call, court_order, seizure 등)
     monthlyFixedExpenses?: number;     // 월 고정 지출 합계 (통신비, 보험료, 교통비 등)
     retirementPensionType?: 'pension' | 'none' | 'unknown'; // 퇴직연금 가입 유형
@@ -170,6 +171,7 @@ export interface RehabCalculationResult {
     legalActionGuide?: LegalActionGuide[];  // 법적 조치 대응 가이드
     monthlyBudgetBefore?: BudgetItem[];     // 회생 전 월 가계
     monthlyBudgetAfter?: BudgetItem[];      // 회생 후 월 가계
+    currentMonthlyBurden: number;           // 현재 월 부담 (이자 반영, 36개월 원리금균등상환 기준)
 }
 
 // ── 업그레이드 인터페이스 (V2.1) ──
@@ -785,6 +787,7 @@ export function calculateRepayment(
         legalActionGuide,
         monthlyBudgetBefore,
         monthlyBudgetAfter,
+        currentMonthlyBurden: calculateCurrentMonthlyBurden(input),
     };
 }
 
@@ -827,6 +830,73 @@ export function formatTenThousandWon(amount: number): string {
 // ══════════════════════════════════════════════════════════════
 // V2.1 업그레이드 — 보고서 데이터 빌더 함수
 // ══════════════════════════════════════════════════════════════
+
+// 채무 유형별 연이율 (은행 1금융권 8%, 카드론/캐피탈/대부업 15%, 세금/가족 0%)
+const DEBT_TYPE_ANNUAL_RATE: Record<string, number> = {
+    bank: 0.08,           // 은행 (1금융권) — 8%
+    capital: 0.15,        // 카드사/캐피탈 — 15%
+    savings_bank: 0.15,   // 저축은행/대부업 — 15%
+    credit_card: 0.15,    // 신용카드 (카드론) — 15%
+    app_loan: 0.15,       // 기타 대출 — 15%
+    private: 0,           // 가족/지인 — 무이자
+    guarantee: 0,         // 보증채무 — 무이자
+    tax: 0,               // 세금 — 무이자
+    general: 0.15,        // 유형 미분류 — 보수적 15%
+};
+
+/**
+ * 원리금 균등상환 월 상환액 계산
+ * M = P × r(1+r)^n / ((1+r)^n - 1)
+ * 이자율 0%일 때는 P / n 단순 나누기
+ */
+function calculateMonthlyWithInterest(principal: number, annualRate: number, months: number): number {
+    if (principal <= 0 || months <= 0) return 0;
+    if (annualRate <= 0) return principal / months;
+    const r = annualRate / 12; // 월 이자율
+    const factor = Math.pow(1 + r, months);
+    return principal * (r * factor) / (factor - 1);
+}
+
+/**
+ * 현재 월 부담 계산 (이자율 반영, 36개월 원리금균등상환 기준)
+ * debtTypeAmounts가 있으면 유형별로 이자 적용, 없으면 총채무에 보수적 15% 적용
+ */
+function calculateCurrentMonthlyBurden(input: RehabUserInput): number {
+    const months = 36;
+
+    // 유형별 금액이 있는 경우: 각 유형에 맞는 이자율 적용 후 합산
+    if (input.debtTypeAmounts && Object.keys(input.debtTypeAmounts).length > 0) {
+        let totalMonthly = 0;
+        let coveredAmount = 0;
+
+        for (const [type, amount] of Object.entries(input.debtTypeAmounts)) {
+            if (amount <= 0) continue;
+            const rate = DEBT_TYPE_ANNUAL_RATE[type] ?? 0.15; // 미지정 유형은 보수적 15%
+            totalMonthly += calculateMonthlyWithInterest(amount, rate, months);
+            coveredAmount += amount;
+        }
+
+        // 신용카드 채무가 debtTypeAmounts에 포함되지 않았을 경우 별도 추가
+        if (input.creditCardDebt && input.creditCardDebt > 0) {
+            const creditCardInAmounts = input.debtTypeAmounts['credit_card'] || 0;
+            if (creditCardInAmounts <= 0) {
+                totalMonthly += calculateMonthlyWithInterest(input.creditCardDebt, 0.15, months);
+                coveredAmount += input.creditCardDebt;
+            }
+        }
+
+        // 남은 미분류 채무 (totalDebt에서 커버된 금액을 뺀 차이)
+        const remainingDebt = Math.max(0, (input.totalDebt || 0) - coveredAmount);
+        if (remainingDebt > 0) {
+            totalMonthly += calculateMonthlyWithInterest(remainingDebt, 0.15, months);
+        }
+
+        return Math.round(totalMonthly);
+    }
+
+    // 유형별 금액이 없는 경우: 총채무에 보수적 15% 이자 적용
+    return Math.round(calculateMonthlyWithInterest(input.totalDebt || 0, 0.15, months));
+}
 
 const DEBT_TYPE_CONFIG: Record<string, { label: string; color: string; riskLevel: 'high' | 'medium' | 'low' }> = {
     bank: { label: '은행 대출', color: '#3B82F6', riskLevel: 'low' },
@@ -1064,9 +1134,9 @@ function buildMonthlyBudgetBefore(input: RehabUserInput): BudgetItem[] {
     const items: BudgetItem[] = [];
     items.push({ label: '월 소득', amount: input.monthlyIncome, type: 'income' });
 
-    // 현재 채무 상환 부담 (총채무를 36개월로 나눈 가정치)
-    const currentMonthlyDebtBurden = Math.round(input.totalDebt / 36);
-    items.push({ label: '현재 빚 상환 부담 (36개월 기준)', amount: -currentMonthlyDebtBurden, type: 'expense', highlight: true });
+    // 현재 채무 상환 부담 (이자율 반영, 36개월 원리금균등상환 기준)
+    const currentMonthlyDebtBurden = calculateCurrentMonthlyBurden(input);
+    items.push({ label: '현재 빚 상환 부담 (36개월·이자 포함)', amount: -currentMonthlyDebtBurden, type: 'expense', highlight: true });
 
     if (input.rentCost && input.rentCost > 0) {
         items.push({ label: '월세', amount: -input.rentCost, type: 'expense' });

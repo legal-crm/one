@@ -576,8 +576,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         <div className="space-y-3">
                                             <div>
                                                 <div className="flex justify-between text-xs font-medium mb-1">
-                                                    <span className="text-slate-500 dark:text-slate-400">현재 월 부담 (36개월 기준)</span>
-                                                    <span className="text-red-600 dark:text-red-400 font-extrabold">{formatCurrency(Math.round(userInput.totalDebt / 36))}</span>
+                                                    <span className="text-slate-500 dark:text-slate-400">현재 월 부담 (36개월·이자 포함)</span>
+                                                    <span className="text-red-600 dark:text-red-400 font-extrabold">{formatCurrency(result.currentMonthlyBurden)}</span>
                                                 </div>
                                                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 overflow-hidden">
                                                     <motion.div
@@ -596,7 +596,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 overflow-hidden">
                                                     <motion.div
                                                         initial={{ width: 0 }}
-                                                        animate={{ width: `${Math.min(100, Math.round((result.monthlyPayment / Math.max(1, userInput.totalDebt / 36)) * 100))}%` }}
+                                                        animate={{ width: `${Math.min(100, Math.round((result.monthlyPayment / Math.max(1, result.currentMonthlyBurden)) * 100))}%` }}
                                                         transition={{ duration: 0.8, delay: 0.5 }}
                                                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
                                                     />
@@ -606,7 +606,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg text-center">
                                                     <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">월 절약액</div>
                                                     <div className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                                        {formatCurrency(Math.max(0, Math.round(userInput.totalDebt / 36) - result.monthlyPayment))}
+                                                        {formatCurrency(Math.max(0, result.currentMonthlyBurden - result.monthlyPayment))}
                                                     </div>
                                                 </div>
                                                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg text-center">
@@ -1375,7 +1375,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                         <div className="text-[12px] text-slate-500 mb-1">{result.repaymentMonths}개월 후 잔여 채무</div>
                                         <div className="text-lg font-bold text-[#7264FF]">전액 면책 🎉</div>
                                         <div className="text-[13px] text-slate-500 mt-1">
-                                            총 {formatCurrency(result.totalDebtReduction)} 탕감 · 월 {formatCurrency(Math.max(0, Math.round(userInput.totalDebt / 36) - result.monthlyPayment))} 절약
+                                            총 {formatCurrency(result.totalDebtReduction)} 탕감 · 월 {formatCurrency(Math.max(0, result.currentMonthlyBurden - result.monthlyPayment))} 절약
                                         </div>
                                     </div>
 
