@@ -946,6 +946,10 @@ export default function ChatView({
         let favIds: string[] = [];
         try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
         const favLawyers = lawyers.filter(l => favIds.includes(l.id));
+        
+        // 현재 활성 요청 중인 변호사 수 (취소된 건 제외)
+        const activeRequestedCount = requestedLawyerIds.length;
+        const remainingSlots = Math.max(0, 3 - activeRequestedCount);
 
         return (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -958,7 +962,11 @@ export default function ChatView({
                     <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
                     좋아요 변호사 선택
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">최대 3명을 선택하여 무료 상담을 요청하세요</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {activeRequestedCount > 0 
+                      ? `현재 ${activeRequestedCount}명 상담 대기 중 · 추가 ${remainingSlots}명 선택 가능`
+                      : '최대 3명을 선택하여 무료 상담을 요청하세요'}
+                  </p>
                 </div>
                 <button onClick={() => setShowFavLawyerModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer">
                   <X className="w-5 h-5 text-slate-400" />
@@ -980,29 +988,42 @@ export default function ChatView({
                   </div>
                 ) : (
                   favLawyers.map(lawyer => {
+                    const isAlreadyRequested = requestedLawyerIds.includes(lawyer.id);
                     const isSelected = selectedFavLawyers.includes(lawyer.id);
+                    const isDisabled = isAlreadyRequested || (!isSelected && selectedFavLawyers.length >= remainingSlots);
+                    
                     return (
                       <button
                         key={lawyer.id}
                         type="button"
                         onClick={() => {
+                          if (isAlreadyRequested) return; // 이미 요청 중인 변호사는 클릭 불가
                           setSelectedFavLawyers(prev => {
                             if (prev.includes(lawyer.id)) return prev.filter(x => x !== lawyer.id);
-                            if (prev.length >= 3) { alert('최대 3명까지만 선택 가능합니다.'); return prev; }
+                            if (prev.length >= remainingSlots) { 
+                              alert(`현재 ${activeRequestedCount}명이 대기 중이므로 추가 ${remainingSlots}명까지만 선택 가능합니다.`); 
+                              return prev; 
+                            }
                             return [...prev, lawyer.id];
                           });
                         }}
-                        className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left cursor-pointer ${
-                          isSelected
-                            ? 'border-brand bg-brand/5 shadow-md shadow-brand/10'
-                            : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-slate-300'
+                        disabled={isDisabled && !isSelected}
+                        className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                          isAlreadyRequested
+                            ? 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 opacity-80 cursor-not-allowed'
+                            : isSelected
+                            ? 'border-brand bg-brand/5 shadow-md shadow-brand/10 cursor-pointer'
+                            : isDisabled
+                            ? 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 opacity-50 cursor-not-allowed'
+                            : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-slate-300 cursor-pointer'
                         }`}
                       >
-                        {/* Checkbox */}
+                        {/* Checkbox / Status */}
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                          isAlreadyRequested ? 'bg-amber-400 border-amber-400' :
                           isSelected ? 'bg-brand border-brand' : 'border-slate-300 dark:border-slate-600'
                         }`}>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                          {isAlreadyRequested ? <Clock className="w-3.5 h-3.5 text-white" /> : isSelected && <Check className="w-3.5 h-3.5 text-white" />}
                         </div>
 
                         {/* Avatar */}
@@ -1014,17 +1035,24 @@ export default function ChatView({
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-slate-900 dark:text-white text-sm">{lawyer.name} 변호사</div>
-                          <div className="text-xs text-slate-500 truncate">{lawyer.firmName || '개인 변호사'} · {lawyer.region}</div>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {lawyer.fields.slice(0, 2).map((f, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-[10px] font-bold text-slate-600 dark:text-slate-300">{f}</span>
-                            ))}
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-900 dark:text-white">{lawyer.name} 변호사</span>
+                            {isAlreadyRequested && (
+                              <span className="px-2 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-bold border border-amber-200">상담 대기중</span>
+                            )}
                           </div>
+                          <p className="text-xs text-slate-400 truncate">{lawyer.firmName || '개인'} 변호사 · {lawyer.region}</p>
+                          {lawyer.fields && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(lawyer.fields || []).slice(0, 2).map((s, i) => (
+                                <span key={i} className="text-[10px] px-1.5 py-0.5 bg-brand/10 text-brand rounded font-medium">{s}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Heart */}
-                        <Heart className="w-4 h-4 text-rose-500 fill-rose-500 shrink-0" />
+                        {/* Fav Icon */}
+                        <Heart className="w-5 h-5 text-rose-400 fill-rose-400 shrink-0" />
                       </button>
                     );
                   })

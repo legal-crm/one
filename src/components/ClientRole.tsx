@@ -845,13 +845,47 @@ export default function ClientRole({
 
   // 의뢰인이 변호사 선택 완료 시 호출
   const handleConfirmLawyerSelection = (lawyerIds: string[]) => {
+    // 기존 활성 상담 요청이 있는지 확인
+    const existingRequest = requests.find(r => 
+      r.status === 'requested' || r.status === 'responding'
+    );
+
+    if (existingRequest) {
+      // 기존 요청에 변호사 병합
+      const existingIds = existingRequest.selectedLawyerIds || [];
+      const mergedIds = [...new Set([...existingIds, ...lawyerIds])].slice(0, 3); // 최대 3명
+      const newlyAdded = lawyerIds.filter(id => !existingIds.includes(id));
+
+      setRequests(prev => prev.map(r => 
+        r.id === existingRequest.id
+          ? { ...r, selectedLawyerIds: mergedIds, maxParticipants: mergedIds.length }
+          : r
+      ));
+      setActiveChatReqId(existingRequest.id);
+      setLawyerSelectionMode(false);
+      setPendingNewRequest(null);
+
+      if (newlyAdded.length > 0) {
+        const newNames = newlyAdded.map(id => mockLawyers.find(x => x.id === id)?.name).filter(Boolean);
+        onAddMessage(
+          existingRequest.id,
+          `${newNames.join(', ')} 변호사님에게 추가 상담 요청이 전달되었습니다.`,
+          'lawyer', 'system', '시스템 안내'
+        );
+      }
+
+      setActiveTab('chat');
+      return;
+    }
+
+    // 새 요청 생성
     if (!pendingNewRequest) return;
     const finalRequest = {
       ...pendingNewRequest,
       requestType: 'direct_multi' as const,
-      selectedLawyerIds: lawyerIds,
+      selectedLawyerIds: lawyerIds.slice(0, 3),
       proposals: [],
-      maxParticipants: lawyerIds.length,
+      maxParticipants: Math.min(lawyerIds.length, 3),
     };
     setRequests(prev => [finalRequest, ...prev]);
     setActiveChatReqId(finalRequest.id);
