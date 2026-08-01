@@ -2191,7 +2191,15 @@ export default function LawyerRole({
                   );
                 })}
 
-              {requests.filter(r => (r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id) && (r.status === 'requested' || r.status === 'responding')).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).length === 0 && (
+              {requests.filter(r => {
+                  const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+                  const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+                    const targetLawyer = lawyers.find(l => l.id === id);
+                    return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+                  });
+                  const openMatch = r.requestType === 'open';
+                  return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
+                }).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).length === 0 && (
                 <div className="bg-slate-50 p-12 text-center rounded-xl border border-slate-200 text-slate-600 text-xs">
                   현재 즉시 대응할 신규 상담 신청 건이 존재하지 않습니다.
                 </div>
