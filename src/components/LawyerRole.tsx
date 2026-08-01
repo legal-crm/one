@@ -858,14 +858,13 @@ export default function LawyerRole({
     if (!req) return;
 
     const totalReduction = Math.round(req.financialProfile.debtTotal * proposalForm.reductionRate / 100);
-    const firmNames = ['법무법인 한빛', '하늘 법률사무소', '법무법인 해원', '법무법인 정의'];
 
     const newProposal = {
       id: `prop-${Date.now()}`,
       lawyerId: activeLawyer.id,
       lawyerName: activeLawyer.name,
-      lawyerAvatar: activeLawyer.avatar,
-      firmName: firmNames[Math.floor(Math.random() * firmNames.length)],
+      lawyerAvatar: activeLawyer.avatar || activeLawyer.avatarData,
+      firmName: activeLawyer.firmName || '개인 변호사',
       feasibility: proposalForm.feasibility,
       monthlyPayment: proposalForm.monthlyPayment,
       duration: proposalForm.duration,

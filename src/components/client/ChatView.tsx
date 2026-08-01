@@ -555,12 +555,15 @@ export default function ChatView({
                         if (currentRequest) {
                           onSetRequests(prev => prev.map(r => 
                             r.id === currentRequest.id 
-                              ? { ...r, status: 'counseling', selectedLawyerId: bid.lawyerId } 
+                              ? { ...r, status: 'counseling' as const, selectedLawyerId: bid.lawyerId } 
                               : r
                           ));
+                          // 전담 변호사 저장
+                          localStorage.setItem('legal_crm_appointed_lawyer_id', bid.lawyerId);
+                          setAppointedLawyerId(bid.lawyerId);
                           onAddMessage(
                             currentRequest.id,
-                            `${bid.lawyerName}의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
+                            `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
                             'lawyer', 'system', '시스템 안내'
                           );
                         }
