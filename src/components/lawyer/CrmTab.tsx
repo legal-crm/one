@@ -158,6 +158,15 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   // ── 필터링 + 정렬 + 페이지네이션 ──
   const filteredRequests = useMemo(() => {
     let result = requests.filter(r => {
+      // 현재 변호사에게 관련된 요청만 표시
+      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+      const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+        const targetLawyer = lawyers.find(l => l.id === id);
+        return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+      });
+      const openMatch = r.requestType === 'open';
+      if (!directMatch && !sameFirmMatch && !openMatch) return false;
+
       const matchSearch = 
         r.clientName.toLowerCase().includes(search.toLowerCase()) ||
         r.phone.includes(search);
@@ -202,7 +211,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     });
 
     return result;
-  }, [requests, search, statusFilter, assigneeFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff]);
+  }, [requests, search, statusFilter, assigneeFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff, activeLawyer, lawyers]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / perPage));
   const pagedRequests = filteredRequests.slice((page - 1) * perPage, page * perPage);
