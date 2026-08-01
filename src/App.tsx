@@ -111,9 +111,30 @@ export default function App() {
     setCurrentRole('client');
   };
 
-  // Core application states
-  const [requests, setRequests] = useState<ConsultRequest[]>([]);
-  const [messages, setMessages] = useState<ConsultMessage[]>([]);
+  // Core application states - lazy initializer로 localStorage에서 즉시 로드 (레이스 컨디션 방지)
+  const isInitializedRef = React.useRef(false);
+  const [requests, setRequests] = useState<ConsultRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem('legal_crm_requests');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((r: any) => 
+          r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3'
+        );
+      }
+    } catch {}
+    return [];
+  });
+  const [messages, setMessages] = useState<ConsultMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem('legal_crm_messages');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3');
+      }
+    } catch {}
+    return [];
+  });
   const [cases, setCases] = useState<Case[]>([]);
   const [lawyers, setLawyers] = useState<LawyerType[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -200,42 +221,12 @@ export default function App() {
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
-    const savedRequests = localStorage.getItem('legal_crm_requests');
-    const savedMessages = localStorage.getItem('legal_crm_messages');
     const savedCases = localStorage.getItem('legal_crm_cases');
     const savedLawyers = localStorage.getItem('legal_crm_lawyers');
     const savedMembers = localStorage.getItem('legal_crm_members');
     const savedLogs = localStorage.getItem('legal_crm_activity_logs');
 
-    if (savedRequests) {
-      try {
-        const parsed = JSON.parse(savedRequests);
-        // 보안: 익명(client-temp) 중 상담 요청을 보내지 않은 진단만 건은 제외
-        const filtered = parsed.filter((r: any) => 
-          r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3' &&
-          (r.clientId !== 'client-temp' || 
-           (r.selectedLawyerIds && r.selectedLawyerIds.length > 0) ||
-           r.status === 'requested' || r.status === 'responding' || r.status === 'counseling')
-        );
-        setRequests(filtered);
-      } catch {
-        setRequests([]);
-      }
-    } else {
-      setRequests([]);
-    }
-
-    if (savedMessages) {
-      try {
-        const parsed = JSON.parse(savedMessages);
-        const filtered = parsed.filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3');
-        setMessages(filtered);
-      } catch {
-        setMessages([]);
-      }
-    } else {
-      setMessages([]);
-    }
+    // requests와 messages는 lazy initializer에서 이미 로드됨
 
     if (savedCases) {
       setCases(JSON.parse(savedCases));
@@ -271,18 +262,19 @@ export default function App() {
     }
   }, []);
 
-  // Sync state to localStorage whenever it updates
+  // 초기화 완료 마킹
   useEffect(() => {
-    // 보안: client-temp(익명) 중 상담 요청을 보내지 않은 건만 제외
-    const persistableRequests = requests.filter((r: any) => 
-      r.clientId !== 'client-temp' || 
-      (r.selectedLawyerIds && r.selectedLawyerIds.length > 0) ||
-      r.status === 'requested' || r.status === 'responding' || r.status === 'counseling'
-    );
-    localStorage.setItem('legal_crm_requests', JSON.stringify(persistableRequests));
+    isInitializedRef.current = true;
+  }, []);
+
+  // Sync state to localStorage whenever it updates (초기화 후에만)
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    localStorage.setItem('legal_crm_requests', JSON.stringify(requests));
   }, [requests]);
 
   useEffect(() => {
+    if (!isInitializedRef.current) return;
     localStorage.setItem('legal_crm_messages', JSON.stringify(messages));
   }, [messages]);
 

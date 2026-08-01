@@ -109,9 +109,18 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     });
   }, [activeLawyer.id, activeLawyer.name]);
 
-  // ── ConsultRequest 상태 → CRM 확장 데이터 자동 동기화 ──
+  // ── ConsultRequest 상태 → CRM 확장 데이터 자동 동기화 (현재 변호사 관련 요청만) ──
   useEffect(() => {
     requests.forEach(r => {
+      // 현재 변호사에게 관련된 요청만 동기화
+      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+      const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+        const targetLawyer = lawyers.find(l => l.id === id);
+        return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+      });
+      const openMatch = r.requestType === 'open';
+      if (!directMatch && !sameFirmMatch && !openMatch) return;
+
       if (r.status === 'cancelled') {
         const ext = crmData[r.id] || createDefaultCrmExtension(r.id);
         if (ext.crmStatus !== 'cancelled') {
