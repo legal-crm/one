@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, Heart, ChevronRight, CheckCircle2, MapPin, Paperclip } from 'lucide-react';
+import { AlertTriangle, Heart, ChevronRight, CheckCircle2, MapPin, Paperclip, Search, X } from 'lucide-react';
 import type { User } from '../../types';
 import LawyerProfileModal from './LawyerProfileModal';
 
@@ -129,13 +129,25 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       )}
       {/* Filter & Search Bar */}
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl shadow-premium border border-slate-100 dark:border-slate-800">
-        <input
-          type="text"
-          placeholder="특정 변호사 명칭 또는 전문 키워드 검색..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none font-bold"
-        />
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="특정 변호사 명칭 또는 전문 키워드 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none font-bold"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              aria-label="검색어 지우기"
+            >
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── 상단 노출 광고 (상품 3) ── */}
