@@ -1205,7 +1205,7 @@ export default function ClientRole({
   const clientRequests = React.useMemo(() => {
     return requests.filter(r => 
       r.clientId === currentClientId || 
-      (!isLoggedIn && r.clientId === 'client-temp') || 
+      r.clientId === 'client-temp' ||
       (isLoggedIn && userAlias && r.clientName === userAlias)
     );
   }, [requests, currentClientId, isLoggedIn, userAlias]);
@@ -1480,7 +1480,7 @@ export default function ClientRole({
  
     const newRequest: ConsultRequest = {
       id: `req-${Date.now()}`,
-      clientId: 'client-temp',
+      clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || 'client-temp') : 'client-temp',
       clientName: isLoggedIn ? `${userAlias} (의뢰인)` : '익명 의뢰인',
       phone: '010-4567-8901',
       requestType,
@@ -1491,7 +1491,7 @@ export default function ClientRole({
       title,
       content,
       financialProfile: {
-        clientId: 'client-temp',
+        clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || 'client-temp') : 'client-temp',
         income,
         debtTotal: finalDebtTotal,
         assetsTotal,

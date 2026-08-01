@@ -118,11 +118,14 @@ export default function App() {
       const saved = localStorage.getItem('legal_crm_requests');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return parsed.filter((r: any) => 
+        const result = parsed.filter((r: any) => 
           r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3'
         );
+        isInitializedRef.current = true;
+        return result;
       }
     } catch {}
+    isInitializedRef.current = true;
     return [];
   });
   const [messages, setMessages] = useState<ConsultMessage[]>(() => {
@@ -262,10 +265,6 @@ export default function App() {
     }
   }, []);
 
-  // 초기화 완료 마킹
-  useEffect(() => {
-    isInitializedRef.current = true;
-  }, []);
 
   // Sync state to localStorage whenever it updates (초기화 후에만)
   useEffect(() => {
