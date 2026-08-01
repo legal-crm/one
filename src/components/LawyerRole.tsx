@@ -2011,7 +2011,18 @@ export default function LawyerRole({
 
             <div className="grid grid-cols-1 gap-4">
               {requests
-                .filter(r => (r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id) && (r.status === 'requested' || r.status === 'responding'))
+                .filter(r => {
+                  // 본인 직접 지명된 경우
+                  const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+                  // 같은 로펌 소속 변호사에게 온 요청도 표시
+                  const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+                    const targetLawyer = lawyers.find(l => l.id === id);
+                    return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+                  });
+                  // 오픈형 요청
+                  const openMatch = r.requestType === 'open';
+                  return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
+                })
                 .filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id))
                 .map(r => {
                   const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
