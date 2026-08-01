@@ -1135,6 +1135,12 @@ export default function ChatView({
                     onClick={() => {
                       const selectedNames = selectedFavLawyers.map(id => lawyers.find(l => l.id === id)?.name).filter(Boolean) as string[];
                       if (currentRequest) {
+                        // ConsultRequest에 selectedLawyerIds 저장 (변호사가 요청을 볼 수 있도록)
+                        onSetRequests(prev => prev.map(r => 
+                          r.id === currentRequest.id 
+                            ? { ...r, selectedLawyerIds: selectedFavLawyers, status: 'requested' as const, requestType: 'direct_multi' as const }
+                            : r
+                        ));
                         onAddMessage(
                           currentRequest.id,
                           `${selectedNames.join(', ')} 변호사님에게 무료 상담을 요청했습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,

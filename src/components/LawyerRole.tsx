@@ -987,8 +987,17 @@ export default function LawyerRole({
     setChatInput('');
   };
 
-  // Live Statistics
-  const totalOpenRequestsCount = requests.filter(r => r.status === 'requested').length;
+  // Live Statistics - 현재 변호사 관련 요청만 필터
+  const isRelevantRequest = (r: ConsultRequest) => {
+    const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+    const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+      const targetLawyer = lawyers.find(l => l.id === id);
+      return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+    });
+    const openMatch = r.requestType === 'open';
+    return directMatch || sameFirmMatch || openMatch;
+  };
+  const totalOpenRequestsCount = requests.filter(r => r.status === 'requested' && isRelevantRequest(r)).length;
   const activeChatsCount = requests.filter(r => r.status === 'counseling' && (r.selectedLawyerId === activeLawyer.id || r.requestType === 'open')).length;
   const totalCasesCount = cases.length;
   const directCounselingCount = requests.filter(r => r.status === 'responding' && r.selectedLawyerId === activeLawyer.id).length;
@@ -1784,7 +1793,7 @@ export default function LawyerRole({
 
                 <div className="space-y-3">
                   {requests
-                    .filter(r => r.status === 'requested')
+                    .filter(r => r.status === 'requested' && isRelevantRequest(r))
                     .slice(0, 3)
                     .map(r => (
                       <div key={r.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-brand/30 transition-all space-y-3">
