@@ -864,10 +864,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                 <div className="flex justify-between"><span>은행 대출</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.banks.toLocaleString()}만</span></div>
                               )}
                               {selectedClient.financialProfile.debtTypes.cards > 0 && (
-                                <div className="flex justify-between"><span>카드 채무</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.cards.toLocaleString()}만</span></div>
+                                <div className="flex justify-between"><span>카드사/캐피탈</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.cards.toLocaleString()}만</span></div>
                               )}
                               {selectedClient.financialProfile.debtTypes.personals > 0 && (
-                                <div className="flex justify-between"><span>사인간 채무</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.personals.toLocaleString()}만</span></div>
+                                <div className="flex justify-between"><span>저축은행/대부업/기타</span><span className="text-slate-700">{selectedClient.financialProfile.debtTypes.personals.toLocaleString()}만</span></div>
                               )}
                               {selectedClient.financialProfile.debtTypes.recentLoans > 0 && (
                                 <div className="flex justify-between text-rose-400"><span>최근 고위험 대출</span><span className="font-bold">{selectedClient.financialProfile.debtTypes.recentLoans.toLocaleString()}만</span></div>

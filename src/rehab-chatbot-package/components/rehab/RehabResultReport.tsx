@@ -949,20 +949,20 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                 <span className="text-right">채무 금액</span>
                                             </div>
                                             <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60">
-                                                <span>신용대출 및 일반 금융권 채무</span>
+                                                <span>은행 대출 / 카드사 / 저축은행 등</span>
                                                 <span className="text-right text-slate-650 font-semibold">
                                                     {formatCurrency(Math.max(0, (userInput.totalDebt || 0) - (userInput.creditCardDebt || 0) - (userInput.priorityDebt || 0)))}
                                                 </span>
                                             </div>
                                             {userInput.creditCardDebt !== undefined && userInput.creditCardDebt > 0 && (
                                                 <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60">
-                                                    <span>신용카드 결제대금 및 카드론</span>
+                                                    <span>카드사/캐피탈 (카드론)</span>
                                                     <span className="text-right text-slate-650 font-semibold">{formatCurrency(userInput.creditCardDebt)}</span>
                                                 </div>
                                             )}
                                             {userInput.priorityDebt !== undefined && userInput.priorityDebt > 0 && (
                                                 <div className="grid grid-cols-2 p-2.5 border-b border-slate-200/60 bg-red-50 text-red-700">
-                                                    <span className="font-semibold">우선 변제 채권 (체납 국세/지방세/4대보험)</span>
+                                                    <span className="font-semibold">국세/세금 체납 (우선 변제 채권)</span>
                                                     <span className="text-right font-bold">{formatCurrency(userInput.priorityDebt)}</span>
                                                 </div>
                                             )}

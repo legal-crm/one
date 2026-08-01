@@ -864,7 +864,7 @@ export default function MyPageView({
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">은행/1금융권 대출 (만 원)</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">은행 대출 (만 원)</label>
                   <input 
                     type="number" 
                     value={profile.debtTypes?.banks || 0} 
@@ -874,7 +874,7 @@ export default function MyPageView({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">카드 대금 및 카드론 (만 원)</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">카드사/캐피탈 (만 원)</label>
                   <input 
                     type="number" 
                     value={profile.debtTypes?.cards || 0} 
@@ -884,7 +884,7 @@ export default function MyPageView({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">캐피탈/대부/기타 채무 (만 원)</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">저축은행/대부업/기타 (만 원)</label>
                   <input 
                     type="number" 
                     value={profile.debtTypes?.personals || 0} 
@@ -896,7 +896,7 @@ export default function MyPageView({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">국세/지방세/체납세금 (만 원)</label>
+                  <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">국세/세금 체납 (만 원)</label>
                   <input 
                     type="number" 
                     value={profile.priorityDebt || 0} 
