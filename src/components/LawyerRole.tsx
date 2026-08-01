@@ -98,10 +98,10 @@ export default function LawyerRole({
 
   // Authentication states
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('legal_crm_lawyer_session') !== null;
+    return sessionStorage.getItem('legal_crm_lawyer_session') !== null;
   });
   const [activeLawyer, setActiveLawyer] = useState<User>(() => {
-    const sessionLawyerId = localStorage.getItem('legal_crm_lawyer_session');
+    const sessionLawyerId = sessionStorage.getItem('legal_crm_lawyer_session');
     if (sessionLawyerId) {
       return mockLawyers[0];
     }
@@ -110,7 +110,7 @@ export default function LawyerRole({
 
   // Sync activeLawyer when lawyers prop updates
   useEffect(() => {
-    const sessionLawyerId = localStorage.getItem('legal_crm_lawyer_session');
+    const sessionLawyerId = sessionStorage.getItem('legal_crm_lawyer_session');
     if (sessionLawyerId && lawyers.length > 0) {
       const found = lawyers.find(l => l.id === sessionLawyerId);
       if (found) {
@@ -160,7 +160,7 @@ export default function LawyerRole({
             ? '탈퇴 처리 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
             : '이 대리인 계정은 운영정책 위반으로 인해 임시 정지 처리되었습니다. 관리자에게 문의하십시오.';
           alert(msg);
-          localStorage.removeItem('legal_crm_lawyer_session');
+          sessionStorage.removeItem('legal_crm_lawyer_session');
           setIsLoggedIn(false);
         } else if (currentMember.status === 'dormant') {
           if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
@@ -173,7 +173,7 @@ export default function LawyerRole({
               `변호사 휴면 계정 수동 휴면 해제 성공`
             );
           } else {
-            localStorage.removeItem('legal_crm_lawyer_session');
+            sessionStorage.removeItem('legal_crm_lawyer_session');
             setIsLoggedIn(false);
           }
         }
@@ -471,7 +471,7 @@ export default function LawyerRole({
       }
     }
 
-    localStorage.setItem('legal_crm_lawyer_session', found.id);
+    sessionStorage.setItem('legal_crm_lawyer_session', found.id);
     setActiveLawyer(found);
     setIsLoggedIn(true);
     setLoginError('');
@@ -601,7 +601,7 @@ export default function LawyerRole({
         );
         
         if (matchedLawyer) {
-          localStorage.setItem('legal_crm_lawyer_session', matchedLawyer.id);
+          sessionStorage.setItem('legal_crm_lawyer_session', matchedLawyer.id);
           setActiveLawyer(matchedLawyer);
           setIsLoggedIn(true);
         } else {
@@ -745,7 +745,7 @@ export default function LawyerRole({
 
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {
-      localStorage.removeItem('legal_crm_lawyer_session');
+      sessionStorage.removeItem('legal_crm_lawyer_session');
       setIsLoggedIn(false);
       setActiveStaffMember(null);
       if (lawyers.length > 0) {
@@ -1107,7 +1107,7 @@ export default function LawyerRole({
                     type="button"
                     onClick={() => {
                       const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
-                      localStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
+                      sessionStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
                       setActiveLawyer(demoLawyer);
                       setIsLoggedIn(true);
                     }}
