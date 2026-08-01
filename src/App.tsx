@@ -111,33 +111,43 @@ export default function App() {
     setCurrentRole('client');
   };
 
-  // Core application states - lazy initializer로 localStorage에서 즉시 로드 (레이스 컨디션 방지)
-  const isInitializedRef = React.useRef(false);
-  const [requests, setRequests] = useState<ConsultRequest[]>(() => {
+  // Core application states - localStorage에서 직접 로드 + 동기 저장 래퍼
+  const [requests, _setRequests] = useState<ConsultRequest[]>(() => {
     try {
       const saved = localStorage.getItem('legal_crm_requests');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        const result = parsed.filter((r: any) => 
+        return JSON.parse(saved).filter((r: any) => 
           r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3'
         );
-        isInitializedRef.current = true;
-        return result;
       }
     } catch {}
-    isInitializedRef.current = true;
     return [];
   });
-  const [messages, setMessages] = useState<ConsultMessage[]>(() => {
+  // 래퍼: state 업데이트 + 즉시 localStorage 동기 저장
+  const setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>> = React.useCallback((action) => {
+    _setRequests(prev => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      try { localStorage.setItem('legal_crm_requests', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const [messages, _setMessages] = useState<ConsultMessage[]>(() => {
     try {
       const saved = localStorage.getItem('legal_crm_messages');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3');
+        return JSON.parse(saved).filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3');
       }
     } catch {}
     return [];
   });
+  const setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>> = React.useCallback((action) => {
+    _setMessages(prev => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      try { localStorage.setItem('legal_crm_messages', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
   const [cases, setCases] = useState<Case[]>([]);
   const [lawyers, setLawyers] = useState<LawyerType[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -266,16 +276,7 @@ export default function App() {
   }, []);
 
 
-  // Sync state to localStorage whenever it updates (초기화 후에만)
-  useEffect(() => {
-    if (!isInitializedRef.current) return;
-    localStorage.setItem('legal_crm_requests', JSON.stringify(requests));
-  }, [requests]);
-
-  useEffect(() => {
-    if (!isInitializedRef.current) return;
-    localStorage.setItem('legal_crm_messages', JSON.stringify(messages));
-  }, [messages]);
+  // requests/messages는 setRequests/setMessages 래퍼에서 즉시 동기 저장됨
 
   useEffect(() => {
     if (cases.length > 0) {
