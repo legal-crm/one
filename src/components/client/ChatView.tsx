@@ -973,6 +973,62 @@ export default function ChatView({
                 </button>
               </div>
 
+              {/* 정책 안내 배너 */}
+              <div className="px-4 pt-3 pb-1 shrink-0 space-y-2">
+                {/* 슬롯 프로그레스 바 */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-medium">상담 요청 현황</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">{activeRequestedCount} / 3명</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        activeRequestedCount >= 3 ? 'bg-red-400' : activeRequestedCount >= 2 ? 'bg-amber-400' : 'bg-brand'
+                      }`}
+                      style={{ width: `${(activeRequestedCount / 3) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${i <= activeRequestedCount ? 'bg-brand' : 'bg-slate-200 dark:bg-slate-600'}`} />
+                        <span className={i <= activeRequestedCount ? 'text-brand font-bold' : ''}>{i}번째</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 안내 메시지 */}
+                {activeRequestedCount >= 3 ? (
+                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-red-600 dark:text-red-400 leading-relaxed">
+                      <strong>3명 모두 요청 중입니다.</strong><br />
+                      추가 요청을 원하시면 기존 요청을 취소해 주세요. 
+                      <span className="text-red-400"> 내 관리방 → 상담 대기 목록에서 취소할 수 있습니다.</span>
+                    </div>
+                  </div>
+                ) : activeRequestedCount > 0 ? (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-start gap-2.5">
+                    <Users className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
+                      <strong>추가 {remainingSlots}명에게 더 요청할 수 있어요!</strong><br />
+                      상담 대기 중인 변호사는 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-bold align-middle">상담 대기중</span>으로 표시됩니다.
+                      기존 요청을 취소하면 빈 자리만큼 다시 요청할 수 있어요.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3 flex items-start gap-2.5">
+                    <Shield className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-indigo-600 dark:text-indigo-400 leading-relaxed">
+                      <strong>최대 3명의 변호사에게 무료 상담을 요청할 수 있어요.</strong><br />
+                      여러 변호사의 제안을 비교한 뒤 가장 적합한 변호사를 선택하세요.
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Lawyer List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {favLawyers.length === 0 ? (
