@@ -427,6 +427,12 @@ export default function LawyerRole({
     let found = null;
     if (cleanedLoginId === '1' && loginPassword === '1') {
       found = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0];
+    } else if (cleanedLoginId === '2' && loginPassword === '2') {
+      found = lawyers.find(l => l.id === 'test-lawyer-1');
+    } else if (cleanedLoginId === '3' && loginPassword === '3') {
+      found = lawyers.find(l => l.id === 'test-lawyer-2');
+    } else if (cleanedLoginId === '4' && loginPassword === '4') {
+      found = lawyers.find(l => l.id === 'test-lawyer-3');
     } else {
       found = lawyers.find(l => 
         l.id.toLowerCase() === cleanedLoginId || 
@@ -440,8 +446,9 @@ export default function LawyerRole({
       return;
     }
 
-    // Bypass password check for simple bypass account
-    if (cleanedLoginId !== '1' && found.password && found.password !== loginPassword) {
+    // Bypass password check for simple bypass accounts (1, 2, 3, 4)
+    const bypassIds = ['1', '2', '3', '4'];
+    if (!bypassIds.includes(cleanedLoginId) && found.password && found.password !== loginPassword) {
       setLoginError('비밀번호가 일치하지 않습니다.');
       return;
     }
