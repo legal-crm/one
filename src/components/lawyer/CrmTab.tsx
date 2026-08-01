@@ -31,7 +31,7 @@ type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus';
 type SortDir = 'asc' | 'desc';
 type ViewMode = 'list' | 'kanban';
 
-const CRM_STATUSES: CrmStatus[] = ['requested','consulting','contracted','document','filed','commenced','repaying','discharged'];
+const CRM_STATUSES: CrmStatus[] = ['requested','consulting','contracted','document','filed','commenced','repaying','discharged','cancelled'];
 
 export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, getDisplayPhoneNumber }: CrmTabProps) {
   // ── 기본 State ──
@@ -108,6 +108,37 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       }
     });
   }, [activeLawyer.id, activeLawyer.name]);
+
+  // ── ConsultRequest 상태 → CRM 확장 데이터 자동 동기화 ──
+  useEffect(() => {
+    requests.forEach(r => {
+      if (r.status === 'cancelled') {
+        const ext = crmData[r.id] || createDefaultCrmExtension(r.id);
+        if (ext.crmStatus !== 'cancelled') {
+          const updated = { 
+            ...ext, 
+            crmStatus: 'cancelled' as CrmStatus,
+            lastActivityAt: new Date().toISOString(),
+            activities: [
+              ...(ext.activities || []),
+              {
+                id: `act-cancel-${Date.now()}`,
+                clientId: r.id,
+                actorId: 'system',
+                actorName: '시스템',
+                actorRole: 'OWNER' as StaffRole,
+                type: 'status_change' as CrmActivityType,
+                description: '의뢰인이 상담 요청을 취소하였습니다.',
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          };
+          setCrmData(prev => ({ ...prev, [r.id]: updated }));
+          saveCrmClient(r.id, updated);
+        }
+      }
+    });
+  }, [requests, crmData]);
 
   // ── CRM 확장 데이터 가져오기/생성 ──
   const getCrmExt = useCallback((clientId: string): CrmClientExtension => {

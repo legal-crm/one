@@ -900,9 +900,32 @@ export default function ChatView({
               </button>
               <button
                 onClick={() => {
+                  // 1. 로컬 UI 상태 업데이트
                   setRequestedLawyerIds(prev => prev.filter(id => id !== cancelTargetLawyer.id));
+                  
+                  // 2. 실제 ConsultRequest 객체 업데이트 (변호사 측에 반영)
                   if (currentRequest) {
-                    onAddMessage(currentRequest.id, `${cancelTargetLawyer.name} 변호사님에 대한 상담 요청이 취소되었습니다.`, 'lawyer', 'system', '시스템 안내');
+                    const updatedLawyerIds = (currentRequest.selectedLawyerIds || []).filter(id => id !== cancelTargetLawyer.id);
+                    const allCancelled = updatedLawyerIds.length === 0;
+                    
+                    onSetRequests(prev => prev.map(r => 
+                      r.id === currentRequest.id 
+                        ? { 
+                            ...r, 
+                            selectedLawyerIds: updatedLawyerIds,
+                            status: allCancelled ? 'cancelled' as const : r.status,
+                          } 
+                        : r
+                    ));
+                    
+                    // 3. 시스템 메시지 (고객 + 변호사 양쪽에 표시)
+                    onAddMessage(
+                      currentRequest.id, 
+                      allCancelled 
+                        ? `의뢰인이 모든 변호사에 대한 상담 요청을 취소하였습니다.`
+                        : `의뢰인이 ${cancelTargetLawyer.name} 변호사님에 대한 상담 요청을 취소하였습니다.`, 
+                      'lawyer', 'system', '시스템 안내'
+                    );
                   }
                   setCancelTargetLawyer(null);
                 }}

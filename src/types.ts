@@ -68,7 +68,7 @@ export interface FinancialProfile {
 }
 
 export type RequestType = 'direct' | 'open' | 'direct_multi';
-export type ConsultStatus = 'requested' | 'responding' | 'counseling' | 'closed';
+export type ConsultStatus = 'requested' | 'responding' | 'counseling' | 'closed' | 'cancelled';
 
 // ── CRM 업그레이드 타입 ──
 
@@ -81,7 +81,8 @@ export type CrmStatus =
   | 'filed'        // ⚖️ 법원 접수
   | 'commenced'    // 🔍 개시 결정
   | 'repaying'     // 💰 변제 진행
-  | 'discharged';  // ✅ 면책/종결
+  | 'discharged'   // ✅ 면책/종결
+  | 'cancelled';   // 🚫 의뢰인 취소
 
 export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
   requested:   { label: '상담 신청', emoji: '📋', color: 'text-blue-400',    bgColor: 'bg-blue-500/10',    borderColor: 'border-blue-500/20' },
@@ -92,6 +93,7 @@ export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; emoji: string
   commenced:   { label: '개시 결정', emoji: '🔍', color: 'text-amber-400',   bgColor: 'bg-amber-500/10',   borderColor: 'border-amber-500/20' },
   repaying:    { label: '변제 진행', emoji: '💰', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/20' },
   discharged:  { label: '면책/종결', emoji: '✅', color: 'text-slate-500',   bgColor: 'bg-slate-500/10',   borderColor: 'border-slate-500/20' },
+  cancelled:   { label: '의뢰인 취소', emoji: '🚫', color: 'text-red-500',    bgColor: 'bg-red-500/10',     borderColor: 'border-red-500/20' },
 };
 
 // 직원 역할 체계
