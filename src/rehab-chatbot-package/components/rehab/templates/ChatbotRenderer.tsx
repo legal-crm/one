@@ -762,10 +762,38 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                     )}
 
                     <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
-                        {[
-                            { label: '+100만', value: 100 },
-                            { label: '+10만', value: 10 },
-                        ].map((btn, idx) => (
+                        {(() => {
+                            const stepId = lastBotMsg?.stepId || '';
+                            // 소액: 의료비, 교육비, 월세, 양육비, 월 지출
+                            const smallSteps = ['medical_amount', 'education_amount', 'special_education_amount', 'rent_cost', 'child_support_receive', 'child_support_pay', 'monthly_expenses'];
+                            // 중간: 월 소득
+                            const mediumSteps = ['income_salary', 'income_business', 'income_confirm', 'spouse_income'];
+                            // 대형: 보증금, 자가시세, 담보대출, 자산, 채무 등 → 나머지 전부
+                            let buttons: { label: string; value: number }[];
+                            if (smallSteps.includes(stepId)) {
+                                buttons = [
+                                    { label: '+10만', value: 10 },
+                                    { label: '+100만', value: 100 },
+                                ];
+                            } else if (mediumSteps.includes(stepId)) {
+                                buttons = [
+                                    { label: '+10만', value: 10 },
+                                    { label: '+100만', value: 100 },
+                                    { label: '+500만', value: 500 },
+                                    { label: '+1000만', value: 1000 },
+                                ];
+                            } else {
+                                // 대형 금액 (보증금, 자가시세, 대출, 자산, 채무 등)
+                                buttons = [
+                                    { label: '+10만', value: 10 },
+                                    { label: '+100만', value: 100 },
+                                    { label: '+500만', value: 500 },
+                                    { label: '+1000만', value: 1000 },
+                                    { label: '+5000만', value: 5000 },
+                                    { label: '+1억', value: 10000 },
+                                ];
+                            }
+                            return buttons.map((btn, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => addAmount(btn.value)}
@@ -778,7 +806,8 @@ const ChatbotRenderer: React.FC<ChatbotRendererProps> = ({
                             >
                                 {btn.label}
                             </button>
-                        ))}
+                            ));
+                        })()}
                         <button
                             onClick={resetAmount}
                             className="px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors border bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30"
