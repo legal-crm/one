@@ -134,23 +134,10 @@ export default function App() {
     return [];
   });
 
-  // Async load from Supabase (overrides localStorage data)
-  useEffect(() => {
-    loadConsultRequests().then(dbRequests => {
-      if (dbRequests.length > 0) {
-        _setRequests(dbRequests);
-        // Sync localStorage
-        try { localStorage.setItem('legal_crm_requests', JSON.stringify(dbRequests)); } catch {}
-      }
-    });
-  }, []);
-
   const setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>> = React.useCallback((action) => {
     _setRequests(prev => {
       const next = typeof action === 'function' ? action(prev) : action;
-      // Sync to localStorage (instant)
       try { localStorage.setItem('legal_crm_requests', JSON.stringify(next)); } catch {}
-      // Sync to Supabase (async, fire-and-forget)
       saveAllConsultRequests(next).catch(() => {});
       return next;
     });
@@ -166,13 +153,38 @@ export default function App() {
     return [];
   });
 
+  // Async load from Supabase (overrides localStorage data) + 5초 간격 폴링 동기화
   useEffect(() => {
-    loadConsultMessages().then(dbMessages => {
-      if (dbMessages.length > 0) {
-        _setMessages(dbMessages);
-        try { localStorage.setItem('legal_crm_messages', JSON.stringify(dbMessages)); } catch {}
-      }
-    });
+    let isMounted = true;
+
+    const syncFromDb = async () => {
+      try {
+        const [dbRequests, dbMessages] = await Promise.all([
+          loadConsultRequests(),
+          loadConsultMessages(),
+        ]);
+        if (!isMounted) return;
+        if (dbRequests.length > 0) {
+          _setRequests(dbRequests);
+          try { localStorage.setItem('legal_crm_requests', JSON.stringify(dbRequests)); } catch {}
+        }
+        if (dbMessages.length > 0) {
+          _setMessages(dbMessages);
+          try { localStorage.setItem('legal_crm_messages', JSON.stringify(dbMessages)); } catch {}
+        }
+      } catch {}
+    };
+
+    // 초기 로드
+    syncFromDb();
+
+    // 5초 간격 폴링 (변호사 ↔ 고객 실시간 동기화)
+    const intervalId = setInterval(syncFromDb, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, []);
 
   const setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>> = React.useCallback((action) => {
