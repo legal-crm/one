@@ -25,16 +25,7 @@ function setLocalData<T>(key: string, data: T): void {
 // Supabase 에러 로깅 (화면에도 표시)
 function logSupabaseError(operation: string, error: any) {
   const errorDetail = typeof error === 'object' ? (error?.message || error?.code || JSON.stringify(error)) : String(error);
-  const msg = `[Consult] ${operation} 실패: ${errorDetail}`;
-  console.error(msg, error);
-  // 개발/디버그용: 화면에 토스트 표시 (에러 상세 포함)
-  try {
-    const el = document.createElement('div');
-    el.textContent = `⚠️ ${operation}: ${errorDetail}`;
-    el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:10px 20px;border-radius:8px;z-index:99999;font-size:12px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:90vw;word-break:break-all;';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 8000);
-  } catch {}
+  console.error(`[Consult] ${operation} 실패: ${errorDetail}`, error);
 }
 
 
