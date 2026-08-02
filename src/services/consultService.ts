@@ -94,7 +94,7 @@ function rowToRequest(row: any): ConsultRequest {
 export async function loadConsultRequests(clientId?: string): Promise<ConsultRequest[]> {
   if (isSupabaseConfigured) {
     try {
-      let query = supabase.from('consult_requests').select('*');
+      let query = supabase.from('consult_requests').select('*').order('created_at', { ascending: false });
       if (clientId) {
         query = query.eq('client_id', clientId);
       }
