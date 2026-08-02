@@ -620,6 +620,284 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* ========== 상세 산정 근거 ========== */}
+
+                                    {/* 1. 부양가족 & 생계비 산정 근거 */}
+                                    <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                                        <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-b border-slate-200 dark:border-slate-800">
+                                            <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1.5">
+                                                <Users className="w-3.5 h-3.5 text-[#7264FF]" />
+                                                부양가족 & 생계비 산정 근거
+                                            </h3>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                법원이 인정하는 가구원 수에 따라 생계비가 결정되고, 소득에서 생계비를 뺀 나머지가 월 변제금이 됩니다.
+                                            </p>
+                                        </div>
+                                        <div className="p-4 space-y-3">
+                                            {/* 가구원 수 산정 */}
+                                            <div className="space-y-2">
+                                                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">📋 법원 인정 가구원 수: <span className="text-[#7264FF]">{userInput.familySize}명</span></div>
+                                                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 space-y-1.5">
+                                                    <div className="flex justify-between text-[11px]">
+                                                        <span className="text-slate-500 dark:text-slate-400">본인</span>
+                                                        <span className="font-bold text-slate-700 dark:text-slate-200">1명</span>
+                                                    </div>
+                                                    {userInput.minorChildren > 0 && (
+                                                        <div className="flex justify-between text-[11px]">
+                                                            <span className="text-slate-500 dark:text-slate-400">
+                                                                미성년 자녀
+                                                                {userInput.isMarried && userInput.spouseIncome > 0 && (
+                                                                    <span className="text-[10px] ml-1 text-amber-600 dark:text-amber-400">
+                                                                        (배우자 소득 비율에 따라 조정)
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">
+                                                                +{Math.max(0, userInput.familySize - 1 - (userInput.elderlyParentCount || 0))}명
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {(userInput.elderlyParentCount || 0) > 0 && (
+                                                        <div className="flex justify-between text-[11px]">
+                                                            <span className="text-slate-500 dark:text-slate-400">고령 부모님 (65세 이상)</span>
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">+{userInput.elderlyParentCount}명</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5 flex justify-between text-[11px] font-bold">
+                                                        <span className="text-slate-600 dark:text-slate-300">합계</span>
+                                                        <span className="text-[#7264FF]">{userInput.familySize}명</span>
+                                                    </div>
+                                                </div>
+                                                {userInput.isMarried && userInput.spouseIncome > 0 && userInput.minorChildren > 0 && (
+                                                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-2.5">
+                                                        <div className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                                                            💡 <strong>배우자 소득 반영 규칙</strong>: 배우자 소득이 본인 소득의 70% 미만이면 자녀 100% 인정, 70~130%이면 50% 인정, 130% 초과이면 부양가족에서 제외됩니다.
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* 생계비 계산 흐름 */}
+                                            <div className="space-y-2">
+                                                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">📊 생계비 → 가용소득 계산 흐름</div>
+                                                <div className="space-y-0">
+                                                    {/* Step 1 */}
+                                                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 rounded-t-lg p-2.5 border border-slate-200 dark:border-slate-700">
+                                                        <div className="w-5 h-5 rounded-full bg-[#7264FF] text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</div>
+                                                        <div className="flex-1 text-[11px]">
+                                                            <span className="text-slate-500 dark:text-slate-400">기본 생계비 ({userInput.familySize}인 가구 기준)</span>
+                                                        </div>
+                                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(result.baseLivingCost)}</div>
+                                                    </div>
+                                                    {/* Step 2 */}
+                                                    {result.additionalLivingCost > 0 && (
+                                                        <div className="flex items-center gap-2 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 border-x border-slate-200 dark:border-slate-700">
+                                                            <div className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">2</div>
+                                                            <div className="flex-1 text-[11px]">
+                                                                <span className="text-slate-500 dark:text-slate-400">추가 생계비 (주거/의료/교육)</span>
+                                                            </div>
+                                                            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatCurrency(result.additionalLivingCost)}</div>
+                                                        </div>
+                                                    )}
+                                                    {/* Step 3 */}
+                                                    <div className="flex items-center gap-2 bg-blue-50/50 dark:bg-blue-950/20 p-2.5 border-x border-slate-200 dark:border-slate-700">
+                                                        <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{result.additionalLivingCost > 0 ? '3' : '2'}</div>
+                                                        <div className="flex-1 text-[11px]">
+                                                            <span className="text-slate-500 dark:text-slate-400">총 인정 생계비</span>
+                                                        </div>
+                                                        <div className="text-xs font-bold text-blue-600 dark:text-blue-400">{formatCurrency(result.recognizedLivingCost)}</div>
+                                                    </div>
+                                                    {/* Step 4: 가용소득 */}
+                                                    <div className="flex items-center gap-2 bg-[#7264FF]/5 dark:bg-[#7264FF]/10 rounded-b-lg p-2.5 border border-[#7264FF]/20 dark:border-[#7264FF]/30">
+                                                        <div className="w-5 h-5 rounded-full bg-[#7264FF] text-white text-[10px] font-bold flex items-center justify-center shrink-0">★</div>
+                                                        <div className="flex-1 text-[11px]">
+                                                            <span className="text-slate-600 dark:text-slate-300 font-medium">월 소득 {formatCurrency(userInput.monthlyIncome)} − 생계비 {formatCurrency(result.recognizedLivingCost)}</span>
+                                                        </div>
+                                                        <div className="text-sm font-extrabold text-[#7264FF]">{formatCurrency(result.availableIncome)}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-2.5">
+                                                    <div className="text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                                                        ℹ️ 기본 생계비는 보건복지부 고시 <strong>중위소득의 60%</strong>입니다. 주거비·의료비·교육비가 이 기준에 포함된 금액을 초과하면 추가로 인정받을 수 있습니다.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 2. 청산가치 산정 근거 */}
+                                    <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                                        <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-b border-slate-200 dark:border-slate-800">
+                                            <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1.5">
+                                                <Home className="w-3.5 h-3.5 text-emerald-600" />
+                                                청산가치 산정 근거
+                                            </h3>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                만약 파산한다면 채권자가 받을 수 있는 금액입니다. 회생에서는 이 금액 이상을 갚아야 법원이 승인합니다.
+                                            </p>
+                                        </div>
+                                        <div className="p-4 space-y-3">
+                                            {/* 자산 항목별 산정 */}
+                                            <div className="space-y-0">
+                                                {/* 본인 재산 */}
+                                                {(userInput.myAssets || 0) > 0 && (
+                                                    <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-t-lg border border-slate-200 dark:border-slate-700">
+                                                        <div className="text-[11px] text-slate-600 dark:text-slate-300">💰 본인 재산 (예금·보험·차량 등)</div>
+                                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(userInput.myAssets)}</div>
+                                                    </div>
+                                                )}
+                                                {/* 보증금 */}
+                                                {(userInput.deposit || 0) > 0 && (
+                                                    <div className="p-2.5 border-x border-slate-200 dark:border-slate-700 space-y-1">
+                                                        <div className="flex items-center justify-between text-[11px]">
+                                                            <span className="text-slate-600 dark:text-slate-300">🏠 보증금</span>
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(userInput.deposit)}</span>
+                                                        </div>
+                                                        {result.exemptDeposit > 0 && (
+                                                            <div className="flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400">
+                                                                <span>　└ 면제 보증금 (주거 보호)</span>
+                                                                <span className="font-bold">−{formatCurrency(result.exemptDeposit)}</span>
+                                                            </div>
+                                                        )}
+                                                        {(userInput.depositLoan || 0) > 0 && (
+                                                            <div className="flex items-center justify-between text-[11px] text-blue-600 dark:text-blue-400">
+                                                                <span>　└ 보증금 대출 차감</span>
+                                                                <span className="font-bold">−{formatCurrency(userInput.depositLoan)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {/* 퇴직금 */}
+                                                {(userInput.retirementPay || 0) > 0 && (
+                                                    <div className="flex items-center justify-between p-2.5 border-x border-slate-200 dark:border-slate-700">
+                                                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                                            📋 퇴직금 ({userInput.retirementPensionType === 'pension' ? '연금형 → 면제' : '50% 반영'})
+                                                        </div>
+                                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                                            {formatCurrency(userInput.retirementPensionType === 'pension' ? 0 : Math.round((userInput.retirementPay || 0) * 0.5))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {/* 배우자 재산 */}
+                                                {userInput.isMarried && (userInput.spouseAssets || 0) > 0 && (
+                                                    <div className="flex items-center justify-between p-2.5 border-x border-slate-200 dark:border-slate-700">
+                                                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                                            👫 배우자 재산 ({result.courtName?.includes('회생법원') ? '회생법원: 0%' : '일반법원: 50%'} 반영)
+                                                        </div>
+                                                        <div className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                                                            {formatCurrency(result.courtName?.includes('회생법원') ? 0 : Math.round((userInput.spouseAssets || 0) * 0.5))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {/* 합계 */}
+                                                <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-b-lg border border-emerald-200 dark:border-emerald-800/50">
+                                                    <div className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">📊 총 청산가치</div>
+                                                    <div className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(result.liquidationValue)}</div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg p-2.5">
+                                                <div className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                                                    ⚖️ <strong>청산가치 보장 원칙</strong>: 회생에서 갚는 총액({formatCurrency(result.totalRepayment)})이 청산가치({formatCurrency(result.liquidationValue)})보다 {result.totalRepayment >= result.liquidationValue ? <span className="text-emerald-600 font-bold">많아 조건을 충족</span> : <span className="text-red-600 font-bold">적어 기간 연장 필요</span>}합니다.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 3. 변제기간 결정 근거 */}
+                                    <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                                        <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-b border-slate-200 dark:border-slate-800">
+                                            <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1.5">
+                                                <Calculator className="w-3.5 h-3.5 text-amber-600" />
+                                                변제기간 결정 근거
+                                            </h3>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                변제기간은 기본 36개월이며, 청산가치에 따라 48~60개월까지 연장될 수 있습니다.
+                                            </p>
+                                        </div>
+                                        <div className="p-4 space-y-3">
+                                            {/* 기간 결정 타임라인 */}
+                                            <div className="space-y-2">
+                                                {/* 24개월 체크 */}
+                                                <div className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${result.repaymentMonths === 24 ? 'bg-[#7264FF]/5 border-[#7264FF]/30' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'}`}>
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${result.repaymentMonths === 24 ? 'bg-[#7264FF] text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                                        {result.repaymentMonths === 24 ? <Check className="w-3 h-3" /> : <span className="text-[10px]">—</span>}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className={`text-[11px] font-bold ${result.repaymentMonths === 24 ? 'text-[#7264FF]' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                            24개월 (청년 특례)
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                                            만 30세 미만 + 서울회생법원 관할 시 적용
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* 36개월 체크 */}
+                                                <div className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${result.repaymentMonths === 36 ? 'bg-[#7264FF]/5 border-[#7264FF]/30' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'}`}>
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${result.repaymentMonths === 36 ? 'bg-[#7264FF] text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                                        {result.repaymentMonths === 36 ? <Check className="w-3 h-3" /> : <span className="text-[10px]">—</span>}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className={`text-[11px] font-bold ${result.repaymentMonths === 36 ? 'text-[#7264FF]' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                            36개월 (기본 변제기간)
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                                            가용소득 × 36개월 ≥ 청산가치이면 기본 기간 적용
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* 48개월 체크 */}
+                                                <div className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${result.repaymentMonths === 48 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/50' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'}`}>
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${result.repaymentMonths === 48 ? 'bg-amber-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                                        {result.repaymentMonths === 48 ? <Check className="w-3 h-3" /> : <span className="text-[10px]">—</span>}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className={`text-[11px] font-bold ${result.repaymentMonths === 48 ? 'text-amber-700 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                            48개월 (1차 연장)
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                                            36개월로 청산가치를 충족하지 못할 때 연장
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* 60개월 체크 */}
+                                                <div className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${result.repaymentMonths === 60 ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800/50' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'}`}>
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${result.repaymentMonths === 60 ? 'bg-red-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                                        {result.repaymentMonths === 60 ? <Check className="w-3 h-3" /> : <span className="text-[10px]">—</span>}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className={`text-[11px] font-bold ${result.repaymentMonths === 60 ? 'text-red-700 dark:text-red-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                            60개월 (최대 연장)
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                                            48개월로도 불충분할 때 법정 최대 기간 적용
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* 산정 로직 요약 */}
+                                            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-3 space-y-2">
+                                                <div className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
+                                                    🔍 <strong>결정 사유</strong>
+                                                </div>
+                                                <div className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed space-y-1">
+                                                    <div className="flex items-start gap-1.5">
+                                                        <ChevronRight className="w-3 h-3 shrink-0 mt-0.5" />
+                                                        <span>월 가용소득 {formatCurrency(result.availableIncome)} × {result.repaymentMonths}개월 = <strong>{formatCurrency(result.availableIncome * result.repaymentMonths)}</strong></span>
+                                                    </div>
+                                                    <div className="flex items-start gap-1.5">
+                                                        <ChevronRight className="w-3 h-3 shrink-0 mt-0.5" />
+                                                        <span>청산가치 {formatCurrency(result.liquidationValue)} {result.totalRepayment >= result.liquidationValue ? '≤ 총 변제금 → 충족 ✅' : '> 총 변제금 → 기간 연장 필요'}</span>
+                                                    </div>
+                                                    <div className="flex items-start gap-1.5">
+                                                        <ChevronRight className="w-3 h-3 shrink-0 mt-0.5" />
+                                                        <span>최종 변제기간: <strong className="text-[#7264FF]">{result.repaymentMonths}개월</strong>{result.repaymentMonths === 24 ? ' (청년 특례 적용)' : result.repaymentMonths === 36 ? ' (기본 기간)' : result.repaymentMonths === 48 ? ' (청산가치 보장 연장)' : result.repaymentMonths === 60 ? ' (최대 기간 적용)' : ''}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </motion.div>
                             )}
 
