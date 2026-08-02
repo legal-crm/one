@@ -156,12 +156,6 @@ export default function ChatView({
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
   }, [activeChatReqId]);
 
-  // 페이지 새로고침 시 DB에서 로드된 selectedLawyerIds로 requestedLawyerIds 복원
-  useEffect(() => {
-    if (currentRequest?.selectedLawyerIds && currentRequest.selectedLawyerIds.length > 0 && requestedLawyerIds.length === 0) {
-      setRequestedLawyerIds(currentRequest.selectedLawyerIds);
-    }
-  }, [currentRequest?.selectedLawyerIds]);
 
   // financialProfile → RehabUserInput 재구성 (상세 진단서 표시용)
   const reportUserInput: RehabUserInput | undefined = React.useMemo(() => {
@@ -230,6 +224,14 @@ export default function ChatView({
   };
 
   const currentRequest = requests.find(r => r.id === activeChatReqId) || activeRequest;
+
+  // 페이지 새로고침 시 DB에서 로드된 selectedLawyerIds로 requestedLawyerIds 복원
+  useEffect(() => {
+    if (currentRequest?.selectedLawyerIds && currentRequest.selectedLawyerIds.length > 0 && requestedLawyerIds.length === 0) {
+      setRequestedLawyerIds(currentRequest.selectedLawyerIds);
+    }
+  }, [currentRequest?.selectedLawyerIds]);
+
   const activeChatMessages = messages.filter(m => m.consultRequestId === (currentRequest?.id || activeChatReqId));
 
   useEffect(() => {
