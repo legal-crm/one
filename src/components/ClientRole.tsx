@@ -1191,7 +1191,29 @@ export default function ClientRole({
     );
   }, [requests, currentClientId, isLoggedIn, userAlias]);
 
+  // 페이지 새로고침 시 활성 상담이 있으면 자동으로 채팅 탭 복원
+  const hasRestoredRef = useRef(false);
+  useEffect(() => {
+    if (hasRestoredRef.current || clientRequests.length === 0) return;
+    // 활성 상담(counseling/responding) 또는 selectedLawyerIds가 있는 요청 찾기
+    const activeConsult = clientRequests.find(r => 
+      r.status === 'counseling' || r.status === 'responding'
+    ) || clientRequests.find(r => 
+      r.selectedLawyerIds && r.selectedLawyerIds.length > 0
+    );
+    if (activeConsult) {
+      hasRestoredRef.current = true;
+      setActiveChatReqId(activeConsult.id);
+      // URL 파라미터로 특정 탭이 지정되지 않은 경우에만 자동 이동
+      const params = new URLSearchParams(window.location.search);
+      if (!params.get('tab')) {
+        setActiveTab('chat');
+      }
+    }
+  }, [clientRequests]);
+
   const activeRequest = clientRequests.find(r => r.clientId === 'client-temp') || clientRequests[0];
+
 
   const activeResult = React.useMemo(() => {
     if (!activeRequest || !activeRequest.financialProfile) return undefined;
