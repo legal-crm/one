@@ -1973,11 +1973,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     setRequests(prev => [newRequest, ...prev]);
     setPendingNewRequest(newRequest);
 
-    // 변호사 선택 모드로 전환 (navigateToLawyers가 true일 때만 이동)
-    setLawyerSelectionMode(true);
-    if (navigateToLawyers) {
-      setActiveTab('lawyers');
-    }
+    // 보고서 팝업의 "내 전담 변호사 선택하기" 버튼이 즐겨찾기 확인 → 팝업 방식으로 동작하도록
+    // 자동 변호사 탭 이동 및 선택 모드 활성화를 하지 않음
   };
 
   const handleSendChat = () => {
