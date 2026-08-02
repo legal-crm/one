@@ -590,7 +590,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                             </div>
                                             <div>
                                                 <div className="flex justify-between text-xs font-medium mb-1">
-                                                    <span className="text-slate-500 dark:text-slate-400">회생 후 월 변제금</span>
+                                                    <span className="text-slate-500 dark:text-slate-400">회생 후 월 변제금 ({result.repaymentMonths}개월)</span>
                                                     <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{formatCurrency(result.monthlyPayment)}</span>
                                                 </div>
                                                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 overflow-hidden">
