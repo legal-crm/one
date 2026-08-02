@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
+import { migrateAnonymousRequests } from '../services/consultService';
 import { calculateRehabPlan } from '../rehabEngine';
 const AIRehabChatbotV2 = React.lazy(() => import('../rehab-chatbot-package/components/rehab/AIRehabChatbotV2'));
 import { RehabUserInput, RehabCalculationResult, calculateRepayment } from '../rehab-chatbot-package/services/calculationService';
@@ -793,13 +794,6 @@ export default function ClientRole({
 
     const clientName = isLoggedIn ? userAlias : '익명 의뢰인';
     const clientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-    onLogActivity(
-      clientId,
-      clientName,
-      'CLIENT',
-      'CALCULATE',
-      `마이페이지 진단 데이터 수정 (총 채무: ${formatKoreanCurrency(result.base.debtTotal)}, 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원)`
-    );
   };
 
   // Terms and Privacy popup states
@@ -893,13 +887,6 @@ export default function ClientRole({
     setPendingNewRequest(null);
 
     const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-    onLogActivity(
-      finalClientId,
-      isLoggedIn ? userAlias : '익명 의뢰인',
-      'CLIENT',
-      'CONSULT_REQUEST',
-      `${lawyerIds.length}명의 변호사에게 상담 요청 발송`
-    );
 
     setTimeout(() => {
       onAddMessage(
@@ -973,13 +960,10 @@ export default function ClientRole({
   };
 
   const forceStartNewDiagnosis = () => {
-    setRequests([]);
     setPendingChatbotData(null);
-    localStorage.removeItem('legal_crm_requests');
     setRequestType('open');
     setRequestStep(1);
     setActiveTab('request');
-    onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', 'GNB [내 상황 체크하기] 메뉴 클릭');
   };
 
   // Email and Real Auth States
@@ -988,20 +972,33 @@ export default function ClientRole({
 
 
   // Helper: Record client login/signup activity
-  const recordClientLogin = (alias: string, emailOrPhone: string, channel: 'email' | 'google' | 'kakao' | 'naver' | 'sms') => {
+  const recordClientLogin = async (alias: string, emailOrPhone: string, channel: 'email' | 'google' | 'kakao' | 'naver' | 'sms') => {
+    // Supabase user ID를 우선 사용 (도메인 간 일관성 보장)
     let targetId = localStorage.getItem('legal_crm_client_id');
+    
+    // Try to get Supabase user ID
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user?.id) {
+        targetId = data.session.user.id;
+        localStorage.setItem('legal_crm_client_id', targetId);
+      }
+    } catch {}
+    
     if (!targetId) {
       targetId = `client-${Date.now()}`;
       localStorage.setItem('legal_crm_client_id', targetId);
     }
     
-    // 익명(client-temp) 상태에서 진행했던 진단/상담 요청이 있다면 로그인한 계정(targetId)으로 이전 바인딩
+    // 익명(client-temp) 상태에서 진행했던 진단/상담 요청을 로그인한 계정으로 이전
     setRequests(prev => prev.map(r => r.clientId === 'client-temp' ? { ...r, clientId: targetId!, clientName: alias } : r));
+    
+    // Supabase DB에서도 마이그레이션
+    migrateAnonymousRequests(targetId!, alias).catch(() => {});
     
     setMembers(prev => {
       const exists = prev.find(m => m.id === targetId || m.alias === alias);
       if (exists) {
-        onLogActivity(exists.id, exists.alias, 'CLIENT', 'LOGIN', `${channel.toUpperCase()} 계정 안전 로그인 성공`);
         return prev.map(m => m.id === exists.id ? { ...m, lastActiveAt: new Date().toISOString(), loginChannel: channel } : m);
       } else {
         const newMember: Member = {
@@ -1015,8 +1012,6 @@ export default function ClientRole({
           status: 'active',
           lastActiveAt: new Date().toISOString()
         };
-        onLogActivity(newMember.id, newMember.alias, 'CLIENT', 'SIGNUP', `${channel.toUpperCase()} 간편 회원가입 완료 (스텔스 가명: ${alias})`);
-        onLogActivity(newMember.id, newMember.alias, 'CLIENT', 'LOGIN', `${channel.toUpperCase()} 첫 로그인 성공`);
         return [...prev, newMember];
       }
     });
@@ -1040,13 +1035,6 @@ export default function ClientRole({
         } else if (currentMember.status === 'dormant') {
           if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
             setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
-            onLogActivity(
-              currentMember.id,
-              currentMember.alias,
-              'CLIENT',
-              'LOGIN',
-              `휴면 계정 본인 확인 및 수동 휴면 해제 성공`
-            );
           } else {
             setIsLoggedIn(false);
             setUserAlias('');
@@ -1065,17 +1053,6 @@ export default function ClientRole({
       const monthlyRepayment = Math.max(0, calcIncome - minLivingCost);
       const totalRepayment = Math.min(calcDebt, monthlyRepayment * 36);
       const totalReduction = Math.max(0, calcDebt - totalRepayment);
-      const reductionRate = calcDebt > 0 ? Math.round((totalReduction / calcDebt) * 100) : 0;
-      
-      const clientName = isLoggedIn ? userAlias : '익명 의뢰인';
-      const clientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-      onLogActivity(
-        clientId,
-        clientName,
-        'CLIENT',
-        'CALCULATE',
-        `자가진단 실행: 월 소득 ${calcIncome}만원, 채무 ${calcDebt}만원, 부양가족 ${calcDependents}명 -> 예상 탕감액: ${totalReduction.toLocaleString()}만원 (탕감률 ${reductionRate}%)`
-      );
     }, 2000);
     return () => clearTimeout(timer);
   }, [calcIncome, calcDebt, calcDependents, activeTab]);
@@ -1092,6 +1069,10 @@ export default function ClientRole({
     // 세션 감지 시 처리 함수
     const handleSession = (session: any, _source: string) => {
       if (!session?.user) return;
+      // Supabase user ID를 client ID로 사용
+      if (session.user.id) {
+        localStorage.setItem('legal_crm_client_id', session.user.id);
+      }
       setIsLoggedIn(true);
       const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
       setUserAlias(metaAlias);
@@ -1206,7 +1187,7 @@ export default function ClientRole({
     return requests.filter(r => 
       r.clientId === currentClientId || 
       r.clientId === 'client-temp' ||
-      (isLoggedIn && userAlias && r.clientName === userAlias)
+      (isLoggedIn && userAlias && (r.clientName === userAlias || r.clientName === `${userAlias} (의뢰인)`))
     );
   }, [requests, currentClientId, isLoggedIn, userAlias]);
 
@@ -1539,16 +1520,6 @@ export default function ClientRole({
         requestType === 'direct' ? (lawyers.find(l => l.id === selectedLawyerId)?.name || '담당 변호사') : '김우진 변호사'
       );
     }, 1500);
-
-    // Log consult request activity
-    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-    onLogActivity(
-      finalClientId,
-      isLoggedIn ? userAlias : '익명 의뢰인',
-      'CLIENT',
-      'CONSULT_REQUEST',
-      `상담 신청 제출: "${title}" (채무 규모: ${finalDebtTotal.toLocaleString()}만원)`
-    );
 
     // Reset Form
     setRequestStep(1);
@@ -1976,40 +1947,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };
     
-    // 진단 완료 즉시 requests에 저장 (내 관리방에서 채무 현황 확인 가능)
-    // 재진단 시: 기존 건의 ID/채팅/변호사 선택을 보존하고 채무 정보만 업데이트
-    setRequests(prev => {
-      const targetClientId = newRequest.clientId;
-      const existingIdx = prev.findIndex(r => 
-        r.id === newRequest.id || 
-        r.clientId === targetClientId
-      );
-      if (existingIdx >= 0) {
-        const existing = prev[existingIdx];
-        const updated = [...prev];
-        updated[existingIdx] = {
-          ...newRequest,
-          id: existing.id,
-          createdAt: existing.createdAt,
-          selectedLawyerId: existing.selectedLawyerId,
-          proposals: existing.proposals,
-          status: existing.status === 'counseling' ? 'counseling' : newRequest.status,
-        };
-        return updated;
-      }
-      return [newRequest, ...prev];
-    });
+    // 진단 완료 즉시 requests에 저장
+    setRequests(prev => [newRequest, ...prev]);
     setPendingNewRequest(newRequest);
-
-    // Log calculation activity
-    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-    onLogActivity(
-      finalClientId,
-      isLoggedIn ? userAlias : '익명 의뢰인',
-      'CLIENT',
-      'CALCULATE',
-      `정밀 자가진단 실행 (총 채무: ${formatKoreanCurrency(result.base.debtTotal)}, 예상 월 변제금: ${formatNumber(result.preferred?.monthly || 0)}원)`
-    );
 
     // 변호사 선택 모드로 전환 (navigateToLawyers가 true일 때만 이동)
     setLawyerSelectionMode(true);
@@ -2022,15 +1962,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     if (!chatInput.trim()) return;
     onAddMessage(activeChatReqId, chatInput.trim(), 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)');
     
-    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
-    onLogActivity(
-      finalClientId,
-      isLoggedIn ? userAlias : '의뢰인',
-      'CLIENT',
-      'CHAT_SEND',
-      `채팅 메시지 전송: "${chatInput.trim().substring(0, 30)}${chatInput.trim().length > 30 ? '...' : ''}"`
-    );
-
     setChatInput('');
 
     // Simulate lawyer responding back
@@ -2137,7 +2068,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <button 
                 onClick={() => {
                   setActiveTab('qna');
-                  onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭');
                 }}
                 className={`whitespace-nowrap px-2.5 lg:px-3.5 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm transition-all duration-200 border ${
                   activeTab === 'qna' 
@@ -2182,16 +2112,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setIsLoggedIn(false);
                     setUserAlias('');
                     
-                    // 개인정보 보호를 위해 브라우저 로컬 저장소 완전 초기화
                     localStorage.removeItem('legal_crm_client_id');
-                    localStorage.removeItem('legal_crm_requests');
-                    localStorage.removeItem('legal_crm_messages');
                     localStorage.removeItem('legal_crm_inquiries');
                     localStorage.removeItem('legal_crm_client_alias');
                     localStorage.removeItem('lawyer_favorites');
                     localStorage.removeItem('legal_crm_appointed_lawyer_id');
                     
-                    // 메모리 상태 초기화
+                    // 로컬 상태만 초기화
                     setRequests([]);
                     setMessages([]);
                     setInquiries([]);
@@ -2252,7 +2179,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       setRequestType('open');
                       setRequestStep(1);
                       setActiveTab('request');
-                      onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'CONSULT_REQUEST', '메인 Hero [1분 채무 진단 시작하기] 버튼 클릭');
                     }}
                     className="w-full sm:w-auto flex-1 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-lg transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base"
                   >
@@ -2435,7 +2361,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* ── Sector 4: 상황별 채무관리 방향성 진단 (Premium Bento Grid) ────────── */}
             <section className="w-full py-10 md:py-20 bg-gradient-to-b from-slate-50 via-white to-slate-50/80 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
-              {/* 배경 장식 글로우 (비대칭 배치 — Anti-AI) */}
+              {/* 배경 장식 글로우 (비대칭 배치) */}
               <div className="absolute top-16 -right-24 w-72 h-72 bg-[#3B82F6]/[0.06] rounded-full blur-[80px] pointer-events-none" />
               <div className="absolute -bottom-20 left-1/4 w-56 h-56 bg-rose-200/20 rounded-full blur-[60px] pointer-events-none" />
 
@@ -2472,7 +2398,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   // Hero = card_loan (idx 0)
                   const heroItem = items[0];
                   const heroCs = colorMap[heroItem.themeColor] || colorMap.indigo;
-                  const standardItems = items.slice(1); // idx 1~7 (bank_loan ~ tax_delinquency)
+                  const standardItems = items.slice(1);
                   const caseCounts = [127, 89, 156, 73, 94, 61, 112, 48];
 
                   return (
@@ -2600,7 +2526,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
 
-            {/* ── Sector 5.5: 프리미엄 변호사 쇼케이스 광고 (메인 배너 광고 · 월 50만원) ── */}
+            {/* ── Sector 5.5: 프리미엄 변호사 쇼케이스 광고 ── */}
             {shuffledShowcaseAds.length > 0 && (() => {
               const totalPages = shuffledShowcaseAds.length;
               const banner = shuffledShowcaseAds[showcasePage % totalPages];
@@ -2645,7 +2571,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                       {/* Right: Avatar */}
                       <div className="relative w-[120px] md:w-[200px] lg:w-[240px] overflow-hidden shrink-0">
-                        {/* Background subtle gradient for image */}
                         <div className="absolute inset-0 bg-gradient-to-l from-[#2B3E50]/20 via-[#2B3E50]/50 to-transparent z-10" />
                         <img
                           src={banner.lawyerAvatar}
@@ -2676,7 +2601,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       </div>
                     </div>
                     
-                    {/* Disclaimer */}
                     <div className="mt-5 flex items-center justify-center gap-1.5">
                       <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold">AD</span>
                       <p className="text-[11px] text-slate-400">
@@ -2691,7 +2615,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
             <section className="w-full py-6 md:py-14 bg-white border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* 7. Section 6: 해결 경로 비교 (Solutions Comparison) */}
             <div className="space-y-6 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
@@ -2766,11 +2689,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   }
                 ]).map((item, idx) => (
                   <div key={idx} onClick={() => setActiveSolutionType(item.type)} className={`cursor-pointer bg-white dark:bg-slate-900 border ${item.borderColor} rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden w-[calc(50%-6px)] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]`}>
-                    {/* Accent top strip */}
                     <div className={`h-1 w-full bg-gradient-to-r ${item.accentColor}`} />
                     <div className="p-3 md:p-6 flex flex-col justify-between flex-1 space-y-2 md:space-y-4">
                       <div className="space-y-1.5 md:space-y-3">
-                        {/* Icon + Title row */}
                         <div className="flex items-center gap-2 md:gap-3">
                           <div className={`w-8 h-8 md:w-11 md:h-11 rounded-lg md:rounded-xl ${item.iconBg} flex items-center justify-center text-base md:text-xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
                             <span className="drop-shadow-sm">{item.icon}</span>
@@ -2780,9 +2701,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <span className={`text-[9px] md:text-[12px] font-bold px-1.5 md:px-2 py-0.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>
                           </div>
                         </div>
-                        {/* Target audience */}
                         <p className="text-[11px] md:text-sm text-[#3B82F6] font-semibold leading-snug">{item.sub}</p>
-                        {/* Description - desktop only */}
                         <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
                       </div>
                       <span className="hidden md:flex text-[13px] font-bold text-[#1E3A5F]/50 group-hover:text-[#1E3A5F] transition-colors items-center gap-1.5 pt-1">
@@ -2801,7 +2720,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* ── Sector 7: 성공 후기 ─────────────────────── */}
             <section className="w-full py-10 md:py-14 bg-[#F8FAFC] border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* 8. Section 7: 실제 사례/콘텐츠 (Success reviews & News) */}
             <div className="space-y-4 text-left">
               <div className="flex items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-lg text-[#0f172a] flex items-center gap-2">
@@ -2906,7 +2824,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* ── Sector 8: 고민 해결 상담사례 ─────────────── */}
             <section className="w-full py-10 md:py-14 bg-white border-b border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* 5. Live Q&A Case Studies (Lawtalk Style) */}
             <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-lg text-[#0f172a] flex items-center gap-2">
@@ -3182,13 +3099,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setUserAlias('');
                     
                     localStorage.removeItem('legal_crm_client_id');
-                    localStorage.removeItem('legal_crm_requests');
-                    localStorage.removeItem('legal_crm_messages');
                     localStorage.removeItem('legal_crm_inquiries');
                     localStorage.removeItem('legal_crm_client_alias');
                     localStorage.removeItem('lawyer_favorites');
                     localStorage.removeItem('legal_crm_appointed_lawyer_id');
                     
+                    // 로컬 상태만 초기화 (Supabase 데이터는 보존 - 다시 로그인하면 복원됨)
                     setRequests([]);
                     setMessages([]);
                     setInquiries([]);

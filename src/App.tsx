@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { 
+  loadConsultRequests, 
+  saveConsultRequest, 
+  saveAllConsultRequests, 
+  loadConsultMessages, 
+  saveConsultMessage, 
+  saveAllConsultMessages, 
+  migrateAnonymousRequests 
+} from './services/consultService';
+import { 
   mockLawyers, 
   initialConsultRequests, 
   initialConsultMessages, 
@@ -111,7 +120,8 @@ export default function App() {
     setCurrentRole('client');
   };
 
-  // Core application states - localStorage에서 직접 로드 + 동기 저장 래퍼
+  // Core application states
+  // Initial load from localStorage (instant)
   const [requests, _setRequests] = useState<ConsultRequest[]>(() => {
     try {
       const saved = localStorage.getItem('legal_crm_requests');
@@ -123,11 +133,25 @@ export default function App() {
     } catch {}
     return [];
   });
-  // 래퍼: state 업데이트 + 즉시 localStorage 동기 저장
+
+  // Async load from Supabase (overrides localStorage data)
+  useEffect(() => {
+    loadConsultRequests().then(dbRequests => {
+      if (dbRequests.length > 0) {
+        _setRequests(dbRequests);
+        // Sync localStorage
+        try { localStorage.setItem('legal_crm_requests', JSON.stringify(dbRequests)); } catch {}
+      }
+    });
+  }, []);
+
   const setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>> = React.useCallback((action) => {
     _setRequests(prev => {
       const next = typeof action === 'function' ? action(prev) : action;
+      // Sync to localStorage (instant)
       try { localStorage.setItem('legal_crm_requests', JSON.stringify(next)); } catch {}
+      // Sync to Supabase (async, fire-and-forget)
+      saveAllConsultRequests(next).catch(() => {});
       return next;
     });
   }, []);
@@ -141,10 +165,21 @@ export default function App() {
     } catch {}
     return [];
   });
+
+  useEffect(() => {
+    loadConsultMessages().then(dbMessages => {
+      if (dbMessages.length > 0) {
+        _setMessages(dbMessages);
+        try { localStorage.setItem('legal_crm_messages', JSON.stringify(dbMessages)); } catch {}
+      }
+    });
+  }, []);
+
   const setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>> = React.useCallback((action) => {
     _setMessages(prev => {
       const next = typeof action === 'function' ? action(prev) : action;
       try { localStorage.setItem('legal_crm_messages', JSON.stringify(next)); } catch {}
+      saveAllConsultMessages(next).catch(() => {});
       return next;
     });
   }, []);
@@ -320,6 +355,7 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     setMessages(prev => [...prev, newMessage]);
+    saveConsultMessage(newMessage).catch(() => {});
 
     // Update the corresponding request status to active 'counseling' if it was just 'requested' or 'responding'
     setRequests(prev => prev.map(req => {
@@ -371,6 +407,10 @@ export default function App() {
       localStorage.removeItem('legal_crm_popup_config');
       setRequests(initialConsultRequests);
       setMessages(initialConsultMessages);
+
+      saveAllConsultRequests(initialConsultRequests).catch(() => {});
+      saveAllConsultMessages(initialConsultMessages).catch(() => {});
+
       setCases(initialCases);
       setMembers(initialMembers);
       setActivityLogs(initialActivityLogs);
@@ -546,3 +586,4 @@ export default function App() {
     </div>
   );
 }
+
