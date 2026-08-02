@@ -68,7 +68,7 @@ export interface FinancialProfile {
 }
 
 export type RequestType = 'direct' | 'open' | 'direct_multi';
-export type ConsultStatus = 'requested' | 'responding' | 'counseling' | 'closed' | 'cancelled';
+export type ConsultStatus = 'requested' | 'responding' | 'comparing' | 'counseling' | 'closed' | 'cancelled';
 
 // ── CRM 업그레이드 타입 ──
 
@@ -386,6 +386,8 @@ export interface ConsultRequest {
   selectedLawyerId?: string; // If 'direct' — 채팅이 개시된 변호사 ID
   selectedLawyerIds?: string[]; // 의뢰인이 지정한 변호사 ID 목록 (최대 3명)
   proposals?: ConsultProposal[]; // 변호사들이 제출한 솔루션/비용 제안서 목록
+  acceptedLawyerIds?: string[];   // 제안서 수락 → 상담 활성화된 변호사 목록
+  rejectionNotified?: boolean;    // 미매칭 알림 발송 완료 여부
   createdAt: string;
   title: string;
   content: string;

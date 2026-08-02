@@ -73,7 +73,7 @@ export default function LawyerRole({
   platformConfig
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'cases' | 'billing' | 'client-crm' | 'staff-management' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'staff-management' | 'settings'>('dashboard');
   
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
@@ -1654,6 +1654,17 @@ export default function LawyerRole({
               </button>
             )}
 
+            <button onClick={() => setActiveTab('chat')} className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'chat' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
+            }`}>
+              💬 상담채팅
+              {requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && (r.acceptedLawyerIds || []).includes(activeLawyer.id)).length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-brand/10 text-brand rounded-full text-[10px] font-bold">
+                  {requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && (r.acceptedLawyerIds || []).includes(activeLawyer.id)).length}
+                </span>
+              )}
+            </button>
+
             {permissionCtx.canAccessTab('client-crm') && (
               <button 
                 onClick={() => setActiveTab('client-crm')}
@@ -2223,7 +2234,7 @@ export default function LawyerRole({
         )}
 
         {/* TAB 3: (실시간 협업실 채팅 - 추후 추가 예정) */}
-        {false && (
+        {activeTab === 'chat' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-slate-50 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 min-h-[500px] h-[calc(100vh-14rem)] lg:h-[700px] animate-fadeIn">
             
             {/* PANEL I: INBOX THREADS (LEFT) */}
@@ -2235,7 +2246,7 @@ export default function LawyerRole({
 
               <div className="flex-1 overflow-y-auto divide-y divide-slate-200 h-[400px] scrollbar-hide">
                 {requests
-                  .filter(r => r.status === 'counseling' && (r.selectedLawyerId === activeLawyer.id || r.requestType === 'open'))
+                  .filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id))
                   .map(r => {
                     const isSelected = r.id === activeChatReqId;
                     return (
@@ -2258,14 +2269,14 @@ export default function LawyerRole({
                           <span>부채: {r.financialProfile.debtTotal.toLocaleString()}만</span>
                           <span className="text-emerald-400 flex items-center gap-1 font-semibold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span>상담중</span>
+                            <span>{r.status === 'comparing' ? '🟠 비교 상담중' : r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id ? '🟢 전담 매칭' : r.selectedLawyerId && r.selectedLawyerId !== activeLawyer.id ? '🔴 매칭 종료' : '상담중'}</span>
                           </span>
                         </div>
                       </div>
                     );
                   })}
 
-                {requests.filter(r => r.status === 'counseling' && (r.selectedLawyerId === activeLawyer.id || r.requestType === 'open')).length === 0 && (
+                {requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length === 0 && (
                   <div className="p-8 text-center text-slate-600 text-[13px] space-y-2">
                     <p>내가 배정되어 상담 개시 중인 활성 대화방이 없습니다.</p>
                     <button 

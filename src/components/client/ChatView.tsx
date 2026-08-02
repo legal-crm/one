@@ -132,6 +132,7 @@ export default function ChatView({
   const [showPhoneConsultModal, setShowPhoneConsultModal] = useState<boolean>(false);
   const [showAppointModal, setShowAppointModal] = useState<boolean>(false);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
+  const [activeChatLawyerId, setActiveChatLawyerId] = useState<string | null>(null);
 
   // 자동 모달 트리거 감지 (리포트 팝업 -> 내 전담 변호사 선택하기 클릭 시)
   useEffect(() => {
@@ -232,7 +233,16 @@ export default function ChatView({
     }
   }, [currentRequest?.selectedLawyerIds]);
 
-  const activeChatMessages = messages.filter(m => m.consultRequestId === (currentRequest?.id || activeChatReqId));
+  const isComparing = currentRequest?.status === 'comparing';
+  const hasMultipleAccepted = (currentRequest?.acceptedLawyerIds || []).length > 1;
+
+  const activeChatMessages = messages.filter(m => {
+    if (m.consultRequestId !== (currentRequest?.id || activeChatReqId)) return false;
+    if ((isComparing || currentRequest?.status === 'counseling') && hasMultipleAccepted && activeChatLawyerId) {
+      return m.senderType === 'client' || m.senderId === activeChatLawyerId || m.senderId === 'system';
+    }
+    return true;
+  });
 
   useEffect(() => {
     if (chatFeedRef.current) {
@@ -562,24 +572,44 @@ export default function ChatView({
                     <button 
                       onClick={() => {
                         if (currentRequest) {
-                          onSetRequests(prev => prev.map(r => 
-                            r.id === currentRequest.id 
-                              ? { ...r, status: 'counseling' as const, selectedLawyerId: bid.lawyerId } 
-                              : r
-                          ));
-                          // 전담 변호사 저장
-                          localStorage.setItem('legal_crm_appointed_lawyer_id', bid.lawyerId);
-                          setAppointedLawyerId(bid.lawyerId);
-                          onAddMessage(
-                            currentRequest.id,
-                            `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
-                            'lawyer', 'system', '시스템 안내'
-                          );
+                          if (currentRequest.requestType === 'direct') {
+                            onSetRequests(prev => prev.map(r => 
+                              r.id === currentRequest.id 
+                                ? { ...r, status: 'counseling' as const, selectedLawyerId: bid.lawyerId } 
+                                : r
+                            ));
+                            // 전담 변호사 저장
+                            localStorage.setItem('legal_crm_appointed_lawyer_id', bid.lawyerId);
+                            setAppointedLawyerId(bid.lawyerId);
+                            onAddMessage(
+                              currentRequest.id,
+                              `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
+                              'lawyer', 'system', '시스템 안내'
+                            );
+                          } else {
+                            const newAccepted = Array.from(new Set([...(currentRequest.acceptedLawyerIds || []), bid.lawyerId]));
+                            onSetRequests(prev => prev.map(r => 
+                              r.id === currentRequest.id 
+                                ? { ...r, status: 'comparing' as const, acceptedLawyerIds: newAccepted } 
+                                : r
+                            ));
+                            setActiveChatLawyerId(bid.lawyerId);
+                            onAddMessage(
+                              currentRequest.id,
+                              `${bid.lawyerName} 변호사님과 비교 상담을 시작합니다.`,
+                              'lawyer', 'system', '시스템 안내'
+                            );
+                          }
                         }
                       }}
-                      className="w-full py-3 bg-brand hover:bg-brand-hover text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2"
+                      disabled={currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId)}
+                      className={`w-full py-3 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 ${
+                        currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId)
+                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                          : 'bg-brand hover:bg-brand-hover text-white'
+                      }`}
                     >
-                      <MessageCircle className="w-4 h-4" /> 💬 1:1 상담 시작
+                      <MessageCircle className="w-4 h-4" /> {currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId) ? '💬 상담 진행중' : '💬 상담 시작'}
                     </button>
                   </div>
                 ))}
@@ -640,7 +670,7 @@ export default function ChatView({
             )}
           </div>
 
-          {!isSelectedLawyer ? (
+          {(!isSelectedLawyer && currentRequest?.status !== 'comparing') ? (
             /* Locked / Waiting State */
             <div className="h-[250px] flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/30 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white/80 dark:to-slate-900/80 z-10"></div>
@@ -678,6 +708,29 @@ export default function ChatView({
           ) : (
             /* Active Chat State */
             <>
+              {/* Lawyer Tabs for Comparing / Multiple Accepted */}
+              {((currentRequest?.status === 'comparing' || currentRequest?.status === 'counseling') && hasMultipleAccepted) && (
+                <div className="flex bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                  {currentRequest?.acceptedLawyerIds?.map(lawyerId => {
+                    const lawyerName = proposals.find(p => p.lawyerId === lawyerId)?.lawyerName || '변호사';
+                    const isSelected = currentRequest.status === 'counseling' && currentRequest.selectedLawyerId === lawyerId;
+                    const isOther = currentRequest.status === 'counseling' && currentRequest.selectedLawyerId !== lawyerId;
+                    return (
+                      <button
+                        key={lawyerId}
+                        onClick={() => !isOther && setActiveChatLawyerId(lawyerId)}
+                        disabled={isOther}
+                        className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${
+                          activeChatLawyerId === lawyerId ? 'border-brand text-brand bg-white' : 'border-transparent text-slate-500 hover:text-slate-800 bg-slate-50'
+                        } ${isOther ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {isOther ? '🔒 상담 종료' : isSelected ? `🟢 ${lawyerName}` : `🟠 ${lawyerName}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {(showPrivacyBanner || showDisclaimerBanner) && (
                 <div className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800 space-y-2">
                   {showPrivacyBanner && <ChatPrivacyBanner onClose={handleClosePrivacyBanner} />}
@@ -718,21 +771,58 @@ export default function ChatView({
               </div>
 
               {/* Chat Input Bar */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2.5">
-                <input 
-                  type="text" 
-                  placeholder="담당 변호사에게 채무 고민 메시지 보내기..." 
-                  value={chatInput} 
-                  onChange={(e) => onSetChatInput(e.target.value)} 
-                  onKeyDown={(e) => { if (e.key === 'Enter') onSendChat(); }} 
-                  className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20 rounded-xl px-4 py-3 text-sm focus:outline-none font-medium transition-all" 
-                />
-                <button 
-                  onClick={onSendChat} 
-                  className="bg-brand hover:bg-brand-hover text-white p-3 rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col gap-2.5">
+                {currentRequest?.status === 'comparing' && activeChatLawyerId && (
+                  <button
+                    onClick={() => {
+                      if (confirm("이 변호사님을 전담으로 선임하시겠습니까? 다른 변호사님들과의 상담은 종료됩니다.")) {
+                        onSetRequests(prev => prev.map(r => 
+                          r.id === currentRequest.id 
+                            ? { ...r, status: 'counseling' as const, selectedLawyerId: activeChatLawyerId, rejectionNotified: true } 
+                            : r
+                        ));
+                        localStorage.setItem('legal_crm_appointed_lawyer_id', activeChatLawyerId);
+                        setAppointedLawyerId(activeChatLawyerId);
+                        
+                        onAddMessage(
+                          currentRequest.id,
+                          `[System] 🎉 의뢰인이 귀하를 전담 변호사로 선임하였습니다!`,
+                          'client', activeChatLawyerId, '시스템 안내'
+                        );
+
+                        const otherLawyers = (currentRequest.acceptedLawyerIds || []).filter(id => id !== activeChatLawyerId);
+                        otherLawyers.forEach(otherId => {
+                          onAddMessage(
+                            currentRequest.id,
+                            `[System] 📋 의뢰인이 다른 변호사를 전담으로 선임하였습니다. 상담에 참여해 주셔서 감사합니다.`,
+                            'client', otherId, '시스템 안내'
+                          );
+                        });
+                      }
+                    }}
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    ⭐ 이 변호사를 전담으로 선임하기
+                  </button>
+                )}
+                <div className="flex items-center gap-2.5 w-full">
+                  <input 
+                    type="text" 
+                    placeholder={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId ? '상담이 종료되었습니다.' : '담당 변호사에게 채무 고민 메시지 보내기...'} 
+                    value={chatInput} 
+                    onChange={(e) => onSetChatInput(e.target.value)} 
+                    onKeyDown={(e) => { if (e.key === 'Enter') onSendChat(); }} 
+                    disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
+                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20 rounded-xl px-4 py-3 text-sm focus:outline-none font-medium transition-all disabled:bg-slate-100 disabled:cursor-not-allowed" 
+                  />
+                  <button 
+                    onClick={onSendChat} 
+                    disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
+                    className="bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white p-3 rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             </>
           )}

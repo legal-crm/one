@@ -371,7 +371,7 @@ export default function App() {
 
     // Update the corresponding request status to active 'counseling' if it was just 'requested' or 'responding'
     setRequests(prev => prev.map(req => {
-      if (req.id === reqId && req.status === 'requested') {
+      if (req.id === reqId && (req.status === 'requested' || req.status === 'responding')) {
         return { ...req, status: 'counseling' };
       }
       return req;
