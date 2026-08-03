@@ -2441,7 +2441,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                                   가장 많은 상담
                                 </span>
-                                <span className="text-slate-500 text-[9px] md:text-[11px] font-medium hidden md:inline">사례 {caseCounts[0]}건+</span>
+
                               </div>
                               {/* 제목 */}
                               <h4 className="text-[13px] md:text-xl font-bold text-white leading-snug">{heroItem.title}</h4>
@@ -2486,7 +2486,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-2 md:mt-3 pt-2 md:pt-2.5 border-t border-slate-100 dark:border-slate-800">
                                   <span className={`text-[9px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-1.5 md:px-2 py-0.5 rounded-md`}>
-                                    사례 {caseCounts[1]}건+
+
                                   </span>
                                   <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
                                 </div>
@@ -2522,7 +2522,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-2 md:mt-3 pt-2 md:pt-2.5 border-t border-slate-100 dark:border-slate-800">
                                   <span className={`text-[9px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-1.5 md:px-2 py-0.5 rounded-md`}>
-                                    사례 {caseCount}건+
+
                                   </span>
                                   <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
                                 </div>
@@ -2743,7 +2743,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <div className="flex items-center justify-between gap-1 text-left">
                 <h3 className="font-bold text-lg text-[#0f172a] flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-[#1E3A5F]" />
-                  <span>실제 채무 해결 성공 후기</span>
+                  <span>실제 이용 후기</span>
                 </h3>
                 <button
                   onClick={() => setActiveTab('reviews')}

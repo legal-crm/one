@@ -559,10 +559,7 @@ export default function ChatView({
                         <span className="text-slate-500">감면율</span>
                         <span className="font-bold text-brand">{bid.reductionRate}% 탕감</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">평점</span>
-                        <span className="font-bold text-amber-500 flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-current" /> 4.9</span>
-                      </div>
+
                     </div>
                     
                     <div className="text-xs text-slate-600 dark:text-slate-400 bg-indigo-50/50 dark:bg-indigo-900/20 p-3 rounded-xl italic">

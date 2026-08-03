@@ -13,11 +13,11 @@ interface LawyerProfileModalProps {
 
 // 의뢰인 후기 mock
 const mockReviews = [
-  { id: 1, author: '김○○', rating: 5, date: '2026.06.15', content: '처음 상담할 때부터 너무 친절하고 꼼꼼하게 설명해주셔서 불안한 마음이 많이 줄었습니다. 변제율도 예상보다 낮게 나와서 정말 감사합니다.', tag: '개인회생' },
-  { id: 2, author: '박○○', rating: 5, date: '2026.05.28', content: '다른 곳에서 기각될 수 있다고 했는데, 여기서 보정명령 대응까지 완벽하게 처리해주셔서 무사히 인가 받았습니다.', tag: '보정명령 대응' },
-  { id: 3, author: '이○○', rating: 4, date: '2026.05.10', content: '진행 과정을 매번 카톡으로 알려주셔서 안심하고 맡길 수 있었습니다. 채권추심도 바로 멈춰주셨어요.', tag: '채권추심 차단' },
-  { id: 4, author: '최○○', rating: 5, date: '2026.04.22', content: '가족에게 비밀로 진행해야 했는데, 보안 유지하면서도 빠르게 처리해주셨습니다. 정말 감사드립니다.', tag: '비밀 상담' },
-  { id: 5, author: '정○○', rating: 5, date: '2026.04.05', content: '3억이 넘는 채무였는데 변제율 25%로 인가받아서 월 상환금이 크게 줄었습니다. 새 출발할 수 있게 되었어요.', tag: '고액채무' },
+  { id: 1, author: '김○○', date: '2026.06.15', content: '처음 상담할 때부터 너무 친절하고 꼼꼼하게 설명해주셔서 불안한 마음이 많이 줄었습니다. 변제율도 예상보다 낮게 나와서 정말 감사합니다.', tag: '개인회생' },
+  { id: 2, author: '박○○', date: '2026.05.28', content: '다른 곳에서 기각될 수 있다고 했는데, 여기서 보정명령 대응까지 완벽하게 처리해주셔서 무사히 인가 받았습니다.', tag: '보정명령 대응' },
+  { id: 3, author: '이○○', date: '2026.05.10', content: '진행 과정을 매번 카톡으로 알려주셔서 안심하고 맡길 수 있었습니다. 채권추심도 바로 멈춰주셨어요.', tag: '채권추심 차단' },
+  { id: 4, author: '최○○', date: '2026.04.22', content: '가족에게 비밀로 진행해야 했는데, 보안 유지하면서도 빠르게 처리해주셨습니다. 정말 감사드립니다.', tag: '비밀 상담' },
+  { id: 5, author: '정○○', date: '2026.04.05', content: '3억이 넘는 채무였는데 변제율 25%로 인가받아서 월 상환금이 크게 줄었습니다. 새 출발할 수 있게 되었어요.', tag: '고액채무' },
 ];
 
 export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavorite, onToggleFavorite }: LawyerProfileModalProps) {
@@ -26,7 +26,6 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
   const firm = mockLawFirms.find(f => f.id === lawyer.lawFirmId);
   const displayName = lawyer.name.replace(' 변호사', '');
   const reviewCount = 12 + (lawyer.matchedCount % 20);
-  const avgRating = 4.7 + ((lawyer.matchedCount % 3) * 0.1);
 
   const tabs = [
     { key: 'home' as const, label: '변호사홈' },
@@ -136,16 +135,15 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
           {activeTab === 'home' && (
             <div className="space-y-6 animate-fadeIn">
               {/* 핵심 통계 */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: '누적 수임', value: `${(lawyer.totalCases || lawyer.matchedCount * 6).toLocaleString()}건`, icon: Briefcase, color: 'text-brand' },
-                  { label: '인가 성공률', value: `${lawyer.successRate || 96}%`, icon: Award, color: 'text-emerald-500' },
-                  { label: '평균 변제율', value: `${lawyer.avgRepaymentRate || 30}%`, icon: TrendingDown, color: 'text-amber-500' },
-                  { label: '의뢰인 만족', value: `${avgRating.toFixed(1)}점`, icon: Star, color: 'text-yellow-500' },
+                  { label: '전문 분야', value: (lawyer.fields || ['개인회생']).slice(0, 2).join('·'), icon: Scale, color: 'text-indigo-500' },
+                  { label: '관할 법원', value: lawyer.courtJurisdiction || '서울회생법원', icon: Building, color: 'text-emerald-500' },
                 ].map(stat => (
                   <div key={stat.label} className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 space-y-1.5">
                     <stat.icon className={`w-5 h-5 mx-auto ${stat.color}`} />
-                    <div className="text-xl sm:text-2xl font-black text-slate-900">{stat.value}</div>
+                    <div className="text-lg sm:text-xl font-black text-slate-900">{stat.value}</div>
                     <div className="text-[12px] text-slate-500 font-bold uppercase">{stat.label}</div>
                   </div>
                 ))}
@@ -273,33 +271,10 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
           {/* ── TAB: 의뢰인 후기 ── */}
           {activeTab === 'reviews' && (
             <div className="space-y-5 animate-fadeIn">
-              {/* 만족도 요약 */}
-              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-100 rounded-2xl p-5 flex items-center gap-5">
-                <div className="text-center space-y-1">
-                  <div className="text-3xl font-black text-amber-600">{avgRating.toFixed(1)}</div>
-                  <div className="flex gap-0.5">
-                    {[1,2,3,4,5].map(i => (
-                      <Star key={i} className={`w-4 h-4 ${i <= Math.round(avgRating) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
-                    ))}
-                  </div>
-                  <div className="text-[12px] text-amber-600/60 font-bold">{reviewCount}건</div>
-                </div>
-                <div className="flex-1 space-y-1.5">
-                  {[
-                    { label: '전문성', pct: 96 },
-                    { label: '친절함', pct: 98 },
-                    { label: '신속함', pct: 94 },
-                    { label: '결과 만족', pct: 95 },
-                  ].map(bar => (
-                    <div key={bar.label} className="flex items-center gap-2 text-[12px]">
-                      <span className="w-14 text-slate-600 font-bold text-right">{bar.label}</span>
-                      <div className="flex-1 h-2 bg-amber-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${bar.pct}%` }}></div>
-                      </div>
-                      <span className="w-8 text-amber-600 font-bold">{bar.pct}%</span>
-                    </div>
-                  ))}
-                </div>
+              {/* 후기 안내 */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                <p className="text-sm text-slate-600 font-medium">이용 후기 {reviewCount}건</p>
+                <p className="text-[11px] text-slate-400 mt-1">※ 후기는 실제 상담 이용자의 주관적 의견이며, 개별 사례마다 결과가 다를 수 있습니다.</p>
               </div>
 
               {/* 후기 목록 */}
@@ -313,11 +288,6 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                         </div>
                         <div>
                           <span className="text-sm font-bold text-slate-700">{review.author}</span>
-                          <div className="flex gap-0.5">
-                            {[1,2,3,4,5].map(i => (
-                              <Star key={i} className={`w-3 h-3 ${i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
-                            ))}
-                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

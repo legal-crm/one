@@ -203,7 +203,6 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                 )}
                 <div className="mt-3 flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-3 text-slate-400">
-                    {l.successRate && <span>인가율 <strong className="text-violet-600">{l.successRate}%</strong></span>}
                     {l.totalCases && <span>수임 <strong className="text-violet-600">{l.totalCases}건</strong></span>}
                   </div>
                   <span className="text-emerald-500 font-bold flex items-center gap-1">

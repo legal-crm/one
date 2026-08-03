@@ -44,33 +44,20 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
         <div className="max-w-2xl relative z-10 space-y-4">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-200 text-sm font-bold rounded-full border border-indigo-500/30">
             <CheckCircle className="w-3.5 h-3.5" />
-            <span>실시간 채무 감면 성공 사례</span>
+            <span>이용자 상담 후기</span>
           </span>
           
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
-            my김변 회생파산 성공사례
+            my김변 이용 후기
           </h1>
           
           <p className="text-slate-300 text-sm md:text-base leading-relaxed font-medium">
-            가압류/독촉의 위기에서 벗어나 성공적으로 빚 탕감을 마친 분들의 생생한 후기입니다. 
-            동일 채무 분야의 변호사에게 1:1 상담을 신청하여 직접 기적을 만들어보세요.
+            실제 상담을 이용한 분들의 경험담입니다.
+            동일 채무 분야의 전문가에게 상담을 신청해 보세요.
           </p>
+          <p className="text-[11px] text-slate-500 mt-2">※ 후기는 실제 상담 이용자의 주관적 의견이며, 개별 사례마다 결과가 다를 수 있습니다.</p>
           
-          {/* Micro statistics banner */}
-          <div className="grid grid-cols-3 gap-3 md:gap-5 pt-4 border-t border-slate-700/50">
-            <div className="space-y-1">
-              <span className="block text-xs md:text-sm text-slate-500 font-bold">누적 탕감액</span>
-              <span className="block text-base md:text-xl font-bold text-amber-400">84억 5,000만원+</span>
-            </div>
-            <div className="space-y-1">
-              <span className="block text-xs md:text-sm text-slate-500 font-bold">인가면책 성공률</span>
-              <span className="block text-base md:text-xl font-bold text-indigo-400">98.7%</span>
-            </div>
-            <div className="space-y-1">
-              <span className="block text-xs md:text-sm text-slate-500 font-bold">평균 감면율</span>
-              <span className="block text-base md:text-xl font-bold text-emerald-400">최대 78%</span>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -118,7 +105,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
       {filteredReviews.length === 0 ? (
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-12 rounded-2xl text-center space-y-3 shadow-premium">
           <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
-          <h4 className="font-semibold text-base text-slate-900 dark:text-slate-200">일치하는 성공 사례가 없습니다.</h4>
+          <h4 className="font-semibold text-base text-slate-900 dark:text-slate-200">일치하는 후기가 없습니다.</h4>
           <p className="text-sm text-slate-600">다른 검색어를 입력하시거나 카테고리 필터를 변경해 주세요.</p>
           <button
             onClick={() => { setCategoryFilter('전체'); setSearchQuery(''); setPage(1); }}

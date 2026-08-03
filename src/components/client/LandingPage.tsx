@@ -304,7 +304,7 @@ export default function LandingPage({
             className="mt-12 flex flex-wrap justify-center gap-x-8 gap-y-3"
           >
             {[
-              '3만 건+ 사례 기반 분석',
+              '법원 공개 기준 기반 분석',
               '실시간 법원 기준 적용',
               '개인정보 없이 즉시 확인',
             ].map((text, i) => (
@@ -867,11 +867,7 @@ export default function LandingPage({
                           <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-500/20">
                             광고
                           </span>
-                          <div className="flex gap-0.5">
-                            {[...Array(5)].map((_, s) => (
-                              <Star key={s} className="w-3 h-3 fill-amber-400/60 text-amber-400/60" />
-                            ))}
-                          </div>
+                          <span className="text-[10px] text-slate-500 font-medium">전문가 프로필</span>
                         </div>
 
                         {/* Avatar */}
@@ -992,11 +988,7 @@ export default function LandingPage({
                                         px-3 py-1 rounded-full">
                         {review.category}
                       </span>
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: 5 }).map((_, s) => (
-                          <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        ))}
-                      </div>
+
                     </div>
 
                     {/* Debt comparison */}
@@ -1069,7 +1061,7 @@ export default function LandingPage({
               className="inline-flex items-center gap-2 text-base text-slate-500
                           hover:text-indigo-400 transition-colors cursor-pointer"
             >
-              성공 사례 더보기
+              이용 후기 더보기
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -1132,11 +1124,10 @@ export default function LandingPage({
                     <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
                       <span className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5" />
-                        매칭 {lawyer.matchedCount}건
+                        수임 {lawyer.matchedCount * 6}건
                       </span>
                       <span className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        4.9
+                        {lawyer.fields?.slice(0, 2).join(' · ') || '도산 전문'}
                       </span>
                     </div>
                   </motion.div>

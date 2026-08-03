@@ -4,15 +4,14 @@ import { NewsArticle } from '../../types';
 
 interface NewsDetailModalProps {
   article: NewsArticle;
-  lawyers: { id: string; name: string; avatar: string; bio: string; matchedCount?: number }[];
+  lawyers: { id: string; name: string; avatar: string; bio: string; matchedCount?: number; fields?: string[] }[];
   onClose: () => void;
   onConsultWithLawyer: (lawyerId: string, lawyerName: string, articleTitle: string) => void;
 }
 
 export default function NewsDetailModal({ article, lawyers, onClose, onConsultWithLawyer }: NewsDetailModalProps) {
   const matchingLawyer = lawyers.find(l => l.id === article.authorId) || lawyers[0];
-  const rating = matchingLawyer.id === 'lawyer-1' ? '4.9' : matchingLawyer.id === 'lawyer-2' ? '4.8' : '4.9';
-  const reviewsCount = matchingLawyer.id === 'lawyer-1' ? '184' : matchingLawyer.id === 'lawyer-2' ? '129' : '94';
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -82,7 +81,7 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
                 <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[12px] font-semibold px-1.5 py-0.5 rounded-md">도산 전문 변호사</span>
               </div>
               <span className="text-[12px] text-slate-600 dark:text-slate-400 font-medium block">
-                ★ {rating} · 후기 {reviewsCount}건 · 매칭 {matchingLawyer.matchedCount}건
+                {matchingLawyer.fields?.join(' · ') || '도산 전문'}
               </span>
               <span className="text-[12px] text-slate-500 dark:text-slate-500 font-normal line-clamp-1 block">
                 {matchingLawyer.bio}
