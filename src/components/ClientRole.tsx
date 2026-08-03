@@ -3183,7 +3183,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
             {activeTab === 'request' && (
-              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[var(--chatbot-vh,100dvh)] md:h-[600px] bg-slate-900 border-0 md:border md:border-slate-800 rounded-none md:rounded-3xl overflow-hidden relative shadow-2xl">
+              <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[var(--chatbot-vh,100dvh)] md:h-[600px] bg-slate-900 border-0 md:border md:border-slate-800 rounded-none md:rounded-3xl overflow-hidden relative shadow-2xl flex flex-col">
+                {/* 채무정보 정리 목적 고지 */}
+                <div className="px-4 py-2 bg-blue-950/40 border-b border-blue-800/30 shrink-0">
+                  <p className="text-[10px] text-blue-300/80 leading-relaxed">
+                    ℹ️ 본 기능은 채무·소득·지출 정보를 정리하는 도구이며, 법률 자문을 제공하지 않습니다. 법률적 판단은 전문가 상담이 필요합니다.
+                  </p>
+                </div>
+                <div className="flex-1 overflow-hidden">
                 <AIRehabChatbotV2
                   isOpen={true}
                   disablePortal={true}
@@ -3228,6 +3235,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setActiveTab('chat');
                   }}
                 />
+                </div>
               </div>
             )}
 

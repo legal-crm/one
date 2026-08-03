@@ -1,5 +1,5 @@
 /**
- * 의뢰인 종합 채무·자산 분석 리포트 - 프리미엄 에디션
+ * 채무정보 정리 리포트 - 프리미엄 에디션
  * 
  * - 브랜드 퍼플 (#7264FF) 중심의 고급 글래스모피즘 UI
  * - 4개 멀티 탭 (종합 분석 / 재산 및 가구 / 소득 및 채무 / 변호사 핵심 가이드)
@@ -160,13 +160,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                     if (navigator.canShare({ files: [file] })) {
                         await navigator.share({
-                            title: '의뢰인 종합 채무·자산 분석 리포트',
+                            title: '채무정보 정리 리포트',
                             text: `${userInput.name || '의뢰인'}님의 채무 진단 결과입니다.`,
                             files: [file]
                         });
                     } else {
                         await navigator.share({
-                            title: '의뢰인 종합 채무·자산 분석 리포트',
+                            title: '채무정보 정리 리포트',
                             text: `${userInput.name || '의뢰인'}님의 채무 진단 결과입니다.`,
                         });
                     }
@@ -341,7 +341,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2"
                                 >
                                     <Shield className="w-5 h-5 text-[#7264FF]" />
-                                    의뢰인 종합 채무·자산 분석 리포트
+                                    채무정보 정리 리포트
                                 </motion.h1>
                                 <motion.p
                                     initial={{ opacity: 0 }}
@@ -349,7 +349,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                     transition={{ delay: 0.2 }}
                                     className="text-xs text-slate-600 mt-1"
                                 >
-                                    {userInput.name || '의뢰인'}님 진단서 · 기준: 2026.01 전국 회생법원 실무준칙
+                                    {userInput.name || '의뢰인'}님 채무현황 요약 · 상담 준비용 자료
                                 </motion.p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -377,6 +377,13 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 </motion.button>
                             </div>
                         </div>
+                    </div>
+
+                    {/* 법률판단 아님 고지 */}
+                    <div className="mx-4 sm:mx-6 mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
+                        ⚠️ 본 리포트는 입력 정보를 정리한 상담 준비용 자료이며, 법률 자문이 아닙니다. 법률적 판단은 전문가 검토가 필요합니다.
+                      </p>
                     </div>
 
                     {/* ========== TABS NAVIGATION ========== */}
@@ -1704,7 +1711,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                         <div className="text-center space-y-2 px-2 py-1">
                             <p className="text-[12px] text-slate-600 leading-relaxed">{result.statusReason}</p>
                             <p className="text-[11px] text-slate-600">
-                                ※ 본 리포트의 진단 내용은 기재하신 답변을 근거로 도출되었으며, 정밀 판정을 위해 변호사 서류 상담이 필요합니다.
+                                ※ 본 리포트는 이용자가 입력한 정보를 합산·분류하여 표시한 상담 준비용 자료입니다. 개인회생·파산 신청 가능 여부, 채무조정 자격, 예상 변제금, 탕감률, 면책 가능성을 판단하거나 보장하지 않습니다. 법률적 판단은 이용자가 선택한 전문가의 별도 검토가 필요합니다.
                             </p>
                         </div>
                     </div>

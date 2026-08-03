@@ -97,9 +97,17 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
       </div>
 
       {/* Footer */}
-      <footer className="bg-slate-200 dark:bg-slate-950/80 border-t border-slate-300 dark:border-slate-900 py-6 px-4 text-[13px] text-center text-slate-600 space-y-1">
+      <footer className="bg-slate-200 dark:bg-slate-950/80 border-t border-slate-300 dark:border-slate-900 py-6 px-4 text-[13px] text-center text-slate-600 space-y-2">
         <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 my김변(마이김변). All rights reserved.</p>
-        <p className="mt-1">본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-left md:text-center max-w-4xl mx-auto">
+          본 서비스는 이용자가 자신의 채무·소득·지출 정보를 정리하고, 공개된 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 플랫폼입니다.
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1 text-left md:text-center max-w-4xl mx-auto">
+          플랫폼은 개인회생·파산 신청요건을 판단하거나 특정 전문가를 추천·배정하지 않습니다. 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결되며, 플랫폼은 전문가의 상담 내용, 업무 수행 결과를 보장하지 않습니다.
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1 text-left md:text-center max-w-4xl mx-auto">
+          본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다. 광고비는 정액제이며 상담 건수·수임 여부·사건 결과와 연동되지 않습니다.
+        </p>
       </footer>
     </>
   );

@@ -153,14 +153,17 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       {/* ── 상단 노출 광고 (상품 3) ── */}
       {topAdLawyers.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-premium overflow-hidden">
-          <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3">
+          <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-1">
             <h3 className="font-bold text-base sm:text-lg text-slate-900 tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-4 bg-gradient-to-b from-violet-500 to-purple-600 rounded-full"></span>
-              광고 · 추천 변호사
+              광고 전문가
             </h3>
             <span className="flex items-center gap-1 text-xs text-slate-400 font-medium select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
               AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-[10px] text-slate-300 font-bold">ⓘ</span>
             </span>
+          </div>
+          <div className="px-5 sm:px-6 pb-3">
+            <p className="text-[10px] text-slate-400 mt-1">'광고' 표시는 정액 광고상품 이용을 의미하며, 전문성 인증이나 추천이 아닙니다. 광고비는 상담 건수·수임 여부와 무관한 고정금액입니다.</p>
           </div>
           <div className="px-5 sm:px-6 pb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {topAdLawyers.slice(0, 6).map((l) => (
@@ -245,7 +248,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="text-left text-sm text-slate-600 dark:text-slate-400 font-bold">
-            아래 전문가 중 상담받을 변호사를 직접 선택하세요. 상담 및 사건 수행은 선택하신 변호사가 독립적으로 진행합니다. (총 {totalDisplayCount}명 활동 중)
+            아래 전문가 목록에서 상담을 요청할 변호사를 직접 선택하세요. 플랫폼은 특정 전문가를 추천·배정하지 않습니다. 상담 및 사건 수행은 선택하신 변호사가 독립적으로 진행합니다. (총 {totalDisplayCount}명 활동 중)
           </div>
           <button
             type="button"
@@ -259,6 +262,17 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
             <Heart className={`w-3.5 h-3.5 ${showFavoritesOnly ? 'fill-rose-500 text-rose-500' : ''}`} />
             <span>즐겨찾기 {favorites.size > 0 ? `(${favorites.size})` : ''}</span>
           </button>
+        </div>
+
+        {/* 검색 투명성 바 */}
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/30 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800">
+          <span>정렬: 무작위</span>
+          <span className="text-slate-300">|</span>
+          <span>필터: {selectedRegion}{showFavoritesOnly ? ' · 즐겨찾기' : ''}</span>
+          <span className="text-slate-300">|</span>
+          <span>광고 {topAdLawyers.length + paidLawyers.length}건 포함</span>
+          <span className="text-slate-300">|</span>
+          <span>사건정보 미반영</span>
         </div>
 
         {filtered.length === 0 ? (
@@ -278,7 +292,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-4 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></span>
-                  <h3 className="font-bold text-base text-slate-900 tracking-tight">광고 · 지역 전담 변호사</h3>
+                  <h3 className="font-bold text-base text-slate-900 tracking-tight">광고 · 지역 전문가</h3>
                   <span className="text-xs text-slate-400 font-medium">({paidLawyers.length}명)</span>
                   <span className="ml-auto flex items-center gap-1 text-xs text-slate-400 font-medium select-none">
                     AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-[10px] text-slate-300 font-bold">ⓘ</span>
@@ -340,7 +354,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             <span>{l.recentActivity}</span>
                           </span>
                           <button onClick={() => onSelectLawyer(l.id)} className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-4.5 py-2 rounded-xl transition-all duration-300 text-[13px] cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]">
-                            전담 변호사 시작하기
+                            이 전문가에게 상담 요청하기
                           </button>
                         </div>
                       </div>

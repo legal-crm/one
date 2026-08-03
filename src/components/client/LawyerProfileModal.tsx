@@ -301,7 +301,14 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
             </div>
           )}
         </div>
-
+        {/* 서비스 한계 고지 */}
+        <div className="mt-4 mb-2 mx-5 sm:mx-7 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700">
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
+            본 플랫폼은 이용자가 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 서비스입니다. 
+            플랫폼은 특정 전문가를 추천·배정하지 않으며, 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결됩니다. 
+            전문가의 상담 내용, 업무 수행 결과 또는 사건 결과를 보장하지 않습니다.
+          </p>
+        </div>
         {/* ═══════════════════════════════════════
             하단 고정 CTA 바
         ═══════════════════════════════════════ */}
@@ -318,7 +325,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
             onClick={() => onConsult(lawyer.id)}
             className="flex-1 sm:flex-none bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-brand/20 cursor-pointer text-base flex items-center justify-center gap-2 active:scale-[0.98]"
           >
-            <span>이 변호사에게 무료 상담 신청</span>
+            <span>이 전문가를 직접 선택하여 상담 요청</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
