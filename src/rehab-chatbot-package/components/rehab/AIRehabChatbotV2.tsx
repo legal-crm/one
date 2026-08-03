@@ -188,6 +188,7 @@ interface AIRehabChatbotV2Props {
     themeMode?: ThemeMode;
     customColors?: Partial<ChatbotColorPalette>;
     chatFontFamily?: string;
+    showDiagnosisReport?: boolean;
     enableFormBlocks?: boolean; // NEW: 모든 템플릿에서 Interactive Block 활성화
     interactiveBlockPreset?: 'none' | 'basic' | 'advanced' | 'custom';
     interactiveBlockConfig?: {
@@ -243,6 +244,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     isStandalone = false, // NEW prop from RehabChatButton
     disablePortal = false, // NEW prop
     isLoggedIn = false,
+    showDiagnosisReport = true,
     onShowAuthModal,
     onConsultation
 }) => {
@@ -477,6 +479,18 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // 토글 OFF: 진단 완료 시 자동으로 변호사 선택 플로우 전환
+    useEffect(() => {
+        if (showResult && result && !showDiagnosisReport) {
+            setShowResult(false);
+            if (onConsultation) {
+                onConsultation();
+            } else {
+                onClose();
+            }
+        }
+    }, [showResult, result, showDiagnosisReport]);
 
     // 초기 메시지 (중복 방지) 및 세션 복구 체크
     useEffect(() => {
@@ -4201,7 +4215,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             )}
 
             {/* Result Modal */}
-            {showResult && result && (
+            {showResult && result && showDiagnosisReport && (
                 <RehabResultReport
                     result={result}
                     userInput={userInput as RehabUserInput}

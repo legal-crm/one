@@ -5,7 +5,7 @@ import {
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server,
-  Edit2, Plus, Save, RotateCcw, FileText, Receipt
+  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
@@ -344,6 +344,7 @@ export default function AdminRole({
   const [formCompanyRepresentative, setFormCompanyRepresentative] = useState<string>(platformConfig ? platformConfig.companyRepresentative : '');
   const [formTermsOfService, setFormTermsOfService] = useState<string>(platformConfig ? platformConfig.termsOfService : '');
   const [formPrivacyPolicy, setFormPrivacyPolicy] = useState<string>(platformConfig ? platformConfig.privacyPolicy : '');
+  const [showReportToggleConfirm, setShowReportToggleConfirm] = useState(false);
 
   // Synchronize configuration form fields when platformConfig prop updates
   useEffect(() => {
@@ -4516,7 +4517,8 @@ export default function AdminRole({
                     <button
                       type="button"
                       onClick={() => {
-                        setPlatformConfig({
+                        setPlatformConfig(prev => ({
+                          ...prev,
                           siteTitle: formSiteTitle.trim(),
                           siteLogoText: formSiteLogoText.trim(),
                           siteLogoUrl: formSiteLogoUrl.trim() || undefined,
@@ -4525,7 +4527,7 @@ export default function AdminRole({
                           companyRepresentative: formCompanyRepresentative.trim(),
                           termsOfService: formTermsOfService,
                           privacyPolicy: formPrivacyPolicy
-                        });
+                        }));
                         onLogActivity(
                           'admin',
                           '최고관리자',
@@ -4540,6 +4542,35 @@ export default function AdminRole({
                       <Check className="w-4 h-4" />
                       <span>기본 설정 저장 및 전역 적용</span>
                     </button>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  {/* 법률 리스크 관리 */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                      <Scale className="w-5 h-5 text-amber-500" />
+                      법률 리스크 관리
+                    </h3>
+                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <div className="space-y-1">
+                        <div className="font-bold text-sm text-slate-900 dark:text-white">진단서 노출</div>
+                        <div className="text-[12px] text-slate-500">종합 채무·자산 분석 리포트 및 PDF 다운로드 기능의 의뢰인 노출 여부를 제어합니다.</div>
+                        <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">ℹ️ OFF 상태에서는 진단 완료 후 변호사 선택 플로우로 바로 전환됩니다.</div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (!platformConfig.showDiagnosisReport) {
+                            setShowReportToggleConfirm(true);
+                          } else {
+                            setPlatformConfig(prev => ({ ...prev, showDiagnosisReport: false }));
+                          }
+                        }}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${platformConfig.showDiagnosisReport ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                      >
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformConfig.showDiagnosisReport ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -5200,6 +5231,41 @@ export default function AdminRole({
           })()}
 
         </main>
+
+        {/* 진단서 노출 토글 확인 팝업 */}
+        {showReportToggleConfirm && (
+          <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowReportToggleConfirm(false)}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white">진단서 노출 활성화</h3>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                진단서(종합 채무·자산 분석 리포트)는 <strong className="text-amber-600">법률 자문으로 해석될 위험</strong>이 있습니다.
+                활성화 시 의뢰인에게 진단 리포트와 PDF 다운로드 기능이 노출됩니다.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowReportToggleConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    setPlatformConfig(prev => ({ ...prev, showDiagnosisReport: true }));
+                    setShowReportToggleConfirm(false);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm transition-colors cursor-pointer"
+                >
+                  활성화
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="bg-[#161B26] border-t border-[#1E293B]/60 text-center py-4 text-[12px] text-slate-600">

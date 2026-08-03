@@ -106,6 +106,7 @@ interface ChatViewProps {
   lawyers?: UserType[];
   initialModalTrigger?: 'fav' | 'no_fav' | null;
   onClearModalTrigger?: () => void;
+  showDiagnosisReport?: boolean;
 }
 
 export default function ChatView({
@@ -124,7 +125,8 @@ export default function ChatView({
   setTempAlias,
   lawyers = [],
   initialModalTrigger,
-  onClearModalTrigger
+  onClearModalTrigger,
+  showDiagnosisReport
 }: ChatViewProps) {
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const [showProfilePanel, setShowProfilePanel] = useState<boolean>(false);
@@ -885,8 +887,8 @@ export default function ChatView({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {/* 의뢰인 종합 채무·자산 분석 리포트 (embedded) */}
-              {activeResult && reportUserInput ? (
+              {/* 의뢰인 종합 채무·자산 분석 리포트 (embedded) - 토글 ON일 때만 표시 */}
+              {activeResult && reportUserInput && showDiagnosisReport !== false ? (
                 <React.Suspense fallback={
                   <div className="flex items-center justify-center py-20">
                     <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
@@ -913,6 +915,20 @@ export default function ChatView({
                     }}
                   />
                 </React.Suspense>
+              ) : activeResult && reportUserInput && showDiagnosisReport === false ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+                  <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+                    <Shield className="w-7 h-7 text-brand" />
+                  </div>
+                  <h4 className="font-bold text-base text-slate-900 dark:text-white">나의 진단 정보</h4>
+                  <p className="text-sm text-slate-500">진단 정보는 내 관리방에서 조회 및 수정할 수 있습니다.</p>
+                  <button
+                    onClick={() => setShowProfilePanel(false)}
+                    className="mt-2 px-5 py-2.5 bg-brand hover:bg-brand/90 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer"
+                  >
+                    닫기
+                  </button>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <FileText className="w-12 h-12 text-slate-300 mb-4" />

@@ -1150,6 +1150,7 @@ export interface PlatformConfig {
   companyRepresentative: string;
   termsOfService: string;
   privacyPolicy: string;
+  showDiagnosisReport: boolean;
 }
 
 // --- Diagnosis (진단) Types ---

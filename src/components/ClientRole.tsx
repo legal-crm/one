@@ -3165,6 +3165,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   lawyers={mockLawyers}
                   initialModalTrigger={chatModalTrigger}
                   onClearModalTrigger={() => setChatModalTrigger(null)}
+                  showDiagnosisReport={platformConfig.showDiagnosisReport}
                 />
               )
             )}
@@ -3186,6 +3187,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <AIRehabChatbotV2
                   isOpen={true}
                   disablePortal={true}
+                  showDiagnosisReport={platformConfig.showDiagnosisReport}
                   onClose={() => {
                     if (pendingChatbotData) {
                       const mappedData = mapChatbotDataToIntakeData(pendingChatbotData.res, pendingChatbotData.input);
