@@ -2187,7 +2187,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </h1>
                 
                 <p className="text-slate-600 text-base md:text-lg font-medium leading-relaxed max-w-xl">
-                  이름 없이 1분 만에 내 탕감율과 예상 변제금을 확인하고,<br />
+                  이름 없이 1분 만에 내 채무 상황을 간편하게 정리하고,<br />
                   신뢰할 수 있는 전문가 정보를 직접 비교해 보세요.
                 </p>
 
