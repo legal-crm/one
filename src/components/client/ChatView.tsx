@@ -308,7 +308,7 @@ export default function ChatView({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="text-xl">📊</span> 채무 진단 현황
+              <span className="text-xl">{showDiagnosisReport !== false ? '📊' : '📋'}</span> {showDiagnosisReport !== false ? '채무 진단 현황' : '내 채무 현황'}
             </h2>
             <div className="flex items-center gap-2">
               <button 
@@ -316,7 +316,7 @@ export default function ChatView({
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-brand shadow-sm hover:shadow-md transition-all cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5" />
-                상세 진단서 보기/수정
+                내 채무 현황 보기/수정
               </button>
               {currentRequest && (
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${
@@ -351,8 +351,8 @@ export default function ChatView({
                 </button>
               </div>
             </div>
-          ) : (
-            /* 진단 결과 있을 때 통계 카드 */
+          ) : showDiagnosisReport !== false ? (
+            /* 진단 결과 있을 때 통계 카드 (토글 ON) */
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {/* 총 채무액 */}
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
@@ -403,6 +403,11 @@ export default function ChatView({
                    '불가'}
                 </div>
               </div>
+            </div>
+          ) : (
+            /* 토글 OFF: 통계 카드 숨김, 안내 메시지 */
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 text-center">
+              <p className="text-sm text-slate-500 dark:text-slate-400">내 채무 현황 정보는 "보기/수정" 버튼을 눌러 확인하세요.</p>
             </div>
           )}
         </div>
@@ -839,9 +844,9 @@ export default function ChatView({
           ></div>
           <div className="relative w-full md:w-[640px] lg:w-[720px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-slideInRight">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
-              <h2 className="font-bold text-lg text-slate-900 dark:text-white">상세 진단서</h2>
+              <h2 className="font-bold text-lg text-slate-900 dark:text-white">{showDiagnosisReport !== false ? '상세 진단서' : '내 채무 현황 보기/수정'}</h2>
               <div className="flex items-center gap-2">
-                {activeResult && reportUserInput && (
+                {activeResult && reportUserInput && showDiagnosisReport !== false && (
                   <button 
                     onClick={async () => {
                       try {
