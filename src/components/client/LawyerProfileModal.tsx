@@ -135,11 +135,10 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
           {activeTab === 'home' && (
             <div className="space-y-6 animate-fadeIn">
               {/* 핵심 통계 */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: '누적 수임', value: `${(lawyer.totalCases || lawyer.matchedCount * 6).toLocaleString()}건`, icon: Briefcase, color: 'text-brand' },
                   { label: '전문 분야', value: (lawyer.fields || ['개인회생']).slice(0, 2).join('·'), icon: Scale, color: 'text-indigo-500' },
-                  { label: '관할 법원', value: lawyer.courtJurisdiction || '서울회생법원', icon: Building, color: 'text-emerald-500' },
                 ].map(stat => (
                   <div key={stat.label} className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 space-y-1.5">
                     <stat.icon className={`w-5 h-5 mx-auto ${stat.color}`} />
