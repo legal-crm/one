@@ -2226,7 +2226,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                 <div className="space-y-3">
                   {[
-                    { icon: <MessageSquare className="w-5 h-5 text-[#3B82F6]" />, title: '초기 진단 무료 진행', desc: '채무 진단 및 탕감 비율 산출은 일체 비용 없이 무료로 제공됩니다.' },
+                    { icon: <MessageSquare className="w-5 h-5 text-[#3B82F6]" />, title: '초기 상담 무료 진행', desc: '채무 현황 정리 및 전문가 상담은 일체 비용 없이 무료로 제공됩니다.' },
                     { icon: <Lock className="w-5 h-5 text-[#10B981]" />, title: '100% 익명성 보장', desc: '실명, 주민번호 노출 없이 스텔스 가명으로 안전하게 상담 가능합니다.' },
                     { icon: <Users className="w-5 h-5 text-[#1E3A5F]" />, title: '1:1 전담 변호사 직접 지정', desc: '의뢰인이 직접 신뢰하는 변호사를 선택하여 전담 상담방을 개설합니다.' },
                     { icon: <ShieldCheck className="w-5 h-5 text-slate-500" />, title: 'SSL/TLS 암호화 통신 보호', desc: '모든 상담 데이터는 SSL/TLS 암호화 전송 및 서버 암호화 저장으로 안전하게 보호됩니다.' },
@@ -2269,8 +2269,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     {[
                       {
                         step: '1',
-                        title: '1분 셀프 채무 진단',
-                        desc: '채무 규모와 수입 상태를 입력하면 예상 탕감율과 월 변제금이 즉시 산출됩니다.',
+                        title: '1분 채무 현황 정리',
+                        desc: '간단한 질문에 답하면 나의 채무 상황이 한눈에 정리됩니다.',
                         icon: <Search className="w-5 h-5" />,
                         accent: { ring: 'ring-blue-500/20', bg: 'bg-[#3B82F6]', iconBg: 'bg-blue-50 dark:bg-blue-950/30', iconColor: 'text-[#3B82F6]', glow: 'shadow-blue-500/20' }
                       },
