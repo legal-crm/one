@@ -256,7 +256,7 @@ export default function LandingPage({
             transition={{ duration: 0.7, delay: 0.7 }}
             className="text-xl sm:text-2xl text-slate-300 mb-3 max-w-2xl mx-auto font-medium"
           >
-            내 채무 상황을 분석하고, 끝까지 관리해줄 전담 변호사를 만나세요.
+            내 채무 상황을 먼저 정리하고, 상담받을 전문가를 직접 선택하세요.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -588,13 +588,13 @@ export default function LandingPage({
         <div className="relative max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-              🤝 든든한 파트너와 함께하는{' '}
+              🤝 나에게 맞는 전문가와 함께하는{' '}
               <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-violet-400 bg-clip-text text-transparent font-extrabold">
-                전담 채무 케어
+                채무 상담
               </span>
             </h2>
             <p className="text-slate-500 text-sm sm:text-base max-w-2xl mx-auto">
-              my김변의 전담 변호사는 일회성 상담에 그치지 않고, 해결의 순간까지 의뢰인과 동행하며 채무 상황을 관리합니다.
+              my김변에서 찾은 전문가는 일회성 상담에 그치지 않고, 해결의 순간까지 의뢰인과 동행합니다. 상담 및 사건 수행은 전문가가 독립적으로 진행합니다.
             </p>
           </div>
 
@@ -603,7 +603,7 @@ export default function LandingPage({
               {
                 icon: Shield,
                 title: '채무 상황 지속 모니터링',
-                desc: '소득 변동, 연체 상태, 채무 구성 비율을 전담 변호사가 실시간으로 추적하여 대응책을 마련합니다.',
+                desc: '소득 변동, 연체 상태, 채무 구성 비율을 전문가가 검토하여 대응 방향을 제안합니다.',
                 gradient: 'from-blue-600/10 to-indigo-600/10 border-blue-500/20 hover:border-blue-500/40'
               },
               {
@@ -691,9 +691,9 @@ export default function LandingPage({
               {
                 step: '②',
                 icon: Sparkles,
-                title: '전담 변호사 배정',
-                desc: '1:1 매칭 & 상세 분석',
-                detail: '상세 챗봇 대화방을 거치며 금융사별 연체 내역 및 사용 흐름을 전담 변호사에게 전달합니다.',
+                title: '상담 전문가 선택',
+                desc: '직접 선택 & 상세 분석',
+                detail: '상세 챗봇 대화방을 거치며 금융사별 연체 내역 및 사용 흐름을 선택한 전문가에게 전달합니다.',
               },
               {
                 step: '③',
@@ -829,7 +829,7 @@ export default function LandingPage({
                   가 함께합니다
                 </h2>
                 <p className="text-slate-500 text-base sm:text-lg max-w-2xl mx-auto">
-                  회생·파산 분야에서 풍부한 경험을 갖춘 전담 변호사를 만나보세요.
+                  회생·파산 분야에서 풍부한 경험을 갖춘 전문가 프로필을 확인하세요.
                 </p>
               </motion.div>
 

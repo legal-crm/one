@@ -2182,13 +2182,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </div>
 
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight text-[#0f172a]">
-                  채무 독촉 차단부터,<br />
-                  나의 전담 변호사가 다 관리해 드려요
+                  내 채무를 먼저 정리하고,<br />
+                  상담할 전문가는 직접 선택하세요
                 </h1>
                 
                 <p className="text-slate-600 text-base md:text-lg font-medium leading-relaxed max-w-xl">
                   이름 없이 1분 만에 내 탕감율과 예상 변제금을 확인하고,<br />
-                  신뢰할 수 있는 1:1 전담 변호사와 바로 연결해 보세요.
+                  신뢰할 수 있는 전문가 정보를 직접 비교해 보세요.
                 </p>
 
                 {/* Unified CTA Button */}
@@ -2208,7 +2208,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     onClick={() => setActiveTab('lawyers')}
                     className="w-full sm:w-auto text-[#3B82F6] hover:underline font-bold text-sm transition-all text-center cursor-pointer"
                   >
-                    전담 변호사 목록 보기
+                    전문가 프로필 둘러보기
                   </button>
                 </div>
               </div>
@@ -2252,9 +2252,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <div className="space-y-6 md:space-y-10 text-center">
               <div className="space-y-2">
                 <h3 className="text-xl md:text-3xl font-black text-[#0f172a] dark:text-white tracking-tight">
-                  단 3단계로 시작하는 신속 채무 클리닝
+                  단 3단계로 시작하는 채무 정리 체크
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">상담 신청부터 전담 관리까지, 복잡한 절차 없이 빠르게</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">채무 정리부터 전문가 선택까지, 복잡한 절차 없이 빠르게</p>
               </div>
 
               {/* 데스크탑: 가로 스텝퍼 */}
@@ -2276,15 +2276,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       },
                       {
                         step: '2',
-                        title: '전담 변호사 매칭 선택',
-                        desc: '원하는 전문 변호사를 직접 선택하여 익명으로 채무 솔루션을 요청합니다.',
+                        title: '상담 전문가 직접 선택',
+                        desc: '원하는 전문가를 직접 선택하여 익명으로 상담을 요청합니다.',
                         icon: <Users className="w-5 h-5" />,
                         accent: { ring: 'ring-emerald-500/20', bg: 'bg-[#10B981]', iconBg: 'bg-emerald-50 dark:bg-emerald-950/30', iconColor: 'text-[#10B981]', glow: 'shadow-emerald-500/20' }
                       },
                       {
                         step: '3',
-                        title: '프라이빗 전담 관리방',
-                        desc: '독촉 차단 금지명령부터 맞춤 변제안까지 1:1 전담 비밀 공간에서 케어받으세요.',
+                        title: '프라이빗 상담방',
+                        desc: '선택한 전문가와 1:1 비밀 공간에서 상담을 진행하세요.',
                         icon: <Lock className="w-5 h-5" />,
                         accent: { ring: 'ring-violet-500/20', bg: 'bg-[#8B5CF6]', iconBg: 'bg-violet-50 dark:bg-violet-950/30', iconColor: 'text-[#8B5CF6]', glow: 'shadow-violet-500/20' }
                       }
@@ -2337,15 +2337,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       },
                       {
                         step: '2',
-                        title: '전담 변호사 매칭 선택',
-                        desc: '원하는 변호사를 선택하여 익명으로 솔루션을 요청합니다.',
+                        title: '상담 전문가 직접 선택',
+                        desc: '원하는 전문가를 선택하여 익명으로 상담을 요청합니다.',
                         icon: <Users className="w-4 h-4" />,
                         accent: { bg: 'bg-[#10B981]', iconBg: 'bg-emerald-50', iconColor: 'text-[#10B981]', ring: 'ring-emerald-500/20', glow: 'shadow-emerald-500/15' }
                       },
                       {
                         step: '3',
-                        title: '프라이빗 전담 관리방',
-                        desc: '금지명령부터 변제안까지 1:1 비밀 공간에서 케어.',
+                        title: '프라이빗 상담방',
+                        desc: '선택한 전문가와 1:1 비밀 공간에서 상담 진행.',
                         icon: <Lock className="w-4 h-4" />,
                         accent: { bg: 'bg-[#8B5CF6]', iconBg: 'bg-violet-50', iconColor: 'text-[#8B5CF6]', ring: 'ring-violet-500/20', glow: 'shadow-violet-500/15' }
                       }

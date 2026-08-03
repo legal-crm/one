@@ -246,7 +246,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="text-left text-sm text-slate-600 dark:text-slate-400 font-bold">
-            이 변호사들이 당신의 채무 상황을 끝까지 함께 관리해주는 <span className="text-brand font-bold">전담 파트너</span>가 됩니다. (총 {totalDisplayCount}명 활동 중)
+            아래 전문가 중 상담받을 변호사를 직접 선택하세요. 상담 및 사건 수행은 선택하신 변호사가 독립적으로 진행합니다. (총 {totalDisplayCount}명 활동 중)
           </div>
           <button
             type="button"
