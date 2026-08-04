@@ -948,9 +948,16 @@ export default function ClientRole({
   const [showLogoutSuccessModal, setShowLogoutSuccessModal] = useState<boolean>(false);
   const [showResetDiagnosisModal, setShowResetDiagnosisModal] = useState<boolean>(false);
   const [chatModalTrigger, setChatModalTrigger] = useState<'fav' | 'no_fav' | null>(null);
+  const [pendingDiagnosisAfterLogin, setPendingDiagnosisAfterLogin] = useState<boolean>(false);
 
-  // 진단 시작 클릭 처리 (기존 데이터가 있을 경우 커스텀 팝업)
+  // 진단 시작 클릭 처리 (로그인 필수 → 기존 데이터가 있을 경우 커스텀 팝업)
   const handleStartDiagnosisClick = () => {
+    // 로그인하지 않은 상태면 로그인 모달 먼저 표시
+    if (!isLoggedIn) {
+      setPendingDiagnosisAfterLogin(true);
+      setShowAuthModal(true);
+      return;
+    }
     const hasData = requests.length > 0 && requests.some(r => r.financialProfile);
     if (hasData) {
       setShowResetDiagnosisModal(true);
@@ -3331,13 +3338,25 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       {showAuthModal && (
         <React.Suspense fallback={null}>
           <AuthModal 
-            onClose={() => setShowAuthModal(false)} 
+            onClose={() => { setShowAuthModal(false); setPendingDiagnosisAfterLogin(false); }} 
             onLoginSuccess={(alias,ep,ch) => { 
               setIsLoggedIn(true); 
               setUserAlias(alias); 
               setShowAuthModal(false); 
               recordClientLogin(alias,ep,ch); 
-              setActiveTab('chat');
+              // 진단 목적으로 로그인했으면 진단 페이지로 이동, 아니면 내 관리방으로
+              if (pendingDiagnosisAfterLogin) {
+                setPendingDiagnosisAfterLogin(false);
+                // 로그인 후 기존 진단 데이터 체크
+                const hasData = requests.length > 0 && requests.some(r => r.financialProfile);
+                if (hasData) {
+                  setShowResetDiagnosisModal(true);
+                } else {
+                  forceStartNewDiagnosis();
+                }
+              } else {
+                setActiveTab('chat');
+              }
             }} 
           />
         </React.Suspense>
