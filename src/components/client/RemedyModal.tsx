@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Scale, AlertTriangle, ArrowRight } from 'lucide-react';
+import { X, BookOpen, ClipboardList, ArrowRight, Search, Info } from 'lucide-react';
 
 interface RemedyInfo {
   id: string;
@@ -55,66 +55,79 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
               {renderRemedyIcon(data.iconName, "w-6 h-6")}
             </div>
             <div className="space-y-0.5">
-              <span className="inline-block text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-brand-light text-brand dark:bg-brand/10 dark:text-brand-light">
+              <span className="inline-block text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 {data.badgeText}
               </span>
               <h4 className="text-xl font-semibold text-slate-900 dark:text-white">
-                {data.title} 맞춤 법리 솔루션
+                {data.title} 시 확인할 사항
               </h4>
             </div>
           </div>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 md:p-8 space-y-6 overflow-y-auto text-left">
+        <div className="p-6 md:p-8 space-y-5 overflow-y-auto text-left">
+          {/* 면책 고지 */}
+          <div className="bg-blue-50/60 dark:bg-blue-950/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/20">
+            <div className="flex gap-2">
+              <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
+                이 화면은 {data.title}와 관련하여 일반적으로 확인할 정보와 상담 전 준비사항을 안내합니다. 특정 절차의 이용 가능 여부나 적합성을 판단하지 않습니다.
+              </p>
+            </div>
+          </div>
+
+          {/* 관련 제도 알아보기 */}
           <div className="bg-slate-50 dark:bg-slate-950/30 p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
             <h5 className="font-bold text-sm text-brand dark:text-brand-light flex items-center gap-2">
-              <Scale className="w-4 h-4" />
-              <span>법률상 대표적 해법 (Remedy)</span>
+              <BookOpen className="w-4 h-4" />
+              <span>📋 {data.remedyTitle}</span>
             </h5>
-            <div className="space-y-2">
-              <h6 className="font-bold text-sm text-slate-900 dark:text-slate-200">
-                "{data.remedyTitle}"
-              </h6>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                {data.remedyDesc}
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium whitespace-pre-line">
+              {data.remedyDesc}
+            </p>
           </div>
 
-          <div className="bg-rose-50/40 dark:bg-rose-950/10 p-5 md:p-6 rounded-2xl border border-rose-100 dark:border-rose-900/10 space-y-3">
-            <h5 className="font-bold text-sm text-rose-600 dark:text-rose-400 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" />
-              <span>🚨 변호사의 골든타임 행동 지침</span>
+          {/* 상담 전 준비사항 */}
+          <div className="bg-amber-50/40 dark:bg-amber-950/10 p-5 md:p-6 rounded-2xl border border-amber-100 dark:border-amber-900/10 space-y-3">
+            <h5 className="font-bold text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4" />
+              <span>📝 {data.guideTitle}</span>
             </h5>
-            <div className="space-y-2">
-              <h6 className="font-bold text-sm text-slate-900 dark:text-slate-200">
-                {data.guideTitle}
-              </h6>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                {data.guideDesc}
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium whitespace-pre-line">
+              {data.guideDesc}
+            </p>
           </div>
-
-
         </div>
 
-        {/* Footer */}
-        <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-          <button 
-            onClick={onClose}
-            className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-          >
-            닫기
-          </button>
-          <button 
-            onClick={() => onApply(activeRemedyCategory)}
-            className="flex-1 sm:flex-none px-7 py-3 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white rounded-2xl text-xs font-bold shadow-sm hover:shadow-brand-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            <span>이 솔루션으로 1:1 진단 및 상담 신청하기</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        {/* Footer - CTA 분리 */}
+        <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <button 
+              onClick={onClose}
+              className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+            >
+              닫기
+            </button>
+            <button 
+              onClick={() => onApply(activeRemedyCategory)}
+              className="flex-1 sm:flex-none px-5 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              <span>내 채무현황 정리하기</span>
+            </button>
+            <button 
+              onClick={onClose}
+              className="flex-1 sm:flex-none px-5 py-3 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white rounded-2xl text-xs font-bold shadow-sm hover:shadow-brand-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>전문가 직접 검색하기</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2.5 text-center leading-relaxed">
+            플랫폼은 선택한 채무유형을 분석하여 특정 전문가를 추천하지 않습니다.
+          </p>
         </div>
 
       </div>

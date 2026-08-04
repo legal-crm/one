@@ -79,220 +79,106 @@ const remedyData: Record<string, RemedyInfo> = {
   card_loan: {
     id: 'card_loan',
     title: '카드론·리볼빙 연체',
-    subtitle: '관리 방향: 신용회복 / 회생 / 대리 대응 확인',
-    remedyTitle: '이자 100% 면제 및 고금리 채무 개인회생 흡수 탕감',
-    remedyDesc: '신용카드 대금, 리볼빙, 카드론은 이자율이 15%~20%에 육박하는 초고금리 채무입니다. 이를 개인회생 채권 목록에 포함시켜 이자 전액을 면제받고, 소득 수준 및 부양가족에 따라 원금의 최대 90%까지 법적으로 감면받을 수 있습니다.',
-    guideTitle: '골든타임 절대 금지 행동 지침',
-    guideDesc: '연체를 막기 위해 다른 카드로 현금서비스를 받거나 돌려막기를 하는 것은 최근 채무 비율을 높여 법원 심사 시 "최근 채무 과다"로 기각 사유가 되거나 탕감률이 낮아지는 결정적 원인이 됩니다. 돌려막기 한계에 도달한 즉시 모든 카드 결제를 멈추고 신속히 법적 보호 절차를 개시하셔야 합니다.',
+    subtitle: '확인할 내용: 연체 현황 · 이자 부담 · 이용 가능한 일반 제도',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '카드론·리볼빙 채무와 관련하여 일반적으로 확인되는 제도에는 신용회복위원회의 채무조정 제도(신속채무조정, 개인워크아웃)와 법원의 개인회생·파산 절차 등이 있습니다. 각 제도의 이용 가능 여부와 법률적 효과는 소득, 재산, 부양가족, 채무 발생 경위 및 최근 금융거래 등에 따라 달라질 수 있습니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '카드론 리볼빙 이용내역과 현재 잔액, 연체 시작일과 채권자 연락내역, 최근 대출 및 카드 이용내역, 월 소득과 고정지출, 보유재산과 전체 채무 현황을 정리해 주세요. 구체적인 행동 판단이 필요한 경우 신용회복위원회(1600-5500) 등 공적 상담기관에 확인하시기 바랍니다.',
     iconName: 'Landmark',
-    badgeText: '원금 최대 90% 감면',
+    badgeText: '채무조정 제도 일반정보',
     themeColor: 'red',
-    preset: {
-      jobType: 'SALARIED',
-      debtCause: 'LIVING',
-      harassmentLevel: 'CALL',
-      creditorCount: 4,
-      debtBanks: 1500,
-      debtCards: 3500,
-      debtPersonals: 0,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 5000,
-      income: 230,
-      title: '신용카드 및 카드론 연체 독촉 위기 해결 상담',
-      content: '신용카드 사용액 및 카드론 돌려막기로 인해 채무가 눈덩이처럼 늘어났습니다. 연체가 시작되어 채권 독촉 전화를 받고 있으며, 개인회생을 통해 월 납입금을 조정하고 독촉을 즉시 정지시키고 싶습니다.'
-    }
+    preset: { jobType: 'SALARIED', debtCause: 'LIVING', harassmentLevel: 'CALL', creditorCount: 4, debtBanks: 1500, debtCards: 3500, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 5000, income: 230, title: '카드론 리볼빙 연체 관련 상담 문의', content: '카드론 리볼빙 연체 상황에서 이용 가능한 채무조정 제도에 대해 상담을 받고 싶습니다.' }
   },
   bank_loan: {
     id: 'bank_loan',
     title: '은행·저축은행 연체',
-    subtitle: '관리 방향: 신용회복 / 금지명령 가능성 검토',
-    remedyTitle: '법원 금지명령으로 예금·급여 압류 및 채권 상계 원천 차단',
-    remedyDesc: '시중은행 및 저축은행 신용대출 연체 발생 시 1~2개월 내 기한이익상실(만기연장 거절 및 원금 전액 일시상환 청구)이 발생합니다. 법원의 금지명령을 즉각 이끌어내어 직장 급여 가압류 및 거래 은행 계좌 동결을 사전에 법적으로 완벽하게 방어합니다.',
-    guideTitle: '예금 및 급여 통장 강제 상계 주의보',
-    guideDesc: '대출을 보유 중인 시중은행 계좌에 돈이 남아있거나 해당 은행으로 월급이 수령될 경우, 은행은 연체 즉시 별도의 법원 판결 없이도 채무자의 돈을 강제로 상계(강제 인출)할 수 있습니다. 법적 구제 절차를 준비하는 즉시 주거래 은행과 급여 수납 계좌를 대출 채무가 전혀 없는 제3금융권(카카오뱅크, 토스뱅크 혹은 새마을금고 등)으로 가장 먼저 변경하셔야 소중한 생계비를 보존할 수 있습니다.',
+    subtitle: '확인할 내용: 연체 단계 · 채권추심 상태 · 채무조정 제도',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '은행 저축은행 채무 연체와 관련하여 신용회복위원회의 채무조정, 법원의 개인회생 파산 절차 등을 확인할 수 있습니다. 연체 시 기한이익상실, 가압류 등이 발생할 수 있으며, 대응 방법은 개인 상황에 따라 다릅니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '연체 중인 대출 목록과 잔액, 기한이익상실 통보 여부, 채권추심 연락 내역, 월 소득과 고정지출, 보유 재산 현황을 정리해 주세요. 구체적인 금융거래 변경 여부는 공적 상담기관 또는 전문가에게 확인하시기 바랍니다.',
     iconName: 'TrendingDown',
-    badgeText: '예금/급여 강제압류 차단',
+    badgeText: '연체 대응 일반정보',
     themeColor: 'indigo',
-    preset: {
-      jobType: 'SALARIED',
-      debtCause: 'LIVING',
-      harassmentLevel: 'LETTER',
-      creditorCount: 3,
-      debtBanks: 5000,
-      debtCards: 0,
-      debtPersonals: 0,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 5000,
-      income: 250,
-      title: '시중은행 신용대출 및 마이너스 통장 연체 회생',
-      content: '직장인 신용대출 및 마이너스 통장 만기 연장이 불가능하다는 통보를 받아 일시 상환 압박을 받고 있습니다. 월급 수준으로는 상환이 불가능해 개인회생 신청이 가능한지 긴급히 상담받고 싶습니다.'
-    }
+    preset: { jobType: 'SALARIED', debtCause: 'LIVING', harassmentLevel: 'LETTER', creditorCount: 3, debtBanks: 5000, debtCards: 0, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 5000, income: 250, title: '은행 저축은행 연체 관련 상담 문의', content: '은행 저축은행 대출 연체 상황에서 이용 가능한 채무조정 제도에 대해 상담을 받고 싶습니다.' }
   },
   high_interest: {
     id: 'high_interest',
     title: '대부업·사채 독촉',
-    subtitle: '관리 방향: 채무자대리인 즉시 선임 및 추심 차단',
-    remedyTitle: '변호사 채무자대리인 제도 선임 및 불법 야간추심 형사고소',
-    remedyDesc: '대부업 및 사채 채무는 가혹한 추심을 동반하는 경우가 많습니다. 채무자대리인 제도를 발동하여 변호사가 대리인단으로 선임된 즉시, 채권자는 채무자 본인에게 문자, 전화, 직장 및 자택 방문 등 일체의 직접적 추심 행위를 법적으로 할 수 없게 되며 모든 협의는 변호사 사무실로만 단일화됩니다.',
-    guideTitle: '불법 고금리(연 20% 초과) 및 불법 추심 방어전략',
-    guideDesc: '법정 최고이자율 연 20%를 초과하는 사채 이자는 민법상 무효이므로 원금 상환액으로 갈음할 수 있습니다. 사채업자들의 협박성 폭언, 야간 연락, 부모·형제에게 알리겠다는 등의 채무 유포 협박은 모두 불법추심법 위반으로 강력한 형사고소 사유입니다. 녹취 및 문자 캡처를 변호사 대리인단에게 공유하시면 신속하게 사채 독촉을 전면 무력화하겠습니다.',
+    subtitle: '확인할 내용: 추심 연락 기록 · 불법추심 신고 방법 · 상담기관',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '대부업 사채 관련 채무에서 과도한 추심을 받는 경우, 채무자대리인 제도, 채무조정 제도, 개인회생 파산 절차 등을 확인할 수 있습니다. 불법추심(야간추심, 폭언, 제3자 통보 등)이 있는 경우 금융감독원이나 경찰에 신고할 수 있습니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '대부업체/사채업자 연락 기록(문자, 녹취), 대출 계약서와 이자율 확인, 현재 채무 잔액과 상환 내역, 불법추심 증거자료, 월 소득과 고정지출을 정리해 주세요. 불법추심 신고: 금융감독원(1332) 또는 경찰(112)',
     iconName: 'DollarSign',
-    badgeText: '채무자대리인 즉시 선임',
+    badgeText: '불법추심 대응 일반정보',
     themeColor: 'amber',
-    preset: {
-      jobType: 'DAILY',
-      debtCause: 'LIVING',
-      harassmentLevel: 'LETTER',
-      creditorCount: 5,
-      debtBanks: 0,
-      debtCards: 1000,
-      debtPersonals: 3000,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 4000,
-      income: 200,
-      title: '고금리 사채 및 대부업 채무 통합 해결',
-      content: '저축은행, 캐피탈 뿐만 아니라 사채 및 등록 대부업체로부터 고금리 대출을 받았습니다. 무리한 채권자들의 상환 독촉 및 일상생활 위협을 겪고 있어 개인회생 금지명령으로 보호받고자 합니다.'
-    }
+    preset: { jobType: 'DAILY', debtCause: 'LIVING', harassmentLevel: 'LETTER', creditorCount: 5, debtBanks: 0, debtCards: 1000, debtPersonals: 3000, recentLoans: 0, coinCrypto: 0, debtTotal: 4000, income: 200, title: '대부업 사채 독촉 관련 상담 문의', content: '대부업 사채 채무 독촉 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
   },
   guarantee: {
     id: 'guarantee',
     title: '연대보증 채무 위기',
-    subtitle: '관리 방향: 보증채무 흡수 조정 및 단독 회생',
-    remedyTitle: '보증인 단독 개인회생 신청으로 구상권 청구 및 채무 상속 방어',
-    remedyDesc: '주채무자가 면책 신청을 하거나 잠적할 경우, 연대보증인은 주채무자와 상관없이 채무 전액을 갚아야 할 민사상 연대 책무를 집니다. 이때 주채무자의 회복 여부와 상관없이 보증인 본인 명의로 단독 개인회생을 신청하여 주채무가 넘어온 것을 상쇄하고 탕감율을 인정받을 수 있습니다.',
-    guideTitle: '주채무자 면책 시의 오해와 대처법',
-    guideDesc: '많은 연대보증인들이 "주채무자가 파산했거나 회생했으니 나에게도 독촉이 없겠지"라고 오해하지만, 법원 도산 절차는 주채무자의 책임만을 감면할 뿐 보증인의 변제 책임은 100% 그대로 남습니다. 채권사들은 주채무자의 회생 소식을 들은 즉시 보증인의 부동산이나 급여 가압류를 전방위로 실행합니다. 보증 독촉 통지서를 받은 직후 본인의 단독 회생 골든타임을 확보하셔야 안전합니다.',
+    subtitle: '확인할 내용: 보증 범위 · 주채무 변제 여부 · 관련 서류',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '연대보증인에게 청구가 온 경우, 보증 범위 확인, 채무조정 제도, 개인회생 파산 절차 등을 확인할 수 있습니다. 보증인의 법적 책임 범위와 대응 방법은 보증 계약 내용, 주채무 상태 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '보증 계약서 및 보증 범위, 주채무자의 현재 상태(파산 회생 여부), 채권자로부터 받은 청구서 독촉장, 본인의 채무 및 재산 현황, 월 소득과 고정지출을 정리해 주세요.',
     iconName: 'Users',
-    badgeText: '보증채무 100% 흡수 조정',
+    badgeText: '연대보증 관련 일반정보',
     themeColor: 'purple',
-    preset: {
-      jobType: 'SALARIED',
-      debtCause: 'GUARANTEE',
-      harassmentLevel: 'LAWSUIT',
-      creditorCount: 3,
-      debtBanks: 6000,
-      debtCards: 0,
-      debtPersonals: 2000,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 8000,
-      income: 350,
-      title: '연대보증 채무 독촉에 따른 개인회생 대응',
-      content: '주채무자의 도산 및 연락 두절로 인해 연대보증인인 저에게 전액 청구 독촉이 들어왔습니다. 급여 가압류 통지서가 날아온 상태이며, 주위 사실 노출 없이 해결 가능한 개인회생을 긴급히 신청하고자 합니다.'
-    }
+    preset: { jobType: 'SALARIED', debtCause: 'GUARANTEE', harassmentLevel: 'LAWSUIT', creditorCount: 3, debtBanks: 6000, debtCards: 0, debtPersonals: 2000, recentLoans: 0, coinCrypto: 0, debtTotal: 8000, income: 350, title: '연대보증 채무 관련 상담 문의', content: '연대보증 채무로 인해 채권자로부터 청구를 받고 있어 관련 제도에 대해 상담을 받고 싶습니다.' }
   },
   investment: {
     id: 'investment',
     title: '주식·코인 손실',
-    subtitle: '관리 방향: 회생 실무준칙 적용 청산가치 불산입',
-    remedyTitle: '회생법원 실무준칙 적용으로 투자 손실액 청산가치 제외 특례 개시',
-    remedyDesc: '서울/수원/부산회생법원의 핵심 실무준칙(주식 및 가상자산 손실액 청산가치 불산입)을 적극 활용합니다. 투자 실패로 날아간 빚은 재산으로 잡지 않고 오직 보유하고 있는 현재의 잔고만을 청산가치로 산정함으로써, 원금의 최대 90%까지 극적인 법정 탕감률을 달성해 드립니다.',
-    guideTitle: '최근 대출금 사용처 집중 소명 기법',
-    guideDesc: '투자 채무 회생의 핵심은 대출 후 투자로 이어진 자금의 흐름을 1원 단위까지 투명하게 입증하는 것입니다. 주식 거래원장, 가상자산 거래 내역 등을 일목요연하게 엑셀로 계통 분석하여 법원 보정 권고에 완벽하게 대비합니다. 또한, 이를 개인 소비나 재산 은닉으로 오해하지 않도록 전문 변호인단이 의견서를 강력하게 개진해야 탕감폭이 좁아지지 않습니다.',
+    subtitle: '확인할 내용: 채무 발생 경위 · 보유재산 · 거래자료 준비',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '투자(주식 코인 등)로 인한 채무의 경우에도 채무조정 제도, 개인회생 파산 절차 등을 확인할 수 있습니다. 투자 손실로 발생한 채무의 처리 방법은 채무 발생 경위, 최근 대출 비율, 보유재산 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '주식 코인 거래 내역서, 대출 후 자금 사용처 증빙, 현재 보유 잔고 및 재산 현황, 전체 채무 목록과 잔액, 월 소득과 고정지출을 정리해 주세요.',
     iconName: 'AlertTriangle',
-    badgeText: '투자손실 청산가치 제외',
+    badgeText: '투자채무 관련 일반정보',
     themeColor: 'orange',
-    preset: {
-      jobType: 'SALARIED',
-      debtCause: 'INVESTMENT',
-      harassmentLevel: 'CALL',
-      creditorCount: 6,
-      debtBanks: 3500,
-      debtCards: 0,
-      debtPersonals: 0,
-      recentLoans: 1500,
-      coinCrypto: 4500,
-      debtTotal: 9500,
-      income: 280,
-      title: '주식 및 가상화폐(코인) 투자 실패 채무 탕감',
-      content: '비트코인 선물 거래 및 주식 레버리지 투자 실패로 큰 빚을 지게 되었습니다. 최근 대출 비중이 높아 법원의 기각이나 청산가치 반영 비율이 걱정됩니다. 투자 채무 탕감 성공 경험이 많은 변호사의 조력을 구합니다.'
-    }
+    preset: { jobType: 'SALARIED', debtCause: 'INVESTMENT', harassmentLevel: 'CALL', creditorCount: 6, debtBanks: 3500, debtCards: 0, debtPersonals: 0, recentLoans: 1500, coinCrypto: 4500, debtTotal: 9500, income: 280, title: '주식 코인 투자 손실 채무 관련 상담 문의', content: '투자 손실로 발생한 채무 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
   },
   freelancer: {
     id: 'freelancer',
     title: '일용직·프리랜서 채무',
-    subtitle: '관리 방향: 플랫폼 정산 내역 및 부정기 소득 소명',
-    remedyTitle: '플랫폼 정산 및 다각적 계좌 입출금 거래 분석을 통한 가용소득 맞춤 입증',
-    remedyDesc: '고정 월급제가 아닌 일용직, 특수고용형태, 프리랜서, 배달 라이더 분들도 회생 신청이 100% 가능합니다. 최근 6~12개월간의 소득 증빙 입금 내역, 플랫폼 정산 원장, 노무 확인서 등을 종합적으로 체계화하여 법원이 승인할 수 있는 가장 합리적인 "평균 소득"을 합법 소명하여 변제금을 낮춰 드립니다.',
-    guideTitle: '들쑥날쑥한 프리랜서 소득 소명 가이드',
-    guideDesc: '세무서에 종합소득세 신고가 누락되었거나 소득이 불규칙하더라도 낙담하실 필요 없습니다. 변호사 사무실의 계좌 거래원장 전수 분석을 통해 매월 수납되는 현금 흐름을 성실히 정립해 드립니다. 변제 의지가 확고하며 반복적 소득이 발생하고 있음만 증명해 내면 법원은 가차 없이 개시 결정을 내려줍니다.',
+    subtitle: '확인할 내용: 소득 증빙 방법 · 세금 신고 여부 · 채무 현황',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '일용직 프리랜서 등 부정기 소득자도 채무조정 제도, 개인회생 파산 절차 등을 이용할 수 있습니다. 소득 증빙 방법과 절차 이용 가능 여부는 소득의 규칙성, 세금 신고 이력, 채무 규모 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '최근 6~12개월 통장 입출금 내역, 플랫폼 정산 내역서, 종합소득세 신고 내역(있는 경우), 근로계약서 또는 용역계약서, 전체 채무 목록과 잔액, 월 고정지출 내역을 정리해 주세요.',
     iconName: 'Smartphone',
-    badgeText: '부정기 소득 적법 소명',
+    badgeText: '부정기 소득자 일반정보',
     themeColor: 'emerald',
-    preset: {
-      jobType: 'FREELANCER',
-      debtCause: 'LIVING',
-      harassmentLevel: 'CALL',
-      creditorCount: 4,
-      debtBanks: 2000,
-      debtCards: 1500,
-      debtPersonals: 0,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 3500,
-      income: 180,
-      title: '일용직/프리랜서 부정기 소득자의 개인회생',
-      content: '프리랜서 및 일용직 노동자로 근무하여 매달 소득이 불규칙합니다. 소득 증빙 서류 준비와 월 가용 소득 산정 기준이 애매해 상담을 원합니다. 개인회생 개시 조건에 맞는 최적의 소득 소명을 진행하고 싶습니다.'
-    }
+    preset: { jobType: 'FREELANCER', debtCause: 'LIVING', harassmentLevel: 'CALL', creditorCount: 4, debtBanks: 2000, debtCards: 1500, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 3500, income: 180, title: '일용직 프리랜서 채무 관련 상담 문의', content: '부정기 소득자로서 채무 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
   },
   seizure: {
     id: 'seizure',
     title: '급여·통장 압류',
-    subtitle: '관리 방향: 압류 중지명령 신청 및 인가 후 취소',
-    remedyTitle: '개인회생 신청 즉시 법원 중지명령 송달 및 인가 후 가압류 즉시 취소/말소',
-    remedyDesc: '이미 급여나 은행 예금 통장이 압류되어 생계 위협에 직면한 경우, 개인회생 접수와 동시에 강력한 법원 중지명령 신청을 병행합니다. 법원의 중지 결정을 도출해 내어 압류 추심을 동결시키고, 이후 회생 계획안 인가 결정을 받아 가압류를 영구적으로 해제·말소시킬 수 있습니다.',
-    guideTitle: '압류 진행 시 직장 내 노출 방어 기법',
-    guideDesc: '급여 압류가 들어올 경우 직장 급여담당자에게 강제 압류 결정문이 송달되어 심각한 신용 저하 소문이 직장 내 퍼질 수 있습니다. 연체 시작 후 지급명령 결정문이나 소장 수령 즉시 법원 접수를 진행해야 파국을 피할 수 있습니다. 만약 압류가 개시되었다면 법원 중지 결정을 통해 회사 급여담당자가 임금을 채권자에게 양도하지 못하도록 차단하고 압류 적립금(법원 공탁금)을 예치 처리해야 합니다.',
+    subtitle: '확인할 내용: 압류 대상 · 결정문 확인 · 법률검토가 필요한 사항',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '급여 예금이 압류된 경우, 개인회생 파산 절차, 압류 금지 범위 확인, 채무조정 제도 등을 확인할 수 있습니다. 압류에 대한 대응 방법은 압류 종류, 채권의 성격, 진행 상태 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '압류 결정문 또는 지급명령 결정문, 압류된 계좌 급여 정보, 채권자 목록과 채무 잔액, 월 소득과 고정지출, 부양가족 현황을 정리해 주세요. 긴급 상담: 대한법률구조공단(132) 또는 신용회복위원회(1600-5500)',
     iconName: 'ShieldCheck',
-    badgeText: '압류금 적립 및 영구해제',
+    badgeText: '압류 대응 일반정보',
     themeColor: 'rose',
-    preset: {
-      jobType: 'SALARIED',
-      debtCause: 'LIVING',
-      harassmentLevel: 'SEIZURE',
-      creditorCount: 5,
-      debtBanks: 4000,
-      debtCards: 2000,
-      debtPersonals: 0,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 6000,
-      income: 240,
-      title: '급여/가압류/통장 압류 해제 및 중지 명령 신청',
-      content: '채권자동에 의한 예금 통장 압류 및 직장 급여 가압류 결정문이 송달되었습니다. 당장 가계 생계비 지출이 불가능해, 개인회생 접수와 함께 중지/금지명령을 통해 압류를 해제하고 생업을 유지하고 싶습니다.'
-    }
+    preset: { jobType: 'SALARIED', debtCause: 'LIVING', harassmentLevel: 'SEIZURE', creditorCount: 5, debtBanks: 4000, debtCards: 2000, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 6000, income: 240, title: '급여 통장 압류 관련 상담 문의', content: '급여 또는 예금 압류 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
   },
-
   tax_delinquency: {
     id: 'tax_delinquency',
     title: '세금 체납',
-    subtitle: '관리 방향: 압류 적법성 분석 & 소멸시효 권리 구제',
-    remedyTitle: '국세·지방세 압류 적법성 검토 및 소멸시효 완료 권리 구제',
-    remedyDesc: '세금 체납은 국세기본법 및 지방세징수법상 징수권 소멸시효(5억 원 미만 5년, 5억 원 이상 10년)가 적용됩니다. 다만 압류나 독촉 등으로 시효가 중단될 수 있습니다. 특히 압류금지 소액금융재산(잔액 185만 원 이하의 소액 예금)만 존재함에도 은행 계좌를 압류하여 소멸시효를 부당하게 중단시킨 이력이 있다면, 압류해제 및 시효 완성을 주장하여 체납 세금 채무를 영구 면제받을 수 있습니다.',
-    guideTitle: '체납세금 소멸시효 및 압류 적법성 관리 대응책',
-    guideDesc: '세금 체납은 개인회생 신청 시 일반 신용채무와 달리 "우선권 있는 채권"으로 처리되어 변제기간 내 전액 납부를 요구하거나 기각을 내리며, 파산 시에도 "비면책 채권"에 해당하여 면책이 안 됩니다. 따라서 국세/지방세 해결의 실무 핵심은 징수행위의 적법성과 소멸시효가 실제로 중단되었는지 여부를 분석하는 것입니다. 전담 법률 대리인을 통해 국세청 유권해석에 기반한 계좌 압류 해제 및 소멸시효 권리 구제 절차를 밟아야 해결할 수 있습니다.',
+    subtitle: '확인할 내용: 체납 세목 · 고지·독촉 내역 · 압류 진행 상태',
+    remedyTitle: '관련 제도 알아보기',
+    remedyDesc: '세금 체납의 경우 납부유예, 분할납부, 징수권 소멸시효 등을 확인할 수 있습니다. 세금 채무는 일반 채무와 처리 방식이 다르며, 대응 방법은 체납 세목, 금액, 압류 여부 등에 따라 달라집니다. 위 목록은 추천 순서가 아닙니다.',
+    guideTitle: '상담 전 준비사항',
+    guideDesc: '체납 세목과 금액(국세 지방세 구분), 고지서 독촉장 수령 내역, 압류 통지서(있는 경우), 사업자등록 이력과 폐업 시기, 기타 채무 현황을 정리해 주세요. 상담: 국세청(126), 대한법률구조공단(132)',
     iconName: 'Scale',
-    badgeText: '세금 소멸시효/압류 검토',
+    badgeText: '세금 체납 일반정보',
     themeColor: 'slate',
-    preset: {
-      jobType: 'FREELANCER',
-      debtCause: 'BUSINESS',
-      harassmentLevel: 'LETTER',
-      creditorCount: 1,
-      debtBanks: 0,
-      debtCards: 0,
-      debtPersonals: 0,
-      recentLoans: 0,
-      coinCrypto: 0,
-      debtTotal: 3000,
-      income: 180,
-      assetsTotal: 50,
-      title: '국세/지방세 체납 세금 소멸시효 만료 및 계좌 압류 해제 신청',
-      content: '과거 개인 사업장의 경영 악화로 인해 폐업하면서 부가가치세 및 종합소득세 체납액 3,000만 원을 해결하지 못했습니다. 현재 세무서로부터 예금 계좌 압류가 설정되어 있는 상태인데, 압류금지 소액재산 기준 저촉 여부 및 징수권 소멸시효를 검토하여 면제 관리를 받고자 변호사 조력을 구합니다.'
-    }
+    preset: { jobType: 'FREELANCER', debtCause: 'BUSINESS', harassmentLevel: 'LETTER', creditorCount: 1, debtBanks: 0, debtCards: 0, debtPersonals: 0, recentLoans: 0, coinCrypto: 0, debtTotal: 3000, income: 180, assetsTotal: 50, title: '세금 체납 관련 상담 문의', content: '세금 체납 상황에서 이용 가능한 제도에 대해 상담을 받고 싶습니다.' }
   }
 };
 
@@ -2396,13 +2282,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <div className="text-center space-y-2.5 md:space-y-3 mb-6 md:mb-10">
                   <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#EEF4FA] to-indigo-50 border border-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-4 py-1.5 rounded-full">
                     <HeartHandshake className="w-3.5 h-3.5" />
-                    <span>STEP 1 · 상황별 채무관리 방향 체크</span>
+                    <span>STEP 1 · 관심 있는 채무 상황 알아보기</span>
                   </div>
                   <h3 className="text-xl md:text-3xl font-bold text-[#0f172a] dark:text-white tracking-tight leading-tight">
-                    나의 채무 유형을 선택해 주세요
+                    관심 있는 채무 상황을 선택해 주세요
                   </h3>
                   <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium max-w-lg mx-auto leading-relaxed">
-                    해당 상황을 클릭하면 <strong className="text-slate-700 dark:text-slate-300">관리 방향과 해결 전략</strong>을 즉시 안내합니다
+                    각 상황에서 일반적으로 확인할 사항과 관련 제도의 <strong className="text-slate-700 dark:text-slate-300">기본 정보</strong>를 살펴볼 수 있습니다
                   </p>
                 </div>
 
@@ -2457,7 +2343,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                               </p>
                               {/* CTA */}
                               <div className="hidden md:flex items-center gap-2 text-sm font-semibold text-white/50 group-hover:text-white/90 transition-colors pt-1">
-                                <span>관리 방향 확인하기</span>
+                                <span>확인사항 알아보기</span>
                                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                               </div>
                             </div>
