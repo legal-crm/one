@@ -84,7 +84,7 @@ export default function MyPageView({
             className="px-6 py-3.5 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
-            <span>무료 자가진단 시작하기</span>
+            <span>내 채무현황 정리하기</span>
           </button>
         </div>
       </div>

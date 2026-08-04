@@ -2530,10 +2530,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <div className="space-y-6 text-center">
               <div className="space-y-1">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
-                  채무 해결 방법은 하나가 아닙니다
+                  채무조정 관련 제도 알아보기
                 </h3>
                 <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium">
-                  각 제도의 개요와 일반적인 이용 조건을 비교하여 살펴볼 수 있습니다.
+                  아래 항목은 추천 순서가 아니며, 개인별 이용 가능 여부를 판단하지 않습니다.
                 </p>
               </div>
 
@@ -2548,7 +2548,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     accentColor: 'from-indigo-400 to-violet-400',
                     iconBg: 'bg-indigo-500/10 dark:bg-indigo-900/30',
                     borderColor: 'border-indigo-300/60 dark:border-indigo-800/40',
-                    sub: '소득이 있고 일정 금액을 갚을 수 있는 분',
+                    sub: '법원이 운영하는 채무조정 절차',
                     desc: '법원이 인가한 변제계획에 따라 3~5년간 변제하면 남은 채무에 대해 면책을 받을 수 있는 절차입니다. 감면 범위는 개인 상황에 따라 다릅니다.'
                   },
                   {
@@ -2560,19 +2560,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     accentColor: 'from-rose-400 to-pink-400',
                     iconBg: 'bg-rose-500/10 dark:bg-rose-900/30',
                     borderColor: 'border-rose-300/60 dark:border-rose-800/40',
-                    sub: '소득이 없거나 채무 상환이 불가능한 분',
+                    sub: '법원의 파산·면책 심사 절차',
                     desc: '소득 활동이 어렵고 재산이 거의 없는 경우, 법원 심사를 거쳐 채무에 대한 면책 결정을 받을 수 있는 절차입니다. 면책 여부는 법원이 판단합니다.'
                   },
                   {
                     type: 'credit' as SolutionType,
                     icon: '🏦',
                     title: '신용회복',
-                    badge: '이자 감면 + 분할 상환',
+                    badge: '협약 금융회사 채무조정',
                     badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
                     accentColor: 'from-emerald-400 to-teal-400',
                     iconBg: 'bg-emerald-500/10 dark:bg-emerald-900/30',
                     borderColor: 'border-emerald-300/60 dark:border-emerald-800/40',
-                    sub: '은행 및 카드사 빚을 조율하고 싶으신 분',
+                    sub: '신용회복위원회가 운영하는 채무조정 제도',
                     desc: '신용회복위원회를 통해 이자 감면, 상환 기간 조정 등의 채무조정을 신청할 수 있는 제도입니다. 조정 내용은 심사 결과에 따라 달라집니다.'
                   },
                   {
@@ -2584,19 +2584,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     accentColor: 'from-amber-400 to-orange-400',
                     iconBg: 'bg-amber-500/10 dark:bg-amber-900/30',
                     borderColor: 'border-amber-300/60 dark:border-amber-800/40',
-                    sub: '대부업이나 사채 독촉에 시달리고 계신 분',
+                    sub: '채권추심 대응과 관련된 제도',
                     desc: '변호사를 채무자대리인으로 선임하면 채권자는 채무자에게 직접 연락할 수 없게 됩니다. 대리인 선임 절차와 효과는 개별 사안에 따라 다를 수 있습니다.'
                   },
                   {
                     type: 'tax' as SolutionType,
                     icon: '📊',
                     title: '세금체납 관리',
-                    badge: '압류 해제 + 시효 분석',
+                    badge: '체납처분 및 납부 관련 정보',
                     badgeColor: 'bg-violet-500/15 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
                     accentColor: 'from-violet-400 to-purple-400',
                     iconBg: 'bg-violet-500/10 dark:bg-violet-900/30',
                     borderColor: 'border-violet-300/60 dark:border-violet-800/40',
-                    sub: '밀린 세금과 통장/재산 압류로 힘드신 분',
+                    sub: '체납처분 및 납부 지원제도 일반정보',
                     desc: '체납 세금의 징수권 소멸시효 만료 여부, 압류 적법성 등을 확인할 수 있습니다. 구체적인 판단은 전문가 상담이 필요합니다.'
                   }
                 ]).map((item, idx) => (
