@@ -2029,6 +2029,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     localStorage.removeItem('legal_crm_client_alias');
                     localStorage.removeItem('lawyer_favorites');
                     localStorage.removeItem('legal_crm_appointed_lawyer_id');
+                    localStorage.removeItem('legal_crm_requests');
+                    localStorage.removeItem('legal_crm_messages');
                     
                     // 로컬 상태만 초기화
                     setRequests([]);
@@ -3015,6 +3017,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     localStorage.removeItem('legal_crm_client_alias');
                     localStorage.removeItem('lawyer_favorites');
                     localStorage.removeItem('legal_crm_appointed_lawyer_id');
+                    localStorage.removeItem('legal_crm_requests');
+                    localStorage.removeItem('legal_crm_messages');
                     
                     // 로컬 상태만 초기화 (Supabase 데이터는 보존 - 다시 로그인하면 복원됨)
                     setRequests([]);
@@ -3030,7 +3034,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* TAB: 내 관리방 (3-Zone: 채무대시보드 + 변호사매칭 + 채팅) */}
             {activeTab === 'chat' && (
-              !isLoggedIn && clientRequests.length === 0 ? (
+              !isLoggedIn ? (
                 <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                   <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
                     <Lock className="w-8 h-8 text-slate-400" />
