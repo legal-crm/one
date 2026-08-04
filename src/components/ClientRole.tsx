@@ -2533,7 +2533,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   채무 해결 방법은 하나가 아닙니다
                 </h3>
                 <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium">
-                  나의 연체 기간, 채권 성격, 소득 지속성에 맞게 다섯 가지 경로를 비교 설계합니다.
+                  각 제도의 개요와 일반적인 이용 조건을 비교하여 살펴볼 수 있습니다.
                 </p>
               </div>
 
@@ -2543,25 +2543,25 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     type: 'rehab' as SolutionType,
                     icon: '⚖️',
                     title: '개인회생',
-                    badge: '원금 최대 90% 감면',
+                    badge: '법원 채무조정 절차',
                     badgeColor: 'bg-indigo-500/15 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
                     accentColor: 'from-indigo-400 to-violet-400',
                     iconBg: 'bg-indigo-500/10 dark:bg-indigo-900/30',
                     borderColor: 'border-indigo-300/60 dark:border-indigo-800/40',
                     sub: '소득이 있고 일정 금액을 갚을 수 있는 분',
-                    desc: '생활비를 빼고 남은 소득으로 3~5년간 나누어 갚으면, 남은 원금의 최대 90%까지 합법적으로 감면받을 수 있습니다.'
+                    desc: '법원이 인가한 변제계획에 따라 3~5년간 변제하면 남은 채무에 대해 면책을 받을 수 있는 절차입니다. 감면 범위는 개인 상황에 따라 다릅니다.'
                   },
                   {
                     type: 'bankruptcy' as SolutionType,
                     icon: '🔓',
                     title: '개인파산',
-                    badge: '채무 전액 면책',
+                    badge: '법원 면책 절차',
                     badgeColor: 'bg-rose-500/15 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
                     accentColor: 'from-rose-400 to-pink-400',
                     iconBg: 'bg-rose-500/10 dark:bg-rose-900/30',
                     borderColor: 'border-rose-300/60 dark:border-rose-800/40',
                     sub: '소득이 없거나 채무 상환이 불가능한 분',
-                    desc: '질병, 고령 등으로 소득 활동이 어렵고 재산이 거의 없는 경우, 법원 심사를 거쳐 채무 원금 전체를 한 번에 지워드립니다.'
+                    desc: '소득 활동이 어렵고 재산이 거의 없는 경우, 법원 심사를 거쳐 채무에 대한 면책 결정을 받을 수 있는 절차입니다. 면책 여부는 법원이 판단합니다.'
                   },
                   {
                     type: 'credit' as SolutionType,
@@ -2573,19 +2573,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     iconBg: 'bg-emerald-500/10 dark:bg-emerald-900/30',
                     borderColor: 'border-emerald-300/60 dark:border-emerald-800/40',
                     sub: '은행 및 카드사 빚을 조율하고 싶으신 분',
-                    desc: '신용회복위원회를 통해 대출 이자를 전액 또는 일부 줄이고, 갚아 나가는 기간을 최대 10년까지 나누어 부담을 덜어드립니다.'
+                    desc: '신용회복위원회를 통해 이자 감면, 상환 기간 조정 등의 채무조정을 신청할 수 있는 제도입니다. 조정 내용은 심사 결과에 따라 달라집니다.'
                   },
                   {
                     type: 'representation' as SolutionType,
                     icon: '🛡️',
                     title: '채무자대리',
-                    badge: '독촉 즉시 차단',
+                    badge: '추심 대응 제도',
                     badgeColor: 'bg-amber-500/15 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
                     accentColor: 'from-amber-400 to-orange-400',
                     iconBg: 'bg-amber-500/10 dark:bg-amber-900/30',
                     borderColor: 'border-amber-300/60 dark:border-amber-800/40',
                     sub: '대부업이나 사채 독촉에 시달리고 계신 분',
-                    desc: '변호사를 대리인으로 선임하여 전화, 문자, 집 방문 등 대부업체나 사채업자의 모든 직접 독촉을 즉시 끊어냅니다.'
+                    desc: '변호사를 채무자대리인으로 선임하면 채권자는 채무자에게 직접 연락할 수 없게 됩니다. 대리인 선임 절차와 효과는 개별 사안에 따라 다를 수 있습니다.'
                   },
                   {
                     type: 'tax' as SolutionType,
@@ -2597,7 +2597,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     iconBg: 'bg-violet-500/10 dark:bg-violet-900/30',
                     borderColor: 'border-violet-300/60 dark:border-violet-800/40',
                     sub: '밀린 세금과 통장/재산 압류로 힘드신 분',
-                    desc: '체납된 세금의 유효 기간(소멸시효)이 만료되었는지 확인하고, 최저 생계비 이하 재산의 부당한 압류를 풀어 일상 복귀를 도와드립니다.'
+                    desc: '체납 세금의 징수권 소멸시효 만료 여부, 압류 적법성 등을 확인할 수 있습니다. 구체적인 판단은 전문가 상담이 필요합니다.'
                   }
                 ]).map((item, idx) => (
                   <div key={idx} onClick={() => setActiveSolutionType(item.type)} className={`cursor-pointer bg-white dark:bg-slate-900 border ${item.borderColor} rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden w-[calc(50%-6px)] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]`}>
