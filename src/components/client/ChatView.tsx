@@ -308,7 +308,7 @@ export default function ChatView({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="text-xl">{showDiagnosisReport !== false ? '📊' : '📋'}</span> {showDiagnosisReport !== false ? '채무 진단 현황' : '내 채무 현황'}
+              <span className="text-xl">📋</span> 내 채무 현황
             </h2>
             <div className="flex items-center gap-2">
               <button 
@@ -351,8 +351,8 @@ export default function ChatView({
                 </button>
               </div>
             </div>
-          ) : showDiagnosisReport !== false ? (
-            /* 진단 결과 있을 때 통계 카드 (토글 ON) */
+          ) : (
+            /* 채무 현황 통계 카드 */
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {/* 총 채무액 */}
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
@@ -403,11 +403,6 @@ export default function ChatView({
                    '불가'}
                 </div>
               </div>
-            </div>
-          ) : (
-            /* 토글 OFF: 통계 카드 숨김, 안내 메시지 */
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">내 채무 현황 정보는 "보기/수정" 버튼을 눌러 확인하세요.</p>
             </div>
           )}
         </div>
@@ -844,45 +839,8 @@ export default function ChatView({
           ></div>
           <div className="relative w-full md:w-[640px] lg:w-[720px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-slideInRight">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
-              <h2 className="font-bold text-lg text-slate-900 dark:text-white">{showDiagnosisReport !== false ? '상세 진단서' : '내 채무 현황 보기/수정'}</h2>
+              <h2 className="font-bold text-lg text-slate-900 dark:text-white">내 채무 현황 보기/수정</h2>
               <div className="flex items-center gap-2">
-                {activeResult && reportUserInput && showDiagnosisReport !== false && (
-                  <button 
-                    onClick={async () => {
-                      try {
-                        const totalPages = 7;
-                        const pageElements: HTMLElement[] = [];
-                        for (let i = 1; i <= totalPages; i++) {
-                          const el = document.getElementById(`pdf-page-${i}`);
-                          if (el) pageElements.push(el);
-                        }
-                        if (pageElements.length === 0) {
-                          alert('PDF 템플릿을 준비 중입니다. 잠시 후 다시 시도해 주세요.');
-                          return;
-                        }
-                        const { default: html2canvas } = await import('html2canvas');
-                        const { default: jsPDF } = await import('jspdf');
-                        const canvases = await Promise.all(
-                          pageElements.map(el => html2canvas(el, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' }))
-                        );
-                        const pdf = new jsPDF('p', 'mm', 'a4');
-                        canvases.forEach((canvas, idx) => {
-                          if (idx > 0) pdf.addPage();
-                          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-                        });
-                        pdf.save(`채무분석_리포트_${new Date().toISOString().slice(0,10)}.pdf`);
-                      } catch (err) {
-                        console.error('PDF generation error:', err);
-                        alert('PDF 생성 중 오류가 발생했습니다.');
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand/10 hover:bg-brand/20 text-brand rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    PDF 다운로드
-                  </button>
-                )}
                 <button 
                   onClick={() => setShowProfilePanel(false)}
                   className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500"
@@ -892,57 +850,6 @@ export default function ChatView({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {/* 의뢰인 종합 채무·자산 분석 리포트 (embedded) - 토글 ON일 때만 표시 */}
-              {activeResult && reportUserInput && showDiagnosisReport !== false ? (
-                <React.Suspense fallback={
-                  <div className="flex items-center justify-center py-20">
-                    <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
-                  </div>
-                }>
-                  <RehabResultReport
-                    result={activeResult}
-                    userInput={reportUserInput}
-                    onClose={() => setShowProfilePanel(false)}
-                    isLoggedIn={isLoggedIn}
-                    embedded={true}
-                    onConsultation={() => {
-                      setShowProfilePanel(false);
-                      // 좋아요 변호사 확인 (무료 상담 변호사 수임하기와 동일 로직)
-                      const FAVORITES_KEY = 'lawyer_favorites';
-                      let favIds: string[] = [];
-                      try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
-                      if (favIds.length > 0) {
-                        setSelectedFavLawyers([]);
-                        setShowFavLawyerModal(true);
-                      } else {
-                        setShowNoFavoritesModal(true);
-                      }
-                    }}
-                  />
-                </React.Suspense>
-              ) : activeResult && reportUserInput && showDiagnosisReport === false ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-                  <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
-                    <Shield className="w-7 h-7 text-brand" />
-                  </div>
-                  <h4 className="font-bold text-base text-slate-900 dark:text-white">나의 진단 정보</h4>
-                  <p className="text-sm text-slate-500">진단 정보는 내 관리방에서 조회 및 수정할 수 있습니다.</p>
-                  <button
-                    onClick={() => setShowProfilePanel(false)}
-                    className="mt-2 px-5 py-2.5 bg-brand hover:bg-brand/90 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer"
-                  >
-                    닫기
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <FileText className="w-12 h-12 text-slate-300 mb-4" />
-                  <p className="text-sm text-slate-500">진단 결과가 없습니다. 먼저 내 상황 체크를 진행해 주세요.</p>
-                </div>
-              )}
-
-              {/* 구분선 */}
-              <div className="border-t-4 border-slate-100 dark:border-slate-800 my-2"></div>
 
               {/* 하단 수정 폼 */}
               <MyPageView 
