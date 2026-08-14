@@ -836,15 +836,10 @@ export default function ClientRole({
   const [chatModalTrigger, setChatModalTrigger] = useState<'fav' | 'no_fav' | null>(null);
   const [pendingDiagnosisAfterLogin, setPendingDiagnosisAfterLogin] = useState<boolean>(false);
 
-  // 진단 시작 클릭 처리 (로그인 필수 → 기존 데이터가 있을 경우 커스텀 팝업)
+  // 채무 상황 체크 시작 클릭 처리 (로그인 불필요 → 기존 데이터가 있을 경우 커스텀 팝업)
   const handleStartDiagnosisClick = () => {
-    // 로그인하지 않은 상태면 로그인 모달 먼저 표시
-    if (!isLoggedIn) {
-      setPendingDiagnosisAfterLogin(true);
-      setShowAuthModal(true);
-      return;
-    }
-    const hasData = requests.length > 0 && requests.some(r => r.financialProfile);
+    // 로그인 여부와 관계없이 바로 채무 입력 플로우 시작
+    const hasData = isLoggedIn && requests.length > 0 && requests.some(r => r.financialProfile);
     if (hasData) {
       setShowResetDiagnosisModal(true);
     } else {
@@ -1427,7 +1422,7 @@ export default function ClientRole({
         newRequest.id,
         `반갑습니다. 의뢰인님의 개인회생 상담 요청이 정상 등록되었습니다. ${
           requestType === 'open' 
-          ? '참여형 매칭 제도를 통해 변호사단에서 최대 3명이 곧 참여를 결정하게 되며, 순차적으로 메세지를 남길 예정입니다.' 
+          ? '상담 요청을 확인한 변호사단에서 최대 3명이 곧 참여를 결정하게 되며, 순차적으로 메세지를 남길 예정입니다.' 
           : '직접 선택하신 담당 변호사와 즉시 상담채널이 활성화되었습니다.'
         }`,
         'lawyer',
@@ -2086,7 +2081,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               {/* Left Column: Core Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-left">
                 <div className="text-sm text-slate-500 font-medium">
-                  ✓ 1분 무료 진단 · ✓ 100% 익명 · ✓ SSL 암호화
+                  ✓ 1분 무료 확인 · ✓ 100% 익명 · ✓ SSL 암호화
                 </div>
 
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight text-[#0f172a]">
@@ -2109,7 +2104,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     }}
                     className="w-full sm:w-auto flex-1 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-lg transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base"
                   >
-                    <span>1분 채무 진단 시작하기</span>
+                    <span>내 채무 상황 체크하기</span>
                     <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                   </button>
                   <button
@@ -2238,7 +2233,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     {[
                       {
                         step: '1',
-                        title: '1분 셀프 채무 진단',
+                        title: '1분 셀프 채무 확인',
                         desc: '채무 규모와 수입을 입력하면 탕감율이 즉시 산출됩니다.',
                         icon: <Search className="w-4 h-4" />,
                         accent: { bg: 'bg-[#3B82F6]', iconBg: 'bg-blue-50', iconColor: 'text-[#3B82F6]', ring: 'ring-blue-500/20', glow: 'shadow-blue-500/15' }
@@ -2995,15 +2990,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     <div className="w-16 h-16 mx-auto bg-[#EEF4FA] rounded-full flex items-center justify-center">
                       <FileText className="w-8 h-8 text-[#1E3A5F]" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 진단 내역이 없습니다</h3>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 확인 내역이 없습니다</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      "1분 채무 진단 시작하기"를 통해 나의 채무 현황을 분석해 보세요.
+                      "내 채무 상황 체크하기"를 통해 나의 채무 현황을 확인해 보세요.
                     </p>
                     <button
                       onClick={() => setActiveTab('request')}
                       className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg transition-all"
                     >
-                      채무 진단 시작하기
+                      채무 상황 체크하기
                     </button>
                   </div>
                 )}
@@ -3045,7 +3040,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </div>
             )}
 
-            {/* TAB: 내 관리방 (3-Zone: 채무대시보드 + 변호사매칭 + 채팅) */}
+            {/* TAB: 내 관리방 (3-Zone: 채무대시보드 + 변호사선택 + 채팅) */}
             {activeTab === 'chat' && (
               !isLoggedIn ? (
                 <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -3054,7 +3049,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">내 관리방</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm leading-relaxed">
-                    채무 진단을 먼저 진행하시면 나의 채무 현황, 변호사 매칭, 1:1 상담을 한 곳에서 관리할 수 있습니다.
+                    채무 상황 확인을 먼저 진행하시면 나의 채무 현황, 변호사 선택, 1:1 상담을 한 곳에서 관리할 수 있습니다.
                   </p>
                   <div className="flex gap-3">
                     <button onClick={() => setShowAuthModal(true)} className="px-6 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all cursor-pointer">로그인 / 회원가입</button>
@@ -3150,7 +3145,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             )}
 
             {/* TAB 3: LAWYER BROWSER (DIRECTORY OF LAWYERS) */}
-            {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 매칭'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} />)}
+            {activeTab === 'lawyers' && (<LawyersView lawyers={mockLawyers} onSelectLawyer={(lawyerId) => { const l = mockLawyers.find(x => x.id === lawyerId); if(l) setTitle(l.name+' 변호사 전담 상담 요청'); setSelectedLawyerId(lawyerId); setRequestType('direct'); setActiveTab('request'); }} selectionMode={lawyerSelectionMode} maxSelections={3} onConfirmSelection={(ids) => { handleConfirmLawyerSelection(ids); }} />)}
 
 
 
@@ -3291,7 +3286,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             onConsult={(lawyerId) => {
               const l = mockLawyers.find(x => x.id === lawyerId) || lawyers.find(x => x.id === lawyerId);
               if (l) {
-                setTitle(l.name + ' 변호사 전담 매칭');
+                setTitle(l.name + ' 변호사 전담 상담 요청');
               }
               setSelectedLawyerId(lawyerId);
               setRequestType('direct');
@@ -3322,7 +3317,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         />
       )}
 
-      {/* 기존 진단 데이터 존재 시 재진단 확인 커스텀 모달 */}
+      {/* 기존 확인 데이터 존재 시 재확인 커스텀 모달 */}
       {showResetDiagnosisModal && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style={{ animation: 'fadeIn 0.3s ease-out forwards' }}>
           <div
@@ -3335,7 +3330,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3">
                 <AlertTriangle className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-white font-extrabold text-base">기존 진단 정보가 있습니다</h3>
+              <h3 className="text-white font-extrabold text-base">기존 확인 정보가 있습니다</h3>
             </div>
 
             {/* 본문 */}
@@ -3347,7 +3342,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 text-left">
                 <p className="text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5 leading-relaxed font-semibold">
                   <span className="shrink-0 mt-0.5">⚠️</span>
-                  <span>새로 진행하면 기존에 입력한 채무 및 자산 진단 데이터가 모두 초기화되어 삭제됩니다.</span>
+                  <span>새로 진행하면 기존에 입력한 채무 및 자산 확인 데이터가 모두 초기화되어 삭제됩니다.</span>
                 </p>
               </div>
             </div>
@@ -3370,7 +3365,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                새로 진단 시작하기
+                새로 체크 시작하기
               </button>
             </div>
           </div>

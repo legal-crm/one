@@ -290,7 +290,7 @@ export default function LandingPage({
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
               />
               <span className="relative z-10 flex items-center gap-3">
-                🔍 익명으로 내 상황 확인하기
+                🔍 익명으로 내 상황 체크하기
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
             </motion.button>
@@ -751,7 +751,7 @@ export default function LandingPage({
                           shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30
                           transition-shadow duration-300 cursor-pointer"
             >
-              내 상황 확인 시작하기
+              내 상황 체크 시작하기
               <ArrowRight className="w-5 h-5" />
             </motion.button>
           </motion.div>
@@ -1040,7 +1040,7 @@ export default function LandingPage({
             <div className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-center">
               {[
                 { emoji: '📊', label: '평균 조정 비율', value: '72%' },
-                { emoji: '⏱', label: '평균 진단 시간', value: '47초' },
+                { emoji: '⏱', label: '평균 소요 시간', value: '47초' },
                 { emoji: '👥', label: '누적 이용자', value: '8,400+' },
               ].map((stat, i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -1082,14 +1082,14 @@ export default function LandingPage({
             className="text-center mb-16"
           >
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-              진단 후{' '}
+              채무 확인 후{' '}
               <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-                맞춤 전문가
+                전문가를 직접
               </span>
-              를 추천해드립니다
+              {' '}비교하세요
             </h2>
             <p className="text-slate-600 text-lg sm:text-xl">
-              결과에 따라 가장 적합한 전문가를 자동 매칭합니다.
+              전문가 프로필을 비교하고 직접 선택할 수 있습니다.
             </p>
           </motion.div>
 
@@ -1143,7 +1143,7 @@ export default function LandingPage({
             className="text-center text-base text-slate-600"
           >
             <HeartHandshake className="inline w-5 h-5 mr-1 -mt-0.5" />
-            전문가는 진단 결과에 따라 자동 매칭됩니다
+            전문가는 의뢰인이 프로필을 비교하여 직접 선택합니다
           </motion.p>
         </div>
       </section>
@@ -1197,7 +1197,7 @@ export default function LandingPage({
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
               />
               <span className="relative z-10 flex items-center gap-3">
-                🔍 익명으로 내 상황 확인하기
+                🔍 익명으로 내 상황 체크하기
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
             </motion.button>
