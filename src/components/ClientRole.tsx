@@ -2058,6 +2058,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         </div>
       </header>
 
+      {/* Privacy Assurance Strip Banner */}
+      <div className="w-full bg-[#1A3C4D] text-white text-center py-2 px-4 relative z-30">
+        <div className="flex items-center justify-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-white/90 shrink-0" />
+          <p className="text-[13px] sm:text-sm font-bold tracking-tight">
+            상담정보는 가명 처리되니, 안심하고 의뢰하세요.
+          </p>
+        </div>
+        <p className="text-[11px] sm:text-xs text-white/60 mt-0.5 font-medium">
+          상담정보는 변호사님이 사건 내용을 파악하고 답변을 하기 위한 목적으로 사용됩니다.
+        </p>
+      </div>
+
       {/* Main Content Area */}
       <main className={`flex-1 w-full ${isChatbotActive ? '' : 'pb-[70px] md:pb-0'}`}>
 
