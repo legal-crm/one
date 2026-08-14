@@ -72,7 +72,7 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
             <div className="flex gap-2">
               <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
               <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
-                이 화면은 {data.title}와 관련하여 일반적으로 확인할 정보와 상담 전 준비사항을 안내합니다. 특정 절차의 이용 가능 여부나 적합성을 판단하지 않습니다.
+                이 화면은 {data.title}와 관련하여 일반적으로 확인할 정보를 안내합니다. 특정 절차의 이용 가능 여부나 적합성을 판단하지 않습니다.
               </p>
             </div>
           </div>
@@ -88,16 +88,6 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
             </p>
           </div>
 
-          {/* 상담 전 준비사항 */}
-          <div className="bg-amber-50/40 dark:bg-amber-950/10 p-5 md:p-6 rounded-2xl border border-amber-100 dark:border-amber-900/10 space-y-3">
-            <h5 className="font-bold text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
-              <ClipboardList className="w-4 h-4" />
-              <span>📝 {data.guideTitle}</span>
-            </h5>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium whitespace-pre-line">
-              {data.guideDesc}
-            </p>
-          </div>
         </div>
 
         {/* Footer - CTA 분리 */}
