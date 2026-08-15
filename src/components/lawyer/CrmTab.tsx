@@ -5,6 +5,8 @@ import {
   CheckCircle2, ArrowRightLeft, UserPlus, Settings, Filter,
   FileText, Clock, AlertTriangle
 } from 'lucide-react';
+import InternalThreadTab from './InternalThreadTab';
+import TaskTicketTab from './TaskTicketTab';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog
@@ -80,7 +82,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'docs' | 'notes' | 'timeline'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'docs' | 'notes' | 'thread' | 'tasks' | 'timeline'>('info');
 
   // ── 초기 로드 ──
   useEffect(() => {
@@ -784,7 +786,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                 {/* 서브탭 */}
                 <div className="flex border-b border-slate-100">
-                  {([['info','👤 정보'],['docs','📂 서류'],['notes','📝 메모'],['timeline','📅 타임라인']] as [typeof detailTab, string][]).map(([key, label]) => (
+                  {([['info','👤 정보'],['docs','📂 서류'],['notes','📝 메모'],['thread','💬 내부대화'],['tasks','✅ 업무'],['timeline','📅 타임라인']] as [typeof detailTab, string][]).map(([key, label]) => (
                     <button key={key} onClick={() => setDetailTab(key)}
                       className={`flex-1 py-2 text-[13px] font-bold transition-colors ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-600'}`}>
                       {label}
@@ -1112,6 +1114,32 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         )}
                       </div>
                     </div>
+                  )}
+
+                  {/* ── 내부 대화 탭 ── */}
+                  {detailTab === 'thread' && (
+                    <InternalThreadTab
+                      tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                      targetType="consult_request"
+                      targetId={selectedId}
+                      actorId={activeStaff?.id || activeLawyer.id}
+                      actorName={activeStaff?.name || activeLawyer.name}
+                      actorRole={activeStaff?.role || 'OWNER'}
+                      staffMembers={staffMembers}
+                    />
+                  )}
+
+                  {/* ── 업무 탭 ── */}
+                  {detailTab === 'tasks' && (
+                    <TaskTicketTab
+                      tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                      targetType="consult_request"
+                      targetId={selectedId}
+                      actorId={activeStaff?.id || activeLawyer.id}
+                      actorName={activeStaff?.name || activeLawyer.name}
+                      actorRole={activeStaff?.role || 'OWNER'}
+                      staffMembers={staffMembers}
+                    />
                   )}
 
                   {/* ── 타임라인 탭 ── */}
