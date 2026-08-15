@@ -2387,12 +2387,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   <h5 className="font-bold text-[13px] md:text-base text-[#0f172a] dark:text-slate-100 leading-snug">{item.title}</h5>
                                   <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
                                 </div>
-                                <div className="flex items-center gap-1.5 mt-2 md:mt-3 pt-2 md:pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                                  <span className={`text-[9px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-1.5 md:px-2 py-0.5 rounded-md`}>
 
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
-                                </div>
                               </div>
                             </div>
                           );
@@ -2423,12 +2418,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   <h5 className="font-bold text-[13px] md:text-base text-[#0f172a] dark:text-slate-100 leading-snug">{item.title}</h5>
                                   <p className="hidden md:block text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{item.subtitle}</p>
                                 </div>
-                                <div className="flex items-center gap-1.5 mt-2 md:mt-3 pt-2 md:pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                                  <span className={`text-[9px] md:text-[11px] font-semibold ${cs.badgeText} ${cs.badgeBg} border px-1.5 md:px-2 py-0.5 rounded-md`}>
 
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 hidden md:inline">⚡ 3분 소요</span>
-                                </div>
                               </div>
                             </div>
                           );
