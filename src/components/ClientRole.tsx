@@ -2639,7 +2639,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <span>실제 이용 후기</span>
                 </h3>
                 <button
-                  onClick={() => setActiveTab('reviews')}
+                  onClick={() => { setActiveTab('reviews'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className="text-sm text-[#3B82F6] font-bold hover:underline shrink-0"
                 >
                   후기 더 보기 →
