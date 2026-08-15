@@ -965,68 +965,104 @@ export default function LandingPage({
             </h2>
           </motion.div>
 
-          {/* Reviews grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
-            {(reviews.length > 0 ? reviews.slice(0, 3) : []).map((review, i) => {
-              const savingsRate = review.originalDebt > 0
-                ? Math.round(((review.originalDebt - review.remainingDebt) / review.originalDebt) * 100)
-                : 0;
+          {/* Reviews continuous marquee */}
+          <div className="relative mb-12 overflow-hidden"
+               style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)' }}>
+            <div
+              className="flex gap-5 w-max hover:[animation-play-state:paused]"
+              style={{
+                animation: 'reviewMarquee 40s linear infinite',
+              }}
+            >
+              {/* Render reviews twice for seamless loop */}
+              {[...Array(2)].map((_, setIdx) => (
+                <React.Fragment key={setIdx}>
+                  {(reviews.length > 0 ? reviews : []).map((review) => {
+                    const savingsRate = review.originalDebt > 0
+                      ? Math.round(((review.originalDebt - review.remainingDebt) / review.originalDebt) * 100)
+                      : 0;
 
-              return (
-                <StaggerChild key={review.id} index={i} isInView={proofInView}>
-                  <motion.div
-                    whileHover={{ y: -4 }}
-                    className="group relative p-6 rounded-2xl h-full
-                                bg-gradient-to-br from-slate-800/70 to-slate-900/70
-                                border border-slate-700/40 backdrop-blur-xl
-                                hover:border-emerald-500/20
-                                transition-colors duration-300"
-                  >
-                    {/* Category badge */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-semibold text-indigo-400 bg-indigo-500/10
-                                        px-3 py-1 rounded-full">
-                        {review.category}
-                      </span>
+                    return (
+                      <div
+                        key={`${setIdx}-${review.id}`}
+                        className="group relative p-6 rounded-2xl flex-shrink-0 w-[340px]
+                                    bg-gradient-to-br from-slate-800/70 to-slate-900/70
+                                    border border-slate-700/40 backdrop-blur-xl
+                                    hover:border-emerald-500/20
+                                    transition-colors duration-300"
+                      >
+                        {/* Category badge */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs font-semibold text-indigo-400 bg-indigo-500/10
+                                            px-3 py-1 rounded-full">
+                            {review.category}
+                          </span>
+                          <div className="flex gap-0.5">
+                            {Array.from({ length: 5 }).map((_, idx) => (
+                              <Star
+                                key={idx}
+                                className={`w-3.5 h-3.5 ${
+                                  idx < review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-700'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
 
-                    </div>
+                        {/* Title */}
+                        <h3 className="text-lg font-bold text-white mb-3 line-clamp-1">
+                          {review.title}
+                        </h3>
 
-                    {/* Debt comparison */}
-                    <div className="mb-4 p-3 rounded-xl bg-slate-800/50 border border-slate-700/30">
-                      <div className="flex items-center justify-between text-sm">
-                        <div>
-                          <span className="text-slate-600 text-xs block mb-0.5">원래 채무</span>
-                          <span className="text-slate-300 font-semibold">
-                            {formatMoney(review.originalDebt)}
+                        {/* Lawyer info */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600
+                                          flex items-center justify-center text-[10px] font-bold text-white">
+                            {review.lawyerName?.slice(0, 1) || '?'}
+                          </div>
+                          <span className="text-sm text-slate-500">
+                            {review.lawyerName || '담당 변호사'}
                           </span>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-emerald-400 mx-2 shrink-0" />
-                        <div className="text-right">
-                          <span className="text-slate-600 text-xs block mb-0.5">남은 변제</span>
-                          <span className="text-emerald-400 font-bold">
-                            {formatMoney(review.remainingDebt)}
-                          </span>
+
+                        {/* Debt comparison */}
+                        <div className="mb-4 p-3 rounded-xl bg-slate-800/50 border border-slate-700/30">
+                          <div className="flex items-center justify-between text-sm">
+                            <div>
+                              <span className="text-slate-500 text-xs block mb-0.5">원래 채무</span>
+                              <span className="text-slate-300 font-semibold">
+                                {formatMoney(review.originalDebt)}
+                              </span>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-emerald-400 mx-2 shrink-0" />
+                            <div className="text-right">
+                              <span className="text-slate-500 text-xs block mb-0.5">남은 변제</span>
+                              <span className="text-emerald-400 font-bold">
+                                {formatMoney(review.remainingDebt)}
+                              </span>
+                            </div>
+                          </div>
+                          {savingsRate > 0 && (
+                            <div className="mt-2 text-center">
+                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10
+                                                px-2 py-0.5 rounded-full">
+                                {savingsRate}% 조정 가능성
+                              </span>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Content */}
+                        <p className="text-base text-slate-400 leading-relaxed mb-3 line-clamp-3">
+                          "{review.content}"
+                        </p>
+                        <p className="text-sm text-slate-500">— {review.author}</p>
                       </div>
-                      {savingsRate > 0 && (
-                        <div className="mt-2 text-center">
-                          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10
-                                            px-2 py-0.5 rounded-full">
-                            {savingsRate}% 조정 가능성
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <p className="text-base text-slate-400 leading-relaxed mb-3 line-clamp-3">
-                      "{review.content}"
-                    </p>
-                    <p className="text-sm text-slate-600">— {review.author}</p>
-                  </motion.div>
-                </StaggerChild>
-              );
-            })}
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
 
           {/* Stats bar */}
