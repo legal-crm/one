@@ -1208,36 +1208,8 @@ export default function ClientRole({
 
   // Pre-fill request form from review card
   const handleReviewClick = (rev: SuccessReview) => {
-    // Reset specific breakdowns
-    setDebtBanks(0);
-    setDebtCards(0);
-    setDebtPersonals(0);
-    setRecentLoans(0);
-    setCoinCrypto(0);
-
-    // Map categories to mock parameters
-    if (rev.category.includes('코인') || rev.category.includes('주식') || rev.category.includes('투자')) {
-      setCoinCrypto(rev.originalDebt);
-    } else if (rev.category.includes('카드') || rev.category.includes('연체')) {
-      setDebtCards(rev.originalDebt);
-    } else if (rev.category.includes('파산')) {
-      setDebtPersonals(rev.originalDebt);
-    } else {
-      setDebtBanks(rev.originalDebt);
-    }
-
-    setDebtTotal(rev.originalDebt);
-    setIncome(240); // default realistic income
-    setAssetsTotal(1000); // default realistic assets
-    
-    setSelectedLawyerId(rev.lawyerId);
-    setRequestType('direct');
-    
-    setTitle(`[${rev.category} 성공후기 참고] 1:1 맞춤 상담 신청`);
-    setContent(`[참고한 성공 후기: ${rev.title} (변호사: ${rev.lawyerName})]\n\n해당 채무 변제/탕감 성공 사례를 읽고 신뢰가 생겨 동일 변호사님께 상담을 신청합니다.\n\n- 기존 채무액: ${rev.originalDebt}만 원\n- 조정 후 채무액: ${rev.remainingDebt === 0 ? '전액 면제' : `${rev.remainingDebt}만 원`}\n\n저 또한 비슷한 사유로 큰 채무 부담을 안고 있습니다. 위 사례처럼 법원 금지명령과 최대 탕감을 이끌어낼 수 있을지 구체적인 가능성을 진단받고 싶습니다.`);
-    
-    setRequestStep(3);
-    setActiveTab('request');
+    // 후기 클릭 시 해당 변호사의 프로필 모달을 엽니다 (로톡 스타일)
+    handleOpenLawyerProfile(rev.lawyerId);
   };
 
   // Filtered reviews for reviews tab
