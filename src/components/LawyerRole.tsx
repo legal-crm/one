@@ -12,6 +12,7 @@ import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 import CrmTab from './lawyer/CrmTab';
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
+import NotificationBell from './lawyer/NotificationBell';
 import StaffManagementTab from './lawyer/StaffManagementTab';
 import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType } from '../types';
@@ -1611,6 +1612,11 @@ export default function LawyerRole({
                   <span className="text-[11px] text-slate-500 mt-0.5">{activeLawyer.role}</span>
                 </div>
               </div>
+
+              <NotificationBell
+                tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                userId={activeStaffMember?.id || activeLawyer.id}
+              />
               
               <button 
                 onClick={handleLogout}
