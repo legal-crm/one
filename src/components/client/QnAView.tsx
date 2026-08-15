@@ -120,8 +120,12 @@ export default function QnAView({ qas, onConsultRequest }: QnAViewProps) {
       })() : (
       <>
       {/* Header */}
-      <div className="space-y-1 pt-2 pb-4 border-b border-slate-200">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">상담사례</h1>
+      <div className="space-y-2 pt-2 pb-4 border-b border-slate-200">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          나와 비슷한 문제에 대한<br className="md:hidden" />
+          답변을 찾아보세요.
+        </h1>
+        <p className="text-sm text-slate-500">도산 전문 변호사들이 직접 답변한 실시간 법률 상담 Q&A입니다.</p>
       </div>
 
       {/* Sort tabs */}
