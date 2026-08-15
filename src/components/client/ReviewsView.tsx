@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, X, AlertTriangle, MessageSquare, Eye, ChevronDown, ChevronUp, ArrowLeft, HeartHandshake } from 'lucide-react';
+import { Search, X, AlertTriangle, Eye, ArrowLeft, HeartHandshake } from 'lucide-react';
 import { SuccessReview } from '../../types';
 
 interface ReviewsViewProps {
@@ -10,33 +10,12 @@ interface ReviewsViewProps {
 const ITEMS_PER_PAGE = 10;
 const CATEGORIES = ['전체', '코인/주식 손실', '신용카드 연체', '개인파산', '연대보증 채무', '프리랜서 회생'];
 
-/* ── 같은 카테고리의 후기를 "다른 변호사 답변"으로 그룹핑 ── */
-function groupReviewsByCategory(reviews: SuccessReview[]) {
-  const groups: { primary: SuccessReview; others: SuccessReview[] }[] = [];
-  const used = new Set<string>();
-
-  for (const rev of reviews) {
-    if (used.has(rev.id)) continue;
-    used.add(rev.id);
-
-    // 같은 카테고리 + 다른 변호사 답변을 그룹으로 묶기
-    const others = reviews.filter(
-      r => !used.has(r.id) && r.category === rev.category && r.lawyerName !== rev.lawyerName
-    );
-    others.forEach(r => used.add(r.id));
-
-    groups.push({ primary: rev, others });
-  }
-  return groups;
-}
-
 export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>('전체');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [page, setPage] = useState<number>(1);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'latest' | 'views'>('latest');
-  const [selectedReview, setSelectedReview] = useState<{ primary: SuccessReview; others: SuccessReview[] } | null>(null);
+  const [selectedReview, setSelectedReview] = useState<SuccessReview | null>(null);
 
   const filteredReviews = reviews.filter(rev => {
     const categoryMatches = categoryFilter === '전체' || rev.category === categoryFilter;
@@ -50,24 +29,14 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
     return categoryMatches && searchMatches;
   });
 
-  const grouped = groupReviewsByCategory(filteredReviews);
-  const totalPages = Math.ceil(grouped.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredReviews.length / ITEMS_PER_PAGE);
   const activePage = Math.min(page, Math.max(1, totalPages));
-  const paginatedGroups = grouped.slice(
+  const paginatedReviews = filteredReviews.slice(
     (activePage - 1) * ITEMS_PER_PAGE,
     activePage * ITEMS_PER_PAGE
   );
 
-  const toggleExpand = (id: string) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  // 모의 조회수/날짜 생성 (실제 데이터로 대체 가능)
+  // 모의 조회수/날짜
   const mockViews = (id: string) => {
     const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
     return (hash * 1337 % 500000) + 10000;
@@ -82,8 +51,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
     <div className="space-y-6 animate-fadeIn text-left font-sans">
       {/* ── 상세 보기 ── */}
       {selectedReview ? (() => {
-        const { primary: rev, others } = selectedReview;
-        const allAnswers = [rev, ...others];
+        const rev = selectedReview;
 
         return (
           <div className="space-y-6">
@@ -105,14 +73,13 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                 <span>·</span>
                 <span className="flex items-center gap-1"><Eye className="w-3 h-3" />조회 {mockViews(rev.id).toLocaleString()}</span>
                 <span>·</span>
-                <span>답변 {allAnswers.length}개</span>
+                <span>{mockDate(rev.id)} 작성</span>
               </div>
             </div>
 
-            {/* 상담 의뢰 내용 */}
-            <div className="bg-slate-50 rounded-xl p-5 space-y-2">
-              <h3 className="text-sm font-bold text-slate-700">상담 의뢰 내용</h3>
-              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{rev.content}</p>
+            {/* 후기 내용 */}
+            <div className="space-y-2">
+              <p className="text-sm md:text-base text-slate-700 leading-relaxed whitespace-pre-line">{rev.content}</p>
             </div>
 
             {/* 태그 */}
@@ -124,36 +91,29 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
               </div>
             )}
 
-            {/* 모든 답변 */}
-            <div className="space-y-5">
-              <h3 className="text-sm font-bold text-slate-900">변호사 답변 ({allAnswers.length})</h3>
-              {allAnswers.map((answer, idx) => (
-                <div key={answer.id} className="border-b border-slate-100 pb-5 last:border-b-0">
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <img src={answer.lawyerAvatar} alt={answer.lawyerName} className="w-8 h-8 rounded-full object-cover border border-slate-200" />
-                    <div>
-                      <span className="text-sm font-bold text-slate-800">{answer.lawyerName} 변호사</span>
-                      <span className="text-xs text-slate-400 ml-2">도산 전담</span>
-                    </div>
-                    {idx === 0 && <span className="ml-auto text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">대표 답변</span>}
-                  </div>
-                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{answer.content}</p>
-                  {/* 상담 신청 버튼 */}
-                  <button
-                    onClick={() => onReviewClick(answer)}
-                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer active:scale-[0.98]"
-                  >
-                    <HeartHandshake className="w-3.5 h-3.5" />
-                    이 변호사에게 상담 신청
-                  </button>
+            {/* 담당 변호사 정보 + 상담 신청 */}
+            <div className="bg-slate-50 rounded-xl p-5 space-y-3 border border-slate-200">
+              <h3 className="text-sm font-bold text-slate-700">담당 변호사</h3>
+              <div className="flex items-center gap-3">
+                <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                <div>
+                  <span className="text-sm font-bold text-slate-800">{rev.lawyerName} 변호사</span>
+                  <span className="text-xs text-slate-400 ml-2">도산 전담</span>
                 </div>
-              ))}
+              </div>
+              <button
+                onClick={() => onReviewClick(rev)}
+                className="w-full text-center py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-lg transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <HeartHandshake className="w-4 h-4" />
+                이 변호사에게 동일 사건 상담 신청
+              </button>
             </div>
           </div>
         );
       })() : (
       <>
-      {/* Page Header - 로톡 스타일 */}
+      {/* Page Header */}
       <div className="space-y-2 pt-2 pb-4 border-b border-slate-200">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
           나와 비슷한 상황의<br className="md:hidden" />
@@ -168,7 +128,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
           onClick={() => setSortBy('latest')}
           className={`font-semibold cursor-pointer transition-colors ${sortBy === 'latest' ? 'text-slate-900' : 'hover:text-slate-700'}`}
         >
-          최신 답변순
+          최신순
         </button>
         <span className="text-slate-300">·</span>
         <button
@@ -198,7 +158,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
             )}
           </div>
           <span className="text-sm text-slate-500 font-medium shrink-0">
-            검색 결과: <strong className="text-slate-900">{grouped.length}</strong>건
+            검색 결과: <strong className="text-slate-900">{filteredReviews.length}</strong>건
           </span>
         </div>
 
@@ -220,7 +180,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
       </div>
 
       {/* Reviews List */}
-      {grouped.length === 0 ? (
+      {filteredReviews.length === 0 ? (
         <div className="py-16 text-center space-y-3">
           <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
           <h4 className="font-semibold text-base text-slate-900">일치하는 후기가 없습니다.</h4>
@@ -234,94 +194,43 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
         </div>
       ) : (
         <div className="divide-y divide-slate-200">
-          {paginatedGroups.map(({ primary: rev, others }) => {
+          {paginatedReviews.map(rev => {
             const views = mockViews(rev.id);
             const date = mockDate(rev.id);
-            const totalAnswers = 1 + others.length;
-            const isExpanded = expandedIds.has(rev.id);
 
             return (
               <div key={rev.id} className="py-5 first:pt-0">
-                {/* Category tag */}
+                {/* Category */}
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-semibold text-slate-500">{rev.category}</span>
                 </div>
 
                 {/* Title */}
                 <h3
-                  className="text-base md:text-lg font-bold text-slate-900 leading-snug mb-3 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => setSelectedReview({ primary: rev, others })}
+                  className="text-base md:text-lg font-bold text-slate-900 leading-snug mb-2 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => setSelectedReview(rev)}
                 >
                   {rev.title}
                 </h3>
 
-                {/* Primary answer */}
-                <div className="mb-3">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-xs font-bold text-blue-600">답변</span>
-                    <div className="flex items-center gap-1.5">
-                      <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4 h-4 rounded-full object-cover border border-slate-200" />
-                      <span className="text-xs font-semibold text-slate-700">{rev.lawyerName} 변호사</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-600 leading-relaxed line-clamp-2">
-                    {rev.content}
-                  </p>
-                </div>
+                {/* Content preview */}
+                <p className="text-sm text-slate-600 leading-relaxed line-clamp-2 mb-3">
+                  {rev.content}
+                </p>
 
-                {/* Other lawyer answers */}
-                {others.length > 0 && (
-                  <div className="mb-3">
-                    {isExpanded && (
-                      <div className="space-y-3 mb-2 pl-3 border-l-2 border-slate-200">
-                        {others.map(other => (
-                          <div key={other.id}>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className="text-xs font-bold text-blue-600">답변</span>
-                              <div className="flex items-center gap-1.5">
-                                <img src={other.lawyerAvatar} alt={other.lawyerName} className="w-4 h-4 rounded-full object-cover border border-slate-200" />
-                                <span className="text-xs font-semibold text-slate-700">{other.lawyerName} 변호사</span>
-                              </div>
-                            </div>
-                            <p className="text-sm text-slate-600 leading-relaxed line-clamp-2">
-                              {other.content}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      onClick={() => toggleExpand(rev.id)}
-                      className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer transition-colors"
-                    >
-                      {/* Lawyer avatars stack */}
-                      <div className="flex -space-x-1.5 mr-1">
-                        {others.slice(0, 3).map((o, i) => (
-                          <img
-                            key={i}
-                            src={o.lawyerAvatar}
-                            alt={o.lawyerName}
-                            className="w-5 h-5 rounded-full border-2 border-white object-cover"
-                          />
-                        ))}
-                      </div>
-                      <span>다른 변호사 답변 {others.length}개</span>
-                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                )}
-
-                {/* Meta info */}
+                {/* Author + lawyer + meta */}
                 <div className="flex items-center gap-3 text-xs text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" />
-                    답변 {totalAnswers}개
-                  </span>
+                  <span className="font-medium">{rev.author}</span>
+                  <span>·</span>
+                  <div className="flex items-center gap-1">
+                    <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-3.5 h-3.5 rounded-full object-cover border border-slate-200" />
+                    <span>{rev.lawyerName} 변호사</span>
+                  </div>
                   <span className="flex items-center gap-1">
                     <Eye className="w-3 h-3" />
-                    조회수 {views.toLocaleString()}
+                    {views.toLocaleString()}
                   </span>
-                  <span className="ml-auto">{date} 답변 작성됨</span>
+                  <span className="ml-auto">{date}</span>
                 </div>
               </div>
             );
