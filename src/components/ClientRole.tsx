@@ -2372,7 +2372,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <div
                               key={item.id}
                               onClick={() => handleCategoryClick(item.id)}
-                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 md:p-5 flex flex-col"
+                              className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 md:p-6 flex flex-col"
                             >
                               <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
                               <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
@@ -2395,7 +2395,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       </div>
 
                       {/* Row 2+3: 6개 표준 카드 — 모바일: 컴팩트 2열 그리드 / 데스크톱: 3열 그리드 */}
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-5">
                         {standardItems.slice(1, 7).map((item, idx) => {
                           const cs = colorMap[item.themeColor] || colorMap.indigo;
                           const caseCount = caseCounts[idx + 2];
@@ -2403,7 +2403,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <div
                               key={item.id}
                               onClick={() => handleCategoryClick(item.id)}
-                              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 md:p-5 flex flex-col"
+                              className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 card-depth hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 md:p-6 flex flex-col"
                             >
                               <div className={`accent-bar-reveal bg-gradient-to-r ${cs.gradBar} rounded-t-xl`} />
                               <div className={`absolute -top-8 -right-8 w-24 h-24 bg-transparent ${cs.hoverGlow} rounded-full blur-2xl transition-all duration-500 pointer-events-none`} />
