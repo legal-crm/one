@@ -1370,7 +1370,12 @@ export const initialQAs: ClientQA[] = [
     answer: '주식이나 가상화폐 투자로 인한 손실도 개인회생 신청 대상이 됩니다. 특히 서울회생법원의 경우 실무준칙에 의거하여 투자 손실금 자체를 청산가치에 강제로 반영하지 않도록 유예해주고 있어 변제액을 낮추는 데 매우 유리합니다. 다만 추가 대출 시점이나 최근 채무 비율에 따라 변동 소지가 있으므로 전문 소명서 준비가 관건입니다.',
     lawyerName: '이소민 변호사',
     lawyerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256',
-    badge: '추천 답변'
+    badge: '추천 답변',
+    additionalAnswers: [
+      { lawyerName: '김우진 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256', answer: '가상화폐 투자 손실의 경우 법원이 도박성 채무로 분류할 수 있어 면책 불허 사유에 해당할 수 있으나, 투자 경위와 생활고의 인과관계를 정밀하게 소명하면 충분히 인가를 받을 수 있습니다. 최근 판례 동향도 투자 채무에 대해 유연한 태도를 보이고 있습니다.', badge: '추가 의견' },
+      { lawyerName: '최덕중 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256', answer: '코인 투자 빚의 경우 거래소 거래 내역을 통해 투자 시점과 손실 규모를 명확히 입증하는 것이 중요합니다. 특히 생활비 마련을 위한 불가피한 투자였음을 소명하면 변제율을 최소화할 수 있습니다.', badge: '전문 소견' },
+      { lawyerName: '한지민 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256', answer: '투자 손실 채무도 개인회생 대상입니다. 다만 최근 6개월 이내 추가 투자 이력이 있으면 불성실 신청으로 볼 수 있으므로, 투자 중단 시점을 명확히 하고 향후 투자 근절 확약서를 함께 제출하시는 것을 권합니다.' }
+    ]
   },
   {
     id: 'qa-2',
@@ -1380,7 +1385,13 @@ export const initialQAs: ClientQA[] = [
     answer: '법률 대리인을 통해 개인회생 신청서와 동시에 "금지명령 및 중지명령"을 법원에 접수하면 대개 3~7일 내에 결정문이 발령됩니다. 금지명령이 채권자에게 송달되면 급여 압류 및 독촉 행위가 법적으로 일절 금지됩니다. 직장에 직접 압류 협박 전화가 오는 것도 원천 차단되므로 신속히 개입하셔야 합니다.',
     lawyerName: '김우진 변호사',
     lawyerAvatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256',
-    badge: '실시간 답변'
+    badge: '실시간 답변',
+    additionalAnswers: [
+      { lawyerName: '이소민 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256', answer: '급여 압류 통지를 받으셨다면 즉시 대응이 필요합니다. 개인회생 신청과 동시에 금지명령을 받으면 채권자는 더 이상 압류를 진행할 수 없고, 이미 진행된 압류도 해제됩니다. 직장 통보 전에 선제적으로 움직이시는 것이 핵심입니다.', badge: '긴급 답변' },
+      { lawyerName: '조현아 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=256', answer: '추심 차단 전문 변호사입니다. 급여 압류 예정 통지서를 받으신 단계라면 아직 실제 압류가 집행되기 전이므로, 빠르게 법률 대리인을 선임하여 채권자에게 수임 통보를 하면 직장 연락을 원천 차단할 수 있습니다.', badge: '추심 전문' },
+      { lawyerName: '서준호 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=256', answer: '월급 가압류는 채무자에게 심리적으로 가장 큰 압박을 주는 수단입니다. 하지만 법적으로 최저생계비에 해당하는 금액은 압류가 불가능하며, 개인회생 신청 시 금지명령으로 완전 차단됩니다.' },
+      { lawyerName: '강지영 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256', answer: '직장에 소문이 나는 것을 가장 걱정하시는 분들이 많습니다. 대리인 선임 후 채권자에게 정식 통보하면 직장 전화는 즉시 중단되며, 법원 서류도 자택이 아닌 변호사 사무실로 수령 가능합니다.' }
+    ]
   },
   {
     id: 'qa-3',
@@ -1390,7 +1401,11 @@ export const initialQAs: ClientQA[] = [
     answer: '네, 가능합니다. 개인회생은 고용 형태(정규직, 계약직, 일용직, 프리랜서)에 상관없이 정기적이고 확실한 수입(최저생계비 이상)이 있음을 소득 서류로 입증할 수 있다면 신청이 가능합니다. 3.3% 원천징수 영수증이나 입금 계좌 내역, 플랫폼 활동 정산 내역 등을 토대로 평균 소득을 산출하여 개시를 받아낼 수 있습니다.',
     lawyerName: '최덕중 변호사',
     lawyerAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=256',
-    badge: '전문가 소견'
+    badge: '전문가 소견',
+    additionalAnswers: [
+      { lawyerName: '박성현 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=256', answer: '프리랜서분들의 소득 증빙이 가장 어려운 부분입니다. 배달 플랫폼의 정산 내역, 계좌 입금 기록, 3.3% 원천징수 영수증 등을 체계적으로 정리하면 법원에서 충분히 소득으로 인정받을 수 있습니다.', badge: '소득 증빙 전문' },
+      { lawyerName: '정민우 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=256', answer: '4대 보험 미가입 프리랜서도 개인회생 신청이 가능합니다. 중요한 것은 정기적인 소득이 있다는 것을 증명하는 것이며, 플랫폼 앱의 수입 내역 캡처본도 보조 증빙으로 활용할 수 있습니다.' }
+    ]
   },
   {
     id: 'qa-4',
@@ -1400,7 +1415,11 @@ export const initialQAs: ClientQA[] = [
     answer: '과거에는 배우자 명의의 재산 형성에 본인의 기여 유무와 관계없이 무조건 50%를 신청인의 자산 청산가치로 가산하게 하였으나, 최근 서울/수원 등 도산전문법원의 실무준칙에 의거하여 배우자의 고유재산(특유재산)임이 입증되거나 신청인이 대금을 보탠 내역이 명백하지 않은 경우에는 청산가치 합산에서 전면 배제되는 것이 원칙입니다. 명확한 기여도 분석과 서면 소명이 관건입니다.',
     lawyerName: '한지민 변호사',
     lawyerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256',
-    badge: '실시간 답변'
+    badge: '실시간 답변',
+    additionalAnswers: [
+      { lawyerName: '오윤아 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256', answer: '배우자 재산 문제는 회생 사건에서 가장 민감한 쟁점 중 하나입니다. 배우자가 혼전에 취득한 재산이나 상속·증여받은 재산은 특유재산으로 청산가치에서 제외됩니다. 다만 혼인 중 공동으로 형성한 재산은 기여도에 따라 반영될 수 있으므로 사전 분석이 필요합니다.', badge: '재산 분석' },
+      { lawyerName: '임태오 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=256', answer: '최근 법원 실무에서는 배우자 재산의 청산가치 반영 기준이 점점 완화되고 있습니다. 배우자 명의 아파트의 매입 자금 출처가 배우자 본인의 소득이라는 점을 입증하면 청산가치에서 배제될 가능성이 높습니다.' }
+    ]
   },
   {
     id: 'qa-5',
@@ -1410,7 +1429,12 @@ export const initialQAs: ClientQA[] = [
     answer: '네, 정부의 전세사기 피해자 특별법 지원 대상으로 결정되시면 독촉 연체 이자가 유예되며, 개인회생 시 최단 24개월 변제안 등 파격적인 특례를 누릴 수 있습니다. 선임 즉시 독촉 전화 차단 및 법원의 금지명령을 신청하여 신용유의자 등록과 가압류 절차를 실시간 완벽히 차단하고, 반환 불가능한 보증금 대출을 안전하게 탕감 대상으로 포섭할 수 있습니다.',
     lawyerName: '오윤아 변호사',
     lawyerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
-    badge: '긴급 지원'
+    badge: '긴급 지원',
+    additionalAnswers: [
+      { lawyerName: '한지민 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256', answer: '전세사기 피해자 특별법에 따라 피해 확인서를 받으시면 개인회생 시 다양한 특례 혜택을 받으실 수 있습니다. 특히 최단 변제 기간 적용과 연체 이자 유예가 가능하며, 금지명령도 신속하게 처리됩니다.', badge: '특별법 전문' },
+      { lawyerName: '김우진 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256', answer: '전세보증금 반환 채무는 일반 금융 채무와 달리 특수한 법적 지위를 가집니다. 전세사기 피해자로 인정받으시면 신용유의자 등록 방지뿐 아니라 기존 연체 기록도 정정할 수 있는 길이 열립니다.' },
+      { lawyerName: '권다인 변호사', lawyerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256', answer: '무직 상태에서도 전세사기 피해자 특례를 활용하면 개인회생이 가능합니다. 향후 취업 계획서와 구직 활동 증빙을 함께 제출하여 미래 소득 발생 가능성을 소명하는 전략이 효과적입니다.' }
+    ]
   },
   {
     id: 'qa-6',

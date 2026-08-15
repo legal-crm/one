@@ -1012,6 +1012,13 @@ export interface NewsArticle {
   imageUrl: string;
 }
 
+export interface QAAnswer {
+  lawyerName: string;
+  lawyerAvatar: string;
+  answer: string;
+  badge?: string;
+}
+
 export interface ClientQA {
   id: string;
   category: string;
@@ -1021,6 +1028,7 @@ export interface ClientQA {
   lawyerName: string;
   lawyerAvatar: string;
   badge: string;
+  additionalAnswers?: QAAnswer[];
 }
 
 export interface SuccessReview {
