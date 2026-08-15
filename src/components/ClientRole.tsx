@@ -2657,84 +2657,62 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </div>
 
               {(() => {
-                const visibleCards = windowWidth >= 1024 ? 3 : windowWidth >= 640 ? 2 : 1;
-                const maxIdx = Math.max(0, Math.min(reviews.length, 5) - visibleCards);
-                const safeActiveIdx = Math.min(activeReviewIdx, maxIdx);
-                const translatePercentage = safeActiveIdx * (100 / visibleCards);
+                const reviewItems = reviews.slice(0, Math.min(reviews.length, 8));
+                if (reviewItems.length === 0) return null;
 
                 return (
-                  <div className="relative max-w-6xl mx-auto px-4 md:px-12">
-                    {/* Carousel Container */}
-                    <div className="overflow-hidden py-4">
-                      <div 
-                        className="flex transition-transform duration-500 ease-in-out -mx-2.5"
-                        style={{ transform: `translateX(-${translatePercentage}%)` }}
+                  <div className="relative max-w-6xl mx-auto">
+                    <style dangerouslySetInnerHTML={{ __html: `
+                      @keyframes reviewFlow {
+                        0% { transform: translate3d(0, 0, 0); }
+                        100% { transform: translate3d(-50%, 0, 0); }
+                      }
+                    `}} />
+                    <div
+                      className="overflow-hidden py-4"
+                      style={{
+                        maskImage: 'linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '1.25rem',
+                          width: 'max-content',
+                          animation: 'reviewFlow 30s linear infinite',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.animationPlayState = 'paused'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.animationPlayState = 'running'; }}
                       >
-                        {reviews.slice(0, Math.min(reviews.length, 5)).map(rev => (
-                          <div key={rev.id} className="w-full sm:w-1/2 lg:w-1/3 shrink-0 px-2.5">
-                            <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover-lift-sm transition-card h-full">
-                              <div className="space-y-3 text-left">
-                                <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white leading-snug line-clamp-1">
-                                  {rev.title}
-                                </h4>
-
-                                <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
-                                  "{rev.content}"
-                                </p>
-                              </div>
-
-                              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                                <div className="flex items-center justify-between text-[12px]">
-                                  <span className="text-slate-500 font-semibold">{rev.author}</span>
-                                  <div className="flex items-center gap-1.5">
-                                    <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" />
-                                    <span className="font-semibold text-slate-600 dark:text-slate-400">{rev.lawyerName}</span>
+                        {/* 2벌 복제로 seamless loop */}
+                        {[0, 1].map((setIdx) =>
+                          reviewItems.map((rev) => (
+                            <div key={`${setIdx}-${rev.id}`} className="w-[320px] sm:w-[350px] shrink-0">
+                              <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 h-full">
+                                <div className="space-y-3 text-left">
+                                  <h4 className="font-semibold text-sm sm:text-base text-slate-900 leading-snug line-clamp-1">
+                                    {rev.title}
+                                  </h4>
+                                  <p className="text-[13px] text-slate-600 leading-relaxed line-clamp-3">
+                                    "{rev.content}"
+                                  </p>
+                                </div>
+                                <div className="pt-3 border-t border-slate-100">
+                                  <div className="flex items-center justify-between text-[12px]">
+                                    <span className="text-slate-500 font-semibold">{rev.author}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" />
+                                      <span className="font-semibold text-slate-600">{rev.lawyerName}</span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     </div>
-
-                    {/* Left/Right Floating Navigation Buttons */}
-                    {maxIdx > 0 && (
-                      <>
-                        <button
-                          onClick={() => setActiveReviewIdx(prev => (prev === 0 ? maxIdx : prev - 1))}
-                          className="absolute -left-4 sm:-left-6 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-300 dark:text-slate-600 hover:text-slate-800 dark:hover:text-slate-200 transition-colors z-10 p-2 cursor-pointer"
-                          aria-label="Previous review"
-                        >
-                          <ChevronLeft className="w-8 h-8 md:w-10 md:h-10 stroke-[1.2]" />
-                        </button>
-                        <button
-                          onClick={() => setActiveReviewIdx(prev => (prev === maxIdx ? 0 : prev + 1))}
-                          className="absolute -right-4 sm:-right-6 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-300 dark:text-slate-600 hover:text-slate-800 dark:hover:text-slate-200 transition-colors z-10 p-2 cursor-pointer"
-                          aria-label="Next review"
-                        >
-                          <ChevronRight className="w-8 h-8 md:w-10 md:h-10 stroke-[1.2]" />
-                        </button>
-                      </>
-                    )}
-
-                    {/* Pagination Dots */}
-                    {maxIdx > 0 && (
-                      <div className="flex justify-center gap-1.5 mt-4">
-                        {Array.from({ length: maxIdx + 1 }).map((_, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setActiveReviewIdx(idx)}
-                            className={`w-2 h-2 rounded-full transition-all ${
-                              safeActiveIdx === idx 
-                                ? 'bg-[#1E3A5F] w-4' 
-                                : 'bg-slate-300 dark:bg-slate-700 hover:bg-slate-400'
-                            }`}
-                            aria-label={`Go to slide ${idx + 1}`}
-                          />
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })()}
