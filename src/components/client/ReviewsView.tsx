@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, X, AlertTriangle, MessageSquare, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, X, AlertTriangle, MessageSquare, Eye, ChevronDown, ChevronUp, ArrowLeft, HeartHandshake } from 'lucide-react';
 import { SuccessReview } from '../../types';
 
 interface ReviewsViewProps {
@@ -36,6 +36,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
   const [page, setPage] = useState<number>(1);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'latest' | 'views'>('latest');
+  const [selectedReview, setSelectedReview] = useState<{ primary: SuccessReview; others: SuccessReview[] } | null>(null);
 
   const filteredReviews = reviews.filter(rev => {
     const categoryMatches = categoryFilter === '전체' || rev.category === categoryFilter;
@@ -79,6 +80,95 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
 
   return (
     <div className="space-y-6 animate-fadeIn text-left font-sans">
+      {/* ── 상세 보기 ── */}
+      {selectedReview ? (() => {
+        const { primary: rev, others } = selectedReview;
+        const allAnswers = [rev, ...others];
+        const saved = rev.originalDebt - rev.remainingDebt;
+        const reductionRate = rev.originalDebt > 0 ? Math.round((saved / rev.originalDebt) * 100) : 0;
+
+        return (
+          <div className="space-y-6">
+            {/* 뒤로가기 */}
+            <button
+              onClick={() => setSelectedReview(null)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800 cursor-pointer transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              목록으로 돌아가기
+            </button>
+
+            {/* 카테고리 + 제목 */}
+            <div className="space-y-2 pb-5 border-b border-slate-200">
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{rev.category}</span>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-snug">{rev.title}</h1>
+              <div className="flex items-center gap-3 text-xs text-slate-400 pt-1">
+                <span>{rev.author} 님</span>
+                <span>·</span>
+                <span className="flex items-center gap-1"><Eye className="w-3 h-3" />조회 {mockViews(rev.id).toLocaleString()}</span>
+                <span>·</span>
+                <span>답변 {allAnswers.length}개</span>
+              </div>
+            </div>
+
+            {/* 채무 요약 (있으면) */}
+            {rev.originalDebt > 0 && (
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500 font-medium">기존 채무</span>
+                  <span className="font-bold text-slate-900">{rev.originalDebt.toLocaleString()}만 원</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500 font-medium">조정 후</span>
+                  <span className="font-bold text-blue-600">{rev.remainingDebt === 0 ? '전액 면제' : `${rev.remainingDebt.toLocaleString()}만 원`}</span>
+                </div>
+                {reductionRate > 0 && (
+                  <div className="flex items-center justify-between text-sm pt-1 border-t border-slate-200">
+                    <span className="text-slate-500 font-medium">감면율</span>
+                    <span className="font-bold text-emerald-600">{reductionRate}%</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 태그 */}
+            {rev.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {rev.tags.map(t => (
+                  <span key={t} className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-medium">#{t}</span>
+                ))}
+              </div>
+            )}
+
+            {/* 모든 답변 */}
+            <div className="space-y-5">
+              <h3 className="text-sm font-bold text-slate-900">변호사 답변 ({allAnswers.length})</h3>
+              {allAnswers.map((answer, idx) => (
+                <div key={answer.id} className="border-b border-slate-100 pb-5 last:border-b-0">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <img src={answer.lawyerAvatar} alt={answer.lawyerName} className="w-8 h-8 rounded-full object-cover border border-slate-200" />
+                    <div>
+                      <span className="text-sm font-bold text-slate-800">{answer.lawyerName} 변호사</span>
+                      <span className="text-xs text-slate-400 ml-2">도산 전담</span>
+                    </div>
+                    {idx === 0 && <span className="ml-auto text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">대표 답변</span>}
+                  </div>
+                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{answer.content}</p>
+                  {/* 상담 신청 버튼 */}
+                  <button
+                    onClick={() => onReviewClick(answer)}
+                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer active:scale-[0.98]"
+                  >
+                    <HeartHandshake className="w-3.5 h-3.5" />
+                    이 변호사에게 상담 신청
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })() : (
+      <>
       {/* Page Header - 로톡 스타일 */}
       <div className="space-y-2 pt-2 pb-4 border-b border-slate-200">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
@@ -176,7 +266,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                 {/* Title */}
                 <h3
                   className="text-base md:text-lg font-bold text-slate-900 leading-snug mb-3 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => onReviewClick(rev)}
+                  onClick={() => setSelectedReview({ primary: rev, others })}
                 >
                   {rev.title}
                 </h3>
@@ -300,6 +390,8 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
             다음
           </button>
         </div>
+      )}
+      </>
       )}
     </div>
   );
