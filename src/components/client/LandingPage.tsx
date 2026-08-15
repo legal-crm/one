@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'motion/react';
 import {
   Shield, Lock, Clock, ArrowRight, CheckCircle2, Users,
-  TrendingDown, Eye, EyeOff, MessageSquare, Star, ChevronRight,
+  TrendingDown, Eye, EyeOff, MessageSquare, Star, ChevronLeft, ChevronRight,
   Sparkles, Scale, HeartHandshake, Zap, Search, AlertTriangle
 } from 'lucide-react';
 import { SuccessReview, User as LawyerType, MainBanner, Notice, PlatformConfig } from '../../types';
