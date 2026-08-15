@@ -966,10 +966,23 @@ export default function LandingPage({
           </motion.div>
 
           {/* Reviews continuous marquee */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes marqueeScroll {
+              0% { transform: translate3d(0, 0, 0); }
+              100% { transform: translate3d(-50%, 0, 0); }
+            }
+          `}} />
           <div className="relative mb-12 overflow-hidden"
                style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)' }}>
             <div
-              className="review-marquee-track gap-5"
+              style={{
+                display: 'flex',
+                gap: '1.25rem',
+                width: 'max-content',
+                animation: 'marqueeScroll 35s linear infinite',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.animationPlayState = 'paused'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.animationPlayState = 'running'; }}
             >
               {/* Render reviews twice for seamless loop */}
               {[...Array(2)].map((_, setIdx) => (
