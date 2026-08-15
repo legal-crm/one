@@ -969,10 +969,7 @@ export default function LandingPage({
           <div className="relative mb-12 overflow-hidden"
                style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)' }}>
             <div
-              className="flex gap-5 w-max hover:[animation-play-state:paused]"
-              style={{
-                animation: 'reviewMarquee 40s linear infinite',
-              }}
+              className="review-marquee-track gap-5"
             >
               {/* Render reviews twice for seamless loop */}
               {[...Array(2)].map((_, setIdx) => (
