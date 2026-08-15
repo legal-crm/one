@@ -8,7 +8,7 @@ import type { StaffMember, StaffRole, StaffPermissions } from '../types';
 import { DEFAULT_PERMISSIONS } from '../types';
 
 // 탭 접근 권한 매트릭스
-export type LawyerTab = 'dashboard' | 'open-requests' | 'cases' | 'billing' | 'client-crm' | 'staff-management' | 'settings';
+export type LawyerTab = 'dashboard' | 'open-requests' | 'cases' | 'billing' | 'client-crm' | 'staff-management' | 'settings' | 'case-copilot';
 
 const TAB_ACCESS_MATRIX: Record<LawyerTab, StaffRole[]> = {
   'dashboard':        ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF', 'ACCOUNTING'],
@@ -18,6 +18,7 @@ const TAB_ACCESS_MATRIX: Record<LawyerTab, StaffRole[]> = {
   'client-crm':       ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF', 'ACCOUNTING'],
   'staff-management': ['OWNER'],
   'settings':         ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF', 'ACCOUNTING'],
+  'case-copilot':     ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF'],
 };
 
 // 탭 라벨 (한국어)
@@ -29,6 +30,7 @@ export const TAB_LABELS: Record<LawyerTab, string> = {
   'client-crm':       '고객 CRM',
   'staff-management': '사용자 관리',
   'settings':         '설정',
+  'case-copilot':     '사건검토 코파일럿',
 };
 
 export interface PermissionContext {

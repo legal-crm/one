@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder 
@@ -11,6 +11,7 @@ import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
 import CrmTab from './lawyer/CrmTab';
+import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import StaffManagementTab from './lawyer/StaffManagementTab';
 import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType } from '../types';
@@ -73,7 +74,7 @@ export default function LawyerRole({
   platformConfig
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'staff-management' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings'>('dashboard');
   
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
@@ -1704,6 +1705,18 @@ export default function LawyerRole({
               >
                 <CreditCard className="w-4 h-4" />
                 <span>이용 요금제 / 빌링</span>
+              </button>
+            )}
+
+            {permissionCtx.canAccessTab('case-copilot') && (
+              <button 
+                onClick={() => setActiveTab('case-copilot')}
+                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
+                  activeTab === 'case-copilot' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
+                }`}
+              >
+                <Microscope className="w-4 h-4" />
+                <span>사건검토 코파일럿</span>
               </button>
             )}
 
@@ -3342,6 +3355,17 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}
+          />
+        )}
+
+        {/* TAB: CASE REVIEW COPILOT (사건검토 코파일럿) */}
+        {activeTab === 'case-copilot' && (
+          <CaseReviewCopilot
+            consultRequest={selectedRequest || (requests.length > 0 ? requests[0] : null)}
+            tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+            actorId={activeStaff?.id || activeLawyer.id}
+            actorRole={activeStaff?.role || 'OWNER'}
+            actorName={activeStaff?.name || activeLawyer.name}
           />
         )}
 
