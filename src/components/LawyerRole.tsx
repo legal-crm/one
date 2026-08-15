@@ -3363,9 +3363,9 @@ export default function LawyerRole({
           <CaseReviewCopilot
             consultRequest={requests.length > 0 ? requests[0] : null}
             tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-            actorId={activeStaff?.id || activeLawyer.id}
-            actorRole={activeStaff?.role || 'OWNER'}
-            actorName={activeStaff?.name || activeLawyer.name}
+            actorId={activeStaffMember?.id || activeLawyer.id}
+            actorRole={activeStaffMember?.role || 'OWNER'}
+            actorName={activeStaffMember?.name || activeLawyer.name}
           />
         )}
 
