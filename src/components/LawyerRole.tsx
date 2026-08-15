@@ -1716,7 +1716,7 @@ export default function LawyerRole({
                 }`}
               >
                 <Microscope className="w-4 h-4" />
-                <span>사건검토 코파일럿</span>
+                <span>사건검토</span>
               </button>
             )}
 
@@ -3361,7 +3361,7 @@ export default function LawyerRole({
         {/* TAB: CASE REVIEW COPILOT (사건검토 코파일럿) */}
         {activeTab === 'case-copilot' && (
           <CaseReviewCopilot
-            consultRequest={selectedRequest || (requests.length > 0 ? requests[0] : null)}
+            consultRequest={requests.length > 0 ? requests[0] : null}
             tenantId={activeLawyer.lawFirmId || activeLawyer.id}
             actorId={activeStaff?.id || activeLawyer.id}
             actorRole={activeStaff?.role || 'OWNER'}
