@@ -84,8 +84,6 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
       {selectedReview ? (() => {
         const { primary: rev, others } = selectedReview;
         const allAnswers = [rev, ...others];
-        const saved = rev.originalDebt - rev.remainingDebt;
-        const reductionRate = rev.originalDebt > 0 ? Math.round((saved / rev.originalDebt) * 100) : 0;
 
         return (
           <div className="space-y-6">
@@ -111,25 +109,11 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
               </div>
             </div>
 
-            {/* 채무 요약 (있으면) */}
-            {rev.originalDebt > 0 && (
-              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500 font-medium">기존 채무</span>
-                  <span className="font-bold text-slate-900">{rev.originalDebt.toLocaleString()}만 원</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500 font-medium">조정 후</span>
-                  <span className="font-bold text-blue-600">{rev.remainingDebt === 0 ? '전액 면제' : `${rev.remainingDebt.toLocaleString()}만 원`}</span>
-                </div>
-                {reductionRate > 0 && (
-                  <div className="flex items-center justify-between text-sm pt-1 border-t border-slate-200">
-                    <span className="text-slate-500 font-medium">감면율</span>
-                    <span className="font-bold text-emerald-600">{reductionRate}%</span>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* 상담 의뢰 내용 */}
+            <div className="bg-slate-50 rounded-xl p-5 space-y-2">
+              <h3 className="text-sm font-bold text-slate-700">상담 의뢰 내용</h3>
+              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{rev.content}</p>
+            </div>
 
             {/* 태그 */}
             {rev.tags.length > 0 && (
