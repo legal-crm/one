@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, X, AlertTriangle, Eye } from 'lucide-react';
+import { Search, X, AlertTriangle, Eye, ArrowLeft, HeartHandshake } from 'lucide-react';
 import { SuccessReview } from '../../types';
 
 interface ReviewsViewProps {
@@ -14,8 +14,9 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
   const [categoryFilter, setCategoryFilter] = useState<string>('전체');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'latest' | 'views'>('latest');
+  const [selectedReview, setSelectedReview] = useState<SuccessReview | null>(null);
 
-  // 최근 15개만 표시 (새 후기가 추가되면 오래된 것 밀려남)
+  // 최근 15개만 표시 (FIFO)
   const recentReviews = reviews.slice(0, MAX_REVIEWS);
 
   const filteredReviews = recentReviews.filter(rev => {
@@ -42,6 +43,70 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
 
   return (
     <div className="space-y-6 animate-fadeIn text-left font-sans">
+      {/* ── 상세 보기 ── */}
+      {selectedReview ? (() => {
+        const rev = selectedReview;
+
+        return (
+          <div className="space-y-6">
+            {/* 뒤로가기 */}
+            <button
+              onClick={() => setSelectedReview(null)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800 cursor-pointer transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              목록으로 돌아가기
+            </button>
+
+            {/* 카테고리 + 제목 */}
+            <div className="space-y-2 pb-5 border-b border-slate-200">
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{rev.category}</span>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-snug">{rev.title}</h1>
+              <div className="flex items-center gap-3 text-xs text-slate-400 pt-1">
+                <span>{rev.author} 님</span>
+                <span>·</span>
+                <span className="flex items-center gap-1"><Eye className="w-3 h-3" />조회 {mockViews(rev.id).toLocaleString()}</span>
+                <span>·</span>
+                <span>{mockDate(rev.id)} 작성</span>
+              </div>
+            </div>
+
+            {/* 후기 내용 */}
+            <div className="space-y-2">
+              <p className="text-sm md:text-base text-slate-700 leading-relaxed whitespace-pre-line">{rev.content}</p>
+            </div>
+
+            {/* 태그 */}
+            {rev.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {rev.tags.map(t => (
+                  <span key={t} className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-medium">#{t}</span>
+                ))}
+              </div>
+            )}
+
+            {/* 담당 변호사 정보 + 상담 신청 */}
+            <div className="bg-slate-50 rounded-xl p-5 space-y-3 border border-slate-200">
+              <h3 className="text-sm font-bold text-slate-700">담당 변호사</h3>
+              <div className="flex items-center gap-3">
+                <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                <div>
+                  <span className="text-sm font-bold text-slate-800">{rev.lawyerName} 변호사</span>
+                  <span className="text-xs text-slate-400 ml-2">도산 전담</span>
+                </div>
+              </div>
+              <button
+                onClick={() => onReviewClick(rev)}
+                className="w-full text-center py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-lg transition-colors cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <HeartHandshake className="w-4 h-4" />
+                이 변호사 프로필 보기
+              </button>
+            </div>
+          </div>
+        );
+      })() : (
+      <>
       {/* Page Header */}
       <div className="space-y-2 pt-2 pb-4 border-b border-slate-200">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
@@ -49,7 +114,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
           상담 후기를 찾아보세요.
         </h1>
         <p className="text-sm text-slate-500">
-          ※ 최근 {MAX_REVIEWS}건의 후기가 실시간으로 업데이트됩니다. 후기를 클릭하면 해당 변호사 프로필로 이동합니다.
+          ※ 최근 {MAX_REVIEWS}건의 후기가 실시간으로 업데이트됩니다.
         </p>
       </div>
 
@@ -130,18 +195,17 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
             const date = mockDate(rev.id);
 
             return (
-              <div
-                key={rev.id}
-                className="py-5 first:pt-0 cursor-pointer group"
-                onClick={() => onReviewClick(rev)}
-              >
+              <div key={rev.id} className="py-5 first:pt-0">
                 {/* Category */}
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-semibold text-slate-500">{rev.category}</span>
                 </div>
 
-                {/* Title - 클릭 시 변호사 프로필로 이동 */}
-                <h3 className="text-base md:text-lg font-bold text-slate-900 leading-snug mb-2 group-hover:text-blue-600 transition-colors">
+                {/* Title - 클릭 시 상세 페이지 */}
+                <h3
+                  className="text-base md:text-lg font-bold text-slate-900 leading-snug mb-2 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => { setSelectedReview(rev); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
                   {rev.title}
                 </h3>
 
@@ -156,7 +220,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                   <span>·</span>
                   <div className="flex items-center gap-1.5">
                     <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4 h-4 rounded-full object-cover border border-slate-200" />
-                    <span className="text-blue-600 font-semibold group-hover:underline">{rev.lawyerName} 변호사 프로필 →</span>
+                    <span>{rev.lawyerName} 변호사</span>
                   </div>
                   <span className="flex items-center gap-1">
                     <Eye className="w-3 h-3" />
@@ -170,10 +234,12 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
         </div>
       )}
 
-      {/* 안내 메시지 */}
+      {/* 안내 */}
       <div className="text-center py-4 border-t border-slate-100">
         <p className="text-xs text-slate-400">최근 {MAX_REVIEWS}건의 후기만 표시됩니다. 새로운 후기가 등록되면 가장 오래된 후기가 자동으로 교체됩니다.</p>
       </div>
+      </>
+      )}
     </div>
   );
 }
