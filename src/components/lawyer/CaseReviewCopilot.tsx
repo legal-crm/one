@@ -209,12 +209,11 @@ export default function CaseReviewCopilot({
 }: CaseReviewCopilotProps) {
   const permissions = useCopilotPermissions(actorRole as StaffRole);
 
-  // Build selectable client list
+  // Build selectable client list — 실제 상담 데이터 우선, 없을 때만 샘플
   const allClients = React.useMemo(() => {
     const fromProps = consultRequests || (singleRequest ? [singleRequest] : []);
-    const propsIds = new Set(fromProps.map((r: any) => r.id));
-    const samples = SAMPLE_CLIENTS.filter(s => !propsIds.has(s.id));
-    return [...fromProps, ...samples];
+    if (fromProps.length > 0) return fromProps;
+    return SAMPLE_CLIENTS; // 실제 상담이 없을 때 데모용 폴백
   }, [consultRequests, singleRequest]);
 
   const [selectedClientIdx, setSelectedClientIdx] = useState<number>(-1);
@@ -404,6 +403,9 @@ export default function CaseReviewCopilot({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
           {allClients.map((client, idx) => {
             const fp = client.financialProfile || {};
+            const isSample = (client.id || '').startsWith('sample');
+            const label = client.entryCategory?.label || client.consultType || client.title || '상담';
+            const dateStr = client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '';
             return (
               <button key={client.id} onClick={() => setSelectedClientIdx(idx)}
                 className="text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-brand hover:shadow-md active:scale-[0.98] transition-all">
@@ -411,15 +413,19 @@ export default function CaseReviewCopilot({
                   <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-extrabold text-sm">
                     {(client.clientName || client.client_name || '?')[0]}
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-extrabold text-sm text-slate-800">{client.clientName || client.client_name}</p>
-                    <p className="text-[10px] text-slate-400">{client.consultType} · {client.id.startsWith('sample') ? '샘플 데이터' : '실제 상담'}</p>
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {label}
+                      {dateStr && ` · ${dateStr}`}
+                      {isSample && <span className="ml-1 bg-amber-100 text-amber-600 px-1 rounded text-[9px]">샘플</span>}
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-1 text-[10px]">
                   <div className="bg-red-50 rounded p-1"><span className="text-red-400 block">총 채무</span><span className="font-bold text-red-600">{(fp.debtTotal || 0).toLocaleString()}만</span></div>
                   <div className="bg-blue-50 rounded p-1"><span className="text-blue-400 block">월 소득</span><span className="font-bold text-blue-600">{fp.income || 0}만</span></div>
-                  <div className="bg-slate-50 rounded p-1"><span className="text-slate-400 block">채권자</span><span className="font-bold text-slate-700">{(fp.debts || []).length}개</span></div>
+                  <div className="bg-slate-50 rounded p-1"><span className="text-slate-400 block">채권자</span><span className="font-bold text-slate-700">{fp.creditorCount || (fp.debts || []).length || 0}개</span></div>
                 </div>
               </button>
             );
