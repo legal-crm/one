@@ -771,7 +771,6 @@ export default function CaseReviewCopilot({
                       </div>
                     )}
                   </div>
-                </div>
 
                   {/* 7. 코파일럿 채무 분석 (초안 생성 후 표시) */}
                   {factOutput && (
