@@ -122,12 +122,11 @@ const SAMPLE_CLIENTS: any[] = [
 ];
 
 type CopilotTab =
-  | 'client-info' | 'debt-status' | 'missing-info' | 'review-flags'
+  | 'client-info' | 'missing-info' | 'review-flags'
   | 'court-notes' | 'staff-memo' | 'lawyer-opinion' | 'approval' | 'audit-log';
 
 const COPILOT_TABS: { key: CopilotTab; label: string; icon: React.ReactNode; requiresLawyer?: boolean; requiresOwner?: boolean }[] = [
-  { key: 'client-info', label: '고객 입력정보', icon: <FileText className="w-3.5 h-3.5" /> },
-  { key: 'debt-status', label: '채무현황', icon: <DollarSign className="w-3.5 h-3.5" /> },
+  { key: 'client-info', label: '의뢰인 정보', icon: <FileText className="w-3.5 h-3.5" /> },
   { key: 'missing-info', label: '누락정보', icon: <AlertCircle className="w-3.5 h-3.5" /> },
   { key: 'review-flags', label: '내부 검토 플래그', icon: <FileWarning className="w-3.5 h-3.5" /> },
   { key: 'court-notes', label: '관할법원 참고', icon: <Scale className="w-3.5 h-3.5" /> },
@@ -296,8 +295,8 @@ export default function CaseReviewCopilot({
       addAuditLog('FACT_SNAPSHOT_CREATED', '사실 스냅샷 저장');
       addAuditLog('RULE_EXECUTED', `${rOut.flags.length}개 플래그 생성`);
 
-      // 초안 생성 완료 후 채무현황 탭으로 자동 이동
-      setActiveTab('debt-status');
+      // 초안 생성 완료 후 의뢰인 정보 탭 유지 (하단에 분석 결과 표시)
+      setActiveTab('client-info');
     } catch (err) {
       console.error('코파일럿 실행 오류:', err);
     } finally {
@@ -540,7 +539,7 @@ export default function CaseReviewCopilot({
         <div className="px-4 pt-3 pb-2 border-b border-slate-100">
           <div className="flex items-center gap-1 text-[10px] font-bold">
             {[
-              { step: 1, label: '자동 분석', done: !!factOutput, tabs: ['client-info', 'debt-status', 'missing-info', 'review-flags', 'court-notes'] },
+              { step: 1, label: '자동 분석', done: !!factOutput, tabs: ['client-info', 'missing-info', 'review-flags', 'court-notes'] },
               { step: 2, label: '직원 확인', done: reviewStatus !== 'DRAFT' && reviewStatus !== 'LAWYER_REVIEW_REQUIRED', tabs: ['staff-memo'] },
               { step: 3, label: '변호사 검토·승인', done: reviewStatus === 'LAWYER_APPROVED' || reviewStatus === 'SENT_TO_CLIENT', tabs: ['lawyer-opinion', 'approval', 'audit-log'] },
             ].map((s, i) => {
@@ -773,39 +772,41 @@ export default function CaseReviewCopilot({
                     )}
                   </div>
                 </div>
-              )}
 
-              {/* TAB 2: 채무현황 */}
-              {activeTab === 'debt-status' && factOutput && (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><DollarSign className="w-4 h-4 text-brand" /> Fact Engine 채무 분석</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[
-                      { label: '총 채무', value: fmtMoney(factOutput.factSummary.totalDebt), color: 'text-red-600' },
-                      { label: '무담보 채무', value: fmtMoney(factOutput.factSummary.unsecuredDebt) },
-                      { label: '담보 채무', value: fmtMoney(factOutput.factSummary.securedDebt) },
-                      { label: '조세 채무', value: fmtMoney(factOutput.factSummary.taxDebt) },
-                      { label: '월 소득', value: fmtMoney(factOutput.factSummary.monthlyIncome), color: 'text-green-600' },
-                      { label: '월 지출 (생계비)', value: fmtMoney(factOutput.factSummary.monthlyExpense) },
-                      { label: '가용소득', value: fmtMoney(factOutput.factSummary.disposableIncome), color: factOutput.factSummary.disposableIncome > 0 ? 'text-blue-600' : 'text-red-600' },
-                      { label: '부양가족', value: `${factOutput.factSummary.dependents}명` },
-                    ].map((item, i) => (
-                      <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-0.5">
-                        <p className="text-[11px] text-slate-400 font-bold">{item.label}</p>
-                        <p className={`text-sm font-extrabold ${item.color || 'text-slate-800'}`}>{item.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {factOutput.factSummary.assets && (
-                    <div className="bg-slate-50 rounded-xl p-4 mt-2">
-                      <p className="text-xs font-bold text-slate-600 mb-2">자산 요약</p>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div><span className="text-slate-400">총 시가:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.totalMarketValue)}</span></div>
-                        <div><span className="text-slate-400">담보대출:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.totalLoanBalance)}</span></div>
-                        <div><span className="text-slate-400">순자산:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.netAssetValue)}</span></div>
-                      </div>
+                  {/* 7. 코파일럿 채무 분석 (초안 생성 후 표시) */}
+                  {factOutput && (
+                  <div className="mt-2 pt-4 border-t border-slate-200">
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">📊 코파일럿 채무 분석 <span className="text-[10px] text-green-500 font-normal ml-1">✓ 초안 생성됨</span></h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { label: '총 채무', value: fmtMoney(factOutput.factSummary.totalDebt), color: 'text-red-600' },
+                        { label: '무담보 채무', value: fmtMoney(factOutput.factSummary.unsecuredDebt) },
+                        { label: '담보 채무', value: fmtMoney(factOutput.factSummary.securedDebt) },
+                        { label: '조세 채무', value: fmtMoney(factOutput.factSummary.taxDebt) },
+                        { label: '월 소득', value: fmtMoney(factOutput.factSummary.monthlyIncome), color: 'text-green-600' },
+                        { label: '월 지출 (생계비)', value: fmtMoney(factOutput.factSummary.monthlyExpense) },
+                        { label: '가용소득', value: fmtMoney(factOutput.factSummary.disposableIncome), color: factOutput.factSummary.disposableIncome > 0 ? 'text-blue-600' : 'text-red-600' },
+                        { label: '부양가족', value: `${factOutput.factSummary.dependents}명` },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-indigo-50/50 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-indigo-400 font-bold">{item.label}</p>
+                          <p className={`text-xs font-extrabold ${item.color || 'text-slate-800'}`}>{item.value}</p>
+                        </div>
+                      ))}
                     </div>
+                    {factOutput.factSummary.assets && (
+                      <div className="bg-indigo-50/30 rounded-xl p-3 mt-2">
+                        <p className="text-[10px] font-bold text-indigo-400 mb-1">자산 요약</p>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div><span className="text-slate-400">총 시가:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.totalMarketValue)}</span></div>
+                          <div><span className="text-slate-400">담보대출:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.totalLoanBalance)}</span></div>
+                          <div><span className="text-slate-400">순자산:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.netAssetValue)}</span></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   )}
+
                 </div>
               )}
 
