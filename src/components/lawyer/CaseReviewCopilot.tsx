@@ -40,11 +40,32 @@ const SAMPLE_CLIENTS: any[] = [
     id: 'sample-1', clientName: '김영희', phone: '010-1234-5678', status: 'counseling',
     consultType: 'direct_multi', createdAt: '2026-08-10T09:00:00Z',
     financialProfile: {
+      clientName: '김영희', clientPhone: '010-1234-5678',
+      age: 42, gender: 'female' as const,
       income: 280, debtTotal: 12000, assetsTotal: 500,
-      dependents: 1, age: 42, residence: '서울특별시 강남구',
-      maritalStatus: 'married', minorChildren: 1,
-      incomeType: 'worker',
-      monthlyExpense: 180, monthlyRent: 50,
+      dependents: 2, minorChildren: 1,
+      maritalStatus: 'MARRIED',
+      jobType: 'SALARIED', companyNameMasked: 'OO전자', employmentDate: '2018-03-01',
+      residenceRegion: '서울특별시 강남구', address: '서울특별시 강남구 역삼동',
+      workLocation: '서울특별시 서초구',
+      hasRecentJobChange: false,
+      spouseIncome: 0, spouseAsset: 150,
+      housingType: 'jeonse' as const, housingContractHolder: 'self' as const,
+      rentalDeposit: 15000, depositLoan: 5000,
+      retirementPay: 2400, retirementPensionType: 'pension' as const,
+      myAssets: 200,
+      debtTypes: { banks: 4500, cards: 4300, personals: 3200, recentLoans: 0, coinCrypto: 0 },
+      debtCause: 'LIVING',
+      harassmentLevel: 'CALL',
+      creditorCount: 4,
+      priorityDebt: 0,
+      speculativeLoss: 0, gamblingLoss: 0,
+      legalActions: ['collection_call'],
+      rentCost: 0, medicalCost: 5, educationCost: 30, specialEducationCost: 0,
+      monthlyFixedExpenses: 25, monthlyExpense: 180,
+      specialCondition: 'none',
+      clientNote: '아이 학비 때문에 대출이 늘었습니다. 남편은 실직 상태입니다.',
+      riskFlags: [],
       debts: [
         { creditor: '신한은행', principal: 4500, interest: 320, type: 'unsecured' },
         { creditor: 'KB카드', principal: 2800, interest: 180, type: 'unsecured' },
@@ -52,8 +73,8 @@ const SAMPLE_CLIENTS: any[] = [
         { creditor: '현대캐피탈', principal: 3200, interest: 250, type: 'unsecured' },
       ],
       assets: [
-        { type: 'deposit', label: '예금', marketValue: 200 },
-        { type: 'insurance', label: '보험 해약괈', marketValue: 300, isExempt: true },
+        { type: 'deposit', label: '전세보증금', marketValue: 15000 },
+        { type: 'insurance', label: '보험 해약금', marketValue: 300, isExempt: true },
       ],
     },
   },
@@ -61,11 +82,32 @@ const SAMPLE_CLIENTS: any[] = [
     id: 'sample-2', clientName: '박준혁', phone: '010-9876-5432', status: 'counseling',
     consultType: 'ai_chat', createdAt: '2026-08-12T14:30:00Z',
     financialProfile: {
+      clientName: '박준혁', clientPhone: '010-9876-5432',
+      age: 35, gender: 'male' as const,
       income: 180, debtTotal: 25000, assetsTotal: 0,
-      dependents: 0, age: 35, residence: '경기도 수원시',
-      maritalStatus: 'single', minorChildren: 0,
-      incomeType: 'selfEmployed',
-      monthlyExpense: 120, monthlyRent: 40,
+      dependents: 0, minorChildren: 0,
+      maritalStatus: 'SINGLE',
+      jobType: 'FREELANCER', companyNameMasked: '프리랜서',
+      residenceRegion: '경기도 수원시', address: '경기도 수원시 영통구',
+      workLocation: '재택근무',
+      hasRecentJobChange: true,
+      spouseIncome: 0, spouseAsset: 0,
+      housingType: 'rent' as const, housingContractHolder: 'self' as const,
+      rentalDeposit: 1000, depositLoan: 0,
+      retirementPay: 0, retirementPensionType: 'none' as const,
+      myAssets: 0,
+      debtTypes: { banks: 13000, cards: 4000, personals: 3000, recentLoans: 3000, coinCrypto: 5000 },
+      debtCause: 'INVESTMENT',
+      harassmentLevel: 'SEIZURE',
+      creditorCount: 6,
+      priorityDebt: 2000,
+      speculativeLoss: 3500, gamblingLoss: 1500,
+      legalActions: ['collection_call', 'court_order', 'seizure'],
+      rentCost: 40, medicalCost: 0, educationCost: 0, specialEducationCost: 0,
+      monthlyFixedExpenses: 15, monthlyExpense: 120,
+      specialCondition: 'none',
+      clientNote: '코인 투자 실패로 대출이 급증했습니다. 현재 계좌 압류 상태입니다.',
+      riskFlags: ['최근 1년 이내 대출 과다', '투자/사행성 채무(코인/주식)', '소득 대비 과다 채무'],
       debts: [
         { creditor: '국민은행', principal: 8000, interest: 480, type: 'secured' },
         { creditor: '우리은행', principal: 5000, interest: 300, type: 'unsecured' },
@@ -570,28 +612,78 @@ export default function CaseReviewCopilot({
             <>
               {/* TAB 1: 고객 입력정보 */}
               {activeTab === 'client-info' && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><FileText className="w-4 h-4 text-brand" /> 고객이 입력한 원본 정보</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[
-                      { label: '총 채무', value: fmtMoney(fp.debtTotal || 0) },
-                      { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
-                      { label: '부양가족', value: `${fp.dependents || 0}명` },
-                      { label: '거주지', value: fp.residence || fp.address || '-' },
-                      { label: '연체 상태', value: fp.delinquencyStatus || fp.q1_status || '-' },
-                      { label: '상담 유형', value: consultRequest.request_type || consultRequest.requestType || '-' },
-                      { label: '요청일', value: consultRequest.created_at?.split('T')[0] || '-' },
-                      { label: '채권자 수', value: `${(fp.debts || []).length || '-'}개` },
-                    ].map((item, i) => (
-                      <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-0.5">
-                        <p className="text-[11px] text-slate-400 font-bold">{item.label}</p>
-                        <p className="text-sm font-extrabold text-slate-800">{item.value}</p>
-                      </div>
-                    ))}
+
+                  {/* 1. 기본 정보 */}
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">👤 기본 정보</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { label: '의뢰인명', value: fp.clientName || consultRequest.clientName || consultRequest.client_name || '-' },
+                        { label: '연락처', value: fp.clientPhone || consultRequest.phone || '-' },
+                        { label: '나이', value: fp.age ? `${fp.age}세` : '-' },
+                        { label: '성별', value: fp.gender === 'male' ? '남성' : fp.gender === 'female' ? '여성' : '-' },
+                        { label: '혼인 상태', value: fp.maritalStatus === 'MARRIED' || fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus === 'DIVORCED' || fp.maritalStatus === 'divorced' ? '이혼' : fp.maritalStatus === 'SINGLE' || fp.maritalStatus === 'single' ? '미혼' : '-' },
+                        { label: '미성년 자녀', value: fp.minorChildren != null ? `${fp.minorChildren}명` : `${fp.dependents || 0}명` },
+                        { label: '거주지', value: fp.residence || fp.residenceRegion || fp.address || '-' },
+                        { label: '거주 형태', value: fp.housingType === 'rent' ? '월세' : fp.housingType === 'jeonse' ? '전세' : fp.housingType === 'owned' ? '자가' : fp.housingType === 'free' ? '무상거주' : fp.housingType || '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-slate-50 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-slate-400 font-bold">{item.label}</p>
+                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  {fp.debts && fp.debts.length > 0 && (
-                    <div>
-                      <h5 className="text-xs font-bold text-slate-600 mb-2 mt-4">채권자별 채무 내역</h5>
+
+                  {/* 2. 소득 및 직업 */}
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">💼 소득 및 직업</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
+                        { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업/사업자' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
+                        { label: '직장명', value: fp.companyName || fp.companyNameMasked || '-' },
+                        { label: '입사일', value: fp.employmentDate || '-' },
+                        { label: '근무지', value: fp.workLocation || '-' },
+                        { label: '최근 이직', value: fp.hasRecentJobChange ? '있음' : '없음' },
+                        { label: '배우자 소득', value: fp.spouseIncome ? fmtMoney(fp.spouseIncome) : '-' },
+                        { label: '양육비 수령', value: fp.childSupportReceived ? `${fp.childSupportReceived}만원` : '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-blue-50/50 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-blue-400 font-bold">{item.label}</p>
+                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. 채무 현황 */}
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">🔴 채무 현황</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+                      {[
+                        { label: '총 채무', value: fmtMoney(fp.debtTotal || 0) },
+                        { label: '은행 대출', value: fp.debtTypes?.banks ? `${fp.debtTypes.banks}만원` : fmtMoney(0) },
+                        { label: '카드 대금', value: fp.debtTypes?.cards ? `${fp.debtTypes.cards}만원` : fmtMoney(0) },
+                        { label: '대부/기타', value: fp.debtTypes?.personals ? `${fp.debtTypes.personals}만원` : fmtMoney(0) },
+                        { label: '최근 대출', value: fp.debtTypes?.recentLoans ? `${fp.debtTypes.recentLoans}만원` : '-' },
+                        { label: '투자/도박 손실', value: fp.debtTypes?.coinCrypto ? `${fp.debtTypes.coinCrypto}만원` : '-' },
+                        { label: '우선변제채무', value: fp.priorityDebt ? `${fp.priorityDebt}만원` : '-' },
+                        { label: '채권자 수', value: fp.creditorCount ? `${fp.creditorCount}개` : `${(fp.debts || []).length}개` },
+                        { label: '채무 원인', value: fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-' },
+                        { label: '독촉/법적조치', value: fp.harassmentLevel === 'CALL' ? '독촉 전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-' },
+                        { label: '투기적 손실', value: fp.speculativeLoss ? `${fp.speculativeLoss}만원` : '-' },
+                        { label: '도박 채무', value: fp.gamblingLoss ? `${fp.gamblingLoss}만원` : '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-red-50/50 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-red-400 font-bold">{item.label}</p>
+                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {fp.debts && fp.debts.length > 0 && (
                       <div className="bg-slate-50 rounded-xl overflow-hidden">
                         <table className="w-full text-xs">
                           <thead><tr className="bg-slate-100 text-slate-500">
@@ -610,8 +702,116 @@ export default function CaseReviewCopilot({
                           </tbody>
                         </table>
                       </div>
+                    )}
+                    {fp.legalActions && fp.legalActions.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] text-slate-500 font-bold mb-1">현재 법적 조치</p>
+                        <div className="flex gap-1 flex-wrap">
+                          {fp.legalActions.map((a: string, i: number) => (
+                            <span key={i} className="bg-red-100 text-red-700 rounded-lg px-2 py-0.5 text-[10px] font-bold">{a}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 4. 자산 현황 */}
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">🏦 자산 현황</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { label: '총 자산', value: fmtMoney(fp.assetsTotal || 0) },
+                        { label: '본인 재산', value: fp.myAssets ? `${fp.myAssets}만원` : '-' },
+                        { label: '배우자 자산', value: fp.spouseAsset ? `${fp.spouseAsset}만원` : '-' },
+                        { label: '임대보증금', value: fp.rentalDeposit ? `${fp.rentalDeposit}만원` : '-' },
+                        { label: '예상 퇴직금', value: fp.retirementPay ? `${fp.retirementPay}만원` : '-' },
+                        { label: '퇴직연금 유형', value: fp.retirementPensionType === 'pension' ? '가입' : fp.retirementPensionType === 'none' ? '미가입' : fp.retirementPensionType === 'unknown' ? '모름' : '-' },
+                        { label: '주택 명의자', value: fp.housingContractHolder === 'self' ? '본인' : fp.housingContractHolder === 'spouse' ? '배우자' : fp.housingContractHolder || '-' },
+                        { label: '보증금 대출', value: fp.depositLoan ? `${fp.depositLoan}만원` : '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-green-50/50 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-green-500 font-bold">{item.label}</p>
+                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        </div>
+                      ))}
                     </div>
-                  )}
+                    {fp.assets && fp.assets.length > 0 && (
+                      <div className="bg-slate-50 rounded-xl overflow-hidden mt-2">
+                        <table className="w-full text-xs">
+                          <thead><tr className="bg-slate-100 text-slate-500">
+                            <th className="p-2 text-left font-bold">자산명</th>
+                            <th className="p-2 text-right font-bold">시장가</th>
+                            <th className="p-2 text-center font-bold">유형</th>
+                          </tr></thead>
+                          <tbody>
+                            {fp.assets.map((a: any, i: number) => (
+                              <tr key={i} className="border-t border-slate-100">
+                                <td className="p-2 text-slate-700">{a.label || a.description || `자산 ${i+1}`}</td>
+                                <td className="p-2 text-right font-bold text-slate-800">{fmtMoney(a.marketValue || a.value || 0)}</td>
+                                <td className="p-2 text-center"><span className="bg-slate-200 rounded-lg px-1.5 py-0.5 text-[10px] font-bold">{a.type || '-'}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. 생활비 */}
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">🏠 월 생활비</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { label: '월세', value: fp.rentCost ? `${fp.rentCost}만원` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
+                        { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만원` : '-' },
+                        { label: '교육비', value: fp.educationCost ? `${fp.educationCost}만원` : '-' },
+                        { label: '특수교육비', value: fp.specialEducationCost ? `${fp.specialEducationCost}만원` : '-' },
+                        { label: '고정지출(통신·보험)', value: fp.monthlyFixedExpenses ? `${fp.monthlyFixedExpenses}만원` : '-' },
+                        { label: '양육비 지급', value: fp.childSupportPaid ? `${fp.childSupportPaid}만원` : '-' },
+                        { label: '생활비 합계', value: fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-amber-50/50 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-amber-500 font-bold">{item.label}</p>
+                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 6. 특이사항 */}
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">⚠️ 특이사항</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {[
+                        { label: '24개월 특례', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
+                        { label: '상담 유형', value: consultRequest.consultType || consultRequest.request_type || consultRequest.requestType || '-' },
+                        { label: '요청일', value: consultRequest.createdAt?.split('T')[0] || consultRequest.created_at?.split('T')[0] || '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-purple-50/50 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-purple-500 font-bold">{item.label}</p>
+                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {fp.riskFlags && fp.riskFlags.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[10px] text-slate-500 font-bold mb-1">위험 플래그</p>
+                        <div className="flex gap-1 flex-wrap">
+                          {fp.riskFlags.map((flag: string, i: number) => (
+                            <span key={i} className="bg-red-100 text-red-700 rounded-lg px-2 py-0.5 text-[10px] font-bold">{flag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(fp.clientNote || (fp.clientNotes && fp.clientNotes.length > 0)) && (
+                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <p className="text-[10px] text-amber-600 font-bold mb-1">의뢰인 전달 사항</p>
+                        <p className="text-xs text-slate-700">{fp.clientNote || (fp.clientNotes || []).join('\n')}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
                 </div>
               )}
 
