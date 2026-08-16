@@ -561,7 +561,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
                             <input 
                               type="text" 
                               disabled={isReadOnly}
-                              className={inputClass} disabled={isReadOnly} 
+                              className={inputClass} 
                               value={formatWithComma(rule.additionalLimit)} 
                               onChange={e => handleHousingChange(r, size, 'additionalLimit', parseCommaNumber(e.target.value))} 
                             />
@@ -573,7 +573,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
                             <input 
                               type="text" 
                               disabled={isReadOnly}
-                              className={inputClass} disabled={isReadOnly} 
+                              className={inputClass} 
                               value={formatWithComma(rule.includedInMedian)} 
                               onChange={e => handleHousingChange(r, size, 'includedInMedian', parseCommaNumber(e.target.value))} 
                             />
@@ -585,7 +585,7 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
                             <input 
                               type="text" 
                               disabled={isReadOnly}
-                              className={`${inputClass} bg-slate-950 text-slate-600`} disabled={isReadOnly} 
+                              className={`${inputClass} bg-slate-950 text-slate-600`} 
                               value={formatWithComma(rule.totalLimit)} 
                               readOnly 
                             />
