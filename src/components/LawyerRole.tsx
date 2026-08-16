@@ -13,6 +13,7 @@ import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/ser
 import CrmTab from './lawyer/CrmTab';
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import NotificationBell from './lawyer/NotificationBell';
+import MyTasksWidget from './lawyer/MyTasksWidget';
 import StaffManagementTab from './lawyer/StaffManagementTab';
 import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType } from '../types';
@@ -1806,6 +1807,17 @@ export default function LawyerRole({
                 <div className="p-2.5 rounded-lg bg-purple-400/10 text-purple-400">
                   <FolderHeart className="w-5 h-5" />
                 </div>
+              </div>
+            </div>
+
+            {/* My Tasks Widget */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-1">
+                <MyTasksWidget
+                  tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                  userId={activeStaffMember?.id || activeLawyer.id}
+                  userName={activeStaffMember?.name || activeLawyer.name}
+                />
               </div>
             </div>
 

@@ -159,6 +159,12 @@ export default function CaseReviewCopilot({
   });
   const [clientMessage, setClientMessage] = useState('');
 
+  // Q&A 피드백 루프
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [feedbackThread, setFeedbackThread] = useState<{ id: string; author: string; role: string; content: string; type: 'reject' | 'more_info' | 'staff_response'; createdAt: string }[]>([]);
+  const [staffResponseContent, setStaffResponseContent] = useState('');
+
   // 감사 로그
   const [auditLogs, setAuditLogs] = useState<{ time: string; action: string; actor: string; detail: string }[]>([]);
 
@@ -238,10 +244,47 @@ export default function CaseReviewCopilot({
     addAuditLog('CLIENT_MESSAGE_SENT', '고객에게 발송 완료');
   };
 
-  // 반려
+  // 반려 (사유 필수)
   const handleReject = () => {
+    if (!rejectReason.trim()) return;
     setReviewStatus('LAWYER_REJECTED');
-    addAuditLog('LAWYER_REJECTED', '변호사 반려');
+    addAuditLog('LAWYER_REJECTED', rejectReason.trim());
+    setFeedbackThread(prev => [...prev, {
+      id: `fb-${Date.now()}`, author: actorName, role: actorRole,
+      content: rejectReason.trim(), type: 'reject',
+      createdAt: new Date().toISOString(),
+    }]);
+    setRejectReason('');
+    setShowRejectForm(false);
+  };
+
+  // 추가확인 요청 (반려 없이 질문만)
+  const handleRequestMoreInfo = () => {
+    if (!rejectReason.trim()) return;
+    setReviewStatus('MORE_INFO_REQUIRED');
+    addAuditLog('MORE_INFO_REQUESTED', rejectReason.trim());
+    setFeedbackThread(prev => [...prev, {
+      id: `fb-${Date.now()}`, author: actorName, role: actorRole,
+      content: rejectReason.trim(), type: 'more_info',
+      createdAt: new Date().toISOString(),
+    }]);
+    setRejectReason('');
+    setShowRejectForm(false);
+  };
+
+  // 직원 보완 제출
+  const handleStaffResponse = () => {
+    if (!staffResponseContent.trim()) return;
+    setFeedbackThread(prev => [...prev, {
+      id: `fb-${Date.now()}`, author: actorName, role: actorRole,
+      content: staffResponseContent.trim(), type: 'staff_response',
+      createdAt: new Date().toISOString(),
+    }]);
+    addAuditLog('STAFF_REVIEW_COMPLETED', `보완 제출: ${staffResponseContent.trim().substring(0, 50)}`);
+    setReviewStatus('STAFF_REVIEWED');
+    setStaffResponseContent('');
+    setMissingInfoChecked(true);
+    setFactVerified(true);
   };
 
   // 접근 가능한 탭 필터
@@ -657,6 +700,48 @@ export default function CaseReviewCopilot({
                         사실확인 제출 → 변호사 검토 요청
                       </button>
                     )}
+
+                    {/* Q&A 피드백 스레드 */}
+                    {feedbackThread.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <h5 className="text-xs font-bold text-slate-500">📋 검토 피드백 이력</h5>
+                        {feedbackThread.map(fb => (
+                          <div key={fb.id} className={`rounded-xl p-3 text-xs ${
+                            fb.type === 'reject' ? 'bg-red-50 border border-red-200' :
+                            fb.type === 'more_info' ? 'bg-amber-50 border border-amber-200' :
+                            'bg-green-50 border border-green-200'
+                          }`}>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="font-bold">{fb.type === 'reject' ? '❌ 반려' : fb.type === 'more_info' ? '❓ 추가확인' : '✅ 보완답변'}</span>
+                              <span className="text-slate-500">{fb.author} ({fb.role})</span>
+                              <span className="text-slate-400 text-[10px]">{new Date(fb.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p className="text-slate-700">{fb.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 직원 보완 제출 (반려/추가확인 상태일 때) */}
+                    {(reviewStatus === 'LAWYER_REJECTED' || reviewStatus === 'MORE_INFO_REQUIRED') && permissions.canCreateStaffReview && (
+                      <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
+                        <h5 className="text-xs font-bold text-blue-700">↩️ 보완 내용 작성</h5>
+                        <textarea
+                          value={staffResponseContent}
+                          onChange={e => setStaffResponseContent(e.target.value)}
+                          placeholder="변호사 피드백에 대한 보완 내용을 작성하세요..."
+                          className="w-full bg-white border border-blue-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-brand/30 outline-none"
+                          rows={3}
+                        />
+                        <button
+                          onClick={handleStaffResponse}
+                          disabled={!staffResponseContent.trim()}
+                          className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-brand/90 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          보완 제출 → 변호사 재검토 요청
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -758,12 +843,64 @@ export default function CaseReviewCopilot({
                           </button>
                         )}
                         <button
-                          onClick={handleReject}
+                          onClick={() => setShowRejectForm(!showRejectForm)}
                           className="bg-slate-100 text-slate-700 rounded-xl px-4 py-2.5 font-bold text-sm hover:bg-slate-200 active:scale-[0.98] transition-all flex items-center gap-1.5"
                         >
-                          <XCircle className="w-4 h-4" /> 반려
+                          <XCircle className="w-4 h-4" /> {showRejectForm ? '취소' : '반려 / 추가확인'}
                         </button>
                       </div>
+
+                      {/* 반려/추가확인 사유 입력 폼 */}
+                      {showRejectForm && (
+                        <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+                          <h5 className="text-xs font-bold text-red-700">반려 사유 또는 추가 확인 질문</h5>
+                          <textarea
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            placeholder="반려 사유 또는 직원에게 추가 확인할 내용을 작성하세요..."
+                            className="w-full bg-white border border-red-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-red-300 outline-none"
+                            rows={3}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleReject}
+                              disabled={!rejectReason.trim()}
+                              className="bg-red-600 text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> 반려
+                            </button>
+                            <button
+                              onClick={handleRequestMoreInfo}
+                              disabled={!rejectReason.trim()}
+                              className="bg-amber-500 text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-amber-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1"
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5" /> 추가확인 요청
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 피드백 이력 */}
+                      {feedbackThread.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <h5 className="text-xs font-bold text-slate-500">📋 검토 피드백 이력</h5>
+                          {feedbackThread.map(fb => (
+                            <div key={fb.id} className={`rounded-xl p-3 text-xs ${
+                              fb.type === 'reject' ? 'bg-red-50 border border-red-200' :
+                              fb.type === 'more_info' ? 'bg-amber-50 border border-amber-200' :
+                              'bg-green-50 border border-green-200'
+                            }`}>
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="font-bold">{fb.type === 'reject' ? '❌ 반려' : fb.type === 'more_info' ? '❓ 추가확인' : '✅ 보완답변'}</span>
+                                <span className="text-slate-500">{fb.author}</span>
+                                <span className="text-slate-400 text-[10px]">{new Date(fb.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              <p className="text-slate-700">{fb.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
