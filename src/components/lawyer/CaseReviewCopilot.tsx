@@ -122,13 +122,10 @@ const SAMPLE_CLIENTS: any[] = [
 ];
 
 type CopilotTab =
-  | 'client-info' | 'missing-info' | 'review-flags'
-  | 'court-notes' | 'staff-memo' | 'lawyer-opinion' | 'approval' | 'audit-log';
+  | 'client-info' | 'court-notes' | 'staff-memo' | 'lawyer-opinion' | 'approval' | 'audit-log';
 
 const COPILOT_TABS: { key: CopilotTab; label: string; icon: React.ReactNode; requiresLawyer?: boolean; requiresOwner?: boolean }[] = [
   { key: 'client-info', label: '의뢰인 정보', icon: <FileText className="w-3.5 h-3.5" /> },
-  { key: 'missing-info', label: '누락정보', icon: <AlertCircle className="w-3.5 h-3.5" /> },
-  { key: 'review-flags', label: '내부 검토 플래그', icon: <FileWarning className="w-3.5 h-3.5" /> },
   { key: 'court-notes', label: '관할법원 참고', icon: <Scale className="w-3.5 h-3.5" /> },
   { key: 'staff-memo', label: '사무직원 메모', icon: <StickyNote className="w-3.5 h-3.5" /> },
   { key: 'lawyer-opinion', label: '변호사 검토 의견', icon: <Gavel className="w-3.5 h-3.5" />, requiresLawyer: true },
@@ -539,7 +536,7 @@ export default function CaseReviewCopilot({
         <div className="px-4 pt-3 pb-2 border-b border-slate-100">
           <div className="flex items-center gap-1 text-[10px] font-bold">
             {[
-              { step: 1, label: '자동 분석', done: !!factOutput, tabs: ['client-info', 'missing-info', 'review-flags', 'court-notes'] },
+              { step: 1, label: '자동 분석', done: !!factOutput, tabs: ['client-info', 'court-notes'] },
               { step: 2, label: '직원 확인', done: reviewStatus !== 'DRAFT' && reviewStatus !== 'LAWYER_REVIEW_REQUIRED', tabs: ['staff-memo'] },
               { step: 3, label: '변호사 검토·승인', done: reviewStatus === 'LAWYER_APPROVED' || reviewStatus === 'SENT_TO_CLIENT', tabs: ['lawyer-opinion', 'approval', 'audit-log'] },
             ].map((s, i) => {
@@ -805,131 +802,95 @@ export default function CaseReviewCopilot({
                     )}
                   </div>
                   )}
-
-                </div>
-              )}
-
-              {/* TAB 3: 누락정보 */}
-              {activeTab === 'missing-info' && factOutput && (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-500" /> 누락정보 및 입력값 확인</h4>
-                  {factOutput.missingFields.length === 0 && factOutput.conflicts.length === 0 ? (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      <p className="text-sm text-green-700 font-bold">모든 주요 정보가 입력되었습니다.</p>
-                    </div>
-                  ) : (
-                    <>
+                  {/* 8. 누락정보 (초안 생성 후 표시) */}
+                  {factOutput && (factOutput.missingFields.length > 0 || factOutput.conflicts.length > 0) && (
+                  <div className="mt-2 pt-4 border-t border-slate-200">
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">⚠️ 누락·불일치 항목</h5>
+                    <div className="space-y-2">
                       {factOutput.missingFields.map((f, i) => (
-                        <div key={i} className={`rounded-xl p-3 flex items-start gap-3 border ${
+                        <div key={i} className={`rounded-xl p-2.5 flex items-start gap-2 border ${
                           f.importance === 'required' ? 'bg-red-50 border-red-200' :
                           f.importance === 'recommended' ? 'bg-amber-50 border-amber-200' :
                           'bg-slate-50 border-slate-200'
                         }`}>
-                          <div className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold shrink-0 mt-0.5 ${
+                          <span className={`rounded-lg px-1.5 py-0.5 text-[9px] font-extrabold shrink-0 mt-0.5 ${
                             f.importance === 'required' ? 'bg-red-100 text-red-700' :
                             f.importance === 'recommended' ? 'bg-amber-100 text-amber-700' :
                             'bg-slate-200 text-slate-600'
                           }`}>
                             {f.importance === 'required' ? '필수' : f.importance === 'recommended' ? '권장' : '선택'}
-                          </div>
+                          </span>
                           <div>
-                            <p className="text-sm font-bold text-slate-800">{f.fieldLabel}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{f.description}</p>
+                            <p className="text-xs font-bold text-slate-800">{f.fieldLabel}</p>
+                            <p className="text-[10px] text-slate-500">{f.description}</p>
                           </div>
                         </div>
                       ))}
-                      {factOutput.conflicts.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-xs font-bold text-slate-600 mb-2">⚠️ 입력값 불일치</p>
-                          {factOutput.conflicts.map((c, i) => (
-                            <div key={i} className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-2">
-                              <p className="text-sm font-bold text-orange-800">{c.description}</p>
-                              <p className="text-xs text-orange-600 mt-0.5">{c.fieldA} ↔ {c.fieldB}</p>
-                            </div>
-                          ))}
+                      {factOutput.conflicts.map((c, i) => (
+                        <div key={`c-${i}`} className="bg-orange-50 border border-orange-200 rounded-xl p-2.5">
+                          <p className="text-xs font-bold text-orange-800">{c.description}</p>
+                          <p className="text-[10px] text-orange-600">{c.fieldA} ↔ {c.fieldB}</p>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+
+                  {/* 9. 위험 플래그 (초안 생성 후 표시) */}
+                  {ruleOutput && ruleOutput.flags.length > 0 && (
+                  <div className="mt-2 pt-4 border-t border-slate-200">
+                    <h5 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                      🚨 위험 플래그
+                      {ruleOutput.reviewGrade !== 'NORMAL_REVIEW' && (
+                        <span className="bg-red-100 text-red-700 rounded-lg px-1.5 py-0.5 text-[9px] font-extrabold">
+                          {ruleOutput.reviewGrade === 'ENHANCED_REVIEW' ? '⚡ 강화 검토' : '🔴 이중 검토'}
+                        </span>
                       )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 4: 내부 검토 플래그 */}
-              {activeTab === 'review-flags' && ruleOutput && (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2">
-                    <FileWarning className="w-4 h-4 text-red-500" /> 내부 검토 플래그
-                    {ruleOutput.reviewGrade !== 'NORMAL_REVIEW' && (
-                      <span className="bg-red-100 text-red-700 rounded-lg px-2 py-0.5 text-[10px] font-extrabold ml-2">
-                        {ruleOutput.reviewGrade === 'ENHANCED_REVIEW' ? '⚡ 강화 검토' : '🔴 이중 검토 권장'}
-                      </span>
-                    )}
-                  </h4>
-                  {ruleOutput.flags.length === 0 ? (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      <p className="text-sm text-green-700 font-bold">특별한 검토 플래그가 없습니다.</p>
-                    </div>
-                  ) : (
-                    ruleOutput.flags.map((flag, i) => {
-                      const ftCfg = FLAG_TYPE_CONFIG[flag.flagType] || FLAG_TYPE_CONFIG.INFO;
-                      return (
-                        <div key={i} className={`rounded-xl p-4 border-l-4 bg-white border border-slate-200 ${
-                          flag.flagType === 'HIGH_RISK' ? 'border-l-red-500' :
-                          flag.flagType === 'CAUTION' ? 'border-l-amber-500' :
-                          flag.flagType === 'ADDITIONAL_CHECK' ? 'border-l-blue-500' :
-                          'border-l-slate-300'
-                        }`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${ftCfg.bgColor} ${ftCfg.color}`}>
-                                  {ftCfg.emoji} {ftCfg.label}
-                                </span>
-                                {flag.sourceType && (
-                                  <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${RULE_SOURCE_TYPE_CONFIG[flag.sourceType]?.color || 'text-slate-500'} bg-slate-100`}>
-                                    {RULE_SOURCE_TYPE_CONFIG[flag.sourceType]?.emoji} {RULE_SOURCE_TYPE_CONFIG[flag.sourceType]?.label}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm font-bold text-slate-800 mt-1">{flag.message}</p>
-
-                              {/* 근거 추적 정보 */}
-                              {flag.usedInputValues && Object.keys(flag.usedInputValues).length > 0 && (
-                                <div className="mt-2 bg-slate-50 rounded-lg p-2.5 space-y-1">
-                                  <p className="text-[10px] font-bold text-slate-500 uppercase">사용된 입력값</p>
-                                  {Object.entries(flag.usedInputValues).map(([k, v]) => (
-                                    <p key={k} className="text-xs text-slate-600">
-                                      <span className="text-slate-400">{k}:</span> <span className="font-bold">{typeof v === 'number' ? fmtMoney(v) : String(v)}</span>
-                                    </p>
-                                  ))}
-                                </div>
-                              )}
-                              {flag.appliedRuleName && (
-                                <p className="text-[10px] text-slate-400 mt-2">적용 기준: {flag.appliedRuleName} v{flag.appliedRuleVersion}</p>
-                              )}
+                    </h5>
+                    <div className="space-y-2">
+                      {ruleOutput.flags.map((flag, i) => {
+                        const ftCfg = FLAG_TYPE_CONFIG[flag.flagType] || FLAG_TYPE_CONFIG.INFO;
+                        return (
+                          <div key={i} className={`rounded-xl p-3 border-l-4 bg-white border border-slate-200 ${
+                            flag.flagType === 'HIGH_RISK' ? 'border-l-red-500' :
+                            flag.flagType === 'CAUTION' ? 'border-l-amber-500' :
+                            flag.flagType === 'ADDITIONAL_CHECK' ? 'border-l-blue-500' :
+                            'border-l-slate-300'
+                          }`}>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`rounded-lg px-1.5 py-0.5 text-[9px] font-extrabold ${ftCfg.bgColor} ${ftCfg.color}`}>
+                                {ftCfg.emoji} {ftCfg.label}
+                              </span>
                             </div>
-                            <span className="bg-indigo-50 text-indigo-600 rounded-lg px-2 py-1 text-[10px] font-extrabold shrink-0">
-                              담당 변호사 검토 필요
-                            </span>
+                            <p className="text-xs font-bold text-slate-800">{flag.message}</p>
+                            {flag.usedInputValues && Object.keys(flag.usedInputValues).length > 0 && (
+                              <div className="mt-1.5 bg-slate-50 rounded-lg p-2 space-y-0.5">
+                                {Object.entries(flag.usedInputValues).map(([k, v]) => (
+                                  <p key={k} className="text-[10px] text-slate-600">
+                                    <span className="text-slate-400">{k}:</span> <span className="font-bold">{typeof v === 'number' ? fmtMoney(v) : String(v)}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  {ruleOutput.additionalQuestions.length > 0 && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-2">
-                      <p className="text-xs font-bold text-blue-700 mb-2">📋 추가 질문</p>
-                      <ul className="space-y-1">{ruleOutput.additionalQuestions.map((q, i) => <li key={i} className="text-xs text-blue-600">• {q}</li>)}</ul>
+                        );
+                      })}
                     </div>
+                    {ruleOutput.additionalQuestions.length > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-2">
+                        <p className="text-[10px] font-bold text-blue-700 mb-1">📋 추가 질문</p>
+                        <ul className="space-y-0.5">{ruleOutput.additionalQuestions.map((q, i) => <li key={i} className="text-[10px] text-blue-600">• {q}</li>)}</ul>
+                      </div>
+                    )}
+                    {ruleOutput.requiredDocuments.length > 0 && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mt-2">
+                        <p className="text-[10px] font-bold text-purple-700 mb-1">📄 필요 서류</p>
+                        <ul className="space-y-0.5">{ruleOutput.requiredDocuments.map((d, i) => <li key={i} className="text-[10px] text-purple-600">• {d}</li>)}</ul>
+                      </div>
+                    )}
+                  </div>
                   )}
-                  {ruleOutput.requiredDocuments.length > 0 && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mt-2">
-                      <p className="text-xs font-bold text-purple-700 mb-2">📄 필요 서류</p>
-                      <ul className="space-y-1">{ruleOutput.requiredDocuments.map((d, i) => <li key={i} className="text-xs text-purple-600">• {d}</li>)}</ul>
-                    </div>
-                  )}
+
                 </div>
               )}
 
