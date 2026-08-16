@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import {
   AlertTriangle, FileText, DollarSign, AlertCircle, Scale, StickyNote,
   Gavel, Send, History, ChevronRight, CheckCircle2, XCircle, Clock,
@@ -19,6 +19,8 @@ import type { IntakeData, StaffRole } from '../../types';
 import { DEFAULT_SETTINGS } from '../../constants';
 import CopilotRuleSetManager from './CopilotRuleSetManager';
 import ConsultStyleProfileSettings from './ConsultStyleProfile';
+import { calculateRepayment, type RehabUserInput, type RehabCalculationResult, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
+const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 
 // ============================================================
 // 사건검토 코파일럿 메인 컴포넌트
@@ -143,6 +145,47 @@ function fmtMoney(v: number): string {
 }
 
 /** consultRequest → IntakeData 변환 */
+// financialProfile → RehabUserInput 변환
+function mapToRehabUserInput(req: any): RehabUserInput {
+  const fp = req?.financialProfile || req || {};
+  const maritalMap: Record<string, 'single' | 'married' | 'divorced' | 'widowed' | 'other'> = {
+    'SINGLE': 'single', 'MARRIED': 'married', 'DIVORCED': 'divorced', 'WIDOWED': 'widowed',
+  };
+  const empMap: Record<string, 'salary' | 'business' | 'freelancer' | 'none' | 'daily'> = {
+    'SALARIED': 'salary', 'BUSINESS': 'business', 'FREELANCER': 'freelancer', 'NONE': 'none', 'DAILY': 'daily',
+  };
+  return {
+    address: fp.residenceRegion || '서울',
+    age: fp.age || 40,
+    gender: fp.gender || 'male',
+    employmentType: empMap[fp.jobType || ''] || 'salary',
+    monthlyIncome: (fp.income || 0) * 10000,
+    maritalStatus: maritalMap[fp.maritalStatus || ''] || 'single',
+    isMarried: fp.maritalStatus === 'MARRIED',
+    minorChildren: fp.minorChildren || 0,
+    familySize: (fp.dependents || 0) + 1,
+    spouseIncome: (fp.spouseIncome || 0) * 10000,
+    spouseAssets: (fp.spouseAsset || 0) * 10000,
+    housingType: fp.housingType || 'rent',
+    rentCost: (fp.rentCost || 0) * 10000,
+    deposit: (fp.rentalDeposit || 0) * 10000,
+    medicalCost: (fp.medicalCost || 0) * 10000,
+    educationCost: (fp.educationCost || 0) * 10000,
+    myAssets: (fp.myAssets || fp.assetsTotal || 0) * 10000,
+    totalDebt: (fp.debtTotal || 0) * 10000,
+    speculativeLoss: (fp.speculativeLoss || 0) * 10000,
+    gamblingLoss: (fp.gamblingLoss || 0) * 10000,
+    specialCondition: fp.specialCondition || 'none',
+    retirementPay: (fp.retirementPay || 0) * 10000,
+    retirementPensionType: fp.retirementPensionType || 'unknown',
+    monthlyFixedExpenses: (fp.monthlyFixedExpenses || 0) * 10000,
+    clientNotes: fp.clientNotes || [],
+    riskFactor: fp.debtCause === 'INVESTMENT' ? 'investment' : fp.debtCause === 'GAMBLING' ? 'gambling' : 'none',
+    name: fp.clientName || req?.clientName || '',
+    phone: req?.phone || '',
+  };
+}
+
 function mapToIntakeData(req: any): IntakeData | null {
   if (!req) return null;
   const fp = req.financialProfile || req;
@@ -233,6 +276,11 @@ export default function CaseReviewCopilot({
     }
   }, [preselectedRequestId, allClients]);
 
+  // 변제금 진단 결과
+  const [rehabCalcResult, setRehabCalcResult] = useState<RehabCalculationResult | null>(null);
+  const [rehabUserInput, setRehabUserInput] = useState<RehabUserInput | null>(null);
+  const [showRehabReport, setShowRehabReport] = useState(false);
+
   // 탭 상태
   const [activeTab, setActiveTab] = useState<CopilotTab>('client-info');
 
@@ -300,6 +348,17 @@ export default function CaseReviewCopilot({
       const rOut = runReviewRuleEngine(fOut, mockRuleSet, DEFAULT_REVIEW_RULES, []);
       setRuleOutput(rOut);
       setReviewStatus('DRAFT');
+
+      // 변제금 계산 실행
+      try {
+        const rehabInput = mapToRehabUserInput(consultRequest);
+        const rehabResult = calculateRepayment(rehabInput);
+        setRehabCalcResult(rehabResult);
+        setRehabUserInput(rehabInput);
+        addAuditLog('REHAB_CALCULATED', `월 변제금 ${formatCurrency(rehabResult.monthlyPayment)}, 탕감률 ${rehabResult.debtReductionRate}%`);
+      } catch (calcErr) {
+        console.warn('변제금 계산 오류 (무시):', calcErr);
+      }
 
       addAuditLog('REVIEW_CREATED', '검토 초안 생성');
       addAuditLog('FACT_SNAPSHOT_CREATED', '사실 스냅샷 저장');
@@ -453,6 +512,7 @@ export default function CaseReviewCopilot({
   }
 
   return (
+    <>
     <div className="space-y-4 animate-fadeIn">
 
       {/* ── 상단 경고 배너 ── */}
@@ -820,6 +880,35 @@ export default function CaseReviewCopilot({
                         </div>
                       </div>
                     )}
+                  </div>
+                  )}
+                  {/* 7-1. 변제금 진단 결과 (초안 생성 후 표시) */}
+                  {rehabCalcResult && (
+                  <div className="mt-2 pt-4 border-t border-slate-200">
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">📋 변제금 진단 결과 <span className="text-[10px] text-green-500 font-normal ml-1">✓ 자동 산출</span></h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                      {[
+                        { label: '예상 월 변제금', value: formatCurrency(rehabCalcResult.monthlyPayment), color: 'text-brand' },
+                        { label: '변제 기간', value: `${rehabCalcResult.repaymentMonths}개월`, color: 'text-slate-800' },
+                        { label: '예상 탕감률', value: `${rehabCalcResult.debtReductionRate}%`, color: rehabCalcResult.debtReductionRate >= 50 ? 'text-green-600' : 'text-amber-600' },
+                        { label: '진행 가능성', value: rehabCalcResult.status === 'POSSIBLE' ? '가능' : rehabCalcResult.status === 'DIFFICULT' ? '어려움' : '불가', color: rehabCalcResult.status === 'POSSIBLE' ? 'text-green-600' : rehabCalcResult.status === 'DIFFICULT' ? 'text-amber-600' : 'text-red-600' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-gradient-to-br from-brand/5 to-brand/10 rounded-xl p-2.5 space-y-0.5">
+                          <p className="text-[10px] text-brand/60 font-bold">{item.label}</p>
+                          <p className={`text-sm font-extrabold ${item.color}`}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {rehabCalcResult.statusReason && (
+                      <p className="text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2 mb-2">{rehabCalcResult.statusReason}</p>
+                    )}
+                    <button
+                      onClick={() => setShowRehabReport(true)}
+                      className="w-full bg-brand/10 hover:bg-brand/20 text-brand font-bold text-xs py-2.5 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                    >
+                      <Scale className="w-3.5 h-3.5" />
+                      상세 진단 리포트 보기
+                    </button>
                   </div>
                   )}
                   {/* 8. 누락정보 (초안 생성 후 표시) */}
@@ -1213,5 +1302,18 @@ export default function CaseReviewCopilot({
       </div>
       )}
     </div>
+
+      {/* RehabResultReport 모달 */}
+      {showRehabReport && rehabCalcResult && rehabUserInput && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><Loader2 className="w-8 h-8 text-white animate-spin" /></div>}>
+          <RehabResultReport
+            result={rehabCalcResult}
+            userInput={rehabUserInput}
+            onClose={() => setShowRehabReport(false)}
+            embedded={false}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }
