@@ -78,7 +78,7 @@ export default function LawyerRole({
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings'>('dashboard');
-  
+  const [copilotPreselectedReqId, setCopilotPreselectedReqId] = useState<string | undefined>();
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
   const [adModalMonths, setAdModalMonths] = useState(1);
@@ -2237,10 +2237,17 @@ export default function LawyerRole({
 
                         <button 
                           onClick={() => setProposalModalReqId(r.id)}
-                          className="w-full bg-brand hover:bg-brand-hover text-white font-black py-2.5 rounded-[200px] text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5"
+                          className="w-full bg-brand hover:bg-brand-hover text-white font-black py-2.5 rounded-xl text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           <span>솔루션 및 비용 제안</span>
+                        </button>
+                        <button 
+                          onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
+                          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap"
+                        >
+                          <Microscope className="w-3.5 h-3.5" />
+                          <span>사건검토 코파일럿</span>
                         </button>
                       </div>
 
@@ -3385,6 +3392,7 @@ export default function LawyerRole({
             actorId={activeStaffMember?.id || activeLawyer.id}
             actorRole={activeStaffMember?.role || 'OWNER'}
             actorName={activeStaffMember?.name || activeLawyer.name}
+            preselectedRequestId={copilotPreselectedReqId}
           />
         )}
 

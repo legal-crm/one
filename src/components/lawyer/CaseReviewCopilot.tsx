@@ -31,6 +31,7 @@ interface CaseReviewCopilotProps {
   actorId: string;
   actorRole: string;
   actorName: string;
+  preselectedRequestId?: string;
   onClose?: () => void;
 }
 
@@ -205,7 +206,7 @@ function mapToIntakeData(req: any): IntakeData | null {
 }
 
 export default function CaseReviewCopilot({
-  consultRequest: singleRequest, consultRequests, tenantId, actorId, actorRole, actorName, onClose
+  consultRequest: singleRequest, consultRequests, tenantId, actorId, actorRole, actorName, preselectedRequestId, onClose
 }: CaseReviewCopilotProps) {
   const permissions = useCopilotPermissions(actorRole as StaffRole);
 
@@ -218,6 +219,19 @@ export default function CaseReviewCopilot({
 
   const [selectedClientIdx, setSelectedClientIdx] = useState<number>(-1);
   const consultRequest = selectedClientIdx >= 0 ? allClients[selectedClientIdx] : null;
+
+  // preselectedRequestId가 변경되면 해당 고객 자동 선택
+  React.useEffect(() => {
+    if (preselectedRequestId && allClients.length > 0) {
+      const idx = allClients.findIndex((c: any) => c.id === preselectedRequestId);
+      if (idx >= 0) {
+        setSelectedClientIdx(idx);
+        setFactOutput(null);
+        setRuleOutput(null);
+        setReviewStatus('DRAFT');
+      }
+    }
+  }, [preselectedRequestId, allClients]);
 
   // 탭 상태
   const [activeTab, setActiveTab] = useState<CopilotTab>('client-info');
