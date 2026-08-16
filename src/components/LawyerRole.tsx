@@ -3379,7 +3379,7 @@ export default function LawyerRole({
         {/* TAB: CASE REVIEW COPILOT (사건검토 코파일럿) */}
         {activeTab === 'case-copilot' && (
           <CaseReviewCopilot
-            consultRequest={requests.length > 0 ? requests[0] : null}
+            consultRequests={requests}
             tenantId={activeLawyer.lawFirmId || activeLawyer.id}
             actorId={activeStaffMember?.id || activeLawyer.id}
             actorRole={activeStaffMember?.role || 'OWNER'}

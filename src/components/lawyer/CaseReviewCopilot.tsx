@@ -25,13 +25,59 @@ import ConsultStyleProfileSettings from './ConsultStyleProfile';
 // ============================================================
 
 interface CaseReviewCopilotProps {
-  consultRequest: any;
+  consultRequest?: any;
+  consultRequests?: any[];
   tenantId: string;
   actorId: string;
   actorRole: string;
   actorName: string;
   onClose?: () => void;
 }
+
+// Sample test clients for demo
+const SAMPLE_CLIENTS: any[] = [
+  {
+    id: 'sample-1', clientName: '김영희', phone: '010-1234-5678', status: 'counseling',
+    consultType: 'direct_multi', createdAt: '2026-08-10T09:00:00Z',
+    financialProfile: {
+      income: 280, debtTotal: 12000, assetsTotal: 500,
+      dependents: 1, age: 42, residence: '서울특별시 강남구',
+      maritalStatus: 'married', minorChildren: 1,
+      incomeType: 'worker',
+      monthlyExpense: 180, monthlyRent: 50,
+      debts: [
+        { creditor: '신한은행', principal: 4500, interest: 320, type: 'unsecured' },
+        { creditor: 'KB카드', principal: 2800, interest: 180, type: 'unsecured' },
+        { creditor: '삼성카드', principal: 1500, interest: 95, type: 'unsecured' },
+        { creditor: '현대캐피탈', principal: 3200, interest: 250, type: 'unsecured' },
+      ],
+      assets: [
+        { type: 'deposit', label: '예금', marketValue: 200 },
+        { type: 'insurance', label: '보험 해약괈', marketValue: 300, isExempt: true },
+      ],
+    },
+  },
+  {
+    id: 'sample-2', clientName: '박준혁', phone: '010-9876-5432', status: 'counseling',
+    consultType: 'ai_chat', createdAt: '2026-08-12T14:30:00Z',
+    financialProfile: {
+      income: 180, debtTotal: 25000, assetsTotal: 0,
+      dependents: 0, age: 35, residence: '경기도 수원시',
+      maritalStatus: 'single', minorChildren: 0,
+      incomeType: 'selfEmployed',
+      monthlyExpense: 120, monthlyRent: 40,
+      debts: [
+        { creditor: '국민은행', principal: 8000, interest: 480, type: 'secured' },
+        { creditor: '우리은행', principal: 5000, interest: 300, type: 'unsecured' },
+        { creditor: '롯데카드', principal: 4000, interest: 350, type: 'unsecured' },
+        { creditor: '캐시원', principal: 3000, interest: 280, type: 'unsecured', isRecent: true },
+        { creditor: '세금 체납', principal: 2000, interest: 0, type: 'tax' },
+        { creditor: '사채', principal: 3000, interest: 500, type: 'unsecured', isGamblingOrLuxury: true },
+      ],
+      assets: [],
+    },
+  },
+];
 
 type CopilotTab =
   | 'client-info' | 'debt-status' | 'missing-info' | 'review-flags'
@@ -121,9 +167,20 @@ function mapToIntakeData(req: any): IntakeData | null {
 }
 
 export default function CaseReviewCopilot({
-  consultRequest, tenantId, actorId, actorRole, actorName, onClose
+  consultRequest: singleRequest, consultRequests, tenantId, actorId, actorRole, actorName, onClose
 }: CaseReviewCopilotProps) {
   const permissions = useCopilotPermissions(actorRole as StaffRole);
+
+  // Build selectable client list
+  const allClients = React.useMemo(() => {
+    const fromProps = consultRequests || (singleRequest ? [singleRequest] : []);
+    const propsIds = new Set(fromProps.map((r: any) => r.id));
+    const samples = SAMPLE_CLIENTS.filter(s => !propsIds.has(s.id));
+    return [...fromProps, ...samples];
+  }, [consultRequests, singleRequest]);
+
+  const [selectedClientIdx, setSelectedClientIdx] = useState<number>(-1);
+  const consultRequest = selectedClientIdx >= 0 ? allClients[selectedClientIdx] : null;
 
   // 탭 상태
   const [activeTab, setActiveTab] = useState<CopilotTab>('client-info');
@@ -299,10 +356,37 @@ export default function CaseReviewCopilot({
 
   if (!consultRequest) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center animate-fadeIn">
+      <div className="flex flex-col items-center justify-center py-12 text-center animate-fadeIn">
         <Search className="w-12 h-12 text-slate-300 mb-4" />
-        <h3 className="text-lg font-bold text-slate-700 mb-2">상담 요청을 선택하세요</h3>
-        <p className="text-sm text-slate-500">상담 현황 또는 고객 CRM에서 의뢰인을 선택한 후<br />사건검토 코파일럿을 실행할 수 있습니다.</p>
+        <h3 className="text-lg font-bold text-slate-700 mb-2">검토할 의뢰인을 선택하세요</h3>
+        <p className="text-sm text-slate-500 mb-6">아래 목록에서 의뢰인을 선택하면 사건검토 코파일럿이 시작됩니다.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
+          {allClients.map((client, idx) => {
+            const fp = client.financialProfile || {};
+            return (
+              <button key={client.id} onClick={() => setSelectedClientIdx(idx)}
+                className="text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-brand hover:shadow-md active:scale-[0.98] transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-extrabold text-sm">
+                    {(client.clientName || client.client_name || '?')[0]}
+                  </div>
+                  <div>
+                    <p className="font-extrabold text-sm text-slate-800">{client.clientName || client.client_name}</p>
+                    <p className="text-[10px] text-slate-400">{client.consultType} · {client.id.startsWith('sample') ? '샘플 데이터' : '실제 상담'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-1 text-[10px]">
+                  <div className="bg-red-50 rounded p-1"><span className="text-red-400 block">총 채무</span><span className="font-bold text-red-600">{(fp.debtTotal || 0).toLocaleString()}만</span></div>
+                  <div className="bg-blue-50 rounded p-1"><span className="text-blue-400 block">월 소득</span><span className="font-bold text-blue-600">{fp.income || 0}만</span></div>
+                  <div className="bg-slate-50 rounded p-1"><span className="text-slate-400 block">채권자</span><span className="font-bold text-slate-700">{(fp.debts || []).length}개</span></div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {allClients.length === 0 && (
+          <p className="text-sm text-slate-400 mt-4">등록된 상담 요청이 없습니다. 신규 상담 요청 탭에서 상담을 먼저 생성하세요.</p>
+        )}
       </div>
     );
   }
@@ -329,12 +413,16 @@ export default function CaseReviewCopilot({
               <ShieldCheck className="w-5 h-5 text-brand" />
               사건검토 코파일럿
             </h3>
-            <p className="text-xs text-slate-500">
-              의뢰인: <span className="font-bold text-slate-700">{consultRequest.client_name || consultRequest.clientName || '미확인'}</span>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span>의뢰인: <span className="font-bold text-slate-700">{consultRequest.client_name || consultRequest.clientName || '미확인'}</span></span>
               {' · '}상태: <span className={`inline-flex items-center gap-1 font-bold ${statusCfg.color}`}>
                 {statusCfg.emoji} {statusCfg.label}
               </span>
-            </p>
+              <button onClick={() => { setSelectedClientIdx(-1); setFactOutput(null); setRuleOutput(null); setReviewStatus('DRAFT'); }}
+                className="ml-2 text-[10px] bg-slate-100 text-slate-500 rounded-lg px-2 py-0.5 hover:bg-slate-200 font-bold active:scale-[0.98] transition-all">
+                ← 다른 고객
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {permissions.canRunFactEngine && (
