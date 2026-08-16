@@ -253,6 +253,9 @@ export default function CaseReviewCopilot({
       addAuditLog('REVIEW_CREATED', '검토 초안 생성');
       addAuditLog('FACT_SNAPSHOT_CREATED', '사실 스냅샷 저장');
       addAuditLog('RULE_EXECUTED', `${rOut.flags.length}개 플래그 생성`);
+
+      // 초안 생성 완료 후 채무현황 탭으로 자동 이동
+      setActiveTab('debt-status');
     } catch (err) {
       console.error('코파일럿 실행 오류:', err);
     } finally {
