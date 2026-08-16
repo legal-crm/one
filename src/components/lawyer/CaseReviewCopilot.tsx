@@ -812,8 +812,6 @@ export default function CaseReviewCopilot({
                   </div>
                 </div>
               )}
-                </div>
-              )}
 
               {/* TAB 2: 채무현황 */}
               {activeTab === 'debt-status' && factOutput && (
