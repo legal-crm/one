@@ -400,31 +400,70 @@ export default function CaseReviewCopilot({
         />
       )}
 
-      {/* ── 탭 바 (설정 뷰가 아닐 때만) ── */}
+      {/* ── 진행 단계 표시기 + 탭 바 ── */}
       {settingsView === 'none' && (
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        {/* Step Progress Bar */}
+        <div className="px-4 pt-3 pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-1 text-[10px] font-bold">
+            {[
+              { step: 1, label: '자동 분석', done: !!factOutput, tabs: ['client-info', 'debt-status', 'missing-info', 'review-flags', 'court-notes'] },
+              { step: 2, label: '직원 확인', done: reviewStatus !== 'DRAFT' && reviewStatus !== 'LAWYER_REVIEW_REQUIRED', tabs: ['staff-memo'] },
+              { step: 3, label: '변호사 검토·승인', done: reviewStatus === 'LAWYER_APPROVED' || reviewStatus === 'SENT_TO_CLIENT', tabs: ['lawyer-opinion', 'approval', 'audit-log'] },
+            ].map((s, i) => {
+              const isCurrent = s.tabs.includes(activeTab);
+              return (
+                <React.Fragment key={s.step}>
+                  {i > 0 && <div className={`flex-1 h-px ${s.done || isCurrent ? 'bg-brand' : 'bg-slate-200'}`} />}
+                  <button
+                    onClick={() => setActiveTab(s.tabs[0] as CopilotTab)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
+                      isCurrent ? 'bg-brand/10 text-brand' :
+                      s.done ? 'text-green-600' : 'text-slate-400'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded-full text-[9px] flex items-center justify-center shrink-0 ${
+                      s.done ? 'bg-green-500 text-white' :
+                      isCurrent ? 'bg-brand text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {s.done ? '✓' : s.step}
+                    </span>
+                    {s.label}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tab Bar with Group Labels */}
         <div className="border-b border-slate-100 px-4 overflow-x-auto">
-          <div className="flex gap-1 min-w-max">
-            {accessibleTabs.map(t => (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`pb-2.5 pt-3 px-3 border-b-2 flex items-center gap-1.5 transition-all text-xs font-bold shrink-0 ${
-                  activeTab === t.key
-                    ? 'border-brand text-brand'
-                    : 'border-transparent text-slate-400 hover:text-slate-700'
-                }`}
-              >
-                {t.icon}
-                <span>{t.label}</span>
-                {t.key === 'review-flags' && ruleOutput && (
-                  <span className="bg-red-100 text-red-700 rounded-full px-1.5 text-[10px] font-extrabold">{ruleOutput.flags.length}</span>
-                )}
-                {t.key === 'missing-info' && factOutput && factOutput.missingFields.length > 0 && (
-                  <span className="bg-amber-100 text-amber-700 rounded-full px-1.5 text-[10px] font-extrabold">{factOutput.missingFields.length}</span>
-                )}
-              </button>
-            ))}
+          <div className="flex gap-0.5 min-w-max">
+            {accessibleTabs.map((t, idx) => {
+              const groupBreak = t.key === 'staff-memo' || t.key === 'lawyer-opinion';
+              return (
+                <React.Fragment key={t.key}>
+                  {groupBreak && <div className="w-px bg-slate-200 mx-1 my-2" />}
+                  <button
+                    onClick={() => setActiveTab(t.key)}
+                    className={`pb-2.5 pt-3 px-2.5 border-b-2 flex items-center gap-1 transition-all text-[11px] font-bold shrink-0 ${
+                      activeTab === t.key
+                        ? 'border-brand text-brand'
+                        : 'border-transparent text-slate-400 hover:text-slate-700'
+                    }`}
+                  >
+                    {t.icon}
+                    <span>{t.label}</span>
+                    {t.key === 'review-flags' && ruleOutput && (
+                      <span className="bg-red-100 text-red-700 rounded-full px-1.5 text-[10px] font-extrabold">{ruleOutput.flags.length}</span>
+                    )}
+                    {t.key === 'missing-info' && factOutput && factOutput.missingFields.length > 0 && (
+                      <span className="bg-amber-100 text-amber-700 rounded-full px-1.5 text-[10px] font-extrabold">{factOutput.missingFields.length}</span>
+                    )}
+                  </button>
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
 
