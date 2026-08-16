@@ -723,12 +723,8 @@ export default function CaseReviewCopilot({
                       {[
                         { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
                         { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업/사업자' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
-                        { label: '직장명', value: fp.companyName || fp.companyNameMasked || '-' },
-                        { label: '입사일', value: fp.employmentDate || '-' },
                         { label: '근무지', value: fp.workLocation || '-' },
-                        { label: '최근 이직', value: fp.hasRecentJobChange ? '있음' : '없음' },
                         { label: '배우자 소득', value: fp.spouseIncome ? fmtMoney(fp.spouseIncome) : '-' },
-                        { label: '양육비 수령', value: fp.childSupportReceived ? `${fp.childSupportReceived}만원` : '-' },
                       ].map((item, i) => (
                         <div key={i} className="bg-blue-50/50 rounded-xl p-2.5 space-y-0.5">
                           <p className="text-[10px] text-blue-400 font-bold">{item.label}</p>
@@ -806,9 +802,7 @@ export default function CaseReviewCopilot({
                         { label: '월세', value: fp.rentCost ? `${fp.rentCost}만원` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
                         { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만원` : '-' },
                         { label: '교육비', value: fp.educationCost ? `${fp.educationCost}만원` : '-' },
-                        { label: '특수교육비', value: fp.specialEducationCost ? `${fp.specialEducationCost}만원` : '-' },
                         { label: '고정지출(통신·보험)', value: fp.monthlyFixedExpenses ? `${fp.monthlyFixedExpenses}만원` : '-' },
-                        { label: '양육비 지급', value: fp.childSupportPaid ? `${fp.childSupportPaid}만원` : '-' },
                         { label: '생활비 합계', value: fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-' },
                       ].map((item, i) => (
                         <div key={i} className="bg-amber-50/50 rounded-xl p-2.5 space-y-0.5">
