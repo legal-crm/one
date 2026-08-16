@@ -166,8 +166,12 @@ export default function App() {
         ]);
         if (!isMounted) return;
         if (dbRequests.length > 0) {
-          _setRequests(dbRequests);
-          try { localStorage.setItem('legal_crm_requests', JSON.stringify(dbRequests)); } catch {}
+          // initialConsultRequests의 mock 데이터를 Supabase 결과에 병합 (중복 제거)
+          const dbIds = new Set(dbRequests.map((r: any) => r.id));
+          const missingMocks = initialConsultRequests.filter(m => !dbIds.has(m.id));
+          const merged = [...dbRequests, ...missingMocks];
+          _setRequests(merged);
+          try { localStorage.setItem('legal_crm_requests', JSON.stringify(merged)); } catch {}
         }
         if (dbMessages.length > 0) {
           _setMessages(dbMessages);
