@@ -126,12 +126,13 @@ export default function App() {
     try {
       const saved = localStorage.getItem('legal_crm_requests');
       if (saved) {
-        return JSON.parse(saved).filter((r: any) => 
+        const parsed = JSON.parse(saved).filter((r: any) => 
           r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3'
         );
+        if (parsed.length > 0) return parsed;
       }
     } catch {}
-    return [];
+    return initialConsultRequests;
   });
 
   const setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>> = React.useCallback((action) => {
