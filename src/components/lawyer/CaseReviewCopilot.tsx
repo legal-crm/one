@@ -659,23 +659,15 @@ export default function CaseReviewCopilot({
                     </div>
                   </div>
 
-                  {/* 3. 채무 현황 */}
+                  {/* 3. 채무 요약 (상세는 '채무현황' 탭) */}
                   <div>
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">🔴 채무 현황</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+                    <h5 className="text-xs font-bold text-slate-500 mb-2">🔴 채무 요약 <span className="text-[10px] text-slate-400 font-normal ml-1">→ 상세는 '채무현황' 탭</span></h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {[
                         { label: '총 채무', value: fmtMoney(fp.debtTotal || 0) },
-                        { label: '은행 대출', value: fp.debtTypes?.banks ? `${fp.debtTypes.banks}만원` : fmtMoney(0) },
-                        { label: '카드 대금', value: fp.debtTypes?.cards ? `${fp.debtTypes.cards}만원` : fmtMoney(0) },
-                        { label: '대부/기타', value: fp.debtTypes?.personals ? `${fp.debtTypes.personals}만원` : fmtMoney(0) },
-                        { label: '최근 대출', value: fp.debtTypes?.recentLoans ? `${fp.debtTypes.recentLoans}만원` : '-' },
-                        { label: '투자/도박 손실', value: fp.debtTypes?.coinCrypto ? `${fp.debtTypes.coinCrypto}만원` : '-' },
-                        { label: '우선변제채무', value: fp.priorityDebt ? `${fp.priorityDebt}만원` : '-' },
                         { label: '채권자 수', value: fp.creditorCount ? `${fp.creditorCount}개` : `${(fp.debts || []).length}개` },
                         { label: '채무 원인', value: fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-' },
                         { label: '독촉/법적조치', value: fp.harassmentLevel === 'CALL' ? '독촉 전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-' },
-                        { label: '투기적 손실', value: fp.speculativeLoss ? `${fp.speculativeLoss}만원` : '-' },
-                        { label: '도박 채무', value: fp.gamblingLoss ? `${fp.gamblingLoss}만원` : '-' },
                       ].map((item, i) => (
                         <div key={i} className="bg-red-50/50 rounded-xl p-2.5 space-y-0.5">
                           <p className="text-[10px] text-red-400 font-bold">{item.label}</p>
@@ -683,36 +675,6 @@ export default function CaseReviewCopilot({
                         </div>
                       ))}
                     </div>
-                    {fp.debts && fp.debts.length > 0 && (
-                      <div className="bg-slate-50 rounded-xl overflow-hidden">
-                        <table className="w-full text-xs">
-                          <thead><tr className="bg-slate-100 text-slate-500">
-                            <th className="p-2 text-left font-bold">채권자</th>
-                            <th className="p-2 text-right font-bold">원금</th>
-                            <th className="p-2 text-center font-bold">유형</th>
-                          </tr></thead>
-                          <tbody>
-                            {fp.debts.map((d: any, i: number) => (
-                              <tr key={i} className="border-t border-slate-100">
-                                <td className="p-2 text-slate-700">{d.creditor || d.name || `채권자 ${i+1}`}</td>
-                                <td className="p-2 text-right font-bold text-slate-800">{fmtMoney(d.principal || d.amount || 0)}</td>
-                                <td className="p-2 text-center"><span className="bg-slate-200 rounded-lg px-1.5 py-0.5 text-[10px] font-bold">{d.type || 'unsecured'}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    {fp.legalActions && fp.legalActions.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-[10px] text-slate-500 font-bold mb-1">현재 법적 조치</p>
-                        <div className="flex gap-1 flex-wrap">
-                          {fp.legalActions.map((a: string, i: number) => (
-                            <span key={i} className="bg-red-100 text-red-700 rounded-lg px-2 py-0.5 text-[10px] font-bold">{a}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* 4. 자산 현황 */}
