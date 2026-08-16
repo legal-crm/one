@@ -20,7 +20,12 @@ import { DEFAULT_SETTINGS } from '../constants';
 
 type SettingsTab = 'policy' | 'income' | 'coeffs' | 'region' | 'housing' | 'deductions' | 'court_char';
 
-const RehabSettingsPanel: React.FC = () => {
+interface RehabSettingsPanelProps {
+  mode?: 'admin' | 'lawyer';  // 'admin' = full edit (default), 'lawyer' = read-only except court_char
+}
+
+const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' }) => {
+  const isReadOnly = mode === 'lawyer';
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -178,7 +183,7 @@ const RehabSettingsPanel: React.FC = () => {
   }
 
   const currentYearPolicy = settings.yearlyPolicies[selectedYear];
-  const inputClass = "w-full p-2 bg-slate-950 border border-slate-700 rounded text-slate-200 focus:ring-2 focus:ring-blue-500 text-sm";
+  const inputClass = `w-full p-2 bg-slate-950 border border-slate-700 rounded text-slate-200 focus:ring-2 focus:ring-blue-500 text-sm ${isReadOnly && activeTab !== 'court_char' ? 'opacity-70 cursor-not-allowed' : ''}`;
   const labelClass = "block text-sm font-medium text-slate-500 mb-1";
 
   // ═══════════════════════════════════════════════════
@@ -195,22 +200,22 @@ const RehabSettingsPanel: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className={labelClass}>기준 채무액 (Threshold)</label>
-            <input type="number" className={inputClass} value={settings.policy.pminThreshold} 
+            <input type="number" className={inputClass} disabled={isReadOnly} value={settings.policy.pminThreshold} 
               onChange={e => setSettings({...settings, policy: {...settings.policy, pminThreshold: Number(e.target.value)}})} />
           </div>
           <div>
             <label className={labelClass}>기준 미만 적용 비율</label>
-            <input type="number" step="0.01" className={inputClass} value={settings.policy.pminRateBelow} 
+            <input type="number" step="0.01" className={inputClass} disabled={isReadOnly} value={settings.policy.pminRateBelow} 
               onChange={e => setSettings({...settings, policy: {...settings.policy, pminRateBelow: Number(e.target.value)}})} />
           </div>
           <div>
             <label className={labelClass}>기준 이상 적용 비율</label>
-            <input type="number" step="0.01" className={inputClass} value={settings.policy.pminRateAbove} 
+            <input type="number" step="0.01" className={inputClass} disabled={isReadOnly} value={settings.policy.pminRateAbove} 
               onChange={e => setSettings({...settings, policy: {...settings.policy, pminRateAbove: Number(e.target.value)}})} />
           </div>
           <div>
             <label className={labelClass}>기준 이상 가산금 (Fixed)</label>
-            <input type="number" className={inputClass} value={settings.policy.pminFixedAbove} 
+            <input type="number" className={inputClass} disabled={isReadOnly} value={settings.policy.pminFixedAbove} 
               onChange={e => setSettings({...settings, policy: {...settings.policy, pminFixedAbove: Number(e.target.value)}})} />
           </div>
         </div>
@@ -230,12 +235,12 @@ const RehabSettingsPanel: React.FC = () => {
             <h4 className="text-sm font-semibold text-blue-400">구간 1: 배우자 소득이 낮을 때 (온전한 부양)</h4>
             <div>
               <label className={labelClass}>배우자 소득 비율 미만 기준 (%)</label>
-              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioUnder ?? 0.7) * 100)} 
+              <input type="number" className={inputClass} disabled={isReadOnly} value={Math.round((settings.policy.spouseIncomeRatioUnder ?? 0.7) * 100)} 
                 onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioUnder: Number(e.target.value) / 100}})} />
             </div>
             <div>
               <label className={labelClass}>미성년 자녀 부양가족 인정 비율 (%)</label>
-              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioUnderRate ?? 1.0) * 100)} 
+              <input type="number" className={inputClass} disabled={isReadOnly} value={Math.round((settings.policy.spouseIncomeRatioUnderRate ?? 1.0) * 100)} 
                 onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioUnderRate: Number(e.target.value) / 100}})} />
             </div>
           </div>
@@ -244,12 +249,12 @@ const RehabSettingsPanel: React.FC = () => {
             <h4 className="text-sm font-semibold text-blue-400">구간 2: 배우자 소득이 비슷할 때 (공동 부양)</h4>
             <div>
               <label className={labelClass}>배우자 소득 비율 이하 기준 (%)</label>
-              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioBetween ?? 1.3) * 100)} 
+              <input type="number" className={inputClass} disabled={isReadOnly} value={Math.round((settings.policy.spouseIncomeRatioBetween ?? 1.3) * 100)} 
                 onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioBetween: Number(e.target.value) / 100}})} />
             </div>
             <div>
               <label className={labelClass}>미성년 자녀 부양가족 인정 비율 (%)</label>
-              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioBetweenRate ?? 0.5) * 100)} 
+              <input type="number" className={inputClass} disabled={isReadOnly} value={Math.round((settings.policy.spouseIncomeRatioBetweenRate ?? 0.5) * 100)} 
                 onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioBetweenRate: Number(e.target.value) / 100}})} />
             </div>
           </div>
@@ -258,7 +263,7 @@ const RehabSettingsPanel: React.FC = () => {
             <h4 className="text-sm font-semibold text-blue-400">구간 3: 배우자 소득이 높을 때 (배우자 부양)</h4>
             <div>
               <label className={labelClass}>배우자 소득이 구간 2 초과 시 미성년 자녀 부양가족 인정 비율 (%)</label>
-              <input type="number" className={inputClass} value={Math.round((settings.policy.spouseIncomeRatioOverRate ?? 0.0) * 100)} 
+              <input type="number" className={inputClass} disabled={isReadOnly} value={Math.round((settings.policy.spouseIncomeRatioOverRate ?? 0.0) * 100)} 
                 onChange={e => setSettings({...settings, policy: {...settings.policy, spouseIncomeRatioOverRate: Number(e.target.value) / 100}})} />
             </div>
           </div>
@@ -293,7 +298,7 @@ const RehabSettingsPanel: React.FC = () => {
               <tr key={size}>
                 <td className="px-4 py-3 font-medium">{size}인 가구</td>
                 <td className="px-4 py-3">
-                  <input type="number" className={inputClass + " p-1"} value={currentYearPolicy.medianIncome.values[size] || 0} onChange={e => {
+                  <input type="number" disabled={isReadOnly} className={`${inputClass} p-1`} value={currentYearPolicy.medianIncome.values[size] || 0} onChange={e => {
                     const newPolicies = {...settings.yearlyPolicies};
                     newPolicies[selectedYear].medianIncome.values[size] = Number(e.target.value);
                     setSettings({...settings, yearlyPolicies: newPolicies});
@@ -322,7 +327,8 @@ const RehabSettingsPanel: React.FC = () => {
           {[24, 36, 48, 60].map(m => (
             <div key={m} className="flex items-center justify-between">
               <span className="text-sm text-slate-500">{m}개월</span>
-              <input type="number" step="0.01" className="w-32 p-2 bg-slate-950 border border-slate-700 rounded text-white text-sm" 
+              <input type="number" step="0.01" className={`w-32 p-2 bg-slate-950 border border-slate-700 rounded text-white text-sm ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`} 
+                disabled={isReadOnly}
                 value={settings.leibniz[`m${m}` as keyof LeibnizTable] || 0} 
                 onChange={e => setSettings({ ...settings, leibniz: {...settings.leibniz, [`m${m}`]: Number(e.target.value)} })} />
             </div>
@@ -356,7 +362,8 @@ const RehabSettingsPanel: React.FC = () => {
                   <label className="text-xs text-slate-600 block">소액보증금 범위</label>
                   <input 
                     type="number" 
-                    className="w-full bg-slate-900 border border-slate-700 rounded text-sm p-1 text-white" 
+                    disabled={isReadOnly}
+                    className={`w-full bg-slate-900 border border-slate-700 rounded text-sm p-1 text-white ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`} 
                     value={currentYearPolicy.depositRules[r]?.limit || 0}
                     onChange={e => {
                       const newPolicies = {...settings.yearlyPolicies};
@@ -370,7 +377,8 @@ const RehabSettingsPanel: React.FC = () => {
                   <label className="text-xs text-slate-600 block">최우선 변제금액</label>
                   <input 
                     type="number" 
-                    className="w-full bg-slate-900 border border-slate-700 rounded text-sm p-1 text-white" 
+                    disabled={isReadOnly}
+                    className={`w-full bg-slate-900 border border-slate-700 rounded text-sm p-1 text-white ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`} 
                     value={currentYearPolicy.depositRules[r]?.deduct || 0}
                     onChange={e => {
                       const newPolicies = {...settings.yearlyPolicies};
@@ -393,9 +401,11 @@ const RehabSettingsPanel: React.FC = () => {
             <MapPin className="text-orange-500" size={20} />
             행정구역 - 법원 매핑
           </h3>
-          <button onClick={addMapItem} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-            + 규칙 추가
-          </button>
+          {(!isReadOnly) && (
+            <button onClick={addMapItem} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+              + 규칙 추가
+            </button>
+          )}
         </div>
         <div className="max-h-96 overflow-y-auto border border-slate-700 rounded-lg">
           <table className="w-full text-left text-sm text-slate-300">
@@ -404,7 +414,7 @@ const RehabSettingsPanel: React.FC = () => {
                 <th className="px-4 py-2">행정구역 (키워드)</th>
                 <th className="px-4 py-2">관할 법원</th>
                 <th className="px-4 py-2">지역 구분</th>
-                <th className="px-4 py-2">삭제</th>
+                {(!isReadOnly) && <th className="px-4 py-2">삭제</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
@@ -413,7 +423,8 @@ const RehabSettingsPanel: React.FC = () => {
                   <td className="px-4 py-2">
                     <input 
                       type="text" 
-                      className="w-full bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none text-white text-sm" 
+                      disabled={isReadOnly}
+                      className={`w-full bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none text-white text-sm ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`} 
                       value={item.keyword}
                       onChange={e => {
                         const newMap = [...settings.courtRegionMap];
@@ -426,7 +437,8 @@ const RehabSettingsPanel: React.FC = () => {
                   <td className="px-4 py-2">
                     <input 
                       type="text" 
-                      className="w-full bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none text-white text-sm" 
+                      disabled={isReadOnly}
+                      className={`w-full bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none text-white text-sm ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`} 
                       value={item.court}
                       onChange={e => {
                         const newMap = [...settings.courtRegionMap];
@@ -437,7 +449,8 @@ const RehabSettingsPanel: React.FC = () => {
                   </td>
                   <td className="px-4 py-2">
                     <select 
-                      className="bg-slate-950 border border-slate-700 rounded text-xs text-white p-1"
+                      disabled={isReadOnly}
+                      className={`bg-slate-950 border border-slate-700 rounded text-xs text-white p-1 ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
                       value={item.region}
                       onChange={e => {
                         const newMap = [...settings.courtRegionMap];
@@ -451,9 +464,11 @@ const RehabSettingsPanel: React.FC = () => {
                       <option value="Others">그 외</option>
                     </select>
                   </td>
-                  <td className="px-4 py-2">
-                    <button onClick={() => removeMapItem(idx)} className="text-red-400 hover:text-red-300 text-xs">삭제</button>
-                  </td>
+                  {(!isReadOnly) && (
+                    <td className="px-4 py-2">
+                      <button onClick={() => removeMapItem(idx)} className="text-red-400 hover:text-red-300 text-xs">삭제</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -545,7 +560,8 @@ const RehabSettingsPanel: React.FC = () => {
                           <div className="relative">
                             <input 
                               type="text" 
-                              className={inputClass} 
+                              disabled={isReadOnly}
+                              className={inputClass} disabled={isReadOnly} 
                               value={formatWithComma(rule.additionalLimit)} 
                               onChange={e => handleHousingChange(r, size, 'additionalLimit', parseCommaNumber(e.target.value))} 
                             />
@@ -556,7 +572,8 @@ const RehabSettingsPanel: React.FC = () => {
                           <div className="relative">
                             <input 
                               type="text" 
-                              className={inputClass} 
+                              disabled={isReadOnly}
+                              className={inputClass} disabled={isReadOnly} 
                               value={formatWithComma(rule.includedInMedian)} 
                               onChange={e => handleHousingChange(r, size, 'includedInMedian', parseCommaNumber(e.target.value))} 
                             />
@@ -567,7 +584,8 @@ const RehabSettingsPanel: React.FC = () => {
                           <div className="relative">
                             <input 
                               type="text" 
-                              className={inputClass + " bg-slate-950 text-slate-600"} 
+                              disabled={isReadOnly}
+                              className={`${inputClass} bg-slate-950 text-slate-600`} disabled={isReadOnly} 
                               value={formatWithComma(rule.totalLimit)} 
                               readOnly 
                             />
@@ -658,7 +676,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.assetExemptions.deposit)} 
                   onChange={e => handleNestedChange('assetExemptions', 'deposit', parseCommaNumber(e.target.value))} 
                 />
@@ -670,7 +688,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.assetExemptions.insurance)} 
                   onChange={e => handleNestedChange('assetExemptions', 'insurance', parseCommaNumber(e.target.value))} 
                 />
@@ -689,7 +707,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.educationCost.additionalLimit)} 
                   onChange={e => handleNestedChange('educationCost', 'additionalLimit', parseCommaNumber(e.target.value))} 
                 />
@@ -701,7 +719,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.educationCost.includedInMedian)} 
                   onChange={e => handleNestedChange('educationCost', 'includedInMedian', parseCommaNumber(e.target.value))} 
                 />
@@ -713,7 +731,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass + " bg-slate-950 text-slate-600"} 
+                  className={`${inputClass} bg-slate-950 text-slate-600`} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.educationCost.totalLimit)} 
                   readOnly 
                 />
@@ -732,7 +750,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.specialEducationCost.additionalLimit)} 
                   onChange={e => handleNestedChange('specialEducationCost', 'additionalLimit', parseCommaNumber(e.target.value))} 
                 />
@@ -744,7 +762,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.specialEducationCost.includedInMedian)} 
                   onChange={e => handleNestedChange('specialEducationCost', 'includedInMedian', parseCommaNumber(e.target.value))} 
                 />
@@ -776,7 +794,7 @@ const RehabSettingsPanel: React.FC = () => {
                 <div className="relative">
                   <input 
                     type="text" 
-                    className={inputClass} 
+                    className={inputClass} disabled={isReadOnly} 
                     value={formatWithComma(currentYearPolicy.medicalCostIncludedInMedian[size] || 0)} 
                     onChange={e => handleNestedChange('medicalCostIncludedInMedian', String(size), parseCommaNumber(e.target.value))} 
                   />
@@ -793,12 +811,12 @@ const RehabSettingsPanel: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>소득 기준 배율 (예: 1.5 = 150%)</label>
-              <input type="number" step="0.1" className={inputClass} value={currentYearPolicy.highIncomeEarnerMultiplier}
+              <input type="number" step="0.1" className={inputClass} disabled={isReadOnly} value={currentYearPolicy.highIncomeEarnerMultiplier}
                 onChange={e => { const newPolicies = { ...settings.yearlyPolicies }; newPolicies[selectedYear].highIncomeEarnerMultiplier = Number(e.target.value); setSettings({ ...settings, yearlyPolicies: newPolicies }); }} />
             </div>
             <div>
               <label className={labelClass}>최소 변제율 기준 (%)</label>
-              <input type="number" step="1" className={inputClass} value={(currentYearPolicy.highIncomeRepaymentRateThreshold || 0) * 100}
+              <input type="number" step="1" className={inputClass} disabled={isReadOnly} value={(currentYearPolicy.highIncomeRepaymentRateThreshold || 0) * 100}
                 onChange={e => { const newPolicies = { ...settings.yearlyPolicies }; newPolicies[selectedYear].highIncomeRepaymentRateThreshold = Number(e.target.value) / 100; setSettings({ ...settings, yearlyPolicies: newPolicies }); }} />
             </div>
           </div>
@@ -815,7 +833,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.adultChildDependentCriteria.incomeLimit)}
                   onChange={e => { 
                     const newPolicies = { ...settings.yearlyPolicies }; 
@@ -831,7 +849,7 @@ const RehabSettingsPanel: React.FC = () => {
               <div className="relative">
                 <input 
                   type="text" 
-                  className={inputClass} 
+                  className={inputClass} disabled={isReadOnly} 
                   value={formatWithComma(currentYearPolicy.adultChildDependentCriteria.grossIncomeLimit)}
                   onChange={e => { 
                     const newPolicies = { ...settings.yearlyPolicies }; 
@@ -1036,23 +1054,37 @@ const RehabSettingsPanel: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+          <h2 className={`text-xl font-extrabold flex items-center gap-2 ${isReadOnly ? 'text-slate-900' : 'text-white'}`}>
             <ShieldAlert className="w-5 h-5 text-blue-400" />
-            회생/파산 정책 및 계산 기준 설정
+            {isReadOnly ? '회생/파산 계산 기준 확인' : '회생/파산 정책 및 계산 기준 설정'}
           </h2>
-          <p className="text-xs text-slate-500 mt-1">챗봇 상담 및 보고서 산출에 사용되는 핵심 정책값을 관리합니다.</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {isReadOnly 
+              ? '플랫폼 기본 정책값입니다. 법원 성격 탭에서 사무실 기준을 설정할 수 있습니다.' 
+              : '챗봇 상담 및 보고서 산출에 사용되는 핵심 정책값을 관리합니다.'}
+          </p>
         </div>
-        <button 
-          onClick={handleSave} 
-          disabled={saving} 
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-900/30 transition-all text-sm disabled:opacity-50"
-        >
-          <Save size={16} /> {saving ? '저장 중...' : '변경사항 저장'}
-        </button>
+        {(!isReadOnly || activeTab === 'court_char') && (
+          <button 
+            onClick={handleSave} 
+            disabled={saving} 
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-900/30 transition-all text-sm disabled:opacity-50"
+          >
+            <Save size={16} /> {saving ? '저장 중...' : '변경사항 저장'}
+          </button>
+        )}
       </div>
 
+      {/* Lawyer Mode Banner */}
+      {isReadOnly && activeTab !== 'court_char' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-blue-500 shrink-0" />
+          <p className="text-xs text-blue-700">플랫폼 기본 설정입니다. 수정이 필요한 경우 관리자에게 문의하세요.</p>
+        </div>
+      )}
+
       {/* Tab Bar */}
-      <div className="bg-slate-900 p-2 rounded-xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div className={`${isReadOnly ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} p-2 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2`}>
         <div className="flex gap-1 overflow-x-auto w-full sm:w-auto">
           {tabs.map((tab) => (
             <button
@@ -1060,12 +1092,15 @@ const RehabSettingsPanel: React.FC = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === tab.id 
-                  ? 'bg-slate-800 text-white' 
-                  : 'text-slate-500 hover:text-white hover:bg-slate-800/50'
+                  ? (isReadOnly ? 'bg-white text-brand shadow-sm' : 'bg-slate-800 text-white')
+                  : (isReadOnly ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-50' : 'text-slate-500 hover:text-white hover:bg-slate-800/50')
               }`}
             >
-              <tab.icon size={14} className={activeTab === tab.id ? 'text-blue-400' : ''} />
+              <tab.icon size={14} className={activeTab === tab.id ? (isReadOnly ? 'text-brand' : 'text-blue-400') : ''} />
               {tab.label}
+              {isReadOnly && tab.id === 'court_char' && (
+                <span className="bg-green-100 text-green-700 text-[9px] font-extrabold px-1 rounded ml-1">수정가능</span>
+              )}
             </button>
           ))}
         </div>
@@ -1074,7 +1109,7 @@ const RehabSettingsPanel: React.FC = () => {
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(Number(e.target.value))}
-            className="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-blue-500"
+            className={`${isReadOnly ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-700 text-white'} text-sm rounded-lg px-3 py-2 border focus:ring-1 focus:ring-blue-500`}
           >
             {availableYears.map(y => <option key={y} value={y}>{y}년</option>)}
           </select>
@@ -1082,13 +1117,18 @@ const RehabSettingsPanel: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'policy' && renderPolicyTab()}
-      {activeTab === 'income' && renderIncomeTab()}
-      {activeTab === 'coeffs' && renderCoeffsTab()}
-      {activeTab === 'region' && renderRegionTab()}
-      {activeTab === 'housing' && renderHousingTab()}
-      {activeTab === 'deductions' && renderDeductionsTab()}
-      {activeTab === 'court_char' && renderCourtCharTab()}
+      {activeTab === 'court_char' ? (
+        renderCourtCharTab()
+      ) : (
+        <fieldset disabled={isReadOnly} className={isReadOnly ? "opacity-70 [&_input]:cursor-not-allowed [&_select]:cursor-not-allowed [&_button]:cursor-not-allowed" : ""}>
+          {activeTab === 'policy' && renderPolicyTab()}
+          {activeTab === 'income' && renderIncomeTab()}
+          {activeTab === 'coeffs' && renderCoeffsTab()}
+          {activeTab === 'region' && renderRegionTab()}
+          {activeTab === 'housing' && renderHousingTab()}
+          {activeTab === 'deductions' && renderDeductionsTab()}
+        </fieldset>
+      )}
     </div>
   );
 };

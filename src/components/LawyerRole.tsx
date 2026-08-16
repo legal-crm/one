@@ -15,6 +15,7 @@ import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import NotificationBell from './lawyer/NotificationBell';
 import MyTasksWidget from './lawyer/MyTasksWidget';
 import StaffManagementTab from './lawyer/StaffManagementTab';
+import RehabSettingsPanel from './RehabSettingsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType } from '../types';
 import { DEFAULT_PERMISSIONS } from '../types';
@@ -4125,6 +4126,11 @@ export default function LawyerRole({
               </div>
 
 
+            </div>
+
+            {/* ── 회생/파산 계산 기준 설정 ── */}
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
+              <RehabSettingsPanel mode="lawyer" />
             </div>
 
           </div>
