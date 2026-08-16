@@ -281,6 +281,9 @@ export default function CaseReviewCopilot({
   const [rehabUserInput, setRehabUserInput] = useState<RehabUserInput | null>(null);
   const [showRehabReport, setShowRehabReport] = useState(false);
 
+  // 변호사 컨펌 프로세스
+  const [confirmRequest, setConfirmRequest] = useState<{requester: string; role: string; memo: string; requestedAt: string} | null>(null);
+
   // 탭 상태
   const [activeTab, setActiveTab] = useState<CopilotTab>('client-info');
 
@@ -911,6 +914,62 @@ export default function CaseReviewCopilot({
                     </button>
                   </div>
                   )}
+                  {/* 7-2. 변호사 컨펌 요청 카드 */}
+                  {confirmRequest && (
+                  <div className="mt-2 pt-4 border-t border-slate-200">
+                    <div className={`rounded-2xl p-4 border-2 ${
+                      reviewStatus === 'LAWYER_REVIEW_REQUIRED' ? 'bg-amber-50 border-amber-300' :
+                      reviewStatus === 'LAWYER_APPROVED' ? 'bg-green-50 border-green-300' :
+                      reviewStatus === 'LAWYER_REJECTED' ? 'bg-red-50 border-red-300' : 'bg-slate-50 border-slate-200'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && <Clock className="w-4 h-4 text-amber-500" />}
+                        {reviewStatus === 'LAWYER_APPROVED' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                        {reviewStatus === 'LAWYER_REJECTED' && <XCircle className="w-4 h-4 text-red-500" />}
+                        <h5 className="text-xs font-bold text-slate-700">
+                          {reviewStatus === 'LAWYER_REVIEW_REQUIRED' ? '🔔 변호사 컨펌 대기 중' :
+                           reviewStatus === 'LAWYER_APPROVED' ? '✅ 변호사 컨펌 완료' :
+                           reviewStatus === 'LAWYER_REJECTED' ? '❌ 변호사 반려' : '컨펌 요청'}
+                        </h5>
+                      </div>
+                      <div className="text-[11px] text-slate-600 space-y-1 mb-3">
+                        <p><span className="font-bold">요청자:</span> {confirmRequest.requester} ({confirmRequest.role})</p>
+                        <p><span className="font-bold">메모:</span> {confirmRequest.memo}</p>
+                        <p><span className="font-bold">요청일:</span> {confirmRequest.requestedAt}</p>
+                      </div>
+                      {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && permissions.canApproveCaseReview && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setReviewStatus('LAWYER_REJECTED');
+                              addAuditLog('LAWYER_REJECTED', '변호사 반려');
+                            }}
+                            className="flex-1 py-2 bg-white hover:bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200 transition-colors active:scale-[0.98]"
+                          >
+                            ❌ 반려
+                          </button>
+                          <button
+                            onClick={() => {
+                              setReviewStatus('LAWYER_APPROVED');
+                              addAuditLog('LAWYER_CONFIRMED', '변호사 컨펌 승인');
+                            }}
+                            className="flex-[2] py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" /> 승인
+                          </button>
+                        </div>
+                      )}
+                      {reviewStatus === 'LAWYER_APPROVED' && permissions.canSendToClient && (
+                        <button
+                          onClick={() => addAuditLog('PROPOSAL_INITIATED', '제안서 발송 시작')}
+                          className="w-full py-2.5 bg-brand hover:bg-brand/90 text-white text-xs font-bold rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" /> 고객에게 제안서 발송
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  )}
                   {/* 8. 누락정보 (초안 생성 후 표시) */}
                   {factOutput && (factOutput.missingFields.length > 0 || factOutput.conflicts.length > 0) && (
                   <div className="mt-2 pt-4 border-t border-slate-200">
@@ -1311,6 +1370,17 @@ export default function CaseReviewCopilot({
             userInput={rehabUserInput}
             onClose={() => setShowRehabReport(false)}
             embedded={false}
+            viewerRole={permissions.canSendToClient ? 'lawyer' : 'staff'}
+            onSendProposal={() => {
+              setShowRehabReport(false);
+              addAuditLog('PROPOSAL_INITIATED', '진단 리포트에서 제안서 발송 시작');
+            }}
+            onRequestConfirm={(memo) => {
+              setShowRehabReport(false);
+              setReviewStatus('LAWYER_REVIEW_REQUIRED');
+              setConfirmRequest({ requester: actorName, role: actorRole, memo, requestedAt: new Date().toLocaleString('ko-KR') });
+              addAuditLog('CONFIRM_REQUESTED', `변호사 컨펌 요청: ${memo}`);
+            }}
           />
         </Suspense>
       )}

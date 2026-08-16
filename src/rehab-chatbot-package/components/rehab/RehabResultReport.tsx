@@ -41,6 +41,9 @@ interface RehabResultReportProps {
     isLoggedIn?: boolean;
     onShowAuthModal?: () => void;
     embedded?: boolean;
+    viewerRole?: 'client' | 'lawyer' | 'staff';
+    onSendProposal?: () => void;
+    onRequestConfirm?: (memo: string) => void;
 }
 
 const RehabResultReport: React.FC<RehabResultReportProps> = ({
@@ -50,7 +53,10 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     onConsultation,
     isLoggedIn = false,
     onShowAuthModal,
-    embedded = false
+    embedded = false,
+    viewerRole = 'client',
+    onSendProposal,
+    onRequestConfirm
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
     const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'statistics' | 'simulation' | 'checklist'>('overview');
@@ -1718,6 +1724,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
                     {/* ========== CTA FOOTER ========== */}
                     <div className="sticky bottom-0 p-4 bg-white border-t border-slate-200 shrink-0 z-50">
+                        {viewerRole === 'client' && (
+                        <>
                         <motion.button
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
@@ -1747,6 +1755,48 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 보안 공유 (PIN 번호 설정)
                             </button>
                         </div>
+                        </>
+                        )}
+
+                        {viewerRole === 'lawyer' && (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={onClose}
+                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-xl transition-colors"
+                            >
+                                닫기
+                            </button>
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                onClick={() => { onSendProposal?.(); }}
+                                className="flex-[2] py-3 bg-[#7264FF] hover:bg-[#5b4cf5] text-white text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#7264FF]/20"
+                            >
+                                <Send className="w-4 h-4" />
+                                고객에게 제안서 발송
+                            </motion.button>
+                        </div>
+                        )}
+
+                        {viewerRole === 'staff' && (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={onClose}
+                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-xl transition-colors"
+                            >
+                                닫기
+                            </button>
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                onClick={() => { onRequestConfirm?.('진단 결과 검토 요청'); }}
+                                className="flex-[2] py-3 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+                            >
+                                <Shield className="w-4 h-4" />
+                                변호사 컨펌 요청
+                            </motion.button>
+                        </div>
+                        )}
                     </div>
 
                     {/* Off-screen Printable Template */}
