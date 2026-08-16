@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { X, Check, AlertTriangle, Building2, Shield, ArrowRight, Download, Share2, Users, DollarSign, Percent, BarChart3, Sparkles, Zap, Home, CreditCard, Calculator, FileText, ChevronRight } from 'lucide-react';
+import { X, Check, AlertTriangle, Building2, Shield, ArrowRight, Download, Share2, Users, DollarSign, Percent, BarChart3, Sparkles, Zap, Home, CreditCard, Calculator, FileText, ChevronRight, Send } from 'lucide-react';
 import ReportShareModal from '../../../components/client/ReportShareModal';
 import PrintableReportTemplate from '../../../components/client/PrintableReportTemplate';
 import { RehabCalculationResult, RehabUserInput, formatCurrency, DebtComposition, RiskFactor, LegalActionGuide, BudgetItem } from '../../services/calculationService';
