@@ -21,6 +21,7 @@ import CopilotRuleSetManager from './CopilotRuleSetManager';
 import ConsultStyleProfileSettings from './ConsultStyleProfile';
 import { calculateRepayment, type RehabUserInput, type RehabCalculationResult, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
+import LawyerProposalDraft from './LawyerProposalDraft';
 
 // ============================================================
 // 사건검토 코파일럿 메인 컴포넌트
@@ -904,7 +905,7 @@ export default function CaseReviewCopilot({
                       className="w-full bg-brand/10 hover:bg-brand/20 text-brand font-bold text-xs py-2.5 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
                     >
                       <Scale className="w-3.5 h-3.5" />
-                      상세 진단 리포트 보기
+                      고객 제안서 초안 작성
                     </button>
                   </div>
                   )}
@@ -1356,27 +1357,25 @@ export default function CaseReviewCopilot({
       )}
     </div>
 
-      {/* RehabResultReport 모달 */}
+      {/* 변호사 제안서 초안 모달 (기존 RehabResultReport 대체) */}
       {showRehabReport && rehabCalcResult && rehabUserInput && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><Loader2 className="w-8 h-8 text-white animate-spin" /></div>}>
-          <RehabResultReport
-            result={rehabCalcResult}
-            userInput={rehabUserInput}
-            onClose={() => setShowRehabReport(false)}
-            embedded={false}
-            viewerRole={permissions.canSendToClient ? 'lawyer' : 'staff'}
-            onSendProposal={() => {
-              setShowRehabReport(false);
-              addAuditLog('PROPOSAL_INITIATED', '진단 리포트에서 제안서 발송 시작');
-            }}
-            onRequestConfirm={(memo) => {
-              setShowRehabReport(false);
-              setReviewStatus('LAWYER_REVIEW_REQUIRED');
-              setConfirmRequest({ requester: actorName, role: actorRole, memo, requestedAt: new Date().toLocaleString('ko-KR') });
-              addAuditLog('CONFIRM_REQUESTED', `변호사 컨펌 요청: ${memo}`);
-            }}
-          />
-        </Suspense>
+        <LawyerProposalDraft
+          rehabCalcResult={rehabCalcResult}
+          rehabUserInput={rehabUserInput}
+          consultRequest={consultRequest}
+          onClose={() => setShowRehabReport(false)}
+          viewerRole={permissions.canSendToClient ? 'lawyer' : 'staff'}
+          onSendProposal={(proposalData) => {
+            setShowRehabReport(false);
+            addAuditLog('PROPOSAL_INITIATED', `제안서 발송 - 수임료: ${proposalData.fees.totalFee}원, 의견: ${proposalData.lawyerOpinion.substring(0, 50)}...`);
+          }}
+          onRequestConfirm={(memo) => {
+            setShowRehabReport(false);
+            setReviewStatus('LAWYER_REVIEW_REQUIRED');
+            setConfirmRequest({ requester: actorName, role: actorRole, memo, requestedAt: new Date().toLocaleString('ko-KR') });
+            addAuditLog('CONFIRM_REQUESTED', `변호사 컨펌 요청: ${memo}`);
+          }}
+        />
       )}
     </>
   );
