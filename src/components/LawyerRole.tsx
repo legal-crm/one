@@ -9,7 +9,9 @@ import {
 } from '../types';
 import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
-import { calculateRepayment, RehabUserInput } from '../rehab-chatbot-package/services/calculationService';
+import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
+import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
+import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import NotificationBell from './lawyer/NotificationBell';
@@ -850,24 +852,30 @@ export default function LawyerRole({
     return matchesSearch && matchesStatus && matchesLawyer;
   });
 
-  // ── 제안서 모달 상태 ──
+  // ── 제안서 모달 상태 (통합: LawyerProposalDraft 사용) ──
   const [proposalModalReqId, setProposalModalReqId] = useState<string | null>(null);
-  const [proposalForm, setProposalForm] = useState({
-    feasibility: '',
-    monthlyPayment: 0,
-    duration: 36,
-    reductionRate: 0,
-    fee: 0,
-    installment: '',
-    remark: ''
-  });
+  const [proposalRehabResult, setProposalRehabResult] = useState<RehabCalculationResult | null>(null);
+  const [proposalRehabInput, setProposalRehabInput] = useState<RehabUserInput | null>(null);
+  const [proposalConsultRequest, setProposalConsultRequest] = useState<any>(null);
 
-  // Submit a proposal (replaces handleJoinConsult)
-  const handleSubmitProposal = (reqId: string) => {
+  // 솔루션 및 비용 제안 버튼 클릭 시 자동 계산 후 팝업 열기
+  const handleOpenProposalDraft = (reqId: string) => {
     const req = requests.find(r => r.id === reqId);
     if (!req) return;
 
-    const totalReduction = Math.round(req.financialProfile.debtTotal * proposalForm.reductionRate / 100);
+    const rehabInput = mapToRehabUserInput(req);
+    const rehabResult = calculateRepayment(rehabInput);
+
+    setProposalRehabResult(rehabResult);
+    setProposalRehabInput(rehabInput);
+    setProposalConsultRequest(req);
+    setProposalModalReqId(reqId);
+  };
+
+  // LawyerProposalDraft에서 제안서 발송 시 기존 데이터 플로우 유지
+  const handleSubmitProposalFromDraft = (reqId: string, proposalData: any) => {
+    const req = requests.find(r => r.id === reqId);
+    if (!req) return;
 
     const newProposal = {
       id: `prop-${Date.now()}`,
@@ -875,14 +883,16 @@ export default function LawyerRole({
       lawyerName: activeLawyer.name,
       lawyerAvatar: activeLawyer.avatar || activeLawyer.avatarData,
       firmName: activeLawyer.firmName || '개인 변호사',
-      feasibility: proposalForm.feasibility,
-      monthlyPayment: proposalForm.monthlyPayment,
-      duration: proposalForm.duration,
-      reductionRate: proposalForm.reductionRate,
-      totalReduction,
-      fee: proposalForm.fee,
-      installment: proposalForm.installment,
-      remark: proposalForm.remark,
+      feasibility: proposalData.diagnosis.status === 'POSSIBLE' ? '진행 가능' : proposalData.diagnosis.status === 'DIFFICULT' ? '진행 어려움' : '진행 불가',
+      monthlyPayment: Math.round(proposalData.diagnosis.monthlyPayment / 10000),
+      duration: proposalData.diagnosis.repaymentMonths,
+      reductionRate: proposalData.diagnosis.debtReductionRate,
+      totalReduction: Math.round(proposalData.diagnosis.estimatedReduction / 10000),
+      fee: Math.round(proposalData.fees.totalFee / 10000),
+      installment: `착수금 ${Math.round(proposalData.fees.downPayment / 10000)}만원, ${proposalData.fees.installments}회 분납`,
+      remark: proposalData.lawyerOpinion || '제안서 발송',
+      specialNotes: proposalData.specialNotes,
+      clientQnA: proposalData.clientQnA,
       createdAt: new Date().toISOString()
     };
 
@@ -902,13 +912,14 @@ export default function LawyerRole({
       activeLawyer.name,
       activeLawyer.role as MemberRole,
       'CONSULT_REQUEST',
-      `의뢰인에게 솔루션/비용 제안서 발송 (수임료: ${proposalForm.fee}만원, 예상 탕감률: ${proposalForm.reductionRate}%)`
+      `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 예상 탕감률: ${proposalData.diagnosis.debtReductionRate}%)`
     );
 
-    // Reset form & close modal
-    setProposalForm({ feasibility: '', monthlyPayment: 0, duration: 36, reductionRate: 0, fee: 0, installment: '', remark: '' });
+    // 모달 닫기 및 상태 초기화
     setProposalModalReqId(null);
-    alert('제안서가 의뢰인에게 성공적으로 발송되었습니다.');
+    setProposalRehabResult(null);
+    setProposalRehabInput(null);
+    setProposalConsultRequest(null);
   };
 
   // Turn active request into an formal Case (수임 완료)
@@ -2236,11 +2247,11 @@ export default function LawyerRole({
                         </div>
 
                         <button 
-                          onClick={() => setProposalModalReqId(r.id)}
+                          onClick={() => handleOpenProposalDraft(r.id)}
                           className="w-full bg-brand hover:bg-brand-hover text-white font-black py-2.5 rounded-xl text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap"
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>솔루션 및 비용 제안</span>
+                          <span>고객 제안서 작성</span>
                         </button>
                         <button 
                           onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
@@ -4170,60 +4181,23 @@ export default function LawyerRole({
         </div>
       </footer>
 
-      {/* ── 솔루션/비용 제안서 작성 모달 ── */}
-      {proposalModalReqId && (
-        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setProposalModalReqId(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-200">
-              <h3 className="font-extrabold text-lg text-slate-900">솔루션 및 비용 제안서 작성</h3>
-              <p className="text-xs text-slate-500 mt-1">의뢰인에게 보낼 개인회생 솔루션과 비용을 입력하세요.</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">진행 가능성 / 성공률 의견 <span className="text-red-500">*</span></label>
-                <input type="text" placeholder="예: 진행 가능 (성공률 95%)" value={proposalForm.feasibility} onChange={e => setProposalForm(p => ({...p, feasibility: e.target.value}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">예상 월 변제금 (만원) <span className="text-red-500">*</span></label>
-                  <input type="number" value={proposalForm.monthlyPayment || ''} onChange={e => setProposalForm(p => ({...p, monthlyPayment: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">변제 기간 (개월) <span className="text-red-500">*</span></label>
-                  <input type="number" value={proposalForm.duration || ''} onChange={e => setProposalForm(p => ({...p, duration: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">예상 탕감률 (%) <span className="text-red-500">*</span></label>
-                  <input type="number" value={proposalForm.reductionRate || ''} onChange={e => setProposalForm(p => ({...p, reductionRate: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">수임 비용 (만원) <span className="text-red-500">*</span></label>
-                  <input type="number" value={proposalForm.fee || ''} onChange={e => setProposalForm(p => ({...p, fee: Number(e.target.value)}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">분납 조건</label>
-                <input type="text" placeholder="예: 최대 6개월 분할 가능" value={proposalForm.installment} onChange={e => setProposalForm(p => ({...p, installment: e.target.value}))} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">변호사 솔루션 한줄 의견 <span className="text-red-500">*</span></label>
-                <textarea placeholder="의뢰인에게 전달할 솔루션 요약 코멘트" value={proposalForm.remark} onChange={e => setProposalForm(p => ({...p, remark: e.target.value}))} rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none resize-none" />
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-200 flex gap-3">
-              <button onClick={() => setProposalModalReqId(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-colors">취소</button>
-              <button
-                onClick={() => proposalModalReqId && handleSubmitProposal(proposalModalReqId)}
-                disabled={!proposalForm.feasibility || !proposalForm.remark || proposalForm.fee <= 0}
-                className="flex-1 py-2.5 bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white font-bold text-xs rounded-xl transition-colors"
-              >
-                제안서 발송
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── 고객 제안서 초안 모달 (통합: LawyerProposalDraft) ── */}
+      {proposalModalReqId && proposalRehabResult && proposalRehabInput && (
+        <LawyerProposalDraft
+          rehabCalcResult={proposalRehabResult}
+          rehabUserInput={proposalRehabInput}
+          consultRequest={proposalConsultRequest}
+          onClose={() => {
+            setProposalModalReqId(null);
+            setProposalRehabResult(null);
+            setProposalRehabInput(null);
+            setProposalConsultRequest(null);
+          }}
+          viewerRole="lawyer"
+          onSendProposal={(proposalData) => {
+            handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
+          }}
+        />
       )}
 
     </div>
