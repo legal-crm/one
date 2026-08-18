@@ -564,6 +564,8 @@ export default function App() {
               setMembers={setMembers}
               onLogActivity={handleLogActivity}
               platformConfig={platformConfig}
+              qas={qas}
+              setQas={setQas}
             />
           ) : (
             <AdminRole 

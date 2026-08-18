@@ -3020,7 +3020,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
             {/* TAB: LIVE Q&A CASE STUDIES */}
-            {activeTab === 'qna' && (<QnAView qas={qas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); setRequestStep(3); setActiveTab('request'); }} />)}
+            {activeTab === 'qna' && (<QnAView qas={qas} setQas={setQas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); setRequestStep(3); setActiveTab('request'); }} />)}
 
             {/* TAB 1-B: NOTICES TAB */}
             {activeTab === 'notices' && (<NoticesView notices={notices} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}

@@ -5,7 +5,7 @@ import {
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA 
 } from '../types';
 import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
@@ -17,6 +17,7 @@ import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import NotificationBell from './lawyer/NotificationBell';
 import MyTasksWidget from './lawyer/MyTasksWidget';
 import StaffManagementTab from './lawyer/StaffManagementTab';
+import LawyerQnAAnswerSection from './lawyer/LawyerQnAAnswerSection';
 import RehabSettingsPanel from './RehabSettingsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType } from '../types';
@@ -61,6 +62,8 @@ interface LawyerRoleProps {
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
   onLogActivity: (memberId: string, memberName: string, role: MemberRole, action: ActivityLog['action'], details: string) => void;
   platformConfig: PlatformConfig;
+  qas?: ClientQA[];
+  setQas?: React.Dispatch<React.SetStateAction<ClientQA[]>>;
 }
 
 export default function LawyerRole({
@@ -76,10 +79,12 @@ export default function LawyerRole({
   members,
   setMembers,
   onLogActivity,
-  platformConfig
+  platformConfig,
+  qas,
+  setQas
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer'>('dashboard');
   const [copilotPreselectedReqId, setCopilotPreselectedReqId] = useState<string | undefined>();
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
@@ -1738,6 +1743,24 @@ export default function LawyerRole({
                 <span>사건검토</span>
               </button>
             )}
+
+            <button 
+              onClick={() => setActiveTab('qna-answer')}
+              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 relative ${
+                activeTab === 'qna-answer' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>고민상담 Q&A</span>
+              {qas && (() => {
+                const waitingCount = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length;
+                return waitingCount > 0 ? (
+                  <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg">
+                    {waitingCount}
+                  </span>
+                ) : null;
+              })()}
+            </button>
 
             {permissionCtx.canAccessTab('staff-management') && (
               <button 
@@ -4153,6 +4176,15 @@ export default function LawyerRole({
             </div>
 
           </div>
+        )}
+
+        {/* TAB: Q&A ANSWER - 고민상담 Q&A 답변 */}
+        {activeTab === 'qna-answer' && (
+          <LawyerQnAAnswerSection
+            qas={qas || []}
+            setQas={setQas}
+            currentLawyer={activeLawyer}
+          />
         )}
 
       </main>

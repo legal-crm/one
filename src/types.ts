@@ -1017,6 +1017,8 @@ export interface QAAnswer {
   lawyerAvatar: string;
   answer: string;
   badge?: string;
+  createdAt?: string;
+  lawyerId?: string;
 }
 
 export interface ClientQA {
@@ -1029,6 +1031,11 @@ export interface ClientQA {
   lawyerAvatar: string;
   badge: string;
   additionalAnswers?: QAAnswer[];
+  isSecret?: boolean;
+  authorId?: string;
+  createdAt?: string;
+  content?: string;
+  status?: 'waiting' | 'answered';
 }
 
 export interface SuccessReview {

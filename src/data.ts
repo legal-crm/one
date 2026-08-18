@@ -1651,6 +1651,21 @@ export const initialQAs: ClientQA[] = [
     lawyerName: '권다인 변호사',
     lawyerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256',
     badge: '실시간 답변'
+  },
+  {
+    id: 'qa-14',
+    category: '급여 압류',
+    question: '공무원인데 급여 압류가 진행될 경우 징계 사유가 될 수 있나요?',
+    author: '비공개',
+    answer: '공무원 신분에서 개인회생 신청 자체는 징계 사유가 되지 않습니다. 다만 급여 압류 사실이 소속 기관에 통보될 수 있으므로, 신속하게 개인회생을 신청하여 금지명령을 받는 것이 중요합니다. 금지명령이 발령되면 압류가 중지되고 소속 기관에 대한 추가 통보도 차단됩니다.',
+    lawyerName: '이소민 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256',
+    badge: '비밀 상담',
+    isSecret: true,
+    authorId: 'secret-user-1',
+    createdAt: '2026-08-15T14:30:00+09:00',
+    content: '현직 공무원입니다. 개인 사정으로 대출이 많아졌는데, 급여 압류가 진행되면 소속 기관에 통보가 되는지, 징계 사유가 되는지 궁금합니다. 최대한 비밀리에 해결하고 싶습니다.',
+    status: 'answered'
   }
 ];
 
