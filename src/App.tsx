@@ -211,7 +211,13 @@ export default function App() {
 
   const [qas, setQas] = useState<ClientQA[]>(() => {
     const saved = localStorage.getItem('legal_crm_qas');
-    return saved ? JSON.parse(saved) : initialQAs;
+    if (saved) {
+      const parsed: ClientQA[] = JSON.parse(saved);
+      const existingIds = new Set(parsed.map(q => q.id));
+      const newEntries = initialQAs.filter(q => !existingIds.has(q.id));
+      return newEntries.length > 0 ? [...parsed, ...newEntries] : parsed;
+    }
+    return initialQAs;
   });
 
   const [reviews, setReviews] = useState<SuccessReview[]>(() => {
