@@ -42,6 +42,7 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
   // Question creation form states
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newCategory, setNewCategory] = useState('코인/주식 손실');
+  const [customCategory, setCustomCategory] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newAuthor, setNewAuthor] = useState('');
@@ -110,6 +111,12 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
   };
 
   const handleSubmitQuestion = () => {
+    const resolvedCategory = newCategory === '__custom__' ? customCategory.trim() : newCategory;
+
+    if (newCategory === '__custom__' && !customCategory.trim()) {
+      toast.error('카테고리를 직접 입력해주세요.');
+      return;
+    }
     if (newTitle.trim().length < LIMITS.minTitle) {
       toast.error(`질문 제목은 최소 ${LIMITS.minTitle}자 이상 입력해주세요.`);
       return;
@@ -125,7 +132,7 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
 
     const newQA: ClientQA = {
       id: `qa-${Date.now()}`,
-      category: newCategory,
+      category: resolvedCategory,
       question: newTitle.trim(),
       author: newIsSecret ? '비공개' : newAuthor.trim(),
       answer: '',
@@ -148,6 +155,7 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
     setNewAuthor('');
     setNewIsSecret(false);
     setNewCategory('코인/주식 손실');
+    setCustomCategory('');
     setShowCreateForm(false);
   };
 
@@ -313,13 +321,27 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
             <label className="text-xs font-bold text-slate-600 block">카테고리</label>
             <select
               value={newCategory}
-              onChange={e => setNewCategory(e.target.value)}
+              onChange={e => {
+                setNewCategory(e.target.value);
+                if (e.target.value !== '__custom__') setCustomCategory('');
+              }}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30 font-semibold text-slate-700"
             >
               {QNA_CATEGORIES.filter(c => c !== '전체').map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
+              <option value="__custom__">기타 (직접 입력)</option>
             </select>
+            {newCategory === '__custom__' && (
+              <input
+                type="text"
+                value={customCategory}
+                onChange={e => setCustomCategory(e.target.value)}
+                maxLength={30}
+                placeholder="카테고리를 직접 입력해주세요 (예: 신용불량 회복)"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30 font-medium text-slate-800 placeholder:text-slate-400 mt-1.5"
+              />
+            )}
           </div>
 
           {/* 질문 제목 */}

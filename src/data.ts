@@ -1666,6 +1666,101 @@ export const initialQAs: ClientQA[] = [
     createdAt: '2026-08-15T14:30:00+09:00',
     content: '현직 공무원입니다. 개인 사정으로 대출이 많아졌는데, 급여 압류가 진행되면 소속 기관에 통보가 되는지, 징계 사유가 되는지 궁금합니다. 최대한 비밀리에 해결하고 싶습니다.',
     status: 'answered'
+  },
+  {
+    id: 'qa-15',
+    category: '전세사기 피해',
+    question: '전세보증금 2억을 돌려받지 못하고 있습니다. 개인회생으로 다른 빚이라도 정리할 수 있나요?',
+    author: '박*영 (회사원)',
+    answer: '전세보증금 미수령 상태에서도 다른 금융채무에 대한 개인회생 신청은 가능합니다. 전세보증금 반환 채권은 회생채권이 아닌 별도의 민사채권으로 분류되므로, 주택도시보증공사(HUG) 보증보험 가입 여부를 먼저 확인하시고, 보증금 반환소송과 개인회생 절차를 병행하는 것이 효율적입니다.',
+    lawyerName: '한지우 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256',
+    badge: '전세피해 전문',
+    createdAt: '2026-08-16T09:15:00+09:00',
+    content: '전세 계약 만료 후 집주인이 보증금 2억 원을 돌려주지 않고 있습니다. 이 상황에서 카드빚과 생활비 대출 약 4천만 원이 추가로 있는데, 전세보증금 문제와 별개로 개인회생을 진행할 수 있는지 궁금합니다.',
+    status: 'answered',
+    additionalAnswers: [
+      {
+        lawyerName: '서준호 변호사',
+        lawyerAvatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=256',
+        answer: '전세사기 피해자 특별법에 따른 지원 대상에 해당하실 수 있으므로, 해당 지자체의 전세사기 피해지원센터에도 병행 접수하시길 권합니다. 개인회생과 전세보증금 반환은 별개 절차로, 동시 진행이 충분히 가능합니다.',
+        badge: '추가 의견',
+        createdAt: '2026-08-16T11:30:00+09:00',
+        lawyerId: 'lawyer-3'
+      }
+    ]
+  },
+  {
+    id: 'qa-16',
+    category: '자영업자 회생',
+    question: '식당 폐업 후 신용카드 리볼빙 빚이 7천만 원입니다. 무직 상태에서도 회생 신청이 가능한가요?',
+    author: '최*호 (폐업 자영업)',
+    answer: '',
+    lawyerName: '',
+    lawyerAvatar: '',
+    badge: '답변 대기',
+    createdAt: '2026-08-17T16:45:00+09:00',
+    content: '3년간 운영하던 음식점을 폐업했습니다. 카드 리볼빙과 사업자 대출 합쳐서 7천만 원 정도 되는데, 현재 무직 상태입니다. 구직 활동 중이지만 아직 취업이 안 된 상태에서 개인회생을 신청할 수 있는지, 아니면 취업 후에 해야 하는지 궁금합니다.',
+    status: 'waiting'
+  },
+  {
+    id: 'qa-17',
+    category: '코인/주식 손실',
+    question: '가상화폐 투자 실패로 3억 가까이 빚이 생겼습니다. 면책이 가능한 수준인가요?',
+    author: '김*석 (IT개발자)',
+    answer: '가상화폐 투자 손실로 인한 채무도 개인회생 대상 채무에 포함됩니다. 다만 3억 원 규모라면 개인회생의 무담보채무 한도(5억 원)에는 해당하나, 투자 경위와 향후 재발 방지에 대한 소명이 매우 중요합니다. 거래소 거래내역, 투자 경위서, 금융계좌 해지 증빙 등을 철저히 준비해야 합니다.',
+    lawyerName: '조현아 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=256',
+    badge: '전문가 답변',
+    createdAt: '2026-08-14T10:20:00+09:00',
+    content: 'IT 회사에 다니면서 여유 자금으로 가상화폐 투자를 시작했다가, 레버리지 거래로 손실이 커져 마이너스 통장과 신용대출까지 받아서 투자했습니다. 결국 총 채무가 2억 8천만 원 정도입니다. 연봉은 5,500만 원입니다.',
+    status: 'answered',
+    additionalAnswers: [
+      {
+        lawyerName: '권다인 변호사',
+        lawyerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=256',
+        answer: '연봉 5,500만 원이시면 변제 능력이 충분하므로 개인회생이 파산보다 유리합니다. 3년~5년 변제 계획을 세우면 월 변제금을 합리적으로 산정할 수 있습니다. 투자 관련 채무는 면책 불허가 사유가 아니니 안심하셔도 됩니다.',
+        badge: '투자채무 전문',
+        createdAt: '2026-08-14T14:50:00+09:00',
+        lawyerId: 'lawyer-5'
+      },
+      {
+        lawyerName: '윤성호 변호사',
+        lawyerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256',
+        answer: '가상화폐 거래소에서 전체 거래 내역을 CSV로 다운로드받아 보관하세요. 법원에서 투자 경위 소명 시 필수 자료입니다. 또한, 현재 보유 중인 가상화폐가 있다면 전량 매도 후 증빙을 남기시는 것이 유리합니다.',
+        badge: '실무 조언',
+        createdAt: '2026-08-14T16:10:00+09:00',
+        lawyerId: 'lawyer-2'
+      }
+    ]
+  },
+  {
+    id: 'qa-18',
+    category: '배우자 재산',
+    question: '남편 명의 아파트가 있는데 제 개인회생에 영향이 있나요?',
+    author: '비공개',
+    answer: '배우자 명의의 재산은 원칙적으로 본인의 개인회생 절차에 직접적인 영향을 미치지 않습니다. 다만 부부 공동생활을 하고 있다면 배우자의 소득이 가용소득 산정 시 참고될 수 있습니다. 배우자가 연대보증인이 아닌 한, 배우자 명의 아파트는 회생 절차와 무관합니다.',
+    lawyerName: '강지영 변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=256',
+    badge: '전문가 답변',
+    isSecret: true,
+    authorId: 'secret-user-2',
+    createdAt: '2026-08-13T11:00:00+09:00',
+    content: '제 개인 신용대출과 카드빚 합산 6천만 원이 있습니다. 남편 명의로 아파트가 있고, 저는 전업주부입니다. 개인회생을 신청하면 남편 명의 아파트에도 영향이 가는지, 그리고 전업주부도 신청이 가능한지 궁금합니다.',
+    status: 'answered'
+  },
+  {
+    id: 'qa-19',
+    category: '최근 대출 회생',
+    question: '3개월 전에 받은 대출도 개인회생에 포함시킬 수 있나요? 사기로 오해받을까 걱정됩니다.',
+    author: '이*준 (프리랜서)',
+    answer: '',
+    lawyerName: '',
+    lawyerAvatar: '',
+    badge: '답변 대기',
+    createdAt: '2026-08-18T08:30:00+09:00',
+    content: '프리랜서 디자이너입니다. 수입이 불규칙해서 생활비 부족으로 3개월 전 카드론 1,500만 원을 추가로 받았습니다. 기존 채무 4천만 원과 합쳐 총 5,500만 원인데, 최근 대출을 포함시키면 사기 채무로 오해받아 면책이 안 될까 걱정됩니다.',
+    status: 'waiting'
   }
 ];
 
