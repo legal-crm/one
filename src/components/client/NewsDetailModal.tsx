@@ -41,8 +41,8 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
               </span>
               {article.badge && (
                 <span className={`text-[12px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
-                  article.badge === 'HOT' ? 'bg-orange-500' :
-                  article.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
+                  article.badge === 'HOT' ? 'bg-[#0D9488]' :
+                  article.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'
                 }`}>
                   {article.badge}
                 </span>

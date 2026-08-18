@@ -100,7 +100,7 @@ export default function NewsView({ newsArticles, onSelectArticle, onUpdateViews 
                 <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-950 shrink-0">
                   <img src={art.imageUrl} alt={art.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   {art.badge && (
-                    <span className={`absolute top-3.5 left-3.5 text-xs font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${art.badge === 'HOT' ? 'bg-orange-500' : art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>{art.badge}</span>
+                    <span className={`absolute top-3.5 left-3.5 text-xs font-extrabold px-2.5 py-0.5 rounded-full text-white shadow-sm ${art.badge === 'HOT' ? 'bg-[#0D9488]' : art.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'}`}>{art.badge}</span>
                   )}
                 </div>
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-3">

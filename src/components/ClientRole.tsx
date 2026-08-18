@@ -2138,7 +2138,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   {/* 진행 라인 (배경) */}
                   <div className="absolute top-[52px] left-[16.67%] right-[16.67%] h-[2px] bg-slate-200 dark:bg-slate-700 z-0" />
                   {/* 진행 라인 (그라데이션 오버레이) */}
-                  <div className="absolute top-[52px] left-[16.67%] right-[16.67%] h-[2px] bg-gradient-to-r from-[#3B82F6] via-[#10B981] to-[#8B5CF6] z-[1] opacity-30" />
+                  <div className="absolute top-[52px] left-[16.67%] right-[16.67%] h-[2px] bg-gradient-to-r from-[#1E3A5F] via-[#0D9488] to-[#1E3A5F] z-[1] opacity-30" />
 
                   <div className="grid grid-cols-3 gap-6 relative z-10">
                     {[
@@ -2147,21 +2147,21 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         title: '1분 채무 현황 정리',
                         desc: '간단한 질문에 답하면 나의 채무 상황이 한눈에 정리됩니다.',
                         icon: <Search className="w-5 h-5" />,
-                        accent: { ring: 'ring-blue-500/20', bg: 'bg-[#3B82F6]', iconBg: 'bg-blue-50 dark:bg-blue-950/30', iconColor: 'text-[#3B82F6]', glow: 'shadow-blue-500/20' }
+                        accent: { ring: 'ring-teal-500/20', bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50 dark:bg-teal-950/30', iconColor: 'text-[#0D9488]', glow: 'shadow-teal-500/20' }
                       },
                       {
                         step: '2',
                         title: '상담 전문가 직접 선택',
                         desc: '원하는 전문가를 직접 선택하여 익명으로 상담을 요청합니다.',
                         icon: <Users className="w-5 h-5" />,
-                        accent: { ring: 'ring-emerald-500/20', bg: 'bg-[#10B981]', iconBg: 'bg-emerald-50 dark:bg-emerald-950/30', iconColor: 'text-[#10B981]', glow: 'shadow-emerald-500/20' }
+                        accent: { ring: 'ring-[#1E3A5F]/20', bg: 'bg-[#1E3A5F]', iconBg: 'bg-[#EEF4FA] dark:bg-slate-800/30', iconColor: 'text-[#1E3A5F]', glow: 'shadow-[#1E3A5F]/20' }
                       },
                       {
                         step: '3',
                         title: '프라이빗 상담방',
                         desc: '선택한 전문가와 1:1 비밀 공간에서 상담을 진행하세요.',
                         icon: <Lock className="w-5 h-5" />,
-                        accent: { ring: 'ring-violet-500/20', bg: 'bg-[#8B5CF6]', iconBg: 'bg-violet-50 dark:bg-violet-950/30', iconColor: 'text-[#8B5CF6]', glow: 'shadow-violet-500/20' }
+                        accent: { ring: 'ring-teal-500/20', bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50 dark:bg-teal-950/30', iconColor: 'text-[#0D9488]', glow: 'shadow-teal-500/20' }
                       }
                     ].map((item, idx) => (
                       <div key={idx} className="flex flex-col items-center text-center">
@@ -2184,12 +2184,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   {/* 화살표 커넥터 */}
                   <div className="absolute top-[46px] left-[33.33%] -translate-x-1/2 z-[2]">
                     <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                      <ChevronRight className="w-3 h-3 text-[#3B82F6]" />
+                      <ChevronRight className="w-3 h-3 text-[#0D9488]" />
                     </div>
                   </div>
                   <div className="absolute top-[46px] left-[66.67%] -translate-x-1/2 z-[2]">
                     <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                      <ChevronRight className="w-3 h-3 text-[#10B981]" />
+                      <ChevronRight className="w-3 h-3 text-[#1E3A5F]" />
                     </div>
                   </div>
                 </div>
@@ -2199,7 +2199,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <div className="md:hidden">
                 <div className="relative">
                   {/* 세로 진행 라인 */}
-                  <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-[#3B82F6] via-[#10B981] to-[#8B5CF6] opacity-20" />
+                  <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-[#1E3A5F] via-[#0D9488] to-[#1E3A5F] opacity-20" />
 
                   <div className="space-y-4">
                     {[
@@ -2208,21 +2208,21 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         title: '1분 셀프 채무 확인',
                         desc: '채무 규모와 수입을 입력하면 탕감율이 즉시 산출됩니다.',
                         icon: <Search className="w-4 h-4" />,
-                        accent: { bg: 'bg-[#3B82F6]', iconBg: 'bg-blue-50', iconColor: 'text-[#3B82F6]', ring: 'ring-blue-500/20', glow: 'shadow-blue-500/15' }
+                        accent: { bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50', iconColor: 'text-[#0D9488]', ring: 'ring-teal-500/20', glow: 'shadow-teal-500/15' }
                       },
                       {
                         step: '2',
                         title: '상담 전문가 직접 선택',
                         desc: '원하는 전문가를 선택하여 익명으로 상담을 요청합니다.',
                         icon: <Users className="w-4 h-4" />,
-                        accent: { bg: 'bg-[#10B981]', iconBg: 'bg-emerald-50', iconColor: 'text-[#10B981]', ring: 'ring-emerald-500/20', glow: 'shadow-emerald-500/15' }
+                        accent: { bg: 'bg-[#1E3A5F]', iconBg: 'bg-[#EEF4FA]', iconColor: 'text-[#1E3A5F]', ring: 'ring-[#1E3A5F]/20', glow: 'shadow-[#1E3A5F]/15' }
                       },
                       {
                         step: '3',
                         title: '프라이빗 상담방',
                         desc: '선택한 전문가와 1:1 비밀 공간에서 상담 진행.',
                         icon: <Lock className="w-4 h-4" />,
-                        accent: { bg: 'bg-[#8B5CF6]', iconBg: 'bg-violet-50', iconColor: 'text-[#8B5CF6]', ring: 'ring-violet-500/20', glow: 'shadow-violet-500/15' }
+                        accent: { bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50', iconColor: 'text-[#0D9488]', ring: 'ring-teal-500/20', glow: 'shadow-teal-500/15' }
                       }
                     ].map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3.5 relative">
@@ -2257,7 +2257,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <section className="w-full py-10 md:py-20 bg-gradient-to-b from-slate-50 via-white to-slate-50/80 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
               {/* 배경 장식 글로우 (비대칭 배치) */}
               <div className="absolute top-16 -right-24 w-72 h-72 bg-[#3B82F6]/[0.06] rounded-full blur-[80px] pointer-events-none" />
-              <div className="absolute -bottom-20 left-1/4 w-56 h-56 bg-rose-200/20 rounded-full blur-[60px] pointer-events-none" />
+              <div className="absolute -bottom-20 left-1/4 w-56 h-56 bg-teal-200/20 rounded-full blur-[60px] pointer-events-none" />
 
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 {/* 섹션 헤더 */}
@@ -2279,14 +2279,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   const items = Object.values(remedyData);
                   
                   const colorMap: Record<string, { iconBg: string; iconBorder: string; iconText: string; gradBar: string; hoverGlow: string; badgeBg: string; badgeText: string }> = {
-                    red:     { iconBg: 'from-red-50 to-rose-100/80', iconBorder: 'border-red-200/50', iconText: 'text-red-500', gradBar: 'from-red-400 via-rose-400 to-red-300', hoverGlow: 'group-hover:bg-red-100/40', badgeBg: 'bg-red-50 border-red-100/60', badgeText: 'text-red-500' },
-                    indigo:  { iconBg: 'from-indigo-50 to-indigo-100/80', iconBorder: 'border-indigo-200/50', iconText: 'text-indigo-500', gradBar: 'from-indigo-400 via-blue-400 to-indigo-300', hoverGlow: 'group-hover:bg-indigo-100/40', badgeBg: 'bg-indigo-50 border-indigo-100/60', badgeText: 'text-indigo-500' },
-                    amber:   { iconBg: 'from-amber-50 to-amber-100/80', iconBorder: 'border-amber-200/50', iconText: 'text-amber-500', gradBar: 'from-amber-400 via-orange-300 to-amber-300', hoverGlow: 'group-hover:bg-amber-100/40', badgeBg: 'bg-amber-50 border-amber-100/60', badgeText: 'text-amber-600' },
-                    purple:  { iconBg: 'from-purple-50 to-violet-100/80', iconBorder: 'border-purple-200/50', iconText: 'text-purple-500', gradBar: 'from-purple-400 via-violet-400 to-purple-300', hoverGlow: 'group-hover:bg-purple-100/40', badgeBg: 'bg-purple-50 border-purple-100/60', badgeText: 'text-purple-500' },
-                    orange:  { iconBg: 'from-orange-50 to-amber-100/80', iconBorder: 'border-orange-200/50', iconText: 'text-orange-500', gradBar: 'from-orange-400 via-amber-400 to-orange-300', hoverGlow: 'group-hover:bg-orange-100/40', badgeBg: 'bg-orange-50 border-orange-100/60', badgeText: 'text-orange-500' },
-                    emerald: { iconBg: 'from-emerald-50 to-teal-100/80', iconBorder: 'border-emerald-200/50', iconText: 'text-emerald-500', gradBar: 'from-emerald-400 via-teal-400 to-emerald-300', hoverGlow: 'group-hover:bg-emerald-100/40', badgeBg: 'bg-emerald-50 border-emerald-100/60', badgeText: 'text-emerald-500' },
-                    rose:    { iconBg: 'from-rose-50 to-pink-100/80', iconBorder: 'border-rose-200/50', iconText: 'text-rose-500', gradBar: 'from-rose-400 via-pink-400 to-rose-300', hoverGlow: 'group-hover:bg-rose-100/40', badgeBg: 'bg-rose-50 border-rose-100/60', badgeText: 'text-rose-500' },
-                    slate:   { iconBg: 'from-slate-100 to-slate-200/80', iconBorder: 'border-slate-300/50', iconText: 'text-slate-600', gradBar: 'from-slate-500 via-slate-400 to-slate-300', hoverGlow: 'group-hover:bg-slate-200/40', badgeBg: 'bg-slate-100 border-slate-200/60', badgeText: 'text-slate-600' },
+                    red:     { iconBg: 'from-teal-50 to-teal-100/80', iconBorder: 'border-teal-200/50', iconText: 'text-teal-600', gradBar: 'from-teal-500 via-teal-400 to-teal-300', hoverGlow: 'group-hover:bg-teal-100/40', badgeBg: 'bg-teal-50 border-teal-100/60', badgeText: 'text-teal-600' },
+                    indigo:  { iconBg: 'from-[#EEF4FA] to-blue-50/80', iconBorder: 'border-[#1E3A5F]/15', iconText: 'text-[#1E3A5F]', gradBar: 'from-[#1E3A5F] via-[#2a4d7a] to-[#3B82F6]', hoverGlow: 'group-hover:bg-[#EEF4FA]/60', badgeBg: 'bg-[#EEF4FA] border-[#1E3A5F]/10', badgeText: 'text-[#1E3A5F]' },
+                    amber:   { iconBg: 'from-teal-50 to-teal-100/80', iconBorder: 'border-teal-200/50', iconText: 'text-teal-600', gradBar: 'from-teal-400 via-teal-300 to-teal-200', hoverGlow: 'group-hover:bg-teal-100/40', badgeBg: 'bg-teal-50 border-teal-100/60', badgeText: 'text-teal-600' },
+                    purple:  { iconBg: 'from-[#EEF4FA] to-blue-50/80', iconBorder: 'border-[#1E3A5F]/15', iconText: 'text-[#1E3A5F]', gradBar: 'from-[#1E3A5F] via-[#163152] to-[#0F2440]', hoverGlow: 'group-hover:bg-[#EEF4FA]/60', badgeBg: 'bg-[#EEF4FA] border-[#1E3A5F]/10', badgeText: 'text-[#1E3A5F]' },
+                    orange:  { iconBg: 'from-teal-50 to-teal-100/80', iconBorder: 'border-teal-200/50', iconText: 'text-teal-600', gradBar: 'from-teal-500 via-teal-400 to-teal-300', hoverGlow: 'group-hover:bg-teal-100/40', badgeBg: 'bg-teal-50 border-teal-100/60', badgeText: 'text-teal-600' },
+                    emerald: { iconBg: 'from-[#EEF4FA] to-blue-50/80', iconBorder: 'border-[#1E3A5F]/15', iconText: 'text-[#1E3A5F]', gradBar: 'from-[#1E3A5F] via-[#2a4d7a] to-[#1E3A5F]', hoverGlow: 'group-hover:bg-[#EEF4FA]/60', badgeBg: 'bg-[#EEF4FA] border-[#1E3A5F]/10', badgeText: 'text-[#1E3A5F]' },
+                    rose:    { iconBg: 'from-teal-50 to-teal-100/80', iconBorder: 'border-teal-200/50', iconText: 'text-teal-600', gradBar: 'from-teal-400 via-teal-300 to-teal-200', hoverGlow: 'group-hover:bg-teal-100/40', badgeBg: 'bg-teal-50 border-teal-100/60', badgeText: 'text-teal-600' },
+                    slate:   { iconBg: 'from-[#EEF4FA] to-slate-100/80', iconBorder: 'border-[#1E3A5F]/15', iconText: 'text-[#1E3A5F]', gradBar: 'from-[#1E3A5F] via-[#163152] to-[#1E3A5F]', hoverGlow: 'group-hover:bg-[#EEF4FA]/60', badgeBg: 'bg-[#EEF4FA] border-[#1E3A5F]/10', badgeText: 'text-[#1E3A5F]' },
                   };
 
                   // Hero = card_loan (idx 0)
@@ -2305,15 +2305,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                           className="lg:col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F2440] via-[#1E3A5F] to-[#162D4A] border border-slate-600/30 p-3.5 md:p-7 cursor-pointer card-hero-depth hover:-translate-y-0.5 transition-all duration-500"
                         >
                           {/* 배경 글로우 */}
-                          <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/[0.07] rounded-full blur-3xl pointer-events-none" />
-                          <div className="absolute bottom-0 left-8 w-28 h-28 bg-indigo-400/[0.05] rounded-full blur-2xl pointer-events-none" />
+                          <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/[0.07] rounded-full blur-3xl pointer-events-none" />
+                          <div className="absolute bottom-0 left-8 w-28 h-28 bg-[#1E3A5F]/[0.05] rounded-full blur-2xl pointer-events-none" />
 
                           <div className="relative z-10 flex items-start justify-between gap-2 md:gap-4">
                             <div className="space-y-1.5 md:space-y-3 flex-1 min-w-0">
                               {/* 뱃지 라인 */}
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="inline-flex items-center gap-1 md:gap-1.5 bg-red-500/15 border border-red-500/25 text-red-300 text-[9px] md:text-[11px] font-bold px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-lg">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                                <span className="inline-flex items-center gap-1 md:gap-1.5 bg-teal-500/15 border border-teal-500/25 text-teal-300 text-[9px] md:text-[11px] font-bold px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-lg">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
                                   가장 많은 상담
                                 </span>
 
@@ -2330,8 +2330,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                               </div>
                             </div>
                             {/* 아이콘 */}
-                            <div className="w-9 h-9 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-red-500/15 transition-all duration-300">
-                              {renderRemedyIcon(heroItem.iconName, 'w-4 h-4 md:w-7 md:h-7 text-red-400 stroke-[1.5]')}
+                            <div className="w-9 h-9 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-teal-500/15 transition-all duration-300">
+                              {renderRemedyIcon(heroItem.iconName, 'w-4 h-4 md:w-7 md:h-7 text-teal-400 stroke-[1.5]')}
                             </div>
                           </div>
                         </div>
@@ -2516,10 +2516,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     icon: '⚖️',
                     title: '개인회생',
                     badge: '법원 채무조정 절차',
-                    badgeColor: 'bg-indigo-500/15 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
-                    accentColor: 'from-indigo-400 to-violet-400',
-                    iconBg: 'bg-indigo-500/10 dark:bg-indigo-900/30',
-                    borderColor: 'border-indigo-300/60 dark:border-indigo-800/40',
+                    badgeColor: 'bg-teal-500/15 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+                    accentColor: 'from-teal-500 to-teal-400',
+                    iconBg: 'bg-teal-500/10 dark:bg-teal-900/30',
+                    borderColor: 'border-teal-300/60 dark:border-teal-800/40',
                     sub: '법원이 운영하는 채무조정 절차',
                     desc: '법원이 인가한 변제계획에 따라 3~5년간 변제하면 남은 채무에 대해 면책을 받을 수 있는 절차입니다. 감면 범위는 개인 상황에 따라 다릅니다.'
                   },
@@ -2528,10 +2528,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     icon: '🔓',
                     title: '개인파산',
                     badge: '법원 면책 절차',
-                    badgeColor: 'bg-rose-500/15 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
-                    accentColor: 'from-rose-400 to-pink-400',
-                    iconBg: 'bg-rose-500/10 dark:bg-rose-900/30',
-                    borderColor: 'border-rose-300/60 dark:border-rose-800/40',
+                    badgeColor: 'bg-[#1E3A5F]/10 text-[#1E3A5F] dark:bg-slate-700/40 dark:text-slate-300',
+                    accentColor: 'from-[#1E3A5F] to-[#2a4d7a]',
+                    iconBg: 'bg-[#1E3A5F]/10 dark:bg-slate-800/30',
+                    borderColor: 'border-[#1E3A5F]/30 dark:border-slate-700/40',
                     sub: '법원의 파산·면책 심사 절차',
                     desc: '소득 활동이 어렵고 재산이 거의 없는 경우, 법원 심사를 거쳐 채무에 대한 면책 결정을 받을 수 있는 절차입니다. 면책 여부는 법원이 판단합니다.'
                   },
@@ -2540,10 +2540,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     icon: '🏦',
                     title: '신용회복',
                     badge: '협약 금융회사 채무조정',
-                    badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-                    accentColor: 'from-emerald-400 to-teal-400',
-                    iconBg: 'bg-emerald-500/10 dark:bg-emerald-900/30',
-                    borderColor: 'border-emerald-300/60 dark:border-emerald-800/40',
+                    badgeColor: 'bg-teal-500/15 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+                    accentColor: 'from-teal-400 to-teal-300',
+                    iconBg: 'bg-teal-500/10 dark:bg-teal-900/30',
+                    borderColor: 'border-teal-300/60 dark:border-teal-800/40',
                     sub: '신용회복위원회가 운영하는 채무조정 제도',
                     desc: '신용회복위원회를 통해 이자 감면, 상환 기간 조정 등의 채무조정을 신청할 수 있는 제도입니다. 조정 내용은 심사 결과에 따라 달라집니다.'
                   },
@@ -2552,10 +2552,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     icon: '🛡️',
                     title: '채무자대리',
                     badge: '추심 대응 제도',
-                    badgeColor: 'bg-amber-500/15 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-                    accentColor: 'from-amber-400 to-orange-400',
-                    iconBg: 'bg-amber-500/10 dark:bg-amber-900/30',
-                    borderColor: 'border-amber-300/60 dark:border-amber-800/40',
+                    badgeColor: 'bg-[#1E3A5F]/10 text-[#1E3A5F] dark:bg-slate-700/40 dark:text-slate-300',
+                    accentColor: 'from-[#1E3A5F] to-[#163152]',
+                    iconBg: 'bg-[#1E3A5F]/10 dark:bg-slate-800/30',
+                    borderColor: 'border-[#1E3A5F]/30 dark:border-slate-700/40',
                     sub: '채권추심 대응과 관련된 제도',
                     desc: '변호사를 채무자대리인으로 선임하면 채권자는 채무자에게 직접 연락할 수 없게 됩니다. 대리인 선임 절차와 효과는 개별 사안에 따라 다를 수 있습니다.'
                   },
@@ -2564,10 +2564,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     icon: '📊',
                     title: '세금체납 관리',
                     badge: '체납처분 및 납부 관련 정보',
-                    badgeColor: 'bg-violet-500/15 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
-                    accentColor: 'from-violet-400 to-purple-400',
-                    iconBg: 'bg-violet-500/10 dark:bg-violet-900/30',
-                    borderColor: 'border-violet-300/60 dark:border-violet-800/40',
+                    badgeColor: 'bg-teal-500/15 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+                    accentColor: 'from-teal-500 to-teal-300',
+                    iconBg: 'bg-teal-500/10 dark:bg-teal-900/30',
+                    borderColor: 'border-teal-300/60 dark:border-teal-800/40',
                     sub: '체납처분 및 납부 지원제도 일반정보',
                     desc: '체납 세금의 징수권 소멸시효 만료 여부, 압류 적법성 등을 확인할 수 있습니다. 구체적인 판단은 전문가 상담이 필요합니다.'
                   }
@@ -2838,8 +2838,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       />
                       {art.badge && (
                         <span className={`absolute top-3.5 left-3.5 text-[12px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
-                          art.badge === 'HOT' ? 'bg-orange-500' :
-                          art.badge === 'NEW' ? 'bg-indigo-600' : 'bg-emerald-600'
+                          art.badge === 'HOT' ? 'bg-[#0D9488]' :
+                          art.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'
                         }`}>
                           {art.badge}
                         </span>

@@ -903,7 +903,7 @@ export const adBanners: AdBanner[] = [
     title: '회생·파산 전문 20년 경력',
     subtitle: '서울회생법원 인가율 98% | 누적 842건 수임',
     tagline: '채무 문제, 함께 해결합니다',
-    gradient: 'from-indigo-600 via-violet-600 to-purple-700',
+    gradient: 'from-[#0F2440] via-[#1E3A5F] to-[#0D9488]',
     isActive: true,
   },
   {
@@ -914,7 +914,7 @@ export const adBanners: AdBanner[] = [
     title: '보정명령 즉각 대응 전문',
     subtitle: '주식·코인 손실 사건 최적 탕감 전략',
     tagline: '보정이 두렵지 않은 도산법 전문가',
-    gradient: 'from-purple-600 via-fuchsia-600 to-pink-700',
+    gradient: 'from-[#115E59] via-[#0D9488] to-[#1E3A5F]',
     isActive: true,
   },
   {
@@ -925,7 +925,7 @@ export const adBanners: AdBanner[] = [
     title: '서울회생법원 맞춤 특화 12년',
     subtitle: '변제율 30% 이하 최다 인가 기록',
     tagline: '최저 변제율로 새출발을 시작하세요',
-    gradient: 'from-sky-600 via-blue-600 to-indigo-700',
+    gradient: 'from-[#1E3A5F] via-[#163152] to-[#0F2440]',
     isActive: true,
   },
   {
@@ -936,7 +936,7 @@ export const adBanners: AdBanner[] = [
     title: '여성 의뢰인 비밀 보장 회생',
     subtitle: '가족 몰래 · 전세사기 피해 긴급 구제',
     tagline: '당신만을 위한 맞춤 케어를 약속합니다',
-    gradient: 'from-rose-600 via-pink-600 to-fuchsia-700',
+    gradient: 'from-[#0D9488] via-[#0F766E] to-[#1E3A5F]',
     isActive: true,
   },
   {
@@ -947,7 +947,7 @@ export const adBanners: AdBanner[] = [
     title: '수원회생 15년 경력의 파산 전문가',
     subtitle: '면책 인가 성공률 98% · 누적 1,240건',
     tagline: '경기 지역 회생/파산의 든든한 파트너',
-    gradient: 'from-emerald-600 via-teal-600 to-cyan-700',
+    gradient: 'from-[#0F2440] via-[#0D9488] to-[#115E59]',
     isActive: true,
   },
 ];

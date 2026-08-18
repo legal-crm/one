@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════
-   DESIGN TOKEN SYSTEM — Premium Upgrade v2.0
-   Deep Navy + Trust Blue + Hope Green
+   DESIGN TOKEN SYSTEM — Premium Upgrade v3.0
+   Deep Navy + Teal + Trust Blue + Hope Green
    Inspired by: Linear, Vercel, Toss, Stripe
    ═══════════════════════════════════════════════ */
 
@@ -29,6 +29,12 @@
   --color-brand-hover: #163152;     /* Navy Hover */
   --color-brand-light: #EEF4FA;     /* Navy Tint Background */
   --color-brand-deep: #0F2440;      /* Extra Deep Navy */
+
+  /* ── Secondary Colors (Teal — 재기/회복) ── */
+  --color-secondary: #0D9488;       /* Teal-600 — 세컨더리 브랜드 */
+  --color-secondary-hover: #0F766E; /* Teal-700 — 호버 */
+  --color-secondary-light: #F0FDFA; /* Teal-50 — 틴트 배경 */
+  --color-secondary-deep: #115E59;  /* Teal-800 — 딥 */
 
   /* ── Accent Colors ── */
   --color-accent: #3B82F6;          /* Trust Blue — CTA, 인터랙티브 */
@@ -62,6 +68,8 @@
   --shadow-glow-hover: 0 0 30px rgba(59, 130, 246, 0.2);
   --shadow-brand-sm: 0 2px 12px rgba(30, 58, 95, 0.1);
   --shadow-brand-md: 0 4px 20px rgba(30, 58, 95, 0.15);
+  --shadow-secondary-sm: 0 2px 12px rgba(13, 148, 136, 0.1);
+  --shadow-secondary-md: 0 4px 20px rgba(13, 148, 136, 0.15);
 }
 
 
