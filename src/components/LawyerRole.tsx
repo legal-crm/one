@@ -85,6 +85,10 @@ export default function LawyerRole({
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer'>('dashboard');
+  const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity' | 'clients'>('overview');
+  const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
+  const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
+  const [settingsSub, setSettingsSub] = useState<'channels' | 'logs'>('channels');
   const [copilotPreselectedReqId, setCopilotPreselectedReqId] = useState<string | undefined>();
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
@@ -1741,7 +1745,22 @@ export default function LawyerRole({
         {/* TAB 1: LAWYER DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-fadeIn">
+            {/* 서브탭 */}
+            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+              {([
+                { key: 'overview' as const, label: '전체 현황' },
+                { key: 'requests' as const, label: '신규 요청' },
+                { key: 'activity' as const, label: '활동 분석' },
+                { key: 'clients' as const, label: '전담 고객' },
+              ]).map(t => (
+                <button key={t.key} onClick={() => setDashboardSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${dashboardSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {/* 섹션 1: 상단 요약 카드 */}
+            {(dashboardSub === 'overview' || dashboardSub === 'requests') && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div className="space-y-1">
@@ -1783,8 +1802,10 @@ export default function LawyerRole({
                 </div>
               </div>
             </div>
+            )}
 
             {/* My Tasks Widget */}
+            {(dashboardSub === 'overview') && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-1">
                 <MyTasksWidget
@@ -1794,10 +1815,12 @@ export default function LawyerRole({
                 />
               </div>
             </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
               {/* 섹션 2: 신규 상담 요청 미리보기 */}
+              {(dashboardSub === 'overview' || dashboardSub === 'requests') && (
               <div className="lg:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
@@ -1929,8 +1952,10 @@ export default function LawyerRole({
                   </button>
                 )}
               </div>
+              )}
 
               {/* 섹션 3: 나의 상담 활동 요약 */}
+              {(dashboardSub === 'overview' || dashboardSub === 'activity') && (
               <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-5">
                 <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
                   <BarChart2 className="w-4 h-4 text-emerald-400" />
@@ -1984,8 +2009,9 @@ export default function LawyerRole({
                   );
                 })()}
               </div>
+              )}
 
-            {/* 🤝 전담 선임 고객 관리 */}
+            {(dashboardSub === 'overview' || dashboardSub === 'clients') && (
             <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">🤝 전담 선임 고객</h3>
@@ -2020,6 +2046,7 @@ export default function LawyerRole({
                 ))}
               </div>
             </div>
+            )}
 
             </div>
           </div>
@@ -2647,6 +2674,18 @@ export default function LawyerRole({
         {/* TAB 4: CASE MANAGEMENT SYSTEM (KANBAN & LIST) */}
         {activeTab === 'cases' && (
           <div className="space-y-5 animate-fadeIn">
+            {/* 서브탭 */}
+            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+              {([
+                { key: 'kanban' as const, label: '칸반 보드' },
+                { key: 'active' as const, label: '진행 중' },
+                { key: 'closed' as const, label: '종결' },
+              ]).map(t => (
+                <button key={t.key} onClick={() => setCasesSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${casesSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
             
             {/* Header Banner */}
             <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 rounded-2xl border border-slate-700/50 shadow-xl">
@@ -2880,6 +2919,21 @@ export default function LawyerRole({
         {/* TAB 5: BILLING & SUBSCRIPTIONS */}
         {activeTab === 'billing' && (
           <div className="space-y-8 animate-fadeIn">
+            {/* 서브탭 */}
+            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+              {([
+                { key: 'status' as const, label: '구독 현황' },
+                { key: 'products' as const, label: '광고 상품' },
+                { key: 'orders' as const, label: '내 광고 주문' },
+                { key: 'business' as const, label: '사업자 · 세금계산서' },
+              ]).map(t => (
+                <button key={t.key} onClick={() => setBillingSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${billingSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {(billingSub === 'status') && (<>
             {/* Section 1: Status */}
             <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-[#0c1029] via-[#111833] to-[#0e1225] p-6 md:p-8 shadow-xl">
               <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl" />
@@ -2912,6 +2966,9 @@ export default function LawyerRole({
               </div>
             </div>
 
+            </>)}
+
+            {(billingSub === 'products') && (<>
             {/* Section 2: Ad Products */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -2985,6 +3042,9 @@ export default function LawyerRole({
               </div>
             </div>
 
+            </>)}
+
+            {(billingSub === 'orders') && (<>
             {/* Section 3: My Ad Orders */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -3024,7 +3084,9 @@ export default function LawyerRole({
               </div>
             </div>
 
-            {/* Section 4: Exposure Preview */}
+            </>)}
+
+            {(billingSub === 'products') && (
             <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-sm">
               <div className="flex items-center gap-2">
                 <Eye className="w-4 h-4 text-brand" />
@@ -3050,7 +3112,9 @@ export default function LawyerRole({
               <p className="text-[11px] text-slate-400 flex items-center gap-1"><Info className="w-3 h-3" /> 정렬 순서: 상단 노출 → 지역 상단(필터 시) → 일반 회원 | 같은 등급 내 랜덤 셔플</p>
             </div>
 
-            {/* Section 5: SaaS Plans */}
+            )}
+
+            {(billingSub === 'status') && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-indigo-500" />
@@ -3077,6 +3141,9 @@ export default function LawyerRole({
               </div>
             </div>
 
+            )}
+
+            {(billingSub === 'business') && (<>
             {/* Section 6: Legal & Payment */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
@@ -3340,8 +3407,9 @@ export default function LawyerRole({
                   </div>
                 </div>
               )}
-            </div>
-          </div>
+        </div>
+        </div>
+        </>)}
         </div>
         )}
 
@@ -3382,6 +3450,18 @@ export default function LawyerRole({
             {/* Search & Filter row */}
         {activeTab === 'settings' && (
           <div className="space-y-6 animate-fadeIn">
+            {/* 서브탭 */}
+            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+              {([
+                { key: 'channels' as const, label: '알림 채널 설정' },
+                { key: 'logs' as const, label: '알림 로그' },
+              ]).map(t => (
+                <button key={t.key} onClick={() => setSettingsSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${settingsSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {settingsSub === 'channels' && (<>
             {/* Header info */}
             <div className="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1">
@@ -3729,6 +3809,10 @@ export default function LawyerRole({
             </div>
 
             {/* ══════════════════════════════════════════ */}
+            </>)}
+
+            {settingsSub === 'logs' && (
+            <>
             {/* 알림 발송 이력 */}
             {/* ══════════════════════════════════════════ */}
             {notifLogs.length > 0 && (
@@ -4113,6 +4197,8 @@ export default function LawyerRole({
             <div className="bg-white border border-slate-200 p-5 rounded-2xl">
               <RehabSettingsPanel mode="lawyer" />
             </div>
+
+            </>)}
 
           </div>
         )}
