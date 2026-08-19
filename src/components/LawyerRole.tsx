@@ -1636,8 +1636,8 @@ export default function LawyerRole({
         {/* ── Body: Sidebar + Main Content ── */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ── Sidebar (Desktop/Tablet) ── */}
-          <aside className="hidden lg:flex w-56 bg-[#111827] flex-col shrink-0 overflow-y-auto">
+          {/* ── Sidebar (Desktop/Tablet) — 고정 사이드바 ── */}
+          <aside className="hidden lg:flex w-56 bg-[#111827] flex-col shrink-0 fixed top-14 left-0 bottom-0 overflow-y-auto z-30">
             <nav className="flex-1 py-4 px-3 space-y-1">
               {/* 그룹 1: 업무 */}
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-2">업무</p>
@@ -1716,7 +1716,7 @@ export default function LawyerRole({
           </aside>
 
           {/* ── Main Content Area ── */}
-          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-6 py-5">
+          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-6 py-5 lg:ml-56 pb-20 lg:pb-5">
 
           {/* ── Mobile Bottom Tab Bar ── */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around">
