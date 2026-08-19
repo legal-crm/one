@@ -4,7 +4,7 @@ import {
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2,
-  Star, Sparkles, BarChart3, Shield, ShieldAlert, Calculator, ClipboardCheck, Compass
+  Star, Sparkles, BarChart3, Shield, ShieldAlert, Calculator, ClipboardCheck, Compass, Zap, Heart
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
@@ -2116,145 +2116,260 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </div>
             </section>
 
-            {/* ── Sector 2: 3단계 프로세스 (Premium Progressive Design) ────────────────────── */}
-            <section className="w-full py-10 md:py-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="space-y-6 md:space-y-10 text-center">
-              <div className="space-y-2">
-                <h3 className="text-xl md:text-3xl font-black text-[#0f172a] dark:text-white tracking-tight">
-                  이용안내 — 이렇게 시작하시면 됩니다
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">채무 정리부터 전문가 선택까지, 복잡한 절차 없이 빠르게</p>
+            {/* ── Sector 2: my김변 이용안내 (Large Visual Guide) ─────────────────── */}
+
+            {/* 이용안내 헤더 배너 */}
+            <section className="w-full bg-[#0D9488] py-5">
+              <div className="max-w-5xl mx-auto px-4 text-center">
+                <p className="text-white font-extrabold text-lg md:text-xl tracking-tight">✔ my김변 이용안내</p>
+                <p className="text-white/80 text-sm font-medium mt-1">채무 정리부터 전문가 상담까지, 단 4단계로 완료됩니다</p>
               </div>
+            </section>
 
-              {/* 데스크탑: 가로 스텝퍼 */}
-              <div className="hidden md:block">
-                <div className="relative">
-                  {/* 진행 라인 (배경) */}
-                  <div className="absolute top-[52px] left-[16.67%] right-[16.67%] h-[2px] bg-slate-200 dark:bg-slate-700 z-0" />
-                  {/* 진행 라인 (그라데이션 오버레이) */}
-                  <div className="absolute top-[52px] left-[16.67%] right-[16.67%] h-[2px] bg-gradient-to-r from-[#1E3A5F] via-[#0D9488] to-[#1E3A5F] z-[1] opacity-30" />
-
-                  <div className="grid grid-cols-3 gap-6 relative z-10">
-                    {[
-                      {
-                        step: '1',
-                        title: '1분 채무 현황 정리',
-                        desc: '간단한 질문에 답하면 나의 채무 상황과 예상 탕감율이 한눈에 정리됩니다.',
-                        icon: <Search className="w-5 h-5" />,
-                        preview: <div className="w-full h-16 bg-slate-50 border border-slate-100 rounded-lg flex flex-col justify-center items-center gap-1.5"><div className="w-2/3 h-2 bg-slate-200 rounded-full"></div><div className="w-1/2 h-2 bg-slate-200 rounded-full"></div></div>,
-                        accent: { ring: 'ring-teal-500/20', bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50 dark:bg-teal-950/30', iconColor: 'text-[#0D9488]', glow: 'shadow-teal-500/20' }
-                      },
-                      {
-                        step: '2',
-                        title: '상담 전문가 직접 선택',
-                        desc: '내 상황에 맞는 전문가들의 프로필을 비교하고 원하는 분을 선택하세요.',
-                        icon: <Users className="w-5 h-5" />,
-                        preview: <div className="w-full h-16 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center gap-2"><div className="w-6 h-6 rounded-full bg-slate-300"></div><div className="flex flex-col gap-1"><div className="w-10 h-1.5 bg-slate-300 rounded-full"></div><div className="w-14 h-1.5 bg-slate-200 rounded-full"></div></div></div>,
-                        accent: { ring: 'ring-[#1E3A5F]/20', bg: 'bg-[#1E3A5F]', iconBg: 'bg-[#EEF4FA] dark:bg-slate-800/30', iconColor: 'text-[#1E3A5F]', glow: 'shadow-[#1E3A5F]/20' }
-                      },
-                      {
-                        step: '3',
-                        title: '프라이빗 상담방',
-                        desc: '100% 익명으로 안전한 1:1 비밀 공간에서 전문가와 상담을 진행합니다.',
-                        icon: <Lock className="w-5 h-5" />,
-                        preview: <div className="w-full h-16 bg-slate-50 border border-slate-100 rounded-lg p-2 flex flex-col justify-between"><div className="self-end w-2/3 h-4 bg-teal-100 rounded-lg"></div><div className="self-start w-2/3 h-4 bg-white border border-slate-200 rounded-lg"></div></div>,
-                        accent: { ring: 'ring-teal-500/20', bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50 dark:bg-teal-950/30', iconColor: 'text-[#0D9488]', glow: 'shadow-teal-500/20' }
-                      }
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex flex-col items-center text-center">
-                        {/* 스텝 넘버 */}
-                        <div className={`w-[42px] h-[42px] ${item.accent.bg} text-white rounded-full flex items-center justify-center font-bold text-lg mb-5 shadow-lg ${item.accent.glow} ring-4 ${item.accent.ring}`}>
-                          {item.step}
+            {/* STEP 1: 1분 익명 채무 체크 */}
+            <section className="w-full py-16 md:py-24 bg-white border-b border-slate-100">
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                  {/* 좌측: 텍스트 */}
+                  <div className="space-y-5 text-left">
+                    <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">01</div>
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">이름 없이 1분이면<br />충분합니다</h3>
+                    <p className="text-base text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 월 수입만 입력하면 AI가 즉시 탕감 가능성을 분석합니다. 회원가입도 필요 없습니다.</p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><ShieldCheck className="w-4 h-4" />실명 불필요</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Zap className="w-4 h-4" />1분 소요</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Search className="w-4 h-4" />즉시 결과 확인</span>
+                    </div>
+                    <button
+                      onClick={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
+                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                    >
+                      지금 무료로 체크하기 →
+                    </button>
+                  </div>
+                  {/* 우측: 스마트폰 목업 */}
+                  <div className="flex justify-center">
+                    <div className="w-[280px] sm:w-[300px] rounded-[2.5rem] border-[8px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+                      <div className="bg-slate-800 h-6 flex items-center justify-center">
+                        <div className="w-16 h-3 bg-slate-700 rounded-full" />
+                      </div>
+                      <div className="bg-[#F8FAFC] p-3 space-y-2.5 min-h-[380px]">
+                        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-7 h-7 bg-[#7264FF] rounded-lg flex items-center justify-center text-white text-xs font-bold">김</div>
+                            <span className="text-xs font-bold text-slate-700">my김변 AI</span>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed">안녕하세요! 채무 현황을 정리해 드리겠습니다. 현재 총 채무 금액은 얼마인가요?</p>
                         </div>
-                        {/* 카드 */}
-                        <div className="group bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full card-depth hover:-translate-y-0.5 transition-all duration-300 flex flex-col items-center">
-                          <div className={`w-12 h-12 rounded-xl ${item.accent.iconBg} flex items-center justify-center mb-3 ${item.accent.iconColor} group-hover:scale-110 transition-transform duration-300`}>
-                            {item.icon}
+                        <div className="flex justify-end">
+                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3 py-2 max-w-[70%]">
+                            <p className="text-xs text-white font-medium">5,000만원 정도입니다</p>
                           </div>
-                          <h4 className="font-bold text-base text-[#0f172a] dark:text-white mb-2">{item.title}</h4>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium mb-4">{item.desc}</p>
-                          <div className="w-full px-2 mt-auto">
-                            {item.preview}
+                        </div>
+                        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                          <p className="text-xs text-slate-600 leading-relaxed">확인했습니다. 월 소득은 얼마인가요? (세후 기준)</p>
+                        </div>
+                        <div className="flex justify-end">
+                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3 py-2 max-w-[70%]">
+                            <p className="text-xs text-white font-medium">230만원입니다</p>
                           </div>
+                        </div>
+                        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                          <p className="text-xs text-slate-600 leading-relaxed">부양가족은 몇 명인가요?</p>
+                        </div>
+                        <div className="mt-2 flex gap-2">
+                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-400">입력해 주세요...</div>
+                          <div className="w-8 h-8 bg-[#7264FF] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-3.5 h-3.5 text-white" /></div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* 화살표 커넥터 */}
-                  <div className="absolute top-[46px] left-[33.33%] -translate-x-1/2 z-[2]">
-                    <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                      <ChevronRight className="w-3 h-3 text-[#0D9488]" />
-                    </div>
-                  </div>
-                  <div className="absolute top-[46px] left-[66.67%] -translate-x-1/2 z-[2]">
-                    <div className="w-5 h-5 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                      <ChevronRight className="w-3 h-3 text-[#1E3A5F]" />
                     </div>
                   </div>
                 </div>
               </div>
+            </section>
 
-              {/* 모바일: 세로 타임라인 스텝퍼 */}
-              <div className="md:hidden">
-                <div className="relative">
-                  {/* 세로 진행 라인 */}
-                  <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-[#1E3A5F] via-[#0D9488] to-[#1E3A5F] opacity-20" />
-
-                  <div className="space-y-4">
-                    {[
-                      {
-                        step: '1',
-                        title: '1분 셀프 채무 확인',
-                        desc: '채무 규모와 수입을 입력하면 예상 탕감율이 정리됩니다.',
-                        icon: <Search className="w-4 h-4" />,
-                        preview: <div className="w-full h-12 bg-slate-50 border border-slate-100 rounded-lg mt-2 flex flex-col justify-center items-center gap-1"><div className="w-2/3 h-1.5 bg-slate-200 rounded-full"></div><div className="w-1/2 h-1.5 bg-slate-200 rounded-full"></div></div>,
-                        accent: { bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50', iconColor: 'text-[#0D9488]', ring: 'ring-teal-500/20', glow: 'shadow-teal-500/15' }
-                      },
-                      {
-                        step: '2',
-                        title: '상담 전문가 직접 선택',
-                        desc: '원하는 전문가의 프로필을 보고 선택하여 상담을 요청합니다.',
-                        icon: <Users className="w-4 h-4" />,
-                        preview: <div className="w-full h-12 bg-slate-50 border border-slate-100 rounded-lg mt-2 flex items-center justify-center gap-2"><div className="w-5 h-5 rounded-full bg-slate-300"></div><div className="flex flex-col gap-1"><div className="w-8 h-1 bg-slate-300 rounded-full"></div><div className="w-12 h-1 bg-slate-200 rounded-full"></div></div></div>,
-                        accent: { bg: 'bg-[#1E3A5F]', iconBg: 'bg-[#EEF4FA]', iconColor: 'text-[#1E3A5F]', ring: 'ring-[#1E3A5F]/20', glow: 'shadow-[#1E3A5F]/15' }
-                      },
-                      {
-                        step: '3',
-                        title: '프라이빗 상담방',
-                        desc: '100% 익명으로 안전한 공간에서 상담을 진행합니다.',
-                        icon: <Lock className="w-4 h-4" />,
-                        preview: <div className="w-full h-12 bg-slate-50 border border-slate-100 rounded-lg mt-2 p-1.5 flex flex-col justify-between"><div className="self-end w-2/3 h-2.5 bg-teal-100 rounded-lg"></div><div className="self-start w-2/3 h-2.5 bg-white border border-slate-200 rounded-lg"></div></div>,
-                        accent: { bg: 'bg-[#0D9488]', iconBg: 'bg-teal-50', iconColor: 'text-[#0D9488]', ring: 'ring-teal-500/20', glow: 'shadow-teal-500/15' }
-                      }
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-3.5 relative">
-                        {/* 스텝 넘버 */}
-                        <div className={`w-[38px] h-[38px] ${item.accent.bg} text-white rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-md ${item.accent.glow} ring-3 ${item.accent.ring} relative z-10`}>
-                          {item.step}
+            {/* STEP 2: AI 분석 결과 확인 */}
+            <section className="w-full py-16 md:py-24 bg-[#F8FAFC] border-b border-slate-100">
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                  {/* 좌측: 리포트 목업 (lg에서 좌측) */}
+                  <div className="order-2 lg:order-1 flex justify-center">
+                    <div className="w-full max-w-[360px] bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+                      <div className="bg-[#1E3A5F] px-5 py-4 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-4 h-4 text-white" /></div>
+                        <div>
+                          <p className="text-white font-bold text-sm">나의 채무 분석 리포트</p>
+                          <p className="text-white/60 text-[10px]">법원 공개 기준 적용</p>
                         </div>
-                        {/* 카드 */}
-                        <div className="flex-1 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 card-depth">
-                          <div className="flex items-center gap-2.5 mb-1">
-                            <div className={`w-7 h-7 rounded-lg ${item.accent.iconBg} flex items-center justify-center shrink-0 ${item.accent.iconColor}`}>
-                              {item.icon}
+                      </div>
+                      <div className="p-5 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-slate-50 rounded-xl p-3 text-center">
+                            <p className="text-[10px] text-slate-500 font-medium">총 채무</p>
+                            <p className="text-lg font-extrabold text-slate-900">8,200<span className="text-xs font-bold text-slate-400">만원</span></p>
+                          </div>
+                          <div className="bg-slate-50 rounded-xl p-3 text-center">
+                            <p className="text-[10px] text-slate-500 font-medium">월 소득</p>
+                            <p className="text-lg font-extrabold text-slate-900">250<span className="text-xs font-bold text-slate-400">만원</span></p>
+                          </div>
+                        </div>
+                        <div className="border border-[#0D9488]/30 bg-[#0D9488]/5 rounded-xl p-3.5 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#0D9488]">★ 추천: 개인회생</span>
+                            <span className="text-[10px] font-bold bg-[#0D9488] text-white px-2 py-0.5 rounded-md">적합</span>
+                          </div>
+                          <p className="text-sm font-extrabold text-slate-900">예상 탕감률 78% · 월 변제 38만원</p>
+                        </div>
+                        <div className="border border-slate-200 rounded-xl p-3.5 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-500">개인파산</span>
+                            <span className="text-[10px] font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">참고</span>
+                          </div>
+                          <p className="text-sm font-bold text-slate-700">면책 가능성 높음</p>
+                        </div>
+                        <div className="bg-[#1E3A5F] text-white text-center py-3 rounded-xl text-sm font-bold cursor-default">전문가 상담 신청하기</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 우측: 텍스트 (lg에서 우측) */}
+                  <div className="order-1 lg:order-2 space-y-5 text-left">
+                    <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">02</div>
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">내 상황에 맞는<br />해결 방향을 바로 확인하세요</h3>
+                    <p className="text-base text-slate-600 leading-relaxed font-medium">입력한 채무·소득 정보를 기반으로 개인회생, 파산, 신용회복 등 가능한 방안과 예상 탕감률을 즉시 비교해 드립니다.</p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Scale className="w-4 h-4" />법원 공개 기준 적용</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><BarChart3 className="w-4 h-4" />방안별 비교</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Calculator className="w-4 h-4" />예상 월 변제액 산출</span>
+                    </div>
+                    <button
+                      onClick={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
+                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                    >
+                      내 분석 결과 확인하기 →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* STEP 3: 전문 변호사 비교 & 선택 */}
+            <section className="w-full py-16 md:py-24 bg-white border-b border-slate-100">
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                  {/* 좌측: 텍스트 */}
+                  <div className="space-y-5 text-left">
+                    <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">03</div>
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">신뢰할 수 있는 전문가를<br />직접 비교하세요</h3>
+                    <p className="text-base text-slate-600 leading-relaxed font-medium">회생·파산 전문 변호사의 경력, 전문 분야, 실제 의뢰인 후기를 한눈에 비교하고 원하는 전문가를 직접 선택합니다.</p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4 h-4" />전문 분야별 필터</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Star className="w-4 h-4" />실제 의뢰인 후기</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Heart className="w-4 h-4" />강요 없는 자율 선택</span>
+                    </div>
+                    <button
+                      onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                    >
+                      전문가 프로필 둘러보기 →
+                    </button>
+                  </div>
+                  {/* 우측: 변호사 프로필 목업 */}
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-[360px] space-y-3">
+                      {[
+                        { name: '김도현', specialty: '개인회생 전문', region: '서울', rating: '4.9', cases: '127건', color: 'bg-[#1E3A5F]' },
+                        { name: '박서연', specialty: '파산·면책 전문', region: '경기', rating: '4.8', cases: '89건', color: 'bg-[#0D9488]' },
+                        { name: '이정훈', specialty: '채무조정 전문', region: '부산', rating: '4.9', cases: '156건', color: 'bg-[#3B82F6]' },
+                      ].map((lawyer, idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-default">
+                          <div className={`w-12 h-12 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{lawyer.name.charAt(0)}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-sm text-slate-900">{lawyer.name} 변호사</p>
+                              <span className="text-[10px] font-bold text-amber-500 flex items-center gap-0.5">★ {lawyer.rating}</span>
                             </div>
-                            <h4 className="font-bold text-sm text-[#0f172a] dark:text-white">{item.title}</h4>
+                            <p className="text-xs text-slate-500 font-medium">{lawyer.specialty} · {lawyer.region} · 누적 {lawyer.cases}</p>
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium pl-[38px]">{item.desc}</p>
-                          <div className="pl-[38px]">
-                            {item.preview}
-                          </div>
+                          <div className="text-xs font-bold text-[#1E3A5F] bg-[#EEF4FA] px-3 py-1.5 rounded-lg shrink-0 whitespace-nowrap">프로필</div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                      {/* <!-- mock --> */}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
 
-            </div>
+            {/* STEP 4: 1:1 프라이빗 상담방 */}
+            <section className="w-full py-16 md:py-24 bg-[#F8FAFC] border-b border-slate-200">
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                  {/* 좌측: 채팅 목업 (lg에서 좌측) */}
+                  <div className="order-2 lg:order-1 flex justify-center">
+                    <div className="w-[280px] sm:w-[300px] rounded-[2.5rem] border-[8px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+                      <div className="bg-slate-800 h-6 flex items-center justify-center">
+                        <div className="w-16 h-3 bg-slate-700 rounded-full" />
+                      </div>
+                      <div className="bg-white min-h-[380px] flex flex-col">
+                        {/* 채팅 헤더 */}
+                        <div className="bg-[#1E3A5F] px-4 py-3 flex items-center gap-3">
+                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">김</div>
+                          <div>
+                            <p className="text-white text-xs font-bold">김도현 변호사</p>
+                            <p className="text-white/60 text-[10px]">프라이빗 상담방</p>
+                          </div>
+                          <div className="ml-auto flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-emerald-400" />
+                            <span className="text-[9px] text-emerald-400 font-bold">스텔스 보호중</span>
+                          </div>
+                        </div>
+                        {/* 채팅 내용 */}
+                        <div className="flex-1 p-3 space-y-2.5 bg-[#F1F5F9]">
+                          <div className="flex gap-2">
+                            <div className="w-6 h-6 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 mt-0.5">김</div>
+                            <div className="bg-white rounded-xl rounded-tl-md px-3 py-2 max-w-[80%] shadow-sm">
+                              <p className="text-xs text-slate-700 leading-relaxed">안녕하세요, 채무 현황 확인했습니다. 회생 신청이 가능하며 예상 변제액은 월 38만원입니다.</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-end">
+                            <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3 py-2 max-w-[75%]">
+                              <p className="text-xs text-white leading-relaxed">감사합니다. 신청 절차와 필요 서류가 궁금합니다.</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <div className="w-6 h-6 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 mt-0.5">김</div>
+                            <div className="bg-white rounded-xl rounded-tl-md px-3 py-2 max-w-[80%] shadow-sm">
+                              <p className="text-xs text-slate-700 leading-relaxed">네, 서류 목록을 정리해서 보내드리겠습니다. 파일 공유도 가능합니다.</p>
+                            </div>
+                          </div>
+                        </div>
+                        {/* 입력 영역 */}
+                        <div className="px-3 py-2 bg-white border-t border-slate-200 flex gap-2">
+                          <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-400">메시지 입력...</div>
+                          <div className="w-8 h-8 bg-[#1E3A5F] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-3.5 h-3.5 text-white" /></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 우측: 텍스트 (lg에서 우측) */}
+                  <div className="order-1 lg:order-2 space-y-5 text-left">
+                    <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">04</div>
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">가명으로 안전하게<br />1:1 상담을 진행하세요</h3>
+                    <p className="text-base text-slate-600 leading-relaxed font-medium">선택한 전문가와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Lock className="w-4 h-4" />스텔스 가명 보호</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ShieldCheck className="w-4 h-4" />SSL/TLS 암호화</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><MessageSquare className="w-4 h-4" />실시간 + 비실시간</span>
+                    </div>
+                    <button
+                      onClick={() => { setActiveTab('request'); setRequestType('open'); setRequestStep(1); }}
+                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                    >
+                      지금 시작하기 →
+                    </button>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* ── Trust Stats Bar (풀위드) ─────────────── */}
