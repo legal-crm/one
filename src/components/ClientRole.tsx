@@ -2067,23 +2067,17 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </p>
 
                 {/* Unified CTA Button */}
-                <div className="flex flex-col sm:flex-row items-center gap-4 pt-3 w-full max-w-md">
+                <div className="pt-3">
                   <button
                     onClick={() => {
                       setRequestType('open');
                       setRequestStep(1);
                       setActiveTab('request');
                     }}
-                    className="w-full sm:w-auto flex-1 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-lg transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base"
+                    className="w-full sm:w-auto bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-7 py-4 rounded-lg transition-all text-center flex items-center justify-center gap-2 group cursor-pointer text-base"
                   >
                     <span>내 채무 상황 체크하기</span>
                     <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('lawyers')}
-                    className="w-full sm:w-auto text-[#3B82F6] hover:underline font-bold text-sm transition-all text-center cursor-pointer"
-                  >
-                    전문가 프로필 둘러보기
                   </button>
                 </div>
               </div>
