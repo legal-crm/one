@@ -9,9 +9,9 @@ interface ClientFooterProps {
 
 export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }: ClientFooterProps) {
   const navItems = [
+    { label: '회사소개', tab: 'company' },
+    { label: '이용가이드', tab: 'guide' },
     { label: '공지사항', tab: 'notices' },
-    { label: '이용후기', tab: 'reviews' },
-    { label: '변제 시뮬레이션', tab: 'calculator' },
     { label: '1:1 문의', tab: 'inquiry' },
   ];
 

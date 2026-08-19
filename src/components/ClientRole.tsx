@@ -27,6 +27,8 @@ const QnAView = React.lazy(() => import('./client/QnAView'));
 const ChatView = React.lazy(() => import('./client/ChatView'));
 const NewsView = React.lazy(() => import('./client/NewsView'));
 const NoticesView = React.lazy(() => import('./client/NoticesView'));
+const CompanyView = React.lazy(() => import('./client/CompanyView'));
+const GuideView = React.lazy(() => import('./client/GuideView'));
 const LawyersView = React.lazy(() => import('./client/LawyersView'));
 const AuthModal = React.lazy(() => import('./client/AuthModal'));
 const MyPageView = React.lazy(() => import('./client/MyPageView'));
@@ -3268,6 +3270,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* TAB 1-B: NOTICES TAB */}
             {activeTab === 'notices' && (<NoticesView notices={notices} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}
+
+            {/* TAB: COMPANY INTRO */}
+            {activeTab === 'company' && (<React.Suspense fallback={null}><CompanyView onNavigate={(tab) => { setActiveTab(tab as any); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></React.Suspense>)}
+
+            {/* TAB: USAGE GUIDE */}
+            {activeTab === 'guide' && (<React.Suspense fallback={null}><GuideView onNavigate={(tab) => { setActiveTab(tab as any); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></React.Suspense>)}
 
 
             {/* TAB 2: HIGH-FIDELITY CUSTOMER INTAKE SCREEN */}
