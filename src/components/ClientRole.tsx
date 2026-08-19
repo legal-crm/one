@@ -430,6 +430,7 @@ export default function ClientRole({
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [activeReviewIdx, setActiveReviewIdx] = useState(0);
   const [faqOpenId, setFaqOpenId] = useState<number | null>(null);
+  const [faqExpanded, setFaqExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   const isPopStateRef = useRef(false);
@@ -3063,33 +3064,56 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   </p>
                 </div>
                 <div className="space-y-3">
-                  {[
-                    { q: '채무 상황 체크는 정말 무료인가요?', a: '네, 채무 현황 정리부터 전문가 상담 요청까지 모든 과정이 의뢰인에게 100% 무료입니다. 별도의 수수료나 숨겨진 비용은 일체 없습니다.' },
-                    { q: '제 개인정보가 노출되지 않나요?', a: '스텔스 가명 시스템을 통해 실명이나 연락처 없이 상담이 진행됩니다. 변호사에게도 가명만 공개되며, 모든 데이터는 SSL/TLS 암호화로 보호됩니다.' },
-                    { q: '상담을 받으면 반드시 변호사를 선임해야 하나요?', a: '아닙니다. 상담 후 선임 여부는 전적으로 의뢰인의 자유입니다. 마음에 드는 전문가가 없을 경우 진행하지 않으셔도 불이익이 전혀 없습니다.' },
-                    { q: '어떤 변호사들이 등록되어 있나요?', a: '회생·파산 분야에서 실무 경험이 풍부한 전문 변호사만 등록되어 있으며, 프로필에서 경력, 전문 분야, 실제 의뢰인 후기를 직접 확인할 수 있습니다.' },
-                    { q: '상담은 어떤 방식으로 진행되나요?', a: '1:1 프라이빗 상담방에서 텍스트 채팅으로 진행됩니다. 실시간 또는 비실시간 모두 가능하며, 변호사가 직접 답변합니다.' },
-                    { q: '회생/파산 외에 다른 채무 해결 방법도 안내받을 수 있나요?', a: '네, 채무 상황 체크 결과에 따라 개인회생, 개인파산, 신용회복, 채무조정 등 다양한 방안을 비교해 드립니다. 가장 유리한 방법을 전문가가 안내합니다.' },
-                  ].map((item, idx) => {
-                    const isOpen = faqOpenId === idx;
-                    return (
-                      <div key={idx} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all">
-                        <button
-                          onClick={() => setFaqOpenId(isOpen ? null : idx)}
-                          className="w-full px-5 py-4 md:py-5 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-white/5 transition-colors"
-                        >
-                          <span className="font-bold text-base md:text-lg text-white">{item.q}</span>
-                          <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        {isOpen && (
-                          <div className="px-5 pb-5 text-sm md:text-base text-slate-300 leading-relaxed animate-slideDown border-t border-white/10 pt-4">
-                            {item.a}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {(() => {
+                    const faqItems = [
+                      { q: '채무 상황 체크는 정말 무료인가요?', a: '네, 채무 현황 정리부터 전문가 상담 요청까지 모든 과정이 의뢰인에게 100% 무료입니다. 별도의 수수료나 숨겨진 비용은 일체 없습니다.' },
+                      { q: '제 개인정보가 노출되지 않나요?', a: '스텔스 가명 시스템을 통해 실명이나 연락처 없이 상담이 진행됩니다. 변호사에게도 가명만 공개되며, 모든 데이터는 SSL/TLS 암호화로 보호됩니다.' },
+                      { q: '상담을 받으면 반드시 변호사를 선임해야 하나요?', a: '아닙니다. 상담 후 선임 여부는 전적으로 의뢰인의 자유입니다. 마음에 드는 전문가가 없을 경우 진행하지 않으셔도 불이익이 전혀 없습니다.' },
+                      { q: '어떤 변호사들이 등록되어 있나요?', a: '회생·파산 분야에서 실무 경험이 풍부한 전문 변호사만 등록되어 있으며, 프로필에서 경력, 전문 분야, 실제 의뢰인 후기를 직접 확인할 수 있습니다.' },
+                      { q: '상담은 어떤 방식으로 진행되나요?', a: '1:1 프라이빗 상담방에서 텍스트 채팅으로 진행됩니다. 실시간 또는 비실시간 모두 가능하며, 변호사가 직접 답변합니다.' },
+                      { q: '회생/파산 외에 다른 채무 해결 방법도 안내받을 수 있나요?', a: '네, 채무 상황 체크 결과에 따라 개인회생, 개인파산, 신용회복, 채무조정 등 다양한 방안을 비교해 드립니다. 가장 유리한 방법을 전문가가 안내합니다.' },
+                      { q: '개인회생과 개인파산의 차이는 무엇인가요?', a: '개인회생은 일정 소득이 있는 경우 채무의 일부를 3~5년간 변제하고 나머지를 면제받는 제도입니다. 개인파산은 변제 능력이 없는 경우 모든 채무를 면책받는 제도입니다. 소득 유무와 채무 규모에 따라 적합한 방안이 달라집니다.' },
+                      { q: '채무 체크 결과는 얼마나 정확한가요?', a: '법원 공개 기준과 실제 판례 데이터를 기반으로 분석하므로 참고 지표로 활용하기에 충분합니다. 다만, 정확한 법적 판단은 전문 변호사와의 상담을 통해 확인하시는 것을 권장합니다.' },
+                      { q: '변호사 상담 비용은 얼마인가요?', a: '플랫폼 내 초기 상담은 무료입니다. 이후 정식 선임 시 발생하는 비용은 각 변호사가 개별 안내하며, 사전에 투명하게 비용을 확인한 뒤 결정하실 수 있습니다.' },
+                      { q: '이미 다른 곳에서 상담을 받은 적이 있는데, 다시 이용해도 되나요?', a: '물론입니다. 기존 상담 내역과 관계없이 새롭게 채무 상황을 체크하고, 다른 전문가의 의견을 비교해 보실 수 있습니다.' },
+                      { q: '채무가 소액이어도 이용할 수 있나요?', a: '네, 채무 금액에 상관없이 이용 가능합니다. 소액 채무의 경우에도 채무조정, 신용회복 등 적합한 해결 방안을 안내해 드립니다.' },
+                      { q: '상담 내용이 가족이나 직장에 알려질 수 있나요?', a: '절대 알려지지 않습니다. 모든 상담은 스텔스 가명과 암호화된 채널을 통해 진행되며, 제3자에게 정보가 전달되는 일은 없습니다.' },
+                      { q: '서비스 이용 시간에 제한이 있나요?', a: '채무 상황 체크는 24시간 언제든 이용 가능합니다. 변호사 상담의 경우 비실시간 메시지를 남기시면 업무 시간 내에 답변을 받으실 수 있습니다.' },
+                      { q: '회원 탈퇴 후 데이터는 어떻게 처리되나요?', a: '회원 탈퇴 시 개인정보 및 상담 기록은 관련 법령에 따른 보관 기간 경과 후 완전히 삭제됩니다. 탈퇴는 마이페이지에서 간편하게 진행할 수 있습니다.' },
+                    ];
+                    const visibleItems = faqExpanded ? faqItems : faqItems.slice(0, 6);
+                    return visibleItems.map((item, idx) => {
+                      const isOpen = faqOpenId === idx;
+                      return (
+                        <div key={idx} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all">
+                          <button
+                            onClick={() => setFaqOpenId(isOpen ? null : idx)}
+                            className="w-full px-5 py-4 md:py-5 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-white/5 transition-colors"
+                          >
+                            <span className="font-bold text-base md:text-lg text-white">{item.q}</span>
+                            <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          {isOpen && (
+                            <div className="px-5 pb-5 text-sm md:text-base text-slate-300 leading-relaxed animate-slideDown border-t border-white/10 pt-4">
+                              {item.a}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
+                {!faqExpanded && (
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={() => setFaqExpanded(true)}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-sm transition-all cursor-pointer active:scale-[0.98] border border-white/10"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                      더보기
+                    </button>
+                  </div>
+                )}
                 <div className="mt-10 bg-white/5 border border-white/10 rounded-xl p-6 text-center space-y-3">
                   <p className="text-sm md:text-base text-slate-400 font-medium">원하시는 답변을 찾지 못하셨나요?</p>
                   <button
