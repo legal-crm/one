@@ -8,107 +8,108 @@ interface ClientFooterProps {
 }
 
 export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }: ClientFooterProps) {
+  const navItems = [
+    { label: '공지사항', tab: 'notices' },
+    { label: '이용후기', tab: 'reviews' },
+    { label: '변제 시뮬레이션', tab: 'calculator' },
+    { label: '1:1 문의', tab: 'inquiry' },
+  ];
+
   return (
-    <>
-      {/* Babitalk-style Footer (Company Info) */}
-      <div className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-6 md:p-8 text-slate-600 text-left space-y-6">
-        <div className="flex items-center gap-2">
-          <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-6 h-6 rounded-md object-cover opacity-70" />
-          <span className="font-bold text-sm text-slate-600 dark:text-slate-400">{platformConfig.siteLogoText || "주식회사 my김변"}</span>
+    <footer className="w-full bg-[#111827] text-slate-400">
+      {/* ZONE 1: 내비게이션 링크 */}
+      <div className="border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            {navItems.map((item, idx) => (
+              <button
+                key={idx}
+                onClick={() => onNavigate?.(item.tab)}
+                className="text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
         </div>
-        <div className="flex flex-col md:flex-row w-full justify-between items-start gap-4 text-sm text-slate-500 dark:text-slate-500">
-          <div className="flex-1 flex-col justify-start items-start gap-2 inline-flex">
-            <div className="self-stretch justify-start items-center gap-1.5 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400">
-              <span>{platformConfig.siteLogoText || "주식회사 my김변"}</span>
-              <span className="text-slate-300">·</span>
-              <span>대표이사 {platformConfig.companyRepresentative}</span>
-              <span className="text-slate-300">·</span>
-              <span>개인정보 관리책임자 {platformConfig.companyRepresentative}</span>
+      </div>
+
+      {/* ZONE 2: 회사 정보 + 법적 면책 */}
+      <div className="border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+          {/* 브랜드 */}
+          <div className="space-y-4 mb-6">
+            <div className="space-y-1">
+              <p className="text-white font-bold text-sm">채무 해결, 전문가와 함께</p>
+              <p className="text-xs text-slate-500">내 사건에 맞는 변호사를 비교하세요.</p>
             </div>
-            <p className="leading-relaxed">
-              사업자등록번호 {platformConfig.companyBusinessNumber}<br/>
-              통신판매업신고번호 제 2026-서울강남-0000호
-            </p>
-            <p className="leading-relaxed">
-              {platformConfig.companyAddress}<br/>
-              이메일 help@rebirthtalk.com
-            </p>
+            <p className="text-sm font-bold text-slate-300">(주) my김변컴퍼니</p>
           </div>
-          <div className="flex-1 flex-col justify-start items-start md:items-end gap-2 inline-flex">
-            <div className="self-stretch justify-start md:justify-end items-center gap-2 flex flex-wrap font-semibold text-slate-600 dark:text-slate-400 text-sm">
-              {onNavigate && (
-                <>
-                  <span 
-                    onClick={() => onNavigate('notices')}
-                    className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
-                  >
-                    공지사항
-                  </span>
-                  <span className="text-slate-300">·</span>
-                  <span 
-                    onClick={() => onNavigate('calculator')}
-                    className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
-                  >
-                    변제 시뮬레이션
-                  </span>
-                  <span className="text-slate-300">·</span>
-                  <span 
-                    onClick={() => onNavigate('inquiry')}
-                    className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
-                  >
-                    1:1 문의
-                  </span>
-                  <span className="text-slate-300">·</span>
-                </>
-              )}
-              <a 
-                href="/tos.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
-              >
-                서비스 이용약관
-              </a>
-              <span className="text-slate-300">·</span>
-              <a 
-                href="/privacy.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
-              >
-                개인정보 처리방침
-              </a>
-              <span className="text-slate-300">·</span>
-              <a 
-                href="/legal.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cursor-pointer hover:underline hover:text-slate-900 dark:hover:text-white"
-              >
-                법적 고지사항
-              </a>
-            </div>
-            <p className="leading-relaxed text-left md:text-right">
-              {platformConfig.siteLogoText || "my김변"}은 채무 해결 매칭 플랫폼으로서 통신판매의 당사자가 아니며,<br/>
-              제휴 법률사무소가 제공하는 법률 서비스에 대해 어떠한 법적 책임도 지지 않습니다.
+
+          {/* 회사 정보 */}
+          <div className="space-y-1.5 text-xs text-slate-500 leading-relaxed">
+            <p>
+              사업자등록번호 {platformConfig.companyBusinessNumber}
+              <span className="mx-1.5 text-slate-700">|</span>
+              대표이사 {platformConfig.companyRepresentative}
+              <span className="mx-1.5 text-slate-700">|</span>
+              고객문의 help@rebirthtalk.com
+            </p>
+            <p>
+              주소: {platformConfig.companyAddress}
+            </p>
+            <p>통신판매업신고번호 제 2026-서울강남-0000호</p>
+          </div>
+
+          {/* 법적 면책 요약 */}
+          <div className="mt-6 pt-5 border-t border-white/5 space-y-2 text-[11px] text-slate-600 leading-relaxed">
+            <p>
+              본 서비스는 이용자가 자신의 채무·소득·지출 정보를 정리하고, 공개된 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 플랫폼입니다. 플랫폼은 통신판매중개자로서 통신판매의 당사자가 아니며, 변호사회원이 제공하는 법률 서비스의 내용과 질에 대해 법적 책임을 부담하지 않습니다.
+            </p>
+            <p>
+              플랫폼은 변호사법 제34조에 의거 변호사 알선료·수수료 수취를 금지하는 구조를 채택하고 있으며, 광고비는 정액제로 상담 건수·수임 여부·사건 결과와 연동되지 않습니다.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-slate-200 dark:bg-slate-950/80 border-t border-slate-300 dark:border-slate-900 py-6 px-4 text-[13px] text-center text-slate-600 space-y-2">
-        <p>© 2026 개인회생·파산 법률 상담 요청 기반 Legal CRM SaaS 플랫폼 my김변(마이김변). All rights reserved.</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-left md:text-center max-w-4xl mx-auto">
-          본 서비스는 이용자가 자신의 채무·소득·지출 정보를 정리하고, 공개된 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 플랫폼입니다.
-        </p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1 text-left md:text-center max-w-4xl mx-auto">
-          플랫폼은 개인회생·파산 신청요건을 판단하거나 특정 전문가를 추천·배정하지 않습니다. 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결되며, 플랫폼은 전문가의 상담 내용, 업무 수행 결과를 보장하지 않습니다.
-        </p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1 text-left md:text-center max-w-4xl mx-auto">
-          본 플랫폼은 변호사법 제34조에 의거 변호사 알선료, 수수료 수취를 금지하는 공공 가이드라인 구조를 채택해 운영 중입니다. 광고비는 정액제이며 상담 건수·수임 여부·사건 결과와 연동되지 않습니다.
-        </p>
-      </footer>
-    </>
+      {/* ZONE 3: 하단 바 */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* 약관 링크 */}
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+            <a
+              href="/tos.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-white transition-colors font-medium"
+            >
+              서비스 이용약관
+            </a>
+            <a
+              href="/privacy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-white transition-colors font-bold"
+            >
+              개인정보 처리방침
+            </a>
+            <a
+              href="/legal.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-white transition-colors font-medium"
+            >
+              법적 고지사항
+            </a>
+          </div>
+
+          {/* 저작권 */}
+          <p className="text-[11px] text-slate-600">
+            © 2026 my김변(마이김변). All rights reserved.
+          </p>
+        </div>
+      </div>
+    </footer>
   );
 }
