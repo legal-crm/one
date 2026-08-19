@@ -2147,13 +2147,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       지금 무료로 체크하기 →
                     </button>
                   </div>
-                  {/* 우측: 스마트폰 목업 */}
+                  {/* 우측: 스마트폰 목업 (잘린 화면 스타일) */}
                   <div className="flex justify-center">
-                    <div className="w-[280px] sm:w-[300px] rounded-[2.5rem] border-[8px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-                      <div className="bg-slate-800 h-6 flex items-center justify-center">
-                        <div className="w-16 h-3 bg-slate-700 rounded-full" />
-                      </div>
-                      <div className="bg-[#F8FAFC] p-3 space-y-2.5 min-h-[380px]">
+                    <div className="w-[300px] sm:w-[320px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+                      <div className="bg-[#F8FAFC] p-3 space-y-2.5">
                         <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 bg-[#7264FF] rounded-lg flex items-center justify-center text-white text-xs font-bold">김</div>
@@ -2259,10 +2256,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   {/* 좌측: 텍스트 */}
                   <div className="space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">03</div>
-                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">신뢰할 수 있는 전문가를<br />직접 비교하세요</h3>
-                    <p className="text-base text-slate-600 leading-relaxed font-medium">회생·파산 전문 변호사의 경력, 전문 분야, 실제 의뢰인 후기를 한눈에 비교하고 원하는 전문가를 직접 선택합니다.</p>
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">여러 전문가의 답변을<br />직접 비교하세요</h3>
+                    <p className="text-base text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 전문가를 선택하세요.</p>
                     <div className="flex flex-wrap gap-3 text-sm">
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4 h-4" />전문 분야별 필터</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4 h-4" />여러 변호사 답변 비교</span>
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Star className="w-4 h-4" />실제 의뢰인 후기</span>
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Heart className="w-4 h-4" />강요 없는 자율 선택</span>
                     </div>
@@ -2273,24 +2270,31 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       전문가 프로필 둘러보기 →
                     </button>
                   </div>
-                  {/* 우측: 변호사 프로필 목업 */}
+                  {/* 우측: 변호사 상담 답변 목업 */}
                   <div className="flex justify-center">
-                    <div className="w-full max-w-[360px] space-y-3">
+                    <div className="w-full max-w-[380px] space-y-3">
+                      <div className="bg-[#EEF4FA] rounded-xl px-4 py-3 text-center">
+                        <p className="text-xs font-bold text-[#1E3A5F]">📋 내 사건에 도착한 전문가 답변 <span className="text-[#0D9488]">3건</span></p>
+                      </div>
                       {[
-                        { name: '김도현', specialty: '개인회생 전문', region: '서울', rating: '4.9', cases: '127건', color: 'bg-[#1E3A5F]' },
-                        { name: '박서연', specialty: '파산·면책 전문', region: '경기', rating: '4.8', cases: '89건', color: 'bg-[#0D9488]' },
-                        { name: '이정훈', specialty: '채무조정 전문', region: '부산', rating: '4.9', cases: '156건', color: 'bg-[#3B82F6]' },
+                        { name: '김도현', specialty: '개인회생 전문', answer: '회생 신청이 적합합니다. 현재 소득 대비 채무 비율을 보면 월 38만원 수준의 변제 계획이 가능합니다.', time: '15분 전', color: 'bg-[#1E3A5F]' },
+                        { name: '박서연', specialty: '파산·면책 전문', answer: '파산도 고려해 보실 수 있습니다. 면책 가능성이 높으며, 상세 상담 시 구체적 절차를 안내드리겠습니다.', time: '32분 전', color: 'bg-[#0D9488]' },
+                        { name: '이정훈', specialty: '채무조정 전문', answer: '채무 구조를 보면 회생이 유리합니다. 금지명령을 통해 추심도 즉시 중단할 수 있습니다.', time: '1시간 전', color: 'bg-[#3B82F6]' },
                       ].map((lawyer, idx) => (
-                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-default">
-                          <div className={`w-12 h-12 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{lawyer.name.charAt(0)}</div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2.5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-default">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0`}>{lawyer.name.charAt(0)}</div>
+                            <div className="flex-1 min-w-0">
                               <p className="font-bold text-sm text-slate-900">{lawyer.name} 변호사</p>
-                              <span className="text-[10px] font-bold text-amber-500 flex items-center gap-0.5">★ {lawyer.rating}</span>
+                              <p className="text-[10px] text-slate-500 font-medium">{lawyer.specialty} · {lawyer.time}</p>
                             </div>
-                            <p className="text-xs text-slate-500 font-medium">{lawyer.specialty} · {lawyer.region} · 누적 {lawyer.cases}</p>
+                            <span className="text-[10px] font-bold text-amber-500">★ 4.9</span>
                           </div>
-                          <div className="text-xs font-bold text-[#1E3A5F] bg-[#EEF4FA] px-3 py-1.5 rounded-lg shrink-0 whitespace-nowrap">프로필</div>
+                          <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 rounded-xl p-3">{lawyer.answer}</p>
+                          <div className="flex gap-2">
+                            <button className="flex-1 text-[11px] font-bold text-[#1E3A5F] bg-[#EEF4FA] py-2 rounded-lg cursor-default whitespace-nowrap">프로필 보기</button>
+                            <button className="flex-1 text-[11px] font-bold text-white bg-[#1E3A5F] py-2 rounded-lg cursor-default whitespace-nowrap">상담 시작</button>
+                          </div>
                         </div>
                       ))}
                       {/* <!-- mock --> */}
@@ -2306,11 +2310,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
                   {/* 좌측: 채팅 목업 (lg에서 좌측) */}
                   <div className="order-2 lg:order-1 flex justify-center">
-                    <div className="w-[280px] sm:w-[300px] rounded-[2.5rem] border-[8px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-                      <div className="bg-slate-800 h-6 flex items-center justify-center">
-                        <div className="w-16 h-3 bg-slate-700 rounded-full" />
-                      </div>
-                      <div className="bg-white min-h-[380px] flex flex-col">
+                    <div className="w-[300px] sm:w-[320px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+                      <div className="bg-white flex flex-col">
                         {/* 채팅 헤더 */}
                         <div className="bg-[#1E3A5F] px-4 py-3 flex items-center gap-3">
                           <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">김</div>
@@ -2339,7 +2340,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                           <div className="flex gap-2">
                             <div className="w-6 h-6 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 mt-0.5">김</div>
                             <div className="bg-white rounded-xl rounded-tl-md px-3 py-2 max-w-[80%] shadow-sm">
-                              <p className="text-xs text-slate-700 leading-relaxed">네, 서류 목록을 정리해서 보내드리겠습니다. 파일 공유도 가능합니다.</p>
+                              <p className="text-xs text-slate-700 leading-relaxed">네, 서류 목록을 정리해서 안내드리겠습니다. 궁금한 점은 언제든 편하게 질문해 주세요.</p>
                             </div>
                           </div>
                         </div>
