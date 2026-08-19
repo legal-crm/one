@@ -2622,104 +2622,32 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               );
             })()}
 
-            {/* ── Sector 6: 해결 경로 비교 ─────────────────── */}
-            <section className="w-full py-6 md:py-14 bg-white border-b border-slate-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* ── Sector 6: 채무조정 방법 ─────────────────── */}
+            <section className="w-full py-8 md:py-14 bg-white border-b border-slate-200">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="space-y-6 text-center">
-              <div className="space-y-1">
-                <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
-                  채무조정 관련 제도 알아보기
-                </h3>
-                <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium">
-                  아래 항목은 추천 순서가 아니며, 개인별 이용 가능 여부를 판단하지 않습니다.
-                </p>
-              </div>
+              <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
+                채무조정 방법 알아보기
+              </h3>
 
-              <div className="flex flex-wrap justify-center gap-2.5 md:gap-5 text-left">
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
                 {([
-                  {
-                    type: 'rehab' as SolutionType,
-                    icon: '⚖️',
-                    title: '개인회생',
-                    badge: '법원 채무조정 절차',
-                    badgeColor: 'bg-teal-500/15 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
-                    accentColor: 'from-teal-500 to-teal-400',
-                    iconBg: 'bg-teal-500/10 dark:bg-teal-900/30',
-                    borderColor: 'border-teal-300/60 dark:border-teal-800/40',
-                    sub: '법원이 운영하는 채무조정 절차',
-                    desc: '법원이 인가한 변제계획에 따라 3~5년간 변제하면 남은 채무에 대해 면책을 받을 수 있는 절차입니다. 감면 범위는 개인 상황에 따라 다릅니다.'
-                  },
-                  {
-                    type: 'bankruptcy' as SolutionType,
-                    icon: '🔓',
-                    title: '개인파산',
-                    badge: '법원 면책 절차',
-                    badgeColor: 'bg-[#1E3A5F]/10 text-[#1E3A5F] dark:bg-slate-700/40 dark:text-slate-300',
-                    accentColor: 'from-[#1E3A5F] to-[#2a4d7a]',
-                    iconBg: 'bg-[#1E3A5F]/10 dark:bg-slate-800/30',
-                    borderColor: 'border-[#1E3A5F]/30 dark:border-slate-700/40',
-                    sub: '법원의 파산·면책 심사 절차',
-                    desc: '소득 활동이 어렵고 재산이 거의 없는 경우, 법원 심사를 거쳐 채무에 대한 면책 결정을 받을 수 있는 절차입니다. 면책 여부는 법원이 판단합니다.'
-                  },
-                  {
-                    type: 'credit' as SolutionType,
-                    icon: '🏦',
-                    title: '신용회복',
-                    badge: '협약 금융회사 채무조정',
-                    badgeColor: 'bg-teal-500/15 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
-                    accentColor: 'from-teal-400 to-teal-300',
-                    iconBg: 'bg-teal-500/10 dark:bg-teal-900/30',
-                    borderColor: 'border-teal-300/60 dark:border-teal-800/40',
-                    sub: '신용회복위원회가 운영하는 채무조정 제도',
-                    desc: '신용회복위원회를 통해 이자 감면, 상환 기간 조정 등의 채무조정을 신청할 수 있는 제도입니다. 조정 내용은 심사 결과에 따라 달라집니다.'
-                  },
-                  {
-                    type: 'representation' as SolutionType,
-                    icon: '🛡️',
-                    title: '채무자대리',
-                    badge: '추심 대응 제도',
-                    badgeColor: 'bg-[#1E3A5F]/10 text-[#1E3A5F] dark:bg-slate-700/40 dark:text-slate-300',
-                    accentColor: 'from-[#1E3A5F] to-[#163152]',
-                    iconBg: 'bg-[#1E3A5F]/10 dark:bg-slate-800/30',
-                    borderColor: 'border-[#1E3A5F]/30 dark:border-slate-700/40',
-                    sub: '채권추심 대응과 관련된 제도',
-                    desc: '변호사를 채무자대리인으로 선임하면 채권자는 채무자에게 직접 연락할 수 없게 됩니다. 대리인 선임 절차와 효과는 개별 사안에 따라 다를 수 있습니다.'
-                  },
-                  {
-                    type: 'tax' as SolutionType,
-                    icon: '📊',
-                    title: '세금체납 관리',
-                    badge: '체납처분 및 납부 관련 정보',
-                    badgeColor: 'bg-teal-500/15 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
-                    accentColor: 'from-teal-500 to-teal-300',
-                    iconBg: 'bg-teal-500/10 dark:bg-teal-900/30',
-                    borderColor: 'border-teal-300/60 dark:border-teal-800/40',
-                    sub: '체납처분 및 납부 지원제도 일반정보',
-                    desc: '체납 세금의 징수권 소멸시효 만료 여부, 압류 적법성 등을 확인할 수 있습니다. 구체적인 판단은 전문가 상담이 필요합니다.'
-                  }
+                  { type: 'rehab' as SolutionType, icon: '⚖️', title: '개인회생' },
+                  { type: 'bankruptcy' as SolutionType, icon: '🔓', title: '개인파산' },
+                  { type: 'credit' as SolutionType, icon: '🏦', title: '신용회복' },
+                  { type: 'representation' as SolutionType, icon: '🛡️', title: '채무자대리' },
+                  { type: 'tax' as SolutionType, icon: '📊', title: '세금체납' },
                 ]).map((item, idx) => (
-                  <div key={idx} onClick={() => setActiveSolutionType(item.type)} className={`cursor-pointer bg-white dark:bg-slate-900 border ${item.borderColor} rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-lg transition-all hover-lift-sm transition-card group overflow-hidden w-[calc(50%-6px)] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]`}>
-                    <div className={`h-1 w-full bg-gradient-to-r ${item.accentColor}`} />
-                    <div className="p-3 md:p-6 flex flex-col justify-between flex-1 space-y-2 md:space-y-4">
-                      <div className="space-y-1.5 md:space-y-3">
-                        <div className="flex items-center gap-2 md:gap-3">
-                          <div className={`w-8 h-8 md:w-11 md:h-11 rounded-lg md:rounded-xl ${item.iconBg} flex items-center justify-center text-base md:text-xl shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                            <span className="drop-shadow-sm">{item.icon}</span>
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="font-bold text-[13px] md:text-base text-slate-900 dark:text-white">{item.title}</h4>
-                            <span className={`text-[9px] md:text-[12px] font-bold px-1.5 md:px-2 py-0.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>
-                          </div>
-                        </div>
-                        <p className="text-[11px] md:text-sm text-[#3B82F6] font-semibold leading-snug">{item.sub}</p>
-                        <p className="hidden md:block text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
-                      </div>
-                      <span className="hidden md:flex text-[13px] font-bold text-[#1E3A5F]/50 group-hover:text-[#1E3A5F] transition-colors items-center gap-1.5 pt-1">
-                        자세히 보기
-                        <span className="transition-transform group-hover:translate-x-1">→</span>
-                      </span>
+                  <button
+                    key={idx}
+                    onClick={() => setActiveSolutionType(item.type)}
+                    className="flex flex-col items-center gap-2.5 py-4 md:py-5 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 transition-all cursor-pointer active:scale-[0.97] group"
+                  >
+                    <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white flex items-center justify-center text-xl md:text-2xl shadow-sm group-hover:scale-110 transition-transform duration-200">
+                      {item.icon}
                     </div>
-                  </div>
+                    <span className="text-xs md:text-sm font-bold text-slate-700">{item.title}</span>
+                  </button>
                 ))}
               </div>
             </div>
