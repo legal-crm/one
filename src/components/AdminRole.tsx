@@ -4571,6 +4571,21 @@ export default function AdminRole({
                         <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformConfig.showDiagnosisReport ? 'translate-x-6' : 'translate-x-0.5'}`} />
                       </button>
                     </div>
+
+                    {/* 법률 정보 노출 토글 */}
+                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <div className="space-y-1">
+                        <div className="font-bold text-sm text-slate-900 dark:text-white">법률 정보 칼럼 노출</div>
+                        <div className="text-[12px] text-slate-500">랜딩페이지에 '알아두면 좋을 법률 정보' 섹션의 노출 여부를 제어합니다.</div>
+                        <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">ℹ️ OFF 상태에서는 랜딩 하단에 법률 정보 칼럼이 표시되지 않습니다.</div>
+                      </div>
+                      <button
+                        onClick={() => setPlatformConfig(prev => ({ ...prev, showLegalNews: !prev.showLegalNews }))}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${platformConfig.showLegalNews ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                      >
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${platformConfig.showLegalNews ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 

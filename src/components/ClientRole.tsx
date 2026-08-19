@@ -3052,13 +3052,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             </section>
 
             {/* ── 서비스 FAQ ─────────────── */}
-            <section className="w-full py-10 md:py-16 bg-slate-50 border-y border-slate-200">
+            <section className="w-full py-14 md:py-20 bg-[#0F172A]">
               <div className="max-w-3xl mx-auto px-4 sm:px-6">
-                <div className="text-center space-y-2 mb-8">
-                  <h3 className="text-xl md:text-2xl font-bold text-[#0f172a] tracking-tight">
+                <div className="text-center space-y-3 mb-10">
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
                     자주 묻는 질문
                   </h3>
-                  <p className="text-sm text-slate-500 font-medium">
+                  <p className="text-sm md:text-base text-slate-400 font-medium">
                     서비스 이용에 대해 궁금한 점을 확인하세요
                   </p>
                 </div>
@@ -3068,21 +3068,21 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     { q: '제 개인정보가 노출되지 않나요?', a: '스텔스 가명 시스템을 통해 실명이나 연락처 없이 상담이 진행됩니다. 변호사에게도 가명만 공개되며, 모든 데이터는 SSL/TLS 암호화로 보호됩니다.' },
                     { q: '상담을 받으면 반드시 변호사를 선임해야 하나요?', a: '아닙니다. 상담 후 선임 여부는 전적으로 의뢰인의 자유입니다. 마음에 드는 전문가가 없을 경우 진행하지 않으셔도 불이익이 전혀 없습니다.' },
                     { q: '어떤 변호사들이 등록되어 있나요?', a: '회생·파산 분야에서 실무 경험이 풍부한 전문 변호사만 등록되어 있으며, 프로필에서 경력, 전문 분야, 실제 의뢰인 후기를 직접 확인할 수 있습니다.' },
-                    { q: '상담은 어떤 방식으로 진행되나요?', a: '1:1 프라이빗 상담방에서 텍스트 채팅 또는 파일 공유로 진행됩니다. 실시간 또는 비실시간 모두 가능하며, 변호사가 직접 답변합니다.' },
+                    { q: '상담은 어떤 방식으로 진행되나요?', a: '1:1 프라이빗 상담방에서 텍스트 채팅으로 진행됩니다. 실시간 또는 비실시간 모두 가능하며, 변호사가 직접 답변합니다.' },
                     { q: '회생/파산 외에 다른 채무 해결 방법도 안내받을 수 있나요?', a: '네, 채무 상황 체크 결과에 따라 개인회생, 개인파산, 신용회복, 채무조정 등 다양한 방안을 비교해 드립니다. 가장 유리한 방법을 전문가가 안내합니다.' },
                   ].map((item, idx) => {
                     const isOpen = faqOpenId === idx;
                     return (
-                      <div key={idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden transition-all">
+                      <div key={idx} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all">
                         <button
                           onClick={() => setFaqOpenId(isOpen ? null : idx)}
-                          className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-slate-50 transition-colors"
+                          className="w-full px-5 py-4 md:py-5 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-white/5 transition-colors"
                         >
-                          <span className="font-semibold text-sm text-slate-900">{item.q}</span>
-                          <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                          <span className="font-bold text-base md:text-lg text-white">{item.q}</span>
+                          <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                         </button>
                         {isOpen && (
-                          <div className="px-5 pb-4 text-sm text-slate-600 leading-relaxed animate-slideDown border-t border-slate-100 pt-3">
+                          <div className="px-5 pb-5 text-sm md:text-base text-slate-300 leading-relaxed animate-slideDown border-t border-white/10 pt-4">
                             {item.a}
                           </div>
                         )}
@@ -3090,11 +3090,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     );
                   })}
                 </div>
-                <div className="mt-8 bg-white border border-slate-200 rounded-xl p-5 text-center space-y-3">
-                  <p className="text-sm text-slate-600 font-medium">원하시는 답변을 찾지 못하셨나요?</p>
+                <div className="mt-10 bg-white/5 border border-white/10 rounded-xl p-6 text-center space-y-3">
+                  <p className="text-sm md:text-base text-slate-400 font-medium">원하시는 답변을 찾지 못하셨나요?</p>
                   <button
                     onClick={() => { setActiveTab('inquiry'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#EEF4FA] font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-white/20 text-white hover:bg-white/10 font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer"
                   >
                     <HelpCircle className="w-4 h-4" />
                     1:1 고객 문의하기
@@ -3103,7 +3103,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </div>
             </section>
 
-            {/* ── Sector 9: 법률 정보 ─────────────────────── */}
+            {/* ── Sector 9: 법률 정보 (어드민에서 노출 설정) ─────────────────────── */}
+            {platformConfig.showLegalNews && (
             <section className="w-full py-10 md:py-14 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* 6. Legal News & Tips Section */}
@@ -3186,6 +3187,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             </div>
             </section>
+            )}
 
             {/* ── Final CTA Banner (풀위드) ─────────────── */}
             <section className="w-full bg-gradient-to-r from-[#0F2440] via-[#1E3A5F] to-[#0F2440] py-12 md:py-16">

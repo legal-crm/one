@@ -1166,6 +1166,7 @@ export interface PlatformConfig {
   termsOfService: string;
   privacyPolicy: string;
   showDiagnosisReport: boolean;
+  showLegalNews: boolean;
 }
 
 // --- Diagnosis (진단) Types ---
