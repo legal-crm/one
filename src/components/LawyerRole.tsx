@@ -1592,212 +1592,151 @@ export default function LawyerRole({
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white">
-      <div className="w-full max-w-[1024px] min-h-screen mx-auto bg-slate-50 border-x border-slate-200 shadow-2xl flex flex-col relative">
+      <div className="w-full min-h-screen flex flex-col relative">
       
-        {/* Lawyer CRM Premium Header */}
-        <header className="sticky top-0 z-40 bg-white backdrop-blur-md border-b border-slate-200 shadow-xl px-4 py-3">
-          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
+        {/* ── Top Header Bar (다크 네이비) ── */}
+        <header className="sticky top-0 z-40 bg-[#1E293B] h-14 px-4 lg:px-6 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <img 
+              src="./mykim_logo.png" 
+              alt="my김변 로고" 
+              className="w-8 h-8 rounded-lg object-cover" 
+            />
+            <div className="flex flex-col items-start leading-none">
+              <span className="font-extrabold text-sm text-white tracking-tight">my김변</span>
+              <span className="text-[11px] text-slate-400 font-medium">변호사 관리 시스템</span>
+            </div>
+            {activeLawyer.firmName && (
+              <span className="text-slate-400 text-xs hidden md:inline ml-2 border-l border-slate-600 pl-3">
+                {activeLawyer.firmName}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <img 
-                src="./mykim_logo.png" 
-                alt="my김변 로고" 
-                className="w-10 h-10 rounded-xl object-cover shadow-sm shadow-brand/20 hover:scale-105 transition-transform" 
+                src={activeLawyer.avatar} 
+                alt={activeLawyer.name} 
+                className="w-7 h-7 rounded-full object-cover border border-white/20" 
               />
-              <div className="flex flex-col items-start leading-none">
-                <span className="font-extrabold text-base text-slate-900 flex items-center gap-1 font-brand tracking-tight">
-                  my김변
-                </span>
-                <span className="text-[13px] text-slate-500 mt-0.5 font-medium">
-                  나의 채무관리 변호사
-                </span>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-bold text-white leading-none">{activeLawyer.name}</span>
+                <span className="text-[11px] text-slate-400 mt-0.5">{activeLawyer.role}</span>
               </div>
-              {activeLawyer.firmName && (
-                <span className="text-slate-700 text-xs hidden sm:inline ml-2 border-l border-slate-200 pl-3">
-                  {activeLawyer.firmName}
-                </span>
-              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <img 
-                  src={activeLawyer.avatar} 
-                  alt={activeLawyer.name} 
-                  className="w-7 h-7 rounded-full object-cover border border-brand/30" 
-                />
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold text-slate-700 leading-none">{activeLawyer.name}</span>
-                  <span className="text-[11px] text-slate-500 mt-0.5">{activeLawyer.role}</span>
-                </div>
-              </div>
-
-              <NotificationBell
-                tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-                userId={activeStaffMember?.id || activeLawyer.id}
-              />
-              
-              <button 
-                onClick={handleLogout}
-                className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-450 hover:text-slate-800 px-2.5 py-1.5 rounded-[200px] border border-slate-200 text-[12px] transition-colors"
-              >
-                <LogOut className="w-3 h-3" />
-                <span>로그아웃</span>
-              </button>
-            </div>
+            <NotificationBell
+              tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+              userId={activeStaffMember?.id || activeLawyer.id}
+            />
           </div>
         </header>
 
-        {/* Primary tab navigation row — RBAC 가드 적용 */}
-        <div className="bg-white border-b border-slate-200 px-4">
-          <div className="w-full flex overflow-x-auto gap-4 py-2 text-xs font-semibold scrollbar-hide">
-            {permissionCtx.canAccessTab('dashboard') && (
-              <button 
-                onClick={() => setActiveTab('dashboard')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'dashboard' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <BarChart2 className="w-4 h-4" />
-                <span>종합 대시보드</span>
-              </button>
-            )}
-            
-            {permissionCtx.canAccessTab('open-requests') && (
-              <button 
-                onClick={() => setActiveTab('open-requests')}
-                className={`relative pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'open-requests' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <Briefcase className="w-4 h-4" />
-                <span>신규 상담 요청</span>
-                {totalOpenRequestsCount > 0 && (
-                  <span className="bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[11px] animate-pulse">
-                    {totalOpenRequestsCount}
-                  </span>
-                )}
-              </button>
-            )}
+        {/* ── Body: Sidebar + Main Content ── */}
+        <div className="flex flex-1 overflow-hidden">
 
-            <button onClick={() => setActiveTab('chat')} className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'chat' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-            }`}>
-              💬 상담채팅
-              {requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && (r.acceptedLawyerIds || []).includes(activeLawyer.id)).length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 bg-brand/10 text-brand rounded-full text-[10px] font-bold">
-                  {requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && (r.acceptedLawyerIds || []).includes(activeLawyer.id)).length}
-                </span>
+          {/* ── Sidebar (Desktop/Tablet) ── */}
+          <aside className="hidden lg:flex w-56 bg-[#111827] flex-col shrink-0 overflow-y-auto">
+            <nav className="flex-1 py-4 px-3 space-y-1">
+              {/* 그룹 1: 업무 */}
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-2">업무</p>
+              {permissionCtx.canAccessTab('dashboard') && (
+                <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <BarChart2 className="w-4 h-4 shrink-0" /><span>종합 대시보드</span>
+                </button>
               )}
+              {permissionCtx.canAccessTab('open-requests') && (
+                <button onClick={() => setActiveTab('open-requests')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'open-requests' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <Briefcase className="w-4 h-4 shrink-0" /><span>신규 상담 요청</span>
+                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{totalOpenRequestsCount}</span>)}
+                </button>
+              )}
+              <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                <MessageSquare className="w-4 h-4 shrink-0" /><span>상담 채팅</span>
+                {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && (r.acceptedLawyerIds || []).includes(activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-brand/80 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{c}</span>) : null; })()}
+              </button>
+              {permissionCtx.canAccessTab('client-crm') && (
+                <button onClick={() => setActiveTab('client-crm')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'client-crm' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <Users className="w-4 h-4 shrink-0" /><span>고객 관리 (CRM)</span>
+                  <span className="ml-auto text-[10px] text-slate-500 font-bold">{requests.length}</span>
+                </button>
+              )}
+              {permissionCtx.canAccessTab('cases') && (
+                <button onClick={() => setActiveTab('cases')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'cases' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <FolderHeart className="w-4 h-4 shrink-0" /><span>수임 사건 관리</span>
+                  <span className="ml-auto text-[10px] text-slate-500 font-bold">{totalCasesCount}</span>
+                </button>
+              )}
+
+              {/* 그룹 2: AI 도구 */}
+              <div className="pt-3 pb-1"><div className="border-t border-slate-700/50" /></div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-1">AI 도구</p>
+              {permissionCtx.canAccessTab('case-copilot') && (
+                <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <Microscope className="w-4 h-4 shrink-0" /><span>사건 검토 AI</span>
+                </button>
+              )}
+              <button onClick={() => setActiveTab('qna-answer')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all relative ${activeTab === 'qna-answer' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                <ListCheck className="w-4 h-4 shrink-0" /><span>고민상담 Q&A</span>
+                {qas && (() => { const w = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length; return w > 0 ? (<span className="ml-auto bg-orange-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{w}</span>) : null; })()}
+              </button>
+
+              {/* 그룹 3: 관리 */}
+              <div className="pt-3 pb-1"><div className="border-t border-slate-700/50" /></div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-1">관리</p>
+              {permissionCtx.canAccessTab('billing') && (
+                <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <CreditCard className="w-4 h-4 shrink-0" /><span>요금제 / 빌링</span>
+                </button>
+              )}
+              {permissionCtx.canAccessTab('staff-management') && (
+                <button onClick={() => setActiveTab('staff-management')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all relative ${activeTab === 'staff-management' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <Shield className="w-4 h-4 shrink-0" /><span>직원 관리</span>
+                  {(() => { const p = staffMembers.filter(m => m.status === 'pending').length; return p > 0 ? (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold animate-pulse">{p}</span>) : null; })()}
+                </button>
+              )}
+              {permissionCtx.canAccessTab('settings') && (
+                <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
+                  <Settings className="w-4 h-4 shrink-0" /><span>알림 및 설정</span>
+                </button>
+              )}
+            </nav>
+
+            {/* 사이드바 하단: 로그아웃 + 버전 */}
+            <div className="px-3 py-4 border-t border-slate-700/50 space-y-2">
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all"
+              >
+                <LogOut className="w-4 h-4 shrink-0" /><span>로그아웃</span>
+              </button>
+              <p className="text-[10px] text-slate-600 px-3">v2.6.0</p>
+            </div>
+          </aside>
+
+          {/* ── Main Content Area ── */}
+          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-6 py-5">
+
+          {/* ── Mobile Bottom Tab Bar ── */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around">
+            <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'text-brand' : 'text-slate-400'}`}>
+              <BarChart2 className="w-5 h-5" /><span className="text-[10px] font-bold">대시보드</span>
             </button>
-
-            {permissionCtx.canAccessTab('client-crm') && (
-              <button 
-                onClick={() => setActiveTab('client-crm')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'client-crm' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                <span>고객 관리 (CRM)</span>
-                <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 text-[11px]">
-                  {requests.length}
-                </span>
-              </button>
-            )}
-
-            {permissionCtx.canAccessTab('cases') && (
-              <button 
-                onClick={() => setActiveTab('cases')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'cases' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <FolderHeart className="w-4 h-4" />
-                <span>진행 중인 수임 사건 (SaaS)</span>
-                <span className="bg-slate-100 text-slate-600 rounded-full px-1.5 text-[11px]">
-                  {totalCasesCount}
-                </span>
-              </button>
-            )}
-
-            {permissionCtx.canAccessTab('billing') && (
-              <button 
-                onClick={() => setActiveTab('billing')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'billing' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>이용 요금제 / 빌링</span>
-              </button>
-            )}
-
-            {permissionCtx.canAccessTab('case-copilot') && (
-              <button 
-                onClick={() => setActiveTab('case-copilot')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'case-copilot' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <Microscope className="w-4 h-4" />
-                <span>사건검토</span>
-              </button>
-            )}
-
-            <button 
-              onClick={() => setActiveTab('qna-answer')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 relative ${
-                activeTab === 'qna-answer' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>고민상담 Q&A</span>
-              {qas && (() => {
-                const waitingCount = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length;
-                return waitingCount > 0 ? (
-                  <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg">
-                    {waitingCount}
-                  </span>
-                ) : null;
-              })()}
+            <button onClick={() => setActiveTab('open-requests')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors relative ${activeTab === 'open-requests' ? 'text-brand' : 'text-slate-400'}`}>
+              <Briefcase className="w-5 h-5" /><span className="text-[10px] font-bold">신규요청</span>
+              {totalOpenRequestsCount > 0 && (<span className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">{totalOpenRequestsCount}</span>)}
             </button>
-
-            {permissionCtx.canAccessTab('staff-management') && (
-              <button 
-                onClick={() => setActiveTab('staff-management')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 relative ${
-                  activeTab === 'staff-management' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                <span>직원 관리</span>
-                {(() => {
-                  const pendingCount = staffMembers.filter(m => m.status === 'pending').length;
-                  return pendingCount > 0 ? (
-                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg">
-                      {pendingCount}
-                    </span>
-                  ) : null;
-                })()}
-              </button>
-            )}
-
-            {permissionCtx.canAccessTab('settings') && (
-              <button 
-                onClick={() => setActiveTab('settings')}
-                className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                  activeTab === 'settings' ? 'border-brand text-brand font-extrabold' : 'border-transparent text-slate-450 hover:text-slate-800'
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                <span>알림 및 연동 설정</span>
-              </button>
-            )}
+            <button onClick={() => setActiveTab('chat')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${activeTab === 'chat' ? 'text-brand' : 'text-slate-400'}`}>
+              <MessageSquare className="w-5 h-5" /><span className="text-[10px] font-bold">채팅</span>
+            </button>
+            <button onClick={() => setActiveTab('client-crm')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${activeTab === 'client-crm' ? 'text-brand' : 'text-slate-400'}`}>
+              <Users className="w-5 h-5" /><span className="text-[10px] font-bold">CRM</span>
+            </button>
+            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${!['dashboard','open-requests','chat','client-crm'].includes(activeTab) ? 'text-brand' : 'text-slate-400'}`}>
+              <Settings className="w-5 h-5" /><span className="text-[10px] font-bold">더보기</span>
+            </button>
           </div>
-        </div>
-
-        {/* Main Workspace Frame */}
-        <main className="flex-1 w-full px-4 py-6 overflow-y-auto">
 
         {/* TAB 1: LAWYER DASHBOARD */}
         {activeTab === 'dashboard' && (
@@ -4188,30 +4127,7 @@ export default function LawyerRole({
         )}
 
       </main>
-
-      {/* Sub status footer */}
-      <footer className="bg-white border-t border-slate-200 px-6 py-6 text-left text-[12px] text-slate-600 space-y-3">
-        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-slate-500">
-              <span>{platformConfig.siteLogoText || "주식회사 my김변"}</span>
-              <span>|</span>
-              <span>대표이사 {platformConfig.companyRepresentative}</span>
-              <span>|</span>
-              <span>사업자등록번호 {platformConfig.companyBusinessNumber}</span>
-            </div>
-            <p className="leading-relaxed">
-              주소: {platformConfig.companyAddress} | 이메일: partners@rebirthtalk.com
-            </p>
-            <p className="leading-relaxed">
-              본 플랫폼의 매출 구조는 변호사법 제34조 정식 원칙 가이드(활동 기반 월 고정 구독료 책정)를 철저하게 이행합니다.
-            </p>
-          </div>
-          <div className="md:text-right shrink-0">
-            <p>© 2026 {platformConfig.siteLogoText || "my김변"} 도산 전문 변호사 CRM. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      </div>{/* close flex body */}
 
       {/* ── 고객 제안서 초안 모달 (통합: LawyerProposalDraft) ── */}
       {proposalModalReqId && proposalRehabResult && proposalRehabInput && (
