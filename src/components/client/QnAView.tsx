@@ -1,9 +1,27 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, AlertTriangle, Eye, ChevronDown, ChevronUp, ArrowLeft, Star, Plus, Lock, Send, MessageSquare, HelpCircle } from 'lucide-react';
+import { Search, X, AlertTriangle, Eye, ChevronDown, ChevronUp, ArrowLeft, Star, Plus, Lock, Send, MessageSquare, HelpCircle, TrendingDown, Banknote, Briefcase, Users, Home, CreditCard, Store, GraduationCap, ShieldBan, FileCheck, Hammer, Clock, BarChart3, LayoutGrid } from 'lucide-react';
 import { ClientQA } from '../../types';
 import { toast } from 'sonner';
 
 const QNA_CATEGORIES = ['전체', '코인/주식 손실', '급여 압류', '프리랜서 회생', '배우자 재산', '전세사기 피해', '최근 대출 회생', '자영업자 회생', '전문직 면허보존', '추심 차단', '개인파산 면책', '일용직 소득증빙', '보정권고 지연', '해외선물/주식'];
+
+const CATEGORY_ICONS: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  '전체':           { icon: LayoutGrid,   color: 'text-slate-600',   bg: 'bg-slate-100' },
+  '코인/주식 손실':  { icon: TrendingDown, color: 'text-red-600',     bg: 'bg-red-50' },
+  '급여 압류':       { icon: Banknote,     color: 'text-amber-600',   bg: 'bg-amber-50' },
+  '프리랜서 회생':   { icon: Briefcase,    color: 'text-violet-600',  bg: 'bg-violet-50' },
+  '배우자 재산':     { icon: Users,        color: 'text-pink-600',    bg: 'bg-pink-50' },
+  '전세사기 피해':   { icon: Home,         color: 'text-orange-600',  bg: 'bg-orange-50' },
+  '최근 대출 회생':  { icon: CreditCard,   color: 'text-blue-600',    bg: 'bg-blue-50' },
+  '자영업자 회생':   { icon: Store,        color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  '전문직 면허보존': { icon: GraduationCap, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  '추심 차단':       { icon: ShieldBan,    color: 'text-rose-600',    bg: 'bg-rose-50' },
+  '개인파산 면책':   { icon: FileCheck,    color: 'text-teal-600',    bg: 'bg-teal-50' },
+  '일용직 소득증빙': { icon: Hammer,       color: 'text-yellow-600',  bg: 'bg-yellow-50' },
+  '보정권고 지연':   { icon: Clock,        color: 'text-cyan-600',    bg: 'bg-cyan-50' },
+  '해외선물/주식':   { icon: BarChart3,    color: 'text-sky-600',     bg: 'bg-sky-50' },
+};
+
 const ITEMS_PER_PAGE = 10;
 
 // Character limits
@@ -475,20 +493,30 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {QNA_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => { setCategoryFilter(cat); setPage(1); }}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all border cursor-pointer ${
-                categoryFilter === cat
-                  ? 'bg-slate-900 border-slate-900 text-white'
-                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
+          {QNA_CATEGORIES.map((cat) => {
+            const catIcon = CATEGORY_ICONS[cat] || CATEGORY_ICONS['전체'];
+            const IconComp = catIcon.icon;
+            const isActive = categoryFilter === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => { setCategoryFilter(cat); setPage(1); }}
+                className={`group relative flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${
+                  isActive
+                    ? 'bg-slate-900 border-slate-900 text-white shadow-md'
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:shadow-sm'
+                }`}
+              >
+                <span className="text-xs sm:text-sm font-semibold whitespace-nowrap truncate">{cat}</span>
+                <span className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
+                  isActive ? 'bg-white/15' : catIcon.bg
+                }`}>
+                  <IconComp className={`w-4 h-4 ${isActive ? 'text-white' : catIcon.color}`} />
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
