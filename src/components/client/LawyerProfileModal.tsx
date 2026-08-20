@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye, Copy, Check, ExternalLink, Navigation } from 'lucide-react';
+import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye, Copy, Check, ExternalLink, Navigation, Home } from 'lucide-react';
 import type { User, LawFirm } from '../../types';
 import { mockLawFirms } from '../../data';
 
@@ -24,9 +24,17 @@ const mockReviews = [
 function getLawyerOfficeInfo(lawyer: User, firm?: LawFirm) {
   const firmName = firm?.name || lawyer.firmName || '법무법인 한빛';
   const region = lawyer.region || '서울';
+  const displayName = lawyer.name.replace(' 변호사', '');
+  
+  const baseChannels = {
+    websiteUrl: 'https://hanbitlaw.co.kr',
+    youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
+    blogUrl: `https://section.blog.naver.com/Search/Post.naver?pageNo=1&rangeType=ALL&orderBy=sim&keyword=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
+  };
   
   if (region.includes('부산') || firmName.includes('해원')) {
     return {
+      ...baseChannels,
       firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
       address: '부산광역시 연제구 법원남로 15, 거제빌딩 7층 (연제동)',
       detail: '부산지방법원·부산가정법원 맞은편 도보 2분',
@@ -34,11 +42,13 @@ function getLawyerOfficeInfo(lawyer: User, firm?: LawFirm) {
       phone: '051-507-9012',
       hours: '평일 09:00 ~ 18:00 (야간·주말 예약 상담 가능)',
       parking: '건물 내 지하 1~2층 무료 주차 2시간 지원',
+      websiteUrl: 'https://haewonlaw.co.kr',
     };
   }
   
   if (region.includes('경기') || region.includes('수원') || firmName.includes('하늘')) {
     return {
+      ...baseChannels,
       firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
       address: '경기도 수원시 영통구 광교중앙로 248, 광교법조타워 4층 402호',
       detail: '수원고등법원·수원지방법원 정문 앞 도보 3분',
@@ -46,11 +56,13 @@ function getLawyerOfficeInfo(lawyer: User, firm?: LawFirm) {
       phone: '031-215-5678',
       hours: '평일 09:00 ~ 18:00 (야간·주말 예약 상담 가능)',
       parking: '지하 1~3층 전용 주차장 무료 이용',
+      websiteUrl: 'https://skylawfirm.co.kr',
     };
   }
 
   // 기본값 (서울 서초 법조타운)
   return {
+    ...baseChannels,
     firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
     address: '서울특별시 서초구 서초대로 250, 스타빌딩 6층 (서초동)',
     detail: '서울회생법원·서울중앙지방법원 인근 도보 3분',
@@ -154,6 +166,49 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                   "{lawyer.catchphrase}"
                 </p>
               )}
+
+              {/* ── 공식 채널 바로가기 (홈페이지, 유튜브, 네이버 블로그) ── */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
+                {/* 홈페이지 */}
+                <a
+                  href={officeInfo.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="사무소 공식 홈페이지 바로가기"
+                  className="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-semibold transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                >
+                  <Home className="w-3.5 h-3.5 text-sky-300 group-hover:text-white transition-colors" />
+                  <span className="text-[11px]">홈페이지</span>
+                </a>
+
+                {/* 유튜브 */}
+                <a
+                  href={officeInfo.youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="변호사 유튜브 채널 바로가기"
+                  className="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-red-500/25 border border-white/15 hover:border-red-400/30 text-white text-xs font-semibold transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5 text-red-500 fill-current" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  <span className="text-[11px]">유튜브</span>
+                </a>
+
+                {/* 네이버 블로그 */}
+                <a
+                  href={officeInfo.blogUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="변호사 네이버 블로그 바로가기"
+                  className="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-[#03C75A]/25 border border-white/15 hover:border-[#03C75A]/30 text-white text-xs font-semibold transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                >
+                  <span className="w-3.5 h-3.5 bg-[#03C75A] rounded-[3px] text-white font-black text-[9px] flex items-center justify-center leading-none">
+                    N
+                  </span>
+                  <span className="text-[11px]">네이버 블로그</span>
+                </a>
+              </div>
             </div>
           </div>
 
