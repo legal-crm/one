@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import {
   AlertTriangle, FileText, DollarSign, AlertCircle, Scale, StickyNote,
   Gavel, Send, History, ChevronRight, CheckCircle2, XCircle, Clock,
-  Search, RefreshCw, Eye, ShieldCheck, FileWarning, Info, Loader2, Settings, MessageSquare
+  Search, RefreshCw, Eye, ShieldCheck, FileWarning, Info, Loader2, Settings, MessageSquare, Microscope
 } from 'lucide-react';
 import { runFactEngine, type FactEngineOutput } from '../../engines/factEngine';
 import { runReviewRuleEngine, DEFAULT_REVIEW_RULES, type ReviewRuleEngineOutput } from '../../engines/reviewRuleEngine';
@@ -434,46 +434,228 @@ export default function CaseReviewCopilot({
   const fp = consultRequest?.financialProfile || consultRequest || {};
   const statusCfg = CASE_REVIEW_STATUS_CONFIG[reviewStatus] || CASE_REVIEW_STATUS_CONFIG.DRAFT;
 
+  // 검색/필터/정렬 상태
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientSort, setClientSort] = useState<'latest' | 'debt-high' | 'debt-low' | 'name'>('latest');
+  const [clientFilter, setClientFilter] = useState<'all' | 'new' | 'in-progress'>('all');
+  const ITEMS_PER_PAGE = 8;
+  const [clientPage, setClientPage] = useState(0);
+
+  const filteredClients = useMemo(() => {
+    let list = [...allClients];
+    // 검색
+    if (clientSearch.trim()) {
+      const q = clientSearch.trim().toLowerCase();
+      list = list.filter(c => (c.clientName || c.client_name || '').toLowerCase().includes(q) || (c.title || '').toLowerCase().includes(q));
+    }
+    // 필터
+    if (clientFilter === 'new') list = list.filter(c => c.status === 'requested' || c.status === 'responding');
+    if (clientFilter === 'in-progress') list = list.filter(c => c.status === 'comparing' || c.status === 'counseling');
+    // 정렬
+    list.sort((a, b) => {
+      if (clientSort === 'latest') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      if (clientSort === 'debt-high') return ((b.financialProfile?.debtTotal || 0) - (a.financialProfile?.debtTotal || 0));
+      if (clientSort === 'debt-low') return ((a.financialProfile?.debtTotal || 0) - (b.financialProfile?.debtTotal || 0));
+      return (a.clientName || '').localeCompare(b.clientName || '');
+    });
+    return list;
+  }, [allClients, clientSearch, clientSort, clientFilter]);
+
+  const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
+  const pagedClients = filteredClients.slice(clientPage * ITEMS_PER_PAGE, (clientPage + 1) * ITEMS_PER_PAGE);
+
   if (!consultRequest) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center animate-fadeIn">
-        <Search className="w-12 h-12 text-slate-300 mb-4" />
-        <h3 className="text-lg font-bold text-slate-700 mb-2">검토할 의뢰인을 선택하세요</h3>
-        <p className="text-sm text-slate-500 mb-6">아래 목록에서 의뢰인을 선택하면 사건검토 코파일럿이 시작됩니다.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
-          {allClients.map((client, idx) => {
-            const fp = client.financialProfile || {};
-            const isSample = (client.id || '').startsWith('sample');
-            const label = client.entryCategory?.label || client.consultType || client.title || '상담';
-            const dateStr = client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '';
-            return (
-              <button key={client.id} onClick={() => setSelectedClientIdx(idx)}
-                className="text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-brand hover:shadow-md active:scale-[0.98] transition-all">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-extrabold text-sm">
-                    {(client.clientName || client.client_name || '?')[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-extrabold text-sm text-slate-800">{client.clientName || client.client_name}</p>
-                    <p className="text-[10px] text-slate-400 truncate">
-                      {label}
-                      {dateStr && ` · ${dateStr}`}
-                      {isSample && <span className="ml-1 bg-amber-100 text-amber-600 px-1 rounded text-[9px]">샘플</span>}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-1 text-[10px]">
-                  <div className="bg-red-50 rounded p-1"><span className="text-red-400 block">총 채무</span><span className="font-bold text-red-600">{(fp.debtTotal || 0).toLocaleString()}만</span></div>
-                  <div className="bg-blue-50 rounded p-1"><span className="text-blue-400 block">월 소득</span><span className="font-bold text-blue-600">{fp.income || 0}만</span></div>
-                  <div className="bg-slate-50 rounded p-1"><span className="text-slate-400 block">채권자</span><span className="font-bold text-slate-700">{fp.creditorCount || (fp.debts || []).length || 0}개</span></div>
-                </div>
-              </button>
-            );
-          })}
+      <div className="animate-fadeIn space-y-5">
+        {/* 헤더 */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
+                <Microscope className="w-5 h-5 text-brand" />
+                AI 사건 분석
+              </h3>
+              <p className="text-xs text-slate-500">의뢰인을 선택하면 AI가 재무 상태를 분석하고 법적 쟁점을 자동 검토합니다.</p>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="bg-brand/10 text-brand font-bold px-2.5 py-1 rounded-lg">{allClients.length}명</span>
+              <span className="text-slate-400">등록된 의뢰인</span>
+            </div>
+          </div>
         </div>
-        {allClients.length === 0 && (
-          <p className="text-sm text-slate-400 mt-4">등록된 상담 요청이 없습니다. 신규 상담 요청 탭에서 상담을 먼저 생성하세요.</p>
+
+        {/* 검색 + 필터 + 정렬 바 */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={clientSearch}
+              onChange={e => { setClientSearch(e.target.value); setClientPage(0); }}
+              placeholder="의뢰인 이름 검색..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-800"
+            />
+          </div>
+          <div className="flex gap-2 shrink-0">
+            {[
+              { key: 'all' as const, label: '전체' },
+              { key: 'new' as const, label: '신규' },
+              { key: 'in-progress' as const, label: '상담중' },
+            ].map(f => (
+              <button key={f.key} onClick={() => { setClientFilter(f.key); setClientPage(0); }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${clientFilter === f.key ? 'bg-brand text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                {f.label}
+              </button>
+            ))}
+            <select
+              value={clientSort}
+              onChange={e => setClientSort(e.target.value as typeof clientSort)}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand/30"
+            >
+              <option value="latest">최신순</option>
+              <option value="debt-high">채무 높은순</option>
+              <option value="debt-low">채무 낮은순</option>
+              <option value="name">이름순</option>
+            </select>
+          </div>
+        </div>
+
+        {/* 의뢰인 카드 리스트 */}
+        {pagedClients.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {pagedClients.map((client) => {
+              const cfp = client.financialProfile || {};
+              const isSample = (client.id || '').startsWith('sample');
+              const dateStr = client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '';
+              const debtTotal = cfp.debtTotal || 0;
+              const income = cfp.income || 0;
+              const dti = income > 0 ? Math.round((debtTotal / (income * 12)) * 100) : 0;
+              const riskLevel = dti > 300 ? 'high' : dti > 150 ? 'mid' : 'low';
+              const statusLabel = client.status === 'requested' ? '접수' : client.status === 'responding' ? '응답중' : client.status === 'comparing' ? '비교상담' : client.status === 'counseling' ? '전담상담' : client.status || '대기';
+              const statusColor = client.status === 'requested' ? 'bg-blue-100 text-blue-600' : client.status === 'responding' ? 'bg-amber-100 text-amber-600' : client.status === 'comparing' ? 'bg-violet-100 text-violet-600' : client.status === 'counseling' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500';
+              const originalIdx = allClients.findIndex(c => c.id === client.id);
+
+              return (
+                <button key={client.id} onClick={() => setSelectedClientIdx(originalIdx)}
+                  className="text-left bg-white border border-slate-200 rounded-2xl hover:border-brand/50 hover:shadow-md active:scale-[0.98] transition-all group overflow-hidden">
+                  {/* 상단 위험도 바 */}
+                  <div className={`h-1 w-full ${riskLevel === 'high' ? 'bg-red-400' : riskLevel === 'mid' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                  <div className="p-4 space-y-3">
+                    {/* 아바타 + 이름 + 상태 */}
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-sm shrink-0 ${riskLevel === 'high' ? 'bg-red-50 text-red-600' : riskLevel === 'mid' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        {(client.clientName || client.client_name || '?')[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-extrabold text-sm text-slate-800 truncate">{client.clientName || client.client_name}</p>
+                          {isSample && <span className="bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0">샘플</span>}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${statusColor}`}>{statusLabel}</span>
+                          {dateStr && <span className="text-[10px] text-slate-400">{dateStr}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 핵심 지표 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-500">총 채무</span>
+                        <span className="text-[13px] font-extrabold text-slate-900">{debtTotal > 0 ? `${debtTotal.toLocaleString()}만원` : '-'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-500">월 소득</span>
+                        <span className="text-[13px] font-bold text-slate-700">{income > 0 ? `${income.toLocaleString()}만원` : '-'}</span>
+                      </div>
+                      {/* DTI 바 */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] text-slate-400">채무비율 (DTI)</span>
+                          <span className={`text-[10px] font-bold ${riskLevel === 'high' ? 'text-red-500' : riskLevel === 'mid' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                            {dti > 0 ? `${dti}%` : '-'}
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${riskLevel === 'high' ? 'bg-red-400' : riskLevel === 'mid' ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                            style={{ width: `${Math.min(dti / 5, 100)}%` }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 리스크 플래그 */}
+                    {(cfp.riskFlags || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {(cfp.riskFlags || []).slice(0, 2).map((flag: string, i: number) => (
+                          <span key={i} className="text-[9px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-lg font-medium truncate max-w-[120px]">⚠ {flag}</span>
+                        ))}
+                        {(cfp.riskFlags || []).length > 2 && (
+                          <span className="text-[9px] text-slate-400 font-bold">+{cfp.riskFlags.length - 2}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 분석 시작 버튼 */}
+                    <div className="pt-1">
+                      <div className="w-full bg-slate-50 group-hover:bg-brand/5 text-slate-500 group-hover:text-brand text-[11px] font-bold py-2 rounded-xl text-center transition-all flex items-center justify-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        AI 분석 시작
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+            <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <p className="font-bold text-slate-600 mb-1">
+              {clientSearch ? '검색 결과가 없습니다' : '등록된 의뢰인이 없습니다'}
+            </p>
+            <p className="text-xs text-slate-400">
+              {clientSearch ? '다른 검색어를 시도해 보세요' : '신규 상담 요청 탭에서 상담을 먼저 생성하세요'}
+            </p>
+          </div>
         )}
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <button onClick={() => setClientPage(p => Math.max(0, p - 1))} disabled={clientPage === 0}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all">
+              이전
+            </button>
+            <span className="text-xs text-slate-500">
+              {clientPage + 1} / {totalPages} 페이지
+            </span>
+            <button onClick={() => setClientPage(p => Math.min(totalPages - 1, p + 1))} disabled={clientPage >= totalPages - 1}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all">
+              다음
+            </button>
+          </div>
+        )}
+
+        {/* 안내 스텝 */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+          <p className="text-[11px] font-bold text-slate-500 mb-3">AI 사건 분석 워크플로</p>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+            {[
+              { step: '1', label: '의뢰인 선택', desc: '목록에서 분석할 건 선택' },
+              { step: '2', label: 'AI 자동 분석', desc: '재무·법적 쟁점 진단' },
+              { step: '3', label: '검토 의견 작성', desc: '변호사 소견 및 전략' },
+              { step: '4', label: '승인 및 발송', desc: '제안서 작성·고객 전달' },
+            ].map((s, i) => (
+              <div key={i} className="flex sm:flex-col items-center sm:items-center gap-2 sm:gap-1 flex-1">
+                <div className="w-7 h-7 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xs font-extrabold shrink-0">{s.step}</div>
+                <div className="sm:text-center">
+                  <p className="text-[11px] font-bold text-slate-700">{s.label}</p>
+                  <p className="text-[10px] text-slate-400">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
