@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye } from 'lucide-react';
 import type { User } from '../../types';
 import { mockLawFirms } from '../../data';
@@ -33,10 +34,12 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
     { key: 'reviews' as const, label: `의뢰인 후기 ${reviewCount}` },
   ];
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/60 backdrop-blur-sm animate-fadeIn overflow-y-auto" onClick={onClose}>
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 md:p-8 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
       <div
-        className="relative w-full max-w-[720px] mt-14 mb-4 sm:mt-20 sm:mb-8 bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-fadeIn"
+        className="relative w-full max-w-[720px] my-auto bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] sm:max-h-[90vh] animate-fadeIn"
         onClick={e => e.stopPropagation()}
       >
         {/* ── 상단 버튼들 ── */}
@@ -56,7 +59,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
         {/* ═══════════════════════════════════════
             히어로 섹션
         ═══════════════════════════════════════ */}
-        <div className="relative bg-gradient-to-br from-slate-900 via-[#1e1b4b] to-brand overflow-hidden">
+        <div className="relative bg-gradient-to-br from-slate-900 via-[#1e1b4b] to-brand overflow-hidden shrink-0">
           {/* 배경 글로우 */}
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-1/4 left-1/3 w-[300px] h-[300px] bg-brand/40 rounded-full blur-[100px]"></div>
@@ -129,7 +132,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
         {/* ═══════════════════════════════════════
             탭 콘텐츠
         ═══════════════════════════════════════ */}
-        <div className="p-5 sm:p-7 space-y-6 max-h-[60vh] overflow-y-auto">
+        <div className="p-5 sm:p-7 space-y-6 overflow-y-auto flex-1 text-left">
 
           {/* ── TAB: 변호사홈 ── */}
           {activeTab === 'home' && (
@@ -300,36 +303,39 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
               </div>
             </div>
           )}
+
+          {/* 서비스 한계 고지 */}
+          <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700 text-left">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
+              본 플랫폼은 이용자가 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 서비스입니다. 
+              플랫폼은 특정 전문가를 추천·배정하지 않으며, 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결됩니다. 
+              전문가의 상담 내용, 업무 수행 결과 또는 사건 결과를 보장하지 않습니다.
+            </p>
+          </div>
         </div>
-        {/* 서비스 한계 고지 */}
-        <div className="mt-4 mb-2 mx-5 sm:mx-7 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700">
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
-            본 플랫폼은 이용자가 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 서비스입니다. 
-            플랫폼은 특정 전문가를 추천·배정하지 않으며, 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결됩니다. 
-            전문가의 상담 내용, 업무 수행 결과 또는 사건 결과를 보장하지 않습니다.
-          </p>
-        </div>
+
         {/* ═══════════════════════════════════════
             하단 고정 CTA 바
         ═══════════════════════════════════════ */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 sm:px-7 py-4 flex items-center justify-between gap-4">
+        <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-5 sm:px-7 py-4 flex items-center justify-between gap-4 shrink-0">
           <div className="hidden sm:flex items-center gap-3">
-            <button className="w-10 h-10 border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-brand hover:border-brand/30 transition-colors cursor-pointer">
+            <button className="w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center text-slate-500 hover:text-[#1E3A5F] hover:border-[#1E3A5F]/30 transition-colors cursor-pointer">
               <Phone className="w-4 h-4" />
             </button>
-            <button className="w-10 h-10 border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-brand hover:border-brand/30 transition-colors cursor-pointer">
+            <button className="w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center text-slate-500 hover:text-[#1E3A5F] hover:border-[#1E3A5F]/30 transition-colors cursor-pointer">
               <MessageSquare className="w-4 h-4" />
             </button>
           </div>
           <button
             onClick={() => onConsult(lawyer.id)}
-            className="flex-1 sm:flex-none bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-brand/20 cursor-pointer text-base flex items-center justify-center gap-2 active:scale-[0.98]"
+            className="flex-1 sm:flex-none bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-md cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98]"
           >
             <span>이 전문가를 직접 선택하여 상담 요청</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
