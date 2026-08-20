@@ -37,6 +37,7 @@ interface CaseReviewCopilotProps {
   actorName: string;
   preselectedRequestId?: string;
   onClose?: () => void;
+  onProposalSent?: (reqId: string, proposalData: any) => void;
 }
 
 // Sample test clients for demo
@@ -212,7 +213,7 @@ function mapToIntakeData(req: any): IntakeData | null {
 }
 
 export default function CaseReviewCopilot({
-  consultRequest: singleRequest, consultRequests, tenantId, actorId, actorRole, actorName, preselectedRequestId, onClose
+  consultRequest: singleRequest, consultRequests, tenantId, actorId, actorRole, actorName, preselectedRequestId, onClose, onProposalSent
 }: CaseReviewCopilotProps) {
   const permissions = useCopilotPermissions(actorRole as StaffRole);
 
@@ -1328,6 +1329,10 @@ export default function CaseReviewCopilot({
           onClose={() => setShowRehabReport(false)}
           viewerRole={permissions.canSendToClient ? 'lawyer' : 'staff'}
           onSendProposal={(proposalData) => {
+            // 채팅 연동: 부모(LawyerRole)의 handleSubmitProposalFromDraft 호출
+            if (onProposalSent && consultRequest?.id) {
+              onProposalSent(consultRequest.id, proposalData);
+            }
             setShowRehabReport(false);
             addAuditLog('PROPOSAL_INITIATED', `제안서 발송 - 수임료: ${proposalData.fees.totalFee}원, 의견: ${proposalData.lawyerOpinion.substring(0, 50)}...`);
           }}

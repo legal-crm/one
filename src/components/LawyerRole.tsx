@@ -1711,7 +1711,8 @@ export default function LawyerRole({
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-1">AI 도구</p>
               {permissionCtx.canAccessTab('case-copilot') && (
                 <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <Microscope className="w-4 h-4 shrink-0" /><span>사건 검토 AI</span>
+                  <Microscope className="w-4 h-4 shrink-0" /><span>AI 사건 분석</span>
+                {(() => { const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; return n > 0 ? (<span className="ml-auto bg-violet-500/80 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{n}</span>) : null; })()}
                 </button>
               )}
               <button onClick={() => setActiveTab('qna-answer')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all relative ${activeTab === 'qna-answer' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
@@ -2655,7 +2656,7 @@ export default function LawyerRole({
                           className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap press-scale"
                         >
                           <Microscope className="w-3.5 h-3.5" />
-                          사건검토 코파일럿
+                          🔬 AI 심층 분석
                         </button>
                         <button 
                           onClick={() => handleOpenProposalDraft(r.id)}
@@ -3875,6 +3876,9 @@ export default function LawyerRole({
             actorRole={activeStaffMember?.role || 'OWNER'}
             actorName={activeStaffMember?.name || activeLawyer.name}
             preselectedRequestId={copilotPreselectedReqId}
+            onProposalSent={(reqId: string, proposalData: any) => {
+              handleSubmitProposalFromDraft(reqId, proposalData);
+            }}
           />
         )}
 
