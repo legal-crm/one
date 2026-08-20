@@ -1883,8 +1883,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
-      <div className={`w-full min-h-screen mx-auto flex flex-col relative ${activeTab === 'landing' ? 'bg-white dark:bg-slate-900' : 'max-w-[1024px] bg-white dark:bg-slate-900 border-x border-slate-100 dark:border-slate-800 shadow-sm'}`}>
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+      <div className="w-full min-h-screen mx-auto flex flex-col relative bg-white dark:bg-slate-900">
       
         {/* Dynamic Client Header */}
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 w-full transition-all duration-300">
@@ -3063,7 +3063,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
  
  
         {activeTab !== 'landing' && (
-        <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${activeTab === 'request' ? 'py-0 px-0 md:py-6 md:px-4' : 'py-6'}`}>
+        <div className={`w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 ${activeTab === 'request' ? 'py-0 px-0 md:py-6 md:px-4' : 'py-6'}`}>
           <React.Suspense fallback={
             <div className="flex flex-col items-center justify-center py-24 space-y-4 animate-fadeIn">
               <div className="w-10 h-10 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
