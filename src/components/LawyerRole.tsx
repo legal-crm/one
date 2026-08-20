@@ -2387,29 +2387,30 @@ export default function LawyerRole({
 
         {/* TAB 2: INCOMING COUNSEL REQUESTS LIST */}
         {activeTab === 'open-requests' && (
-          <div className="space-y-4 animate-fadeIn">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div className="space-y-5 animate-fadeIn">
+            {/* 페이지 헤더 */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">오픈 및 지정 상담 요청 대기 대시보드</h2>
-                <p className="text-xs text-slate-500 mt-0.5">상세 채무 구조와 가용 가계 소득 진단 통계를 검토 후 참여하십시오.</p>
+                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-brand" />
+                  신규 상담 요청
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">채무 구조와 소득 진단 통계를 검토한 후 제안서를 작성하세요.</p>
               </div>
-
-              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
-                전공 연도: 회생파산 전담팀 R-1
+              <span className="text-[11px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold whitespace-nowrap">
+                회생파산 전담팀 R-1
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            {/* 요청 목록 */}
+            <div className="space-y-5">
               {requests
                 .filter(r => {
-                  // 본인 직접 지명된 경우
                   const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
-                  // 같은 로펌 소속 변호사에게 온 요청도 표시
                   const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
                     const targetLawyer = lawyers.find(l => l.id === id);
                     return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
                   });
-                  // 오픈형 요청
                   const openMatch = r.requestType === 'open';
                   return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
                 })
@@ -2417,170 +2418,214 @@ export default function LawyerRole({
                 .map(r => {
                   const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
                   return (
-                    <div key={r.id} className="bg-slate-50 p-5 rounded-xl border border-slate-200 hover:border-slate-200 transition-all flex flex-col md:flex-row justify-between gap-6">
-                      
-                      {/* Left: Client detailed debt statistics query */}
-                      <div className="flex-1 space-y-3">
+                    <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-sm transition-all">
+
+                      {/* 카드 헤더 */}
+                      <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-brand/10 text-brand font-bold px-2 py-0.5 rounded text-[12px]">
+                          <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-lg uppercase tracking-wider ${
+                            r.requestType === 'direct' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' :
+                            r.requestType === 'direct_multi' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
+                            'bg-brand/10 text-brand border border-brand/20'
+                          }`}>
                             {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
                           </span>
                           {r.entryCategory && (
-                            <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                            <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg ${
                               r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
                               r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
                               'bg-slate-100 text-slate-500 border border-slate-200'
                             }`}>
-                              {r.entryCategory.type === 'debt_type' ? '💳 관심 채무: ' : r.entryCategory.type === 'solution' ? '⚖️ 관심 해결방법: ' : ''}{r.entryCategory.label}
+                              {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
                             </span>
                           )}
-                          <span className="text-xs text-slate-500">의뢰인: <strong>{r.clientName}</strong></span>
-                          <span className="text-xs text-slate-600">|</span>
-                          <span className="text-xs text-slate-500">등록일: {new Date(r.createdAt).toLocaleString()}</span>
+                          <span className="text-xs font-bold text-slate-700">{r.clientName}</span>
+                          <span className="text-[11px] text-slate-400">등록 {new Date(r.createdAt).toLocaleString()}</span>
                         </div>
-
-                        <div className="space-y-1">
-                          <h3 className="font-bold text-base text-slate-900">{r.title}</h3>
-                          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{r.content}</p>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="text-slate-500">지정 변호사: <strong className="text-slate-700">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
+                          <span className="bg-brand/10 text-brand font-bold px-2 py-0.5 rounded-lg">제안서 작성 대기</span>
                         </div>
-
-                        {/* 의뢰인 메모 */}
-                        {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
-                          <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-lg p-3 mt-1">
-                            <div className="flex items-start gap-2">
-                              <span className="text-base shrink-0">📝</span>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
-                                {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
-                                  <ul className="space-y-1 text-left list-none">
-                                    {r.financialProfile.clientNotes.map((note, index) => (
-                                      <li key={index} className="text-[13px] text-slate-700 leading-relaxed break-all">
-                                        • {note}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Calculations Panel */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-lg text-[13px] text-slate-500 border border-slate-855">
-                          <div>• 총 가계 채무: <strong className="text-red-500 font-extrabold">{r.financialProfile.debtTotal.toLocaleString()}만 원</strong></div>
-                          <div>• 기재 자산수준: <strong className="text-slate-700 font-semibold">{r.financialProfile.assetsTotal.toLocaleString()}만 원</strong></div>
-                          <div>• 월 가중소득: <strong className="text-slate-700 font-semibold">{r.financialProfile.income}만 원</strong></div>
-                          <div>• 소득 대비 부채비: <strong className="text-red-400 font-bold">{debtRatio}배 수준</strong></div>
-                        </div>
-
-                        {/* 인적사항 요약 패널 */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-blue-50/50 p-3 rounded-lg text-[13px] text-slate-500 border border-blue-100">
-                          <div>• 나이/성별: <strong className="text-slate-700 font-semibold">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'} / {r.financialProfile.gender === 'male' ? '남성' : r.financialProfile.gender === 'female' ? '여성' : '미기재'}</strong></div>
-                          <div>• 가구원 수: <strong className="text-slate-700 font-semibold">{r.financialProfile.dependents + 1}인 가구 (부양 {r.financialProfile.dependents}명)</strong></div>
-                          <div>• 미성년 자녀: <strong className="text-slate-700 font-semibold">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '미기재'}</strong></div>
-                          <div>• 혼인 상태: <strong className="text-slate-700 font-semibold">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</strong></div>
-                        </div>
-
-                        {/* Expanded Legal Profile details */}
-                        {r.financialProfile.jobType && (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 bg-slate-50 p-3 rounded-lg text-[12px] text-slate-450 border border-slate-850">
-                            <div>• 직업유형: <strong className="text-slate-600">{r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'} ({r.financialProfile.companyName || '미기재'})</strong></div>
-                            <div>• 거주지역: <strong className="text-slate-600">{r.financialProfile.residenceRegion || '미기재'}</strong></div>
-                            <div>• 채무원인: <strong className="text-slate-600">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : r.financialProfile.debtCause === 'INVESTMENT' ? `투자 실패${r.financialProfile.speculativeLoss ? ` (${r.financialProfile.speculativeLoss.toLocaleString()}만원)` : ''}` : r.financialProfile.debtCause === 'GAMBLING' ? `도박/사행성${r.financialProfile.gamblingLoss ? ` (${r.financialProfile.gamblingLoss.toLocaleString()}만원)` : ''}` : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</strong></div>
-                            <div>• 채권자수 / 추심: <strong className="text-amber-400">{r.financialProfile.creditorCount || 0}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류/압류'}</strong></div>
-
-                            {/* 추가 상세 정보 - 주거/배우자/특례 */}
-                            <div>• 거주형태: <strong className="text-slate-600">{r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '미기재'}{r.financialProfile.housingContractHolder ? ` (${r.financialProfile.housingContractHolder === 'self' ? '본인명의' : r.financialProfile.housingContractHolder === 'spouse' ? '배우자명의' : '타인명의'})` : ''}</strong></div>
-                            {r.financialProfile.maritalStatus === 'MARRIED' && (
-                              <div>• 배우자 소득: <strong className="text-slate-600">{r.financialProfile.spouseIncome !== undefined ? `${r.financialProfile.spouseIncome.toLocaleString()}만 원` : '미기재'}</strong></div>
-                            )}
-                            {r.financialProfile.monthlyFixedExpenses !== undefined && r.financialProfile.monthlyFixedExpenses > 0 && (
-                              <div>• 월 고정지출: <strong className="text-slate-600">{r.financialProfile.monthlyFixedExpenses.toLocaleString()}만 원</strong></div>
-                            )}
-                            {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
-                              <div className="col-span-2 sm:col-span-4 mt-1 border-t border-emerald-200/50 pt-1">
-                                <span className="bg-emerald-500/10 text-emerald-600 text-[11px] px-2 py-0.5 rounded font-black border border-emerald-500/20">
-                                  ⚡ 24개월 특례 해당: {r.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : r.financialProfile.specialCondition === 'single_parent' ? '한부모 가족' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 피해자' : '고령자 (70세 이상)'}
-                                </span>
-                              </div>
-                            )}
-
-                            {r.financialProfile.retirementPay !== undefined && r.financialProfile.retirementPay > 0 && (
-                              <div className="col-span-2 sm:col-span-4 mt-1 border-t border-slate-900/30 pt-1 flex items-center justify-between text-slate-500">
-                                <span>💼 예상 퇴직금: <strong className="text-slate-600">{r.financialProfile.retirementPay.toLocaleString()}만원</strong> ({r.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 - 0% 반영' : r.financialProfile.retirementPensionType === 'none' ? '퇴직연금 미가입 - 50% 반영' : '퇴직연금 종류 모름 - 50% 반영'})</span>
-                                {r.financialProfile.retirementPensionType === 'unknown' && (
-                                  <span className="bg-amber-500/20 text-amber-400 text-[11px] px-1.5 py-0.5 rounded font-black border border-amber-500/30 animate-pulse">
-                                    ⚠️ 퇴직연금 확인 필요
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {r.financialProfile.retirementPensionType === 'unknown' && (
-                          <div className="pt-1">
-                            <span className="bg-amber-500/10 text-amber-400 text-[12px] px-2 py-0.5 rounded font-semibold border border-amber-500/10">
-                              ⚠️ 예상 퇴직금 조회 및 퇴직연금 가입 형태 확인 필요 (챗봇 모름 선택)
-                            </span>
-                          </div>
-                        )}
-
-                        {r.financialProfile.riskFlags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-1">
-                            {r.financialProfile.riskFlags.map(rf => (
-                              <span key={rf} className="bg-red-500/10 text-red-400 text-[12px] px-2 py-0.5 rounded font-semibold border border-red-500/10">
-                                ⚠️ {rf}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* 의뢰인 메모 */}
-                        {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
-                          <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-lg p-3 mt-1">
-                            <div className="flex items-start gap-2">
-                              <span className="text-base shrink-0">📝</span>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
-                                {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
-                                  <ul className="space-y-1 text-left list-none">
-                                    {r.financialProfile.clientNotes.map((note, index) => (
-                                      <li key={index} className="text-[13px] text-slate-700 leading-relaxed break-all">
-                                        • {note}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
 
-                      {/* Right: Quick action panel to "솔루션 및 비용 제안" */}
-                      <div className="md:w-60 flex flex-col justify-between shrink-0 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6 gap-4">
-                        <div className="text-xs text-slate-500 space-y-1">
-                          <div className="flex justify-between"><span>지정 변호사 수:</span> <strong className="text-slate-700">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></div>
-                          <div className="flex justify-between"><span>현재 상태:</span> <strong className="text-brand font-bold">제안서 작성 대기</strong></div>
+                      {/* 카드 본문 */}
+                      <div className="p-5 space-y-4">
+                        {/* 제목 + 사연 */}
+                        <div className="space-y-1">
+                          <h3 className="font-bold text-base text-slate-900">{r.title}</h3>
+                          <p className="text-[13px] text-slate-500 leading-relaxed line-clamp-2">{r.content}</p>
                         </div>
 
-                        <button 
-                          onClick={() => handleOpenProposalDraft(r.id)}
-                          className="w-full bg-brand hover:bg-brand-hover text-white font-black py-2.5 rounded-xl text-xs tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>고객 제안서 작성</span>
-                        </button>
+                        {/* 의뢰인 메모 (첫 번째 위치) */}
+                        {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
+                          <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-xl p-3">
+                            <div className="flex items-start gap-2">
+                              <span className="text-base shrink-0">📝</span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
+                                {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
+                                  <ul className="space-y-1 text-left list-none">
+                                    {r.financialProfile.clientNotes.map((note, index) => (
+                                      <li key={index} className="text-[13px] text-slate-700 leading-relaxed break-all">
+                                        • {note}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3열 카드형 지표 */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {/* 재무 요약 카드 */}
+                          <div className="bg-red-50/40 rounded-xl p-4 border border-red-100/60 space-y-2">
+                            <span className="text-[10px] font-black text-red-400 uppercase tracking-wider">💰 재무 요약</span>
+                            <div className="space-y-1.5 text-[12px]">
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">총 채무</span>
+                                <span className="font-bold text-red-500">{r.financialProfile.debtTotal.toLocaleString()}만</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">자산</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.assetsTotal.toLocaleString()}만</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">월 소득</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.income}만</span>
+                              </div>
+                              <div className="flex justify-between border-t border-red-100 pt-1.5">
+                                <span className="text-slate-500 font-semibold">부채비율</span>
+                                <span className="font-black text-red-500">{debtRatio}배</span>
+                              </div>
+                              {r.financialProfile.monthlyFixedExpenses !== undefined && r.financialProfile.monthlyFixedExpenses > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">월 고정지출</span>
+                                  <span className="font-bold text-slate-700">{r.financialProfile.monthlyFixedExpenses.toLocaleString()}만</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 인적 정보 카드 */}
+                          <div className="bg-blue-50/40 rounded-xl p-4 border border-blue-100/60 space-y-2">
+                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">👤 인적 정보</span>
+                            <div className="space-y-1.5 text-[12px]">
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">나이/성별</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">가구원</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.dependents + 1}인 (부양 {r.financialProfile.dependents}명)</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">미성년 자녀</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">혼인</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
+                              </div>
+                              {r.financialProfile.maritalStatus === 'MARRIED' && r.financialProfile.spouseIncome !== undefined && (
+                                <div className="flex justify-between border-t border-blue-100 pt-1.5">
+                                  <span className="text-slate-500">배우자 소득</span>
+                                  <span className="font-bold text-slate-700">{r.financialProfile.spouseIncome.toLocaleString()}만</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 법적 프로필 카드 */}
+                          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">⚖️ 법적 프로필</span>
+                            <div className="space-y-1.5 text-[12px]">
+                              {r.financialProfile.jobType && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">직업</span>
+                                  <span className="font-bold text-slate-700">{r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">채무원인</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">거주형태</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-'}</span>
+                              </div>
+                              {r.financialProfile.residenceRegion && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">지역</span>
+                                  <span className="font-bold text-slate-700">{r.financialProfile.residenceRegion}</span>
+                                </div>
+                              )}
+                              {r.financialProfile.creditorCount && (
+                                <div className="flex justify-between border-t border-slate-100 pt-1.5">
+                                  <span className="text-slate-500">채권자</span>
+                                  <span className="font-bold text-amber-500">{r.financialProfile.creditorCount}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류'}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 특례/퇴직금/위험 플래그 — 해당시만 표시 */}
+                        <div className="flex flex-wrap gap-2">
+                          {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
+                            <span className="bg-emerald-500/10 text-emerald-600 text-[11px] px-2.5 py-1 rounded-lg font-black border border-emerald-500/20">
+                              ⚡ 24개월 특례: {r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : r.financialProfile.specialCondition === 'single_parent' ? '한부모' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
+                            </span>
+                          )}
+                          {r.financialProfile.retirementPay !== undefined && r.financialProfile.retirementPay > 0 && (
+                            <span className="bg-slate-100 text-slate-600 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-slate-200">
+                              💼 퇴직금 {r.financialProfile.retirementPay.toLocaleString()}만 ({r.financialProfile.retirementPensionType === 'pension' ? '연금 0%반영' : r.financialProfile.retirementPensionType === 'none' ? '미가입 50%반영' : '확인필요 50%반영'})
+                            </span>
+                          )}
+                          {r.financialProfile.retirementPensionType === 'unknown' && (
+                            <span className="bg-amber-500/10 text-amber-500 text-[11px] px-2.5 py-1 rounded-lg font-bold border border-amber-500/20 animate-pulse">
+                              ⚠️ 퇴직연금 확인 필요
+                            </span>
+                          )}
+                          {r.financialProfile.riskFlags.map(rf => (
+                            <span key={rf} className="bg-red-500/10 text-red-400 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-red-500/10">
+                              ⚠️ {rf}
+                            </span>
+                          ))}
+                          {(r.financialProfile.speculativeLoss && r.financialProfile.speculativeLoss > 0) && (
+                            <span className="bg-orange-500/10 text-orange-500 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-orange-500/20">
+                              📉 투기손실 {r.financialProfile.speculativeLoss.toLocaleString()}만
+                            </span>
+                          )}
+                          {(r.financialProfile.gamblingLoss && r.financialProfile.gamblingLoss > 0) && (
+                            <span className="bg-orange-500/10 text-orange-500 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-orange-500/20">
+                              🎰 도박손실 {r.financialProfile.gamblingLoss.toLocaleString()}만
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 의뢰인 메모 (두 번째 위치 - 중복 제거) */}
+
+                      </div>
+
+                      {/* 카드 푸터: 액션 버튼 */}
+                      <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
                         <button 
                           onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
-                          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap"
+                          className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap press-scale"
                         >
                           <Microscope className="w-3.5 h-3.5" />
-                          <span>사건검토 코파일럿</span>
+                          사건검토 코파일럿
+                        </button>
+                        <button 
+                          onClick={() => handleOpenProposalDraft(r.id)}
+                          className="bg-brand hover:bg-brand-hover text-white font-black py-2.5 px-5 rounded-xl text-xs tracking-wide transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap press-scale"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          고객 제안서 작성
                         </button>
                       </div>
 
@@ -2597,8 +2642,10 @@ export default function LawyerRole({
                   const openMatch = r.requestType === 'open';
                   return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
                 }).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).length === 0 && (
-                <div className="bg-slate-50 p-12 text-center rounded-xl border border-slate-200 text-slate-600 text-xs">
-                  현재 즉시 대응할 신규 상담 신청 건이 존재하지 않습니다.
+                <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3">
+                  <Briefcase className="w-10 h-10 text-slate-300 mx-auto" />
+                  <p className="text-sm text-slate-600 font-semibold">현재 대응할 신규 상담 요청이 없습니다.</p>
+                  <p className="text-xs text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
                 </div>
               )}
             </div>
