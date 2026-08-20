@@ -837,7 +837,7 @@ export default function CaseReviewCopilot({
             <>
               {/* TAB 1: 고객 입력정보 */}
               {activeTab === 'client-info' && (
-                <div className="space-y-4">
+                <div className="space-y-3 max-w-3xl">
                   <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><FileText className="w-4 h-4 text-brand" /> 고객이 입력한 원본 정보</h4>
 
                   {/* 1. 기본 정보 */}
@@ -845,7 +845,7 @@ export default function CaseReviewCopilot({
                     <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
                       <h5 className="text-[11px] font-bold text-slate-600">👤 기본 정보</h5>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
                       {[
                         { label: '의뢰인명', value: fp.clientName || consultRequest.clientName || consultRequest.client_name || '-' },
                         { label: '연락처', value: fp.clientPhone || consultRequest.phone || '-' },
@@ -858,7 +858,7 @@ export default function CaseReviewCopilot({
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100 border-t border-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100 border-t border-slate-100">
                       {[
                         { label: '혼인 상태', value: fp.maritalStatus === 'MARRIED' || fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus === 'DIVORCED' || fp.maritalStatus === 'divorced' ? '이혼' : fp.maritalStatus === 'SINGLE' || fp.maritalStatus === 'single' ? '미혼' : '-' },
                         { label: '미성년 자녀', value: fp.minorChildren != null ? `${fp.minorChildren}명` : `${fp.dependents || 0}명` },
@@ -878,7 +878,7 @@ export default function CaseReviewCopilot({
                     <div className="bg-blue-50/60 px-3 py-2 border-b border-slate-200">
                       <h5 className="text-[11px] font-bold text-slate-600">💼 소득 및 직업</h5>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
                       {[
                         { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
                         { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
@@ -899,7 +899,7 @@ export default function CaseReviewCopilot({
                       <h5 className="text-[11px] font-bold text-slate-600">🔴 채무 요약</h5>
                       <span className="text-[10px] text-slate-400">상세 → '채무현황' 탭</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
                       {[
                         { label: '총 채무', value: fmtMoney(fp.debtTotal || 0), highlight: true },
                         { label: '채권자 수', value: fp.creditorCount ? `${fp.creditorCount}개` : `${(fp.debts || []).length}개` },
@@ -919,7 +919,7 @@ export default function CaseReviewCopilot({
                     <div className="bg-emerald-50/60 px-3 py-2 border-b border-slate-200">
                       <h5 className="text-[11px] font-bold text-slate-600">🏦 자산 현황</h5>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
                       {[
                         { label: '총 자산', value: fmtMoney(fp.assetsTotal || 0) },
                         { label: '본인 재산', value: fp.myAssets ? `${fp.myAssets}만원` : '-' },
@@ -932,7 +932,7 @@ export default function CaseReviewCopilot({
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100 border-t border-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100 border-t border-slate-100">
                       {[
                         { label: '퇴직금', value: fp.retirementPay ? `${fp.retirementPay}만원` : '-' },
                         { label: '퇴직연금', value: fp.retirementPensionType === 'pension' ? '가입' : fp.retirementPensionType === 'none' ? '미가입' : fp.retirementPensionType === 'unknown' ? '모름' : '-' },
@@ -970,7 +970,7 @@ export default function CaseReviewCopilot({
                     <div className="bg-amber-50/60 px-3 py-2 border-b border-slate-200">
                       <h5 className="text-[11px] font-bold text-slate-600">🏠 월 생활비</h5>
                     </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 divide-x divide-slate-100">
+                    <div className="grid grid-cols-3 divide-x divide-slate-100">
                       {[
                         { label: '월세', value: fp.rentCost ? `${fp.rentCost}만` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
                         { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만` : '-' },
