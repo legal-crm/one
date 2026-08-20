@@ -493,7 +493,7 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
           </span>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {QNA_CATEGORIES.map((cat) => {
             const catIcon = CATEGORY_ICONS[cat] || CATEGORY_ICONS['전체'];
             const IconComp = catIcon.icon;
@@ -508,7 +508,7 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
                     : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:shadow-sm'
                 }`}
               >
-                <span className="text-xs sm:text-sm font-semibold whitespace-nowrap truncate">{cat}</span>
+                <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{cat}</span>
                 <span className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
                   isActive ? 'bg-white/15' : catIcon.bg
                 }`}>
