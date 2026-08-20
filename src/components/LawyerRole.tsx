@@ -2291,54 +2291,60 @@ export default function LawyerRole({
                     </div>
                   </div>
 
-                  {/* 고객 리스트 테이블형 */}
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
-                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">🤝 전담 고객 관리</h3>
-                    </div>
-                    <div className="divide-y divide-slate-100">
+                  {/* 고객 리스트 카드형 */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">🤝 전담 고객 관리</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {appointedClients.map(appt => {
                         const daysSince = Math.floor((Date.now() - new Date(appt.appointedAt).getTime()) / (1000 * 60 * 60 * 24));
                         const lastAct = new Date(appt.lastActivity);
                         const daysSinceActivity = Math.floor((Date.now() - lastAct.getTime()) / (1000 * 60 * 60 * 24));
                         return (
-                          <div key={appt.id} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
-                                {appt.clientName[0]}
-                              </div>
-                              <div>
-                                <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
-                                <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5">
-                                  <span>선임일: {new Date(appt.appointedAt).toLocaleDateString('ko-KR')}</span>
-                                  <span className="text-slate-300">|</span>
-                                  <span className="font-semibold text-slate-500">{daysSince}일째</span>
+                          <div key={appt.id} className={`p-4 rounded-xl border transition-all space-y-3 ${appt.status === 'active' ? 'bg-white border-emerald-200 hover:border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+                            {/* 상단: 아바타 + 이름 + 상태 */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                                  {appt.clientName[0]}
                                 </div>
-                                {appt.status === 'cancelled' && appt.cancelReason && (
-                                  <span className="text-[11px] text-red-400 mt-0.5 block">취소 사유: {appt.cancelReason}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              {/* <!-- mock --> 최근 활동 */}
-                              <div className="text-right hidden md:block">
-                                <span className="text-[11px] text-slate-400 block">최근 활동</span>
-                                <span className={`text-[11px] font-bold ${daysSinceActivity <= 3 ? 'text-emerald-500' : daysSinceActivity <= 7 ? 'text-amber-500' : 'text-slate-400'}`}>
-                                  {daysSinceActivity === 0 ? '오늘' : `${daysSinceActivity}일 전`}
-                                </span>
+                                <div>
+                                  <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
+                                  <span className="text-[11px] text-slate-400">선임 {daysSince}일째</span>
+                                </div>
                               </div>
                               <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
                                 {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
                               </span>
-                              {appt.status === 'active' && (
-                                <button
-                                  onClick={() => setActiveTab('client-crm')}
-                                  className="text-[11px] font-bold text-brand hover:text-brand-hover transition-colors flex items-center gap-0.5 press-scale whitespace-nowrap"
-                                >
-                                  상담 이동 <ChevronRight className="w-3 h-3" />
-                                </button>
+                            </div>
+                            {/* 중간: 세부 정보 */}
+                            <div className="bg-slate-50 rounded-lg p-2.5 space-y-1.5 text-[12px]">
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">선임일</span>
+                                <span className="font-bold text-slate-700">{new Date(appt.appointedAt).toLocaleDateString('ko-KR')}</span>
+                              </div>
+                              {/* <!-- mock --> */}
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">최근 활동</span>
+                                <span className={`font-bold ${daysSinceActivity <= 3 ? 'text-emerald-500' : daysSinceActivity <= 7 ? 'text-amber-500' : 'text-slate-400'}`}>
+                                  {daysSinceActivity === 0 ? '오늘' : `${daysSinceActivity}일 전`}
+                                </span>
+                              </div>
+                              {appt.status === 'cancelled' && appt.cancelReason && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">취소 사유</span>
+                                  <span className="font-bold text-red-400">{appt.cancelReason}</span>
+                                </div>
                               )}
                             </div>
+                            {/* 하단: 액션 */}
+                            {appt.status === 'active' && (
+                              <button
+                                onClick={() => setActiveTab('client-crm')}
+                                className="w-full bg-slate-100 hover:bg-slate-200 text-brand font-bold py-2 rounded-xl text-[12px] transition-colors flex items-center justify-center gap-1 press-scale"
+                              >
+                                상담 이동 <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         );
                       })}
