@@ -837,156 +837,185 @@ export default function CaseReviewCopilot({
             <>
               {/* TAB 1: 고객 입력정보 */}
               {activeTab === 'client-info' && (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><FileText className="w-4 h-4 text-brand" /> 고객이 입력한 원본 정보</h4>
 
                   {/* 1. 기본 정보 */}
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">👤 기본 정보</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                      <h5 className="text-[11px] font-bold text-slate-600">👤 기본 정보</h5>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                       {[
                         { label: '의뢰인명', value: fp.clientName || consultRequest.clientName || consultRequest.client_name || '-' },
                         { label: '연락처', value: fp.clientPhone || consultRequest.phone || '-' },
                         { label: '나이', value: fp.age ? `${fp.age}세` : '-' },
                         { label: '성별', value: fp.gender === 'male' ? '남성' : fp.gender === 'female' ? '여성' : '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100 border-t border-slate-100">
+                      {[
                         { label: '혼인 상태', value: fp.maritalStatus === 'MARRIED' || fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus === 'DIVORCED' || fp.maritalStatus === 'divorced' ? '이혼' : fp.maritalStatus === 'SINGLE' || fp.maritalStatus === 'single' ? '미혼' : '-' },
                         { label: '미성년 자녀', value: fp.minorChildren != null ? `${fp.minorChildren}명` : `${fp.dependents || 0}명` },
                         { label: '거주지', value: fp.residence || fp.residenceRegion || fp.address || '-' },
                         { label: '거주 형태', value: fp.housingType === 'rent' ? '월세' : fp.housingType === 'jeonse' ? '전세' : fp.housingType === 'owned' ? '자가' : fp.housingType === 'free' ? '무상거주' : fp.housingType || '-' },
                       ].map((item, i) => (
-                        <div key={i} className="bg-slate-50 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-slate-400 font-bold">{item.label}</p>
-                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* 2. 소득 및 직업 */}
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">💼 소득 및 직업</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-blue-50/60 px-3 py-2 border-b border-slate-200">
+                      <h5 className="text-[11px] font-bold text-slate-600">💼 소득 및 직업</h5>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                       {[
                         { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
-                        { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업/사업자' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
+                        { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
                         { label: '근무지', value: fp.workLocation || '-' },
                         { label: '배우자 소득', value: fp.spouseIncome ? fmtMoney(fp.spouseIncome) : '-' },
                       ].map((item, i) => (
-                        <div key={i} className="bg-blue-50/50 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-blue-400 font-bold">{item.label}</p>
-                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* 3. 채무 요약 (상세는 '채무현황' 탭) */}
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">🔴 채무 요약 <span className="text-[10px] text-slate-400 font-normal ml-1">→ 상세는 '채무현황' 탭</span></h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {/* 3. 채무 요약 */}
+                  <div className="bg-white border border-red-100 rounded-xl overflow-hidden">
+                    <div className="bg-red-50/60 px-3 py-2 border-b border-red-100 flex items-center justify-between">
+                      <h5 className="text-[11px] font-bold text-slate-600">🔴 채무 요약</h5>
+                      <span className="text-[10px] text-slate-400">상세 → '채무현황' 탭</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                       {[
-                        { label: '총 채무', value: fmtMoney(fp.debtTotal || 0) },
+                        { label: '총 채무', value: fmtMoney(fp.debtTotal || 0), highlight: true },
                         { label: '채권자 수', value: fp.creditorCount ? `${fp.creditorCount}개` : `${(fp.debts || []).length}개` },
                         { label: '채무 원인', value: fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-' },
                         { label: '독촉/법적조치', value: fp.harassmentLevel === 'CALL' ? '독촉 전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="bg-red-50/50 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-red-400 font-bold">{item.label}</p>
-                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                      ].map((item: any, i) => (
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className={`text-xs font-bold mt-0.5 ${item.highlight ? 'text-red-600 font-extrabold' : 'text-slate-800'}`}>{item.value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* 4. 자산 현황 */}
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">🏦 자산 현황</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-emerald-50/60 px-3 py-2 border-b border-slate-200">
+                      <h5 className="text-[11px] font-bold text-slate-600">🏦 자산 현황</h5>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
                       {[
                         { label: '총 자산', value: fmtMoney(fp.assetsTotal || 0) },
                         { label: '본인 재산', value: fp.myAssets ? `${fp.myAssets}만원` : '-' },
                         { label: '배우자 자산', value: fp.spouseAsset ? `${fp.spouseAsset}만원` : '-' },
                         { label: '임대보증금', value: fp.rentalDeposit ? `${fp.rentalDeposit}만원` : '-' },
-                        { label: '예상 퇴직금', value: fp.retirementPay ? `${fp.retirementPay}만원` : '-' },
-                        { label: '퇴직연금 유형', value: fp.retirementPensionType === 'pension' ? '가입' : fp.retirementPensionType === 'none' ? '미가입' : fp.retirementPensionType === 'unknown' ? '모름' : '-' },
-                        { label: '주택 명의자', value: fp.housingContractHolder === 'self' ? '본인' : fp.housingContractHolder === 'spouse' ? '배우자' : fp.housingContractHolder || '-' },
+                      ].map((item, i) => (
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100 border-t border-slate-100">
+                      {[
+                        { label: '퇴직금', value: fp.retirementPay ? `${fp.retirementPay}만원` : '-' },
+                        { label: '퇴직연금', value: fp.retirementPensionType === 'pension' ? '가입' : fp.retirementPensionType === 'none' ? '미가입' : fp.retirementPensionType === 'unknown' ? '모름' : '-' },
+                        { label: '주택 명의', value: fp.housingContractHolder === 'self' ? '본인' : fp.housingContractHolder === 'spouse' ? '배우자' : fp.housingContractHolder || '-' },
                         { label: '보증금 대출', value: fp.depositLoan ? `${fp.depositLoan}만원` : '-' },
                       ].map((item, i) => (
-                        <div key={i} className="bg-green-50/50 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-green-500 font-bold">{item.label}</p>
-                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
                         </div>
                       ))}
                     </div>
                     {fp.assets && fp.assets.length > 0 && (
-                      <div className="bg-slate-50 rounded-xl overflow-hidden mt-2">
-                        <table className="w-full text-xs">
-                          <thead><tr className="bg-slate-100 text-slate-500">
-                            <th className="p-2 text-left font-bold">자산명</th>
-                            <th className="p-2 text-right font-bold">시장가</th>
-                            <th className="p-2 text-center font-bold">유형</th>
-                          </tr></thead>
-                          <tbody>
-                            {fp.assets.map((a: any, i: number) => (
-                              <tr key={i} className="border-t border-slate-100">
-                                <td className="p-2 text-slate-700">{a.label || a.description || `자산 ${i+1}`}</td>
-                                <td className="p-2 text-right font-bold text-slate-800">{fmtMoney(a.marketValue || a.value || 0)}</td>
-                                <td className="p-2 text-center"><span className="bg-slate-200 rounded-lg px-1.5 py-0.5 text-[10px] font-bold">{a.type || '-'}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <table className="w-full text-xs border-t border-slate-100">
+                        <thead><tr className="bg-slate-50 text-slate-500">
+                          <th className="px-3 py-1.5 text-left font-bold text-[10px]">자산명</th>
+                          <th className="px-3 py-1.5 text-right font-bold text-[10px]">시장가</th>
+                          <th className="px-3 py-1.5 text-center font-bold text-[10px]">유형</th>
+                        </tr></thead>
+                        <tbody>
+                          {fp.assets.map((a: any, i: number) => (
+                            <tr key={i} className="border-t border-slate-50">
+                              <td className="px-3 py-1.5 text-slate-700">{a.label || a.description || `자산 ${i+1}`}</td>
+                              <td className="px-3 py-1.5 text-right font-bold text-slate-800">{fmtMoney(a.marketValue || a.value || 0)}</td>
+                              <td className="px-3 py-1.5 text-center"><span className="bg-slate-100 rounded-lg px-1.5 py-0.5 text-[10px] font-bold">{a.type || '-'}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
 
                   {/* 5. 생활비 */}
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">🏠 월 생활비</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-amber-50/60 px-3 py-2 border-b border-slate-200">
+                      <h5 className="text-[11px] font-bold text-slate-600">🏠 월 생활비</h5>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 divide-x divide-slate-100">
                       {[
-                        { label: '월세', value: fp.rentCost ? `${fp.rentCost}만원` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
-                        { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만원` : '-' },
-                        { label: '교육비', value: fp.educationCost ? `${fp.educationCost}만원` : '-' },
-                        { label: '고정지출(통신·보험)', value: fp.monthlyFixedExpenses ? `${fp.monthlyFixedExpenses}만원` : '-' },
-                        { label: '생활비 합계', value: fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-' },
+                        { label: '월세', value: fp.rentCost ? `${fp.rentCost}만` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
+                        { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만` : '-' },
+                        { label: '교육비', value: fp.educationCost ? `${fp.educationCost}만` : '-' },
+                        { label: '고정지출', value: fp.monthlyFixedExpenses ? `${fp.monthlyFixedExpenses}만` : '-' },
+                        { label: '합계', value: fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-' },
                       ].map((item, i) => (
-                        <div key={i} className="bg-amber-50/50 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-amber-500 font-bold">{item.label}</p>
-                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* 6. 특이사항 */}
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">⚠️ 특이사항</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-violet-50/60 px-3 py-2 border-b border-slate-200">
+                      <h5 className="text-[11px] font-bold text-slate-600">⚠️ 특이사항</h5>
+                    </div>
+                    <div className="grid grid-cols-3 divide-x divide-slate-100">
                       {[
                         { label: '24개월 특례', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
                         { label: '상담 유형', value: consultRequest.consultType || consultRequest.request_type || consultRequest.requestType || '-' },
                         { label: '요청일', value: consultRequest.createdAt?.split('T')[0] || consultRequest.created_at?.split('T')[0] || '-' },
                       ].map((item, i) => (
-                        <div key={i} className="bg-purple-50/50 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-purple-500 font-bold">{item.label}</p>
-                          <p className="text-xs font-extrabold text-slate-800">{item.value}</p>
+                        <div key={i} className="px-3 py-2">
+                          <p className="text-[10px] text-slate-400">{item.label}</p>
+                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
                         </div>
                       ))}
                     </div>
                     {fp.riskFlags && fp.riskFlags.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-[10px] text-slate-500 font-bold mb-1">위험 플래그</p>
+                      <div className="px-3 py-2 border-t border-slate-100">
+                        <p className="text-[10px] text-slate-400 mb-1">위험 플래그</p>
                         <div className="flex gap-1 flex-wrap">
                           {fp.riskFlags.map((flag: string, i: number) => (
-                            <span key={i} className="bg-red-100 text-red-700 rounded-lg px-2 py-0.5 text-[10px] font-bold">{flag}</span>
+                            <span key={i} className="bg-red-50 text-red-600 rounded-lg px-2 py-0.5 text-[10px] font-bold border border-red-100">{flag}</span>
                           ))}
                         </div>
                       </div>
                     )}
                     {(fp.clientNote || (fp.clientNotes && fp.clientNotes.length > 0)) && (
-                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                        <p className="text-[10px] text-amber-600 font-bold mb-1">의뢰인 전달 사항</p>
+                      <div className="px-3 py-2 border-t border-slate-100 bg-amber-50/50">
+                        <p className="text-[10px] text-amber-600 font-bold mb-0.5">의뢰인 전달 사항</p>
                         <p className="text-xs text-slate-700">{fp.clientNote || (fp.clientNotes || []).join('\n')}</p>
                       </div>
                     )}
