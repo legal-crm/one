@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA 
@@ -1759,7 +1759,7 @@ export default function LawyerRole({
               ))}
             </div>
 
-            {/* 섹션 1: 상단 요약 카드 */}
+            {/* ═══ 섹션 1: 상단 요약 카드 ═══ */}
             {(dashboardSub === 'overview' || dashboardSub === 'requests') && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
@@ -1804,172 +1804,30 @@ export default function LawyerRole({
             </div>
             )}
 
-            {/* My Tasks Widget */}
+            {/* ═══ Row 2: My Tasks + 나의 상담 활동 (같은 행) ═══ */}
             {(dashboardSub === 'overview') && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-1">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
                 <MyTasksWidget
                   tenantId={activeLawyer.lawFirmId || activeLawyer.id}
                   userId={activeStaffMember?.id || activeLawyer.id}
                   userName={activeStaffMember?.name || activeLawyer.name}
                 />
               </div>
-            </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-              {/* 섹션 2: 신규 상담 요청 미리보기 */}
-              {(dashboardSub === 'overview' || dashboardSub === 'requests') && (
-              <div className="lg:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                    <Bell className="w-4 h-4 text-brand" />
-                    <span>지금 상담을 기다리는 의뢰인</span>
-                  </h3>
-                  <span className="text-[12px] text-slate-500">{totalOpenRequestsCount}건 대기 중</span>
-                </div>
-
-                <div className="space-y-3">
-                  {requests
-                    .filter(r => r.status === 'requested' && isRelevantRequest(r))
-                    .slice(0, 3)
-                    .map(r => (
-                      <div key={r.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-brand/30 transition-all space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                              r.requestType === 'direct'
-                                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                                : 'bg-brand/10 text-brand border border-brand/20'
-                            }`}>
-                              {r.requestType === 'direct' ? '단독지명' : '오픈형'}
-                            </span>
-                            {r.entryCategory && (
-                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                                r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
-                                r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
-                                'bg-slate-100 text-slate-500 border border-slate-200'
-                              }`}>
-                                {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
-                              </span>
-                            )}
-                            <span className="text-xs font-bold text-slate-700">{r.clientName}</span>
-                          </div>
-                          <span className="text-[12px] text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</span>
-                        </div>
-
-                        <p className="text-xs text-slate-600 line-clamp-1 leading-relaxed">{r.content}</p>
-
-                        <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 text-[13px]">
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">총 채무</span>
-                            <span className="font-bold text-red-400">{r.financialProfile.debtTotal.toLocaleString()}만</span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">월 소득</span>
-                            <span className="font-bold text-slate-700">{r.financialProfile.income}만</span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">직업</span>
-                            <span className="font-bold text-slate-700">
-                              {r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : r.financialProfile.jobType === 'FREELANCER' ? '프리랜서' : '-'}
-                            </span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">채무 원인</span>
-                            <span className="font-bold text-slate-700">
-                              {r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
-                            </span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">소득대비 부채</span>
-                            <span className="font-bold text-red-400">{(r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1)}배</span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 text-[13px]">
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">나이</span>
-                            <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '-'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">가구원 수</span>
-                            <span className="font-bold text-slate-700">{r.financialProfile.dependents + 1}인 가구</span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">미성년 자녀</span>
-                            <span className="font-bold text-slate-700">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">혼인 상태</span>
-                            <span className="font-bold text-slate-700">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
-                          </div>
-                          <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                            <span className="text-slate-500 block text-[11px] font-bold">{r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? '⚡ 특례' : '거주형태'}</span>
-                            <span className={`font-bold ${r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? 'text-emerald-500' : 'text-slate-700'}`}>
-                              {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none'
-                                ? (r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급 (24개월)' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애 (24개월)' : r.financialProfile.specialCondition === 'single_parent' ? '한부모 (24개월)' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 (24개월)' : '고령자 (24개월)')
-                                : (r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-')}
-                            </span>
-                          </div>
-                        </div>
-
-                        {r.financialProfile.riskFlags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {r.financialProfile.riskFlags.slice(0, 3).map(rf => (
-                              <span key={rf} className="bg-red-500/10 text-red-400 border border-red-500/10 text-[11px] px-1.5 py-0.5 rounded font-semibold">
-                                ⚠ {rf}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        <button
-                          onClick={() => setActiveTab('open-requests')}
-                          className="w-full bg-slate-100 hover:bg-slate-200 text-brand font-bold py-2 rounded-[200px] text-[13px] border border-slate-200 transition-colors flex items-center justify-center gap-1"
-                        >
-                          상세 확인 & 상담 참여하기
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-
-                  {requests.filter(r => r.status === 'requested').length === 0 && (
-                    <div className="py-12 text-center space-y-2">
-                      <Briefcase className="w-10 h-10 text-slate-300 mx-auto" />
-                      <p className="text-xs text-slate-500">현재 대기 중인 신규 상담 요청이 없습니다.</p>
-                      <p className="text-[12px] text-slate-500">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
-                    </div>
-                  )}
-                </div>
-
-                {requests.filter(r => r.status === 'requested').length > 3 && (
-                  <button
-                    onClick={() => setActiveTab('open-requests')}
-                    className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2.5 rounded-[200px] text-xs transition-colors"
-                  >
-                    전체 상담 요청 {totalOpenRequestsCount}건 모두 보기 &rarr;
-                  </button>
-                )}
-              </div>
-              )}
-
-              {/* 섹션 3: 나의 상담 활동 요약 */}
-              {(dashboardSub === 'overview' || dashboardSub === 'activity') && (
-              <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-5">
+              {/* 나의 상담 활동 — overview 사이드바 */}
+              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
                 <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
                   <BarChart2 className="w-4 h-4 text-emerald-400" />
                   <span>나의 상담 활동</span>
                 </h3>
-
                 {(() => {
                   const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
                   const myCounseling = requests.filter(r => r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id).length;
                   const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
                   const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
                   return (
-                    <div className="space-y-4">
-                      <div className="space-y-3">
+                    <div className="space-y-3">
+                      <div className="space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-500 font-semibold">총 상담 참여</span>
                           <span className="font-black text-slate-700">{myParticipated}건</span>
@@ -1979,8 +1837,7 @@ export default function LawyerRole({
                           <span className="font-black text-emerald-400">{myCounseling}건</span>
                         </div>
                       </div>
-
-                      <div className="border-t border-slate-200 pt-4 space-y-3">
+                      <div className="border-t border-slate-200 pt-3 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-500 font-semibold">수임 전환 성공</span>
                           <span className="font-black text-purple-400">{myCases}건</span>
@@ -1996,12 +1853,11 @@ export default function LawyerRole({
                           />
                         </div>
                       </div>
-
-                      <div className="border-t border-slate-200 pt-4">
-                        <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 space-y-1.5">
-                          <span className="text-[12px] font-black text-brand uppercase tracking-wide">💡 상담 TIP</span>
-                          <p className="text-[13px] text-slate-600 leading-relaxed">
-                            의뢰인의 채무 원인에 맞춘 구체적인 해결 방안을 제시하면 수임 전환율이 높아집니다. 채무 구조를 꼼꼼히 분석해 보세요.
+                      <div className="border-t border-slate-200 pt-3">
+                        <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 space-y-1">
+                          <span className="text-[11px] font-black text-brand uppercase tracking-wide">💡 상담 TIP</span>
+                          <p className="text-[12px] text-slate-600 leading-relaxed">
+                            의뢰인의 채무 원인에 맞춘 구체적인 해결 방안을 제시하면 수임 전환율이 높아집니다.
                           </p>
                         </div>
                       </div>
@@ -2009,48 +1865,500 @@ export default function LawyerRole({
                   );
                 })()}
               </div>
-              )}
-
-            {(dashboardSub === 'overview' || dashboardSub === 'clients') && (
-            <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">🤝 전담 선임 고객</h3>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">활성 2명</span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">취소 1명</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { id: 'appt-1', clientName: '홍길*', status: 'active' as const, appointedAt: '2026-07-10T14:30:00Z', cancelReason: '' },
-                  { id: 'appt-3', clientName: '박영*', status: 'active' as const, appointedAt: '2026-07-14T16:00:00Z', cancelReason: '' },
-                  { id: 'appt-2', clientName: '김철*', status: 'cancelled' as const, appointedAt: '2026-07-05T09:00:00Z', cancelReason: '응답이 너무 느려요' },
-                ].map(appt => (
-                  <div key={appt.id} className={`flex items-center justify-between p-3 rounded-xl border ${appt.status === 'active' ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
-                        {appt.clientName[0]}
-                      </div>
-                      <div>
-                        <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
-                        <span className="text-[11px] text-slate-400">선임일: {new Date(appt.appointedAt).toLocaleDateString('ko-KR')}</span>
-                        {appt.status === 'cancelled' && appt.cancelReason && (
-                          <span className="text-[11px] text-red-400 block">취소 사유: {appt.cancelReason}</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
-                      {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
             )}
 
+            {/* ═══ Row 3: 지금 상담을 기다리는 의뢰인 — 긴급 Action Zone ═══ */}
+            {(dashboardSub === 'overview' || dashboardSub === 'requests') && (
+            <div className="bg-amber-50/60 p-6 rounded-2xl border border-amber-200 border-l-4 border-l-amber-400 shadow-md space-y-4">
+              <div className="flex items-center justify-between border-b border-amber-200/60 pb-3">
+                <h3 className="font-black text-base text-amber-800 flex items-center gap-2">
+                  <div className="relative">
+                    <Bell className="w-5 h-5 text-amber-500" />
+                    {totalOpenRequestsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse" />
+                    )}
+                  </div>
+                  <span>지금 상담을 기다리는 의뢰인</span>
+                </h3>
+                <span className="bg-amber-500 text-white text-xs font-black px-2.5 py-1 rounded-lg whitespace-nowrap">
+                  {totalOpenRequestsCount}건 대기 중
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {requests
+                  .filter(r => r.status === 'requested' && isRelevantRequest(r))
+                  .slice(0, 3)
+                  .map(r => (
+                    <div key={r.id} className="bg-white p-4 rounded-xl border border-amber-100 hover:border-amber-300 hover:shadow-sm transition-all space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            r.requestType === 'direct'
+                              ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                              : 'bg-brand/10 text-brand border border-brand/20'
+                          }`}>
+                            {r.requestType === 'direct' ? '단독지명' : '오픈형'}
+                          </span>
+                          {r.entryCategory && (
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                              r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
+                              r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
+                              'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}>
+                              {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-slate-700">{r.clientName}</span>
+                        </div>
+                        <span className="text-[12px] text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 line-clamp-1 leading-relaxed">{r.content}</p>
+
+                      <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 text-[13px]">
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">총 채무</span>
+                          <span className="font-bold text-red-400">{r.financialProfile.debtTotal.toLocaleString()}만</span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">월 소득</span>
+                          <span className="font-bold text-slate-700">{r.financialProfile.income}만</span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">직업</span>
+                          <span className="font-bold text-slate-700">
+                            {r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : r.financialProfile.jobType === 'FREELANCER' ? '프리랜서' : '-'}
+                          </span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">채무 원인</span>
+                          <span className="font-bold text-slate-700">
+                            {r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
+                          </span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">소득대비 부채</span>
+                          <span className="font-bold text-red-400">{(r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1)}배</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 text-[13px]">
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">나이</span>
+                          <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '-'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">가구원 수</span>
+                          <span className="font-bold text-slate-700">{r.financialProfile.dependents + 1}인 가구</span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">미성년 자녀</span>
+                          <span className="font-bold text-slate-700">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">혼인 상태</span>
+                          <span className="font-bold text-slate-700">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                          <span className="text-slate-500 block text-[11px] font-bold">{r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? '⚡ 특례' : '거주형태'}</span>
+                          <span className={`font-bold ${r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? 'text-emerald-500' : 'text-slate-700'}`}>
+                            {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none'
+                              ? (r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급 (24개월)' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애 (24개월)' : r.financialProfile.specialCondition === 'single_parent' ? '한부모 (24개월)' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 (24개월)' : '고령자 (24개월)')
+                              : (r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {r.financialProfile.riskFlags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {r.financialProfile.riskFlags.slice(0, 3).map(rf => (
+                            <span key={rf} className="bg-red-500/10 text-red-400 border border-red-500/10 text-[11px] px-1.5 py-0.5 rounded font-semibold">
+                              ⚠ {rf}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => setActiveTab('open-requests')}
+                        className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2.5 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-1 press-scale"
+                      >
+                        상세 확인 & 상담 참여하기
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+
+                {requests.filter(r => r.status === 'requested').length === 0 && (
+                  <div className="py-12 text-center space-y-2">
+                    <Briefcase className="w-10 h-10 text-amber-300 mx-auto" />
+                    <p className="text-xs text-slate-600">현재 대기 중인 신규 상담 요청이 없습니다.</p>
+                    <p className="text-[12px] text-slate-500">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
+                  </div>
+                )}
+              </div>
+
+              {requests.filter(r => r.status === 'requested').length > 3 && (
+                <button
+                  onClick={() => setActiveTab('open-requests')}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors press-scale"
+                >
+                  전체 상담 요청 {totalOpenRequestsCount}건 모두 보기 &rarr;
+                </button>
+              )}
             </div>
+            )}
+
+            {/* ═══ Row 4: 전담 선임 고객 (overview — 풀 너비 독립 섹션) ═══ */}
+            {(dashboardSub === 'overview') && (() => {
+              const appointedClients = [
+                { id: 'appt-1', clientName: '홍길*', status: 'active' as const, appointedAt: '2026-07-10T14:30:00Z', cancelReason: '', lastActivity: '2026-08-18T10:00:00Z' },
+                { id: 'appt-3', clientName: '박영*', status: 'active' as const, appointedAt: '2026-07-14T16:00:00Z', cancelReason: '', lastActivity: '2026-08-19T14:30:00Z' },
+                { id: 'appt-2', clientName: '김철*', status: 'cancelled' as const, appointedAt: '2026-07-05T09:00:00Z', cancelReason: '응답이 너무 느려요', lastActivity: '2026-07-20T11:00:00Z' },
+              ];
+              const activeCount = appointedClients.filter(a => a.status === 'active').length;
+              const cancelledCount = appointedClients.filter(a => a.status === 'cancelled').length;
+              return (
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">🤝 전담 선임 고객</h3>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold">활성 {activeCount}명</span>
+                      {cancelledCount > 0 && <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 font-bold">취소 {cancelledCount}명</span>}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {appointedClients.map(appt => {
+                      const daysSince = Math.floor((Date.now() - new Date(appt.appointedAt).getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={appt.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${appt.status === 'active' ? 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                              {appt.clientName[0]}
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
+                              <span className="text-[11px] text-slate-400">선임 {daysSince}일째</span>
+                              {appt.status === 'cancelled' && appt.cancelReason && (
+                                <span className="text-[11px] text-red-400 block">사유: {appt.cancelReason}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
+                            {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ═══ 서브탭: 활동 분석 (고도화) ═══ */}
+            {dashboardSub === 'activity' && (() => {
+              const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
+              const myCounseling = requests.filter(r => r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id).length;
+              const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
+              const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
+              const totalRequested = requests.filter(r => isRelevantRequest(r)).length;
+              // 퍼널 단계별 비율 계산
+              const funnelStages = [
+                { label: '상담 요청 접수', count: totalRequested, color: 'bg-slate-400', icon: <Briefcase className="w-4 h-4" /> },
+                { label: '상담 참여', count: myParticipated, color: 'bg-brand', icon: <MessageCircle className="w-4 h-4" /> },
+                { label: '상담 진행 중', count: myCounseling, color: 'bg-amber-500', icon: <MessageSquare className="w-4 h-4" /> },
+                { label: '수임 전환 성공', count: myCases, color: 'bg-emerald-500', icon: <Trophy className="w-4 h-4" /> },
+              ];
+              const funnelMax = Math.max(totalRequested, 1);
+              // 주요 상담 유형 분석
+              const categoryMap: Record<string, number> = {};
+              requests.filter(r => r.selectedLawyerId === activeLawyer.id && r.entryCategory).forEach(r => {
+                const label = r.entryCategory!.label;
+                categoryMap[label] = (categoryMap[label] || 0) + 1;
+              });
+              const topCategories = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+              return (
+                <div className="space-y-6">
+                  {/* 상단 핵심 성과 지표 카드 */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-brand/10 text-brand"><Users className="w-5 h-5" /></div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 font-bold block">총 상담 참여</span>
+                        <span className="text-xl font-black text-brand">{myParticipated}건</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-emerald-400/10 text-emerald-500"><MessageCircle className="w-5 h-5" /></div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 font-bold block">현재 진행 중</span>
+                        <span className="text-xl font-black text-emerald-500">{myCounseling}건</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-purple-400/10 text-purple-500"><Trophy className="w-5 h-5" /></div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 font-bold block">수임 전환</span>
+                        <span className="text-xl font-black text-purple-500">{myCases}건</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <div className={`p-2.5 rounded-lg ${conversionRate >= 40 ? 'bg-emerald-400/10 text-emerald-500' : conversionRate >= 20 ? 'bg-amber-400/10 text-amber-500' : 'bg-slate-100 text-slate-400'}`}>
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 font-bold block">전환율</span>
+                        <span className={`text-xl font-black ${conversionRate >= 40 ? 'text-emerald-500' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-600'}`}>{conversionRate}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* 수임 전환 퍼널 */}
+                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 space-y-5">
+                      <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
+                        <Target className="w-4 h-4 text-brand" />
+                        <span>수임 전환 퍼널</span>
+                      </h3>
+                      <div className="space-y-4">
+                        {funnelStages.map((stage, i) => {
+                          const pct = funnelMax > 0 ? Math.round((stage.count / funnelMax) * 100) : 0;
+                          const dropRate = i > 0 && funnelStages[i - 1].count > 0
+                            ? Math.round(((funnelStages[i - 1].count - stage.count) / funnelStages[i - 1].count) * 100)
+                            : 0;
+                          return (
+                            <div key={stage.label} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                                  <span className={`p-1 rounded ${stage.color} text-white`}>{stage.icon}</span>
+                                  {stage.label}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {i > 0 && dropRate > 0 && (
+                                    <span className="text-[11px] text-red-400 font-semibold">-{dropRate}% 이탈</span>
+                                  )}
+                                  <span className="font-black text-slate-800">{stage.count}건</span>
+                                  <span className="text-slate-400 w-10 text-right">{pct}%</span>
+                                </div>
+                              </div>
+                              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-700 ${stage.color}`}
+                                  style={{ width: `${Math.max(pct, 2)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* 전환율 프로그레스 */}
+                      <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600 font-bold">전체 수임 전환율</span>
+                          <span className={`text-lg font-black ${conversionRate >= 40 ? 'text-emerald-500' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-600'}`}>{conversionRate}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${conversionRate >= 40 ? 'bg-emerald-500' : conversionRate >= 20 ? 'bg-amber-500' : 'bg-slate-300'}`}
+                            style={{ width: `${Math.min(100, conversionRate)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 활동 요약 인사이트 */}
+                    <div className="space-y-4">
+                      {/* 활동 요약 카드 */}
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+                        <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
+                          <BarChart2 className="w-4 h-4 text-emerald-400" />
+                          <span>활동 요약</span>
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> 평균 응답 시간</span>
+                            {/* <!-- mock --> */}
+                            <span className="font-black text-slate-700">2.3시간</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> 최근 7일 참여</span>
+                            {/* <!-- mock --> */}
+                            <span className="font-black text-brand">{Math.min(myParticipated, 3)}건</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Target className="w-3.5 h-3.5" /> 응답률</span>
+                            {/* <!-- mock --> */}
+                            <span className="font-black text-emerald-500">85%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 주요 상담 유형 */}
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+                        <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
+                          <Tag className="w-4 h-4 text-violet-400" />
+                          <span>주요 상담 유형</span>
+                        </h3>
+                        {topCategories.length > 0 ? (
+                          <div className="space-y-2.5">
+                            {topCategories.map(([label, count], i) => (
+                              <div key={label} className="flex items-center justify-between text-xs">
+                                <span className="text-slate-600 font-semibold flex items-center gap-1.5">
+                                  <span className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-violet-500' : i === 1 ? 'bg-teal-500' : 'bg-slate-400'}`} />
+                                  {label}
+                                </span>
+                                <span className="font-black text-slate-700">{count}건</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 text-center py-4">상담 데이터가 쌓이면 유형별 분석이 표시됩니다.</p>
+                        )}
+                      </div>
+
+                      {/* 상담 TIP */}
+                      <div className="bg-brand/5 border border-brand/10 rounded-xl p-4 space-y-1.5">
+                        <span className="text-[11px] font-black text-brand uppercase tracking-wide">💡 상담 TIP</span>
+                        <p className="text-[12px] text-slate-600 leading-relaxed">
+                          의뢰인의 채무 원인에 맞춘 구체적인 해결 방안을 제시하면 수임 전환율이 높아집니다. 채무 구조를 꼼꼼히 분석해 보세요.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ═══ 서브탭: 전담 고객 (고도화) ═══ */}
+            {dashboardSub === 'clients' && (() => {
+              const appointedClients = [
+                { id: 'appt-1', clientName: '홍길*', status: 'active' as const, appointedAt: '2026-07-10T14:30:00Z', cancelReason: '', lastActivity: '2026-08-18T10:00:00Z' },
+                { id: 'appt-3', clientName: '박영*', status: 'active' as const, appointedAt: '2026-07-14T16:00:00Z', cancelReason: '', lastActivity: '2026-08-19T14:30:00Z' },
+                { id: 'appt-2', clientName: '김철*', status: 'cancelled' as const, appointedAt: '2026-07-05T09:00:00Z', cancelReason: '응답이 너무 느려요', lastActivity: '2026-07-20T11:00:00Z' },
+              ];
+              const activeClients = appointedClients.filter(a => a.status === 'active');
+              const cancelledClients = appointedClients.filter(a => a.status === 'cancelled');
+              const churnRate = appointedClients.length > 0 ? Math.round((cancelledClients.length / appointedClients.length) * 100) : 0;
+
+              return (
+                <div className="space-y-6">
+                  {/* 상단 통계 카드 3열 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-brand/10 text-brand"><Users className="w-5 h-5" /></div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 font-bold block">전체 전담 고객</span>
+                        <span className="text-xl font-black text-brand">{appointedClients.length}명</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-emerald-400/10 text-emerald-500"><UserCheck className="w-5 h-5" /></div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 font-bold block">활성 고객</span>
+                        <span className="text-xl font-black text-emerald-500">{activeClients.length}명</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-red-400/10 text-red-400"><UserX className="w-5 h-5" /></div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 font-bold block">이탈/취소</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-black text-red-400">{cancelledClients.length}명</span>
+                          <span className="text-[11px] text-slate-400 font-semibold">이탈률 {churnRate}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 고객 리스트 테이블형 */}
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">🤝 전담 고객 관리</h3>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {appointedClients.map(appt => {
+                        const daysSince = Math.floor((Date.now() - new Date(appt.appointedAt).getTime()) / (1000 * 60 * 60 * 24));
+                        const lastAct = new Date(appt.lastActivity);
+                        const daysSinceActivity = Math.floor((Date.now() - lastAct.getTime()) / (1000 * 60 * 60 * 24));
+                        return (
+                          <div key={appt.id} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50/50 transition-colors">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                                {appt.clientName[0]}
+                              </div>
+                              <div>
+                                <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
+                                <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5">
+                                  <span>선임일: {new Date(appt.appointedAt).toLocaleDateString('ko-KR')}</span>
+                                  <span className="text-slate-300">|</span>
+                                  <span className="font-semibold text-slate-500">{daysSince}일째</span>
+                                </div>
+                                {appt.status === 'cancelled' && appt.cancelReason && (
+                                  <span className="text-[11px] text-red-400 mt-0.5 block">취소 사유: {appt.cancelReason}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              {/* <!-- mock --> 최근 활동 */}
+                              <div className="text-right hidden md:block">
+                                <span className="text-[11px] text-slate-400 block">최근 활동</span>
+                                <span className={`text-[11px] font-bold ${daysSinceActivity <= 3 ? 'text-emerald-500' : daysSinceActivity <= 7 ? 'text-amber-500' : 'text-slate-400'}`}>
+                                  {daysSinceActivity === 0 ? '오늘' : `${daysSinceActivity}일 전`}
+                                </span>
+                              </div>
+                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
+                                {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
+                              </span>
+                              {appt.status === 'active' && (
+                                <button
+                                  onClick={() => setActiveTab('client-crm')}
+                                  className="text-[11px] font-bold text-brand hover:text-brand-hover transition-colors flex items-center gap-0.5 press-scale whitespace-nowrap"
+                                >
+                                  상담 이동 <ChevronRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 이탈 방지 인사이트 (취소 고객 존재 시) */}
+                  {cancelledClients.length > 0 && (
+                    <div className="bg-red-50/50 p-5 rounded-2xl border border-red-100 border-l-4 border-l-red-400 space-y-3">
+                      <h4 className="text-sm font-bold text-red-700 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4" />
+                        이탈 방지 인사이트
+                      </h4>
+                      <div className="space-y-2">
+                        {cancelledClients.map(c => (
+                          <div key={c.id} className="flex items-start gap-2 text-xs">
+                            <span className="text-red-400 mt-0.5">•</span>
+                            <div>
+                              <span className="font-bold text-slate-700">{c.clientName}</span>
+                              <span className="text-slate-500"> — 취소 사유: "{c.cancelReason}"</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="bg-white/80 rounded-xl p-3 border border-red-100/50">
+                        <p className="text-[12px] text-slate-600 leading-relaxed">
+                          💡 고객 응답 시간을 단축하면 이탈을 줄일 수 있습니다. 신규 메시지 알림을 활성화하고, 24시간 이내 첫 응답을 목표로 해보세요.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
           </div>
         )}
+
+
 
         {/* TAB 2: INCOMING COUNSEL REQUESTS LIST */}
         {activeTab === 'open-requests' && (
