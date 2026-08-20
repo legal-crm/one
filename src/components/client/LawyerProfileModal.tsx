@@ -408,6 +408,29 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                 </div>
               </div>
 
+              {/* 인증 뱃지 (전문 분야 바로 아래) */}
+              <div className="space-y-3">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-brand" />
+                  인증 뱃지
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { label: '대한변협 등록', sub: '도산법 전문', icon: '⚖️' },
+                    { label: '회생법원 전담', sub: lawyer.courtJurisdiction || '', icon: '🏛️' },
+                    { label: `수임 ${(lawyer.totalCases || 100)}건+`, sub: '인가 실적', icon: '🏆' },
+                  ].map(badge => (
+                    <div key={badge.label} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs">
+                      <span className="text-2xl">{badge.icon}</span>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">{badge.label}</div>
+                        <div className="text-[12px] text-brand font-bold">{badge.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* 정보 테이블 */}
               <div className="bg-slate-50 rounded-2xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
                 {[
@@ -438,26 +461,6 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                     </div>
                   </div>
                 ))}
-              </div>
-
-              {/* 인증 뱃지 */}
-              <div className="space-y-3">
-                <h3 className="font-bold text-base text-slate-900">인증 뱃지</h3>
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { label: '대한변협 등록', sub: '도산법 전문', icon: '⚖️' },
-                    { label: '회생법원 전담', sub: lawyer.courtJurisdiction || '', icon: '🏛️' },
-                    { label: `수임 ${(lawyer.totalCases || 100)}건+`, sub: '인가 실적', icon: '🏆' },
-                  ].map(badge => (
-                    <div key={badge.label} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs">
-                      <span className="text-2xl">{badge.icon}</span>
-                      <div>
-                        <div className="text-sm font-bold text-slate-900">{badge.label}</div>
-                        <div className="text-[12px] text-brand font-bold">{badge.sub}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           )}
