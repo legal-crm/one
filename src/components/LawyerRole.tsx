@@ -882,7 +882,7 @@ export default function LawyerRole({
     setProposalModalReqId(reqId);
   };
 
-  // LawyerProposalDraft에서 제안서 발송 시 기존 데이터 플로우 유지
+  // LawyerProposalDraft에서 제안서 발송 시 기존 데이터 플로우 유지 + 채팅 연동
   const handleSubmitProposalFromDraft = (reqId: string, proposalData: any) => {
     const req = requests.find(r => r.id === reqId);
     if (!req) return;
@@ -906,16 +906,43 @@ export default function LawyerRole({
       createdAt: new Date().toISOString()
     };
 
+    // 1) 상태를 'comparing'으로 변경 + acceptedLawyerIds에 변호사 추가 → 채팅탭에 노출
     setRequests(prev => prev.map(r => {
       if (r.id === reqId) {
+        const currentAccepted = r.acceptedLawyerIds || [];
         return {
           ...r,
-          status: 'responding' as const,
+          status: 'comparing' as const,
+          acceptedLawyerIds: currentAccepted.includes(activeLawyer.id) 
+            ? currentAccepted 
+            : [...currentAccepted, activeLawyer.id],
           proposals: [...(r.proposals || []), newProposal]
         };
       }
       return r;
     }));
+
+    // 2) 채팅 메시지 생성: 시스템 알림 + 제안서 요약 메시지
+    onAddMessage(
+      reqId,
+      `[System] ${activeLawyer.name} 변호사가 상담에 참여하였습니다.`,
+      'lawyer',
+      'system',
+      'System'
+    );
+
+    const feeText = `${Math.round(proposalData.fees.totalFee / 10000)}만원`;
+    const reductionText = `${proposalData.diagnosis.debtReductionRate}%`;
+    const monthlyText = `${Math.round(proposalData.diagnosis.monthlyPayment / 10000)}만원/월`;
+    const proposalMsg = `안녕하세요, ${req.clientName}님. ${activeLawyer.name} 변호사입니다.\n\n📋 제안 내용을 안내드립니다:\n• 예상 탕감률: ${reductionText}\n• 월 변제금: ${monthlyText}\n• 수임료: ${feeText}\n\n${proposalData.lawyerOpinion ? `💬 소견: ${proposalData.lawyerOpinion}` : ''}자세한 사항은 편하게 문의해 주세요.`;
+
+    onAddMessage(
+      reqId,
+      proposalMsg.trim(),
+      'lawyer',
+      activeLawyer.id,
+      activeLawyer.name
+    );
 
     onLogActivity(
       activeLawyer.id,
@@ -924,6 +951,11 @@ export default function LawyerRole({
       'CONSULT_REQUEST',
       `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 예상 탕감률: ${proposalData.diagnosis.debtReductionRate}%)`
     );
+
+    // 3) 채팅탭으로 자동 전환 + 해당 스레드 활성화
+    setActiveChatReqId(reqId);
+    setActiveTab('chat');
+    toast.success('제안서가 발송되었습니다. 상담 채팅이 시작됩니다.');
 
     // 모달 닫기 및 상태 초기화
     setProposalModalReqId(null);
