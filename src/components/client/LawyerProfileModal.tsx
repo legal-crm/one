@@ -238,20 +238,6 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
           {/* ── TAB: 변호사홈 ── */}
           {activeTab === 'home' && (
             <div className="space-y-6 animate-fadeIn">
-              {/* 핵심 통계 */}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: '누적 수임', value: `${(lawyer.totalCases || lawyer.matchedCount * 6).toLocaleString()}건`, icon: Briefcase, color: 'text-brand' },
-                  { label: '전문 분야', value: (lawyer.fields || ['개인회생']).slice(0, 2).join('·'), icon: Scale, color: 'text-indigo-500' },
-                ].map(stat => (
-                  <div key={stat.label} className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 space-y-1.5">
-                    <stat.icon className={`w-5 h-5 mx-auto ${stat.color}`} />
-                    <div className="text-lg sm:text-xl font-black text-slate-900">{stat.value}</div>
-                    <div className="text-[12px] text-slate-500 font-bold uppercase">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-
               {/* 변호사 소개 */}
               <div className="bg-gradient-to-r from-brand/5 to-indigo-500/5 border border-brand/10 rounded-2xl p-5 space-y-3">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -259,18 +245,6 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                   변호사 소개
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed font-medium">{lawyer.bio}</p>
-              </div>
-
-              {/* 최근 활동 */}
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-3">
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-emerald-500" />
-                  최근 활동
-                </h3>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
-                  <span className="text-sm text-emerald-600 font-medium">{lawyer.recentActivity}</span>
-                </div>
               </div>
 
               {/* 전담 서비스 */}
