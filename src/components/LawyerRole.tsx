@@ -1749,7 +1749,6 @@ export default function LawyerRole({
             <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
               {([
                 { key: 'overview' as const, label: '전체 현황' },
-                { key: 'requests' as const, label: '신규 요청' },
                 { key: 'activity' as const, label: '활동 분석' },
                 { key: 'clients' as const, label: '전담 고객' },
               ]).map(t => (
@@ -1760,7 +1759,7 @@ export default function LawyerRole({
             </div>
 
             {/* ═══ 섹션 1: 상단 요약 카드 ═══ */}
-            {(dashboardSub === 'overview' || dashboardSub === 'requests') && (
+            {(dashboardSub === 'overview') && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div className="space-y-1">
@@ -1869,7 +1868,7 @@ export default function LawyerRole({
             )}
 
             {/* ═══ Row 3: 지금 상담을 기다리는 의뢰인 — 긴급 Action Zone ═══ */}
-            {(dashboardSub === 'overview' || dashboardSub === 'requests') && (
+            {(dashboardSub === 'overview') && (
             <div className="bg-amber-50/60 p-6 rounded-2xl border border-amber-200 border-l-4 border-l-amber-400 shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-amber-200/60 pb-3">
                 <h3 className="font-black text-base text-amber-800 flex items-center gap-2">
