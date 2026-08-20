@@ -248,7 +248,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="text-left text-sm text-slate-600 dark:text-slate-400 font-bold">
-            아래 전문가 목록에서 상담을 요청할 변호사를 직접 선택하세요. 플랫폼은 특정 전문가를 추천·배정하지 않습니다. 상담 및 사건 수행은 선택하신 변호사가 독립적으로 진행합니다. (총 {totalDisplayCount}명 활동 중)
+            아래 전문가 목록에서 상담을 요청할 변호사를 직접 선택하세요. 플랫폼은 특정 전문가를 추천·배정하지 않습니다. 상담 및 사건 수행은 선택하신 변호사가 독립적으로 진행합니다.
           </div>
           <button
             type="button"
