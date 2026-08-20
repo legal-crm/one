@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
@@ -935,7 +936,7 @@ export default function LawyerRole({
   const handleConvertToCase = (req: ConsultRequest) => {
     const isAlreadyCase = cases.some(c => c.clientId === req.clientId);
     if (isAlreadyCase) {
-      alert('이미 정식 수임 사건으로 등록된 고객입니다.');
+      toast.error('이미 정식 수임 사건으로 등록된 고객입니다.');
       return;
     }
 
@@ -961,7 +962,7 @@ export default function LawyerRole({
     setCases(prev => [newCase, ...prev]);
     // Close consultation
     setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'closed' } : r));
-    alert(`${req.clientName} 의뢰인이 정식 사건(선임계 완료)으로 전환 수임 등록되었습니다.`);
+    toast.success(`${req.clientName} 의뢰인이 정식 사건으로 수임 등록되었습니다.`);
     setActiveTab('cases');
   };
 
@@ -1658,7 +1659,7 @@ export default function LawyerRole({
               )}
               <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
                 <MessageSquare className="w-4 h-4 shrink-0" /><span>상담 채팅</span>
-                {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && (r.acceptedLawyerIds || []).includes(activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-brand/80 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{c}</span>) : null; })()}
+                {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-brand/80 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{c}</span>) : null; })()}
               </button>
               {permissionCtx.canAccessTab('client-crm') && (
                 <button onClick={() => setActiveTab('client-crm')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'client-crm' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
@@ -2656,22 +2657,29 @@ export default function LawyerRole({
           </div>
         )}
 
-        {/* TAB 3: (실시간 협업실 채팅 - 추후 추가 예정) */}
-        {activeTab === 'chat' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-slate-50 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 min-h-[500px] h-[calc(100vh-14rem)] lg:h-[700px] animate-fadeIn">
+        {/* TAB 3: 상담 채팅 */}
+        {activeTab === 'chat' && (() => {
+          const chatThreads = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id));
+          const chatEndRef = React.createRef<HTMLDivElement>();
+          return (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white rounded-2xl overflow-hidden shadow-md border border-slate-200 min-h-[500px] h-[calc(100vh-14rem)] lg:h-[700px] animate-fadeIn">
             
             {/* PANEL I: INBOX THREADS (LEFT) */}
             <div className={`lg:col-span-3 border-r border-slate-200 flex flex-col h-full bg-white ${mobilePane === 'threads' ? 'block' : 'hidden lg:flex'}`}>
-              <div className="p-4 border-b border-slate-200 bg-slate-50/40">
-                <h3 className="font-extrabold text-xs text-slate-700 tracking-wider uppercase">상담 진행 메시지함</h3>
-                <p className="text-slate-600 text-[12px] mt-0.5">실시간 매칭된 나의 세션 내역</p>
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">상담 메시지함</h3>
+                  <p className="text-slate-500 text-[11px] mt-0.5">매칭된 상담 세션</p>
+                </div>
+                {chatThreads.length > 0 && (
+                  <span className="bg-brand/10 text-brand text-[11px] font-bold px-2 py-0.5 rounded-lg">{chatThreads.length}건</span>
+                )}
               </div>
 
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-200 h-[400px] scrollbar-hide">
-                {requests
-                  .filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id))
-                  .map(r => {
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-hide">
+                {chatThreads.map(r => {
                     const isSelected = r.id === activeChatReqId;
+                    const lastMsg = messages.filter(m => m.consultRequestId === r.id).slice(-1)[0];
                     return (
                       <div 
                         key={r.id}
@@ -2679,326 +2687,343 @@ export default function LawyerRole({
                           setActiveChatReqId(r.id);
                           setMobilePane('chat');
                         }}
-                        className={`p-4 cursor-pointer text-left transition-colors space-y-1 ${
-                          isSelected ? 'bg-slate-50/90 border-l-4 border-brand font-bold' : 'hover:bg-slate-50/40'
+                        className={`p-3.5 cursor-pointer text-left transition-all ${
+                          isSelected ? 'bg-brand/5 border-l-4 border-l-brand' : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-[12px] font-bold text-slate-600">의뢰인: {r.clientName}</span>
-                          <span className="text-[12px] text-slate-600">{new Date(r.createdAt).toLocaleDateString()}</span>
-                        </div>
-                        <h4 className="font-bold text-xs text-slate-700 line-clamp-1">{r.title}</h4>
-                        <div className="flex justify-between items-center text-[12px] text-slate-500 pt-0.5">
-                          <span>부채: {r.financialProfile.debtTotal.toLocaleString()}만</span>
-                          <span className="text-emerald-400 flex items-center gap-1 font-semibold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span>{r.status === 'comparing' ? '🟠 비교 상담중' : r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id ? '🟢 전담 매칭' : r.selectedLawyerId && r.selectedLawyerId !== activeLawyer.id ? '🔴 매칭 종료' : '상담중'}</span>
-                          </span>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isSelected ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-500'}`}>
+                            {r.clientName[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[13px] font-bold text-slate-800 truncate">{r.clientName}</span>
+                              <span className="text-[10px] text-slate-400 shrink-0">{new Date(r.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                              {lastMsg ? lastMsg.message : r.title}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${
+                                r.status === 'comparing' ? 'bg-amber-100 text-amber-600' :
+                                r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id ? 'bg-emerald-100 text-emerald-600' :
+                                r.selectedLawyerId && r.selectedLawyerId !== activeLawyer.id ? 'bg-red-100 text-red-500' :
+                                'bg-slate-100 text-slate-500'
+                              }`}>
+                                {r.status === 'comparing' ? '비교 상담중' : r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id ? '전담 매칭' : r.selectedLawyerId && r.selectedLawyerId !== activeLawyer.id ? '매칭 종료' : '상담중'}
+                              </span>
+                              <span className="text-[10px] text-slate-400">채무 {r.financialProfile.debtTotal.toLocaleString()}만</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
 
-                {requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length === 0 && (
-                  <div className="p-8 text-center text-slate-600 text-[13px] space-y-2">
-                    <p>내가 배정되어 상담 개시 중인 활성 대화방이 없습니다.</p>
+                {chatThreads.length === 0 && (
+                  <div className="p-8 text-center space-y-3">
+                    <MessageSquare className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-[13px] text-slate-500 font-semibold">활성 대화방이 없습니다</p>
+                    <p className="text-[11px] text-slate-400">제안서 수락 후 상담이 시작됩니다</p>
                     <button 
                       onClick={() => setActiveTab('open-requests')}
-                      className="text-brand font-bold hover:underline"
+                      className="text-brand font-bold text-xs hover:underline press-scale"
                     >
-                      상담 참여 대기 목록보기 &rarr;
+                      상담 요청 목록보기 →
                     </button>
                   </div>
                 )}
               </div>
             </div>
 
+
             {/* PANEL II: ACTIVE MESSAGING BOARD (CENTER) */}
-            <div className={`lg:col-span-6 border-r border-slate-200 flex flex-col h-full bg-slate-50 ${mobilePane === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
+            <div className={`lg:col-span-6 border-r border-slate-200 flex flex-col h-full bg-slate-50/30 ${mobilePane === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
               {currentChatRequest ? (
                 <>
-                  <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/40">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {/* Mobile back button */}
+                  <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <button 
                         onClick={() => setMobilePane('threads')}
-                        className="lg:hidden flex items-center justify-center text-brand font-bold text-xs border border-brand/20 bg-brand/5 p-2 rounded-xl shrink-0"
+                        className="lg:hidden flex items-center justify-center text-brand font-bold text-xs border border-brand/20 bg-brand/5 p-2 rounded-xl shrink-0 press-scale"
                         title="목록으로"
                       >
                         <ChevronRight className="w-4 h-4 rotate-180" />
                       </button>
-                      
+                      <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center text-sm font-bold shrink-0">
+                        {currentChatRequest.clientName[0]}
+                      </div>
                       <div className="min-w-0">
-                        <span className="text-[11px] font-bold tracking-widest text-emerald-400 block uppercase">SECURE CHAT CHANNEL</span>
-                        <h3 className="font-extrabold text-xs text-slate-700 line-clamp-1">{currentChatRequest.title}</h3>
+                        <h3 className="font-bold text-sm text-slate-900 line-clamp-1">{currentChatRequest.clientName}</h3>
+                        <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          보안 채널 연결됨
+                        </span>
                       </div>
                     </div>
-
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Mobile toggle to view CRM profile info */}
                       <button 
                         onClick={() => setMobilePane('crm')}
-                        className="lg:hidden text-slate-600 hover:text-white font-semibold text-[12px] border border-slate-200 bg-[#161D30] px-2.5 py-1.5 rounded-[200px] transition-all"
+                        className="lg:hidden text-slate-600 font-semibold text-[11px] border border-slate-200 bg-slate-100 px-2.5 py-1.5 rounded-xl transition-all press-scale"
                       >
                         의뢰 정보 ℹ️
                       </button>
-                      <span className="hidden sm:inline bg-slate-100 border border-slate-200 text-[12px] text-slate-500 px-2 py-0.5 rounded">
-                        의뢰채널 id: {currentChatRequest.id}
+                      <span className="hidden sm:inline bg-slate-100 border border-slate-200 text-[10px] text-slate-400 px-2 py-0.5 rounded-lg font-mono">
+                        {currentChatRequest.id.substring(0, 12)}
                       </span>
                     </div>
                   </div>
 
-                  {/* Chat flow messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3 h-[350px] scrollbar-hide">
-                    <div className="p-3 bg-[#161D30] rounded-xl text-slate-500 text-xs border border-slate-200 text-left whitespace-pre-wrap">
-                      📝 <span className="text-brand font-bold">의뢰서 본문 내용:</span> {currentChatRequest.content}
+                  {/* Chat messages */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+                    <div className="p-3 bg-brand/5 rounded-xl text-slate-600 text-xs border border-brand/15 text-left whitespace-pre-wrap">
+                      📝 <span className="text-brand font-bold">의뢰서 본문:</span> {currentChatRequest.content}
                     </div>
 
                     {currentChatMessages.map(m => {
                       const isMe = m.senderId === activeLawyer.id;
+                      const isSystem = m.senderType === 'admin' || m.senderName === 'System' || m.message.startsWith('[System]');
+                      
+                      if (isSystem) {
+                        return (
+                          <div key={m.id} className="flex justify-center">
+                            <span className="bg-slate-100 text-slate-500 text-[11px] px-3 py-1 rounded-lg border border-slate-200">
+                              {m.message.replace('[System] ', '')}
+                            </span>
+                          </div>
+                        );
+                      }
+                      
                       return (
                         <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                          <div className="flex items-center gap-1.5 mb-1 text-[12px] text-slate-600">
-                            <span className="font-semibold text-slate-600">{m.senderName}</span>
+                          <div className="flex items-center gap-1.5 mb-1 text-[11px] text-slate-400">
+                            <span className="font-semibold text-slate-500">{m.senderName}</span>
                             <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
-
-                          <div className={`p-3 rounded-xl max-w-sm text-xs leading-normal text-left ${
+                          <div className={`p-3 rounded-xl max-w-sm text-[13px] leading-relaxed text-left ${
                             isMe 
-                            ? 'bg-brand text-white rounded-tr-none font-semibold' 
-                            : 'bg-[#161D30] text-slate-700 rounded-tl-none border border-slate-200'
+                            ? 'bg-brand text-white rounded-tr-none' 
+                            : 'bg-white text-slate-700 rounded-tl-none border border-slate-200 shadow-xs'
                           }`}>
                             {m.message}
                           </div>
+                          {isMe && (
+                            <span className="text-[10px] text-slate-400 mt-0.5">✓</span>
+                          )}
                         </div>
                       );
                     })}
+                    <div ref={chatEndRef} />
                   </div>
 
-                  {/* Messenger form */}
-                  <div className="p-4 border-t border-slate-200 bg-slate-50/60 flex items-center gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="의뢰인과의 1:1 보정 대화를 입력하십시오..."
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSendChat();
-                      }}
-                      className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
-                    />
-                    <button 
-                      onClick={handleSendChat}
-                      className="bg-brand hover:bg-brand-hover text-white font-bold p-3 rounded-xl transition-colors shrink-0"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
+                  {/* Quick replies + Messenger form */}
+                  <div className="border-t border-slate-200 bg-white">
+                    <div className="px-4 pt-2.5 flex gap-1.5 overflow-x-auto scrollbar-hide">
+                      {['📋 준비서류 안내', '💰 상담료 안내', '📅 일정 조율'].map(label => (
+                        <button
+                          key={label}
+                          onClick={() => setChatInput(label.substring(2).trim())}
+                          className="text-[11px] text-slate-500 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors press-scale shrink-0"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="p-3 flex items-center gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="메시지를 입력하세요..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSendChat();
+                            setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                          }
+                        }}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
+                      />
+                      <button 
+                        onClick={() => {
+                          handleSendChat();
+                          setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                        }}
+                        className="bg-brand hover:bg-brand-hover text-white font-bold p-2.5 rounded-xl transition-colors shrink-0 press-scale"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-2 text-slate-600 bg-slate-50">
-                  <MessageSquare className="w-12 h-12 text-slate-900" />
-                  <p className="text-xs">왼쪽 메시지함에서 진행 가능한 의뢰인 대화 스레드를 클릭하십시오.</p>
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3">
+                  <MessageSquare className="w-12 h-12 text-slate-300" />
+                  <p className="text-sm text-slate-600 font-semibold">대화를 선택하세요</p>
+                  <p className="text-xs text-slate-400">좌측 메시지함에서 스레드를 클릭하면 대화가 시작됩니다.</p>
                 </div>
               )}
             </div>
 
-            {/* PANEL III: ATTOURNEY CRM RIGHT-RAIL (RIGHT) */}
+            {/* PANEL III: CRM RIGHT-RAIL (RIGHT) */}
             <div className={`lg:col-span-3 flex flex-col h-full bg-white overflow-y-auto ${mobilePane === 'crm' ? 'block' : 'hidden lg:flex'}`}>
               {currentChatRequest ? (
-                <div className="p-4 space-y-6 text-xs divide-y divide-slate-200">
+                <div className="p-4 space-y-5 text-xs">
                   
                   {/* Mobile back button */}
-                  <div className="lg:hidden pb-1">
+                  <div className="lg:hidden">
                     <button 
                       onClick={() => setMobilePane('chat')}
-                      className="w-full flex items-center justify-center gap-1.5 text-brand font-extrabold text-xs border border-brand/20 bg-brand/5 py-2.5 rounded-[200px] transition-all"
+                      className="w-full flex items-center justify-center gap-1.5 text-brand font-bold text-xs border border-brand/20 bg-brand/5 py-2.5 rounded-xl transition-all press-scale"
                     >
-                      &larr; 대화방으로 돌아가기
+                      ← 대화방으로 돌아가기
                     </button>
                   </div>
 
-                  {/* Option: Client financial summary info */}
-                  <div className="space-y-3 pb-4 pt-4 lg:pt-0">
-                    <span className="text-xs font-black text-brand tracking-wide uppercase block">📈 1차 가계 진단 분석서</span>
+                  {/* 가계 진단 분석서 */}
+                  <div className="space-y-3">
+                    <span className="text-xs font-black text-brand tracking-wide uppercase block">📈 가계 진단 분석서</span>
                     
-                    <div className="bg-[#111827] p-3 rounded-xl border border-slate-200 space-y-2 text-[13px] text-slate-600">
-                      <div className="flex justify-between"><span>의뢰인명:</span> <span className="font-bold text-white">{currentChatRequest.clientName}</span></div>
-                      <div className="flex justify-between"><span>비상 연락처:</span> <span className="font-mono text-white">{getDisplayPhoneNumber(currentChatRequest)}</span></div>
+                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-[12px]">
+                      <div className="flex justify-between"><span className="text-slate-500">의뢰인명</span> <span className="font-bold text-slate-900">{currentChatRequest.clientName}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">연락처</span> <span className="font-mono text-slate-700">{getDisplayPhoneNumber(currentChatRequest)}</span></div>
                       {currentChatRequest.financialProfile.age && (
-                        <div className="flex justify-between"><span>나이/성별:</span> <span className="text-white font-bold">{currentChatRequest.financialProfile.age}세 / {currentChatRequest.financialProfile.gender === 'male' ? '남성' : currentChatRequest.financialProfile.gender === 'female' ? '여성' : '미기재'}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">나이/성별</span> <span className="font-bold text-slate-900">{currentChatRequest.financialProfile.age}세 / {currentChatRequest.financialProfile.gender === 'male' ? '남성' : currentChatRequest.financialProfile.gender === 'female' ? '여성' : '미기재'}</span></div>
                       )}
-                      <div className="flex justify-between"><span>월 소득계산:</span> <span className="font-bold text-brand">{currentChatRequest.financialProfile.income}만 원</span></div>
-                      <div className="flex justify-between table-auto"><span>총 채무진단:</span> <span className="font-bold text-red-400">{currentChatRequest.financialProfile.debtTotal.toLocaleString()}만 원</span></div>
-                      <div className="flex justify-between"><span>자산수준합산:</span> <span className="text-slate-700">{currentChatRequest.financialProfile.assetsTotal.toLocaleString()}만 원</span></div>
+                      <div className="flex justify-between border-t border-slate-100 pt-2"><span className="text-slate-500">월 소득</span> <span className="font-bold text-brand">{currentChatRequest.financialProfile.income}만 원</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">총 채무</span> <span className="font-bold text-red-500">{currentChatRequest.financialProfile.debtTotal.toLocaleString()}만 원</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">자산합산</span> <span className="text-slate-700">{currentChatRequest.financialProfile.assetsTotal.toLocaleString()}만 원</span></div>
                       {currentChatRequest.financialProfile.myAssets !== undefined && currentChatRequest.financialProfile.myAssets > 0 && (
-                        <div className="flex justify-between"><span>  ∟ 본인 재산:</span> <span className="text-slate-600">{currentChatRequest.financialProfile.myAssets.toLocaleString()}만 원</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400 pl-2">∟ 본인 재산</span> <span className="text-slate-600">{currentChatRequest.financialProfile.myAssets.toLocaleString()}만</span></div>
                       )}
-                      <div className="flex justify-between"><span>부양 가족수:</span> <span className="text-slate-700">{currentChatRequest.financialProfile.dependents}명 ({currentChatRequest.financialProfile.dependents + 1}인 가구)</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">부양 가족</span> <span className="text-slate-700">{currentChatRequest.financialProfile.dependents}명 ({currentChatRequest.financialProfile.dependents + 1}인 가구)</span></div>
                       {currentChatRequest.financialProfile.minorChildren !== undefined && (
-                        <div className="flex justify-between"><span>  ∟ 미성년 자녀:</span> <span className="text-white font-semibold">{currentChatRequest.financialProfile.minorChildren}명</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400 pl-2">∟ 미성년 자녀</span> <span className="font-semibold text-slate-700">{currentChatRequest.financialProfile.minorChildren}명</span></div>
                       )}
-                      <div className="flex justify-between"><span>결혼 자격구조:</span> <span className="text-slate-700">{currentChatRequest.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : currentChatRequest.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">혼인상태</span> <span className="text-slate-700">{currentChatRequest.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : currentChatRequest.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
                       
-                      {/* 24개월 특례 표시 */}
                       {currentChatRequest.financialProfile.specialCondition && currentChatRequest.financialProfile.specialCondition !== 'none' && (
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded text-[12px] text-emerald-400 font-bold text-center">
-                          ⚡ 24개월 특례 해당: {currentChatRequest.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : currentChatRequest.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : currentChatRequest.financialProfile.specialCondition === 'single_parent' ? '한부모 가족' : currentChatRequest.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 피해자' : '고령자 (70세 이상)'}
+                        <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-[11px] text-emerald-600 font-bold text-center">
+                          ⚡ 24개월 특례: {currentChatRequest.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : currentChatRequest.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : currentChatRequest.financialProfile.specialCondition === 'single_parent' ? '한부모' : currentChatRequest.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
                         </div>
                       )}
 
                       {currentChatRequest.financialProfile.jobType && (
                         <>
-                          <div className="border-t border-slate-200 my-1.5 pt-1.5 flex justify-between">
-                            <span>직업 유형:</span> 
-                            <span className="text-white font-bold">
+                          <div className="border-t border-slate-100 pt-2 flex justify-between">
+                            <span className="text-slate-500">직업</span> 
+                            <span className="font-bold text-slate-900">
                               {currentChatRequest.financialProfile.jobType === 'SALARIED' ? '급여소득' : currentChatRequest.financialProfile.jobType === 'BUSINESS' ? '영업소득' : currentChatRequest.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}
                               {currentChatRequest.financialProfile.companyName && ` (${currentChatRequest.financialProfile.companyName})`}
                             </span>
                           </div>
-                          <div className="flex justify-between"><span>거주 지역:</span> <span className="text-white">{currentChatRequest.financialProfile.residenceRegion}</span></div>
-                          
-                          {/* 주거 상세 정보 */}
-                          <div className="flex justify-between"><span>거주 형태:</span> <span className="text-white">{currentChatRequest.financialProfile.housingType === 'rent' ? '월세' : currentChatRequest.financialProfile.housingType === 'jeonse' ? '전세' : currentChatRequest.financialProfile.housingType === 'owned' ? '자가' : currentChatRequest.financialProfile.housingType === 'free' ? '무상거주' : '-'}{currentChatRequest.financialProfile.housingContractHolder ? ` (${currentChatRequest.financialProfile.housingContractHolder === 'self' ? '본인명의' : currentChatRequest.financialProfile.housingContractHolder === 'spouse' ? '배우자명의' : '타인명의'})` : ''}</span></div>
-                          
-                          <div className="flex justify-between"><span>임차 보증금:</span> <span className="text-white">{currentChatRequest.financialProfile.rentalDeposit?.toLocaleString()}만 원</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">거주지역</span> <span className="text-slate-700">{currentChatRequest.financialProfile.residenceRegion}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">거주형태</span> <span className="text-slate-700">{currentChatRequest.financialProfile.housingType === 'rent' ? '월세' : currentChatRequest.financialProfile.housingType === 'jeonse' ? '전세' : currentChatRequest.financialProfile.housingType === 'owned' ? '자가' : currentChatRequest.financialProfile.housingType === 'free' ? '무상거주' : '-'}{currentChatRequest.financialProfile.housingContractHolder ? ` (${currentChatRequest.financialProfile.housingContractHolder === 'self' ? '본인' : currentChatRequest.financialProfile.housingContractHolder === 'spouse' ? '배우자' : '타인'}명의)` : ''}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">보증금</span> <span className="text-slate-700">{currentChatRequest.financialProfile.rentalDeposit?.toLocaleString()}만</span></div>
                           {currentChatRequest.financialProfile.depositLoan !== undefined && currentChatRequest.financialProfile.depositLoan > 0 && (
-                            <div className="flex justify-between"><span>  ∟ 보증금 대출:</span> <span className="text-rose-300">{currentChatRequest.financialProfile.depositLoan.toLocaleString()}만 원</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400 pl-2">∟ 보증금 대출</span> <span className="text-red-400">{currentChatRequest.financialProfile.depositLoan.toLocaleString()}만</span></div>
                           )}
-                          
                           {currentChatRequest.financialProfile.maritalStatus === 'MARRIED' && (
                             <>
-                              <div className="flex justify-between"><span>배우자 재산:</span> <span className="text-white">{currentChatRequest.financialProfile.spouseAsset?.toLocaleString()}만 원</span></div>
+                              <div className="flex justify-between"><span className="text-slate-500">배우자 재산</span> <span className="text-slate-700">{currentChatRequest.financialProfile.spouseAsset?.toLocaleString()}만</span></div>
                               {currentChatRequest.financialProfile.spouseIncome !== undefined && (
-                                <div className="flex justify-between"><span>배우자 소득:</span> <span className="text-white">{currentChatRequest.financialProfile.spouseIncome.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">배우자 소득</span> <span className="text-slate-700">{currentChatRequest.financialProfile.spouseIncome.toLocaleString()}만</span></div>
                               )}
                             </>
                           )}
-
-                          {/* 양육비 정보 (이혼 시) */}
                           {currentChatRequest.financialProfile.maritalStatus === 'DIVORCED' && (
                             <>
                               {currentChatRequest.financialProfile.childSupportReceived !== undefined && currentChatRequest.financialProfile.childSupportReceived > 0 && (
-                                <div className="flex justify-between"><span>양육비 수령:</span> <span className="text-emerald-400">+{currentChatRequest.financialProfile.childSupportReceived.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">양육비 수령</span> <span className="text-emerald-500">+{currentChatRequest.financialProfile.childSupportReceived.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.childSupportPaid !== undefined && currentChatRequest.financialProfile.childSupportPaid > 0 && (
-                                <div className="flex justify-between"><span>양육비 지급:</span> <span className="text-rose-300">-{currentChatRequest.financialProfile.childSupportPaid.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">양육비 지급</span> <span className="text-red-400">-{currentChatRequest.financialProfile.childSupportPaid.toLocaleString()}만</span></div>
                               )}
                             </>
                           )}
-
-                          <div className="flex justify-between"><span>주된 채무원인:</span> <span className="text-white">{currentChatRequest.financialProfile.debtCause === 'LIVING' ? '생활비' : currentChatRequest.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : currentChatRequest.financialProfile.debtCause === 'INVESTMENT' ? `투자 실패${currentChatRequest.financialProfile.speculativeLoss ? ` (${currentChatRequest.financialProfile.speculativeLoss.toLocaleString()}만원)` : ''}` : currentChatRequest.financialProfile.debtCause === 'GAMBLING' ? `도박/사행성${currentChatRequest.financialProfile.gamblingLoss ? ` (${currentChatRequest.financialProfile.gamblingLoss.toLocaleString()}만원)` : ''}` : currentChatRequest.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">채무원인</span> <span className="text-slate-700">{currentChatRequest.financialProfile.debtCause === 'LIVING' ? '생활비' : currentChatRequest.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : currentChatRequest.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : currentChatRequest.financialProfile.debtCause === 'GAMBLING' ? '도박' : currentChatRequest.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
                           {currentChatRequest.financialProfile.speculativeLoss !== undefined && currentChatRequest.financialProfile.speculativeLoss > 0 && (
-                            <div className="flex justify-between text-rose-400 font-semibold">
-                              <span>1년내 주식/코인 손실:</span>
-                              <span>{currentChatRequest.financialProfile.speculativeLoss.toLocaleString()}만 원</span>
-                            </div>
+                            <div className="flex justify-between text-red-400 font-semibold"><span>투기손실</span><span>{currentChatRequest.financialProfile.speculativeLoss.toLocaleString()}만</span></div>
                           )}
                           {currentChatRequest.financialProfile.gamblingLoss !== undefined && currentChatRequest.financialProfile.gamblingLoss > 0 && (
-                            <div className="flex justify-between text-rose-400 font-semibold">
-                              <span>1년내 도박 채무금:</span>
-                              <span>{currentChatRequest.financialProfile.gamblingLoss.toLocaleString()}만 원</span>
-                            </div>
+                            <div className="flex justify-between text-red-400 font-semibold"><span>도박손실</span><span>{currentChatRequest.financialProfile.gamblingLoss.toLocaleString()}만</span></div>
                           )}
-                          <div className="flex justify-between text-amber-400"><span>추심 단계:</span> <span>{currentChatRequest.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : currentChatRequest.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : currentChatRequest.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '압류/가압류'}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">추심단계</span> <span className="text-amber-500 font-semibold">{currentChatRequest.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : currentChatRequest.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : currentChatRequest.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '압류'}</span></div>
                           {currentChatRequest.financialProfile.legalActions && currentChatRequest.financialProfile.legalActions.length > 0 && currentChatRequest.financialProfile.legalActions.some(x => x !== 'none') && (
-                            <div className="flex justify-between text-amber-500">
-                              <span>법적 조치 진행:</span>
-                              <span className="text-white">
-                                {currentChatRequest.financialProfile.legalActions
-                                  .filter(x => x !== 'none')
-                                  .map(x => ({
-                                    collection_call: '독촉',
-                                    court_order: '소장수령',
-                                    seizure: '급여압류',
-                                    property_seizure: '부동산압류',
-                                    credit_drop: '신용하락'
-                                  }[x] || x))
-                                  .join(', ')}
-                              </span>
-                            </div>
+                            <div className="flex justify-between"><span className="text-slate-500">법적조치</span><span className="text-slate-700">{currentChatRequest.financialProfile.legalActions.filter(x => x !== 'none').map(x => ({ collection_call: '독촉', court_order: '소장수령', seizure: '급여압류', property_seizure: '부동산압류', credit_drop: '신용하락' }[x] || x)).join(', ')}</span></div>
                           )}
-                          <div className="flex justify-between"><span>채권자 기관수:</span> <span className="text-white">{currentChatRequest.financialProfile.creditorCount}곳</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">채권자</span> <span className="text-slate-700">{currentChatRequest.financialProfile.creditorCount}곳</span></div>
 
-                          {/* 생계비 상세 섹션 */}
                           {(currentChatRequest.financialProfile.rentCost || currentChatRequest.financialProfile.medicalCost || currentChatRequest.financialProfile.educationCost || currentChatRequest.financialProfile.monthlyFixedExpenses) && (
-                            <div className="border-t border-slate-200 my-1.5 pt-1.5 space-y-1">
-                              <span className="text-[11px] font-black text-cyan-400 tracking-wide uppercase block">🏠 월 생계비 구성</span>
+                            <div className="border-t border-slate-100 pt-2 space-y-1">
+                              <span className="text-[10px] font-black text-slate-400 tracking-wide uppercase block">🏠 월 생계비</span>
                               {currentChatRequest.financialProfile.rentCost !== undefined && currentChatRequest.financialProfile.rentCost > 0 && (
-                                <div className="flex justify-between"><span>월세:</span> <span className="text-white">{currentChatRequest.financialProfile.rentCost.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">월세</span> <span className="text-slate-700">{currentChatRequest.financialProfile.rentCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.medicalCost !== undefined && currentChatRequest.financialProfile.medicalCost > 0 && (
-                                <div className="flex justify-between"><span>의료비:</span> <span className="text-white">{currentChatRequest.financialProfile.medicalCost.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">의료비</span> <span className="text-slate-700">{currentChatRequest.financialProfile.medicalCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.educationCost !== undefined && currentChatRequest.financialProfile.educationCost > 0 && (
-                                <div className="flex justify-between"><span>교육비:</span> <span className="text-white">{currentChatRequest.financialProfile.educationCost.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">교육비</span> <span className="text-slate-700">{currentChatRequest.financialProfile.educationCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.specialEducationCost !== undefined && currentChatRequest.financialProfile.specialEducationCost > 0 && (
-                                <div className="flex justify-between"><span>특수교육비:</span> <span className="text-white">{currentChatRequest.financialProfile.specialEducationCost.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">특수교육비</span> <span className="text-slate-700">{currentChatRequest.financialProfile.specialEducationCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.monthlyFixedExpenses !== undefined && currentChatRequest.financialProfile.monthlyFixedExpenses > 0 && (
-                                <div className="flex justify-between"><span>고정지출 (통신/보험 등):</span> <span className="text-white">{currentChatRequest.financialProfile.monthlyFixedExpenses.toLocaleString()}만 원</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">고정지출</span> <span className="text-slate-700">{currentChatRequest.financialProfile.monthlyFixedExpenses.toLocaleString()}만</span></div>
                               )}
                             </div>
                           )}
 
                           {currentChatRequest.financialProfile.retirementPay !== undefined && currentChatRequest.financialProfile.retirementPay > 0 && (
-                            <>
-                              <div className="border-t border-slate-200 my-1.5 pt-1.5 flex justify-between text-[13px]">
-                                <span>예상 퇴직금:</span>
-                                <span className="text-white font-bold">{currentChatRequest.financialProfile.retirementPay.toLocaleString()}만 원</span>
-                              </div>
-                              <div className="flex justify-between text-[13px]">
-                                <span>퇴직연금 형태:</span>
-                                <span className={currentChatRequest.financialProfile.retirementPensionType === 'unknown' ? 'text-amber-400 font-bold' : 'text-slate-600'}>
-                                  {currentChatRequest.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' :
-                                   currentChatRequest.financialProfile.retirementPensionType === 'none' ? '퇴직연금 미가입 (50% 반영)' : '종류 모름 (50% 반영)'}
+                            <div className="border-t border-slate-100 pt-2 space-y-1">
+                              <div className="flex justify-between"><span className="text-slate-500">퇴직금</span><span className="font-bold text-slate-900">{currentChatRequest.financialProfile.retirementPay.toLocaleString()}만</span></div>
+                              <div className="flex justify-between"><span className="text-slate-500">퇴직연금</span>
+                                <span className={currentChatRequest.financialProfile.retirementPensionType === 'unknown' ? 'text-amber-500 font-bold' : 'text-slate-600'}>
+                                  {currentChatRequest.financialProfile.retirementPensionType === 'pension' ? '가입 (0%반영)' : currentChatRequest.financialProfile.retirementPensionType === 'none' ? '미가입 (50%반영)' : '확인필요 (50%반영)'}
                                 </span>
                               </div>
                               {currentChatRequest.financialProfile.retirementPensionType === 'unknown' && (
-                                <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded text-[12px] text-amber-400 font-bold mt-1 text-center animate-pulse">
-                                  ⚠️ [확인 필요] 예상 퇴직금 조회 및 가입 형태 확인 요망
+                                <div className="bg-amber-50 border border-amber-200 p-1.5 rounded-lg text-[11px] text-amber-600 font-bold text-center animate-pulse">
+                                  ⚠️ 퇴직연금 확인 필요
                                 </div>
                               )}
-                            </>
+                            </div>
                           )}
                         </>
                       )}
                     </div>
 
+                    {/* 변제 시뮬레이션 */}
                     {currentChatRequestResult && (
-                      <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 space-y-2 text-[13px] text-slate-600 mt-2">
-                        <span className="text-[12px] font-black text-emerald-400 tracking-wide uppercase block">💰 실시간 변제 시뮬레이션</span>
-                        <div className="flex justify-between"><span>예상 월 변제금:</span> <span className="font-bold text-white">{(currentChatRequestResult.monthlyPayment / 10000).toLocaleString()}만 원 / 월</span></div>
-                        <div className="flex justify-between"><span>변제 기간:</span> <span className="text-white">{currentChatRequestResult.repaymentMonths}개월</span></div>
-                        <div className="flex justify-between"><span>총 변제금:</span> <span className="text-slate-700">{(currentChatRequestResult.totalRepayment / 10000).toLocaleString()}만 원</span></div>
-                        <div className="flex justify-between text-emerald-400 font-semibold">
-                          <span>최종 탕감액:</span>
-                          <span>{(currentChatRequestResult.totalDebtReduction / 10000).toLocaleString()}만 원 ({currentChatRequestResult.debtReductionRate}%)</span>
+                      <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-3 space-y-2 text-[12px]">
+                        <span className="text-[10px] font-black text-emerald-500 tracking-wide uppercase block">💰 변제 시뮬레이션</span>
+                        <div className="flex justify-between"><span className="text-slate-500">월 변제금</span> <span className="font-bold text-slate-900">{(currentChatRequestResult.monthlyPayment / 10000).toLocaleString()}만/월</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">변제 기간</span> <span className="text-slate-700">{currentChatRequestResult.repaymentMonths}개월</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">총 변제금</span> <span className="text-slate-700">{(currentChatRequestResult.totalRepayment / 10000).toLocaleString()}만</span></div>
+                        <div className="flex justify-between text-emerald-600 font-semibold">
+                          <span>탕감액</span>
+                          <span>{(currentChatRequestResult.totalDebtReduction / 10000).toLocaleString()}만 ({currentChatRequestResult.debtReductionRate}%)</span>
                         </div>
-                        <div className="flex justify-between"><span>청산가치 (재산):</span> <span className="text-slate-600">{(currentChatRequestResult.liquidationValue / 10000).toLocaleString()}만 원</span></div>
-                        
-                        <div className="space-y-1 pt-1.5 border-t border-slate-200">
+                        <div className="flex justify-between"><span className="text-slate-500">청산가치</span> <span className="text-slate-600">{(currentChatRequestResult.liquidationValue / 10000).toLocaleString()}만</span></div>
+                        <div className="space-y-1 pt-1.5 border-t border-emerald-200/50">
                           <div className="flex justify-between text-[11px] text-slate-500">
                             <span>청산가치 보장율</span>
-                            <span className="font-bold text-emerald-400">{Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100)}%</span>
+                            <span className="font-bold text-emerald-500">{Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100)}%</span>
                           </div>
-                          <div className="w-full bg-[#111827] h-1.5 rounded-full overflow-hidden">
-                            <div 
-                              className="bg-gradient-to-r from-emerald-400 to-indigo-500 h-full rounded-full" 
-                              style={{ width: `${Math.min(100, Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100))}%` }}
-                            />
+                          <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-gradient-to-r from-emerald-400 to-brand h-full rounded-full" style={{ width: `${Math.min(100, Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100))}%` }} />
                           </div>
                         </div>
                       </div>
                     )}
 
+                    {/* 리스크 태그 */}
                     {currentChatRequest.financialProfile.riskFlags.length > 0 && (
                       <div className="space-y-1.5">
-                        <span className="text-[12px] font-bold text-red-400 block">시스템 자동 추출 리스크 태그:</span>
+                        <span className="text-[11px] font-bold text-red-400 block">⚠️ 리스크 태그</span>
                         <div className="flex flex-wrap gap-1">
                           {currentChatRequest.financialProfile.riskFlags.map(rf => (
-                            <span key={rf} className="bg-red-500/10 text-red-400 border border-red-500/10 text-[11px] px-1.5 py-0.5 rounded uppercase leading-none">
+                            <span key={rf} className="bg-red-50 text-red-400 border border-red-200 text-[10px] px-1.5 py-0.5 rounded-lg font-semibold">
                               {rf}
                             </span>
                           ))}
@@ -3007,53 +3032,53 @@ export default function LawyerRole({
                     )}
                   </div>
 
-                  {/* Converting Case: "상담 -> 사건 등록" */}
-                  <div className="pt-4 pb-4 space-y-3">
-                    <span className="text-xs font-black text-brand tracking-wide uppercase block">⚖️ 상담 사건 공식 수임 전환</span>
-                    <p className="text-slate-600 text-[12px] leading-relaxed">
-                      상담이 성사되어 위임 계약서 서명이 마쳐지면, 본 가입자의 정보를 정식 사건 대장으로 영구 등록해 보정명령 추적을 시작할 수 있습니다.
+                  {/* 수임 전환 */}
+                  <div className="border-t border-slate-200 pt-4 space-y-2">
+                    <span className="text-xs font-black text-brand tracking-wide uppercase block">⚖️ 수임 전환</span>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      위임 계약서 서명 후, 정식 사건 대장으로 등록할 수 있습니다.
                     </p>
-
                     <button 
                       onClick={() => handleConvertToCase(currentChatRequest)}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-2.5 rounded-[200px] text-xs leading-none tracking-wide transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs tracking-wide transition-colors flex items-center justify-center gap-1.5 press-scale"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>정식 수임사건으로 신규 전환</span>
+                      정식 수임사건 전환
                     </button>
                   </div>
 
-                  {/* Internal Law-firm Notes (visible only on Lawyer side) */}
-                  <div className="pt-4 space-y-3">
-                    <span className="text-xs font-black text-brand tracking-wide uppercase block">📌 로펌 내부 협업 및 비망록</span>
-                    <p className="text-slate-600 text-[12px]">사무장 및 보조 스태프와 해당 의뢰인의 보정 소명 보조 기록을 메모하는 보안 영역입니다.</p>
-
+                  {/* 내부 비망록 */}
+                  <div className="border-t border-slate-200 pt-4 space-y-2">
+                    <span className="text-xs font-black text-brand tracking-wide uppercase block">📌 내부 비망록</span>
                     <textarea
-                      rows={4}
-                      placeholder="내부 긴급 가이드 및 참고 메모를 작성해 주세요..."
+                      rows={3}
+                      placeholder="내부 메모를 작성하세요..."
                       value={internalNotes[currentChatRequest.id] || ''}
                       onChange={(e) => {
                         const nextNotes = { ...internalNotes, [currentChatRequest.id]: e.target.value };
                         setInternalNotes(nextNotes);
                       }}
-                      className="w-full bg-[#111827] border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-700 placeholder-slate-650"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-700 placeholder-slate-400"
                     />
-
-                    <span className="text-[12px] text-slate-600 block leading-tight">
-                      * 이 비망록은 로펌 구성원 상호 간에만 공유되며 의뢰인 전용 채널에는 절대 전송되지 않습니다.
+                    <span className="text-[10px] text-slate-400 block">
+                      * 로펌 내부 전용 — 의뢰인에게 노출되지 않습니다.
                     </span>
                   </div>
 
                 </div>
               ) : (
-                <div className="p-8 text-center text-slate-600 text-[13px] self-center">
-                  의뢰인 상담방이 활성화되면 실시간 가계 채무 분석 CRM 모듈이 자동 로드됩니다.
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-2">
+                  <Info className="w-8 h-8 text-slate-300" />
+                  <p className="text-xs text-slate-500">대화방 선택 시 의뢰인 정보가 표시됩니다.</p>
                 </div>
               )}
             </div>
 
           </div>
-        )}
+          );
+        })()}
+
+
 
         {/* TAB 4: CASE MANAGEMENT SYSTEM (KANBAN & LIST) */}
         {activeTab === 'cases' && (
