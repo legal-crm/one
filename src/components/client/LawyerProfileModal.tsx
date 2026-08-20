@@ -167,18 +167,17 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                 </p>
               )}
 
-              {/* ── 공식 채널 바로가기 (홈페이지, 유튜브, 네이버 블로그) ── */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
+              {/* ── 공식 채널 바로가기 아이콘 (홈페이지, 유튜브, 네이버 블로그) ── */}
+              <div className="flex items-center justify-center sm:justify-start gap-2 pt-2">
                 {/* 홈페이지 */}
                 <a
                   href={officeInfo.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="사무소 공식 홈페이지 바로가기"
-                  className="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-semibold transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                  title="사무소 공식 홈페이지"
+                  className="group w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
                 >
-                  <Home className="w-3.5 h-3.5 text-sky-300 group-hover:text-white transition-colors" />
-                  <span className="text-[11px]">홈페이지</span>
+                  <Home className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
                 </a>
 
                 {/* 유튜브 */}
@@ -186,13 +185,12 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                   href={officeInfo.youtubeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="변호사 유튜브 채널 바로가기"
-                  className="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-red-500/25 border border-white/15 hover:border-red-400/30 text-white text-xs font-semibold transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                  title="유튜브 채널"
+                  className="group w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
                 >
-                  <svg className="w-3.5 h-3.5 text-red-500 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-slate-300 group-hover:text-white fill-current transition-colors" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
-                  <span className="text-[11px]">유튜브</span>
                 </a>
 
                 {/* 네이버 블로그 */}
@@ -200,13 +198,12 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                   href={officeInfo.blogUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="변호사 네이버 블로그 바로가기"
-                  className="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-[#03C75A]/25 border border-white/15 hover:border-[#03C75A]/30 text-white text-xs font-semibold transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                  title="네이버 블로그"
+                  className="group w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
                 >
-                  <span className="w-3.5 h-3.5 bg-[#03C75A] rounded-[3px] text-white font-black text-[9px] flex items-center justify-center leading-none">
-                    N
-                  </span>
-                  <span className="text-[11px]">네이버 블로그</span>
+                  <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-white fill-current transition-colors" viewBox="0 0 24 24">
+                    <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/>
+                  </svg>
                 </a>
               </div>
             </div>
