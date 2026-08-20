@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye } from 'lucide-react';
-import type { User } from '../../types';
+import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye, Copy, Check, ExternalLink, Navigation } from 'lucide-react';
+import type { User, LawFirm } from '../../types';
 import { mockLawFirms } from '../../data';
 
 interface LawyerProfileModalProps {
@@ -21,12 +21,61 @@ const mockReviews = [
   { id: 5, author: '정○○', date: '2026.04.05', content: '3억이 넘는 채무였는데 변제율 25%로 인가받아서 월 상환금이 크게 줄었습니다. 새 출발할 수 있게 되었어요.', tag: '고액채무' },
 ];
 
+function getLawyerOfficeInfo(lawyer: User, firm?: LawFirm) {
+  const firmName = firm?.name || lawyer.firmName || '법무법인 한빛';
+  const region = lawyer.region || '서울';
+  
+  if (region.includes('부산') || firmName.includes('해원')) {
+    return {
+      firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
+      address: '부산광역시 연제구 법원남로 15, 거제빌딩 7층 (연제동)',
+      detail: '부산지방법원·부산가정법원 맞은편 도보 2분',
+      subway: '3호선 거제역 6번 출구 도보 2분 / 동해선 거제해맞이역 도보 5분',
+      phone: '051-507-9012',
+      hours: '평일 09:00 ~ 18:00 (야간·주말 예약 상담 가능)',
+      parking: '건물 내 지하 1~2층 무료 주차 2시간 지원',
+    };
+  }
+  
+  if (region.includes('경기') || region.includes('수원') || firmName.includes('하늘')) {
+    return {
+      firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
+      address: '경기도 수원시 영통구 광교중앙로 248, 광교법조타워 4층 402호',
+      detail: '수원고등법원·수원지방법원 정문 앞 도보 3분',
+      subway: '신분당선 광교중앙역 4번 출구 버스 5분 / 상현역 2번 출구 도보 10분',
+      phone: '031-215-5678',
+      hours: '평일 09:00 ~ 18:00 (야간·주말 예약 상담 가능)',
+      parking: '지하 1~3층 전용 주차장 무료 이용',
+    };
+  }
+
+  // 기본값 (서울 서초 법조타운)
+  return {
+    firmName: firmName.includes('법무') || firmName.includes('법률') ? firmName : `${firmName} 법률사무소`,
+    address: '서울특별시 서초구 서초대로 250, 스타빌딩 6층 (서초동)',
+    detail: '서울회생법원·서울중앙지방법원 인근 도보 3분',
+    subway: '2호선 서초역 1번 출구 도보 3분 / 2·3호선 교대역 10번 출구 도보 5분',
+    phone: '02-588-1234',
+    hours: '평일 09:00 ~ 18:30 (야간·주말 사전 예약 시 상담 가능)',
+    parking: '기계식 및 자주식 무료 발렛 주차 지원',
+  };
+}
+
 export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavorite, onToggleFavorite }: LawyerProfileModalProps) {
   const [activeTab, setActiveTab] = useState<'home' | 'info' | 'reviews'>('home');
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   const firm = mockLawFirms.find(f => f.id === lawyer.lawFirmId);
   const displayName = lawyer.name.replace(' 변호사', '');
   const reviewCount = 12 + (lawyer.matchedCount % 20);
+  const officeInfo = getLawyerOfficeInfo(lawyer, firm);
+
+  const handleCopyAddress = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(officeInfo.address);
+    setCopiedAddress(true);
+    setTimeout(() => setCopiedAddress(false), 2000);
+  };
 
   const tabs = [
     { key: 'home' as const, label: '변호사홈' },
@@ -196,6 +245,123 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                 </div>
               </div>
 
+              {/* ── 사무소 위치 및 오시는 길 (카카오 지도) ── */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#1E3A5F]" />
+                    사무소 위치 및 연락처
+                  </h3>
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    방문 상담 가능
+                  </span>
+                </div>
+
+                {/* 사무소 상세 정보 */}
+                <div className="space-y-2.5 text-sm">
+                  <div className="flex items-start gap-2.5">
+                    <Building className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="font-bold text-slate-900">{officeInfo.firmName}</span>
+                      <span className="text-xs text-slate-500 ml-2">({officeInfo.detail})</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                      <span className="text-slate-700 font-medium leading-snug">{officeInfo.address}</span>
+                    </div>
+                    <button
+                      onClick={handleCopyAddress}
+                      className="shrink-0 flex items-center gap-1 text-xs font-bold text-[#1E3A5F] hover:text-brand bg-white border border-slate-200 hover:border-[#1E3A5F]/30 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      {copiedAddress ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span className="text-emerald-600">복사됨</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>주소 복사</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                      <a
+                        href={`tel:${officeInfo.phone}`}
+                        className="font-bold text-[#1E3A5F] hover:underline"
+                      >
+                        {officeInfo.phone}
+                      </a>
+                    </div>
+                    <span className="text-slate-300">|</span>
+                    <span className="text-xs text-slate-500 font-medium">{officeInfo.hours}</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-slate-500 bg-white p-3 rounded-xl border border-slate-100 space-y-1">
+                    <Navigation className="w-4 h-4 text-[#1E3A5F] mt-0.5 shrink-0" />
+                    <div className="space-y-0.5">
+                      <p><strong className="text-slate-700">대중교통:</strong> {officeInfo.subway}</p>
+                      <p><strong className="text-slate-700">주차 안내:</strong> {officeInfo.parking}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── 카카오 지도 비주얼 카드 & 길찾기 버튼 ── */}
+                <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                  {/* 지도 비주얼 목업 배경 */}
+                  <div className="h-32 sm:h-36 w-full relative bg-gradient-to-br from-slate-100 via-blue-50/40 to-slate-200 flex items-center justify-center overflow-hidden">
+                    {/* 지도 격자 및 도로 라인 시뮬레이션 */}
+                    <svg className="absolute inset-0 w-full h-full opacity-30" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                          <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#94A3B8" strokeWidth="0.5" />
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#grid)" />
+                      <path d="M -10 60 Q 150 40 400 90 T 800 60" fill="none" stroke="#CBD5E1" strokeWidth="8" />
+                      <path d="M 200 -10 L 220 200" fill="none" stroke="#CBD5E1" strokeWidth="6" />
+                      <path d="M 350 -10 L 330 200" fill="none" stroke="#E2E8F0" strokeWidth="4" />
+                    </svg>
+
+                    {/* 중앙 핀 & 레이블 */}
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div className="bg-[#1E3A5F] text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
+                        <Building className="w-3.5 h-3.5 text-teal-400" />
+                        <span>{officeInfo.firmName}</span>
+                      </div>
+                      <div className="w-2.5 h-2.5 bg-[#1E3A5F] rotate-45 -mt-1.5 shadow-sm"></div>
+                      <div className="w-2 h-1 bg-black/20 rounded-full mt-0.5 blur-[1px]"></div>
+                    </div>
+
+                    {/* 카카오맵 워터마크 뱃지 */}
+                    <div className="absolute top-2.5 left-2.5 z-10 bg-[#FEE500] text-[#191919] font-black text-[10px] px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
+                      <span>kakao</span>
+                      <span className="font-bold text-[9px]">map</span>
+                    </div>
+                  </div>
+
+                  {/* 지도 하단 액션 바 */}
+                  <div className="p-3 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-slate-600 font-medium truncate max-w-[260px] sm:max-w-xs">
+                      📍 {officeInfo.address}
+                    </div>
+                    <a
+                      href={`https://map.kakao.com/link/search/${encodeURIComponent(officeInfo.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-extrabold text-xs px-3.5 py-2 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                    >
+                      <span>카카오맵으로 길찾기</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              </div>
 
             </div>
           )}
