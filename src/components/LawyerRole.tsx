@@ -2415,14 +2415,19 @@ export default function LawyerRole({
                   return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
                 })
                 .filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id))
-                .map(r => {
+                .map((r, idx) => {
                   const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
                   return (
-                    <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-sm transition-all">
+                    <div key={r.id} className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all border-l-4 ${
+                      r.requestType === 'direct' ? 'border-l-amber-400 border-amber-200' :
+                      r.requestType === 'direct_multi' ? 'border-l-violet-400 border-violet-200' :
+                      'border-l-brand border-slate-200'
+                    }`}>
 
                       {/* 카드 헤더 */}
-                      <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                      <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
+                          <span className="w-6 h-6 rounded-full bg-slate-800 text-white text-[11px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
                           <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-lg uppercase tracking-wider ${
                             r.requestType === 'direct' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' :
                             r.requestType === 'direct_multi' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
