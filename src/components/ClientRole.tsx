@@ -2141,7 +2141,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     <div className="flex flex-wrap gap-3 text-sm">
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><ShieldCheck className="w-4 h-4" />실명 불필요</span>
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Zap className="w-4 h-4" />1분 소요</span>
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Search className="w-4 h-4" />즉시 결과 확인</span>
                     </div>
                     <button
                       onClick={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
