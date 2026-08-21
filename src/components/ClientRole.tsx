@@ -2137,7 +2137,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">01</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">이름 없이 1분이면<br />충분합니다</h3>
-                    <p className="text-base text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 월 수입만 입력하면 AI가 즉시 탕감 가능성을 분석합니다. 회원가입도 필요 없습니다.</p>
+                    <p className="text-base text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 부가 정보를 입력하면 채무 전문 변호사에게 무료 상담 가능합니다. 회원가입도 필요 없습니다.</p>
                     <div className="flex flex-wrap gap-3 text-sm">
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><ShieldCheck className="w-4 h-4" />실명 불필요</span>
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Zap className="w-4 h-4" />1분 소요</span>
