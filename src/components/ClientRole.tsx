@@ -2187,64 +2187,67 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </div>
             </section>
 
-            {/* STEP 2: AI 분석 결과 확인 */}
+            {/* STEP 2: 다수 변호사 선택 & 한번에 상담 요청 */}
             <section className="w-full py-16 md:py-24 bg-[#F8FAFC] border-b border-slate-100">
               <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-                  {/* 좌측: 리포트 목업 (lg에서 좌측) */}
+                  {/* 좌측: 변호사 선택 목업 (lg에서 좌측) */}
                   <div className="order-2 lg:order-1 flex justify-center">
                     <div className="w-full max-w-[360px] bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
                       <div className="bg-[#1E3A5F] px-5 py-4 flex items-center gap-3">
-                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><FileText className="w-4 h-4 text-white" /></div>
+                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Users className="w-4 h-4 text-white" /></div>
                         <div>
-                          <p className="text-white font-bold text-sm">나의 채무 분석 리포트</p>
-                          <p className="text-white/60 text-[10px]">법원 공개 기준 적용</p>
+                          <p className="text-white font-bold text-sm">변호사 선택하기</p>
+                          <p className="text-white/60 text-[10px]">원하는 변호사를 골라 한번에 요청</p>
                         </div>
                       </div>
-                      <div className="p-5 space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-slate-50 rounded-xl p-3 text-center">
-                            <p className="text-[10px] text-slate-500 font-medium">총 채무</p>
-                            <p className="text-lg font-extrabold text-slate-900">8,200<span className="text-xs font-bold text-slate-400">만원</span></p>
+                      <div className="p-4 space-y-2.5">
+                        {/* <!-- mock --> */}
+                        {[
+                          { name: '김도현', specialty: '개인회생 전문', cases: '회생 350건+', checked: true, color: 'bg-[#1E3A5F]' },
+                          { name: '박서연', specialty: '파산·면책 전문', cases: '파산 280건+', checked: true, color: 'bg-[#0D9488]' },
+                          { name: '이정훈', specialty: '채무조정 전문', cases: '조정 200건+', checked: false, color: 'bg-[#3B82F6]' },
+                          { name: '최민지', specialty: '개인회생 전문', cases: '회생 310건+', checked: true, color: 'bg-[#7C3AED]' },
+                        ].map((lawyer, idx) => (
+                          <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-default ${lawyer.checked ? 'border-[#1E3A5F]/30 bg-[#EEF4FA]' : 'border-slate-200 bg-white'}`}>
+                            <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 ${lawyer.checked ? 'border-[#1E3A5F] bg-[#1E3A5F]' : 'border-slate-300'}`}>
+                              {lawyer.checked && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <div className={`w-8 h-8 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0`}>{lawyer.name.charAt(0)}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm text-slate-900">{lawyer.name} 변호사</p>
+                              <p className="text-[10px] text-slate-500 font-medium">{lawyer.specialty} · {lawyer.cases}</p>
+                            </div>
+                            <span className="text-[10px] font-bold text-amber-500 shrink-0">★ 4.9</span>
                           </div>
-                          <div className="bg-slate-50 rounded-xl p-3 text-center">
-                            <p className="text-[10px] text-slate-500 font-medium">월 소득</p>
-                            <p className="text-lg font-extrabold text-slate-900">250<span className="text-xs font-bold text-slate-400">만원</span></p>
+                        ))}
+                        <div className="pt-1.5">
+                          <div className="flex items-center justify-between px-1 pb-2">
+                            <span className="text-xs font-bold text-[#1E3A5F]"><CheckCircle className="w-3.5 h-3.5 inline mr-1" />3명 선택됨</span>
+                            <span className="text-[10px] text-slate-400">최대 5명까지 선택 가능</span>
+                          </div>
+                          <div className="bg-[#1E3A5F] text-white text-center py-3 rounded-xl text-sm font-bold cursor-default flex items-center justify-center gap-2">
+                            <Send className="w-4 h-4" />선택한 변호사에게 한번에 요청
                           </div>
                         </div>
-                        <div className="border border-[#0D9488]/30 bg-[#0D9488]/5 rounded-xl p-3.5 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#0D9488]">★ 추천: 개인회생</span>
-                            <span className="text-[10px] font-bold bg-[#0D9488] text-white px-2 py-0.5 rounded-md">적합</span>
-                          </div>
-                          <p className="text-sm font-extrabold text-slate-900">예상 탕감률 78% · 월 변제 38만원</p>
-                        </div>
-                        <div className="border border-slate-200 rounded-xl p-3.5 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-500">개인파산</span>
-                            <span className="text-[10px] font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">참고</span>
-                          </div>
-                          <p className="text-sm font-bold text-slate-700">면책 가능성 높음</p>
-                        </div>
-                        <div className="bg-[#1E3A5F] text-white text-center py-3 rounded-xl text-sm font-bold cursor-default">전문가 상담 신청하기</div>
                       </div>
                     </div>
                   </div>
                   {/* 우측: 텍스트 (lg에서 우측) */}
                   <div className="order-1 lg:order-2 space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">02</div>
-                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">내 상황에 맞는<br />해결 방향을 바로 확인하세요</h3>
-                    <p className="text-base text-slate-600 leading-relaxed font-medium">입력한 채무·소득 정보를 기반으로 개인회생, 파산, 신용회복 등 가능한 방안과 예상 탕감률을 즉시 비교해 드립니다.</p>
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">나에게 맞는 변호사를 골라<br />한번에 상담을 요청하세요</h3>
+                    <p className="text-base text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 전문가를 선택할 수 있습니다.</p>
                     <div className="flex flex-wrap gap-3 text-sm">
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Scale className="w-4 h-4" />법원 공개 기준 적용</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><BarChart3 className="w-4 h-4" />방안별 비교</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Calculator className="w-4 h-4" />예상 월 변제액 산출</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Users className="w-4 h-4" />다수 변호사 동시 선택</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Send className="w-4 h-4" />한번에 상담 요청</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ClipboardCheck className="w-4 h-4" />답변 비교 후 선택</span>
                     </div>
                     <button
-                      onClick={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
+                      onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                     >
-                      내 분석 결과 확인하기 →
+                      전문가 둘러보기 →
                     </button>
                   </div>
                 </div>
