@@ -2763,20 +2763,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 );
               })()}
             </div>
-
-            {/* 신뢰 통계 바 */}
-            <div className="w-full bg-[#F8FAFC] border-y border-slate-200 mt-6">
-              <div className="max-w-5xl mx-auto px-4 py-4">
-                <div className="flex items-center justify-center gap-6 sm:gap-10 text-center">
-                  <div><p className="text-lg sm:text-xl font-extrabold text-[#0f172a]">4.8<span className="text-sm text-slate-400">/5.0</span></p><p className="text-xs sm:text-sm text-slate-500 font-medium">평균 만족도</p></div>
-                  <div className="w-px h-8 bg-slate-200" />
-                  <div><p className="text-lg sm:text-xl font-extrabold text-[#0f172a]">72<span className="text-sm text-slate-400">%</span></p><p className="text-xs sm:text-sm text-slate-500 font-medium">평균 조정 비율</p></div>
-                  <div className="w-px h-8 bg-slate-200" />
-                  <div><p className="text-lg sm:text-xl font-extrabold text-[#0f172a]">8,400<span className="text-sm text-slate-400">+</span></p><p className="text-xs sm:text-sm text-slate-500 font-medium">누적 이용자</p></div>
-                </div>
-                {/* <!-- mock --> */}
-              </div>
-            </div>
             </div>
             </section>
 

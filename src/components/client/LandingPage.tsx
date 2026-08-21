@@ -1075,31 +1075,6 @@ export default function LandingPage({
             </div>
           </div>
 
-          {/* Stats bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={proofInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="p-6 rounded-2xl bg-gradient-to-r from-slate-800/80 to-slate-900/80
-                        border border-slate-700/30 backdrop-blur-xl"
-          >
-            <div className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-center">
-              {[
-                { emoji: '📊', label: '평균 조정 비율', value: '72%' },
-                { emoji: '⏱', label: '평균 소요 시간', value: '47초' },
-                { emoji: '👥', label: '누적 이용자', value: '8,400+' },
-              ].map((stat, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="text-2xl">{stat.emoji}</span>
-                  <div className="text-left">
-                    <p className="text-sm text-slate-600">{stat.label}</p>
-                    <p className="text-xl font-bold text-white">{stat.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
           {/* More link */}
           <div className="text-center mt-8">
             <button
