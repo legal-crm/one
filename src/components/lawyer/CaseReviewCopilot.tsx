@@ -468,32 +468,32 @@ export default function CaseReviewCopilot({
     return (
       <div className="animate-fadeIn space-y-5">
         {/* 헤더 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                <Microscope className="w-5 h-5 text-brand" />
+              <h3 className="font-black text-xl text-slate-900 flex items-center gap-2.5">
+                <Microscope className="w-6 h-6 text-brand" />
                 AI 사건 분석
               </h3>
-              <p className="text-xs text-slate-500">의뢰인을 선택하면 AI가 재무 상태를 분석하고 법적 쟁점을 자동 검토합니다.</p>
+              <p className="text-sm text-slate-500">의뢰인을 선택하면 AI가 재무 상태를 분석하고 법적 쟁점을 자동 검토합니다.</p>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="bg-brand/10 text-brand font-bold px-2.5 py-1 rounded-lg">{allClients.length}명</span>
-              <span className="text-slate-400">등록된 의뢰인</span>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="bg-brand/10 text-brand font-bold px-3 py-1 rounded-lg">{allClients.length}명</span>
+              <span className="text-slate-500 font-medium">등록된 의뢰인</span>
             </div>
           </div>
         </div>
 
         {/* 검색 + 필터 + 정렬 바 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex flex-col sm:flex-row gap-3 shadow-xs">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={clientSearch}
               onChange={e => { setClientSearch(e.target.value); setClientPage(0); }}
               placeholder="의뢰인 이름 검색..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-800"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-800"
             />
           </div>
           <div className="flex gap-2 shrink-0">
@@ -503,14 +503,14 @@ export default function CaseReviewCopilot({
               { key: 'in-progress' as const, label: '상담중' },
             ].map(f => (
               <button key={f.key} onClick={() => { setClientFilter(f.key); setClientPage(0); }}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${clientFilter === f.key ? 'bg-brand text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${clientFilter === f.key ? 'bg-brand text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 {f.label}
               </button>
             ))}
             <select
               value={clientSort}
               onChange={e => setClientSort(e.target.value as typeof clientSort)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand/30"
             >
               <option value="latest">최신순</option>
               <option value="debt-high">채무 높은순</option>
@@ -522,7 +522,7 @@ export default function CaseReviewCopilot({
 
         {/* 의뢰인 카드 리스트 */}
         {pagedClients.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {pagedClients.map((client) => {
               const cfp = client.financialProfile || {};
               const isSample = (client.id || '').startsWith('sample');
@@ -532,28 +532,28 @@ export default function CaseReviewCopilot({
               const dti = income > 0 ? Math.round((debtTotal / (income * 12)) * 100) : 0;
               const riskLevel = dti > 300 ? 'high' : dti > 150 ? 'mid' : 'low';
               const statusLabel = client.status === 'requested' ? '접수' : client.status === 'responding' ? '응답중' : client.status === 'comparing' ? '비교상담' : client.status === 'counseling' ? '전담상담' : client.status || '대기';
-              const statusColor = client.status === 'requested' ? 'bg-blue-100 text-blue-600' : client.status === 'responding' ? 'bg-amber-100 text-amber-600' : client.status === 'comparing' ? 'bg-violet-100 text-violet-600' : client.status === 'counseling' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500';
+              const statusColor = client.status === 'requested' ? 'bg-blue-100 text-blue-700' : client.status === 'responding' ? 'bg-amber-100 text-amber-700' : client.status === 'comparing' ? 'bg-violet-100 text-violet-700' : client.status === 'counseling' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600';
               const originalIdx = allClients.findIndex(c => c.id === client.id);
 
               return (
                 <button key={client.id} onClick={() => setSelectedClientIdx(originalIdx)}
-                  className="text-left bg-white border border-slate-200 rounded-2xl hover:border-brand/50 hover:shadow-md active:scale-[0.98] transition-all group overflow-hidden">
+                  className="text-left bg-white border border-slate-200 rounded-2xl hover:border-brand/50 hover:shadow-md active:scale-[0.98] transition-all group overflow-hidden cursor-pointer">
                   {/* 상단 위험도 바 */}
-                  <div className={`h-1 w-full ${riskLevel === 'high' ? 'bg-red-400' : riskLevel === 'mid' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                  <div className="p-4 space-y-3">
+                  <div className={`h-1.5 w-full ${riskLevel === 'high' ? 'bg-red-400' : riskLevel === 'mid' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                  <div className="p-4.5 space-y-3.5">
                     {/* 아바타 + 이름 + 상태 */}
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-sm shrink-0 ${riskLevel === 'high' ? 'bg-red-50 text-red-600' : riskLevel === 'mid' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-base shrink-0 ${riskLevel === 'high' ? 'bg-red-50 text-red-600' : riskLevel === 'mid' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
                         {(client.clientName || client.client_name || '?')[0]}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-extrabold text-sm text-slate-800 truncate">{client.clientName || client.client_name}</p>
-                          {isSample && <span className="bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0">샘플</span>}
+                          <p className="font-extrabold text-base text-slate-900 truncate">{client.clientName || client.client_name}</p>
+                          {isSample && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0">샘플</span>}
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${statusColor}`}>{statusLabel}</span>
-                          {dateStr && <span className="text-[10px] text-slate-400">{dateStr}</span>}
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${statusColor}`}>{statusLabel}</span>
+                          {dateStr && <span className="text-xs text-slate-400 font-medium">{dateStr}</span>}
                         </div>
                       </div>
                     </div>
@@ -561,22 +561,22 @@ export default function CaseReviewCopilot({
                     {/* 핵심 지표 */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-slate-500">총 채무</span>
-                        <span className="text-[13px] font-extrabold text-slate-900">{debtTotal > 0 ? `${debtTotal.toLocaleString()}만원` : '-'}</span>
+                        <span className="text-xs text-slate-500 font-medium">총 채무</span>
+                        <span className="text-sm sm:text-base font-extrabold text-slate-900">{debtTotal > 0 ? `${debtTotal.toLocaleString()}만원` : '-'}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-slate-500">월 소득</span>
-                        <span className="text-[13px] font-bold text-slate-700">{income > 0 ? `${income.toLocaleString()}만원` : '-'}</span>
+                        <span className="text-xs text-slate-500 font-medium">월 소득</span>
+                        <span className="text-sm sm:text-base font-bold text-slate-800">{income > 0 ? `${income.toLocaleString()}만원` : '-'}</span>
                       </div>
                       {/* DTI 바 */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-slate-400">채무비율 (DTI)</span>
-                          <span className={`text-[10px] font-bold ${riskLevel === 'high' ? 'text-red-500' : riskLevel === 'mid' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                          <span className="text-xs text-slate-400 font-medium">채무비율 (DTI)</span>
+                          <span className={`text-xs font-bold ${riskLevel === 'high' ? 'text-red-500' : riskLevel === 'mid' ? 'text-amber-500' : 'text-emerald-500'}`}>
                             {dti > 0 ? `${dti}%` : '-'}
                           </span>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full transition-all ${riskLevel === 'high' ? 'bg-red-400' : riskLevel === 'mid' ? 'bg-amber-400' : 'bg-emerald-400'}`}
                             style={{ width: `${Math.min(dti / 5, 100)}%` }} />
                         </div>
@@ -587,10 +587,10 @@ export default function CaseReviewCopilot({
                     {(cfp.riskFlags || []).length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {(cfp.riskFlags || []).slice(0, 2).map((flag: string, i: number) => (
-                          <span key={i} className="text-[9px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-lg font-medium truncate max-w-[120px]">⚠ {flag}</span>
+                          <span key={i} className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-md font-bold truncate max-w-[130px]">⚠ {flag}</span>
                         ))}
                         {(cfp.riskFlags || []).length > 2 && (
-                          <span className="text-[9px] text-slate-400 font-bold">+{cfp.riskFlags.length - 2}</span>
+                          <span className="text-xs text-slate-400 font-bold">+{cfp.riskFlags.length - 2}</span>
                         )}
                       </div>
                     )}

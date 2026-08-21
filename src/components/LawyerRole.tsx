@@ -1127,57 +1127,57 @@ export default function LawyerRole({
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
               >
-                <span className="w-5 h-5 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full">G</span>
+                <span className="w-6 h-6 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full">G</span>
                 <span>Google 계정으로 로그인</span>
               </button>
 
-              <div className="relative flex py-1 items-center">
+              <div className="relative flex py-2 items-center">
                 <div className="flex-grow border-t border-slate-200"></div>
-                <span className="flex-shrink mx-3 text-slate-400 text-[11px] font-bold">또는 이메일로 로그인</span>
+                <span className="flex-shrink mx-3 text-slate-400 text-xs font-bold">또는 이메일로 로그인</span>
                 <div className="flex-grow border-t border-slate-200"></div>
               </div>
 
               {loginError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-xl">
+                <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3.5 rounded-xl font-medium">
                   {loginError}
                 </div>
               )}
 
               <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[12px] text-slate-600 block uppercase font-bold">아이디 (이름 또는 ID)</label>
+                <div className="space-y-2">
+                  <label className="text-sm text-slate-700 block font-bold">아이디 (이름 또는 ID)</label>
                   <input 
                     type="text" 
                     placeholder="예: 1 또는 김우진 또는 lawyer-1"
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-base focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[12px] text-slate-600 block uppercase font-bold">비밀번호</label>
+                <div className="space-y-2">
+                  <label className="text-sm text-slate-700 block font-bold">비밀번호</label>
                   <input 
                     type="password" 
                     placeholder="비밀번호 입력 (기본: 1)"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-base focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400"
                   />
                 </div>
 
                 {/* Quick test login info */}
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[13px] text-slate-600 space-y-1">
-                  <span className="font-bold text-slate-600 block">🔑 테스트 로그인 계정 정보</span>
-                  <div>• 아이디: <strong className="text-slate-900">1</strong> / 비밀번호: <strong className="text-slate-900">1</strong></div>
-                  <div>• (또는 변호사명: <strong className="text-slate-700">김우진</strong> / 비밀번호: <strong className="text-slate-700">1234</strong>)</div>
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 text-sm text-slate-700 space-y-1.5 leading-relaxed font-normal">
+                  <span className="font-bold text-slate-800 block text-sm">🔑 테스트 로그인 계정 정보</span>
+                  <div>• 아이디: <strong className="text-slate-900 font-bold">1</strong> / 비밀번호: <strong className="text-slate-900 font-bold">1</strong></div>
+                  <div>• (또는 변호사명: <strong className="text-slate-800 font-bold">김우진</strong> / 비밀번호: <strong className="text-slate-800 font-bold">1234</strong>)</div>
                 </div>
 
-                <div className="flex gap-2 pt-1">
+                <div className="flex gap-2.5 pt-1">
                   <button 
                     type="submit"
-                    className="flex-1 bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md"
+                    className="flex-1 bg-brand hover:bg-brand-hover text-white font-extrabold py-3.5 rounded-xl text-base transition-all shadow-md cursor-pointer active:scale-[0.98]"
                   >
                     로그인
                   </button>
@@ -1189,7 +1189,7 @@ export default function LawyerRole({
                       setActiveLawyer(demoLawyer);
                       setIsLoggedIn(true);
                     }}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3 rounded-[200px] text-xs border border-slate-200 transition-colors"
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3.5 rounded-xl text-base border border-slate-200 transition-all cursor-pointer active:scale-[0.98]"
                   >
                     테스트 계정 1초 로그인
                   </button>
@@ -1197,41 +1197,41 @@ export default function LawyerRole({
               </form>
 
               {/* 비밀번호 찾기 */}
-              <div className="text-center">
+              <div className="text-center pt-1">
                 <button
                   type="button"
                   onClick={() => setShowPasswordReset(!showPasswordReset)}
-                  className="text-xs text-slate-400 hover:text-brand transition-colors font-medium"
+                  className="text-sm text-slate-500 hover:text-brand transition-colors font-medium cursor-pointer"
                 >
                   비밀번호를 잊으셨나요?
                 </button>
               </div>
               {showPasswordReset && (
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fadeIn">
-                  <p className="text-xs text-slate-600">가입 시 사용한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.</p>
+                  <p className="text-sm text-slate-600 leading-relaxed">가입 시 사용한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.</p>
                   <input
                     type="email"
                     value={resetEmail}
                     onChange={e => setResetEmail(e.target.value)}
                     placeholder="이메일 주소 입력"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
                   />
                   <button
                     type="button"
                     onClick={handlePasswordReset}
-                    className="w-full bg-slate-700 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
+                    className="w-full bg-slate-700 hover:bg-slate-800 text-white py-3 rounded-xl text-sm font-bold transition-colors cursor-pointer"
                   >
                     비밀번호 재설정 링크 발송
                   </button>
                 </div>
               )}
 
-              <div className="text-center pt-1 text-xs text-slate-500">
+              <div className="text-center pt-2 text-sm text-slate-600">
                 계정이 없으신가요?{' '}
                 <button 
                   type="button" 
                   onClick={() => setAuthMode('signup')}
-                  className="text-brand font-bold hover:underline"
+                  className="text-brand font-bold hover:underline cursor-pointer"
                 >
                   회원가입하기
                 </button>
@@ -1239,51 +1239,51 @@ export default function LawyerRole({
             </div>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4 text-left max-h-[450px] overflow-y-auto pr-1 scrollbar-hide">
-              <h3 className="font-extrabold text-sm text-slate-900 border-b border-slate-200 pb-2">회원가입</h3>
+              <h3 className="font-extrabold text-base text-slate-900 border-b border-slate-200 pb-2.5">대리인 회원가입</h3>
               {signupError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-xl">
+                <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-xl font-medium">
                   {signupError}
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-[12px] text-slate-600 block uppercase font-bold">아이디 (ID)*</label>
+                  <label className="text-sm text-slate-700 block font-bold">아이디 (ID)*</label>
                   <input 
                     type="text" 
                     placeholder="예: lawyer-kim"
                     value={signupId}
                     onChange={(e) => setSignupId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[12px] text-slate-600 block uppercase font-bold">비밀번호*</label>
+                  <label className="text-sm text-slate-700 block font-bold">비밀번호*</label>
                   <input 
                     type="password" 
                     placeholder="비밀번호 입력"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-[12px] text-slate-600 block uppercase font-bold">이름 (성명)*</label>
+                  <label className="text-sm text-slate-700 block font-bold">이름 (성명)*</label>
                   <input 
                     type="text" 
                     placeholder="예: 홍길동"
                     value={signupName}
                     onChange={(e) => setSignupName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[12px] text-slate-600 block uppercase font-bold">역할 구분*</label>
+                  <label className="text-sm text-slate-700 block font-bold">역할 구분*</label>
                   <select 
                     value={signupRole}
                     onChange={(e) => setSignupRole(e.target.value as 'LAWYER' | 'STAFF')}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                   >
                     <option value="LAWYER">변호사 (LAWYER)</option>
                     <option value="STAFF">실장/사무장 (STAFF)</option>
@@ -1291,34 +1291,34 @@ export default function LawyerRole({
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[12px] text-slate-600 block uppercase font-bold">전문분야 (쉼표로 구분)</label>
+                <label className="text-sm text-slate-700 block font-bold">전문분야 (쉼표로 구분)</label>
                 <input 
                   type="text" 
                   placeholder="예: 개인회생, 개인파산, 보정명령대응"
                   onChange={(e) => setSignupFields(e.target.value.split(',').map(f => f.trim()).filter(Boolean))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[12px] text-slate-600 block uppercase font-bold">활동 지역</label>
+                <label className="text-sm text-slate-700 block font-bold">활동 지역</label>
                 <input 
                   type="text" 
                   placeholder="예: 서울, 경기/수원, 부산"
                   value={signupRegion}
                   onChange={(e) => setSignupRegion(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[12px] text-slate-600 block uppercase font-bold">프로필 사진 업로드</label>
+                <label className="text-sm text-slate-700 block font-bold">프로필 사진 업로드</label>
                 <div className="flex items-center gap-3">
                   {avatarPreview ? (
-                    <img src={avatarPreview} alt="프로필 미리보기" className="w-12 h-12 rounded-xl object-cover border border-brand/30 shrink-0" />
+                    <img src={avatarPreview} alt="프로필 미리보기" className="w-14 h-14 rounded-xl object-cover border border-brand/30 shrink-0" />
                   ) : (
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 text-[12px] shrink-0 border border-slate-200">사진</div>
+                    <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 text-xs shrink-0 border border-slate-200 font-bold">사진</div>
                   )}
                   <label className="flex-1 cursor-pointer">
-                    <div className="bg-slate-50 border border-slate-200 border-dashed rounded-xl p-2.5 text-xs text-slate-500 text-center hover:border-brand/50 transition-colors">
+                    <div className="bg-slate-50 border border-slate-200 border-dashed rounded-xl p-3 text-sm text-slate-600 text-center hover:border-brand/50 transition-colors font-medium">
                       📷 클릭하여 프로필 사진 선택
                     </div>
                     <input type="file" accept="image/*" onChange={handleAvatarFileChange} className="hidden" />
@@ -1327,55 +1327,55 @@ export default function LawyerRole({
               </div>
 
               {/* 변호사 등록증 첨부 (핵심 자격 증빙) */}
-              <div className="space-y-1.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                <label className="text-[12px] text-amber-600 block uppercase font-bold">📋 변호사 등록증 첨부 (필수 자격 증빙)*</label>
-                <p className="text-[12px] text-slate-600 leading-relaxed">관리자가 등록증을 확인한 후 계정이 승인됩니다. 이미지 또는 PDF 파일을 첨부해주세요.</p>
+              <div className="space-y-2 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+                <label className="text-sm text-amber-800 block font-bold">📋 변호사 등록증 첨부 (필수 자격 증빙)*</label>
+                <p className="text-sm text-slate-600 leading-relaxed">관리자가 등록증을 확인한 후 계정이 승인됩니다. 이미지 또는 PDF 파일을 첨부해주세요.</p>
                 <label className="block cursor-pointer">
-                  <div className={`border ${licensePreview ? 'border-emerald-300' : 'border-slate-200 border-dashed'} rounded-xl p-3 text-xs text-center transition-colors hover:border-brand/50 bg-white`}>
+                  <div className={`border ${licensePreview ? 'border-emerald-300' : 'border-slate-200 border-dashed'} rounded-xl p-3 text-sm text-center transition-colors hover:border-brand/50 bg-white`}>
                     {licensePreview ? (
                       <div className="space-y-2">
                         <img src={licensePreview} alt="등록증 미리보기" className="max-h-32 mx-auto rounded-lg object-contain" />
-                        <span className="text-emerald-600 text-[12px] font-bold">✅ 파일 첨부 완료 — 다시 선택하려면 클릭</span>
+                        <span className="text-emerald-600 text-xs font-bold">✅ 파일 첨부 완료 — 다시 선택하려면 클릭</span>
                       </div>
                     ) : (
-                      <span className="text-slate-500">📎 클릭하여 변호사 등록증 이미지 첨부 (최대 5MB)</span>
+                      <span className="text-slate-600 font-medium">📎 클릭하여 변호사 등록증 이미지 첨부 (최대 5MB)</span>
                     )}
                   </div>
                   <input type="file" accept="image/*,.pdf" onChange={handleLicenseFileChange} className="hidden" />
                 </label>
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-[12px] text-slate-600 block uppercase font-bold">변호사 등록번호</label>
+                  <label className="text-sm text-slate-700 block font-bold">변호사 등록번호</label>
                   <input
                     type="text"
                     placeholder="예: 12345"
                     value={signupLicenseNumber}
                     onChange={(e) => setSignupLicenseNumber(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[12px] text-slate-600 block uppercase font-bold">소개 약력(Bio)</label>
+                <label className="text-sm text-slate-700 block font-bold">소개 약력(Bio)</label>
                 <textarea 
                   rows={2}
                   placeholder="전문 대리인으로서의 약력 및 인사말을 작성하세요."
                   value={signupBio}
                   onChange={(e) => setSignupBio(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
                 />
               </div>
               <button 
                 type="submit"
-                className="w-full bg-brand hover:bg-brand-hover text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md mt-2"
+                className="w-full bg-brand hover:bg-brand-hover text-white font-extrabold py-3.5 rounded-xl text-base transition-all shadow-md mt-2 cursor-pointer active:scale-[0.98]"
               >
                 신규 대리인 등록 완료
               </button>
-              <div className="text-center pt-2 text-xs text-slate-500">
+              <div className="text-center pt-2 text-sm text-slate-600">
                 이미 계정이 있으신가요?{' '}
                 <button 
                   type="button" 
                   onClick={() => setAuthMode('login')}
-                  className="text-brand font-bold hover:underline"
+                  className="text-brand font-bold hover:underline cursor-pointer"
                 >
                   로그인하기
                 </button>
@@ -1632,34 +1632,34 @@ export default function LawyerRole({
       <div className="w-full min-h-screen flex flex-col relative">
       
         {/* ── Top Header Bar (다크 네이비) ── */}
-        <header className="sticky top-0 z-40 bg-[#1E293B] h-14 px-4 lg:px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
+        <header className="sticky top-0 z-40 bg-[#1E293B] h-16 px-4 lg:px-6 flex items-center justify-between shrink-0 shadow-sm border-b border-slate-700/50">
+          <div className="flex items-center gap-3">
             <img 
               src="./mykim_logo.png" 
               alt="my김변 로고" 
-              className="w-8 h-8 rounded-lg object-cover" 
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover shadow-sm" 
             />
-            <div className="flex flex-col items-start leading-none">
-              <span className="font-extrabold text-sm text-white tracking-tight">my김변</span>
-              <span className="text-[11px] text-slate-400 font-medium">변호사 관리 시스템</span>
+            <div className="flex flex-col items-start leading-tight">
+              <span className="font-extrabold text-base sm:text-lg text-white tracking-tight">my김변</span>
+              <span className="text-xs sm:text-[13px] text-slate-300 font-bold">변호사 관리 시스템</span>
             </div>
             {activeLawyer.firmName && (
-              <span className="text-slate-400 text-xs hidden md:inline ml-2 border-l border-slate-600 pl-3">
+              <span className="text-slate-300 text-sm font-semibold hidden md:inline ml-2 border-l border-slate-600 pl-3">
                 {activeLawyer.firmName}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3.5">
+            <div className="flex items-center gap-2.5">
               <img 
                 src={activeLawyer.avatar} 
                 alt={activeLawyer.name} 
-                className="w-7 h-7 rounded-full object-cover border border-white/20" 
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-white/20 shadow-sm" 
               />
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-bold text-white leading-none">{activeLawyer.name}</span>
-                <span className="text-[11px] text-slate-400 mt-0.5">{activeLawyer.role}</span>
+                <span className="text-sm sm:text-base font-bold text-white leading-tight">{activeLawyer.name}</span>
+                <span className="text-xs text-slate-300 font-medium">{activeLawyer.role}</span>
               </div>
             </div>
 
@@ -1674,105 +1674,105 @@ export default function LawyerRole({
         <div className="flex flex-1 overflow-hidden">
 
           {/* ── Sidebar (Desktop/Tablet) — 고정 사이드바 ── */}
-          <aside className="hidden lg:flex w-56 bg-[#111827] flex-col shrink-0 fixed top-14 left-0 bottom-0 overflow-y-auto z-30">
-            <nav className="flex-1 py-4 px-3 space-y-1">
+          <aside className="hidden lg:flex w-64 bg-[#111827] flex-col shrink-0 fixed top-16 left-0 bottom-0 overflow-y-auto z-30 border-r border-slate-800">
+            <nav className="flex-1 py-4 px-3.5 space-y-1.5">
               {/* 그룹 1: 업무 */}
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-2">업무</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-2">업무</p>
               {permissionCtx.canAccessTab('dashboard') && (
-                <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <BarChart2 className="w-4 h-4 shrink-0" /><span>종합 대시보드</span>
+                <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <BarChart2 className="w-5 h-5 shrink-0" /><span>종합 대시보드</span>
                 </button>
               )}
               {permissionCtx.canAccessTab('open-requests') && (
-                <button onClick={() => setActiveTab('open-requests')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'open-requests' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <Briefcase className="w-4 h-4 shrink-0" /><span>신규 상담 요청</span>
-                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{totalOpenRequestsCount}</span>)}
+                <button onClick={() => setActiveTab('open-requests')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'open-requests' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <Briefcase className="w-5 h-5 shrink-0" /><span>신규 상담 요청</span>
+                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{totalOpenRequestsCount}</span>)}
                 </button>
               )}
-              <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                <MessageSquare className="w-4 h-4 shrink-0" /><span>상담 채팅</span>
-                {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-brand/80 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{c}</span>) : null; })()}
+              <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <MessageSquare className="w-5 h-5 shrink-0" /><span>상담 채팅</span>
+                {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-brand/90 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{c}</span>) : null; })()}
               </button>
               {permissionCtx.canAccessTab('client-crm') && (
-                <button onClick={() => setActiveTab('client-crm')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'client-crm' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <Users className="w-4 h-4 shrink-0" /><span>고객 관리 (CRM)</span>
-                  <span className="ml-auto text-[10px] text-slate-500 font-bold">{requests.length}</span>
+                <button onClick={() => setActiveTab('client-crm')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'client-crm' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <Users className="w-5 h-5 shrink-0" /><span>고객 관리 (CRM)</span>
+                  <span className="ml-auto text-xs text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">{requests.length}</span>
                 </button>
               )}
               {permissionCtx.canAccessTab('cases') && (
-                <button onClick={() => setActiveTab('cases')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'cases' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <FolderHeart className="w-4 h-4 shrink-0" /><span>수임 사건 관리</span>
-                  <span className="ml-auto text-[10px] text-slate-500 font-bold">{totalCasesCount}</span>
+                <button onClick={() => setActiveTab('cases')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'cases' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <FolderHeart className="w-5 h-5 shrink-0" /><span>수임 사건 관리</span>
+                  <span className="ml-auto text-xs text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">{totalCasesCount}</span>
                 </button>
               )}
 
               {/* 그룹 2: AI 도구 */}
-              <div className="pt-3 pb-1"><div className="border-t border-slate-700/50" /></div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-1">AI 도구</p>
+              <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">AI 도구</p>
               {permissionCtx.canAccessTab('case-copilot') && (
-                <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <Microscope className="w-4 h-4 shrink-0" /><span>AI 사건 분석</span>
-                {(() => { const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; return n > 0 ? (<span className="ml-auto bg-violet-500/80 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{n}</span>) : null; })()}
+                <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <Microscope className="w-5 h-5 shrink-0" /><span>AI 사건 분석</span>
+                {(() => { const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; return n > 0 ? (<span className="ml-auto bg-violet-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{n}</span>) : null; })()}
                 </button>
               )}
-              <button onClick={() => setActiveTab('qna-answer')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all relative ${activeTab === 'qna-answer' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                <ListCheck className="w-4 h-4 shrink-0" /><span>고민상담 Q&A</span>
-                {qas && (() => { const w = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length; return w > 0 ? (<span className="ml-auto bg-orange-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold">{w}</span>) : null; })()}
+              <button onClick={() => setActiveTab('qna-answer')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'qna-answer' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <ListCheck className="w-5 h-5 shrink-0" /><span>고민상담 Q&A</span>
+                {qas && (() => { const w = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length; return w > 0 ? (<span className="ml-auto bg-orange-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{w}</span>) : null; })()}
               </button>
 
               {/* 그룹 3: 관리 */}
-              <div className="pt-3 pb-1"><div className="border-t border-slate-700/50" /></div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 pb-1 pt-1">관리</p>
+              <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">관리</p>
               {permissionCtx.canAccessTab('billing') && (
-                <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <CreditCard className="w-4 h-4 shrink-0" /><span>요금제 / 빌링</span>
+                <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <CreditCard className="w-5 h-5 shrink-0" /><span>요금제 / 빌링</span>
                 </button>
               )}
               {permissionCtx.canAccessTab('staff-management') && (
-                <button onClick={() => setActiveTab('staff-management')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all relative ${activeTab === 'staff-management' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <Shield className="w-4 h-4 shrink-0" /><span>직원 관리</span>
-                  {(() => { const p = staffMembers.filter(m => m.status === 'pending').length; return p > 0 ? (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold animate-pulse">{p}</span>) : null; })()}
+                <button onClick={() => setActiveTab('staff-management')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'staff-management' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <Shield className="w-5 h-5 shrink-0" /><span>직원 관리</span>
+                  {(() => { const p = staffMembers.filter(m => m.status === 'pending').length; return p > 0 ? (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold animate-pulse">{p}</span>) : null; })()}
                 </button>
               )}
               {permissionCtx.canAccessTab('settings') && (
-                <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-2 border-teal-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'}`}>
-                  <Settings className="w-4 h-4 shrink-0" /><span>알림 및 설정</span>
+                <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                  <Settings className="w-5 h-5 shrink-0" /><span>알림 및 설정</span>
                 </button>
               )}
             </nav>
 
             {/* 사이드바 하단: 로그아웃 + 버전 */}
-            <div className="px-3 py-4 border-t border-slate-700/50 space-y-2">
+            <div className="px-3.5 py-4 border-t border-slate-800 space-y-2">
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all"
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] text-slate-300 hover:bg-white/5 hover:text-white transition-all font-bold cursor-pointer"
               >
-                <LogOut className="w-4 h-4 shrink-0" /><span>로그아웃</span>
+                <LogOut className="w-5 h-5 shrink-0" /><span>로그아웃</span>
               </button>
-              <p className="text-[10px] text-slate-600 px-3">v2.6.0</p>
+              <p className="text-xs text-slate-400 px-3.5 font-medium">v2.6.0</p>
             </div>
           </aside>
 
           {/* ── Main Content Area ── */}
-          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-6 py-5 lg:ml-56 pb-20 lg:pb-5">
+          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-8 py-6 lg:ml-64 pb-20 lg:pb-8">
 
           {/* ── Mobile Bottom Tab Bar ── */}
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around">
-            <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'text-brand' : 'text-slate-400'}`}>
-              <BarChart2 className="w-5 h-5" /><span className="text-[10px] font-bold">대시보드</span>
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around shadow-lg">
+            <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'dashboard' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+              <BarChart2 className="w-5 h-5" /><span className="text-xs font-bold">대시보드</span>
             </button>
-            <button onClick={() => setActiveTab('open-requests')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors relative ${activeTab === 'open-requests' ? 'text-brand' : 'text-slate-400'}`}>
-              <Briefcase className="w-5 h-5" /><span className="text-[10px] font-bold">신규요청</span>
-              {totalOpenRequestsCount > 0 && (<span className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">{totalOpenRequestsCount}</span>)}
+            <button onClick={() => setActiveTab('open-requests')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors relative cursor-pointer ${activeTab === 'open-requests' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+              <Briefcase className="w-5 h-5" /><span className="text-xs font-bold">신규요청</span>
+              {totalOpenRequestsCount > 0 && (<span className="absolute -top-0.5 right-1 bg-red-500 text-white rounded-full w-4.5 h-4.5 flex items-center justify-center text-xs font-bold">{totalOpenRequestsCount}</span>)}
             </button>
-            <button onClick={() => setActiveTab('chat')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${activeTab === 'chat' ? 'text-brand' : 'text-slate-400'}`}>
-              <MessageSquare className="w-5 h-5" /><span className="text-[10px] font-bold">채팅</span>
+            <button onClick={() => setActiveTab('chat')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'chat' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+              <MessageSquare className="w-5 h-5" /><span className="text-xs font-bold">채팅</span>
             </button>
-            <button onClick={() => setActiveTab('client-crm')} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${activeTab === 'client-crm' ? 'text-brand' : 'text-slate-400'}`}>
-              <Users className="w-5 h-5" /><span className="text-[10px] font-bold">CRM</span>
+            <button onClick={() => setActiveTab('client-crm')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'client-crm' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+              <Users className="w-5 h-5" /><span className="text-xs font-bold">CRM</span>
             </button>
-            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${!['dashboard','open-requests','chat','client-crm'].includes(activeTab) ? 'text-brand' : 'text-slate-400'}`}>
-              <Settings className="w-5 h-5" /><span className="text-[10px] font-bold">더보기</span>
+            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','open-requests','chat','client-crm'].includes(activeTab) ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+              <Settings className="w-5 h-5" /><span className="text-xs font-bold">더보기</span>
             </button>
           </div>
 
@@ -1780,13 +1780,13 @@ export default function LawyerRole({
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-fadeIn">
             {/* 서브탭 */}
-            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+            <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-sm">
               {([
                 { key: 'overview' as const, label: '전체 현황' },
                 { key: 'activity' as const, label: '활동 분석' },
                 { key: 'clients' as const, label: '전담 고객' },
               ]).map(t => (
-                <button key={t.key} onClick={() => setDashboardSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${dashboardSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                <button key={t.key} onClick={() => setDashboardSub(t.key)} className={`px-5 py-2.5 rounded-lg text-[15px] font-bold transition-all whitespace-nowrap cursor-pointer ${dashboardSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
                 </button>
               ))}
@@ -1795,43 +1795,43 @@ export default function LawyerRole({
             {/* ═══ 섹션 1: 상단 요약 카드 ═══ */}
             {(dashboardSub === 'overview') && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
                 <div className="space-y-1">
-                  <span className="text-[12px] text-slate-600 block uppercase font-bold">신규 상담 요청</span>
-                  <span className="text-2xl font-black text-brand">{totalOpenRequestsCount}개</span>
+                  <span className="text-sm text-slate-700 block font-bold">신규 상담 요청</span>
+                  <span className="text-3xl font-black text-brand">{totalOpenRequestsCount}개</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-brand/10 text-brand">
-                  <Briefcase className="w-5 h-5" />
+                <div className="p-3 rounded-xl bg-brand/10 text-brand">
+                  <Briefcase className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
                 <div className="space-y-1">
-                  <span className="text-[12px] text-slate-600 block uppercase font-bold">내게 지정된 응답 대기</span>
-                  <span className="text-2xl font-black text-amber-400">{directCounselingCount}개</span>
+                  <span className="text-sm text-slate-700 block font-bold">내게 지정된 응답 대기</span>
+                  <span className="text-3xl font-black text-amber-500">{directCounselingCount}개</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-amber-400/10 text-amber-400">
-                  <Clock className="w-5 h-5" />
+                <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500">
+                  <Clock className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
                 <div className="space-y-1">
-                  <span className="text-[12px] text-slate-600 block uppercase font-bold">진행 중인 상담</span>
-                  <span className="text-2xl font-black text-emerald-400">{activeChatsCount}개</span>
+                  <span className="text-sm text-slate-700 block font-bold">진행 중인 상담</span>
+                  <span className="text-3xl font-black text-emerald-600">{activeChatsCount}개</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-emerald-400/10 text-emerald-400">
-                  <MessageSquare className="w-5 h-5" />
+                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600">
+                  <MessageSquare className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
                 <div className="space-y-1">
-                  <span className="text-[12px] text-slate-600 block uppercase font-bold">수임 전환 성공</span>
-                  <span className="text-2xl font-black text-purple-400">{totalCasesCount}건</span>
+                  <span className="text-sm text-slate-700 block font-bold">수임 전환 성공</span>
+                  <span className="text-3xl font-black text-purple-600">{totalCasesCount}건</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-purple-400/10 text-purple-400">
-                  <FolderHeart className="w-5 h-5" />
+                <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600">
+                  <FolderHeart className="w-6 h-6" />
                 </div>
               </div>
             </div>
@@ -1848,9 +1848,9 @@ export default function LawyerRole({
                 />
               </div>
               {/* 나의 상담 활동 — overview 사이드바 */}
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
-                  <BarChart2 className="w-4 h-4 text-emerald-400" />
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+                  <BarChart2 className="w-5 h-5 text-emerald-500" />
                   <span>나의 상담 활동</span>
                 </h3>
                 {(() => {
@@ -1859,27 +1859,27 @@ export default function LawyerRole({
                   const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
                   const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
                   return (
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 font-semibold">총 상담 참여</span>
-                          <span className="font-black text-slate-700">{myParticipated}건</span>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600 font-semibold">총 상담 참여</span>
+                          <span className="font-black text-slate-900 text-base">{myParticipated}건</span>
                         </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 font-semibold">현재 진행 중</span>
-                          <span className="font-black text-emerald-400">{myCounseling}건</span>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600 font-semibold">현재 진행 중</span>
+                          <span className="font-black text-emerald-600 text-base">{myCounseling}건</span>
                         </div>
                       </div>
                       <div className="border-t border-slate-200 pt-3 space-y-2.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 font-semibold">수임 전환 성공</span>
-                          <span className="font-black text-purple-400">{myCases}건</span>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600 font-semibold">수임 전환 성공</span>
+                          <span className="font-black text-purple-600 text-base">{myCases}건</span>
                         </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 font-semibold">전환율</span>
-                          <span className={`font-black ${conversionRate >= 40 ? 'text-emerald-400' : conversionRate >= 20 ? 'text-amber-400' : 'text-slate-600'}`}>{conversionRate}%</span>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600 font-semibold">전환율</span>
+                          <span className={`font-black text-base ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</span>
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${conversionRate >= 40 ? 'bg-emerald-500' : conversionRate >= 20 ? 'bg-amber-500' : 'bg-slate-300'}`}
                             style={{ width: `${Math.min(100, conversionRate)}%` }}
@@ -1887,9 +1887,9 @@ export default function LawyerRole({
                         </div>
                       </div>
                       <div className="border-t border-slate-200 pt-3">
-                        <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 space-y-1">
-                          <span className="text-[11px] font-black text-brand uppercase tracking-wide">💡 상담 TIP</span>
-                          <p className="text-[12px] text-slate-600 leading-relaxed">
+                        <div className="bg-brand/5 border border-brand/10 rounded-xl p-3.5 space-y-1.5">
+                          <span className="text-xs font-black text-brand uppercase tracking-wide">💡 상담 TIP</span>
+                          <p className="text-sm text-slate-700 leading-relaxed font-normal">
                             의뢰인의 채무 원인에 맞춘 구체적인 해결 방안을 제시하면 수임 전환율이 높아집니다.
                           </p>
                         </div>
@@ -1905,16 +1905,16 @@ export default function LawyerRole({
             {(dashboardSub === 'overview') && (
             <div className="bg-amber-50/60 p-6 rounded-2xl border border-amber-200 border-l-4 border-l-amber-400 shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-amber-200/60 pb-3">
-                <h3 className="font-black text-base text-amber-800 flex items-center gap-2">
+                <h3 className="font-black text-lg text-amber-900 flex items-center gap-2">
                   <div className="relative">
-                    <Bell className="w-5 h-5 text-amber-500" />
+                    <Bell className="w-6 h-6 text-amber-500" />
                     {totalOpenRequestsCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse" />
                     )}
                   </div>
                   <span>지금 상담을 기다리는 의뢰인</span>
                 </h3>
-                <span className="bg-amber-500 text-white text-xs font-black px-2.5 py-1 rounded-lg whitespace-nowrap">
+                <span className="bg-amber-500 text-white text-xs sm:text-sm font-black px-3 py-1 rounded-lg whitespace-nowrap shadow-sm">
                   {totalOpenRequestsCount}건 대기 중
                 </span>
               </div>
@@ -1924,93 +1924,93 @@ export default function LawyerRole({
                   .filter(r => r.status === 'requested' && isRelevantRequest(r))
                   .slice(0, 3)
                   .map(r => (
-                    <div key={r.id} className="bg-white p-4 rounded-xl border border-amber-100 hover:border-amber-300 hover:shadow-sm transition-all space-y-3 flex flex-col">
+                    <div key={r.id} className="bg-white p-5 rounded-2xl border border-amber-100 hover:border-amber-300 hover:shadow-md transition-all space-y-3.5 flex flex-col">
                       {/* 헤더: 뱃지 + 이름 + 날짜 */}
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-xs font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${
                             r.requestType === 'direct'
-                              ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                              ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
                               : 'bg-brand/10 text-brand border border-brand/20'
                           }`}>
                             {r.requestType === 'direct' ? '단독지명' : '오픈형'}
                           </span>
                           {r.entryCategory && (
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                               r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
                               r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
-                              'bg-slate-100 text-slate-500 border border-slate-200'
+                              'bg-slate-100 text-slate-600 border border-slate-200'
                             }`}>
                               {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
                             </span>
                           )}
-                          <span className="text-xs font-bold text-slate-700">{r.clientName}</span>
+                          <span className="text-sm font-bold text-slate-800">{r.clientName}</span>
                         </div>
-                        <span className="text-[11px] text-slate-400 whitespace-nowrap ml-2">{new Date(r.createdAt).toLocaleDateString()}</span>
+                        <span className="text-xs text-slate-400 whitespace-nowrap ml-2">{new Date(r.createdAt).toLocaleDateString()}</span>
                       </div>
 
                       {/* 사연 미리보기 */}
-                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">{r.content}</p>
+                      <p className="text-sm text-slate-700 line-clamp-2 leading-relaxed font-normal">{r.content}</p>
 
                       {/* 핵심 지표: 2그룹 카드형 */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                         {/* 그룹 A: 재무 요약 */}
-                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">💰 재무 요약</span>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
+                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2">
+                          <span className="text-xs font-black text-slate-500 uppercase tracking-wider">💰 재무 요약</span>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                             <div className="flex justify-between">
                               <span className="text-slate-500">총 채무</span>
-                              <span className="font-bold text-red-400">{r.financialProfile.debtTotal.toLocaleString()}만</span>
+                              <span className="font-bold text-red-500">{r.financialProfile.debtTotal.toLocaleString()}만</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">월 소득</span>
-                              <span className="font-bold text-slate-700">{r.financialProfile.income}만</span>
+                              <span className="font-bold text-slate-800">{r.financialProfile.income}만</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">부채비율</span>
-                              <span className="font-bold text-red-400">{(r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1)}배</span>
+                              <span className="font-bold text-red-500">{(r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1)}배</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">직업</span>
-                              <span className="font-bold text-slate-700">
+                              <span className="font-bold text-slate-800">
                                 {r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : r.financialProfile.jobType === 'FREELANCER' ? '프리랜서' : '-'}
                               </span>
                             </div>
                             <div className="flex justify-between col-span-2">
                               <span className="text-slate-500">채무 원인</span>
-                              <span className="font-bold text-slate-700">
+                              <span className="font-bold text-slate-800">
                                 {r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
                               </span>
                             </div>
                           </div>
                         </div>
                         {/* 그룹 B: 인적 정보 */}
-                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">👤 인적 정보</span>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
+                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2">
+                          <span className="text-xs font-black text-slate-500 uppercase tracking-wider">👤 인적 정보</span>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                             <div className="flex justify-between">
                               <span className="text-slate-500">나이</span>
-                              <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '-'}</span>
+                              <span className="font-bold text-slate-800">{r.financialProfile.age ? `${r.financialProfile.age}세` : '-'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">성별</span>
-                              <span className="font-bold text-slate-700">{r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
+                              <span className="font-bold text-slate-800">{r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">가구원</span>
-                              <span className="font-bold text-slate-700">{r.financialProfile.dependents + 1}인</span>
+                              <span className="font-bold text-slate-800">{r.financialProfile.dependents + 1}인</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">혼인</span>
-                              <span className="font-bold text-slate-700">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
+                              <span className="font-bold text-slate-800">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">미성년</span>
-                              <span className="font-bold text-slate-700">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
+                              <span className="font-bold text-slate-800">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-500">{r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? '⚡특례' : '거주'}</span>
-                              <span className={`font-bold ${r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? 'text-emerald-500' : 'text-slate-700'}`}>
+                              <span className={`font-bold ${r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? 'text-emerald-600' : 'text-slate-800'}`}>
                                 {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none'
                                   ? (r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : r.financialProfile.specialCondition === 'single_parent' ? '한부모' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자')
                                   : (r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상' : '-')}
@@ -2022,9 +2022,9 @@ export default function LawyerRole({
 
                       {/* 위험 신호 */}
                       {r.financialProfile.riskFlags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1.5">
                           {r.financialProfile.riskFlags.slice(0, 3).map(rf => (
-                            <span key={rf} className="bg-red-500/10 text-red-400 border border-red-500/10 text-[11px] px-1.5 py-0.5 rounded font-semibold">
+                            <span key={rf} className="bg-red-500/10 text-red-500 border border-red-500/20 text-xs px-2 py-0.5 rounded font-bold">
                               ⚠ {rf}
                             </span>
                           ))}
@@ -2034,10 +2034,10 @@ export default function LawyerRole({
                       {/* CTA */}
                       <button
                         onClick={() => setActiveTab('open-requests')}
-                        className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2.5 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-1 press-scale mt-auto"
+                        className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl text-[15px] transition-all flex items-center justify-center gap-1.5 press-scale mt-auto cursor-pointer active:scale-[0.98] shadow-sm"
                       >
                         상세 확인 & 상담 참여하기
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
@@ -2045,16 +2045,16 @@ export default function LawyerRole({
 
               {requests.filter(r => r.status === 'requested').length === 0 && (
                 <div className="py-12 text-center space-y-2">
-                  <Briefcase className="w-10 h-10 text-amber-300 mx-auto" />
-                  <p className="text-xs text-slate-600">현재 대기 중인 신규 상담 요청이 없습니다.</p>
-                  <p className="text-[12px] text-slate-500">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
+                  <Briefcase className="w-12 h-12 text-amber-300 mx-auto" />
+                  <p className="text-sm text-slate-700 font-bold">현재 대기 중인 신규 상담 요청이 없습니다.</p>
+                  <p className="text-xs text-slate-500">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
                 </div>
               )}
 
               {requests.filter(r => r.status === 'requested').length > 3 && (
                 <button
                   onClick={() => setActiveTab('open-requests')}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors press-scale"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl text-sm transition-colors press-scale cursor-pointer active:scale-[0.98]"
                 >
                   전체 상담 요청 {totalOpenRequestsCount}건 모두 보기 &rarr;
                 </button>
@@ -2072,32 +2072,32 @@ export default function LawyerRole({
               const activeCount = appointedClients.filter(a => a.status === 'active').length;
               const cancelledCount = appointedClients.filter(a => a.status === 'cancelled').length;
               return (
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">🤝 전담 선임 고객</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">🤝 전담 선임 고객</h3>
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold">활성 {activeCount}명</span>
-                      {cancelledCount > 0 && <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 font-bold">취소 {cancelledCount}명</span>}
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold">활성 {activeCount}명</span>
+                      {cancelledCount > 0 && <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-bold">취소 {cancelledCount}명</span>}
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                     {appointedClients.map(appt => {
                       const daysSince = Math.floor((Date.now() - new Date(appt.appointedAt).getTime()) / (1000 * 60 * 60 * 24));
                       return (
-                        <div key={appt.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${appt.status === 'active' ? 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+                        <div key={appt.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${appt.status === 'active' ? 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
                           <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
                               {appt.clientName[0]}
                             </div>
                             <div>
-                              <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
-                              <span className="text-[11px] text-slate-400">선임 {daysSince}일째</span>
+                              <span className="text-base font-bold text-slate-900 block">{appt.clientName}</span>
+                              <span className="text-xs text-slate-400 font-medium">선임 {daysSince}일째</span>
                               {appt.status === 'cancelled' && appt.cancelReason && (
-                                <span className="text-[11px] text-red-400 block">사유: {appt.cancelReason}</span>
+                                <span className="text-xs text-red-500 block font-medium">사유: {appt.cancelReason}</span>
                               )}
                             </div>
                           </div>
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
                             {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
                           </span>
                         </div>
@@ -2135,43 +2135,43 @@ export default function LawyerRole({
                 <div className="space-y-6">
                   {/* 상단 핵심 성과 지표 카드 */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-brand/10 text-brand"><Users className="w-5 h-5" /></div>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
+                      <div className="p-3 rounded-xl bg-brand/10 text-brand"><Users className="w-6 h-6" /></div>
                       <div>
-                        <span className="text-[11px] text-slate-500 font-bold block">총 상담 참여</span>
-                        <span className="text-xl font-black text-brand">{myParticipated}건</span>
+                        <span className="text-xs text-slate-500 font-bold block">총 상담 참여</span>
+                        <span className="text-2xl font-black text-brand">{myParticipated}건</span>
                       </div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-emerald-400/10 text-emerald-500"><MessageCircle className="w-5 h-5" /></div>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
+                      <div className="p-3 rounded-xl bg-emerald-400/10 text-emerald-600"><MessageCircle className="w-6 h-6" /></div>
                       <div>
-                        <span className="text-[11px] text-slate-500 font-bold block">현재 진행 중</span>
-                        <span className="text-xl font-black text-emerald-500">{myCounseling}건</span>
+                        <span className="text-xs text-slate-500 font-bold block">현재 진행 중</span>
+                        <span className="text-2xl font-black text-emerald-600">{myCounseling}건</span>
                       </div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-purple-400/10 text-purple-500"><Trophy className="w-5 h-5" /></div>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
+                      <div className="p-3 rounded-xl bg-purple-400/10 text-purple-600"><Trophy className="w-6 h-6" /></div>
                       <div>
-                        <span className="text-[11px] text-slate-500 font-bold block">수임 전환</span>
-                        <span className="text-xl font-black text-purple-500">{myCases}건</span>
+                        <span className="text-xs text-slate-500 font-bold block">수임 전환</span>
+                        <span className="text-2xl font-black text-purple-600">{myCases}건</span>
                       </div>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <div className={`p-2.5 rounded-lg ${conversionRate >= 40 ? 'bg-emerald-400/10 text-emerald-500' : conversionRate >= 20 ? 'bg-amber-400/10 text-amber-500' : 'bg-slate-100 text-slate-400'}`}>
-                        <TrendingUp className="w-5 h-5" />
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
+                      <div className={`p-3 rounded-xl ${conversionRate >= 40 ? 'bg-emerald-400/10 text-emerald-600' : conversionRate >= 20 ? 'bg-amber-400/10 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                        <TrendingUp className="w-6 h-6" />
                       </div>
                       <div>
-                        <span className="text-[11px] text-slate-500 font-bold block">전환율</span>
-                        <span className={`text-xl font-black ${conversionRate >= 40 ? 'text-emerald-500' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-600'}`}>{conversionRate}%</span>
+                        <span className="text-xs text-slate-500 font-bold block">전환율</span>
+                        <span className={`text-2xl font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* 수임 전환 퍼널 */}
-                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 space-y-5">
-                      <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
-                        <Target className="w-4 h-4 text-brand" />
+                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 space-y-5 shadow-sm">
+                      <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+                        <Target className="w-5 h-5 text-brand" />
                         <span>수임 전환 퍼널</span>
                       </h3>
                       <div className="space-y-4">
@@ -2181,21 +2181,21 @@ export default function LawyerRole({
                             ? Math.round(((funnelStages[i - 1].count - stage.count) / funnelStages[i - 1].count) * 100)
                             : 0;
                           return (
-                            <div key={stage.label} className="space-y-1.5">
-                              <div className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-2 text-slate-700 font-semibold">
-                                  <span className={`p-1 rounded ${stage.color} text-white`}>{stage.icon}</span>
+                            <div key={stage.label} className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                                  <span className={`p-1.5 rounded-lg ${stage.color} text-white`}>{stage.icon}</span>
                                   {stage.label}
                                 </div>
                                 <div className="flex items-center gap-3">
                                   {i > 0 && dropRate > 0 && (
-                                    <span className="text-[11px] text-red-400 font-semibold">-{dropRate}% 이탈</span>
+                                    <span className="text-xs text-red-500 font-bold">-{dropRate}% 이탈</span>
                                   )}
-                                  <span className="font-black text-slate-800">{stage.count}건</span>
-                                  <span className="text-slate-400 w-10 text-right">{pct}%</span>
+                                  <span className="font-black text-slate-900 text-base">{stage.count}건</span>
+                                  <span className="text-slate-400 w-12 text-right font-medium">{pct}%</span>
                                 </div>
                               </div>
-                              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                              <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full rounded-full transition-all duration-700 ${stage.color}`}
                                   style={{ width: `${Math.max(pct, 2)}%` }}
@@ -2207,11 +2207,11 @@ export default function LawyerRole({
                       </div>
                       {/* 전환율 프로그레스 */}
                       <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-600 font-bold">전체 수임 전환율</span>
-                          <span className={`text-lg font-black ${conversionRate >= 40 ? 'text-emerald-500' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-600'}`}>{conversionRate}%</span>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-700 font-bold">전체 수임 전환율</span>
+                          <span className={`text-xl font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</span>
                         </div>
-                        <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-700 ${conversionRate >= 40 ? 'bg-emerald-500' : conversionRate >= 20 ? 'bg-amber-500' : 'bg-slate-300'}`}
                             style={{ width: `${Math.min(100, conversionRate)}%` }}
@@ -2223,41 +2223,41 @@ export default function LawyerRole({
                     {/* 활동 요약 인사이트 */}
                     <div className="space-y-4">
                       {/* 활동 요약 카드 */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
-                        <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
-                          <BarChart2 className="w-4 h-4 text-emerald-400" />
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                        <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+                          <BarChart2 className="w-5 h-5 text-emerald-500" />
                           <span>활동 요약</span>
                         </h3>
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> 평균 응답 시간</span>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600 font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> 평균 응답 시간</span>
                             {/* <!-- mock --> */}
-                            <span className="font-black text-slate-700">2.3시간</span>
+                            <span className="font-black text-slate-900">2.3시간</span>
                           </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> 최근 7일 참여</span>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4" /> 최근 7일 참여</span>
                             {/* <!-- mock --> */}
                             <span className="font-black text-brand">{Math.min(myParticipated, 3)}건</span>
                           </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Target className="w-3.5 h-3.5" /> 응답률</span>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600 font-semibold flex items-center gap-2"><Target className="w-4 h-4" /> 응답률</span>
                             {/* <!-- mock --> */}
-                            <span className="font-black text-emerald-500">85%</span>
+                            <span className="font-black text-emerald-600">85%</span>
                           </div>
                         </div>
                       </div>
 
                       {/* 주요 상담 유형 */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
-                        <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 border-b border-slate-200 pb-3">
-                          <Tag className="w-4 h-4 text-violet-400" />
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                        <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+                          <Tag className="w-5 h-5 text-violet-500" />
                           <span>주요 상담 유형</span>
                         </h3>
                         {topCategories.length > 0 ? (
                           <div className="space-y-2.5">
                             {topCategories.map(([label, count], i) => (
-                              <div key={label} className="flex items-center justify-between text-xs">
-                                <span className="text-slate-600 font-semibold flex items-center gap-1.5">
+                              <div key={label} className="flex items-center justify-between text-sm">
+                                <span className="text-slate-700 font-semibold flex items-center gap-1.5">
                                   <span className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-violet-500' : i === 1 ? 'bg-teal-500' : 'bg-slate-400'}`} />
                                   {label}
                                 </span>
@@ -2420,17 +2420,17 @@ export default function LawyerRole({
 
         {/* TAB 2: INCOMING COUNSEL REQUESTS LIST */}
         {activeTab === 'open-requests' && (
-          <div className="space-y-5 animate-fadeIn">
+          <div className="space-y-6 animate-fadeIn">
             {/* 페이지 헤더 */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
               <div>
-                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-brand" />
+                <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <Briefcase className="w-6 h-6 text-brand" />
                   신규 상담 요청
                 </h2>
-                <p className="text-xs text-slate-500 mt-1">채무 구조와 소득 진단 통계를 검토한 후 제안서를 작성하세요.</p>
+                <p className="text-sm text-slate-500 mt-1">채무 구조와 소득 진단 통계를 검토한 후 제안서를 작성하세요.</p>
               </div>
-              <span className="text-[11px] bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold whitespace-nowrap">
+              <span className="text-xs bg-brand/10 text-brand px-3.5 py-1.5 rounded-lg font-bold whitespace-nowrap">
                 회생파산 전담팀 R-1
               </span>
             </div>
@@ -2458,10 +2458,10 @@ export default function LawyerRole({
                     }`}>
 
                       {/* 카드 헤더 */}
-                      <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="w-6 h-6 rounded-full bg-slate-800 text-white text-[11px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
-                          <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-lg uppercase tracking-wider ${
+                      <div className="px-6 py-4 bg-slate-50/70 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <span className="w-7 h-7 rounded-full bg-slate-800 text-white text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                          <span className={`text-xs font-black px-3 py-1 rounded-lg uppercase tracking-wider ${
                             r.requestType === 'direct' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' :
                             r.requestType === 'direct_multi' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
                             'bg-brand/10 text-brand border border-brand/20'
@@ -2469,48 +2469,48 @@ export default function LawyerRole({
                             {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
                           </span>
                           {r.entryCategory && (
-                            <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg ${
+                            <span className={`text-xs font-bold px-3 py-1 rounded-lg ${
                               r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
                               r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
-                              'bg-slate-100 text-slate-500 border border-slate-200'
+                              'bg-slate-100 text-slate-600 border border-slate-200'
                             }`}>
                               {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
                             </span>
                           )}
-                          <span className="text-xs font-bold text-slate-700">{r.clientName}</span>
-                          <span className="text-[11px] text-slate-400">등록 {new Date(r.createdAt).toLocaleString()}</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-800">{r.clientName}</span>
+                          <span className="text-xs text-slate-400">등록 {new Date(r.createdAt).toLocaleString()}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px]">
-                          <span className="text-slate-500">지정 변호사: <strong className="text-slate-700">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
-                          <span className="bg-brand/10 text-brand font-bold px-2 py-0.5 rounded-lg">제안서 작성 대기</span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-slate-500">지정 변호사: <strong className="text-slate-800">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
+                          <span className="bg-brand/10 text-brand font-bold px-2.5 py-1 rounded-lg">제안서 작성 대기</span>
                         </div>
                       </div>
 
                       {/* 카드 본문 */}
-                      <div className="p-5 space-y-4">
+                      <div className="p-6 space-y-5">
                         {/* 제목 + 사연 */}
-                        <div className="space-y-1">
-                          <h3 className="font-bold text-base text-slate-900">{r.title}</h3>
-                          <p className="text-[13px] text-slate-500 leading-relaxed line-clamp-2">{r.content}</p>
+                        <div className="space-y-1.5">
+                          <h3 className="font-bold text-base sm:text-lg text-slate-900">{r.title}</h3>
+                          <p className="text-sm sm:text-base text-slate-600 leading-relaxed line-clamp-2">{r.content}</p>
                         </div>
 
-                        {/* 의뢰인 메모 (첫 번째 위치) */}
+                        {/* 의뢰인 메모 */}
                         {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
-                          <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-xl p-3">
-                            <div className="flex items-start gap-2">
-                              <span className="text-base shrink-0">📝</span>
+                          <div className="bg-indigo-50/60 border border-indigo-200/70 rounded-xl p-4">
+                            <div className="flex items-start gap-2.5">
+                              <span className="text-lg shrink-0">📝</span>
                               <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
+                                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-1.5">의뢰인 전달 메모</span>
                                 {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
                                   <ul className="space-y-1 text-left list-none">
                                     {r.financialProfile.clientNotes.map((note, index) => (
-                                      <li key={index} className="text-[13px] text-slate-700 leading-relaxed break-all">
+                                      <li key={index} className="text-sm sm:text-base text-slate-800 leading-relaxed break-all">
                                         • {note}
                                       </li>
                                     ))}
                                   </ul>
                                 ) : (
-                                  <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
+                                  <p className="text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
                                 )}
                               </div>
                             </div>
@@ -2518,93 +2518,93 @@ export default function LawyerRole({
                         )}
 
                         {/* 3열 카드형 지표 */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                           {/* 재무 요약 카드 */}
-                          <div className="bg-red-50/40 rounded-xl p-4 border border-red-100/60 space-y-2">
-                            <span className="text-[10px] font-black text-red-400 uppercase tracking-wider">💰 재무 요약</span>
-                            <div className="space-y-1.5 text-[12px]">
+                          <div className="bg-red-50/40 rounded-xl p-4.5 border border-red-100/70 space-y-2.5">
+                            <span className="text-xs font-black text-red-500 uppercase tracking-wider">💰 재무 요약</span>
+                            <div className="space-y-2 text-sm sm:text-base">
                               <div className="flex justify-between">
                                 <span className="text-slate-500">총 채무</span>
-                                <span className="font-bold text-red-500">{r.financialProfile.debtTotal.toLocaleString()}만</span>
+                                <span className="font-bold text-red-600">{r.financialProfile.debtTotal.toLocaleString()}만</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">자산</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.assetsTotal.toLocaleString()}만</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.assetsTotal.toLocaleString()}만</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">월 소득</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.income}만</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.income}만</span>
                               </div>
-                              <div className="flex justify-between border-t border-red-100 pt-1.5">
+                              <div className="flex justify-between border-t border-red-100 pt-2">
                                 <span className="text-slate-500 font-semibold">부채비율</span>
-                                <span className="font-black text-red-500">{debtRatio}배</span>
+                                <span className="font-black text-red-600">{debtRatio}배</span>
                               </div>
                               {r.financialProfile.monthlyFixedExpenses !== undefined && r.financialProfile.monthlyFixedExpenses > 0 && (
                                 <div className="flex justify-between">
                                   <span className="text-slate-500">월 고정지출</span>
-                                  <span className="font-bold text-slate-700">{r.financialProfile.monthlyFixedExpenses.toLocaleString()}만</span>
+                                  <span className="font-bold text-slate-800">{r.financialProfile.monthlyFixedExpenses.toLocaleString()}만</span>
                                 </div>
                               )}
                             </div>
                           </div>
 
                           {/* 인적 정보 카드 */}
-                          <div className="bg-blue-50/40 rounded-xl p-4 border border-blue-100/60 space-y-2">
-                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">👤 인적 정보</span>
-                            <div className="space-y-1.5 text-[12px]">
+                          <div className="bg-blue-50/40 rounded-xl p-4.5 border border-blue-100/70 space-y-2.5">
+                            <span className="text-xs font-black text-blue-500 uppercase tracking-wider">👤 인적 정보</span>
+                            <div className="space-y-2 text-sm sm:text-base">
                               <div className="flex justify-between">
                                 <span className="text-slate-500">나이/성별</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">가구원</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.dependents + 1}인 (부양 {r.financialProfile.dependents}명)</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.dependents + 1}인 (부양 {r.financialProfile.dependents}명)</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">미성년 자녀</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">혼인</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
                               </div>
                               {r.financialProfile.maritalStatus === 'MARRIED' && r.financialProfile.spouseIncome !== undefined && (
-                                <div className="flex justify-between border-t border-blue-100 pt-1.5">
+                                <div className="flex justify-between border-t border-blue-100 pt-2">
                                   <span className="text-slate-500">배우자 소득</span>
-                                  <span className="font-bold text-slate-700">{r.financialProfile.spouseIncome.toLocaleString()}만</span>
+                                  <span className="font-bold text-slate-800">{r.financialProfile.spouseIncome.toLocaleString()}만</span>
                                 </div>
                               )}
                             </div>
                           </div>
 
                           {/* 법적 프로필 카드 */}
-                          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">⚖️ 법적 프로필</span>
-                            <div className="space-y-1.5 text-[12px]">
+                          <div className="bg-slate-50 rounded-xl p-4.5 border border-slate-200 space-y-2.5">
+                            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">⚖️ 법적 프로필</span>
+                            <div className="space-y-2 text-sm sm:text-base">
                               {r.financialProfile.jobType && (
                                 <div className="flex justify-between">
                                   <span className="text-slate-500">직업</span>
-                                  <span className="font-bold text-slate-700">{r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}</span>
+                                  <span className="font-bold text-slate-800">{r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}</span>
                                 </div>
                               )}
                               <div className="flex justify-between">
                                 <span className="text-slate-500">채무원인</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">거주형태</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-'}</span>
+                                <span className="font-bold text-slate-800">{r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-'}</span>
                               </div>
                               {r.financialProfile.residenceRegion && (
                                 <div className="flex justify-between">
                                   <span className="text-slate-500">지역</span>
-                                  <span className="font-bold text-slate-700">{r.financialProfile.residenceRegion}</span>
+                                  <span className="font-bold text-slate-800">{r.financialProfile.residenceRegion}</span>
                                 </div>
                               )}
                               {r.financialProfile.creditorCount && (
-                                <div className="flex justify-between border-t border-slate-100 pt-1.5">
+                                <div className="flex justify-between border-t border-slate-200 pt-2">
                                   <span className="text-slate-500">채권자</span>
-                                  <span className="font-bold text-amber-500">{r.financialProfile.creditorCount}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류'}</span>
+                                  <span className="font-bold text-amber-600">{r.financialProfile.creditorCount}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류'}</span>
                                 </div>
                               )}
                             </div>
@@ -2614,55 +2614,53 @@ export default function LawyerRole({
                         {/* 특례/퇴직금/위험 플래그 — 해당시만 표시 */}
                         <div className="flex flex-wrap gap-2">
                           {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
-                            <span className="bg-emerald-500/10 text-emerald-600 text-[11px] px-2.5 py-1 rounded-lg font-black border border-emerald-500/20">
+                            <span className="bg-emerald-500/10 text-emerald-700 text-xs px-3 py-1 rounded-lg font-black border border-emerald-500/20">
                               ⚡ 24개월 특례: {r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : r.financialProfile.specialCondition === 'single_parent' ? '한부모' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
                             </span>
                           )}
                           {r.financialProfile.retirementPay !== undefined && r.financialProfile.retirementPay > 0 && (
-                            <span className="bg-slate-100 text-slate-600 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-slate-200">
+                            <span className="bg-slate-100 text-slate-700 text-xs px-3 py-1 rounded-lg font-semibold border border-slate-200">
                               💼 퇴직금 {r.financialProfile.retirementPay.toLocaleString()}만 ({r.financialProfile.retirementPensionType === 'pension' ? '연금 0%반영' : r.financialProfile.retirementPensionType === 'none' ? '미가입 50%반영' : '확인필요 50%반영'})
                             </span>
                           )}
                           {r.financialProfile.retirementPensionType === 'unknown' && (
-                            <span className="bg-amber-500/10 text-amber-500 text-[11px] px-2.5 py-1 rounded-lg font-bold border border-amber-500/20 animate-pulse">
+                            <span className="bg-amber-500/10 text-amber-600 text-xs px-3 py-1 rounded-lg font-bold border border-amber-500/20 animate-pulse">
                               ⚠️ 퇴직연금 확인 필요
                             </span>
                           )}
                           {r.financialProfile.riskFlags.map(rf => (
-                            <span key={rf} className="bg-red-500/10 text-red-400 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-red-500/10">
+                            <span key={rf} className="bg-red-500/10 text-red-500 text-xs px-3 py-1 rounded-lg font-bold border border-red-500/20">
                               ⚠️ {rf}
                             </span>
                           ))}
                           {(r.financialProfile.speculativeLoss && r.financialProfile.speculativeLoss > 0) && (
-                            <span className="bg-orange-500/10 text-orange-500 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-orange-500/20">
+                            <span className="bg-orange-500/10 text-orange-600 text-xs px-3 py-1 rounded-lg font-bold border border-orange-500/20">
                               📉 투기손실 {r.financialProfile.speculativeLoss.toLocaleString()}만
                             </span>
                           )}
                           {(r.financialProfile.gamblingLoss && r.financialProfile.gamblingLoss > 0) && (
-                            <span className="bg-orange-500/10 text-orange-500 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-orange-500/20">
+                            <span className="bg-orange-500/10 text-orange-600 text-xs px-3 py-1 rounded-lg font-bold border border-orange-500/20">
                               🎰 도박손실 {r.financialProfile.gamblingLoss.toLocaleString()}만
                             </span>
                           )}
                         </div>
 
-                        {/* 의뢰인 메모 (두 번째 위치 - 중복 제거) */}
-
                       </div>
 
                       {/* 카드 푸터: 액션 버튼 */}
-                      <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+                      <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
                         <button 
                           onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
-                          className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap press-scale"
+                          className="bg-white hover:bg-slate-100 text-slate-800 font-bold py-3 px-5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 border border-slate-200 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
                         >
-                          <Microscope className="w-3.5 h-3.5" />
+                          <Microscope className="w-4 h-4 text-violet-500" />
                           🔬 AI 심층 분석
                         </button>
                         <button 
                           onClick={() => handleOpenProposalDraft(r.id)}
-                          className="bg-brand hover:bg-brand-hover text-white font-black py-2.5 px-5 rounded-xl text-xs tracking-wide transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap press-scale"
+                          className="bg-brand hover:bg-brand-hover text-white font-black py-3 px-6 rounded-xl text-[15px] tracking-wide transition-all shadow-md flex items-center justify-center gap-2 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
+                          <CheckCircle2 className="w-5 h-5" />
                           고객 제안서 작성
                         </button>
                       </div>
@@ -2680,10 +2678,10 @@ export default function LawyerRole({
                   const openMatch = r.requestType === 'open';
                   return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
                 }).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).length === 0 && (
-                <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3">
-                  <Briefcase className="w-10 h-10 text-slate-300 mx-auto" />
-                  <p className="text-sm text-slate-600 font-semibold">현재 대응할 신규 상담 요청이 없습니다.</p>
-                  <p className="text-xs text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
+                <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3 shadow-sm">
+                  <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
+                  <p className="text-base text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>
+                  <p className="text-sm text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
                 </div>
               )}
             </div>
@@ -2695,17 +2693,17 @@ export default function LawyerRole({
           const chatThreads = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id));
           const chatEndRef = React.createRef<HTMLDivElement>();
           return (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white rounded-2xl overflow-hidden shadow-md border border-slate-200 min-h-[500px] h-[calc(100vh-14rem)] lg:h-[700px] animate-fadeIn">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white rounded-2xl overflow-hidden shadow-md border border-slate-200 min-h-[550px] h-[calc(100vh-14rem)] lg:h-[720px] animate-fadeIn">
             
             {/* PANEL I: INBOX THREADS (LEFT) */}
             <div className={`lg:col-span-3 border-r border-slate-200 flex flex-col h-full bg-white ${mobilePane === 'threads' ? 'block' : 'hidden lg:flex'}`}>
               <div className="p-4 border-b border-slate-200 flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">상담 메시지함</h3>
-                  <p className="text-slate-500 text-[11px] mt-0.5">매칭된 상담 세션</p>
+                  <h3 className="font-bold text-base text-slate-900">상담 메시지함</h3>
+                  <p className="text-slate-500 text-xs mt-0.5 font-medium">매칭된 상담 세션</p>
                 </div>
                 {chatThreads.length > 0 && (
-                  <span className="bg-brand/10 text-brand text-[11px] font-bold px-2 py-0.5 rounded-lg">{chatThreads.length}건</span>
+                  <span className="bg-brand/10 text-brand text-xs font-bold px-2.5 py-1 rounded-lg">{chatThreads.length}건</span>
                 )}
               </div>
 
@@ -2720,32 +2718,32 @@ export default function LawyerRole({
                           setActiveChatReqId(r.id);
                           setMobilePane('chat');
                         }}
-                        className={`p-3.5 cursor-pointer text-left transition-all ${
+                        className={`p-4 cursor-pointer text-left transition-all ${
                           isSelected ? 'bg-brand/5 border-l-4 border-l-brand' : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isSelected ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-500'}`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isSelected ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-600'}`}>
                             {r.clientName[0]}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <span className="text-[13px] font-bold text-slate-800 truncate">{r.clientName}</span>
-                              <span className="text-[10px] text-slate-400 shrink-0">{new Date(r.createdAt).toLocaleDateString()}</span>
+                              <span className="text-sm font-bold text-slate-900 truncate">{r.clientName}</span>
+                              <span className="text-xs text-slate-400 shrink-0 font-medium">{new Date(r.createdAt).toLocaleDateString()}</span>
                             </div>
-                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                            <p className="text-xs text-slate-600 line-clamp-1 mt-0.5 font-normal">
                               {lastMsg ? lastMsg.message : r.title}
                             </p>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${
-                                r.status === 'comparing' ? 'bg-amber-100 text-amber-600' :
-                                r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id ? 'bg-emerald-100 text-emerald-600' :
-                                r.selectedLawyerId && r.selectedLawyerId !== activeLawyer.id ? 'bg-red-100 text-red-500' :
-                                'bg-slate-100 text-slate-500'
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+                                r.status === 'comparing' ? 'bg-amber-100 text-amber-700' :
+                                r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id ? 'bg-emerald-100 text-emerald-700' :
+                                r.selectedLawyerId && r.selectedLawyerId !== activeLawyer.id ? 'bg-red-100 text-red-600' :
+                                'bg-slate-100 text-slate-600'
                               }`}>
                                 {r.status === 'comparing' ? '비교 상담중' : r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id ? '전담 매칭' : r.selectedLawyerId && r.selectedLawyerId !== activeLawyer.id ? '매칭 종료' : '상담중'}
                               </span>
-                              <span className="text-[10px] text-slate-400">채무 {r.financialProfile.debtTotal.toLocaleString()}만</span>
+                              <span className="text-xs text-slate-500 font-medium">채무 {r.financialProfile.debtTotal.toLocaleString()}만</span>
                             </div>
                           </div>
                         </div>
@@ -2755,12 +2753,12 @@ export default function LawyerRole({
 
                 {chatThreads.length === 0 && (
                   <div className="p-8 text-center space-y-3">
-                    <MessageSquare className="w-10 h-10 text-slate-300 mx-auto" />
-                    <p className="text-[13px] text-slate-500 font-semibold">활성 대화방이 없습니다</p>
-                    <p className="text-[11px] text-slate-400">제안서 수락 후 상담이 시작됩니다</p>
+                    <MessageSquare className="w-12 h-12 text-slate-300 mx-auto" />
+                    <p className="text-sm text-slate-600 font-bold">활성 대화방이 없습니다</p>
+                    <p className="text-xs text-slate-400">제안서 수락 후 상담이 시작됩니다</p>
                     <button 
                       onClick={() => setActiveTab('open-requests')}
-                      className="text-brand font-bold text-xs hover:underline press-scale"
+                      className="text-brand font-bold text-sm hover:underline press-scale cursor-pointer"
                     >
                       상담 요청 목록보기 →
                     </button>
@@ -2774,42 +2772,42 @@ export default function LawyerRole({
             <div className={`lg:col-span-6 border-r border-slate-200 flex flex-col h-full bg-slate-50/30 ${mobilePane === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
               {currentChatRequest ? (
                 <>
-                  <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white shadow-xs">
+                    <div className="flex items-center gap-3 min-w-0">
                       <button 
                         onClick={() => setMobilePane('threads')}
-                        className="lg:hidden flex items-center justify-center text-brand font-bold text-xs border border-brand/20 bg-brand/5 p-2 rounded-xl shrink-0 press-scale"
+                        className="lg:hidden flex items-center justify-center text-brand font-bold text-xs border border-brand/20 bg-brand/5 p-2 rounded-xl shrink-0 press-scale cursor-pointer"
                         title="목록으로"
                       >
                         <ChevronRight className="w-4 h-4 rotate-180" />
                       </button>
-                      <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center text-sm font-bold shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center text-sm font-bold shrink-0">
                         {currentChatRequest.clientName[0]}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-bold text-sm text-slate-900 line-clamp-1">{currentChatRequest.clientName}</h3>
-                        <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h3 className="font-bold text-base text-slate-900 line-clamp-1">{currentChatRequest.clientName}</h3>
+                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                           보안 채널 연결됨
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button 
                         onClick={() => setMobilePane('crm')}
-                        className="lg:hidden text-slate-600 font-semibold text-[11px] border border-slate-200 bg-slate-100 px-2.5 py-1.5 rounded-xl transition-all press-scale"
+                        className="lg:hidden text-slate-700 font-bold text-xs border border-slate-200 bg-slate-100 px-3 py-2 rounded-xl transition-all press-scale cursor-pointer"
                       >
                         의뢰 정보 ℹ️
                       </button>
-                      <span className="hidden sm:inline bg-slate-100 border border-slate-200 text-[10px] text-slate-400 px-2 py-0.5 rounded-lg font-mono">
+                      <span className="hidden sm:inline bg-slate-100 border border-slate-200 text-xs text-slate-500 px-2.5 py-1 rounded-lg font-mono">
                         {currentChatRequest.id.substring(0, 12)}
                       </span>
                     </div>
                   </div>
 
                   {/* Chat messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
-                    <div className="p-3 bg-brand/5 rounded-xl text-slate-600 text-xs border border-brand/15 text-left whitespace-pre-wrap">
+                  <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 scrollbar-hide">
+                    <div className="p-4 bg-brand/5 rounded-2xl text-slate-700 text-sm border border-brand/15 text-left whitespace-pre-wrap leading-relaxed">
                       📝 <span className="text-brand font-bold">의뢰서 본문:</span> {currentChatRequest.content}
                     </div>
 
@@ -2820,7 +2818,7 @@ export default function LawyerRole({
                       if (isSystem) {
                         return (
                           <div key={m.id} className="flex justify-center">
-                            <span className="bg-slate-100 text-slate-500 text-[11px] px-3 py-1 rounded-lg border border-slate-200">
+                            <span className="bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
                               {m.message.replace('[System] ', '')}
                             </span>
                           </div>
@@ -2829,19 +2827,19 @@ export default function LawyerRole({
                       
                       return (
                         <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                          <div className="flex items-center gap-1.5 mb-1 text-[11px] text-slate-400">
-                            <span className="font-semibold text-slate-500">{m.senderName}</span>
+                          <div className="flex items-center gap-2 mb-1 text-xs text-slate-400 font-medium">
+                            <span className="font-bold text-slate-600">{m.senderName}</span>
                             <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
-                          <div className={`p-3 rounded-xl max-w-sm text-[13px] leading-relaxed text-left ${
+                          <div className={`p-3.5 rounded-2xl max-w-md text-sm sm:text-base leading-relaxed text-left shadow-xs ${
                             isMe 
                             ? 'bg-brand text-white rounded-tr-none' 
-                            : 'bg-white text-slate-700 rounded-tl-none border border-slate-200 shadow-xs'
+                            : 'bg-white text-slate-800 rounded-tl-none border border-slate-200'
                           }`}>
                             {m.message}
                           </div>
                           {isMe && (
-                            <span className="text-[10px] text-slate-400 mt-0.5">✓</span>
+                            <span className="text-xs text-slate-400 mt-0.5">✓</span>
                           )}
                         </div>
                       );
@@ -2851,18 +2849,18 @@ export default function LawyerRole({
 
                   {/* Quick replies + Messenger form */}
                   <div className="border-t border-slate-200 bg-white">
-                    <div className="px-4 pt-2.5 flex gap-1.5 overflow-x-auto scrollbar-hide">
+                    <div className="px-4 pt-2.5 flex gap-2 overflow-x-auto scrollbar-hide">
                       {['📋 준비서류 안내', '💰 상담료 안내', '📅 일정 조율'].map(label => (
                         <button
                           key={label}
                           onClick={() => setChatInput(label.substring(2).trim())}
-                          className="text-[11px] text-slate-500 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors press-scale shrink-0"
+                          className="text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors press-scale shrink-0 font-medium cursor-pointer"
                         >
                           {label}
                         </button>
                       ))}
                     </div>
-                    <div className="p-3 flex items-center gap-2">
+                    <div className="p-3.5 flex items-center gap-2.5">
                       <input 
                         type="text" 
                         placeholder="메시지를 입력하세요..."
@@ -2874,25 +2872,25 @@ export default function LawyerRole({
                             setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
                           }
                         }}
-                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 placeholder-slate-400"
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400"
                       />
                       <button 
                         onClick={() => {
                           handleSendChat();
                           setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
                         }}
-                        className="bg-brand hover:bg-brand-hover text-white font-bold p-2.5 rounded-xl transition-colors shrink-0 press-scale"
+                        className="bg-brand hover:bg-brand-hover text-white font-bold p-3 rounded-xl transition-all shrink-0 press-scale cursor-pointer active:scale-[0.98]"
                       >
-                        <Send className="w-4 h-4" />
+                        <Send className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
                 </>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3">
-                  <MessageSquare className="w-12 h-12 text-slate-300" />
-                  <p className="text-sm text-slate-600 font-semibold">대화를 선택하세요</p>
-                  <p className="text-xs text-slate-400">좌측 메시지함에서 스레드를 클릭하면 대화가 시작됩니다.</p>
+                  <MessageSquare className="w-14 h-14 text-slate-300" />
+                  <p className="text-base text-slate-700 font-bold">대화를 선택하세요</p>
+                  <p className="text-sm text-slate-400">좌측 메시지함에서 스레드를 클릭하면 대화가 시작됩니다.</p>
                 </div>
               )}
             </div>
@@ -2900,49 +2898,49 @@ export default function LawyerRole({
             {/* PANEL III: CRM RIGHT-RAIL (RIGHT) */}
             <div className={`lg:col-span-3 flex flex-col h-full bg-white overflow-y-auto ${mobilePane === 'crm' ? 'block' : 'hidden lg:flex'}`}>
               {currentChatRequest ? (
-                <div className="p-4 space-y-5 text-xs">
+                <div className="p-5 space-y-5 text-sm">
                   
                   {/* Mobile back button */}
                   <div className="lg:hidden">
                     <button 
                       onClick={() => setMobilePane('chat')}
-                      className="w-full flex items-center justify-center gap-1.5 text-brand font-bold text-xs border border-brand/20 bg-brand/5 py-2.5 rounded-xl transition-all press-scale"
+                      className="w-full flex items-center justify-center gap-1.5 text-brand font-bold text-sm border border-brand/20 bg-brand/5 py-3 rounded-xl transition-all press-scale cursor-pointer"
                     >
                       ← 대화방으로 돌아가기
                     </button>
                   </div>
 
                   {/* 가계 진단 분석서 */}
-                  <div className="space-y-3">
-                    <span className="text-xs font-black text-brand tracking-wide uppercase block">📈 가계 진단 분석서</span>
+                  <div className="space-y-3.5">
+                    <span className="text-sm font-black text-brand tracking-wide uppercase block">📈 가계 진단 분석서</span>
                     
-                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-[12px]">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5 text-sm">
                       <div className="flex justify-between"><span className="text-slate-500">의뢰인명</span> <span className="font-bold text-slate-900">{currentChatRequest.clientName}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">연락처</span> <span className="font-mono text-slate-700">{getDisplayPhoneNumber(currentChatRequest)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">연락처</span> <span className="font-mono text-slate-800 font-semibold">{getDisplayPhoneNumber(currentChatRequest)}</span></div>
                       {currentChatRequest.financialProfile.age && (
                         <div className="flex justify-between"><span className="text-slate-500">나이/성별</span> <span className="font-bold text-slate-900">{currentChatRequest.financialProfile.age}세 / {currentChatRequest.financialProfile.gender === 'male' ? '남성' : currentChatRequest.financialProfile.gender === 'female' ? '여성' : '미기재'}</span></div>
                       )}
-                      <div className="flex justify-between border-t border-slate-100 pt-2"><span className="text-slate-500">월 소득</span> <span className="font-bold text-brand">{currentChatRequest.financialProfile.income}만 원</span></div>
+                      <div className="flex justify-between border-t border-slate-200 pt-2"><span className="text-slate-500">월 소득</span> <span className="font-bold text-brand">{currentChatRequest.financialProfile.income}만 원</span></div>
                       <div className="flex justify-between"><span className="text-slate-500">총 채무</span> <span className="font-bold text-red-500">{currentChatRequest.financialProfile.debtTotal.toLocaleString()}만 원</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">자산합산</span> <span className="text-slate-700">{currentChatRequest.financialProfile.assetsTotal.toLocaleString()}만 원</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">자산합산</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.assetsTotal.toLocaleString()}만 원</span></div>
                       {currentChatRequest.financialProfile.myAssets !== undefined && currentChatRequest.financialProfile.myAssets > 0 && (
-                        <div className="flex justify-between"><span className="text-slate-400 pl-2">∟ 본인 재산</span> <span className="text-slate-600">{currentChatRequest.financialProfile.myAssets.toLocaleString()}만</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400 pl-2">∟ 본인 재산</span> <span className="text-slate-700">{currentChatRequest.financialProfile.myAssets.toLocaleString()}만</span></div>
                       )}
-                      <div className="flex justify-between"><span className="text-slate-500">부양 가족</span> <span className="text-slate-700">{currentChatRequest.financialProfile.dependents}명 ({currentChatRequest.financialProfile.dependents + 1}인 가구)</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">부양 가족</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.dependents}명 ({currentChatRequest.financialProfile.dependents + 1}인 가구)</span></div>
                       {currentChatRequest.financialProfile.minorChildren !== undefined && (
-                        <div className="flex justify-between"><span className="text-slate-400 pl-2">∟ 미성년 자녀</span> <span className="font-semibold text-slate-700">{currentChatRequest.financialProfile.minorChildren}명</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400 pl-2">∟ 미성년 자녀</span> <span className="font-semibold text-slate-800">{currentChatRequest.financialProfile.minorChildren}명</span></div>
                       )}
-                      <div className="flex justify-between"><span className="text-slate-500">혼인상태</span> <span className="text-slate-700">{currentChatRequest.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : currentChatRequest.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">혼인상태</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : currentChatRequest.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
                       
                       {currentChatRequest.financialProfile.specialCondition && currentChatRequest.financialProfile.specialCondition !== 'none' && (
-                        <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-[11px] text-emerald-600 font-bold text-center">
+                        <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg text-xs text-emerald-700 font-bold text-center">
                           ⚡ 24개월 특례: {currentChatRequest.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : currentChatRequest.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : currentChatRequest.financialProfile.specialCondition === 'single_parent' ? '한부모' : currentChatRequest.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
                         </div>
                       )}
 
                       {currentChatRequest.financialProfile.jobType && (
                         <>
-                          <div className="border-t border-slate-100 pt-2 flex justify-between">
+                          <div className="border-t border-slate-200 pt-2 flex justify-between">
                             <span className="text-slate-500">직업</span> 
                             <span className="font-bold text-slate-900">
                               {currentChatRequest.financialProfile.jobType === 'SALARIED' ? '급여소득' : currentChatRequest.financialProfile.jobType === 'BUSINESS' ? '영업소득' : currentChatRequest.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}
@@ -2987,36 +2985,36 @@ export default function LawyerRole({
                           <div className="flex justify-between"><span className="text-slate-500">채권자</span> <span className="text-slate-700">{currentChatRequest.financialProfile.creditorCount}곳</span></div>
 
                           {(currentChatRequest.financialProfile.rentCost || currentChatRequest.financialProfile.medicalCost || currentChatRequest.financialProfile.educationCost || currentChatRequest.financialProfile.monthlyFixedExpenses) && (
-                            <div className="border-t border-slate-100 pt-2 space-y-1">
-                              <span className="text-[10px] font-black text-slate-400 tracking-wide uppercase block">🏠 월 생계비</span>
+                            <div className="border-t border-slate-200 pt-2.5 space-y-1.5">
+                              <span className="text-xs font-black text-slate-500 tracking-wide uppercase block">🏠 월 생계비</span>
                               {currentChatRequest.financialProfile.rentCost !== undefined && currentChatRequest.financialProfile.rentCost > 0 && (
-                                <div className="flex justify-between"><span className="text-slate-500">월세</span> <span className="text-slate-700">{currentChatRequest.financialProfile.rentCost.toLocaleString()}만</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">월세</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.rentCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.medicalCost !== undefined && currentChatRequest.financialProfile.medicalCost > 0 && (
-                                <div className="flex justify-between"><span className="text-slate-500">의료비</span> <span className="text-slate-700">{currentChatRequest.financialProfile.medicalCost.toLocaleString()}만</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">의료비</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.medicalCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.educationCost !== undefined && currentChatRequest.financialProfile.educationCost > 0 && (
-                                <div className="flex justify-between"><span className="text-slate-500">교육비</span> <span className="text-slate-700">{currentChatRequest.financialProfile.educationCost.toLocaleString()}만</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">교육비</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.educationCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.specialEducationCost !== undefined && currentChatRequest.financialProfile.specialEducationCost > 0 && (
-                                <div className="flex justify-between"><span className="text-slate-500">특수교육비</span> <span className="text-slate-700">{currentChatRequest.financialProfile.specialEducationCost.toLocaleString()}만</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">특수교육비</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.specialEducationCost.toLocaleString()}만</span></div>
                               )}
                               {currentChatRequest.financialProfile.monthlyFixedExpenses !== undefined && currentChatRequest.financialProfile.monthlyFixedExpenses > 0 && (
-                                <div className="flex justify-between"><span className="text-slate-500">고정지출</span> <span className="text-slate-700">{currentChatRequest.financialProfile.monthlyFixedExpenses.toLocaleString()}만</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">고정지출</span> <span className="text-slate-800 font-medium">{currentChatRequest.financialProfile.monthlyFixedExpenses.toLocaleString()}만</span></div>
                               )}
                             </div>
                           )}
 
                           {currentChatRequest.financialProfile.retirementPay !== undefined && currentChatRequest.financialProfile.retirementPay > 0 && (
-                            <div className="border-t border-slate-100 pt-2 space-y-1">
+                            <div className="border-t border-slate-200 pt-2.5 space-y-1.5">
                               <div className="flex justify-between"><span className="text-slate-500">퇴직금</span><span className="font-bold text-slate-900">{currentChatRequest.financialProfile.retirementPay.toLocaleString()}만</span></div>
                               <div className="flex justify-between"><span className="text-slate-500">퇴직연금</span>
-                                <span className={currentChatRequest.financialProfile.retirementPensionType === 'unknown' ? 'text-amber-500 font-bold' : 'text-slate-600'}>
+                                <span className={currentChatRequest.financialProfile.retirementPensionType === 'unknown' ? 'text-amber-600 font-bold' : 'text-slate-700 font-medium'}>
                                   {currentChatRequest.financialProfile.retirementPensionType === 'pension' ? '가입 (0%반영)' : currentChatRequest.financialProfile.retirementPensionType === 'none' ? '미가입 (50%반영)' : '확인필요 (50%반영)'}
                                 </span>
                               </div>
                               {currentChatRequest.financialProfile.retirementPensionType === 'unknown' && (
-                                <div className="bg-amber-50 border border-amber-200 p-1.5 rounded-lg text-[11px] text-amber-600 font-bold text-center animate-pulse">
+                                <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-xs text-amber-700 font-bold text-center animate-pulse">
                                   ⚠️ 퇴직연금 확인 필요
                                 </div>
                               )}
@@ -3028,22 +3026,22 @@ export default function LawyerRole({
 
                     {/* 변제 시뮬레이션 */}
                     {currentChatRequestResult && (
-                      <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-3 space-y-2 text-[12px]">
-                        <span className="text-[10px] font-black text-emerald-500 tracking-wide uppercase block">💰 변제 시뮬레이션</span>
+                      <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-4 space-y-2 text-sm">
+                        <span className="text-xs font-black text-emerald-700 tracking-wide uppercase block">💰 변제 시뮬레이션</span>
                         <div className="flex justify-between"><span className="text-slate-500">월 변제금</span> <span className="font-bold text-slate-900">{(currentChatRequestResult.monthlyPayment / 10000).toLocaleString()}만/월</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">변제 기간</span> <span className="text-slate-700">{currentChatRequestResult.repaymentMonths}개월</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">총 변제금</span> <span className="text-slate-700">{(currentChatRequestResult.totalRepayment / 10000).toLocaleString()}만</span></div>
-                        <div className="flex justify-between text-emerald-600 font-semibold">
+                        <div className="flex justify-between"><span className="text-slate-500">변제 기간</span> <span className="text-slate-800 font-medium">{currentChatRequestResult.repaymentMonths}개월</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">총 변제금</span> <span className="text-slate-800 font-medium">{(currentChatRequestResult.totalRepayment / 10000).toLocaleString()}만</span></div>
+                        <div className="flex justify-between text-emerald-700 font-bold">
                           <span>탕감액</span>
                           <span>{(currentChatRequestResult.totalDebtReduction / 10000).toLocaleString()}만 ({currentChatRequestResult.debtReductionRate}%)</span>
                         </div>
-                        <div className="flex justify-between"><span className="text-slate-500">청산가치</span> <span className="text-slate-600">{(currentChatRequestResult.liquidationValue / 10000).toLocaleString()}만</span></div>
-                        <div className="space-y-1 pt-1.5 border-t border-emerald-200/50">
-                          <div className="flex justify-between text-[11px] text-slate-500">
+                        <div className="flex justify-between"><span className="text-slate-500">청산가치</span> <span className="text-slate-700">{(currentChatRequestResult.liquidationValue / 10000).toLocaleString()}만</span></div>
+                        <div className="space-y-1.5 pt-2 border-t border-emerald-200/50">
+                          <div className="flex justify-between text-xs text-slate-500 font-medium">
                             <span>청산가치 보장율</span>
-                            <span className="font-bold text-emerald-500">{Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100)}%</span>
+                            <span className="font-bold text-emerald-700">{Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100)}%</span>
                           </div>
-                          <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                             <div className="bg-gradient-to-r from-emerald-400 to-brand h-full rounded-full" style={{ width: `${Math.min(100, Math.round((currentChatRequestResult.totalRepayment / Math.max(1, currentChatRequestResult.liquidationValue)) * 100))}%` }} />
                           </div>
                         </div>
@@ -3052,11 +3050,11 @@ export default function LawyerRole({
 
                     {/* 리스크 태그 */}
                     {currentChatRequest.financialProfile.riskFlags.length > 0 && (
-                      <div className="space-y-1.5">
-                        <span className="text-[11px] font-bold text-red-400 block">⚠️ 리스크 태그</span>
-                        <div className="flex flex-wrap gap-1">
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-red-500 block">⚠️ 리스크 태그</span>
+                        <div className="flex flex-wrap gap-1.5">
                           {currentChatRequest.financialProfile.riskFlags.map(rf => (
-                            <span key={rf} className="bg-red-50 text-red-400 border border-red-200 text-[10px] px-1.5 py-0.5 rounded-lg font-semibold">
+                            <span key={rf} className="bg-red-50 text-red-500 border border-red-200 text-xs px-2 py-0.5 rounded-lg font-bold">
                               {rf}
                             </span>
                           ))}
@@ -3066,14 +3064,14 @@ export default function LawyerRole({
                   </div>
 
                   {/* 수임 전환 */}
-                  <div className="border-t border-slate-200 pt-4 space-y-2">
-                    <span className="text-xs font-black text-brand tracking-wide uppercase block">⚖️ 수임 전환</span>
-                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                  <div className="border-t border-slate-200 pt-4 space-y-2.5">
+                    <span className="text-sm font-black text-brand tracking-wide uppercase block">⚖️ 수임 전환</span>
+                    <p className="text-slate-600 text-xs leading-relaxed font-normal">
                       위임 계약서 서명 후, 정식 사건 대장으로 등록할 수 있습니다.
                     </p>
                     <button 
                       onClick={() => handleConvertToCase(currentChatRequest)}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs tracking-wide transition-colors flex items-center justify-center gap-1.5 press-scale"
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm tracking-wide transition-all flex items-center justify-center gap-2 press-scale cursor-pointer active:scale-[0.98] shadow-sm"
                     >
                       <Plus className="w-4 h-4" />
                       정식 수임사건 전환
@@ -3082,7 +3080,7 @@ export default function LawyerRole({
 
                   {/* 내부 비망록 */}
                   <div className="border-t border-slate-200 pt-4 space-y-2">
-                    <span className="text-xs font-black text-brand tracking-wide uppercase block">📌 내부 비망록</span>
+                    <span className="text-sm font-black text-brand tracking-wide uppercase block">📌 내부 비망록</span>
                     <textarea
                       rows={3}
                       placeholder="내부 메모를 작성하세요..."
@@ -3091,9 +3089,9 @@ export default function LawyerRole({
                         const nextNotes = { ...internalNotes, [currentChatRequest.id]: e.target.value };
                         setInternalNotes(nextNotes);
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-700 placeholder-slate-400"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-800 placeholder-slate-400"
                     />
-                    <span className="text-[10px] text-slate-400 block">
+                    <span className="text-xs text-slate-400 block">
                       * 로펌 내부 전용 — 의뢰인에게 노출되지 않습니다.
                     </span>
                   </div>
@@ -3114,52 +3112,53 @@ export default function LawyerRole({
 
 
         {/* TAB 4: CASE MANAGEMENT SYSTEM (KANBAN & LIST) */}
+        {/* TAB 4: 수임 사건 관리 */}
         {activeTab === 'cases' && (
-          <div className="space-y-5 animate-fadeIn">
+          <div className="space-y-6 animate-fadeIn">
             {/* 서브탭 */}
-            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
                 { key: 'kanban' as const, label: '칸반 보드' },
                 { key: 'active' as const, label: '진행 중' },
                 { key: 'closed' as const, label: '종결' },
               ]).map(t => (
-                <button key={t.key} onClick={() => setCasesSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${casesSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                <button key={t.key} onClick={() => setCasesSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${casesSub === t.key ? 'bg-brand text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
                 </button>
               ))}
             </div>
             
             {/* Header Banner */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 rounded-2xl border border-slate-700/50 shadow-xl">
+            <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-xl">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-brand/10 via-transparent to-purple-500/5"></div>
               <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-extrabold text-white flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-brand/20 rounded-xl flex items-center justify-center">
-                      <FolderHeart className="w-4.5 h-4.5 text-brand" />
+                  <h2 className="text-xl font-black text-white flex items-center gap-3">
+                    <div className="w-10 h-10 bg-brand/20 rounded-xl flex items-center justify-center">
+                      <FolderHeart className="w-5 h-5 text-brand" />
                     </div>
                     <span>사건 위임 대장 통합 CRM</span>
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1.5 ml-[42px]">서류 준비부터 파산 면책까지 전체 진행 현황을 실시간으로 추적합니다.</p>
+                  <p className="text-sm text-slate-300 mt-2 ml-[52px]">서류 준비부터 파산 면책까지 전체 진행 현황을 실시간으로 추적합니다.</p>
                 </div>
-                <div className="flex gap-3 ml-[42px] md:ml-0">
-                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 px-4 py-2.5 rounded-xl">
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">총 진행 사건</div>
-                    <div className="text-xl font-black text-white mt-0.5">{cases.length}<span className="text-xs text-slate-400 ml-1">건</span></div>
+                <div className="flex gap-3 ml-[52px] md:ml-0">
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 px-5 py-3 rounded-xl">
+                    <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">총 진행 사건</div>
+                    <div className="text-2xl font-black text-white mt-1">{cases.length}<span className="text-sm text-slate-400 ml-1">건</span></div>
                   </div>
-                  <div className="bg-emerald-500/10 backdrop-blur-sm border border-emerald-500/20 px-4 py-2.5 rounded-xl">
-                    <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">감면 달성액</div>
-                    <div className="text-xl font-black text-emerald-400 mt-0.5">11억 4,200<span className="text-xs ml-0.5">만</span></div>
+                  <div className="bg-emerald-500/10 backdrop-blur-sm border border-emerald-500/20 px-5 py-3 rounded-xl">
+                    <div className="text-xs text-emerald-400 font-bold uppercase tracking-wider">감면 달성액</div>
+                    <div className="text-2xl font-black text-emerald-400 mt-1">11억 4,200<span className="text-sm ml-1">만</span></div>
                   </div>
                 </div>
               </div>
-              <div className="relative mt-5 ml-[42px] md:ml-0">
-                <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-1.5">
+              <div className="relative mt-6 ml-[52px] md:ml-0">
+                <div className="flex items-center gap-1 text-xs text-slate-400 mb-2 font-medium">
                   {['서류준비','법원접수','개시결정','최종인가','파산면책'].map((label) => (
-                    <div key={label} className="flex-1 text-center"><span className="text-slate-400">{label}</span></div>
+                    <div key={label} className="flex-1 text-center"><span className="text-slate-300">{label}</span></div>
                   ))}
                 </div>
-                <div className="h-1.5 bg-slate-700/50 rounded-full overflow-hidden flex gap-0.5">
+                <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden flex gap-1">
                   {(['document','filing','commencement','approval','discharge'] as const).map((stage, i) => {
                     const count = cases.filter(c => c.status === stage).length;
                     const colors = ['bg-indigo-500','bg-brand','bg-violet-500','bg-emerald-500','bg-purple-500'];
@@ -3178,8 +3177,8 @@ export default function LawyerRole({
                 const count = cases.filter(c => c.status === st).length;
                 return (
                   <button key={st} onClick={() => setMobileStageFilter(st)}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all border ${
-                      isActive ? 'bg-brand/10 text-brand border-brand/30 shadow-md shadow-brand/10' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                    className={`px-4 py-2.5 rounded-xl text-sm font-extrabold whitespace-nowrap transition-all border cursor-pointer ${
+                      isActive ? 'bg-brand/10 text-brand border-brand/30 shadow-md shadow-brand/10' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}>
                     {emojis[i]} {labels[i]} ({count})
                   </button>
@@ -3188,7 +3187,7 @@ export default function LawyerRole({
             </div>
 
             {/* Kanban Board */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
               {(['document','filing','commencement','approval','discharge'] as const).map((stage, idx) => {
                 const isCurrentMobileStage = stage === mobileStageFilter;
                 const stageLabels = ['1. 서류준비','2. 법원접수','3. 개시결정','4. 최종인가','5. 파산면책'];
@@ -3201,55 +3200,55 @@ export default function LawyerRole({
                   'from-purple-500/10 to-purple-500/5 border-purple-500/20',
                 ];
                 const headerColors = [
-                  'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
+                  'text-indigo-600 bg-indigo-500/10 border-indigo-500/20',
                   'text-brand bg-brand/10 border-brand/20',
-                  'text-violet-500 bg-violet-500/10 border-violet-500/20',
-                  'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-                  'text-purple-500 bg-purple-500/10 border-purple-500/20',
+                  'text-violet-600 bg-violet-500/10 border-violet-500/20',
+                  'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
+                  'text-purple-600 bg-purple-500/10 border-purple-500/20',
                 ];
                 const dotColors = ['bg-indigo-500','bg-brand','bg-violet-500','bg-emerald-500','bg-purple-500'];
                 const stageCases = cases.filter(c => c.status === stage);
                 return (
-                  <div key={stage} className={`bg-gradient-to-b ${stageGradients[idx]} p-3 rounded-2xl border space-y-2.5 min-h-[320px] ${
+                  <div key={stage} className={`bg-gradient-to-b ${stageGradients[idx]} p-3.5 rounded-2xl border space-y-3 min-h-[340px] shadow-xs ${
                     isCurrentMobileStage ? 'block' : 'hidden md:block'
                   }`}>
-                    <div className={`flex items-center justify-between p-2.5 rounded-xl border ${headerColors[idx]}`}>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm">{stageEmojis[idx]}</span>
-                        <span className="font-extrabold text-xs">{stageLabels[idx]}</span>
+                    <div className={`flex items-center justify-between p-3 rounded-xl border ${headerColors[idx]}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{stageEmojis[idx]}</span>
+                        <span className="font-black text-sm">{stageLabels[idx]}</span>
                       </div>
-                      <span className={`w-5 h-5 rounded-full ${dotColors[idx]} text-white text-[10px] font-bold flex items-center justify-center`}>
+                      <span className={`w-6 h-6 rounded-full ${dotColors[idx]} text-white text-xs font-bold flex items-center justify-center`}>
                         {stageCases.length}
                       </span>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {stageCases.map(c => {
                         const isSelected = c.id === selectedCaseId;
                         return (
                           <div key={c.id} onClick={() => setSelectedCaseId(c.id)}
-                            className={`group p-3 rounded-xl border cursor-pointer transition-all duration-200 space-y-2 text-left backdrop-blur-sm ${
-                              isSelected ? 'bg-white border-brand/30 shadow-lg shadow-brand/5 ring-1 ring-brand/20 scale-[1.02]' : 'bg-white/80 border-slate-200/80 hover:bg-white hover:shadow-md hover:border-slate-300 hover:scale-[1.01]'
+                            className={`group p-3.5 rounded-xl border cursor-pointer transition-all duration-200 space-y-2 text-left backdrop-blur-sm ${
+                              isSelected ? 'bg-white border-brand/40 shadow-md ring-2 ring-brand/20' : 'bg-white/90 border-slate-200/90 hover:bg-white hover:shadow-md hover:border-slate-300'
                             }`}>
                             <div className="flex justify-between items-center">
-                              <span className="font-bold text-slate-800 text-[12px] flex items-center gap-1">
-                                <span className={`w-1.5 h-1.5 rounded-full ${dotColors[idx]} ${isSelected ? 'animate-pulse' : ''}`}></span>
+                              <span className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full ${dotColors[idx]} ${isSelected ? 'animate-pulse' : ''}`}></span>
                                 {c.clientName} 의뢰인
                               </span>
-                              <span className="text-slate-400 text-[10px] font-medium">{new Date(c.createdAt).toLocaleDateString('ko-KR', {month:'short',day:'numeric'})}</span>
+                              <span className="text-slate-400 text-xs font-medium">{new Date(c.createdAt).toLocaleDateString('ko-KR', {month:'short',day:'numeric'})}</span>
                             </div>
-                            <div className="text-[12px] font-bold text-slate-700 bg-slate-50 rounded-lg px-2 py-1.5 flex justify-between items-center">
+                            <div className="text-xs font-bold text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
                               <span>위임채무액</span>
-                              <span className="text-red-500 font-extrabold text-[13px]">{c.debtTotal.toLocaleString()}만 원</span>
+                              <span className="text-red-500 font-extrabold text-sm">{c.debtTotal.toLocaleString()}만 원</span>
                             </div>
-                            <p className="text-[11px] text-slate-400 leading-normal line-clamp-1 group-hover:text-slate-500 transition-colors">
+                            <p className="text-xs text-slate-500 leading-normal line-clamp-1 group-hover:text-slate-700 transition-colors">
                               {c.notes.length > 0 ? `• ${c.notes[0]}` : '기재 메모 없음'}
                             </p>
                           </div>
                         );
                       })}
                       {stageCases.length === 0 && (
-                        <div className="text-center py-10 text-[11px] text-slate-400">
-                          <div className="text-2xl mb-2 opacity-30">{stageEmojis[idx]}</div>
+                        <div className="text-center py-12 text-xs text-slate-400 font-medium">
+                          <div className="text-3xl mb-2 opacity-30">{stageEmojis[idx]}</div>
                           이 단계의 의뢰인이 없습니다.
                         </div>
                       )}
@@ -3266,35 +3265,35 @@ export default function LawyerRole({
               if (!activeCase) return null;
               
               return (
-                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 animate-slideUp">
+                <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 animate-slideUp shadow-sm">
                   {/* Left Side: Case general and state change */}
-                  <div className="space-y-4 text-xs">
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3.5">
                       <div>
-                        <span className="text-[11px] text-slate-600 font-bold block uppercase">CASE FILE SYSTEM</span>
-                        <h3 className="font-extrabold text-base text-slate-900">{activeCase.clientName} 의뢰인 파일정보</h3>
+                        <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">CASE FILE SYSTEM</span>
+                        <h3 className="font-black text-lg text-slate-900 mt-0.5">{activeCase.clientName} 의뢰인 파일정보</h3>
                       </div>
 
-                      <span className="text-[13px] text-slate-500 font-semibold bg-slate-100 border border-slate-200 px-2 py-1 rounded">
+                      <span className="text-xs text-slate-700 font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
                         담당: {activeCase.assignedLawyerName}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-850 text-[13px] text-slate-500">
-                      <div>• 고객 연락처: <strong className="text-slate-700 font-mono">{activeCase.phone}</strong></div>
-                      <div>• 세후 월가용소득: <strong className="text-slate-700">{activeCase.income}만 원</strong></div>
+                    <div className="grid grid-cols-2 gap-3 bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
+                      <div>• 고객 연락처: <strong className="text-slate-800 font-mono font-bold">{activeCase.phone}</strong></div>
+                      <div>• 세후 월가용소득: <strong className="text-slate-800 font-bold">{activeCase.income}만 원</strong></div>
                       <div>• 연체 승인부채액: <strong className="text-red-500 font-bold">{activeCase.debtTotal.toLocaleString()}만 원</strong></div>
-                      <div>• 최초 선임 등록일: <strong className="text-slate-700">{new Date(activeCase.createdAt).toLocaleDateString()}</strong></div>
+                      <div>• 최초 선임 등록일: <strong className="text-slate-800 font-bold">{new Date(activeCase.createdAt).toLocaleDateString()}</strong></div>
                     </div>
 
                     {/* Change Status dropdown */}
-                    <div className="p-3 bg-slate-100/30 rounded-lg border border-slate-850 space-y-2">
-                      <label className="block font-bold text-[13px] text-slate-600">법원 추진 단계 일괄 변경:</label>
+                    <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2.5">
+                      <label className="block font-bold text-sm text-slate-800">법원 추진 단계 일괄 변경:</label>
                       <div className="flex gap-2">
                         <select 
                           value={activeCase.status}
                           onChange={(e) => handleUpdateCaseStatus(activeCase.id, e.target.value as CaseStatus)}
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-amber-400 text-xs focus:ring-1"
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 text-sm focus:ring-2 focus:ring-brand/30"
                         >
                           <option value="document">1. 서류 기획 상태</option>
                           <option value="filing">2. 본 법원 접수 완료</option>
@@ -3307,9 +3306,9 @@ export default function LawyerRole({
                   </div>
 
                   {/* Right Side: Log and notes tracking */}
-                  <div className="space-y-4 text-xs flex flex-col justify-between">
-                    <div className="space-y-3">
-                      <span className="font-black text-brand uppercase tracking-widest block text-[13px]">📝 보정 및 추진 명세 성과 로그</span>
+                  <div className="space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3.5">
+                      <span className="font-black text-brand uppercase tracking-wider block text-sm">📝 보정 및 추진 명세 성과 로그</span>
                       
                       {/* Interactive form to add a note */}
                       <div className="flex gap-2">
@@ -3321,20 +3320,20 @@ export default function LawyerRole({
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleAddCaseNote(activeCase.id);
                           }}
-                          className="flex-1 bg-slate-100 border border-slate-200 rounded px-2.5 py-2 text-xs text-slate-900"
+                          className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30"
                         />
                         <button 
                           onClick={() => handleAddCaseNote(activeCase.id)}
-                          className="bg-brand hover:bg-brand-hover text-white font-extrabold px-4 py-1.5 rounded-[200px] text-xs transition-colors shrink-0"
+                          className="bg-brand hover:bg-brand-hover text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shrink-0 cursor-pointer shadow-sm active:scale-[0.98]"
                         >
                           등록
                         </button>
                       </div>
 
                       {/* Display of notes */}
-                      <div className="bg-slate-50 border border-slate-850 rounded p-3 text-[13px] text-slate-600 space-y-1.5 max-h-40 overflow-y-auto">
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-700 space-y-2 max-h-48 overflow-y-auto">
                         {activeCase.notes.map((note, idx) => (
-                          <div key={idx} className="flex gap-1.5 items-start">
+                          <div key={idx} className="flex gap-2 items-start">
                             <span className="text-brand font-bold select-none shrink-0">•</span>
                             <span className="leading-relaxed">{note}</span>
                           </div>
@@ -3342,10 +3341,10 @@ export default function LawyerRole({
                       </div>
                     </div>
 
-                    <div className="flex justify-end pt-2 border-t border-slate-900">
+                    <div className="flex justify-end pt-3 border-t border-slate-200">
                       <button 
                         onClick={() => setSelectedCaseId('')}
-                        className="bg-slate-100 hover:bg-slate-100 text-slate-500 font-medium px-4 py-1.5 rounded-[200px] border border-slate-200"
+                        className="bg-white hover:bg-slate-100 text-slate-700 font-bold px-5 py-2 rounded-xl border border-slate-200 text-sm cursor-pointer transition-colors"
                       >
                         닫기
                       </button>
@@ -3362,14 +3361,14 @@ export default function LawyerRole({
         {activeTab === 'billing' && (
           <div className="space-y-8 animate-fadeIn">
             {/* 서브탭 */}
-            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
                 { key: 'status' as const, label: '구독 현황' },
                 { key: 'products' as const, label: '광고 상품' },
                 { key: 'orders' as const, label: '내 광고 주문' },
                 { key: 'business' as const, label: '사업자 · 세금계산서' },
               ]).map(t => (
-                <button key={t.key} onClick={() => setBillingSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${billingSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                <button key={t.key} onClick={() => setBillingSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${billingSub === t.key ? 'bg-brand text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
                 </button>
               ))}
@@ -3384,23 +3383,23 @@ export default function LawyerRole({
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-indigo-500/20">Active</span>
-                      <span className="text-emerald-400 text-xs font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>정상 운영 중</span>
+                      <span className="bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-indigo-500/20">Active</span>
+                      <span className="text-emerald-400 text-sm font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>정상 운영 중</span>
                     </div>
-                    <h2 className="text-2xl font-black text-white">이용 요금제 · <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">빌링 관리</span></h2>
-                    <p className="text-xs text-slate-500">다음 결제 예정일: 2026년 07월 25일 (월 800,000 원)</p>
+                    <h2 className="text-2xl sm:text-3xl font-black text-white">이용 요금제 · <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">빌링 관리</span></h2>
+                    <p className="text-sm text-slate-300">다음 결제 예정일: 2026년 07월 25일 (월 800,000 원)</p>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[110px]">
-                      <span className="text-[10px] text-slate-500 block uppercase tracking-wider font-bold">활성 광고</span>
+                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
+                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">활성 광고</span>
                       <strong className="text-2xl font-black text-amber-400 block mt-1">{adOrders.filter(o => o.status === 'active').length}건</strong>
                     </div>
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[110px]">
-                      <span className="text-[10px] text-slate-500 block uppercase tracking-wider font-bold">이달 광고비</span>
+                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
+                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">이달 광고비</span>
                       <strong className="text-2xl font-black text-emerald-400 block mt-1">{(adOrders.filter(o => o.status === 'active').reduce((s, o) => s + o.monthlyPrice, 0) / 10000).toFixed(0)}만</strong>
                     </div>
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[110px]">
-                      <span className="text-[10px] text-slate-500 block uppercase tracking-wider font-bold">SaaS 구독</span>
+                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[120px]">
+                      <span className="text-xs text-slate-400 block uppercase tracking-wider font-bold">SaaS 구독</span>
                       <strong className="text-2xl font-black text-indigo-400 block mt-1">80만</strong>
                     </div>
                   </div>
@@ -3413,69 +3412,69 @@ export default function LawyerRole({
             {(billingSub === 'products') && (<>
             {/* Section 2: Ad Products */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Megaphone className="w-5 h-5 text-brand" />
-                <h3 className="font-extrabold text-lg text-slate-900">광고 상품</h3>
-                <span className="bg-gradient-to-r from-brand/10 to-violet-500/10 text-brand text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-brand/20">노출 광고 전용</span>
+              <div className="flex items-center gap-2.5">
+                <Megaphone className="w-6 h-6 text-brand" />
+                <h3 className="font-black text-xl text-slate-900">광고 상품</h3>
+                <span className="bg-gradient-to-r from-brand/10 to-violet-500/10 text-brand text-xs font-bold px-3 py-1 rounded-full border border-brand/20">노출 광고 전용</span>
               </div>
-              <p className="text-xs text-slate-500 -mt-2">마이김변 플랫폼에서 변호사 프로필 노출을 강화하는 광고 상품입니다.</p>
+              <p className="text-sm text-slate-500 -mt-2">마이김변 플랫폼에서 변호사 프로필 노출을 강화하는 광고 상품입니다.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {adProducts.map((product) => (
-                  <div key={product.id} className={`bg-white rounded-2xl border-2 ${product.borderColor} overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group`}>
-                    <div className={`bg-gradient-to-r ${product.color} p-5 text-white relative overflow-hidden`}>
+                  <div key={product.id} className={`bg-white rounded-2xl border-2 ${product.borderColor} overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group shadow-sm`}>
+                    <div className={`bg-gradient-to-r ${product.color} p-6 text-white relative overflow-hidden`}>
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
                       <div className="relative z-10 flex items-start justify-between">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl">{product.icon}</span>
-                            <span className="font-extrabold text-base">{product.name}</span>
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-3xl">{product.icon}</span>
+                            <span className="font-black text-lg">{product.name}</span>
                           </div>
-                          <p className="text-white/70 text-[11px]">{product.location}</p>
+                          <p className="text-white/80 text-xs mt-0.5">{product.location}</p>
                         </div>
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${product.badge === 'PREMIUM' ? 'bg-white/20 text-white border border-white/30' : product.badge === 'REGIONAL' ? 'bg-emerald-300/20 text-emerald-100 border border-emerald-300/30' : 'bg-blue-300/20 text-blue-100 border border-blue-300/30'}`}>{product.badge}</span>
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${product.badge === 'PREMIUM' ? 'bg-white/20 text-white border border-white/30' : product.badge === 'REGIONAL' ? 'bg-emerald-300/20 text-emerald-100 border border-emerald-300/30' : 'bg-blue-300/20 text-blue-100 border border-blue-300/30'}`}>{product.badge}</span>
                       </div>
-                      <div className="relative z-10 mt-4 flex items-end justify-between">
+                      <div className="relative z-10 mt-5 flex items-end justify-between">
                         <div>
                           <span className="text-3xl font-black">{product.priceLabel}</span>
-                          <span className="text-white/50 text-[11px] ml-1">(VAT 별도)</span>
+                          <span className="text-white/70 text-xs ml-1">(VAT 별도)</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] text-white/50 block">{product.maxSlots ? '구좌 현황' : '구좌 제한'}</span>
-                          <span className="text-sm font-bold">{product.maxSlots ? `${product.usedSlots}/${product.maxSlots}` : '무제한'}</span>
+                          <span className="text-xs text-white/70 block font-medium">{product.maxSlots ? '구좌 현황' : '구좌 제한'}</span>
+                          <span className="text-base font-bold">{product.maxSlots ? `${product.usedSlots}/${product.maxSlots}` : '무제한'}</span>
                         </div>
                       </div>
                       {product.maxSlots && (
-                        <div className="relative z-10 mt-2">
-                          <div className="w-full bg-white/20 rounded-full h-1.5">
-                            <div className="bg-white rounded-full h-1.5 transition-all" style={{ width: `${((product.usedSlots || 0) / product.maxSlots) * 100}%` }} />
+                        <div className="relative z-10 mt-2.5">
+                          <div className="w-full bg-white/20 rounded-full h-2">
+                            <div className="bg-white rounded-full h-2 transition-all" style={{ width: `${((product.usedSlots || 0) / product.maxSlots) * 100}%` }} />
                           </div>
-                          <span className="text-[10px] text-white/50 mt-0.5 block">{product.maxSlots - (product.usedSlots || 0)}구좌 남음</span>
+                          <span className="text-xs text-white/80 mt-1 block font-medium">{product.maxSlots - (product.usedSlots || 0)}구좌 남음</span>
                         </div>
                       )}
                     </div>
-                    <div className="p-5 space-y-4">
-                      <p className="text-xs text-slate-600 leading-relaxed">{product.description}</p>
-                      <ul className="space-y-1.5">
+                    <div className="p-6 space-y-4">
+                      <p className="text-sm text-slate-700 leading-relaxed">{product.description}</p>
+                      <ul className="space-y-2">
                         {product.features.map((feat, i) => (
-                          <li key={i} className="flex gap-1.5 items-start text-[12px] text-slate-600">
-                            <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                          <li key={i} className="flex gap-2 items-start text-sm text-slate-700">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                             <span className="leading-tight">{feat}</span>
                           </li>
                         ))}
                       </ul>
                       {product.discounts.length > 0 && (
-                        <div className="bg-gradient-to-r from-slate-50 to-violet-50/30 rounded-xl p-3.5 space-y-2 border border-slate-100">
-                          <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1"><Tag className="w-3 h-3" /> 장기 계약 할인</span>
-                          <div className="flex flex-wrap gap-1.5">
+                        <div className="bg-gradient-to-r from-slate-50 to-violet-50/30 rounded-xl p-4 space-y-2 border border-slate-200">
+                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> 장기 계약 할인</span>
+                          <div className="flex flex-wrap gap-2">
                             {product.discounts.map((d, i) => (
-                              <span key={i} className="bg-white border border-slate-200 text-[10px] text-slate-600 px-2.5 py-1 rounded-lg shadow-sm">{d.months}개월 <strong className="text-brand">{d.rate}%↓</strong> {d.price}</span>
+                              <span key={i} className="bg-white border border-slate-200 text-xs text-slate-700 px-3 py-1.5 rounded-lg shadow-xs">{d.months}개월 <strong className="text-brand">{d.rate}%↓</strong> {d.price}</span>
                             ))}
                           </div>
                         </div>
                       )}
-                      <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200/60 rounded-lg p-2.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                        <span className="text-[10px] text-amber-700 leading-tight">본 상품은 고객에게 <strong>"광고"</strong> 라벨이 명확히 표시되며, 같은 등급 내 <strong>랜덤 셔플 정렬</strong>로 운영됩니다.</span>
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200/60 rounded-xl p-3">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <span className="text-xs text-amber-800 leading-relaxed">본 상품은 고객에게 <strong>"광고"</strong> 라벨이 명확히 표시되며, 같은 등급 내 <strong>랜덤 셔플 정렬</strong>로 운영됩니다.</span>
                       </div>
                       <button onClick={() => { setAdModalProduct(product); setAdModalMonths(1); setAdModalDepositor(''); setAdModalRegion(''); setAdModalStep('select'); }} className={`w-full py-3 rounded-xl text-sm font-bold transition-all bg-gradient-to-r ${product.color} text-white hover:opacity-90 shadow-md hover:shadow-lg cursor-pointer active:scale-[0.98]`}>광고 신청하기</button>
                     </div>
@@ -3489,16 +3488,16 @@ export default function LawyerRole({
             {(billingSub === 'orders') && (<>
             {/* Section 3: My Ad Orders */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-500" />
-                <h3 className="font-extrabold text-lg text-slate-900">내 광고 신청 내역</h3>
-                <span className="bg-indigo-100 text-indigo-600 text-[11px] font-bold px-2 py-0.5 rounded-full">{adOrders.length}건</span>
+              <div className="flex items-center gap-2.5">
+                <FileText className="w-6 h-6 text-indigo-600" />
+                <h3 className="font-black text-xl text-slate-900">내 광고 신청 내역</h3>
+                <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-0.5 rounded-full">{adOrders.length}건</span>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                         <th className="p-3.5">신청일</th>
                         <th className="p-3.5">상품명</th>
                         <th className="p-3.5">계약기간</th>
@@ -3509,15 +3508,15 @@ export default function LawyerRole({
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {adOrders.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-slate-400">신청한 광고 상품이 없습니다.</td></tr>
+                        <tr><td colSpan={6} className="p-10 text-center text-slate-400 text-sm font-medium">신청한 광고 상품이 없습니다.</td></tr>
                       ) : adOrders.map(order => (
                         <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-3.5 text-slate-600 font-mono text-[11px]">{new Date(order.requestedAt).toLocaleDateString('ko-KR')}</td>
-                          <td className="p-3.5 font-bold text-slate-800">{order.productName}{order.region && <span className="text-emerald-500 ml-1">({order.region})</span>}</td>
-                          <td className="p-3.5 text-slate-600">{order.contractMonths}개월</td>
-                          <td className="p-3.5 font-bold text-slate-700">{order.monthlyPrice.toLocaleString()}원</td>
+                          <td className="p-3.5 text-slate-600 font-mono text-xs">{new Date(order.requestedAt).toLocaleDateString('ko-KR')}</td>
+                          <td className="p-3.5 font-bold text-slate-900">{order.productName}{order.region && <span className="text-emerald-600 ml-1">({order.region})</span>}</td>
+                          <td className="p-3.5 text-slate-700 font-medium">{order.contractMonths}개월</td>
+                          <td className="p-3.5 font-bold text-slate-800">{order.monthlyPrice.toLocaleString()}원</td>
                           <td className="p-3.5 font-bold text-indigo-600">{order.totalPrice.toLocaleString()}원</td>
-                          <td className="p-3.5"><span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200' : order.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : order.status === 'cancelled' ? 'bg-red-50 text-red-500 border-red-200' : 'bg-slate-50 text-slate-400 border-slate-200'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-400'}`}></span>{order.status === 'pending' ? '입금 대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
+                          <td className="p-3.5"><span className={`text-xs font-bold px-3 py-1 rounded-full border inline-flex items-center gap-1.5 ${order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : order.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : order.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-400'}`}></span>{order.status === 'pending' ? '입금 대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -3529,55 +3528,55 @@ export default function LawyerRole({
             </>)}
 
             {(billingSub === 'products') && (
-            <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-sm">
-              <div className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-brand" />
-                <h4 className="font-extrabold text-sm text-slate-900">변호사 찾기 페이지 광고 노출 구조</h4>
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <Eye className="w-5 h-5 text-brand" />
+                <h4 className="font-black text-base text-slate-900">변호사 찾기 페이지 광고 노출 구조</h4>
               </div>
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 font-mono text-[11px] text-slate-600 space-y-2 overflow-x-auto">
-                <div className="border-2 border-violet-400/40 rounded-lg p-3 bg-violet-50/50">
-                  <span className="text-violet-600 font-bold flex items-center gap-1 mb-1">🔝 상단 노출 광고 (월 30만원)</span>
-                  <div className="flex gap-2 flex-wrap">
-                    <span className="bg-white border border-violet-200 px-3 py-1.5 rounded-lg text-[10px] text-violet-500">[ 광고 ] 변호사A</span>
-                    <span className="bg-white border border-violet-200 px-3 py-1.5 rounded-lg text-[10px] text-violet-500">[ 광고 ] 변호사B</span>
-                    <span className="bg-white/50 border border-dashed border-violet-200 px-3 py-1.5 rounded-lg text-[10px] text-violet-300">... 최대 6구좌</span>
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 font-mono text-xs text-slate-700 space-y-2.5 overflow-x-auto">
+                <div className="border-2 border-violet-400/40 rounded-xl p-3.5 bg-violet-50/50">
+                  <span className="text-violet-700 font-bold flex items-center gap-1.5 mb-1.5">🔝 상단 노출 광고 (월 30만원)</span>
+                  <div className="flex gap-2.5 flex-wrap">
+                    <span className="bg-white border border-violet-200 px-3 py-1.5 rounded-lg text-xs font-bold text-violet-600">[ 광고 ] 변호사A</span>
+                    <span className="bg-white border border-violet-200 px-3 py-1.5 rounded-lg text-xs font-bold text-violet-600">[ 광고 ] 변호사B</span>
+                    <span className="bg-white/50 border border-dashed border-violet-200 px-3 py-1.5 rounded-lg text-xs text-violet-400 font-medium">... 최대 6구좌</span>
                   </div>
                 </div>
-                <div className="border-2 border-emerald-400/40 rounded-lg p-3 bg-emerald-50/50">
-                  <span className="text-emerald-600 font-bold flex items-center gap-1 mb-1">📍 지역 상단 노출 (월 20만원)</span>
-                  <div className="flex gap-2 flex-wrap">
-                    <span className="bg-white border border-emerald-200 px-3 py-1.5 rounded-lg text-[10px] text-emerald-500">[ 광고 ] 지역 변호사D</span>
-                    <span className="bg-white/50 border border-dashed border-emerald-200 px-3 py-1.5 rounded-lg text-[10px] text-emerald-300">... 지역당 최대 4구좌</span>
+                <div className="border-2 border-emerald-400/40 rounded-xl p-3.5 bg-emerald-50/50">
+                  <span className="text-emerald-700 font-bold flex items-center gap-1.5 mb-1.5">📍 지역 상단 노출 (월 20만원)</span>
+                  <div className="flex gap-2.5 flex-wrap">
+                    <span className="bg-white border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600">[ 광고 ] 지역 변호사D</span>
+                    <span className="bg-white/50 border border-dashed border-emerald-200 px-3 py-1.5 rounded-lg text-xs text-emerald-400 font-medium">... 지역당 최대 4구좌</span>
                   </div>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 flex items-center gap-1"><Info className="w-3 h-3" /> 정렬 순서: 상단 노출 → 지역 상단(필터 시) → 일반 회원 | 같은 등급 내 랜덤 셔플</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium"><Info className="w-3.5 h-3.5" /> 정렬 순서: 상단 노출 → 지역 상단(필터 시) → 일반 회원 | 같은 등급 내 랜덤 셔플</p>
             </div>
 
             )}
 
             {(billingSub === 'status') && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-indigo-500" />
-                <h3 className="font-extrabold text-lg text-slate-900">SaaS CRM 요금제</h3>
-                <span className="bg-indigo-100 text-indigo-600 text-[11px] font-bold px-2 py-0.5 rounded-full">월 정액 구독</span>
+              <div className="flex items-center gap-2.5">
+                <Zap className="w-6 h-6 text-indigo-600" />
+                <h3 className="font-black text-xl text-slate-900">SaaS CRM 요금제</h3>
+                <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">월 정액 구독</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {platformPlans.map((plan, idx) => (
-                  <div key={idx} className={`bg-white rounded-2xl p-6 border-2 flex flex-col justify-between gap-5 relative transition-all hover:shadow-xl hover:-translate-y-0.5 ${plan.color}`}>
-                    {plan.popular && (<span className="absolute -top-3 left-4 bg-gradient-to-r from-brand to-violet-600 text-white text-[12px] font-bold px-3 py-0.5 rounded-full shadow-lg">가장 많은 로펌 선택</span>)}
+                  <div key={idx} className={`bg-white rounded-2xl p-6 border-2 flex flex-col justify-between gap-5 relative transition-all hover:shadow-xl hover:-translate-y-0.5 shadow-sm ${plan.color}`}>
+                    {plan.popular && (<span className="absolute -top-3 left-4 bg-gradient-to-r from-brand to-violet-600 text-white text-xs font-bold px-3.5 py-1 rounded-full shadow-lg">가장 많은 로펌 선택</span>)}
                     <div className="space-y-3">
                       <div>
-                        <h3 className="text-lg font-black text-slate-900">{plan.name}</h3>
-                        <p className="text-slate-500 text-[11px]">월 정액 구독 · 수임료 과세 중계 불가 원칙 준수</p>
+                        <h3 className="text-xl font-black text-slate-900">{plan.name}</h3>
+                        <p className="text-slate-500 text-xs mt-0.5">월 정액 구독 · 수임료 과세 중계 불가 원칙 준수</p>
                       </div>
-                      <div className="text-xl font-black text-brand">{plan.price}</div>
-                      <ul className="text-xs space-y-2 text-slate-600">
-                        {plan.features.map((feat, i) => (<li key={i} className="flex gap-1.5 items-start"><Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span className="leading-tight">{feat}</span></li>))}
+                      <div className="text-2xl font-black text-brand">{plan.price}</div>
+                      <ul className="text-sm space-y-2.5 text-slate-700">
+                        {plan.features.map((feat, i) => (<li key={i} className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span className="leading-tight">{feat}</span></li>))}
                       </ul>
                     </div>
-                    <button className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${plan.name === 'Pro' ? 'bg-brand hover:bg-brand-hover text-white ring-2 ring-brand/20 shadow-md' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'}`}>{plan.name === 'Pro' ? '✅ 현재 이용 중' : '요금제 업그레이드 문의'}</button>
+                    <button className={`w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${plan.name === 'Pro' ? 'bg-brand hover:bg-brand-hover text-white ring-2 ring-brand/20 shadow-md' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'}`}>{plan.name === 'Pro' ? '✅ 현재 이용 중' : '요금제 업그레이드 문의'}</button>
                   </div>
                 ))}
               </div>
@@ -3588,47 +3587,47 @@ export default function LawyerRole({
             {(billingSub === 'business') && (<>
             {/* Section 6: Legal & Payment */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
-                <span className="font-extrabold text-slate-800 text-[13px] flex items-center gap-1.5"><Shield className="w-4 h-4 text-brand" /> 법적 안전장치 (변호사법 준수)</span>
-                <ul className="space-y-2 text-[12px] text-slate-600">
-                  <li className="flex gap-2 items-start"><Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /><span>모든 광고 영역에 <strong className="text-slate-800">"광고" 라벨</strong> 상시 표시</span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /><span>같은 등급 내 <strong className="text-slate-800">랜덤 셔플 정렬</strong> (광고비 순 정렬 금지)</span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /><span><strong className="text-slate-800">고객 직접 선택</strong> 구조만 운영 (매칭·배정 없음)</span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /><span>상담 건당 과금 · 수임 성공 수수료 <strong className="text-red-500">절대 없음</strong></span></li>
-                  <li className="flex gap-2 items-start"><Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /><span>고객 연락처 열람권 판매 <strong className="text-red-500">절대 없음</strong></span></li>
+              <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 md:p-8 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                <span className="font-extrabold text-slate-900 text-base flex items-center gap-2"><Shield className="w-5 h-5 text-brand" /> 법적 안전장치 (변호사법 준수)</span>
+                <ul className="space-y-2.5 text-sm text-slate-700">
+                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span>모든 광고 영역에 <strong className="text-slate-900">"광고" 라벨</strong> 상시 표시</span></li>
+                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span>같은 등급 내 <strong className="text-slate-900">랜덤 셔플 정렬</strong> (광고비 순 정렬 금지)</span></li>
+                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span><strong className="text-slate-900">고객 직접 선택</strong> 구조만 운영 (매칭·배정 없음)</span></li>
+                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span>상담 건당 과금 · 수임 성공 수수료 <strong className="text-red-500">절대 없음</strong></span></li>
+                  <li className="flex gap-2 items-start"><Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span>고객 연락처 열람권 판매 <strong className="text-red-500">절대 없음</strong></span></li>
                 </ul>
-                <div className="flex items-start gap-1.5 bg-blue-50 border border-blue-200/60 rounded-lg p-2.5 mt-2"><Info className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-[10px] text-blue-700 leading-tight">법무부 「변호사검색서비스 운영 가이드라인」(2025.05.27) 및 변호사법 제109조 준수</span></div>
+                <div className="flex items-start gap-2 bg-blue-50 border border-blue-200/60 rounded-xl p-3 mt-2"><Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /><span className="text-xs text-blue-700 leading-relaxed">법무부 「변호사검색서비스 운영 가이드라인」(2025.05.27) 및 변호사법 제109조 준수</span></div>
               </div>
-              <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 p-6 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
-                <span className="font-extrabold text-slate-800 text-[13px] flex items-center gap-1.5"><CreditCard className="w-4 h-4 text-indigo-500" /> 결제 및 환불 정책</span>
-                <div className="space-y-3 text-[12px] text-slate-600">
+              <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 p-6 md:p-8 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                <span className="font-extrabold text-slate-900 text-base flex items-center gap-2"><CreditCard className="w-5 h-5 text-indigo-500" /> 결제 및 환불 정책</span>
+                <div className="space-y-3.5 text-sm text-slate-700">
                   <div>
-                    <span className="font-bold text-slate-700 block mb-1">결제 수단</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-700">🏦 계좌이체 (현금 입금)</span>
-                      <span className="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px]">📄 세금계산서 발행</span>
+                    <span className="font-bold text-slate-900 block mb-1.5">결제 수단</span>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-700">🏦 계좌이체 (현금 입금)</span>
+                      <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700">📄 세금계산서 발행</span>
                     </div>
                   </div>
-                  <div className="bg-indigo-50 border border-indigo-200/60 rounded-xl p-3 space-y-1.5">
-                    <span className="font-bold text-indigo-800 text-[11px] block">💰 입금 안내 계좌</span>
-                    <div className="bg-white rounded-lg p-2.5 border border-indigo-200/50">
-                      <span className="text-sm font-black text-indigo-700 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
-                      <span className="text-[11px] text-indigo-500">예금주: {BANK_ACCOUNT_INFO.holder}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-700 block mb-1">결제 프로세스</span>
-                    <div className="flex flex-wrap gap-1 text-[10px]">
-                      <span className="bg-brand/5 border border-brand/20 px-2 py-1 rounded-lg text-brand font-bold">① 상품 선택</span><span className="text-slate-300">→</span>
-                      <span className="bg-brand/5 border border-brand/20 px-2 py-1 rounded-lg text-brand font-bold">② 기간 선택</span><span className="text-slate-300">→</span>
-                      <span className="bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg text-amber-700 font-bold">③ 계좌 입금</span><span className="text-slate-300">→</span>
-                      <span className="bg-blue-50 border border-blue-200 px-2 py-1 rounded-lg text-blue-600 font-bold">④ 입금 확인</span><span className="text-slate-300">→</span>
-                      <span className="bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-600 font-bold">⑤ 광고 활성화</span>
+                  <div className="bg-indigo-50 border border-indigo-200/60 rounded-xl p-4 space-y-2">
+                    <span className="font-bold text-indigo-900 text-xs block">💰 입금 안내 계좌</span>
+                    <div className="bg-white rounded-xl p-3 border border-indigo-200/50">
+                      <span className="text-base font-black text-indigo-700 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
+                      <span className="text-xs text-indigo-500 font-medium">예금주: {BANK_ACCOUNT_INFO.holder}</span>
                     </div>
                   </div>
                   <div>
-                    <span className="font-bold text-slate-700 block mb-1">환불 정책</span>
-                    <ul className="space-y-1 text-[11px] text-slate-500">
+                    <span className="font-bold text-slate-900 block mb-1.5">결제 프로세스</span>
+                    <div className="flex flex-wrap gap-1.5 text-xs">
+                      <span className="bg-brand/5 border border-brand/20 px-2.5 py-1 rounded-lg text-brand font-bold">① 상품 선택</span><span className="text-slate-300">→</span>
+                      <span className="bg-brand/5 border border-brand/20 px-2.5 py-1 rounded-lg text-brand font-bold">② 기간 선택</span><span className="text-slate-300">→</span>
+                      <span className="bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg text-amber-700 font-bold">③ 계좌 입금</span><span className="text-slate-300">→</span>
+                      <span className="bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg text-blue-600 font-bold">④ 입금 확인</span><span className="text-slate-300">→</span>
+                      <span className="bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg text-emerald-600 font-bold">⑤ 광고 활성화</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 block mb-1.5">환불 정책</span>
+                    <ul className="space-y-1 text-xs text-slate-500">
                       <li>• 결제 후 7일 이내 + 노출 100회 미만: <strong className="text-emerald-600">전액 환불</strong></li>
                       <li>• 결제 후 7일 이후: 잔여 일수 일할 계산 환불</li>
                       <li>• 광고 소재 심사 반려: <strong className="text-emerald-600">전액 환불</strong></li>
@@ -3645,10 +3644,10 @@ export default function LawyerRole({
                   {adModalStep === 'select' && (
                     <>
                       <div className={`bg-gradient-to-r ${adModalProduct.color} p-6 text-white`}>
-                        <div className="flex items-center gap-2 mb-1"><span className="text-2xl">{adModalProduct.icon}</span><span className="font-extrabold text-lg">{adModalProduct.name}</span></div>
-                        <p className="text-white/70 text-xs">{adModalProduct.location}</p>
+                        <div className="flex items-center gap-2.5 mb-1"><span className="text-3xl">{adModalProduct.icon}</span><span className="font-black text-xl">{adModalProduct.name}</span></div>
+                        <p className="text-white/80 text-xs">{adModalProduct.location}</p>
                       </div>
-                      <div className="p-6 space-y-5">
+                      <div className="p-6 md:p-8 space-y-5">
                         <div className="space-y-2">
                           <label className="text-sm font-bold text-slate-800">계약 기간 선택</label>
                           <div className="grid grid-cols-4 gap-2">
@@ -3658,7 +3657,7 @@ export default function LawyerRole({
                               return (
                                 <button key={m} onClick={() => setAdModalMonths(m)} className={`p-3 rounded-xl border-2 text-center transition-all cursor-pointer ${adModalMonths === m ? 'border-brand bg-brand/5 ring-2 ring-brand/20' : 'border-slate-200 hover:border-slate-300'}`}>
                                   <span className="text-sm font-black text-slate-800 block">{m}개월</span>
-                                  {disc && <span className="text-[10px] text-brand font-bold">{disc.rate}% 할인</span>}
+                                  {disc && <span className="text-xs text-brand font-bold">{disc.rate}% 할인</span>}
                                   <span className="text-xs text-slate-500 block mt-0.5">{(price / 10000).toFixed(0)}만/월</span>
                                 </button>
                               );
@@ -3668,7 +3667,7 @@ export default function LawyerRole({
                         {adModalProduct.id === 'ad-regional-top' && (
                           <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-800">구매 지역 선택</label>
-                            <select value={adModalRegion} onChange={e => setAdModalRegion(e.target.value)} className="w-full p-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-brand outline-none">
+                            <select value={adModalRegion} onChange={e => setAdModalRegion(e.target.value)} className="w-full p-3.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-brand outline-none">
                               <option value="">지역을 선택해주세요</option>
                               {['서울','경기','인천','부산','대구','대전','광주','울산','세종','강원','충북','충남','전북','전남','경북','경남','제주'].map(r => (<option key={r} value={r}>{r}</option>))}
                             </select>
@@ -3679,27 +3678,27 @@ export default function LawyerRole({
                           const mp = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price;
                           const tp = mp * adModalMonths;
                           return (
-                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2">
-                              <div className="flex justify-between text-sm"><span className="text-slate-500">월 결제액</span><span className="font-bold text-slate-800">{mp.toLocaleString()}원</span></div>
-                              <div className="flex justify-between text-sm"><span className="text-slate-500">계약 기간</span><span className="font-bold text-slate-800">{adModalMonths}개월</span></div>
-                              <div className="border-t border-slate-200 pt-2 flex justify-between"><span className="font-bold text-slate-700">총 결제 금액</span><span className="text-lg font-black text-brand">{tp.toLocaleString()}원</span></div>
+                            <div className="bg-slate-50 rounded-xl p-4.5 border border-slate-200 space-y-2.5">
+                              <div className="flex justify-between text-sm"><span className="text-slate-600 font-medium">월 결제액</span><span className="font-bold text-slate-900">{mp.toLocaleString()}원</span></div>
+                              <div className="flex justify-between text-sm"><span className="text-slate-600 font-medium">계약 기간</span><span className="font-bold text-slate-900">{adModalMonths}개월</span></div>
+                              <div className="border-t border-slate-200 pt-2.5 flex justify-between"><span className="font-bold text-slate-800">총 결제 금액</span><span className="text-xl font-black text-brand">{tp.toLocaleString()}원</span></div>
                             </div>
                           );
                         })()}
-                        <div className="bg-amber-50 rounded-xl p-4 border border-amber-200/60 space-y-2">
-                          <span className="text-xs font-bold text-amber-800 flex items-center gap-1">🏦 입금 안내 계좌</span>
-                          <div className="bg-white rounded-lg p-3 border border-amber-200/50 text-center">
-                            <span className="text-lg font-black text-amber-800 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
-                            <span className="text-xs text-amber-600">예금주: {BANK_ACCOUNT_INFO.holder}</span>
+                        <div className="bg-amber-50 rounded-xl p-4.5 border border-amber-200/60 space-y-2">
+                          <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">🏦 입금 안내 계좌</span>
+                          <div className="bg-white rounded-xl p-3.5 border border-amber-200/50 text-center">
+                            <span className="text-xl font-black text-amber-800 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
+                            <span className="text-xs text-amber-700 font-medium">예금주: {BANK_ACCOUNT_INFO.holder}</span>
                           </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-bold text-slate-800">입금자명</label>
-                          <input type="text" value={adModalDepositor} onChange={e => setAdModalDepositor(e.target.value)} placeholder="입금자명을 입력해주세요" className="w-full p-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-brand outline-none placeholder:text-slate-300" />
+                          <input type="text" value={adModalDepositor} onChange={e => setAdModalDepositor(e.target.value)} placeholder="입금자명을 입력해주세요" className="w-full p-3.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:border-brand outline-none placeholder:text-slate-400" />
                         </div>
                         <div className="flex gap-3">
-                          <button onClick={() => setAdModalProduct(null)} className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-all cursor-pointer">취소</button>
-                          <button onClick={() => { if (!adModalDepositor.trim()) return; if (adModalProduct.id === 'ad-regional-top' && !adModalRegion) return; const disc = adModalProduct.discounts.find((d: any) => d.months === adModalMonths); const mp = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price; const newOrder: AdOrder = { id: `ado-${Date.now()}`, lawyerId: activeLawyer.id, lawyerName: activeLawyer.name, productId: adModalProduct.id, productName: adModalProduct.name, contractMonths: adModalMonths, monthlyPrice: mp, totalPrice: mp * adModalMonths, status: 'pending', requestedAt: new Date().toISOString(), depositorName: adModalDepositor, region: adModalRegion || undefined }; setAdOrders(prev => [newOrder, ...prev]); setAdModalStep('done'); }} disabled={!adModalDepositor.trim() || (adModalProduct.id === 'ad-regional-top' && !adModalRegion)} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer bg-gradient-to-r ${adModalProduct.color} text-white hover:opacity-90 shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}>신청 완료</button>
+                          <button onClick={() => setAdModalProduct(null)} className="flex-1 py-3.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">취소</button>
+                          <button onClick={() => { if (!adModalDepositor.trim()) return; if (adModalProduct.id === 'ad-regional-top' && !adModalRegion) return; const disc = adModalProduct.discounts.find((d: any) => d.months === adModalMonths); const mp = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price; const newOrder: AdOrder = { id: `ado-${Date.now()}`, lawyerId: activeLawyer.id, lawyerName: activeLawyer.name, productId: adModalProduct.id, productName: adModalProduct.name, contractMonths: adModalMonths, monthlyPrice: mp, totalPrice: mp * adModalMonths, status: 'pending', requestedAt: new Date().toISOString(), depositorName: adModalDepositor, region: adModalRegion || undefined }; setAdOrders(prev => [newOrder, ...prev]); setAdModalStep('done'); }} disabled={!adModalDepositor.trim() || (adModalProduct.id === 'ad-regional-top' && !adModalRegion)} className={`flex-1 py-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer bg-gradient-to-r ${adModalProduct.color} text-white hover:opacity-90 shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}>신청 완료</button>
                         </div>
                       </div>
                     </>
@@ -3707,13 +3706,13 @@ export default function LawyerRole({
                   {adModalStep === 'done' && (
                     <div className="p-8 text-center space-y-4">
                       <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle2 className="w-8 h-8 text-emerald-600" /></div>
-                      <h3 className="text-xl font-black text-slate-900">광고 신청 완료!</h3>
-                      <p className="text-sm text-slate-500">아래 계좌로 입금해주시면 <strong className="text-slate-700">1영업일 이내</strong>에 입금 확인 후 광고가 활성화됩니다.</p>
+                      <h3 className="text-2xl font-black text-slate-900">광고 신청 완료!</h3>
+                      <p className="text-sm text-slate-600">아래 계좌로 입금해주시면 <strong className="text-slate-800">1영업일 이내</strong>에 입금 확인 후 광고가 활성화됩니다.</p>
                       <div className="bg-amber-50 rounded-xl p-4 border border-amber-200/60 text-center">
-                        <span className="text-lg font-black text-amber-800 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
-                        <span className="text-xs text-amber-600">예금주: {BANK_ACCOUNT_INFO.holder}</span>
+                        <span className="text-xl font-black text-amber-800 block">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
+                        <span className="text-xs text-amber-700 font-medium">예금주: {BANK_ACCOUNT_INFO.holder}</span>
                       </div>
-                      <button onClick={() => setAdModalProduct(null)} className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all cursor-pointer">확인</button>
+                      <button onClick={() => setAdModalProduct(null)} className="w-full py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all cursor-pointer">확인</button>
                     </div>
                   )}
                 </div>
@@ -3722,35 +3721,35 @@ export default function LawyerRole({
 
           {/* ========== 세금계산서 섹션 ========== */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100">
+            <div className="p-6 md:p-8 border-b border-slate-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                    <Receipt className="w-5 h-5 text-indigo-600" />
+                  <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center">
+                    <Receipt className="w-6 h-6 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="text-base font-extrabold text-slate-900">전자세금계산서</h3>
-                    <p className="text-xs text-slate-500">광고비 입금 시 자동 발행 · 국세청 자동 전송</p>
+                    <h3 className="text-lg font-black text-slate-900">전자세금계산서</h3>
+                    <p className="text-sm text-slate-500">광고비 입금 시 자동 발행 · 국세청 자동 전송</p>
                   </div>
                 </div>
                 {bizInfo && (
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
-                    <Check className="w-3 h-3" />사업자 등록 완료
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5" />사업자 등록 완료
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 md:p-8">
               {/* 사업자 정보 미등록 시 등록 안내 */}
               {!bizInfo && !bizFormOpen && (
-                <div className="text-center py-8">
+                <div className="text-center py-10">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                     <FileText className="w-8 h-8 text-slate-300" />
                   </div>
-                  <h4 className="text-sm font-bold text-slate-700 mb-1">사업자 정보를 등록해주세요</h4>
-                  <p className="text-xs text-slate-500 mb-4">세금계산서 자동 발행을 위해 법률사무소 사업자 정보가 필요합니다.</p>
-                  <button onClick={() => setBizFormOpen(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-600/20">
+                  <h4 className="text-base font-bold text-slate-800 mb-1">사업자 정보를 등록해주세요</h4>
+                  <p className="text-sm text-slate-500 mb-5">세금계산서 자동 발행을 위해 법률사무소 사업자 정보가 필요합니다.</p>
+                  <button onClick={() => setBizFormOpen(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-7 py-3 rounded-xl transition-all shadow-md shadow-indigo-600/20 cursor-pointer">
                     🏢 사업자 정보 등록
                   </button>
                 </div>
@@ -3758,36 +3757,36 @@ export default function LawyerRole({
 
               {/* 사업자 정보 등록 폼 */}
               {bizFormOpen && (
-                <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Receipt className="w-4 h-4 text-indigo-600" />사업자 정보 등록</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-5">
+                  <h4 className="text-base font-bold text-slate-900 flex items-center gap-2"><Receipt className="w-5 h-5 text-indigo-600" />사업자 정보 등록</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-600 block mb-1">사업자등록번호 *</label>
+                      <label className="text-sm font-bold text-slate-700 block mb-1.5">사업자등록번호 *</label>
                       <div className="flex gap-2">
-                        <input type="text" value={bizForm.corpNum} onChange={e => setBizForm(p => ({...p, corpNum: e.target.value}))} placeholder="000-00-00000" maxLength={12} className="flex-1 p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
-                        <button onClick={async () => { setBizCheckResult('확인 중...'); const r = await checkCorpNum(bizForm.corpNum); setBizCheckResult(r.ok ? '✅ 정상 사업자' : `❌ ${r.error}`); }} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-xl transition-colors whitespace-nowrap">확인</button>
+                        <input type="text" value={bizForm.corpNum} onChange={e => setBizForm(p => ({...p, corpNum: e.target.value}))} placeholder="000-00-00000" maxLength={12} className="flex-1 p-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:border-indigo-500 outline-none placeholder:text-slate-400" />
+                        <button onClick={async () => { setBizCheckResult('확인 중...'); const r = await checkCorpNum(bizForm.corpNum); setBizCheckResult(r.ok ? '✅ 정상 사업자' : `❌ ${r.error}`); }} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 rounded-xl transition-colors whitespace-nowrap cursor-pointer">확인</button>
                       </div>
-                      {bizCheckResult && <p className="text-[11px] mt-1 font-bold text-slate-500">{bizCheckResult}</p>}
+                      {bizCheckResult && <p className="text-xs mt-1.5 font-bold text-slate-500">{bizCheckResult}</p>}
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-600 block mb-1">상호 (법률사무소명) *</label>
-                      <input type="text" value={bizForm.corpName} onChange={e => setBizForm(p => ({...p, corpName: e.target.value}))} placeholder="법무법인 ○○" className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                      <label className="text-sm font-bold text-slate-700 block mb-1.5">상호 (법률사무소명) *</label>
+                      <input type="text" value={bizForm.corpName} onChange={e => setBizForm(p => ({...p, corpName: e.target.value}))} placeholder="법무법인 ○○" className="w-full p-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:border-indigo-500 outline-none placeholder:text-slate-400" />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-600 block mb-1">대표자명 *</label>
-                      <input type="text" value={bizForm.ceoName} onChange={e => setBizForm(p => ({...p, ceoName: e.target.value}))} placeholder="홍길동" className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                      <label className="text-sm font-bold text-slate-700 block mb-1.5">대표자명 *</label>
+                      <input type="text" value={bizForm.ceoName} onChange={e => setBizForm(p => ({...p, ceoName: e.target.value}))} placeholder="홍길동" className="w-full p-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:border-indigo-500 outline-none placeholder:text-slate-400" />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-600 block mb-1">세금계산서 수신 이메일 *</label>
-                      <input type="email" value={bizForm.taxEmail} onChange={e => setBizForm(p => ({...p, taxEmail: e.target.value}))} placeholder="tax@lawfirm.com" className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                      <label className="text-sm font-bold text-slate-700 block mb-1.5">세금계산서 수신 이메일 *</label>
+                      <input type="email" value={bizForm.taxEmail} onChange={e => setBizForm(p => ({...p, taxEmail: e.target.value}))} placeholder="tax@lawfirm.com" className="w-full p-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:border-indigo-500 outline-none placeholder:text-slate-400" />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-xs font-bold text-slate-600 block mb-1">사업장 주소</label>
-                      <input type="text" value={bizForm.addr} onChange={e => setBizForm(p => ({...p, addr: e.target.value}))} placeholder="서울특별시 강남구..." className="w-full p-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none placeholder:text-slate-300" />
+                      <label className="text-sm font-bold text-slate-700 block mb-1.5">사업장 주소</label>
+                      <input type="text" value={bizForm.addr} onChange={e => setBizForm(p => ({...p, addr: e.target.value}))} placeholder="서울특별시 강남구..." className="w-full p-3 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:border-indigo-500 outline-none placeholder:text-slate-400" />
                     </div>
                   </div>
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => { setBizFormOpen(false); setBizCheckResult(null); }} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-xl transition-colors">취소</button>
+                  <div className="flex gap-3 pt-3">
+                    <button onClick={() => { setBizFormOpen(false); setBizCheckResult(null); }} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-colors cursor-pointer">취소</button>
                     <button
                       disabled={!bizForm.corpNum || !bizForm.corpName || !bizForm.ceoName || !bizForm.taxEmail || bizSaving}
                       onClick={() => {
@@ -3799,7 +3798,7 @@ export default function LawyerRole({
                         setBizSaving(false);
                         setBizCheckResult(null);
                       }}
-                      className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Save className="w-4 h-4" />사업자 정보 저장
                     </button>
@@ -3809,38 +3808,38 @@ export default function LawyerRole({
 
               {/* 사업자 정보 등록 완료 시 */}
               {bizInfo && !bizFormOpen && (
-                <div className="space-y-4">
-                  <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                <div className="space-y-5">
+                  <div className="bg-slate-50 rounded-2xl p-5 space-y-3 border border-slate-200">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-slate-500">등록된 사업자 정보</span>
-                      <button onClick={() => { setBizForm({corpNum: bizInfo.corpNum, corpName: bizInfo.corpName, ceoName: bizInfo.ceoName, bizType: bizInfo.bizType, bizClass: bizInfo.bizClass, addr: bizInfo.addr, taxEmail: bizInfo.taxEmail}); setBizFormOpen(true); }} className="text-[11px] font-bold text-indigo-600 hover:text-indigo-500">수정</button>
+                      <span className="text-sm font-bold text-slate-700">등록된 사업자 정보</span>
+                      <button onClick={() => { setBizForm({corpNum: bizInfo.corpNum, corpName: bizInfo.corpName, ceoName: bizInfo.ceoName, bizType: bizInfo.bizType, bizClass: bizInfo.bizClass, addr: bizInfo.addr, taxEmail: bizInfo.taxEmail}); setBizFormOpen(true); }} className="text-xs font-bold text-indigo-600 hover:text-indigo-500 cursor-pointer">수정</button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div><span className="text-slate-400">사업자번호</span> <span className="font-bold text-slate-700 ml-1">{formatCorpNum(bizInfo.corpNum)}</span></div>
-                      <div><span className="text-slate-400">상호</span> <span className="font-bold text-slate-700 ml-1">{bizInfo.corpName}</span></div>
-                      <div><span className="text-slate-400">대표자</span> <span className="font-bold text-slate-700 ml-1">{bizInfo.ceoName}</span></div>
-                      <div><span className="text-slate-400">이메일</span> <span className="font-bold text-slate-700 ml-1">{bizInfo.taxEmail}</span></div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div><span className="text-slate-500">사업자번호</span> <span className="font-bold text-slate-900 ml-1.5">{formatCorpNum(bizInfo.corpNum)}</span></div>
+                      <div><span className="text-slate-500">상호</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.corpName}</span></div>
+                      <div><span className="text-slate-500">대표자</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.ceoName}</span></div>
+                      <div><span className="text-slate-500">이메일</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.taxEmail}</span></div>
                     </div>
                   </div>
 
                   {/* 세금계산서 발행 이력 */}
                   <div>
-                    <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-600" />발행 내역</h4>
+                    <h4 className="text-base font-bold text-slate-900 mb-3.5 flex items-center gap-2"><FileText className="w-5 h-5 text-indigo-600" />발행 내역</h4>
                     {adOrders.filter(o => o.taxInvoice).length === 0 ? (
-                      <div className="text-center py-6 text-xs text-slate-400">
+                      <div className="text-center py-8 text-sm text-slate-400 font-medium">
                         아직 발행된 세금계산서가 없습니다.
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         {adOrders.filter(o => o.taxInvoice).map(order => (
-                          <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="space-y-0.5">
-                              <p className="text-xs font-bold text-slate-700">{order.productName}</p>
-                              <p className="text-[11px] text-slate-400">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : ''}</p>
+                          <div key={order.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-slate-900">{order.productName}</p>
+                              <p className="text-xs text-slate-500 font-medium">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : ''}</p>
                             </div>
-                            <div className="text-right space-y-0.5">
-                              <p className="text-xs font-extrabold text-indigo-600">{order.taxInvoice?.totalAmount.toLocaleString()}원</p>
-                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">발행완료</span>
+                            <div className="text-right space-y-1">
+                              <p className="text-sm font-black text-indigo-600">{order.taxInvoice?.totalAmount.toLocaleString()}원</p>
+                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">발행완료</span>
                             </div>
                           </div>
                         ))}
@@ -3892,84 +3891,84 @@ export default function LawyerRole({
           />
         )}
 
-            {/* Search & Filter row */}
+        {/* TAB 7: 알림 및 플랫폼 설정 */}
         {activeTab === 'settings' && (
           <div className="space-y-6 animate-fadeIn">
             {/* 서브탭 */}
-            <div className="bg-white rounded-xl border border-slate-200 px-1 py-1 flex gap-1 overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
                 { key: 'channels' as const, label: '알림 채널 설정' },
                 { key: 'logs' as const, label: '알림 로그' },
               ]).map(t => (
-                <button key={t.key} onClick={() => setSettingsSub(t.key)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${settingsSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+                <button key={t.key} onClick={() => setSettingsSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${settingsSub === t.key ? 'bg-brand text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
                 </button>
               ))}
             </div>
             {settingsSub === 'channels' && (<>
             {/* Header info */}
-            <div className="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
               <div className="space-y-1">
-                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-brand" />
+                <h3 className="font-black text-xl text-slate-900 flex items-center gap-2.5">
+                  <Bell className="w-6 h-6 text-brand" />
                   <span>실시간 알림 및 외부 연동 설정 (Telegram Gateway)</span>
                 </h3>
-                <p className="text-xs text-slate-500 leading-relaxed text-left">
+                <p className="text-sm text-slate-500 leading-relaxed text-left">
                   신규 상담이 접수되거나 선착순 상담이 오픈될 때, 텔레그램 메신저를 통해 실시간 알림을 수신하고 간편 제어 액션을 수행합니다.
                 </p>
               </div>
-              <span className="bg-brand/10 border border-brand/20 text-brand text-[12px] font-extrabold px-3 py-1 rounded-[200px] whitespace-nowrap self-start md:self-center">
+              <span className="bg-brand/10 border border-brand/20 text-brand text-xs font-black px-4 py-1.5 rounded-full whitespace-nowrap self-start md:self-center shadow-xs">
                 SaaS Enterprise 가동 중
               </span>
             </div>
 
             {/* ── 소속 법률사무소 / 법인 설정 ── */}
-            <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4">
+            <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-brand" />
+                  <h3 className="font-black text-base md:text-lg text-slate-900 flex items-center gap-2.5">
+                    <FileText className="w-5 h-5 text-brand" />
                     <span>소속 법률사무소 / 법인 명칭 설정</span>
                   </h3>
-                  <p className="text-xs text-slate-500 text-left">
+                  <p className="text-sm text-slate-500 text-left">
                     변호사 어드민 헤더 및 플랫폼 노출용 소속 법무법인 또는 사무소의 명칭을 입력하거나 수정합니다.
                   </p>
                 </div>
               </div>
               <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
-                <div className="flex-1 space-y-1.5 text-left">
-                  <label className="text-[12px] text-slate-600 font-bold block">소속 명칭 입력 (예: 법무법인 보광, 이준법률사무소)</label>
+                <div className="flex-1 space-y-2 text-left">
+                  <label className="text-sm text-slate-700 font-bold block">소속 명칭 입력 (예: 법무법인 보광, 이준법률사무소)</label>
                   <input
                     type="text"
                     value={tempFirmName}
                     onChange={e => setTempFirmName(e.target.value)}
                     placeholder="소속 명칭을 입력해주세요"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30 font-bold text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-brand/30 font-bold text-slate-900"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleSaveFirmName}
-                  className="bg-brand hover:bg-brand-hover text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition-colors shrink-0 flex items-center justify-center gap-1 shadow-sm"
+                  className="bg-brand hover:bg-brand-hover text-white font-bold px-6 py-3 rounded-xl text-sm transition-all shrink-0 flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-[0.98]"
                 >
-                  <Save className="w-3.5 h-3.5" />
+                  <Save className="w-4 h-4" />
                   <span>설정 저장</span>
                 </button>
               </div>
             </div>
 
             {/* ── 보안 설정: 비밀번호 변경 ── */}
-            <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4">
+            <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-brand" />
+                <h3 className="font-black text-base md:text-lg text-slate-900 flex items-center gap-2.5">
+                  <Lock className="w-5 h-5 text-brand" />
                   <span>비밀번호 및 보안 설정</span>
                 </h3>
                 <button
                   type="button"
                   onClick={() => setShowPasswordChange(!showPasswordChange)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${
-                    showPasswordChange ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-brand/10 text-brand border-brand/20 hover:bg-brand/20'
+                  className={`text-sm font-bold px-4 py-2 rounded-xl border transition-all cursor-pointer ${
+                    showPasswordChange ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-brand/10 text-brand border-brand/20 hover:bg-brand/20'
                   }`}
                 >
                   {showPasswordChange ? '접기' : '비밀번호 변경'}
@@ -3977,41 +3976,41 @@ export default function LawyerRole({
               </div>
 
               {showPasswordChange && (
-                <div className="space-y-3 animate-fadeIn border-t border-slate-100 pt-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[12px] text-slate-600 font-bold block">현재 비밀번호</label>
+                <div className="space-y-4 animate-fadeIn border-t border-slate-100 pt-4">
+                  <div className="space-y-2">
+                    <label className="text-sm text-slate-700 font-bold block">현재 비밀번호</label>
                     <input
                       type="password"
                       value={currentPassword}
                       onChange={e => setCurrentPassword(e.target.value)}
                       placeholder="현재 사용 중인 비밀번호"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[12px] text-slate-600 font-bold block">새 비밀번호</label>
+                  <div className="space-y-2">
+                    <label className="text-sm text-slate-700 font-bold block">새 비밀번호</label>
                     <input
                       type="password"
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="새 비밀번호 (4자리 이상)"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[12px] text-slate-600 font-bold block">새 비밀번호 확인</label>
+                  <div className="space-y-2">
+                    <label className="text-sm text-slate-700 font-bold block">새 비밀번호 확인</label>
                     <input
                       type="password"
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="새 비밀번호를 다시 입력"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={handlePasswordChange}
-                    className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors shadow-md"
+                    className="w-full bg-brand hover:bg-brand-hover text-white py-3.5 rounded-xl text-sm font-bold transition-all shadow-md cursor-pointer active:scale-[0.98]"
                   >
                     비밀번호 변경 저장
                   </button>
@@ -4022,26 +4021,26 @@ export default function LawyerRole({
             {/* ══════════════════════════════════════════ */}
             {/* 알림 채널 관리 */}
             {/* ══════════════════════════════════════════ */}
-            <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4">
-              <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-brand" />
+            <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl space-y-4 shadow-sm">
+              <h3 className="font-black text-base md:text-lg text-slate-900 flex items-center gap-2.5">
+                <Bell className="w-5 h-5 text-brand" />
                 <span>알림 채널 관리</span>
               </h3>
-              <p className="text-xs text-slate-500">신규 상담 접수 시 아래 활성화된 채널로 알림이 발송됩니다.</p>
+              <p className="text-sm text-slate-500">신규 상담 접수 시 아래 활성화된 채널로 알림이 발송됩니다.</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Telegram 채널 카드 */}
-                <div className={`p-4 rounded-xl border-2 transition-all ${tgConnected ? 'border-emerald-500/30 bg-emerald-50/30' : 'border-slate-200 bg-slate-50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold">📱 Telegram</span>
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${tgConnected ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                <div className={`p-5 rounded-2xl border-2 transition-all ${tgConnected ? 'border-emerald-500/30 bg-emerald-50/30' : 'border-slate-200 bg-slate-50'}`}>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-base font-black text-slate-900">📱 Telegram</span>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${tgConnected ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                       {tgConnected ? '✅ 연결됨' : '미연결'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mb-3">변호사/직원 그룹방에 봇 알림 발송</p>
-                  <div className="flex gap-1.5">
+                  <p className="text-xs text-slate-600 mb-4 font-medium">변호사/직원 그룹방에 봇 알림 발송</p>
+                  <div className="flex gap-2">
                     <button onClick={() => setShowBotTokenGuide(!showBotTokenGuide)}
-                      className="flex-1 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors">
+                      className="flex-1 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
                       {showBotTokenGuide ? '가이드 닫기' : '📖 봇 생성 가이드'}
                     </button>
                     <button onClick={async () => {
@@ -4060,24 +4059,24 @@ export default function LawyerRole({
                         alert(`❌ 발송 실패: ${res.error}`);
                       }
                     }}
-                      className="flex-1 py-1.5 text-[11px] font-bold rounded-lg bg-brand/10 text-brand border border-brand/20 hover:bg-brand/20 transition-colors">
+                      className="flex-1 py-2 text-xs font-bold rounded-xl bg-brand/10 text-brand border border-brand/20 hover:bg-brand/20 transition-colors cursor-pointer">
                       {notifTestLoading === 'telegram' ? '⏳ 발송 중...' : '🔔 테스트'}
                     </button>
                   </div>
                 </div>
 
                 {/* 이메일 채널 카드 */}
-                <div className={`p-4 rounded-xl border-2 transition-all ${notifSettings.email.enabled ? 'border-blue-500/30 bg-blue-50/30' : 'border-slate-200 bg-slate-50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold">📧 이메일 알림</span>
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${notifSettings.email.enabled ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                <div className={`p-5 rounded-2xl border-2 transition-all ${notifSettings.email.enabled ? 'border-blue-500/30 bg-blue-50/30' : 'border-slate-200 bg-slate-50'}`}>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-base font-black text-slate-900">📧 이메일 알림</span>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${notifSettings.email.enabled ? 'bg-blue-500/10 text-blue-700 border border-blue-500/20' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                       {notifSettings.email.enabled ? '✅ 설정됨' : '미설정'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mb-3">로펌 Gmail로 변호사/직원에게 발송</p>
-                  <div className="flex gap-1.5">
+                  <p className="text-xs text-slate-600 mb-4 font-medium">로펌 Gmail로 변호사/직원에게 발송</p>
+                  <div className="flex gap-2">
                     <button onClick={() => setShowEmailSetup(!showEmailSetup)}
-                      className="flex-1 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors">
+                      className="flex-1 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
                       {showEmailSetup ? '닫기' : '⚙️ 설정하기'}
                     </button>
                     {notifSettings.email.enabled && (
@@ -4089,7 +4088,7 @@ export default function LawyerRole({
                         setNotifLogs(loadNotificationLogs());
                         alert(res.ok ? '✅ 테스트 이메일이 발송되었습니다!' : `❌ 발송 실패: ${res.error}`);
                       }}
-                        className="flex-1 py-1.5 text-[11px] font-bold rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors">
+                        className="flex-1 py-2 text-xs font-bold rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer">
                         {notifTestLoading === 'email' ? '⏳ 발송 중...' : '📧 테스트'}
                       </button>
                     )}
@@ -4097,14 +4096,14 @@ export default function LawyerRole({
                 </div>
 
                 {/* 브라우저 Push 채널 카드 */}
-                <div className={`p-4 rounded-xl border-2 transition-all ${notifSettings.browserPush.enabled ? 'border-amber-500/30 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold">🔔 브라우저 Push</span>
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${notifSettings.browserPush.enabled ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                <div className={`p-5 rounded-2xl border-2 transition-all ${notifSettings.browserPush.enabled ? 'border-amber-500/30 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-base font-black text-slate-900">🔔 브라우저 Push</span>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${notifSettings.browserPush.enabled ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                       {notifSettings.browserPush.enabled ? '✅ 허용됨' : '허용 필요'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mb-3">브라우저 알림으로 즉시 데스크탑 알림</p>
+                  <p className="text-xs text-slate-600 mb-4 font-medium">브라우저 알림으로 즉시 데스크탑 알림</p>
                   <button onClick={async () => {
                     const perm = await requestBrowserPushPermission();
                     if (perm === 'granted') {
@@ -4117,22 +4116,22 @@ export default function LawyerRole({
                       alert('브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
                     }
                   }}
-                    className="w-full py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors">
+                    className="w-full py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
                     {notifSettings.browserPush.enabled ? '🔔 테스트 알림 보내기' : '🔔 알림 허용하기'}
                   </button>
                 </div>
 
                 {/* SMS/카카오톡 채널 카드 (준비중) */}
-                <div className="p-4 rounded-xl border-2 border-slate-200 bg-slate-50/50 opacity-60">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold">📲 SMS / 카카오톡</span>
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200">
+                <div className="p-5 rounded-2xl border-2 border-slate-200 bg-slate-50/50 opacity-60">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-base font-black text-slate-900">📲 SMS / 카카오톡</span>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                       🔒 준비중
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mb-3">SMS 및 카카오톡 알림 (추후 업데이트)</p>
+                  <p className="text-xs text-slate-500 mb-4">SMS 및 카카오톡 알림 (추후 업데이트)</p>
                   <button disabled
-                    className="w-full py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed">
+                    className="w-full py-2 text-xs font-bold rounded-xl border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed">
                     Coming Soon
                   </button>
                 </div>
@@ -4140,30 +4139,30 @@ export default function LawyerRole({
 
               {/* 봇 생성 가이드 (토글) */}
               {showBotTokenGuide && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-xl p-5 space-y-3 animate-fadeIn">
-                  <h4 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">📖 텔레그램 봇 생성 가이드</h4>
-                  <ol className="text-xs text-slate-600 space-y-2 list-decimal list-inside leading-relaxed">
+                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4 animate-fadeIn">
+                  <h4 className="font-black text-base text-slate-900 flex items-center gap-2">📖 텔레그램 봇 생성 가이드</h4>
+                  <ol className="text-sm text-slate-700 space-y-2.5 list-decimal list-inside leading-relaxed font-medium">
                     <li>텔레그램 앱에서 <strong className="text-brand">@BotFather</strong> 검색 후 대화 시작</li>
-                    <li><code className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">/newbot</code> 명령어 입력</li>
+                    <li><code className="bg-white border border-slate-200 px-2 py-0.5 rounded text-xs font-mono">/newbot</code> 명령어 입력</li>
                     <li>봇 이름 설정 (예: <strong>"OO법률사무소 알림봇"</strong>)</li>
                     <li>봇 사용자명 설정 (예: <strong>"oo_lawfirm_bot"</strong>) — <code>_bot</code>으로 끝나야 합니다</li>
                     <li>발급된 <strong className="text-red-500">Bot Token</strong>을 아래에 붙여넣기</li>
                     <li>직원 그룹방을 만들고 생성한 봇을 <strong>관리자로 추가</strong></li>
-                    <li>그룹방에서 <code className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">/start</code> 입력 후, Chat ID 확인</li>
+                    <li>그룹방에서 <code className="bg-white border border-slate-200 px-2 py-0.5 rounded text-xs font-mono">/start</code> 입력 후, Chat ID 확인</li>
                   </ol>
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-3 pt-2">
                     <a href="https://t.me/BotFather" target="_blank" rel="noreferrer"
-                      className="flex-1 py-2 text-center text-[11px] font-bold rounded-lg bg-[#0088cc]/10 text-[#0088cc] border border-[#0088cc]/20 hover:bg-[#0088cc]/20 transition-colors">
+                      className="flex-1 py-2.5 text-center text-xs font-bold rounded-xl bg-[#0088cc]/10 text-[#0088cc] border border-[#0088cc]/20 hover:bg-[#0088cc]/20 transition-colors">
                       ▶ BotFather 열기
                     </a>
                     <a href="https://api.telegram.org" target="_blank" rel="noreferrer"
-                      className="flex-1 py-2 text-center text-[11px] font-bold rounded-lg bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-colors">
+                      className="flex-1 py-2.5 text-center text-xs font-bold rounded-xl bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition-colors">
                       📋 Telegram API 문서
                     </a>
                   </div>
                   {/* Bot Token 입력 */}
-                  <div className="space-y-2 pt-2 border-t border-slate-200">
-                    <label className="text-[12px] text-slate-600 font-bold block">Bot Token</label>
+                  <div className="space-y-3 pt-3 border-t border-slate-200">
+                    <label className="text-sm text-slate-700 font-bold block">Bot Token</label>
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
                         <input
@@ -4171,23 +4170,23 @@ export default function LawyerRole({
                           value={tgBotToken}
                           onChange={e => setTgBotToken(e.target.value)}
                           placeholder="예: 7123456789:AAF1x2y3z..."
-                          className="w-full bg-white border border-slate-200 rounded-xl p-2.5 pr-16 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-16 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
                         />
                         <button onClick={() => setShowBotToken(!showBotToken)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-slate-600 font-bold">
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-700 font-bold cursor-pointer">
                           {showBotToken ? '숨기기' : '보기'}
                         </button>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <div className="flex-1 space-y-1">
-                        <label className="text-[12px] text-slate-600 font-bold block">Chat ID (그룹방)</label>
+                      <div className="flex-1 space-y-1.5">
+                        <label className="text-sm text-slate-700 font-bold block">Chat ID (그룹방)</label>
                         <input
                           type="text"
                           value={tgChatId}
                           onChange={e => setTgChatId(e.target.value)}
                           placeholder="예: -1001234567890"
-                          className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
                         />
                       </div>
                     </div>
@@ -4197,7 +4196,7 @@ export default function LawyerRole({
                       saveNotificationSettings(updated);
                       alert('✅ 텔레그램 설정이 저장되었습니다.');
                     }}
-                      className="w-full py-2 text-xs font-bold rounded-xl bg-brand hover:bg-brand-hover text-white transition-colors">
+                      className="w-full py-3 text-sm font-bold rounded-xl bg-brand hover:bg-brand-hover text-white transition-all cursor-pointer shadow-sm active:scale-[0.98]">
                       💾 텔레그램 설정 저장
                     </button>
                   </div>
@@ -4206,33 +4205,33 @@ export default function LawyerRole({
 
               {/* 이메일 설정 (토글) */}
               {showEmailSetup && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-xl p-5 space-y-3 animate-fadeIn">
-                  <h4 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">📧 Gmail 이메일 알림 설정</h4>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4 animate-fadeIn">
+                  <h4 className="font-black text-base text-slate-900 flex items-center gap-2">📧 Gmail 이메일 알림 설정</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
                     로펌의 Gmail 계정에서 변호사/직원에게 상담 알림 이메일을 자동 발송합니다. Gmail <strong>앱 비밀번호</strong>가 필요합니다.
                   </p>
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <label className="text-[12px] text-slate-600 font-bold block">발신 Gmail 주소</label>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-sm text-slate-700 font-bold block">발신 Gmail 주소</label>
                       <input type="email" value={emailSender} onChange={e => setEmailSender(e.target.value)}
                         placeholder="lawfirm@gmail.com"
-                        className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30" />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[12px] text-slate-600 font-bold block">Gmail 앱 비밀번호 (16자리)</label>
+                    <div className="space-y-1.5">
+                      <label className="text-sm text-slate-700 font-bold block">Gmail 앱 비밀번호 (16자리)</label>
                       <input type="password" value={emailAppPassword} onChange={e => setEmailAppPassword(e.target.value)}
                         placeholder="xxxx xxxx xxxx xxxx"
-                        className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand/30" />
                       <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer"
-                        className="text-[10px] text-brand hover:underline">
+                        className="text-xs text-brand hover:underline font-medium inline-block mt-0.5">
                         앱 비밀번호 발급 방법 →
                       </a>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[12px] text-slate-600 font-bold block">수신 이메일 주소 (쉼표로 구분)</label>
+                    <div className="space-y-1.5">
+                      <label className="text-sm text-slate-700 font-bold block">수신 이메일 주소 (쉼표로 구분)</label>
                       <input type="text" value={emailRecipients} onChange={e => setEmailRecipients(e.target.value)}
                         placeholder="lawyer1@naver.com, staff1@gmail.com"
-                        className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30" />
                     </div>
                     <button onClick={() => {
                       const recipients = emailRecipients.split(',').map(e => e.trim()).filter(Boolean);
@@ -4245,7 +4244,7 @@ export default function LawyerRole({
                       saveNotificationSettings(updated);
                       alert('✅ 이메일 알림 설정이 저장되었습니다.');
                     }}
-                      className="w-full py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+                      className="w-full py-3 text-sm font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer shadow-sm active:scale-[0.98]">
                       💾 이메일 설정 저장
                     </button>
                   </div>
@@ -4261,37 +4260,37 @@ export default function LawyerRole({
             {/* 알림 발송 이력 */}
             {/* ══════════════════════════════════════════ */}
             {notifLogs.length > 0 && (
-              <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-3">
+              <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-brand" />
+                  <h3 className="font-black text-lg text-slate-900 flex items-center gap-2.5">
+                    <FileText className="w-5 h-5 text-brand" />
                     <span>알림 발송 이력</span>
                   </h3>
-                  <span className="text-[10px] text-slate-400 font-bold">최근 {notifLogs.length}건</span>
+                  <span className="text-xs text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-full">최근 {notifLogs.length}건</span>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
+                  <table className="w-full text-sm text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
-                        <th className="p-2.5">시간</th>
-                        <th className="p-2.5 text-center">채널</th>
-                        <th className="p-2.5 text-center">상태</th>
-                        <th className="p-2.5">상세</th>
+                      <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                        <th className="p-3.5">시간</th>
+                        <th className="p-3.5 text-center">채널</th>
+                        <th className="p-3.5 text-center">상태</th>
+                        <th className="p-3.5">상세</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {notifLogs.slice(0, 10).map(log => (
-                        <tr key={log.id} className="hover:bg-slate-50">
-                          <td className="p-2.5 text-slate-500 whitespace-nowrap">{new Date(log.sentAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                          <td className="p-2.5 text-center">
+                        <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="p-3.5 text-slate-600 whitespace-nowrap font-mono text-xs">{new Date(log.sentAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                          <td className="p-3.5 text-center text-base">
                             {log.channel === 'telegram' ? '📱' : log.channel === 'email' ? '📧' : log.channel === 'browser_push' ? '🔔' : '📲'}
                           </td>
-                          <td className="p-2.5 text-center">
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${log.status === 'sent' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-500 border border-red-200'}`}>
+                          <td className="p-3.5 text-center">
+                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${log.status === 'sent' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
                               {log.status === 'sent' ? '✅ 발송' : '❌ 실패'}
                             </span>
                           </td>
-                          <td className="p-2.5 text-slate-600 truncate max-w-[200px]">{log.errorMessage || log.detail}</td>
+                          <td className="p-3.5 text-slate-700 font-medium truncate max-w-[240px]">{log.errorMessage || log.detail}</td>
                         </tr>
                       ))}
                     </tbody>
