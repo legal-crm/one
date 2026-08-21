@@ -133,14 +133,14 @@ function ResultHero({
           transition={{ delay: 0.4, duration: 0.5 }}
           className="relative"
         >
-          <Sparkles className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-          <p className="text-sm text-slate-500 mb-2 tracking-wide">
+          <Sparkles className="w-9 h-9 text-indigo-400 mx-auto mb-3" />
+          <p className="text-base sm:text-lg text-slate-300 mb-2 font-bold tracking-wide">
             예상 조정 가능 금액
           </p>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-none">
             약 {formatManWon(animatedAmount)}
           </h1>
-          <p className="text-lg sm:text-xl text-indigo-300 mt-1 font-semibold">
+          <p className="text-xl sm:text-2xl text-indigo-300 mt-2 font-extrabold">
             조정 검토 필요
           </p>
         </motion.div>
@@ -154,14 +154,14 @@ function ResultHero({
         className="flex flex-wrap items-center justify-center gap-3 mt-5"
       >
         {/* Savings rate */}
-        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-sm font-medium">
+        <span className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-200 text-sm sm:text-base font-bold">
           <TrendingDown className="w-4 h-4" />
           원금의 {animatedRate}% 면책
         </span>
 
         {/* Urgency */}
         <span
-          className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm font-medium ${urgency.bg} ${urgency.border} ${urgency.color}`}
+          className={`inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full border text-sm sm:text-base font-bold ${urgency.bg} ${urgency.border} ${urgency.color}`}
         >
           <AlertTriangle className="w-4 h-4" />
           {urgency.label}
@@ -173,7 +173,7 @@ function ResultHero({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.9, duration: 0.5 }}
-        className={`mt-4 text-sm ${urgency.color} max-w-md mx-auto`}
+        className={`mt-4 text-base ${urgency.color} max-w-md mx-auto font-medium`}
       >
         {urgencyMessage}
       </motion.p>
@@ -212,37 +212,37 @@ function PrimaryStrategyCard({
             <div className="flex items-center gap-3">
               <span className="text-3xl">{STRATEGY_ICONS[strategy.type]}</span>
               <div>
-                <p className="text-xs text-slate-600 uppercase tracking-widest mb-0.5">
+                <p className="text-xs text-indigo-400 font-bold uppercase tracking-widest mb-0.5">
                   추천 전략
                 </p>
-                <h2 className="text-2xl font-bold text-white">{strategy.label}</h2>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{strategy.label}</h2>
               </div>
             </div>
             <span
-              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-semibold ${badge.cls}`}
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs sm:text-sm font-bold ${badge.cls}`}
             >
-              <Target className="w-3 h-3" />
+              <Target className="w-3.5 h-3.5" />
               {badge.label}
             </span>
           </div>
 
           {/* Description */}
-          <p className="text-slate-300 text-sm leading-relaxed mb-6">
+          <p className="text-slate-200 text-base leading-relaxed mb-6 font-normal">
             {strategy.description}
           </p>
 
           {/* Key numbers */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-              <p className="text-xs text-slate-600 mb-1">예상 월 변제금</p>
-              <p className="text-lg font-bold text-white">
+              <p className="text-xs sm:text-sm text-slate-400 font-medium mb-1">예상 월 변제금</p>
+              <p className="text-xl sm:text-2xl font-black text-white">
                 약 {formatManWon(estimatedMonthlyPayment)}
               </p>
             </div>
             {duration && (
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                <p className="text-xs text-slate-600 mb-1">예상 변제 기간</p>
-                <p className="text-lg font-bold text-white">{duration}</p>
+                <p className="text-xs sm:text-sm text-slate-400 font-medium mb-1">예상 변제 기간</p>
+                <p className="text-xl sm:text-2xl font-black text-white">{duration}</p>
               </div>
             )}
           </div>
@@ -511,10 +511,10 @@ function MatchingGuidanceCard() {
     >
       <div className="rounded-2xl bg-indigo-500/10 border border-indigo-500/30 p-6 space-y-4 text-left">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
+          <AlertTriangle className="w-6 h-6 text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
           <div className="space-y-1.5 text-left">
-            <h4 className="font-bold text-white text-sm sm:text-base">⚠️ 중요 안내: 분석 정보의 한계 고지</h4>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <h4 className="font-extrabold text-white text-base sm:text-lg">⚠️ 중요 안내: 분석 정보의 한계 고지</h4>
+            <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-normal">
               본 결과는 입력하신 5가지 기초 항목만을 토대로 분석한 <strong>단순 예상치(사전 체크)</strong>이며, 법률 판단이 아닙니다. 정확한 가능 여부는 변호사 검토가 필요합니다.
               현재 단계에서는 변호사가 고객님의 구체적인 연체 정보, 최근 대출금의 사용처, 재산 보유 상태 등을 알지 못하므로 정확한 대책 수립이 어렵습니다.
             </p>
@@ -522,10 +522,10 @@ function MatchingGuidanceCard() {
         </div>
         
         <div className="border-t border-indigo-500/20 pt-4 text-left">
-          <h4 className="font-bold text-white text-xs mb-3 flex items-center gap-1.5">
+          <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
             <span>📊</span> 나만을 위한 1:1 전담 파트너 케어 범위:
           </h4>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-500">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-300">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>불법 추심/독촉 즉시 대리 대응 (대리인 제도)</span>
@@ -566,13 +566,13 @@ function CTASection({
       className="px-4 pb-12 max-w-2xl mx-auto"
     >
       {/* CTA buttons */}
-      <div className="grid sm:grid-cols-2 gap-3 mb-6">
+      <div className="grid sm:grid-cols-2 gap-3.5 mb-6">
         {/* Primary */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onStartDetailedDiagnosis}
-          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow cursor-pointer"
+          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4.5 font-bold text-white text-base bg-gradient-to-r from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow cursor-pointer"
         >
           <span className="absolute inset-0 rounded-xl bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
           <Users className="w-5 h-5 text-indigo-300" />
@@ -585,11 +585,11 @@ function CTASection({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onViewLawyers}
-          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-semibold text-white border border-white/20 bg-white/5 backdrop-blur hover:bg-white/10 transition-colors cursor-pointer"
+          className="relative group flex items-center justify-center gap-2 rounded-xl px-6 py-4.5 font-bold text-white text-base border border-white/20 bg-white/5 backdrop-blur hover:bg-white/10 transition-colors cursor-pointer"
         >
           <Users className="w-5 h-5 text-indigo-400" />
           <span>⚖️ 맞춤 전문가 목록 보기</span>
-          <ArrowRight className="w-4 h-4 ml-1 text-slate-500 group-hover:translate-x-0.5 transition-transform" />
+          <ArrowRight className="w-4 h-4 ml-1 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
         </motion.button>
       </div>
 
@@ -597,18 +597,18 @@ function CTASection({
       <div className="text-center mb-8">
         <button
           onClick={onRetakeDiagnosis}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-300 transition-colors"
+          className="inline-flex items-center gap-2 text-base text-slate-400 hover:text-white font-medium transition-colors cursor-pointer"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className="w-4 h-4" />
           다시 체크하기
         </button>
       </div>
 
       {/* Disclaimer */}
-      <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-        <div className="flex items-start gap-2">
-          <Info className="w-4 h-4 text-slate-600 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-600 leading-relaxed">
+      <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4.5">
+        <div className="flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-normal">
             본 결과는 간이 분석이며 법률 자문이 아닙니다. 정확한 판단을 위해 정밀 분석 또는 전문가 상담을 권장합니다.
           </p>
         </div>

@@ -40,19 +40,19 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
           {/* 브랜드 */}
           <div className="space-y-4 mb-6">
             <div className="space-y-1">
-              <p className="text-white font-bold text-sm">채무 해결, 전문가와 함께</p>
-              <p className="text-xs text-slate-500">내 사건에 맞는 변호사를 비교하세요.</p>
+              <p className="text-white font-bold text-base">채무 해결, 전문가와 함께</p>
+              <p className="text-xs sm:text-sm text-slate-400">내 사건에 맞는 변호사를 비교하세요.</p>
             </div>
-            <p className="text-sm font-bold text-slate-300">(주) my김변컴퍼니</p>
+            <p className="text-base font-bold text-slate-200">(주) my김변컴퍼니</p>
           </div>
 
           {/* 회사 정보 */}
-          <div className="space-y-1.5 text-xs text-slate-500 leading-relaxed">
+          <div className="space-y-1.5 text-xs sm:text-sm text-slate-400 leading-relaxed">
             <p>
               사업자등록번호 {platformConfig.companyBusinessNumber}
-              <span className="mx-1.5 text-slate-700">|</span>
+              <span className="mx-1.5 text-slate-600">|</span>
               대표이사 {platformConfig.companyRepresentative}
-              <span className="mx-1.5 text-slate-700">|</span>
+              <span className="mx-1.5 text-slate-600">|</span>
               고객문의 help@rebirthtalk.com
             </p>
             <p>
@@ -62,7 +62,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
           </div>
 
           {/* 법적 면책 요약 */}
-          <div className="mt-6 pt-5 border-t border-white/5 space-y-2 text-[11px] text-slate-600 leading-relaxed">
+          <div className="mt-6 pt-5 border-t border-white/5 space-y-2 text-xs text-slate-500 leading-relaxed">
             <p>
               본 서비스는 이용자가 자신의 채무·소득·지출 정보를 정리하고, 공개된 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 플랫폼입니다. 플랫폼은 통신판매중개자로서 통신판매의 당사자가 아니며, 변호사회원이 제공하는 법률 서비스의 내용과 질에 대해 법적 책임을 부담하지 않습니다.
             </p>
@@ -77,12 +77,12 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           {/* 약관 링크 */}
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs sm:text-sm">
             <a
               href="/tos.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-500 hover:text-white transition-colors font-medium"
+              className="text-slate-400 hover:text-white transition-colors font-medium"
             >
               서비스 이용약관
             </a>
@@ -90,7 +90,7 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
               href="/privacy.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-500 hover:text-white transition-colors font-bold"
+              className="text-slate-400 hover:text-white transition-colors font-bold"
             >
               개인정보 처리방침
             </a>
@@ -98,15 +98,15 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
               href="/legal.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-500 hover:text-white transition-colors font-medium"
+              className="text-slate-400 hover:text-white transition-colors font-medium"
             >
-              법적 고지사항
+              법적 고지 및 책임한계
             </a>
           </div>
 
           {/* 저작권 */}
-          <p className="text-[11px] text-slate-600">
-            © 2026 my김변(마이김변). All rights reserved.
+          <p className="text-xs text-slate-500 font-medium">
+            &copy; 2026 {platformConfig.companyName || 'my김변'}. All rights reserved.
           </p>
         </div>
       </div>

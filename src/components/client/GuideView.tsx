@@ -77,13 +77,13 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
   return (
     <div className="w-full">
       {/* Hero */}
-      <section className="w-full bg-gradient-to-br from-[#0F2440] via-[#1E3A5F] to-[#162D4A] py-16 md:py-24 relative overflow-hidden">
+      <section className="w-full bg-gradient-to-br from-[#0F2440] via-[#1E3A5F] to-[#162D4A] py-18 md:py-24 relative overflow-hidden">
         <div className="absolute top-10 right-10 w-64 h-64 bg-teal-500/[0.06] rounded-full blur-[80px] pointer-events-none" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-4">
-          <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight leading-tight">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
             이용가이드
           </h1>
-          <p className="text-sm md:text-base text-slate-300 font-medium max-w-md mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-slate-200 font-medium max-w-md mx-auto leading-relaxed">
             4단계로 진행되는 my김변 서비스를<br className="md:hidden" /> 자세히 안내해 드립니다
           </p>
         </div>
@@ -94,13 +94,13 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-3 gap-4 text-center">
             {[
-              { icon: <Clock className="w-5 h-5" />, label: '소요시간 1분' },
-              { icon: <Shield className="w-5 h-5" />, label: '100% 익명' },
-              { icon: <Search className="w-5 h-5" />, label: '전문가 비교' },
+              { icon: <Clock className="w-6 h-6" />, label: '소요시간 1분' },
+              { icon: <Shield className="w-6 h-6" />, label: '100% 익명' },
+              { icon: <Search className="w-6 h-6" />, label: '전문가 비교' },
             ].map((item, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-1.5 py-3">
+              <div key={idx} className="flex flex-col items-center gap-2 py-3">
                 <div className="text-[#1E3A5F]">{item.icon}</div>
-                <span className="text-xs md:text-sm font-bold text-slate-600">{item.label}</span>
+                <span className="text-sm md:text-base font-bold text-slate-700">{item.label}</span>
               </div>
             ))}
           </div>
@@ -108,31 +108,31 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
       </section>
 
       {/* Steps */}
-      <section className="w-full py-12 md:py-20 bg-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 md:space-y-12">
+      <section className="w-full py-14 md:py-20 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 md:space-y-14">
           {steps.map((step, idx) => (
             <div key={idx} className="relative">
               {/* Connector line */}
               {idx < steps.length - 1 && (
-                <div className="hidden md:block absolute left-6 top-[72px] w-0.5 h-[calc(100%+48px-72px)] bg-slate-200" />
+                <div className="hidden md:block absolute left-6 top-[72px] w-0.5 h-[calc(100%+56px-72px)] bg-slate-200" />
               )}
               <div className="flex gap-4 md:gap-6">
                 {/* Icon */}
-                <div className={`w-12 h-12 rounded-full ${step.color} flex items-center justify-center text-white shrink-0 relative z-10`}>
+                <div className={`w-14 h-14 rounded-2xl ${step.color} flex items-center justify-center text-white shrink-0 relative z-10 shadow-sm`}>
                   {step.icon}
                 </div>
                 {/* Content */}
-                <div className="flex-1 space-y-3 pb-2">
+                <div className="flex-1 space-y-3.5 pb-2 text-left">
                   <div className="space-y-1">
-                    <span className={`text-xs font-bold ${step.textColor} tracking-wider`}>{step.step}</span>
-                    <h3 className="text-lg md:text-xl font-bold text-[#0f172a] tracking-tight">{step.title}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed">{step.desc}</p>
+                    <span className={`text-xs sm:text-sm font-extrabold ${step.textColor} tracking-wider`}>{step.step}</span>
+                    <h3 className="text-xl md:text-2xl font-bold text-[#0f172a] tracking-tight">{step.title}</h3>
+                    <p className="text-base text-slate-600 leading-relaxed font-normal">{step.desc}</p>
                   </div>
-                  <div className={`${step.lightColor} rounded-xl p-4 space-y-2`}>
+                  <div className={`${step.lightColor} rounded-2xl p-5 space-y-2.5`}>
                     {step.details.map((detail, dIdx) => (
-                      <div key={dIdx} className="flex items-start gap-2">
-                        <CheckCircle2 className={`w-4 h-4 ${step.textColor} shrink-0 mt-0.5`} />
-                        <span className="text-sm text-slate-600 font-medium">{detail}</span>
+                      <div key={dIdx} className="flex items-start gap-2.5">
+                        <CheckCircle2 className={`w-5 h-5 ${step.textColor} shrink-0 mt-0.5`} />
+                        <span className="text-sm sm:text-base text-slate-700 font-medium">{detail}</span>
                       </div>
                     ))}
                   </div>
@@ -144,25 +144,25 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
       </section>
 
       {/* FAQ */}
-      <section className="w-full py-12 md:py-16 bg-slate-50">
+      <section className="w-full py-14 md:py-20 bg-slate-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center">
-            <h3 className="text-lg md:text-2xl font-bold text-[#0f172a] tracking-tight">자주 묻는 질문</h3>
+            <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight">자주 묻는 질문</h3>
           </div>
           <div className="space-y-3">
             {faqs.map((faq, idx) => {
               const isOpen = openFaq === idx;
               return (
-                <div key={idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div key={idx} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
-                    className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-slate-50 transition-colors"
+                    className="w-full px-6 py-5 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-slate-50 transition-colors"
                   >
-                    <span className="font-bold text-sm md:text-base text-[#0f172a]">{faq.q}</span>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                    <span className="font-bold text-base md:text-lg text-[#0f172a]">{faq.q}</span>
+                    <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {isOpen && (
-                    <div className="px-5 pb-4 text-sm text-slate-500 leading-relaxed border-t border-slate-100 pt-3">
+                    <div className="px-6 pb-5 text-base text-slate-600 leading-relaxed border-t border-slate-100 pt-4 font-normal text-left">
                       {faq.a}
                     </div>
                   )}
@@ -174,18 +174,18 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
       </section>
 
       {/* CTA */}
-      <section className="w-full py-14 md:py-16 bg-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center space-y-5">
-          <h3 className="text-lg md:text-xl font-bold text-[#0f172a] tracking-tight">
+      <section className="w-full py-16 md:py-20 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center space-y-6">
+          <h3 className="text-xl md:text-2xl font-extrabold text-[#0f172a] tracking-tight">
             지금 바로 시작해 보세요
           </h3>
-          <p className="text-sm text-slate-500">소요시간 1분 · 회원가입 불필요 · 결과 즉시 확인</p>
+          <p className="text-base text-slate-600 font-medium">소요시간 1분 · 회원가입 불필요 · 결과 즉시 확인</p>
           <button
             onClick={() => onNavigate?.('landing')}
-            className="inline-flex items-center gap-2 bg-[#1E3A5F] hover:bg-[#162D4A] text-white font-bold px-6 py-3 rounded-xl text-sm transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
+            className="inline-flex items-center gap-2 bg-[#1E3A5F] hover:bg-[#162D4A] text-white font-bold px-8 py-4 rounded-xl text-base transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap shadow-md hover:shadow-lg"
           >
             채무 상황 체크하기
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-5 h-5" />
           </button>
         </div>
       </section>

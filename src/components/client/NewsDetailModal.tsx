@@ -36,22 +36,22 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
 
           <div className="absolute bottom-6 left-6 right-6 text-white text-left space-y-2">
             <div className="flex items-center gap-2">
-              <span className="bg-brand text-white text-[12px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+              <span className="bg-brand text-white text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
                 {article.category}
               </span>
               {article.badge && (
-                <span className={`text-[12px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
                   article.badge === 'HOT' ? 'bg-[#0D9488]' :
                   article.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'
                 }`}>
                   {article.badge}
                 </span>
               )}
-              <span className="text-[12px] text-slate-300 font-medium">
+              <span className="text-xs text-slate-300 font-medium">
                 조회 {article.views} • {article.date}
               </span>
             </div>
-            <h3 className="text-lg md:text-2xl font-bold tracking-tight leading-snug drop-shadow-md">
+            <h3 className="text-xl md:text-2xl font-extrabold tracking-tight leading-snug drop-shadow-md">
               {article.title}
             </h3>
           </div>
@@ -59,10 +59,10 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
 
         {/* Scrollable Content Body */}
         <div className="p-6 md:p-8 space-y-6 overflow-y-auto text-left flex-1 min-h-0">
-          <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border-l-4 border-brand text-slate-600 dark:text-slate-400 text-xs sm:text-sm italic leading-relaxed font-semibold">
+          <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border-l-4 border-brand text-slate-700 dark:text-slate-300 text-sm sm:text-base italic leading-relaxed font-semibold">
             "{article.excerpt}"
           </div>
-          <div className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed space-y-4 font-normal whitespace-pre-wrap">
+          <div className="text-slate-700 dark:text-slate-200 text-base leading-relaxed space-y-4 font-normal whitespace-pre-wrap">
             {article.content}
           </div>
         </div>
@@ -73,17 +73,17 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
             <img 
               src={matchingLawyer.avatar} 
               alt={matchingLawyer.name} 
-              className="w-12 h-12 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" 
+              className="w-13 h-13 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" 
             />
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5 leading-none">
-                <span className="font-semibold text-sm text-slate-900 dark:text-white">{matchingLawyer.name}</span>
-                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[12px] font-semibold px-1.5 py-0.5 rounded-md">도산 전문 변호사</span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-base text-slate-900 dark:text-white">{matchingLawyer.name}</span>
+                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-md">도산 전문 변호사</span>
               </div>
-              <span className="text-[12px] text-slate-600 dark:text-slate-400 font-medium block">
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-bold block">
                 {matchingLawyer.fields?.join(' · ') || '도산 전문'}
               </span>
-              <span className="text-[12px] text-slate-500 dark:text-slate-500 font-normal line-clamp-1 block">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-normal line-clamp-1 block">
                 {matchingLawyer.bio}
               </span>
             </div>
@@ -92,16 +92,16 @@ export default function NewsDetailModal({ article, lawyers, onClose, onConsultWi
           <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
             <button 
               onClick={onClose}
-              className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-5 py-3 rounded-2xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               닫기
             </button>
             <button 
               onClick={() => onConsultWithLawyer(matchingLawyer.id, matchingLawyer.name, article.title)}
-              className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold rounded-2xl text-xs transition-all shadow-sm hover:shadow-brand-sm active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer"
+              className="flex-1 sm:flex-none px-6 py-3.5 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold rounded-2xl text-sm transition-all shadow-sm hover:shadow-brand-sm active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               <span>📞 {matchingLawyer.name} 변호사에게 1:1 상담 예약</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>

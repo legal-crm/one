@@ -65,7 +65,7 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult,
           >
             {item.isActive && <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-9 h-9 bg-brand/10 rounded-full" />}
             <Icon className="w-5 h-5 relative z-10" />
-            <span className="text-[10px] tracking-tight relative z-10 leading-tight">{item.label}</span>
+            <span className="text-xs font-bold tracking-tight relative z-10 leading-tight mt-0.5">{item.label}</span>
             {item.hasBadge && (
               <span className="absolute top-0.5 right-2 flex h-2 w-2 z-20">
                 <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>

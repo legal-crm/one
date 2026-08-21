@@ -14,18 +14,18 @@ interface BannerProps {
 // [SECURITY] 법률상담 비밀유지 + 보안 안내 배너
 function ChatPrivacyBanner({ onClose }: BannerProps) {
   return (
-    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4 py-3 text-[13px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-2.5 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
-      <Shield className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+    <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4.5 py-3.5 text-sm sm:text-base text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-3 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
+      <Shield className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
       <div>
-        <strong>🔒 법률상담 비밀 보장</strong>
-        <span className="block mt-0.5 text-indigo-600/80 dark:text-indigo-400/80">이 채팅은 법률상담을 위한 비밀 대화입니다. 상담 내용은 전담 변호사와 고객만 확인할 수 있으며, 플랫폼 운영자는 원문 내용을 열람하지 않습니다.</span>
+        <strong className="font-bold">🔒 법률상담 비밀 보장</strong>
+        <span className="block mt-0.5 text-indigo-600/90 dark:text-indigo-400/90 text-sm">이 채팅은 법률상담을 위한 비밀 대화입니다. 상담 내용은 전담 변호사와 고객만 확인할 수 있으며, 플랫폼 운영자는 원문 내용을 열람하지 않습니다.</span>
       </div>
       <button 
         onClick={onClose}
-        className="absolute top-2.5 right-2.5 p-1 rounded-lg text-indigo-500 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/50 cursor-pointer transition-colors"
+        className="absolute top-3 right-3 p-1 rounded-lg text-indigo-500 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/50 cursor-pointer transition-colors"
         title="닫기"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-4 h-4" />
       </button>
     </div>
   );
@@ -34,17 +34,17 @@ function ChatPrivacyBanner({ onClose }: BannerProps) {
 // Inline ChatDisclaimer component
 function ChatDisclaimer({ onClose }: BannerProps) {
   return (
-    <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3.5 text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium flex gap-2 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
-      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-      <div>
+    <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4.5 py-3.5 text-sm sm:text-base text-amber-800 dark:text-amber-300 leading-relaxed font-medium flex gap-3 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
+      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+      <div className="text-sm sm:text-base">
         <strong>주의사항:</strong> 대화 중 오가는 상담 내용은 강력하게 암호화되어 안전하게 보호됩니다. 공식 선임계약 체결 전의 법률 상담은 참고용으로만 효력을 지니며, 모든 선임비용 결제 및 계약은 본 플랫폼 외부에서 변호사와 직접 조율하여 안전하게 체결하여 주시기 바랍니다.
       </div>
       <button 
         onClick={onClose}
-        className="absolute top-2.5 right-2.5 p-1 rounded-lg text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/50 cursor-pointer transition-colors"
+        className="absolute top-3 right-3 p-1 rounded-lg text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/50 cursor-pointer transition-colors"
         title="닫기"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-4 h-4" />
       </button>
     </div>
   );
@@ -743,7 +743,7 @@ export default function ChatView({
                   if (isSystem) {
                     return (
                       <div key={m.id} className="flex justify-center my-2">
-                        <div className="bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 px-4 text-[12px] text-slate-600 dark:text-slate-400 font-semibold tracking-tight text-center max-w-md">
+                        <div className="bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 px-4.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-semibold tracking-tight text-center max-w-md">
                           {m.message.replace('[System] ', '')}
                         </div>
                       </div>
@@ -753,11 +753,11 @@ export default function ChatView({
                   const isMe = m.senderType === 'client';
                   return (
                     <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1`}>
-                      <div className="flex items-center gap-2 text-[12px] text-slate-500 font-bold px-1">
-                        <span className="text-slate-900 dark:text-slate-300">{m.senderName}</span>
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 font-bold px-1">
+                        <span className="text-slate-900 dark:text-slate-300 font-bold">{m.senderName}</span>
                         <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <div className={`p-3.5 rounded-2xl max-w-sm md:max-w-md text-xs leading-relaxed font-semibold shadow-sm ${
+                      <div className={`p-4 rounded-2xl max-w-sm md:max-w-md text-sm sm:text-base leading-relaxed font-normal shadow-sm ${
                         isMe 
                           ? 'bg-brand text-white rounded-tr-none' 
                           : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-700'
@@ -799,7 +799,7 @@ export default function ChatView({
                         });
                       }
                     }}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm sm:text-base font-bold shadow-sm transition-all flex items-center justify-center gap-2"
                   >
                     ⭐ 이 변호사를 전담으로 선임하기
                   </button>
@@ -812,12 +812,12 @@ export default function ChatView({
                     onChange={(e) => onSetChatInput(e.target.value)} 
                     onKeyDown={(e) => { if (e.key === 'Enter') onSendChat(); }} 
                     disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20 rounded-xl px-4 py-3 text-sm focus:outline-none font-medium transition-all disabled:bg-slate-100 disabled:cursor-not-allowed" 
+                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20 rounded-xl px-4 py-3 text-base focus:outline-none font-medium transition-all disabled:bg-slate-100 disabled:cursor-not-allowed" 
                   />
                   <button 
                     onClick={onSendChat} 
                     disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
-                    className="bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white p-3 rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
+                    className="bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white p-3.5 rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
                   >
                     <Send className="w-5 h-5" />
                   </button>

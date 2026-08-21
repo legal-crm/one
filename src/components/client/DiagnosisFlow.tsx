@@ -253,19 +253,19 @@ export default function DiagnosisFlow(props: DiagnosisFlowProps) {
               className="flex flex-1 flex-col"
             >
               {/* Question title */}
-              <div className="mb-8 sm:mb-10">
-                <h2 className="text-xl font-bold leading-snug text-white sm:text-2xl">
+              <div className="mb-8 sm:mb-10 text-left">
+                <h2 className="text-2xl font-extrabold leading-snug text-white sm:text-3xl">
                   {question.title}
                 </h2>
                 {question.subtitle && (
-                  <p className="mt-2 text-sm text-white/50 sm:text-base">
+                  <p className="mt-2 text-base text-slate-300 sm:text-lg font-medium">
                     {question.subtitle}
                   </p>
                 )}
               </div>
 
               {/* Option cards */}
-              <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="flex flex-col gap-3.5 sm:gap-4.5">
                 {question.options.map((opt, idx) => {
                   const isSelected = selectedId === opt.id;
 
@@ -285,12 +285,12 @@ export default function DiagnosisFlow(props: DiagnosisFlowProps) {
                       whileTap={{ scale: 0.98 }}
                       className={`
                         group relative flex w-full items-start gap-4 rounded-2xl border
-                        px-5 py-4 text-left backdrop-blur-xl transition-all duration-200
+                        px-5 py-4.5 text-left backdrop-blur-xl transition-all duration-200 cursor-pointer
                         sm:items-center sm:px-6 sm:py-5
                         ${
                           isSelected
-                            ? 'border-indigo-400/60 bg-indigo-500/15 ring-2 ring-indigo-400/40'
-                            : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'
+                            ? 'border-indigo-400/60 bg-indigo-500/20 ring-2 ring-indigo-400/40 shadow-lg'
+                            : 'border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/[0.08]'
                         }
                       `}
                     >
@@ -306,7 +306,7 @@ export default function DiagnosisFlow(props: DiagnosisFlowProps) {
 
                       {/* Icon */}
                       {opt.icon && (
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-xl sm:h-12 sm:w-12 sm:text-2xl">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-2xl sm:h-13 sm:w-13 sm:text-3xl">
                           {opt.icon}
                         </span>
                       )}
@@ -314,14 +314,14 @@ export default function DiagnosisFlow(props: DiagnosisFlowProps) {
                       {/* Text */}
                       <div className="flex-1">
                         <span
-                          className={`block text-sm font-semibold sm:text-base ${
-                            isSelected ? 'text-white' : 'text-white/85'
+                          className={`block text-base font-bold sm:text-lg ${
+                            isSelected ? 'text-white' : 'text-slate-100'
                           }`}
                         >
                           {opt.label}
                         </span>
                         {opt.description && (
-                          <span className="mt-0.5 block text-xs text-white/40 sm:text-sm">
+                          <span className="mt-1 block text-sm text-slate-400 sm:text-base font-normal">
                             {opt.description}
                           </span>
                         )}

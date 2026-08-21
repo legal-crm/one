@@ -2353,22 +2353,22 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                           </div>
                         </div>
                         {/* 채팅 내용 */}
-                        <div className="flex-1 p-3.5 space-y-3 bg-[#F1F5F9]">
-                          <div className="flex gap-2">
-                            <div className="w-7 h-7 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">김</div>
-                            <div className="bg-white rounded-xl rounded-tl-md px-3.5 py-2.5 max-w-[80%] shadow-sm">
-                              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed">안녕하세요, 채무 현황 확인했습니다. 회생 신청이 가능하며 예상 변제액은 월 38만원입니다.</p>
+                        <div className="flex-1 p-4 space-y-3.5 bg-[#F1F5F9]">
+                          <div className="flex gap-2.5">
+                            <div className="w-8 h-8 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5 shadow-sm">김</div>
+                            <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 max-w-[80%] shadow-sm">
+                              <p className="text-sm sm:text-base text-slate-800 leading-relaxed font-normal">안녕하세요, 채무 현황 확인했습니다. 회생 신청이 가능하며 예상 변제액은 월 38만원입니다.</p>
                             </div>
                           </div>
                           <div className="flex justify-end">
-                            <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3.5 py-2.5 max-w-[75%]">
-                              <p className="text-xs sm:text-sm text-white leading-relaxed">감사합니다. 신청 절차와 필요 서류가 궁금합니다.</p>
+                            <div className="bg-[#1E3A5F] rounded-2xl rounded-br-md px-4 py-3 max-w-[75%] shadow-sm">
+                              <p className="text-sm sm:text-base text-white leading-relaxed font-normal">감사합니다. 신청 절차와 필요 서류가 궁금합니다.</p>
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <div className="w-7 h-7 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">김</div>
-                            <div className="bg-white rounded-xl rounded-tl-md px-3.5 py-2.5 max-w-[80%] shadow-sm">
-                              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed">네, 서류 목록을 정리해서 안내드리겠습니다. 궁금한 점은 언제든 편하게 질문해 주세요.</p>
+                          <div className="flex gap-2.5">
+                            <div className="w-8 h-8 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5 shadow-sm">김</div>
+                            <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 max-w-[80%] shadow-sm">
+                              <p className="text-sm sm:text-base text-slate-800 leading-relaxed font-normal">네, 서류 목록을 정리해서 안내드리겠습니다. 궁금한 점은 언제든 편하게 질문해 주세요.</p>
                             </div>
                           </div>
                         </div>
@@ -3235,20 +3235,20 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {activeTab === 'request' && (
               <div className="animate-fadeIn w-full max-w-4xl mx-auto h-[var(--chatbot-vh,100dvh)] md:h-[600px] bg-slate-900 border-0 md:border md:border-slate-800 rounded-none md:rounded-3xl overflow-hidden relative shadow-2xl flex flex-col">
                 {/* 채무정보 정리 목적 고지 */}
-                <div className="px-4 py-2 bg-blue-950/40 border-b border-blue-800/30 shrink-0">
-                  <p className="text-[10px] text-blue-300/80 leading-relaxed">
+                <div className="px-4 py-2.5 bg-blue-950/40 border-b border-blue-800/30 shrink-0">
+                  <p className="text-xs sm:text-sm text-blue-300 font-medium leading-relaxed">
                     ℹ️ 본 기능은 채무·소득·지출 정보를 정리하는 도구이며, 법률 자문을 제공하지 않습니다. 법률적 판단은 전문가 상담이 필요합니다.
                   </p>
                 </div>
                 {/* 동적 안내 메시지 (RemedyModal에서 진입 시) */}
                 {chatbotAnnouncement && (
-                  <div className="px-4 py-3 bg-emerald-950/40 border-b border-emerald-800/30 shrink-0 flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                    <p className="text-xs text-emerald-300 font-bold leading-relaxed whitespace-pre-line flex-1">
+                  <div className="px-4 py-3 bg-emerald-950/40 border-b border-emerald-800/30 shrink-0 flex items-start gap-2.5">
+                    <ShieldCheck className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+                    <p className="text-xs sm:text-sm text-emerald-300 font-bold leading-relaxed whitespace-pre-line flex-1">
                       {chatbotAnnouncement}
                     </p>
-                    <button onClick={() => setChatbotAnnouncement(null)} className="text-emerald-500 hover:text-emerald-300 shrink-0 p-0.5">
-                      <X className="w-3.5 h-3.5" />
+                    <button onClick={() => setChatbotAnnouncement(null)} className="text-emerald-500 hover:text-emerald-300 shrink-0 p-1 cursor-pointer">
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}

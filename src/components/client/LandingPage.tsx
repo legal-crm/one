@@ -353,7 +353,7 @@ export default function LandingPage({
                     <div className="relative z-10 flex items-center gap-6 p-8 sm:p-10 min-h-[200px]">
                       {/* AD Label */}
                       <div className="absolute top-4 left-4">
-                        <span className="bg-black/20 backdrop-blur-sm text-white/90 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/10">
+                        <span className="bg-black/30 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-lg border border-white/15">
                           AD 광고
                         </span>
                       </div>
@@ -816,19 +816,19 @@ export default function LandingPage({
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                     <span className="text-xs font-bold text-amber-400 tracking-wider">PREMIUM</span>
                   </span>
-                  <span className="text-[11px] text-slate-600 font-medium flex items-center gap-1 select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
-                    AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-700 text-[9px] text-slate-500 font-bold">ⓘ</span>
+                  <span className="text-xs text-slate-400 font-bold flex items-center gap-1 select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
+                    AD 광고 <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-slate-700 text-xs text-slate-400 font-bold">ⓘ</span>
                   </span>
                 </div>
 
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4">
                   검증된{' '}
                   <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
                     전문 변호사
                   </span>
                   가 함께합니다
                 </h2>
-                <p className="text-slate-500 text-base sm:text-lg max-w-2xl mx-auto">
+                <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto font-medium">
                   회생·파산 분야에서 풍부한 경험을 갖춘 전문가 프로필을 확인하세요.
                 </p>
               </motion.div>
@@ -864,10 +864,10 @@ export default function LandingPage({
                       <div className="relative z-10 p-6 sm:p-7">
                         {/* Top row: AD label + stars */}
                         <div className="flex items-center justify-between mb-5">
-                          <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-500/20">
+                          <span className="bg-amber-500/10 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-md border border-amber-500/20">
                             광고
                           </span>
-                          <span className="text-[10px] text-slate-500 font-medium">전문가 프로필</span>
+                          <span className="text-xs text-slate-400 font-bold">전문가 프로필</span>
                         </div>
 
                         {/* Avatar */}
@@ -886,18 +886,18 @@ export default function LandingPage({
 
                         {/* Info */}
                         <div className="text-center space-y-2">
-                          <h3 className="text-lg font-bold text-white">
+                          <h3 className="text-xl font-bold text-white">
                             {banner.lawyerName}
                           </h3>
-                          <p className="text-sm font-semibold text-slate-300 leading-snug">
+                          <p className="text-base font-bold text-slate-200 leading-snug">
                             {banner.title}
                           </p>
-                          <p className="text-xs text-slate-500">{banner.subtitle}</p>
-                          <p className="text-[11px] text-amber-400/70 italic">"{banner.tagline}"</p>
+                          <p className="text-xs sm:text-sm text-slate-400 font-medium">{banner.subtitle}</p>
+                          <p className="text-xs sm:text-sm text-amber-400/90 italic font-medium">"{banner.tagline}"</p>
                         </div>
 
                         {/* CTA */}
-                        <button onClick={(e) => { e.stopPropagation(); openLawyerProfile(banner.lawyerId); }} className="mt-5 w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/20 transition-all cursor-pointer active:scale-[0.98]">
+                        <button onClick={(e) => { e.stopPropagation(); openLawyerProfile(banner.lawyerId); }} className="mt-5 w-full py-3 rounded-xl text-sm sm:text-base font-bold bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/20 transition-all cursor-pointer active:scale-[0.98]">
                           프로필 보기 →
                         </button>
                       </div>
@@ -928,11 +928,11 @@ export default function LandingPage({
                 initial={{ opacity: 0 }}
                 animate={showcaseInView ? { opacity: 1 } : {}}
                 transition={{ duration: 0.6, delay: 0.6 }}
-                className="text-center text-[11px] text-slate-600 leading-relaxed max-w-lg mx-auto"
+                className="text-center text-xs text-slate-400 leading-relaxed max-w-lg mx-auto"
               >
-                <span className="text-amber-500/60">⚠</span>{' '}
+                <span className="text-amber-500/80">⚠</span>{' '}
                 본 영역은 변호사가 직접 등록한 유료 광고이며, 같은 등급 내{' '}
-                <strong className="text-slate-500">랜덤 셔플 정렬</strong>로 운영됩니다.
+                <strong className="text-slate-300">랜덤 셔플 정렬</strong>로 운영됩니다.
               </motion.p>
             </div>
           </section>
@@ -1026,11 +1026,11 @@ export default function LandingPage({
 
                         {/* Lawyer info */}
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600
-                                          flex items-center justify-center text-[10px] font-bold text-white">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600
+                                          flex items-center justify-center text-xs font-bold text-white shadow-sm">
                             {review.lawyerName?.slice(0, 1) || '?'}
                           </div>
-                          <span className="text-sm text-slate-500">
+                          <span className="text-sm sm:text-base text-slate-300 font-semibold">
                             {review.lawyerName || '담당 변호사'}
                           </span>
                         </div>

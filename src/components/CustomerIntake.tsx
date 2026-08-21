@@ -57,7 +57,7 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
         </div>
       </div>
       {value > 0 && (
-        <p className="text-[12px] text-blue-400 mt-0.5 text-right font-medium">
+        <p className="text-xs text-blue-500 dark:text-blue-400 mt-1 text-right font-bold">
           {formatKoreanCurrency(value)}
         </p>
       )}
@@ -462,25 +462,25 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         </div>
 
         <div className="md:col-span-2 p-4 border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-950/10 rounded-xl">
-          <h4 className="text-xs font-bold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-1.5">
-            <Scale size={14} /> 취약계층 특별 고려 사항 (체크 시 24개월 최단기 변제 자격 부합)
+          <h4 className="text-xs sm:text-sm font-bold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-1.5">
+            <Scale size={16} /> 취약계층 특별 고려 사항 (체크 시 24개월 최단기 변제 자격 부합)
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={clientData.isSingleParent} onChange={e => setClientData({...clientData, isSingleParent: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-350">한부모 가족지원</span>
+              <input type="checkbox" checked={clientData.isSingleParent} onChange={e => setClientData({...clientData, isSingleParent: e.target.checked})} className="w-4 h-4 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
+              <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">한부모 가족지원</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={clientData.isBasicLivelihood} onChange={e => setClientData({...clientData, isBasicLivelihood: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-350">기초생활수급자</span>
+              <input type="checkbox" checked={clientData.isBasicLivelihood} onChange={e => setClientData({...clientData, isBasicLivelihood: e.target.checked})} className="w-4 h-4 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
+              <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">기초생활수급자</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={clientData.isRentFraud} onChange={e => setClientData({...clientData, isRentFraud: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-350">전세사기 피해자</span>
+              <input type="checkbox" checked={clientData.isRentFraud} onChange={e => setClientData({...clientData, isRentFraud: e.target.checked})} className="w-4 h-4 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
+              <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">전세사기 피해자</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={clientData.isSevereDisability} onChange={e => setClientData({...clientData, isSevereDisability: e.target.checked})} className="w-3.5 h-3.5 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
-              <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-350">중증 장애인</span>
+              <input type="checkbox" checked={clientData.isSevereDisability} onChange={e => setClientData({...clientData, isSevereDisability: e.target.checked})} className="w-4 h-4 rounded border-purple-700 bg-slate-900 text-purple-600 focus:ring-purple-500" />
+              <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">중증 장애인</span>
             </label>
           </div>
         </div>
@@ -509,7 +509,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             <select className={inputClass} value={familyData.minorChildren} onChange={e => setFamilyData({...familyData, minorChildren: Number(e.target.value)})}>{Array.from({length:8}).map((_,i) => <option key={i} value={i}>{i}명</option>)}</select>
           </div>
           <div className="col-span-2">
-            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-3.5 h-3.5 rounded" checked={familyData.minorChildrenFullRecognition} onChange={e => setFamilyData({...familyData, minorChildrenFullRecognition: e.target.checked})} /> <span className="text-[13px] font-semibold text-slate-450">자녀에 대한 부양 권리 완전 단독 인정 (배우자 장애/부재 등)</span></label>
+            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 rounded" checked={familyData.minorChildrenFullRecognition} onChange={e => setFamilyData({...familyData, minorChildrenFullRecognition: e.target.checked})} /> <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">자녀에 대한 부양 권리 완전 단독 인정 (배우자 장애/부재 등)</span></label>
           </div>
           <div>
             <label className={labelClass}>부양 성년 자녀 수</label>
@@ -519,7 +519,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             <label className={labelClass}>기타 동거/직계존속 부양가족 수</label>
             <select className={inputClass} value={familyData.otherDependents} onChange={e => setFamilyData({...familyData, otherDependents: Number(e.target.value)})}>{Array.from({length:6}).map((_,i) => <option key={i} value={i}>{i}명</option>)}</select>
           </div>
-          <div className="col-span-2 text-center py-2 bg-blue-50/50 dark:bg-slate-950/60 border border-blue-100 dark:border-slate-800 rounded-lg"><span className="text-blue-400 font-extrabold text-xs">총 인정 부양가족 수 (자동연동): {rehabResult.client.dependents}명</span></div>
+          <div className="col-span-2 text-center py-2.5 bg-blue-50/50 dark:bg-slate-950/60 border border-blue-100 dark:border-slate-800 rounded-lg"><span className="text-blue-500 dark:text-blue-400 font-extrabold text-sm">총 인정 부양가족 수 (자동연동): {rehabResult.client.dependents}명</span></div>
         </div>
 
         {familyData.adultChildrenCount > 0 && (
@@ -527,7 +527,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             <h4 className="text-xs font-bold text-slate-600 dark:text-slate-350">성년 자녀 생년월일</h4>
             {familyData.adultChildrenDetails.map((child, index) => (
               <div key={index} className="flex gap-2 items-center">
-                <span className="text-[12px] text-slate-600 w-12 font-bold">자녀 {index + 1}</span>
+                <span className="text-xs text-slate-600 w-12 font-bold">자녀 {index + 1}</span>
                 <select className={inputClass} value={child.year} onChange={e => handleAdultChildDetailChange(index, 'year', e.target.value)}>{years.map(y => <option key={y} value={y}>{y}년</option>)}</select>
                 <select className={inputClass} value={child.month} onChange={e => handleAdultChildDetailChange(index, 'month', e.target.value)}>{months.map(m => <option key={m} value={m}>{m}월</option>)}</select>
                 <select className={inputClass} value={child.day} onChange={e => handleAdultChildDetailChange(index, 'day', e.target.value)}>{days.map(d => <option key={d} value={d}>{d}일</option>)}</select>
@@ -537,7 +537,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         )}
 
         <div className="space-y-4 pt-4 border-t border-slate-800">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><HeartPulse size={16} className="text-pink-500" /> 기본 및 특별 생계비 공제 신청 (월 기준)</h3>
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><HeartPulse size={18} className="text-pink-500" /> 기본 및 특별 생계비 공제 신청 (월 기준)</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -550,8 +550,8 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl space-y-3 border border-slate-200 dark:border-slate-800">
-            <h4 className="text-[13px] font-bold text-slate-600 dark:text-slate-350">기타 개별적 법원 추가 공제 비용 (만원)</h4>
+          <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-xl space-y-3 border border-slate-200 dark:border-slate-800">
+            <h4 className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">기타 개별적 법원 추가 공제 비용 (만원)</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div><MoneyInput label="전기/가스/수도료" unit={10000} value={familyData.expUtilities} onValueChange={v => setFamilyData({...familyData, expUtilities: v})} /></div>
               <div><MoneyInput label="일반 자녀교육비" unit={10000} value={familyData.expEducation} onValueChange={v => setFamilyData({...familyData, expEducation: v})} /></div>
@@ -567,7 +567,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
                   value={familyData.monthlyLivingCost > 0 ? (familyData.monthlyLivingCost / 10000) : ''} 
                   onChange={e => setFamilyData({...familyData, monthlyLivingCost: Number(e.target.value.replace(/,/g, '')) * 10000})} 
                 />
-                <span className="text-[11px] text-slate-600 text-right block mt-0.5">* 미지정 시 법정 중위소득 60% 자동 산정</span>
+                <span className="text-xs text-slate-500 text-right block mt-1">* 미지정 시 법정 중위소득 60% 자동 산정</span>
               </div>
             </div>
           </div>
@@ -659,12 +659,12 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
               <MoneyInput label="담보 저당 대출 잔액" unit={10000} value={asset.loanBalance} onValueChange={v => updateAsset(asset.id, 'loanBalance', v)} />
             </div>
             <div className="md:pt-5 flex flex-col gap-2 justify-center">
-              <label className="flex items-center gap-1.5 cursor-pointer text-[12px] text-slate-300 font-bold select-none">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-650 text-blue-500" checked={asset.hasPledge} onChange={e => updateAsset(asset.id, 'hasPledge', e.target.checked)} />
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm text-slate-300 font-bold select-none">
+                <input type="checkbox" className="w-4 h-4 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-650 text-blue-500" checked={asset.hasPledge} onChange={e => updateAsset(asset.id, 'hasPledge', e.target.checked)} />
                 담보 질권 설정 대출액 차감 반영
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer text-[12px] text-slate-300 font-bold select-none">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-650 text-blue-500" checked={asset.isExempt} onChange={e => updateAsset(asset.id, 'isExempt', e.target.checked)} />
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm text-slate-300 font-bold select-none">
+                <input type="checkbox" className="w-4 h-4 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-650 text-blue-500" checked={asset.isExempt} onChange={e => updateAsset(asset.id, 'isExempt', e.target.checked)} />
                 면제 재산으로 청산가치 합산 제외
               </label>
             </div>
@@ -677,8 +677,8 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
   const renderSection5 = () => (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-bold text-white flex items-center gap-1"><DollarSign size={16} /> 총 대출 채무 세부 정보</h3>
-        <button type="button" onClick={addDebt} className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-blue-700 transition-all font-bold"><Plus size={14} /> 채권자 추가</button>
+        <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5"><DollarSign size={18} /> 총 대출 채무 세부 정보</h3>
+        <button type="button" onClick={addDebt} className="text-xs sm:text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-blue-700 transition-all font-bold cursor-pointer"><Plus size={14} /> 채권자 추가</button>
       </div>
       {debts.map((debt) => (
         <div key={debt.id} className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 relative">
@@ -695,18 +695,18 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
               <select className={inputClass} value={debt.type} onChange={e => updateDebt(debt.id, 'type', e.target.value as DebtType)}><option value="unsecured">신용 대출/카드 채무</option><option value="secured">담보부 대출 채무</option><option value="tax">국세/지방세 및 공과 체납</option></select>
             </div>
             
-            <div className="flex items-center gap-2 h-9">
-              <label className="flex items-center gap-1 cursor-pointer text-[12px] text-slate-600 dark:text-slate-350 font-bold select-none" title="도박, 선물옵션, 주식/코인 투자 용도 대출">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-blue-500" checked={debt.isGamblingOrLuxury} onChange={e => updateDebt(debt.id, 'isGamblingOrLuxury', e.target.checked)} /> 
+            <div className="flex items-center gap-2.5 h-9">
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-bold select-none" title="도박, 선물옵션, 주식/코인 투자 용도 대출">
+                <input type="checkbox" className="w-4 h-4 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-blue-500" checked={debt.isGamblingOrLuxury} onChange={e => updateDebt(debt.id, 'isGamblingOrLuxury', e.target.checked)} /> 
                 주식/선물/코인
               </label>
-              <label className="flex items-center gap-1 cursor-pointer text-[12px] text-slate-600 dark:text-slate-350 font-bold select-none" title="최근 1년 이내 실행 대출">
-                <input type="checkbox" className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-blue-500" checked={debt.isRecent} onChange={e => updateDebt(debt.id, 'isRecent', e.target.checked)} /> 
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-bold select-none" title="최근 1년 이내 실행 대출">
+                <input type="checkbox" className="w-4 h-4 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-blue-500" checked={debt.isRecent} onChange={e => updateDebt(debt.id, 'isRecent', e.target.checked)} /> 
                 최근 1년 채무
               </label>
             </div>
 
-            <button type="button" onClick={() => removeDebt(debt.id)} className="p-2 text-red-500 hover:bg-red-950/30 rounded-lg disabled:opacity-30 flex items-center justify-center transition-colors mb-0.5 border border-slate-800 hover:border-red-900" disabled={debts.length <= 1}><Trash2 size={16}/></button>
+            <button type="button" onClick={() => removeDebt(debt.id)} className="p-2.5 text-red-500 hover:bg-red-950/30 rounded-lg disabled:opacity-30 flex items-center justify-center transition-colors mb-0.5 border border-slate-800 hover:border-red-900 cursor-pointer" disabled={debts.length <= 1}><Trash2 size={16}/></button>
           </div>
         </div>
       ))}
