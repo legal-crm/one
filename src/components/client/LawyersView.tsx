@@ -111,49 +111,49 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       <div className="bg-[#0F2440] rounded-2xl p-6 md:p-8 space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-white/10">
-            <Scale className="w-5 h-5 text-teal-400" />
+            <Scale className="w-6 h-6 text-teal-400" />
           </div>
           <div>
-            <h2 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">전담 변호사 찾기</h2>
-            <p className="text-sm text-slate-400 mt-0.5">관할 법원별 독립 변호사를 비교하고, 나에게 맞는 전문가를 선택하세요</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">전담 변호사 찾기</h2>
+            <p className="text-base text-slate-300 mt-1">관할 법원별 독립 변호사를 비교하고, 나에게 맞는 전문가를 선택하세요</p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 pt-2">
-          <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-center">
-            <div className="flex items-center justify-center gap-1.5 mb-1"><Users className="w-3.5 h-3.5 text-teal-400" /></div>
-            <p className="text-lg font-extrabold text-white">{lawyers.length}<span className="text-xs font-bold text-slate-400 ml-0.5">명</span></p>
-            <p className="text-[11px] text-slate-500 font-medium">등록 변호사</p>
+          <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-1"><Users className="w-4 h-4 text-teal-400" /></div>
+            <p className="text-xl font-extrabold text-white">{lawyers.length}<span className="text-sm font-bold text-slate-400 ml-0.5">명</span></p>
+            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">등록 변호사</p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-center">
-            <div className="flex items-center justify-center gap-1.5 mb-1"><ShieldCheck className="w-3.5 h-3.5 text-teal-400" /></div>
-            <p className="text-lg font-extrabold text-white">4.8<span className="text-xs font-bold text-slate-400 ml-0.5">/5.0</span></p>
-            <p className="text-[11px] text-slate-500 font-medium">평균 만족도</p>
+          <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-1"><ShieldCheck className="w-4 h-4 text-teal-400" /></div>
+            <p className="text-xl font-extrabold text-white">4.8<span className="text-sm font-bold text-slate-400 ml-0.5">/5.0</span></p>
+            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">평균 만족도</p>
             {/* <!-- mock: 서비스 예시 데이터 --> */}
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-center">
-            <div className="flex items-center justify-center gap-1.5 mb-1"><Clock className="w-3.5 h-3.5 text-teal-400" /></div>
-            <p className="text-lg font-extrabold text-white">2<span className="text-xs font-bold text-slate-400 ml-0.5">시간</span></p>
-            <p className="text-[11px] text-slate-500 font-medium">평균 응답</p>
+          <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-1"><Clock className="w-4 h-4 text-teal-400" /></div>
+            <p className="text-xl font-extrabold text-white">2<span className="text-sm font-bold text-slate-400 ml-0.5">시간</span></p>
+            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">평균 응답</p>
             {/* <!-- mock: 서비스 예시 데이터 --> */}
           </div>
         </div>
       </div>
 
       {selectionMode && (
-        <div className="bg-[#1E3A5F] rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-md">
+        <div className="bg-[#1E3A5F] rounded-2xl px-5 py-4 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="w-4.5 h-4.5 text-white" />
+            <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white font-bold text-sm tracking-tight">
-              변호사 <span className="text-white/90 text-base">{selectedLawyerIds.length}/{maxSelections}</span>명 선택됨
+            <span className="text-white font-bold text-base tracking-tight">
+              변호사 <span className="text-white font-black text-lg">{selectedLawyerIds.length}/{maxSelections}</span>명 선택됨
             </span>
           </div>
           {selectedLawyerIds.length > 0 && (
             <button
               type="button"
               onClick={() => setSelectedLawyerIds([])}
-              className="text-white/70 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+              className="text-white/80 hover:text-white text-sm font-bold transition-colors cursor-pointer"
             >
               선택 초기화
             </button>
@@ -163,18 +163,18 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       {/* Filter & Search Bar */}
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder="특정 변호사 명칭 또는 전문 키워드 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-sm focus:ring-1 focus:ring-brand focus:outline-none font-bold"
+            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-11 pr-10 py-3 text-base focus:ring-1 focus:ring-brand focus:outline-none font-bold"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               aria-label="검색어 지우기"
             >
               <X className="w-4 h-4 text-slate-400" />
@@ -187,16 +187,16 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       {topAdLawyers.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-1">
-            <h3 className="font-bold text-base sm:text-lg text-slate-900 tracking-tight flex items-center gap-2">
+            <h3 className="font-bold text-lg text-slate-900 tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-4 bg-[#1E3A5F] rounded-full"></span>
               광고 전문가
             </h3>
             <span className="flex items-center gap-1 text-xs text-slate-400 font-medium select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
-              AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-[10px] text-slate-300 font-bold">ⓘ</span>
+              AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-xs text-slate-400 font-bold">ⓘ</span>
             </span>
           </div>
           <div className="px-5 sm:px-6 pb-3">
-            <p className="text-[10px] text-slate-400 mt-1">'광고' 표시는 정액 광고상품 이용을 의미하며, 전문성 인증이나 추천이 아닙니다. 광고비는 상담 건수·수임 여부와 무관한 고정금액입니다.</p>
+            <p className="text-xs text-slate-500 mt-1">'광고' 표시는 정액 광고상품 이용을 의미하며, 전문성 인증이나 추천이 아닙니다. 광고비는 상담 건수·수임 여부와 무관한 고정금액입니다.</p>
           </div>
           <div className="px-5 sm:px-6 pb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {topAdLawyers.slice(0, 6).map((l) => (
@@ -205,7 +205,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                 onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)}
                 className="relative group p-5 rounded-xl border-2 border-[#1E3A5F]/15 bg-gradient-to-br from-[#1E3A5F]/5 to-white hover:border-[#1E3A5F]/30 hover:shadow-md transition-all duration-300 cursor-pointer"
               >
-                <span className="absolute top-3 right-3 bg-[#1E3A5F]/10 text-[#1E3A5F] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#1E3A5F]/20">
+                <span className="absolute top-3 right-3 bg-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-2 py-0.5 rounded-lg border border-[#1E3A5F]/20">
                   광고
                 </span>
                 {selectionMode && (
@@ -219,30 +219,30 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                 )}
                 <div className="flex items-start gap-4">
                   <div className="relative shrink-0">
-                    <img src={l.avatarData || l.avatar} alt={l.name} className="w-[72px] h-[72px] rounded-xl object-cover border-2 border-[#1E3A5F]/15 shadow-sm" />
+                    <img src={l.avatarData || l.avatar} alt={l.name} className="w-[76px] h-[76px] rounded-xl object-cover border-2 border-[#1E3A5F]/15 shadow-sm" />
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
                   </div>
                   <div className="flex-1 min-w-0 space-y-1.5">
-                    <span className="font-extrabold text-[15px] text-slate-900 block truncate">{l.name}</span>
-                    <span className="text-xs text-slate-500 block">{l.region} · {l.courtJurisdiction || l.region + '법원'}</span>
+                    <span className="font-bold text-lg text-slate-900 block truncate">{l.name}</span>
+                    <span className="text-sm text-slate-600 block font-medium">{l.region} · {l.courtJurisdiction || l.region + '법원'}</span>
                     <div className="flex flex-wrap gap-1">
                       {l.fields.slice(0, 3).map(f => (
-                        <span key={f} className="text-[11px] text-[#1E3A5F] font-bold px-1.5 py-0.5 bg-[#1E3A5F]/5 border border-[#1E3A5F]/10 rounded">{f}</span>
+                        <span key={f} className="text-xs text-[#1E3A5F] font-bold px-2 py-0.5 bg-[#1E3A5F]/5 border border-[#1E3A5F]/10 rounded">{f}</span>
                       ))}
                     </div>
                   </div>
                 </div>
                 {l.catchphrase && (
-                  <p className="mt-3 text-xs text-slate-500 italic leading-relaxed border-t border-[#1E3A5F]/10 pt-2.5">
+                  <p className="mt-3 text-sm text-slate-600 italic leading-relaxed border-t border-[#1E3A5F]/10 pt-2.5">
                     "{l.catchphrase}"
                   </p>
                 )}
-                <div className="mt-3 flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-3 text-slate-400">
-                    {l.totalCases && <span>수임 <strong className="text-[#1E3A5F]">{l.totalCases}건</strong></span>}
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3 text-slate-500 font-medium">
+                    {l.totalCases && <span>수임 <strong className="text-[#1E3A5F] font-bold">{l.totalCases}건</strong></span>}
                   </div>
-                  <span className="text-emerald-500 font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-emerald-600 font-bold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     상담 가능
                   </span>
                 </div>
@@ -298,7 +298,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
         </div>
 
         {/* 검색 투명성 바 */}
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/30 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/30 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800">
           <span>정렬: 무작위</span>
           <span className="text-slate-300">|</span>
           <span>필터: {selectedRegion}{showFavoritesOnly ? ' · 즐겨찾기' : ''}</span>
@@ -325,10 +325,10 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-4 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></span>
-                  <h3 className="font-bold text-base text-slate-900 tracking-tight">광고 · 지역 전문가</h3>
-                  <span className="text-xs text-slate-400 font-medium">({paidLawyers.length}명)</span>
+                  <h3 className="font-bold text-lg text-slate-900 tracking-tight">광고 · 지역 전문가</h3>
+                  <span className="text-sm text-slate-400 font-medium">({paidLawyers.length}명)</span>
                   <span className="ml-auto flex items-center gap-1 text-xs text-slate-400 font-medium select-none">
-                    AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-[10px] text-slate-300 font-bold">ⓘ</span>
+                    AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-xs text-slate-400 font-bold">ⓘ</span>
                   </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -363,16 +363,16 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             <span className="text-sm text-slate-500 dark:text-slate-500 font-medium">{l.courtJurisdiction || l.region + ' 법원'} 전담 지원</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="bg-blue-50 text-blue-500 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-blue-200">광고</span>
+                            <span className="bg-blue-50 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-lg border border-blue-200">광고</span>
                             <button type="button" onClick={(e) => toggleFavorite(l.id, e)} className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer group/fav">
                               <Heart className={`w-4 h-4 transition-colors ${favorites.has(l.id) ? 'fill-rose-500 text-rose-500' : 'text-slate-300 group-hover/fav:text-rose-400'}`} />
                             </button>
                           </div>
                         </div>
-                        <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{l.bio}</p>
-                        <div className="flex flex-wrap gap-1">
+                        <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{l.bio}</p>
+                        <div className="flex flex-wrap gap-1.5">
                           {l.fields.map(f => (
-                            <span key={f} className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs px-2 py-0.5 rounded-md font-bold">#{f}</span>
+                            <span key={f} className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs px-2.5 py-0.5 rounded-md font-bold">#{f}</span>
                           ))}
                         </div>
                         <div className="grid grid-cols-2 gap-y-2 gap-x-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
@@ -382,11 +382,11 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                           <span className="flex items-center gap-1.5"><span className="text-xs text-brand/75">•</span>면책 후 신용 케어</span>
                         </div>
                         <div className="pt-2 flex items-center justify-between text-sm border-t border-slate-100 dark:border-slate-800">
-                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-[13px] font-bold">
+                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-sm font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             <span>{l.recentActivity}</span>
                           </span>
-                          <button onClick={() => onSelectLawyer(l.id)} className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-4.5 py-2 rounded-xl transition-all duration-300 text-[13px] cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]">
+                          <button onClick={() => onSelectLawyer(l.id)} className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all duration-300 text-sm cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]">
                             이 전문가에게 상담 요청하기
                           </button>
                         </div>
@@ -402,11 +402,11 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Paperclip className="w-4 h-4 text-slate-400" />
-                  <h3 className="font-bold text-base text-slate-900 tracking-tight">기본등록 변호사</h3>
-                  <span className="text-xs text-slate-400 font-medium">({freeLawyers.length}명)</span>
-                  <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">무료 회원</span>
+                  <h3 className="font-bold text-lg text-slate-900 tracking-tight">기본등록 변호사</h3>
+                  <span className="text-sm text-slate-400 font-medium">({freeLawyers.length}명)</span>
+                  <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-0.5 rounded-full">무료 회원</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {freePaginated.map(l => (
                     <div
                       key={l.id}
@@ -431,17 +431,17 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                         </div>
                       )}
                       <div className="relative shrink-0">
-                        <img src={l.avatar} alt={l.name} className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                        <img src={l.avatar} alt={l.name} className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-base text-slate-900 truncate">{l.name}</span>
-                          <span className="text-xs text-slate-400 font-medium shrink-0">{l.courtJurisdiction || l.region}</span>
+                          <span className="font-bold text-lg text-slate-900 truncate">{l.name}</span>
+                          <span className="text-sm text-slate-500 font-medium shrink-0">{l.courtJurisdiction || l.region}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {l.fields.slice(0, 3).map(f => (
-                            <span key={f} className="text-xs text-slate-500 font-bold px-2 py-0.5 bg-white border border-slate-100 rounded-md">{f}</span>
+                            <span key={f} className="text-xs text-slate-600 font-bold px-2 py-0.5 bg-white border border-slate-200 rounded-md">{f}</span>
                           ))}
                         </div>
                       </div>

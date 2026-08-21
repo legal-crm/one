@@ -243,24 +243,24 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
             {/* 카테고리 + 질문 */}
             <div className="space-y-3 pb-5 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{qa.category}</span>
+                <span className="text-xs sm:text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md">{qa.category}</span>
                 {qa.isSecret && (
-                  <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded flex items-center gap-1">
-                    <Lock className="w-3 h-3" />비밀 상담
+                  <span className="text-xs sm:text-sm font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                    <Lock className="w-3.5 h-3.5" />비밀 상담
                   </span>
                 )}
                 {qa.status === 'waiting' && (
-                  <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">답변 대기중</span>
+                  <span className="text-xs sm:text-sm font-bold text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-md">답변 대기중</span>
                 )}
               </div>
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-snug">Q. {qa.question}</h1>
               {qa.content && (
-                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 border border-slate-100 rounded-xl p-4 whitespace-pre-wrap">{qa.content}</p>
+                <p className="text-base text-slate-700 leading-relaxed bg-slate-50 border border-slate-100 rounded-xl p-4.5 whitespace-pre-wrap">{qa.content}</p>
               )}
-              <div className="flex items-center gap-3 text-xs text-slate-400">
-                <span>{qa.author}</span>
+              <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500 font-medium">
+                <span className="font-bold text-slate-700">{qa.author}</span>
                 <span>·</span>
-                <span className="flex items-center gap-1"><Eye className="w-3 h-3" />조회 {mockViews(qa.id).toLocaleString()}</span>
+                <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-slate-400" />조회 {mockViews(qa.id).toLocaleString()}</span>
                 <span>·</span>
                 <span>답변 {allAnswers.length}개</span>
                 {qa.createdAt && (
@@ -276,26 +276,26 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
             {allAnswers.length === 0 ? (
               <div className="py-12 text-center space-y-3">
                 <MessageSquare className="w-10 h-10 text-slate-300 mx-auto" />
-                <h4 className="font-semibold text-base text-slate-700">아직 변호사 답변이 없습니다</h4>
-                <p className="text-sm text-slate-500">전문 변호사의 답변을 기다려주세요.</p>
+                <h4 className="font-bold text-lg text-slate-700">아직 변호사 답변이 없습니다</h4>
+                <p className="text-base text-slate-500">전문 변호사의 답변을 기다려주세요.</p>
               </div>
             ) : (
               <div className="space-y-0 divide-y divide-slate-100">
                 {allAnswers.map((ans, idx) => (
-                  <div key={idx} className="py-5 first:pt-0">
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <span className="text-xs font-bold text-blue-600">답변</span>
-                      {ans.lawyerAvatar && <img src={ans.lawyerAvatar} alt={ans.lawyerName} className="w-7 h-7 rounded-full object-cover border border-slate-200" />}
-                      <span className="text-sm font-bold text-slate-800">{ans.lawyerName}</span>
-                      {idx === 0 && allAnswers.length > 1 && <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full ml-auto">대표 답변</span>}
+                  <div key={idx} className="py-6 first:pt-0">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">전문가 답변</span>
+                      {ans.lawyerAvatar && <img src={ans.lawyerAvatar} alt={ans.lawyerName} className="w-8 h-8 rounded-full object-cover border border-slate-200" />}
+                      <span className="text-base font-bold text-slate-900">{ans.lawyerName} 변호사</span>
+                      {idx === 0 && allAnswers.length > 1 && <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full ml-auto">대표 답변</span>}
                     </div>
-                    <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line mb-3">{ans.answer}</p>
+                    <p className="text-base text-slate-700 leading-relaxed whitespace-pre-line mb-4 font-normal">{ans.answer}</p>
                     <button
                       onClick={() => onConsultRequest(
                         `${qa.category} 관련 법률 상담 신청`,
                         `고민 사례 질문:\nQ. ${qa.question}\n\n위 Q&A를 참고하여 ${ans.lawyerName}님께 유사 사건 상담을 신청합니다.`
                       )}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer active:scale-[0.98]"
+                      className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer active:scale-[0.98]"
                     >
                       이 변호사에게 상담 신청
                     </button>
@@ -483,13 +483,13 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
       <div className="space-y-3">
         <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
             <input
               type="text"
               placeholder="사례 키워드 또는 변호사 검색..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-10 py-2.5 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-10 py-2.5 text-base focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:outline-none font-medium"
             />
             {searchQuery && (
               <button onClick={() => { setSearchQuery(''); setPage(1); }} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -497,8 +497,8 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
               </button>
             )}
           </div>
-          <span className="text-sm text-slate-500 font-medium shrink-0">
-            <strong className="text-slate-900">{filteredQAs.length}</strong>개 검색됨 (총 {qas.length}개)
+          <span className="text-sm text-slate-600 font-medium shrink-0">
+            <strong className="text-slate-900 font-bold">{filteredQAs.length}</strong>개 검색됨 (총 {qas.length}개)
           </span>
         </div>
 
@@ -517,7 +517,7 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
                     : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:shadow-sm'
                 }`}
               >
-                <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{cat}</span>
+                <span className="text-sm font-bold whitespace-nowrap">{cat}</span>
                 <span className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
                   isActive ? 'bg-white/15' : catIcon.bg
                 }`}>
@@ -554,17 +554,17 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
             const isWaiting = qa.status === 'waiting' || (!qa.answer && (!qa.additionalAnswers || qa.additionalAnswers.length === 0));
 
             return (
-              <div key={qa.id} className="py-5 first:pt-0">
+              <div key={qa.id} className="py-5.5 first:pt-0">
                 {/* Category tags */}
-                <div className="flex items-center gap-1.5 mb-2 text-xs text-slate-500">
-                  <span className="font-semibold">{qa.category}</span>
+                <div className="flex items-center gap-2 mb-2 text-xs sm:text-sm text-slate-500">
+                  <span className="font-bold text-[#1E3A5F] bg-[#EEF4FA] px-2.5 py-0.5 rounded-md">{qa.category}</span>
                   {qa.isSecret && (
-                    <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-semibold">
-                      <Lock className="w-3 h-3" />비밀
+                    <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold">
+                      <Lock className="w-3.5 h-3.5" />비밀
                     </span>
                   )}
                   {isWaiting && (
-                    <span className="text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded font-semibold">
+                    <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md font-bold">
                       답변 대기중
                     </span>
                   )}
@@ -576,15 +576,15 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
                     className="flex items-center gap-2 mb-3 cursor-pointer"
                     onClick={() => { setSelectedQA(qa); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   >
-                    <Lock className="w-4 h-4 text-slate-400 shrink-0" />
-                    <h3 className="text-base md:text-lg font-bold text-slate-400 leading-snug">
+                    <Lock className="w-4.5 h-4.5 text-slate-400 shrink-0" />
+                    <h3 className="text-base sm:text-lg font-bold text-slate-400 leading-snug">
                       비밀 상담 글입니다
                     </h3>
                   </div>
                 ) : (
                   <>
                     <h3
-                      className="text-base md:text-lg font-bold text-slate-900 leading-snug mb-3 cursor-pointer hover:text-blue-600 transition-colors"
+                      className="text-base sm:text-lg font-bold text-slate-900 leading-snug mb-3 cursor-pointer hover:text-blue-600 transition-colors"
                       onClick={() => { setSelectedQA(qa); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     >
                       {qa.question}
@@ -592,13 +592,13 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
 
                     {/* Primary answer */}
                     {qa.answer && (
-                      <div className="mb-3">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-xs font-bold text-blue-600">답변</span>
-                          {qa.lawyerAvatar && <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-4 h-4 rounded-full object-cover border border-slate-200" />}
-                          <span className="text-xs font-semibold text-slate-700">{qa.lawyerName}</span>
+                      <div className="mb-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">전문가 답변</span>
+                          {qa.lawyerAvatar && <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200" />}
+                          <span className="text-sm font-bold text-slate-800">{qa.lawyerName} 변호사</span>
                         </div>
-                        <p className="text-sm text-slate-600 leading-relaxed line-clamp-2">{qa.answer}</p>
+                        <p className="text-sm sm:text-base text-slate-700 leading-relaxed line-clamp-2">{qa.answer}</p>
                       </div>
                     )}
 
@@ -616,22 +616,22 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
                         {isExpanded && (
                           <div className="space-y-3 mb-2 pl-3 border-l-2 border-slate-200">
                             {others.map((other, idx) => (
-                              <div key={idx}>
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <span className="text-xs font-bold text-blue-600">답변</span>
-                                  {other.lawyerAvatar && <img src={other.lawyerAvatar} alt={other.lawyerName} className="w-4 h-4 rounded-full object-cover border border-slate-200" />}
-                                  <span className="text-xs font-semibold text-slate-700">{other.lawyerName}</span>
+                              <div key={idx} className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">답변</span>
+                                  {other.lawyerAvatar && <img src={other.lawyerAvatar} alt={other.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200" />}
+                                  <span className="text-sm font-bold text-slate-800">{other.lawyerName} 변호사</span>
                                 </div>
-                                <p className="text-sm text-slate-600 leading-relaxed line-clamp-2">{other.answer}</p>
+                                <p className="text-sm sm:text-base text-slate-700 leading-relaxed line-clamp-2">{other.answer}</p>
                               </div>
                             ))}
                           </div>
                         )}
                         <button
                           onClick={() => toggleExpand(qa.id)}
-                          className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer transition-colors"
+                          className="flex items-center gap-1 text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 cursor-pointer transition-colors"
                         >
-                          <div className="flex -space-x-1.5 mr-1">
+                          <div className="flex -space-x-1.5 mr-1.5">
                             {others.slice(0, 3).map((o, i) => (
                               o.lawyerAvatar && <img key={i} src={o.lawyerAvatar} alt={o.lawyerName} className="w-5 h-5 rounded-full border-2 border-white object-cover" />
                             ))}
@@ -645,8 +645,8 @@ export default function QnAView({ qas, setQas, onConsultRequest, initialCategory
                 )}
 
                 {/* Meta */}
-                <div className="flex items-center gap-3 text-xs text-slate-400">
-                  <span className="flex items-center gap-1"><Eye className="w-3 h-3" />조회수 {views.toLocaleString()}</span>
+                <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500 font-medium pt-1">
+                  <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-slate-400" />조회수 {views.toLocaleString()}</span>
                   {totalAnswers > 0 && <span>답변 {totalAnswers}개</span>}
                   <span className="ml-auto">{date} {isWaiting ? '질문 작성됨' : '답변 작성됨'}</span>
                 </div>

@@ -397,21 +397,21 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
             <div className="space-y-6 animate-fadeIn">
               {/* 전문 분야 상세 */}
               <div className="space-y-3">
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-brand" />
+                <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-brand" />
                   전문 분야
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {(lawyer.specialties || lawyer.fields).map(s => (
-                    <span key={s} className="bg-brand/5 border border-brand/15 text-brand text-sm px-3 py-1.5 rounded-lg font-bold">{s}</span>
+                    <span key={s} className="bg-brand/5 border border-brand/15 text-brand text-sm px-3.5 py-1.5 rounded-lg font-bold">{s}</span>
                   ))}
                 </div>
               </div>
 
               {/* 인증 뱃지 (전문 분야 바로 아래) */}
               <div className="space-y-3">
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-brand" />
+                <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-brand" />
                   인증 뱃지
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -420,11 +420,11 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                     { label: '회생법원 전담', sub: lawyer.courtJurisdiction || '', icon: '🏛️' },
                     { label: `수임 ${(lawyer.totalCases || 100)}건+`, sub: '인가 실적', icon: '🏆' },
                   ].map(badge => (
-                    <div key={badge.label} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs">
+                    <div key={badge.label} className="flex items-center gap-3.5 bg-white border border-slate-200 rounded-xl px-4.5 py-3.5 shadow-xs">
                       <span className="text-2xl">{badge.icon}</span>
                       <div>
-                        <div className="text-sm font-bold text-slate-900">{badge.label}</div>
-                        <div className="text-[12px] text-brand font-bold">{badge.sub}</div>
+                        <div className="text-base font-bold text-slate-900">{badge.label}</div>
+                        <div className="text-xs text-brand font-bold mt-0.5">{badge.sub}</div>
                       </div>
                     </div>
                   ))}
@@ -442,15 +442,15 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                 ].map(row => (
                   <div key={row.label} className="flex items-start gap-4 px-5 py-4">
                     <div className="flex items-center gap-2 w-24 shrink-0">
-                      <row.icon className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="text-sm text-slate-500 font-bold">{row.label}</span>
+                      <row.icon className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm text-slate-600 font-bold">{row.label}</span>
                     </div>
                     <div className="flex-1 text-left">
                       {row.list ? (
                         <div className="space-y-1">
                           {row.list.map((item, i) => (
                             <div key={i} className="text-sm text-slate-700 font-medium flex items-start gap-1.5">
-                              <ChevronRight className="w-3 h-3 text-brand mt-1 shrink-0" />
+                              <ChevronRight className="w-3.5 h-3.5 text-brand mt-1 shrink-0" />
                               <span>{item}</span>
                             </div>
                           ))}
@@ -470,29 +470,29 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
             <div className="space-y-5 animate-fadeIn">
               {/* 후기 안내 */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-                <p className="text-sm text-slate-600 font-medium">이용 후기 {reviewCount}건</p>
-                <p className="text-[11px] text-slate-400 mt-1">※ 후기는 실제 상담 이용자의 주관적 의견이며, 개별 사례마다 결과가 다를 수 있습니다.</p>
+                <p className="text-base text-slate-700 font-bold">이용 후기 {reviewCount}건</p>
+                <p className="text-xs text-slate-500 mt-1">※ 후기는 실제 상담 이용자의 주관적 의견이며, 개별 사례마다 결과가 다를 수 있습니다.</p>
               </div>
 
               {/* 후기 목록 */}
               <div className="space-y-3">
                 {mockReviews.map(review => (
-                  <div key={review.id} className="bg-white border border-slate-100 rounded-xl p-4 space-y-2 hover:shadow-sm transition-shadow">
+                  <div key={review.id} className="bg-white border border-slate-100 rounded-xl p-4.5 space-y-2.5 hover:shadow-sm transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
                           {review.author.charAt(0)}
                         </div>
                         <div>
-                          <span className="text-sm font-bold text-slate-700">{review.author}</span>
+                          <span className="text-base font-bold text-slate-800">{review.author}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="bg-brand/5 text-brand text-[11px] font-bold px-2 py-0.5 rounded">{review.tag}</span>
-                        <span className="text-[12px] text-slate-300">{review.date}</span>
+                        <span className="bg-brand/5 text-brand text-xs font-bold px-2.5 py-0.5 rounded">{review.tag}</span>
+                        <span className="text-xs text-slate-400">{review.date}</span>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-600 leading-relaxed pl-10 font-medium">{review.content}</p>
+                    <p className="text-sm sm:text-base text-slate-700 leading-relaxed pl-10 font-medium">{review.content}</p>
                   </div>
                 ))}
               </div>
@@ -500,8 +500,8 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
           )}
 
           {/* 서비스 한계 고지 */}
-          <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700 text-left">
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
+          <div className="mt-4 p-3.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-700 text-left">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               본 플랫폼은 이용자가 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 서비스입니다. 
               플랫폼은 특정 전문가를 추천·배정하지 않으며, 법률상담 및 위임계약은 이용자와 해당 전문가 사이에 직접 체결됩니다. 
               전문가의 상담 내용, 업무 수행 결과 또는 사건 결과를 보장하지 않습니다.

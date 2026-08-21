@@ -2160,48 +2160,48 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">01</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">이름 없이 1분이면<br />충분합니다</h3>
-                    <p className="text-base text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 부가 정보를 입력하면 채무 전문 변호사에게 무료 상담 가능합니다. 회원가입도 필요 없습니다.</p>
-                    <div className="flex flex-wrap gap-3 text-sm">
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><ShieldCheck className="w-4 h-4" />실명 불필요</span>
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Zap className="w-4 h-4" />1분 소요</span>
+                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 부가 정보를 입력하면 채무 전문 변호사에게 무료 상담 가능합니다. 회원가입도 필요 없습니다.</p>
+                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><ShieldCheck className="w-4.5 h-4.5" />실명 불필요</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Zap className="w-4.5 h-4.5" />1분 소요</span>
                     </div>
                     <button
                       onClick={() => { setRequestType('open'); setRequestStep(1); setActiveTab('request'); }}
-                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                     >
                       지금 무료로 체크하기 →
                     </button>
                   </div>
                   {/* 우측: 스마트폰 목업 (잘린 화면 스타일) */}
                   <div className="flex justify-center">
-                    <div className="w-[300px] sm:w-[320px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-                      <div className="bg-[#F8FAFC] p-3 space-y-2.5">
-                        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                    <div className="w-[300px] sm:w-[340px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+                      <div className="bg-[#F8FAFC] p-3.5 space-y-3">
+                        <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 bg-[#7264FF] rounded-lg flex items-center justify-center text-white text-xs font-bold">김</div>
-                            <span className="text-xs font-bold text-slate-700">my김변 AI</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-700">my김변 AI</span>
                           </div>
-                          <p className="text-xs text-slate-600 leading-relaxed">안녕하세요! 채무 현황을 정리해 드리겠습니다. 현재 총 채무 금액은 얼마인가요?</p>
+                          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">안녕하세요! 채무 현황을 정리해 드리겠습니다. 현재 총 채무 금액은 얼마인가요?</p>
                         </div>
                         <div className="flex justify-end">
-                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3 py-2 max-w-[70%]">
-                            <p className="text-xs text-white font-medium">5,000만원 정도입니다</p>
+                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3.5 py-2.5 max-w-[75%]">
+                            <p className="text-xs sm:text-sm text-white font-medium">5,000만원 정도입니다</p>
                           </div>
                         </div>
-                        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
-                          <p className="text-xs text-slate-600 leading-relaxed">확인했습니다. 월 소득은 얼마인가요? (세후 기준)</p>
+                        <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
+                          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">확인했습니다. 월 소득은 얼마인가요? (세후 기준)</p>
                         </div>
                         <div className="flex justify-end">
-                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3 py-2 max-w-[70%]">
-                            <p className="text-xs text-white font-medium">230만원입니다</p>
+                          <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3.5 py-2.5 max-w-[75%]">
+                            <p className="text-xs sm:text-sm text-white font-medium">230만원입니다</p>
                           </div>
                         </div>
-                        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
-                          <p className="text-xs text-slate-600 leading-relaxed">부양가족은 몇 명인가요?</p>
+                        <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100">
+                          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">부양가족은 몇 명인가요?</p>
                         </div>
                         <div className="mt-2 flex gap-2">
-                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-400">입력해 주세요...</div>
-                          <div className="w-8 h-8 bg-[#7264FF] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-3.5 h-3.5 text-white" /></div>
+                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-400">입력해 주세요...</div>
+                          <div className="w-8 h-8 bg-[#7264FF] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
                         </div>
                       </div>
                     </div>
@@ -2216,12 +2216,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
                   {/* 좌측: 변호사 선택 목업 (lg에서 좌측) */}
                   <div className="order-2 lg:order-1 flex justify-center">
-                    <div className="w-full max-w-[360px] bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+                    <div className="w-full max-w-[380px] bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
                       <div className="bg-[#1E3A5F] px-5 py-4 flex items-center gap-3">
-                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Users className="w-4 h-4 text-white" /></div>
+                        <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center"><Users className="w-4.5 h-4.5 text-white" /></div>
                         <div>
-                          <p className="text-white font-bold text-sm">변호사 선택하기</p>
-                          <p className="text-white/60 text-[10px]">원하는 변호사를 골라 한번에 요청</p>
+                          <p className="text-white font-bold text-base">변호사 선택하기</p>
+                          <p className="text-white/70 text-xs">원하는 변호사를 골라 한번에 요청</p>
                         </div>
                       </div>
                       <div className="p-4 space-y-2.5">
@@ -2236,21 +2236,21 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 ${lawyer.checked ? 'border-[#1E3A5F] bg-[#1E3A5F]' : 'border-slate-300'}`}>
                               {lawyer.checked && <Check className="w-3 h-3 text-white" />}
                             </div>
-                            <div className={`w-8 h-8 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0`}>{lawyer.name.charAt(0)}</div>
+                            <div className={`w-9 h-9 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{lawyer.name.charAt(0)}</div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-bold text-sm text-slate-900">{lawyer.name} 변호사</p>
-                              <p className="text-[10px] text-slate-500 font-medium">{lawyer.specialty} · {lawyer.cases}</p>
+                              <p className="font-bold text-base text-slate-900">{lawyer.name} 변호사</p>
+                              <p className="text-xs text-slate-500 font-medium">{lawyer.specialty} · {lawyer.cases}</p>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-500 shrink-0">★ 4.9</span>
+                            <span className="text-xs font-bold text-amber-500 shrink-0">★ 4.9</span>
                           </div>
                         ))}
-                        <div className="pt-1.5">
+                        <div className="pt-2">
                           <div className="flex items-center justify-between px-1 pb-2">
-                            <span className="text-xs font-bold text-[#1E3A5F]"><CheckCircle className="w-3.5 h-3.5 inline mr-1" />3명 선택됨</span>
-                            <span className="text-[10px] text-slate-400">최대 5명까지 선택 가능</span>
+                            <span className="text-sm font-bold text-[#1E3A5F]"><CheckCircle className="w-4 h-4 inline mr-1" />3명 선택됨</span>
+                            <span className="text-xs text-slate-400">최대 5명까지 선택 가능</span>
                           </div>
-                          <div className="bg-[#1E3A5F] text-white text-center py-3 rounded-xl text-sm font-bold cursor-default flex items-center justify-center gap-2">
-                            <Send className="w-4 h-4" />선택한 변호사에게 한번에 요청
+                          <div className="bg-[#1E3A5F] text-white text-center py-3.5 rounded-xl text-base font-bold cursor-default flex items-center justify-center gap-2">
+                            <Send className="w-4.5 h-4.5" />선택한 변호사에게 한번에 요청
                           </div>
                         </div>
                       </div>
@@ -2260,15 +2260,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="order-1 lg:order-2 space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">02</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">나에게 맞는 변호사를 골라<br />한번에 상담을 요청하세요</h3>
-                    <p className="text-base text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 전문가를 선택할 수 있습니다.</p>
-                    <div className="flex flex-wrap gap-3 text-sm">
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Users className="w-4 h-4" />다수 변호사 동시 선택</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Send className="w-4 h-4" />한번에 상담 요청</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ClipboardCheck className="w-4 h-4" />답변 비교 후 선택</span>
+                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 전문가를 선택할 수 있습니다.</p>
+                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Users className="w-4.5 h-4.5" />다수 변호사 동시 선택</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Send className="w-4.5 h-4.5" />한번에 상담 요청</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ClipboardCheck className="w-4.5 h-4.5" />답변 비교 후 선택</span>
                     </div>
                     <button
                       onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                     >
                       전문가 둘러보기 →
                     </button>
@@ -2285,43 +2285,43 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">03</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">여러 전문가의 답변을<br />직접 비교하세요</h3>
-                    <p className="text-base text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 전문가를 선택하세요.</p>
-                    <div className="flex flex-wrap gap-3 text-sm">
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4 h-4" />여러 변호사 답변 비교</span>
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Star className="w-4 h-4" />실제 의뢰인 후기</span>
-                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Heart className="w-4 h-4" />강요 없는 자율 선택</span>
+                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 전문가를 선택하세요.</p>
+                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4.5 h-4.5" />여러 변호사 답변 비교</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Star className="w-4.5 h-4.5" />실제 의뢰인 후기</span>
+                      <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Heart className="w-4.5 h-4.5" />강요 없는 자율 선택</span>
                     </div>
                     <button
                       onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                     >
                       전문가 프로필 둘러보기 →
                     </button>
                   </div>
                   {/* 우측: 변호사 상담 답변 목업 */}
                   <div className="flex justify-center">
-                    <div className="w-full max-w-[380px] space-y-3">
+                    <div className="w-full max-w-[390px] space-y-3">
                       <div className="bg-[#EEF4FA] rounded-xl px-4 py-3 text-center">
-                        <p className="text-xs font-bold text-[#1E3A5F]">📋 내 사건에 도착한 전문가 답변 <span className="text-[#0D9488]">3건</span></p>
+                        <p className="text-sm font-bold text-[#1E3A5F]">📋 내 사건에 도착한 전문가 답변 <span className="text-[#0D9488]">3건</span></p>
                       </div>
                       {[
                         { name: '김도현', specialty: '개인회생 전문', answer: '회생 신청이 적합합니다. 현재 소득 대비 채무 비율을 보면 월 38만원 수준의 변제 계획이 가능합니다.', time: '15분 전', color: 'bg-[#1E3A5F]' },
                         { name: '박서연', specialty: '파산·면책 전문', answer: '파산도 고려해 보실 수 있습니다. 면책 가능성이 높으며, 상세 상담 시 구체적 절차를 안내드리겠습니다.', time: '32분 전', color: 'bg-[#0D9488]' },
                         { name: '이정훈', specialty: '채무조정 전문', answer: '채무 구조를 보면 회생이 유리합니다. 금지명령을 통해 추심도 즉시 중단할 수 있습니다.', time: '1시간 전', color: 'bg-[#3B82F6]' },
                       ].map((lawyer, idx) => (
-                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2.5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-default">
+                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-default">
                           <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0`}>{lawyer.name.charAt(0)}</div>
+                            <div className={`w-10 h-10 ${lawyer.color} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>{lawyer.name.charAt(0)}</div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-bold text-sm text-slate-900">{lawyer.name} 변호사</p>
-                              <p className="text-[10px] text-slate-500 font-medium">{lawyer.specialty} · {lawyer.time}</p>
+                              <p className="font-bold text-base text-slate-900">{lawyer.name} 변호사</p>
+                              <p className="text-xs text-slate-500 font-medium">{lawyer.specialty} · {lawyer.time}</p>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-500">★ 4.9</span>
+                            <span className="text-xs font-bold text-amber-500">★ 4.9</span>
                           </div>
-                          <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 rounded-xl p-3">{lawyer.answer}</p>
+                          <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 rounded-xl p-3.5">{lawyer.answer}</p>
                           <div className="flex gap-2">
-                            <button className="flex-1 text-[11px] font-bold text-[#1E3A5F] bg-[#EEF4FA] py-2 rounded-lg cursor-default whitespace-nowrap">프로필 보기</button>
-                            <button className="flex-1 text-[11px] font-bold text-white bg-[#1E3A5F] py-2 rounded-lg cursor-default whitespace-nowrap">상담 시작</button>
+                            <button className="flex-1 text-xs font-bold text-[#1E3A5F] bg-[#EEF4FA] py-2.5 rounded-lg cursor-default whitespace-nowrap">프로필 보기</button>
+                            <button className="flex-1 text-xs font-bold text-white bg-[#1E3A5F] py-2.5 rounded-lg cursor-default whitespace-nowrap">상담 시작</button>
                           </div>
                         </div>
                       ))}
@@ -2338,44 +2338,44 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
                   {/* 좌측: 채팅 목업 (lg에서 좌측) */}
                   <div className="order-2 lg:order-1 flex justify-center">
-                    <div className="w-[300px] sm:w-[320px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+                    <div className="w-[300px] sm:w-[340px] rounded-b-3xl rounded-t-xl border-x-[6px] border-b-[6px] border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
                       <div className="bg-white flex flex-col">
                         {/* 채팅 헤더 */}
-                        <div className="bg-[#1E3A5F] px-4 py-3 flex items-center gap-3">
-                          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">김</div>
+                        <div className="bg-[#1E3A5F] px-4 py-3.5 flex items-center gap-3">
+                          <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">김</div>
                           <div>
-                            <p className="text-white text-xs font-bold">김도현 변호사</p>
-                            <p className="text-white/60 text-[10px]">프라이빗 상담방</p>
+                            <p className="text-white text-sm font-bold">김도현 변호사</p>
+                            <p className="text-white/70 text-xs">프라이빗 상담방</p>
                           </div>
                           <div className="ml-auto flex items-center gap-1">
-                            <Lock className="w-3 h-3 text-emerald-400" />
-                            <span className="text-[9px] text-emerald-400 font-bold">스텔스 보호중</span>
+                            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-xs text-emerald-400 font-bold">스텔스 보호중</span>
                           </div>
                         </div>
                         {/* 채팅 내용 */}
-                        <div className="flex-1 p-3 space-y-2.5 bg-[#F1F5F9]">
+                        <div className="flex-1 p-3.5 space-y-3 bg-[#F1F5F9]">
                           <div className="flex gap-2">
-                            <div className="w-6 h-6 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 mt-0.5">김</div>
-                            <div className="bg-white rounded-xl rounded-tl-md px-3 py-2 max-w-[80%] shadow-sm">
-                              <p className="text-xs text-slate-700 leading-relaxed">안녕하세요, 채무 현황 확인했습니다. 회생 신청이 가능하며 예상 변제액은 월 38만원입니다.</p>
+                            <div className="w-7 h-7 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">김</div>
+                            <div className="bg-white rounded-xl rounded-tl-md px-3.5 py-2.5 max-w-[80%] shadow-sm">
+                              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed">안녕하세요, 채무 현황 확인했습니다. 회생 신청이 가능하며 예상 변제액은 월 38만원입니다.</p>
                             </div>
                           </div>
                           <div className="flex justify-end">
-                            <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3 py-2 max-w-[75%]">
-                              <p className="text-xs text-white leading-relaxed">감사합니다. 신청 절차와 필요 서류가 궁금합니다.</p>
+                            <div className="bg-[#1E3A5F] rounded-xl rounded-br-md px-3.5 py-2.5 max-w-[75%]">
+                              <p className="text-xs sm:text-sm text-white leading-relaxed">감사합니다. 신청 절차와 필요 서류가 궁금합니다.</p>
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <div className="w-6 h-6 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 mt-0.5">김</div>
-                            <div className="bg-white rounded-xl rounded-tl-md px-3 py-2 max-w-[80%] shadow-sm">
-                              <p className="text-xs text-slate-700 leading-relaxed">네, 서류 목록을 정리해서 안내드리겠습니다. 궁금한 점은 언제든 편하게 질문해 주세요.</p>
+                            <div className="w-7 h-7 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">김</div>
+                            <div className="bg-white rounded-xl rounded-tl-md px-3.5 py-2.5 max-w-[80%] shadow-sm">
+                              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed">네, 서류 목록을 정리해서 안내드리겠습니다. 궁금한 점은 언제든 편하게 질문해 주세요.</p>
                             </div>
                           </div>
                         </div>
                         {/* 입력 영역 */}
-                        <div className="px-3 py-2 bg-white border-t border-slate-200 flex gap-2">
-                          <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-400">메시지 입력...</div>
-                          <div className="w-8 h-8 bg-[#1E3A5F] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-3.5 h-3.5 text-white" /></div>
+                        <div className="px-3 py-2.5 bg-white border-t border-slate-200 flex gap-2">
+                          <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-400">메시지 입력...</div>
+                          <div className="w-8 h-8 bg-[#1E3A5F] rounded-lg flex items-center justify-center shrink-0"><ArrowRight className="w-4 h-4 text-white" /></div>
                         </div>
                       </div>
                     </div>
@@ -2384,15 +2384,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="order-1 lg:order-2 space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">04</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">가명으로 안전하게<br />1:1 상담을 진행하세요</h3>
-                    <p className="text-base text-slate-600 leading-relaxed font-medium">선택한 전문가와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
-                    <div className="flex flex-wrap gap-3 text-sm">
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Lock className="w-4 h-4" />스텔스 가명 보호</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ShieldCheck className="w-4 h-4" />SSL/TLS 암호화</span>
-                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><MessageSquare className="w-4 h-4" />실시간 + 비실시간</span>
+                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">선택한 전문가와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
+                    <div className="flex flex-wrap gap-3 text-sm sm:text-base">
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Lock className="w-4.5 h-4.5" />스텔스 가명 보호</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ShieldCheck className="w-4.5 h-4.5" />SSL/TLS 암호화</span>
+                      <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><MessageSquare className="w-4.5 h-4.5" />실시간 + 비실시간</span>
                     </div>
                     <button
                       onClick={() => { setActiveTab('request'); setRequestType('open'); setRequestStep(1); }}
-                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
+                      className="inline-flex items-center gap-2 px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                     >
                       지금 시작하기 →
                     </button>
@@ -2426,10 +2426,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <section className="w-full py-10 md:py-16 bg-white border-b border-slate-200">
               <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center space-y-2 mb-8">
-                  <h3 className="text-xl md:text-2xl font-bold text-[#0f172a] tracking-tight">
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight">
                     실제 해결 사례
                   </h3>
-                  <p className="text-sm text-slate-500 font-medium">
+                  <p className="text-base text-slate-500 font-medium">
                     my김변을 통해 채무 문제를 해결한 실제 사례입니다
                   </p>
                 </div>
@@ -2474,8 +2474,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-1 rounded-lg border border-[#1E3A5F]/10">{item.category}</span>
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${item.statusColor}`}>{item.status}</span>
                       </div>
-                      <h4 className="font-bold text-sm text-slate-900 leading-snug">{item.title}</h4>
-                      <div className="space-y-2 bg-slate-50 rounded-xl p-3">
+                      <h4 className="font-bold text-base text-slate-900 leading-snug">{item.title}</h4>
+                      <div className="space-y-2 bg-slate-50 rounded-xl p-3.5">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-slate-500 font-medium">총 채무</span>
                           <span className="font-bold text-slate-900">{item.totalDebt}</span>
@@ -2490,10 +2490,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         </div>
                       </div>
                       <div className="flex items-center gap-2 pt-1">
-                        <div className="w-7 h-7 rounded-full bg-[#1E3A5F] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-[#1E3A5F] flex items-center justify-center text-white text-xs font-bold shrink-0">
                           {item.lawyerName.charAt(0)}
                         </div>
-                        <span className="text-xs font-semibold text-slate-600">{item.lawyerName} 담당</span>
+                        <span className="text-sm font-semibold text-slate-700">{item.lawyerName} 담당</span>
                       </div>
                     </div>
                   ))}
@@ -2506,7 +2506,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       setRequestStep(1);
                       setActiveTab('request');
                     }}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98]"
+                    className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                   >
                     나도 무료로 채무 상황 체크하기 →
                   </button>
@@ -2523,13 +2523,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 {/* 섹션 헤더 */}
                 <div className="text-center space-y-2.5 md:space-y-3 mb-10 md:mb-14">
                   <div className="inline-flex items-center gap-2 bg-[#EEF4FA] border border-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-4 py-1.5 rounded-full">
-                    <HeartHandshake className="w-3.5 h-3.5" />
+                    <HeartHandshake className="w-4 h-4" />
                     <span>STEP 1 · 관심 있는 채무 상황 알아보기</span>
                   </div>
-                  <h3 className="text-xl md:text-3xl font-bold text-[#0f172a] tracking-tight leading-tight">
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-tight">
                     관심 있는 채무 상황을 선택해 주세요
                   </h3>
-                  <p className="text-sm md:text-base text-slate-500 font-medium max-w-lg mx-auto leading-relaxed">
+                  <p className="text-base sm:text-lg text-slate-500 font-medium max-w-lg mx-auto leading-relaxed">
                     각 상황에서 일반적으로 확인할 사항과 관련 제도의 <strong className="text-slate-700">기본 정보</strong>를 살펴볼 수 있습니다
                   </p>
                 </div>
@@ -2542,10 +2542,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       onClick={() => handleCategoryClick(item.id)}
                       className="flex flex-col items-center gap-2.5 md:gap-3 cursor-pointer group"
                     >
-                      <div className="w-14 h-14 md:w-[72px] md:h-[72px] rounded-full bg-[#F1F5F9] group-hover:bg-[#E2E8F0] flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
-                        {renderRemedyIcon(item.iconName, 'w-6 h-6 md:w-7 md:h-7 text-[#475569] stroke-[1.5]')}
+                      <div className="w-14 h-14 md:w-[76px] md:h-[76px] rounded-full bg-[#F1F5F9] group-hover:bg-[#E2E8F0] flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
+                        {renderRemedyIcon(item.iconName, 'w-6 h-6 md:w-8 md:h-8 text-[#475569] stroke-[1.5]')}
                       </div>
-                      <span className="text-xs md:text-sm font-bold text-[#334155] group-hover:text-[#0f172a] text-center leading-tight transition-colors">
+                      <span className="text-sm md:text-base font-bold text-[#334155] group-hover:text-[#0f172a] text-center leading-tight transition-colors">
                         {item.title}
                       </span>
                     </div>
@@ -2554,7 +2554,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                 {/* 하단 안내 */}
                 <div className="text-center pt-8 md:pt-10">
-                  <p className="text-sm text-slate-500 font-medium">
+                  <p className="text-base text-slate-600 font-medium">
                     ✦ 상황을 선택하면 변호사 검토 요청까지 <span className="text-[#3B82F6] font-bold">3분</span>이면 완료됩니다
                   </p>
                 </div>
@@ -2573,31 +2573,31 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   onMouseLeave={() => setShowcaseHovered(false)}
                 >
                   <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-row items-stretch h-[140px] md:h-[220px]">
+                    <div className="relative bg-[#2B3E50] rounded-2xl overflow-hidden shadow-xl flex flex-row items-stretch h-[150px] md:h-[230px]">
                       
                       {/* Left: Text Info & CTA */}
                       <div className="flex-1 p-4 md:p-7 lg:p-8 flex flex-col justify-center relative z-20 min-w-0">
                         <div className="mb-1 md:mb-2">
-                          <span className="inline-block bg-white/10 text-white/80 text-[8px] md:text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded-sm uppercase tracking-wider mb-1 md:mb-2">
+                          <span className="inline-block bg-white/10 text-white/90 text-xs font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider mb-1 md:mb-2">
                             프리미엄 광고
                           </span>
-                          <h3 className="text-sm md:text-xl font-bold text-white mb-0.5 md:mb-1 leading-tight truncate">
+                          <h3 className="text-base md:text-2xl font-bold text-white mb-0.5 md:mb-1 leading-tight truncate">
                             {banner.title}
                           </h3>
-                          <div className="flex items-center gap-1.5 md:gap-2">
-                            <span className="text-xs md:text-lg font-black text-white">{banner.lawyerName}</span>
-                            <span className="text-[10px] md:text-sm text-slate-300 font-medium truncate">{banner.subtitle}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm md:text-xl font-black text-white">{banner.lawyerName}</span>
+                            <span className="text-xs md:text-base text-slate-300 font-medium truncate">{banner.subtitle}</span>
                           </div>
                         </div>
                         
-                        <p className="hidden md:block text-sm text-slate-300/90 font-light italic mb-4 border-l-3 border-amber-500 pl-3 break-keep">
+                        <p className="hidden md:block text-base text-slate-300/90 font-light italic mb-4 border-l-3 border-amber-500 pl-3 break-keep">
                           "{banner.tagline}"
                         </p>
                         
                         <div>
                           <button
                             onClick={() => handleOpenLawyerProfile(banner.lawyerId)}
-                            className="inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-3 md:px-6 py-1.5 md:py-2.5 rounded-md md:rounded-lg text-[10px] md:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-4 md:px-6 py-2 md:py-2.5 rounded-lg text-xs md:text-base transition-all shadow-md hover:shadow-lg cursor-pointer"
                           >
                             <span>프로필 보기 →</span>
                           </button>
@@ -2605,7 +2605,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       </div>
 
                       {/* Right: Avatar */}
-                      <div className="relative w-[120px] md:w-[200px] lg:w-[240px] overflow-hidden shrink-0">
+                      <div className="relative w-[130px] md:w-[210px] lg:w-[250px] overflow-hidden shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-l from-[#2B3E50]/20 via-[#2B3E50]/50 to-transparent z-10" />
                         <img
                           src={banner.lawyerAvatar}
@@ -2619,26 +2619,26 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => setShowcasePage((prev) => (prev === 0 ? totalPages - 1 : prev - 1))}
-                            className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
+                            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
                           >
                             <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                           </button>
                           <button
                             onClick={() => setShowcasePage((prev) => (prev + 1) % totalPages)}
-                            className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
+                            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-sm border border-white/10"
                           >
                             <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                           </button>
                         </div>
-                        <div className="bg-black/40 px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[11px] font-medium text-white/90 backdrop-blur-sm border border-white/10">
+                        <div className="bg-black/40 px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium text-white/90 backdrop-blur-sm border border-white/10">
                           {showcasePage + 1} / {totalPages}
                         </div>
                       </div>
                     </div>
                     
-                    <div className="mt-5 flex items-center justify-center gap-1.5">
-                      <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold">AD</span>
-                      <p className="text-[11px] text-slate-400">
+                    <div className="mt-5 flex items-center justify-center gap-2">
+                      <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold">AD</span>
+                      <p className="text-xs text-slate-500">
                         본 영역은 변호사가 직접 등록한 유료 광고이며, 랜덤 셔플 정렬로 운영됩니다.
                       </p>
                     </div>
@@ -2651,7 +2651,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <section className="w-full py-8 md:py-14 bg-white border-b border-slate-200">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="space-y-6 text-center">
-              <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
                 채무조정 방법 알아보기
               </h3>
 
@@ -2668,10 +2668,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     onClick={() => setActiveSolutionType(item.type)}
                     className="flex flex-col items-center gap-2.5 py-4 md:py-5 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 transition-all cursor-pointer active:scale-[0.97] group"
                   >
-                    <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white flex items-center justify-center text-xl md:text-2xl shadow-sm group-hover:scale-110 transition-transform duration-200">
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white flex items-center justify-center text-2xl md:text-3xl shadow-sm group-hover:scale-110 transition-transform duration-200">
                       {item.icon}
                     </div>
-                    <span className="text-xs md:text-sm font-bold text-slate-700">{item.title}</span>
+                    <span className="text-sm md:text-base font-bold text-slate-700">{item.title}</span>
                   </button>
                 ))}
               </div>
@@ -2685,13 +2685,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="space-y-4 text-left">
               <div className="flex items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-lg text-[#0f172a] flex items-center gap-2">
+                <h3 className="font-bold text-xl text-[#0f172a] flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-[#1E3A5F]" />
                   <span>실제 이용 후기</span>
                 </h3>
                 <button
                   onClick={() => { setActiveTab('reviews'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-sm text-[#3B82F6] font-bold hover:underline shrink-0"
+                  className="text-sm sm:text-base text-[#3B82F6] font-bold hover:underline shrink-0"
                 >
                   후기 더 보기 →
                 </button>
@@ -2729,29 +2729,29 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         {/* 2벌 복제로 seamless loop */}
                         {[0, 1].map((setIdx) =>
                           reviewItems.map((rev) => (
-                            <div key={`${setIdx}-${rev.id}`} className="w-[320px] sm:w-[350px] shrink-0">
-                              <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 h-full">
+                            <div key={`${setIdx}-${rev.id}`} className="w-[330px] sm:w-[370px] shrink-0">
+                              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 h-full">
                                 <div className="space-y-3 text-left">
-                                  <div className="flex items-center gap-1 mb-2">
-                                    {[1, 2, 3, 4, 5].map(i => <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />)}
-                                    <span className="text-[10px] font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2 py-0.5 rounded-md ml-2">{rev.tags?.[0] || '개인회생'}</span>
+                                  <div className="flex items-center gap-1.5 mb-2">
+                                    {[1, 2, 3, 4, 5].map(i => <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
+                                    <span className="text-xs font-bold bg-[#EEF4FA] text-[#1E3A5F] px-2.5 py-0.5 rounded-md ml-2">{rev.tags?.[0] || '개인회생'}</span>
                                   </div>
-                                  <h4 className="font-semibold text-sm sm:text-base text-slate-900 leading-snug line-clamp-1">
+                                  <h4 className="font-bold text-base text-slate-900 leading-snug line-clamp-1">
                                     {rev.title}
                                   </h4>
-                                  <p className="text-[13px] text-slate-600 leading-relaxed line-clamp-3">
+                                  <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
                                     "{rev.content}"
                                   </p>
                                 </div>
                                 <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2">
-                                  <div className="flex items-center justify-between text-[12px]">
+                                  <div className="flex items-center justify-between text-sm">
                                     <span className="text-slate-500 font-semibold">{rev.author}</span>
                                     <div className="flex items-center gap-1.5">
-                                      <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" />
-                                      <span className="font-semibold text-slate-600">{rev.lawyerName}</span>
+                                      <img src={rev.lawyerAvatar} alt={rev.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200 bg-slate-100 shrink-0" />
+                                      <span className="font-semibold text-slate-700">{rev.lawyerName}</span>
                                     </div>
                                   </div>
-                                  <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1"><ShieldCheck className="w-3 h-3" />이용 인증</span>
+                                  <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" />이용 인증</span>
                                 </div>
                               </div>
                             </div>
@@ -2768,11 +2768,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <div className="w-full bg-[#F8FAFC] border-y border-slate-200 mt-6">
               <div className="max-w-5xl mx-auto px-4 py-4">
                 <div className="flex items-center justify-center gap-6 sm:gap-10 text-center">
-                  <div><p className="text-base sm:text-lg font-extrabold text-[#0f172a]">4.8<span className="text-sm text-slate-400">/5.0</span></p><p className="text-[11px] text-slate-500 font-medium">평균 만족도</p></div>
+                  <div><p className="text-lg sm:text-xl font-extrabold text-[#0f172a]">4.8<span className="text-sm text-slate-400">/5.0</span></p><p className="text-xs sm:text-sm text-slate-500 font-medium">평균 만족도</p></div>
                   <div className="w-px h-8 bg-slate-200" />
-                  <div><p className="text-base sm:text-lg font-extrabold text-[#0f172a]">72<span className="text-sm text-slate-400">%</span></p><p className="text-[11px] text-slate-500 font-medium">평균 조정 비율</p></div>
+                  <div><p className="text-lg sm:text-xl font-extrabold text-[#0f172a]">72<span className="text-sm text-slate-400">%</span></p><p className="text-xs sm:text-sm text-slate-500 font-medium">평균 조정 비율</p></div>
                   <div className="w-px h-8 bg-slate-200" />
-                  <div><p className="text-base sm:text-lg font-extrabold text-[#0f172a]">8,400<span className="text-sm text-slate-400">+</span></p><p className="text-[11px] text-slate-500 font-medium">누적 이용자</p></div>
+                  <div><p className="text-lg sm:text-xl font-extrabold text-[#0f172a]">8,400<span className="text-sm text-slate-400">+</span></p><p className="text-xs sm:text-sm text-slate-500 font-medium">누적 이용자</p></div>
                 </div>
                 {/* <!-- mock --> */}
               </div>
@@ -2785,11 +2785,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="space-y-4 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-left">
-                <h3 className="font-bold text-lg text-[#0f172a] flex items-center gap-2">
+                <h3 className="font-bold text-xl text-[#0f172a] flex items-center gap-2">
                   <HelpCircle className="w-5 h-5 text-[#1E3A5F]" />
                   <span>실시간 고민 해결 상담사례</span>
                 </h3>
-                <span className="text-sm text-slate-500">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
+                <span className="text-sm sm:text-base text-slate-500">도산 전문 변호사들이 직접 해결한 최근 고민 사례들입니다</span>
               </div>
 
               <div className="space-y-3.5">
@@ -2814,18 +2814,18 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         >
                           <div className="space-y-2 text-left">
                             <div className="flex items-center gap-2.5">
-                              <span className="bg-[#EEF4FA] text-[#1E3A5F] text-[12px] font-semibold px-2.5 py-0.5 rounded-md">
+                              <span className="bg-[#EEF4FA] text-[#1E3A5F] text-xs font-semibold px-2.5 py-0.5 rounded-md">
                                 {qa.category}
                               </span>
-                              <span className="text-[12px] text-slate-500 font-semibold">
+                              <span className="text-xs text-slate-500 font-semibold">
                                 {qa.author}
                               </span>
                               <div className="flex items-center gap-1.5 ml-auto">
-                                <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200 dark:border-slate-800 bg-slate-100 shrink-0" />
-                                <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-400">{qa.lawyerName} 답변</span>
+                                <img src={qa.lawyerAvatar} alt={qa.lawyerName} className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-800 bg-slate-100 shrink-0" />
+                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{qa.lawyerName} 답변</span>
                               </div>
                             </div>
-                            <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-slate-200 pr-4 leading-snug">
+                            <h4 className="font-bold text-base sm:text-lg text-slate-900 dark:text-slate-100 pr-4 leading-snug">
                               Q. {qa.question}
                             </h4>
                           </div>
@@ -2842,14 +2842,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                               <img
                                 src={qa.lawyerAvatar}
                                 alt={qa.lawyerName}
-                                className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-105 shrink-0"
+                                className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-105 shrink-0"
                               />
                               <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-sm text-slate-900 dark:text-white">{qa.lawyerName}</span>
-                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[12px] font-semibold px-2 py-0.5 rounded-md">전문가 답변</span>
+                                  <span className="font-bold text-base text-slate-900 dark:text-white">{qa.lawyerName}</span>
+                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold px-2 py-0.5 rounded-md">전문가 답변</span>
                                 </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
+                                <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
                                   {qa.answer}
                                 </p>
                               </div>
@@ -2864,7 +2864,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   setRequestStep(3); // Go directly to submit step
                                   setActiveTab('request');
                                 }}
-                                className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-4 py-2 rounded-lg text-[12px] transition-colors"
+                                className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer"
                               >
                                 이 변호사에게 유사건 즉시 상담 신청
                               </button>
@@ -2883,7 +2883,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setActiveTab('qna');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg text-sm transition-all shadow-sm group cursor-pointer active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-sm sm:text-base transition-all shadow-sm group cursor-pointer active:scale-[0.98]"
                 >
                   <span>⚖️ 실시간 고민 해결 상담사례 전체보기 (더보기)</span>
                   <span className="transition-transform group-hover:translate-x-1">→</span>
@@ -3010,7 +3010,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       {art.badge && (
-                        <span className={`absolute top-3.5 left-3.5 text-[12px] font-semibold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
+                        <span className={`absolute top-3.5 left-3.5 text-xs font-bold px-2.5 py-0.5 rounded-full text-white shadow-sm ${
                           art.badge === 'HOT' ? 'bg-[#0D9488]' :
                           art.badge === 'NEW' ? 'bg-[#1E3A5F]' : 'bg-[#0F766E]'
                         }`}>
@@ -3021,15 +3021,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
                           <span>{art.category}</span>
                           <span>•</span>
                           <span>조회 {art.views}</span>
                         </div>
-                        <h4 className="font-semibold text-sm sm:text-base text-slate-900 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-[#3B82F6] transition-colors text-left">
+                        <h4 className="font-bold text-base text-slate-900 pr-2 leading-snug line-clamp-2 min-h-[38px] group-hover:text-[#3B82F6] transition-colors text-left">
                           {art.title}
                         </h4>
-                        <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 text-left">
                           {art.excerpt}
                         </p>
                       </div>
@@ -3041,7 +3041,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                             alt={art.authorName} 
                             className="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" 
                           />
-                          <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-400">By {art.authorName}</span>
+                          <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">By {art.authorName}</span>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 transition-transform group-hover:translate-x-1" />
                       </div>
