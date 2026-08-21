@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, ClipboardList, ArrowRight, Search, Info } from 'lucide-react';
+import { X, MessageSquare, BookOpen, ArrowRight } from 'lucide-react';
 
 interface RemedyInfo {
   id: string;
@@ -19,9 +19,10 @@ interface RemedyModalProps {
   renderRemedyIcon: (iconName: string, className: string) => React.ReactNode;
   onClose: () => void;
   onApply: (categoryId: string) => void;
+  onViewCases: (categoryId: string) => void;
 }
 
-export default function RemedyModal({ activeRemedyCategory, remedyData, renderRemedyIcon, onClose, onApply }: RemedyModalProps) {
+export default function RemedyModal({ activeRemedyCategory, remedyData, renderRemedyIcon, onClose, onApply, onViewCases }: RemedyModalProps) {
   const data = remedyData[activeRemedyCategory];
   if (!data) return null;
 
@@ -37,90 +38,71 @@ export default function RemedyModal({ activeRemedyCategory, remedyData, renderRe
   };
   const iconColor = colorMap[activeRemedyCategory] || 'bg-indigo-50 text-indigo-500 dark:bg-indigo-950/20';
 
+  const accentColorMap: Record<string, string> = {
+    card_loan: 'from-rose-500 to-rose-600',
+    bank_loan: 'from-indigo-500 to-indigo-600',
+    high_interest: 'from-amber-500 to-amber-600',
+    guarantee: 'from-purple-500 to-purple-600',
+    investment: 'from-orange-500 to-orange-600',
+    freelancer: 'from-emerald-500 to-emerald-600',
+    seizure: 'from-rose-500 to-rose-600',
+    tax_delinquency: 'from-amber-500 to-amber-600',
+  };
+  const accentGradient = accentColorMap[activeRemedyCategory] || 'from-indigo-500 to-indigo-600';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative max-w-2xl w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+      <div className="relative max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col">
         
         {/* Header */}
-        <div className="relative p-6 md:p-8 text-left border-b border-slate-100 dark:border-slate-800">
+        <div className="relative p-6 md:p-8 text-center border-b border-slate-100 dark:border-slate-800">
           <button 
             onClick={onClose}
-            className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors"
+            className="absolute top-5 right-5 p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
           
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconColor}`}>
-              {renderRemedyIcon(data.iconName, "w-6 h-6")}
+          <div className="flex flex-col items-center gap-3">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${iconColor}`}>
+              {renderRemedyIcon(data.iconName, "w-7 h-7")}
             </div>
-            <div className="space-y-0.5">
-              <span className="inline-block text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                {data.badgeText}
-              </span>
-              <h4 className="text-xl font-semibold text-slate-900 dark:text-white">
-                {data.title} 시 확인할 사항
+            <div className="space-y-1">
+              <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+                {data.title}
               </h4>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Body */}
-        <div className="p-6 md:p-8 space-y-5 overflow-y-auto text-left">
-          {/* 면책 고지 */}
-          <div className="bg-blue-50/60 dark:bg-blue-950/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/20">
-            <div className="flex gap-2">
-              <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
-                이 화면은 {data.title}와 관련하여 일반적으로 확인할 정보를 안내합니다. 특정 절차의 이용 가능 여부나 적합성을 판단하지 않습니다.
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                어떤 도움이 필요하신가요?
               </p>
             </div>
           </div>
-
-          {/* 관련 제도 알아보기 */}
-          <div className="bg-slate-50 dark:bg-slate-950/30 p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
-            <h5 className="font-bold text-sm text-brand dark:text-brand-light flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              <span>📋 {data.remedyTitle}</span>
-            </h5>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium whitespace-pre-line">
-              {data.remedyDesc}
-            </p>
-          </div>
-
         </div>
 
-        {/* Footer - CTA 분리 */}
-        <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            <button 
-              onClick={onClose}
-              className="px-5 py-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-            >
-              닫기
-            </button>
-            <button 
-              onClick={() => onApply(activeRemedyCategory)}
-              className="flex-1 sm:flex-none px-5 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <ClipboardList className="w-3.5 h-3.5" />
-              <span>내 채무현황 정리하기</span>
-            </button>
-            <button 
-              onClick={onClose}
-              className="flex-1 sm:flex-none px-5 py-3 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white rounded-2xl text-xs font-bold shadow-sm hover:shadow-brand-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>전문가 직접 검색하기</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2.5 text-center leading-relaxed">
-            플랫폼은 선택한 채무유형을 분석하여 특정 전문가를 추천하지 않습니다.
-          </p>
+        {/* CTA Buttons */}
+        <div className="p-6 md:p-8 space-y-3">
+          {/* 변호사 상담 요청하기 */}
+          <button 
+            onClick={() => onApply(activeRemedyCategory)}
+            className={`w-full px-5 py-4 bg-gradient-to-r ${accentGradient} hover:opacity-90 text-white rounded-2xl text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 whitespace-nowrap`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>변호사 상담 요청하기</span>
+            <ArrowRight className="w-4 h-4 ml-1" />
+          </button>
+
+          {/* 비슷한 사례 보기 */}
+          <button 
+            onClick={() => onViewCases(activeRemedyCategory)}
+            className="w-full px-5 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-2xl text-sm font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 whitespace-nowrap"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>비슷한 사례 보기</span>
+            <ArrowRight className="w-4 h-4 ml-1 text-slate-400" />
+          </button>
         </div>
 
       </div>
     </div>
   );
 }
+

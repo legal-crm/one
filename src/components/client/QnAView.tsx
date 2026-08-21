@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, X, AlertTriangle, Eye, ChevronDown, ChevronUp, ArrowLeft, Star, Plus, Lock, Send, MessageSquare, HelpCircle, TrendingDown, Banknote, Briefcase, Users, Home, CreditCard, Store, GraduationCap, ShieldBan, FileCheck, Hammer, Clock, BarChart3, LayoutGrid } from 'lucide-react';
 import { ClientQA } from '../../types';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ interface QnAViewProps {
   qas: ClientQA[];
   setQas: React.Dispatch<React.SetStateAction<ClientQA[]>>;
   onConsultRequest: (title: string, content: string) => void;
+  initialCategory?: string;
 }
 
 // Simple session-based author ID for secret post ownership check
@@ -49,9 +50,9 @@ const getSessionAuthorId = (): string => {
   return id;
 };
 
-export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps) {
+export default function QnAView({ qas, setQas, onConsultRequest, initialCategory }: QnAViewProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('전체');
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategory || '전체');
   const [page, setPage] = useState<number>(1);
   const [sortBy, setSortBy] = useState<'accuracy' | 'latest' | 'question' | 'views'>('latest');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -65,6 +66,14 @@ export default function QnAView({ qas, setQas, onConsultRequest }: QnAViewProps)
   const [newContent, setNewContent] = useState('');
   const [newAuthor, setNewAuthor] = useState('');
   const [newIsSecret, setNewIsSecret] = useState(false);
+
+  // initialCategory 변경 시 동기화
+  useEffect(() => {
+    if (initialCategory) {
+      setCategoryFilter(initialCategory);
+      setPage(1);
+    }
+  }, [initialCategory]);
 
   const currentAuthorId = useMemo(() => getSessionAuthorId(), []);
 

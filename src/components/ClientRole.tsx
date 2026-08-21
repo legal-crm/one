@@ -1066,6 +1066,8 @@ export default function ClientRole({
   const [useSafeNumber050, setUseSafeNumber050] = useState<boolean>(true);
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const [activeRemedyCategory, setActiveRemedyCategory] = useState<string | null>(null);
+  const [initialQnACategory, setInitialQnACategory] = useState<string | null>(null);
+  const [chatbotAnnouncement, setChatbotAnnouncement] = useState<string | null>(null);
   const [activeSolutionType, setActiveSolutionType] = useState<SolutionType | null>(null);
   const [entryCategory, setEntryCategory] = useState<{ type: 'debt_type' | 'solution' | 'general'; id: string; label: string } | null>(null);
 
@@ -1205,9 +1207,30 @@ export default function ClientRole({
     // Close remedy modal
     setActiveRemedyCategory(null);
 
+    // 챗봇 상단 안내 메시지 설정
+    setChatbotAnnouncement('정확한 상담을 위해서 채무 내용을 정리해야 합니다.\n실명과 전화번호는 노출되지 않습니다.');
+
     // Move to next step of request
     setRequestStep(2);
     setActiveTab('request');
+  };
+
+  // 비슷한 사례 보기 → QnA 탭으로 이동 (카테고리 필터 적용)
+  const handleViewSimilarCases = (categoryId: string) => {
+    const qnaCategoryMap: Record<string, string> = {
+      card_loan: '추심 차단',
+      bank_loan: '최근 대출 회생',
+      high_interest: '추심 차단',
+      guarantee: '개인파산 면책',
+      investment: '코인/주식 손실',
+      freelancer: '프리랜서 회생',
+      seizure: '급여 압류',
+      tax_delinquency: '전체',
+    };
+    setInitialQnACategory(qnaCategoryMap[categoryId] || '전체');
+    setActiveRemedyCategory(null);
+    setActiveTab('qna');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Pre-fill request form from review card
@@ -3196,7 +3219,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
             {/* TAB: LIVE Q&A CASE STUDIES */}
-            {activeTab === 'qna' && (<QnAView qas={qas} setQas={setQas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); setRequestStep(3); setActiveTab('request'); }} />)}
+            {activeTab === 'qna' && (<QnAView qas={qas} setQas={setQas} onConsultRequest={(t,c) => { setTitle(t); setContent(c); setRequestStep(3); setActiveTab('request'); }} initialCategory={initialQnACategory || undefined} />)}
 
             {/* TAB 1-B: NOTICES TAB */}
             {activeTab === 'notices' && (<NoticesView notices={notices} selectedNoticeId={selectedNoticeId} onSetSelectedNoticeId={setSelectedNoticeId} onGoHome={() => setActiveTab('landing')} />)}
@@ -3217,6 +3240,18 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     ℹ️ 본 기능은 채무·소득·지출 정보를 정리하는 도구이며, 법률 자문을 제공하지 않습니다. 법률적 판단은 전문가 상담이 필요합니다.
                   </p>
                 </div>
+                {/* 동적 안내 메시지 (RemedyModal에서 진입 시) */}
+                {chatbotAnnouncement && (
+                  <div className="px-4 py-3 bg-emerald-950/40 border-b border-emerald-800/30 shrink-0 flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-emerald-300 font-bold leading-relaxed whitespace-pre-line flex-1">
+                      {chatbotAnnouncement}
+                    </p>
+                    <button onClick={() => setChatbotAnnouncement(null)} className="text-emerald-500 hover:text-emerald-300 shrink-0 p-0.5">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex-1 overflow-hidden">
                 <AIRehabChatbotV2
                   isOpen={true}
@@ -3332,7 +3367,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (
         <React.Suspense fallback={null}>
-          <RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} />
+          <RemedyModal activeRemedyCategory={activeRemedyCategory} remedyData={remedyData} renderRemedyIcon={renderRemedyIcon} onClose={() => setActiveRemedyCategory(null)} onApply={handleApplyRemedy} onViewCases={handleViewSimilarCases} />
         </React.Suspense>
       )}
       {activeSolutionType && (
