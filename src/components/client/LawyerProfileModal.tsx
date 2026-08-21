@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, MessageSquare, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye, Copy, Check, ExternalLink, Navigation, Home } from 'lucide-react';
+import { X, MapPin, Award, BookOpen, Briefcase, Star, TrendingDown, Scale, Shield, ChevronRight, Phone, CheckCircle, Clock, Users, GraduationCap, Building, Heart, FileText, Paperclip, Download, Eye, Copy, Check, ExternalLink, Navigation, Home } from 'lucide-react';
 import type { User, LawFirm } from '../../types';
 import { mockLawFirms } from '../../data';
 
@@ -512,18 +512,10 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
         {/* ═══════════════════════════════════════
             하단 고정 CTA 바
         ═══════════════════════════════════════ */}
-        <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-5 sm:px-7 py-4 flex items-center justify-between gap-4 shrink-0">
-          <div className="hidden sm:flex items-center gap-3">
-            <button className="w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center text-slate-500 hover:text-[#1E3A5F] hover:border-[#1E3A5F]/30 transition-colors cursor-pointer">
-              <Phone className="w-4 h-4" />
-            </button>
-            <button className="w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center text-slate-500 hover:text-[#1E3A5F] hover:border-[#1E3A5F]/30 transition-colors cursor-pointer">
-              <MessageSquare className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-5 sm:px-7 py-4 flex items-center justify-end gap-4 shrink-0">
           <button
             onClick={() => onConsult(lawyer.id)}
-            className="flex-1 sm:flex-none bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-md cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98]"
+            className="w-full sm:w-auto bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-md cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98]"
           >
             <span>이 전문가를 직접 선택하여 상담 요청</span>
             <ChevronRight className="w-4 h-4" />
