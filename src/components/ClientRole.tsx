@@ -3048,11 +3048,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <ShieldCheck className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight leading-snug">
-                  잘못된 선택을 하기 전에,<br />먼저 확인하세요
+                  기록이나 노출 걱정 없이,<br />안전하게 내 채무 상황부터 진단해 보세요
                 </h3>
-                <p className="text-sm text-slate-300 font-medium max-w-md mx-auto">
-                  소요시간 1분 · 회원가입 불필요 · 결과 즉시 확인
-                </p>
                 <button
                   onClick={() => {
                     setRequestType('open');

@@ -1192,12 +1192,12 @@ export default function LandingPage({
             viewport={{ once: true }}
             transition={{ duration: 0.7 }}
           >
-            <AlertTriangle className="w-10 h-10 text-amber-400/60 mx-auto mb-6" />
+            <Shield className="w-10 h-10 text-indigo-400/80 mx-auto mb-6" />
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 leading-tight">
-              잘못된 선택을 하기 전에,
+              기록이나 노출 걱정 없이,
               <br />
               <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-violet-400 bg-clip-text text-transparent">
-                먼저 확인하세요
+                안전하게 내 채무 상황부터 진단해 보세요
               </span>
             </h2>
 
@@ -1222,10 +1222,6 @@ export default function LandingPage({
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
             </motion.button>
-
-            <p className="text-base text-slate-600 tracking-wide">
-              소요시간 1분 · 회원가입 불필요 · 결과 즉시 확인
-            </p>
           </motion.div>
         </div>
       </AnimatedSection>
