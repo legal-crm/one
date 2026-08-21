@@ -3997,12 +3997,15 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const content = (
         <>
             <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className={`fixed inset-0 z-[9999] flex items-center justify-center ${disablePortal ? '' : 'p-4'} bg-black/60 backdrop-blur-sm`}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className={disablePortal 
+                    ? 'relative w-full h-full flex items-center justify-center' 
+                    : 'fixed inset-0 z-[9999] flex items-center justify-center p-4 pt-20 bg-black/60 backdrop-blur-sm'
+                }
                 onClick={(e) => {
-                    if (e.target === e.currentTarget) {
+                    if (e.target === e.currentTarget && !disablePortal) {
                         triggerShake();
                     }
                 }}
@@ -4010,9 +4013,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 <motion.div
                     animate={isShaking ? { x: [-6, 6, -6, 6, -3, 3, 0] } : { x: 0 }}
                     transition={{ duration: 0.5 }}
-                    className={`${disablePortal ? 'w-full max-w-md h-full rounded-none shadow-2xl' : 'w-full max-w-md h-[85vh] rounded-2xl shadow-2xl'} flex flex-col overflow-hidden`}
+                    className={`${disablePortal ? 'w-full max-w-md h-full rounded-none shadow-none' : 'w-full max-w-md h-[85vh] rounded-2xl shadow-2xl'} flex flex-col overflow-hidden`}
                     style={{
-                        borderWidth: '1px',
+                        borderWidth: disablePortal ? '0px' : '1px',
                         borderColor: isDark ? '#374151' : '#e5e7eb',
                         fontFamily: chatFontFamily || 'inherit'
                     }}
