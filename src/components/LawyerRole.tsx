@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA 
@@ -17,6 +17,7 @@ import CrmTab from './lawyer/CrmTab';
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import NotificationBell from './lawyer/NotificationBell';
 import MyTasksWidget from './lawyer/MyTasksWidget';
+import TasksScheduleTab from './lawyer/TasksScheduleTab';
 import StaffManagementTab from './lawyer/StaffManagementTab';
 import LawyerQnAAnswerSection from './lawyer/LawyerQnAAnswerSection';
 import RehabSettingsPanel from './RehabSettingsPanel';
@@ -85,7 +86,7 @@ export default function LawyerRole({
   setQas
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule'>('dashboard');
   const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity' | 'clients'>('overview');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
@@ -1705,6 +1706,9 @@ export default function LawyerRole({
                   <span className="ml-auto text-xs text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">{totalCasesCount}</span>
                 </button>
               )}
+              <button onClick={() => setActiveTab('tasks-schedule')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'tasks-schedule' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <CalendarCheck className="w-5 h-5 shrink-0" /><span>일정 / 할일</span>
+              </button>
 
               {/* 그룹 2: AI 도구 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
@@ -1771,7 +1775,7 @@ export default function LawyerRole({
             <button onClick={() => setActiveTab('client-crm')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'client-crm' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
               <Users className="w-5 h-5" /><span className="text-xs font-bold">CRM</span>
             </button>
-            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','open-requests','chat','client-crm'].includes(activeTab) ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','tasks-schedule','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','open-requests','chat','client-crm'].includes(activeTab) ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
               <Settings className="w-5 h-5" /><span className="text-xs font-bold">더보기</span>
             </button>
           </div>
@@ -1792,112 +1796,68 @@ export default function LawyerRole({
               ))}
             </div>
 
-            {/* ═══ 섹션 1: 상단 요약 카드 ═══ */}
+            {/* ═══ 섹션 1: 상단 요약 카드 6열 (클릭→해당 탭 이동) ═══ */}
             {(dashboardSub === 'overview') && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-brand/30 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-sm text-slate-700 block font-bold">신규 상담 요청</span>
-                  <span className="text-3xl font-black text-brand">{totalOpenRequestsCount}개</span>
+                  <span className="text-xs text-slate-500 block font-bold">신규 상담</span>
+                  <span className="text-2xl font-black text-brand">{totalOpenRequestsCount}</span>
                 </div>
-                <div className="p-3 rounded-xl bg-brand/10 text-brand">
-                  <Briefcase className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-brand/10 text-brand group-hover:bg-brand group-hover:text-white transition-colors">
+                  <Briefcase className="w-5 h-5" />
                 </div>
-              </div>
+              </button>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-amber-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-sm text-slate-700 block font-bold">내게 지정된 응답 대기</span>
-                  <span className="text-3xl font-black text-amber-500">{directCounselingCount}개</span>
+                  <span className="text-xs text-slate-500 block font-bold">응답 대기</span>
+                  <span className="text-2xl font-black text-amber-500">{directCounselingCount}</span>
                 </div>
-                <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500">
-                  <Clock className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                  <Clock className="w-5 h-5" />
                 </div>
-              </div>
+              </button>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+              <button onClick={() => setActiveTab('chat')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-emerald-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-sm text-slate-700 block font-bold">진행 중인 상담</span>
-                  <span className="text-3xl font-black text-emerald-600">{activeChatsCount}개</span>
+                  <span className="text-xs text-slate-500 block font-bold">진행 중 상담</span>
+                  <span className="text-2xl font-black text-emerald-600">{activeChatsCount}</span>
                 </div>
-                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600">
-                  <MessageSquare className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                  <MessageSquare className="w-5 h-5" />
                 </div>
-              </div>
+              </button>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+              <button onClick={() => setActiveTab('cases')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-purple-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-sm text-slate-700 block font-bold">수임 전환 성공</span>
-                  <span className="text-3xl font-black text-purple-600">{totalCasesCount}건</span>
+                  <span className="text-xs text-slate-500 block font-bold">수임 전환</span>
+                  <span className="text-2xl font-black text-purple-600">{totalCasesCount}</span>
                 </div>
-                <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600">
-                  <FolderHeart className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                  <FolderHeart className="w-5 h-5" />
                 </div>
-              </div>
-            </div>
-            )}
+              </button>
 
-            {/* ═══ Row 2: My Tasks + 나의 상담 활동 (같은 행) ═══ */}
-            {(dashboardSub === 'overview') && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <MyTasksWidget
-                  tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-                  userId={activeStaffMember?.id || activeLawyer.id}
-                  userName={activeStaffMember?.name || activeLawyer.name}
-                />
-              </div>
-              {/* 나의 상담 활동 — overview 사이드바 */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-                  <BarChart2 className="w-5 h-5 text-emerald-500" />
-                  <span>나의 상담 활동</span>
-                </h3>
-                {(() => {
-                  const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
-                  const myCounseling = requests.filter(r => r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id).length;
-                  const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
-                  const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
-                  return (
-                    <div className="space-y-3.5">
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-slate-600 font-semibold">총 상담 참여</span>
-                          <span className="font-black text-slate-900 text-base">{myParticipated}건</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-slate-600 font-semibold">현재 진행 중</span>
-                          <span className="font-black text-emerald-600 text-base">{myCounseling}건</span>
-                        </div>
-                      </div>
-                      <div className="border-t border-slate-200 pt-3 space-y-2.5">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-slate-600 font-semibold">수임 전환 성공</span>
-                          <span className="font-black text-purple-600 text-base">{myCases}건</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-slate-600 font-semibold">전환율</span>
-                          <span className={`font-black text-base ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${conversionRate >= 40 ? 'bg-emerald-500' : conversionRate >= 20 ? 'bg-amber-500' : 'bg-slate-300'}`}
-                            style={{ width: `${Math.min(100, conversionRate)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="border-t border-slate-200 pt-3">
-                        <div className="bg-brand/5 border border-brand/10 rounded-xl p-3.5 space-y-1.5">
-                          <span className="text-xs font-black text-brand uppercase tracking-wide">💡 상담 TIP</span>
-                          <p className="text-sm text-slate-700 leading-relaxed font-normal">
-                            의뢰인의 채무 원인에 맞춘 구체적인 해결 방안을 제시하면 수임 전환율이 높아집니다.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
+              <button onClick={() => setActiveTab('qna-answer')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-orange-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+                <div className="space-y-1">
+                  <span className="text-xs text-slate-500 block font-bold">미답변 Q&A</span>
+                  <span className="text-2xl font-black text-orange-500">{qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length : 0}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                  <ListCheck className="w-5 h-5" />
+                </div>
+              </button>
+
+              <button onClick={() => setActiveTab('billing')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-indigo-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+                <div className="space-y-1">
+                  <span className="text-xs text-slate-500 block font-bold">활성 광고</span>
+                  <span className="text-2xl font-black text-indigo-600">{adOrders.filter(o => o.status === 'active').length}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                  <Megaphone className="w-5 h-5" />
+                </div>
+              </button>
             </div>
             )}
 
@@ -1919,128 +1879,78 @@ export default function LawyerRole({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {requests
                   .filter(r => r.status === 'requested' && isRelevantRequest(r))
-                  .slice(0, 3)
-                  .map(r => (
-                    <div key={r.id} className="bg-white p-5 rounded-2xl border border-amber-100 hover:border-amber-300 hover:shadow-md transition-all space-y-3.5 flex flex-col">
-                      {/* 헤더: 뱃지 + 이름 + 날짜 */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-xs font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                  .slice(0, 6)
+                  .map((r, idx) => {
+                    const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1);
+                    return (
+                    <button
+                      key={r.id}
+                      onClick={() => setActiveTab('open-requests')}
+                      className="bg-white hover:bg-amber-50/60 rounded-xl border border-amber-100 hover:border-amber-300 hover:shadow-md p-4 flex flex-col gap-3 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left"
+                    >
+                      {/* 상단: 뱃지 + 이름 + 날짜 */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="w-5 h-5 rounded-full bg-slate-800 text-white text-[10px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded whitespace-nowrap ${
                             r.requestType === 'direct'
                               ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
                               : 'bg-brand/10 text-brand border border-brand/20'
                           }`}>
-                            {r.requestType === 'direct' ? '단독지명' : '오픈형'}
+                            {r.requestType === 'direct' ? '지명' : '오픈'}
                           </span>
                           {r.entryCategory && (
-                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap truncate max-w-[80px] ${
                               r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
                               r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
                               'bg-slate-100 text-slate-600 border border-slate-200'
                             }`}>
-                              {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
+                              {r.entryCategory.label}
                             </span>
                           )}
-                          <span className="text-sm font-bold text-slate-800">{r.clientName}</span>
+                          <span className="text-sm font-bold text-slate-800 truncate">{r.clientName}</span>
                         </div>
-                        <span className="text-xs text-slate-400 whitespace-nowrap ml-2">{new Date(r.createdAt).toLocaleDateString()}</span>
+                        <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">{new Date(r.createdAt).toLocaleDateString()}</span>
                       </div>
 
-                      {/* 사연 미리보기 */}
-                      <p className="text-sm text-slate-700 line-clamp-2 leading-relaxed font-normal">{r.content}</p>
-
-                      {/* 핵심 지표: 2그룹 카드형 */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                        {/* 그룹 A: 재무 요약 */}
-                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2">
-                          <span className="text-xs font-black text-slate-500 uppercase tracking-wider">💰 재무 요약</span>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">총 채무</span>
-                              <span className="font-bold text-red-500">{r.financialProfile.debtTotal.toLocaleString()}만</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">월 소득</span>
-                              <span className="font-bold text-slate-800">{r.financialProfile.income}만</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">부채비율</span>
-                              <span className="font-bold text-red-500">{(r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1)}배</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">직업</span>
-                              <span className="font-bold text-slate-800">
-                                {r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : r.financialProfile.jobType === 'FREELANCER' ? '프리랜서' : '-'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between col-span-2">
-                              <span className="text-slate-500">채무 원인</span>
-                              <span className="font-bold text-slate-800">
-                                {r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}
-                              </span>
-                            </div>
-                          </div>
+                      {/* 핵심 지표 3열 */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-red-50/60 rounded-lg py-1.5 px-1">
+                          <div className="text-[10px] text-slate-400">채무</div>
+                          <div className="text-xs font-bold text-red-500">{r.financialProfile.debtTotal.toLocaleString()}만</div>
                         </div>
-                        {/* 그룹 B: 인적 정보 */}
-                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2">
-                          <span className="text-xs font-black text-slate-500 uppercase tracking-wider">👤 인적 정보</span>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">나이</span>
-                              <span className="font-bold text-slate-800">{r.financialProfile.age ? `${r.financialProfile.age}세` : '-'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">성별</span>
-                              <span className="font-bold text-slate-800">{r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">가구원</span>
-                              <span className="font-bold text-slate-800">{r.financialProfile.dependents + 1}인</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">혼인</span>
-                              <span className="font-bold text-slate-800">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">미성년</span>
-                              <span className="font-bold text-slate-800">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">{r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? '⚡특례' : '거주'}</span>
-                              <span className={`font-bold ${r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' ? 'text-emerald-600' : 'text-slate-800'}`}>
-                                {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none'
-                                  ? (r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : r.financialProfile.specialCondition === 'single_parent' ? '한부모' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자')
-                                  : (r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상' : '-')}
-                              </span>
-                            </div>
-                          </div>
+                        <div className="bg-slate-50 rounded-lg py-1.5 px-1">
+                          <div className="text-[10px] text-slate-400">월소득</div>
+                          <div className="text-xs font-bold text-slate-800">{r.financialProfile.income}만</div>
+                        </div>
+                        <div className="bg-red-50/60 rounded-lg py-1.5 px-1">
+                          <div className="text-[10px] text-slate-400">부채비율</div>
+                          <div className="text-xs font-black text-red-500">{debtRatio}배</div>
                         </div>
                       </div>
 
-                      {/* 위험 신호 */}
-                      {r.financialProfile.riskFlags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {r.financialProfile.riskFlags.slice(0, 3).map(rf => (
-                            <span key={rf} className="bg-red-500/10 text-red-500 border border-red-500/20 text-xs px-2 py-0.5 rounded font-bold">
-                              ⚠ {rf}
+                      {/* 하단: 위험 플래그 + 화살표 */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1 min-w-0">
+                          {r.financialProfile.riskFlags.length > 0 && (
+                            <span className="text-[10px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded border border-red-100 truncate">
+                              ⚠ 위험 {r.financialProfile.riskFlags.length}건
                             </span>
-                          ))}
+                          )}
+                          {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
+                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                              ⚡특례
+                            </span>
+                          )}
                         </div>
-                      )}
-
-                      {/* CTA */}
-                      <button
-                        onClick={() => setActiveTab('open-requests')}
-                        className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl text-[15px] transition-all flex items-center justify-center gap-1.5 press-scale mt-auto cursor-pointer active:scale-[0.98] shadow-sm"
-                      >
-                        상세 확인 & 상담 참여하기
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-brand transition-colors shrink-0" />
+                      </div>
+                    </button>
+                    );
+                  })}
               </div>
 
               {requests.filter(r => r.status === 'requested').length === 0 && (
@@ -2051,7 +1961,7 @@ export default function LawyerRole({
                 </div>
               )}
 
-              {requests.filter(r => r.status === 'requested').length > 3 && (
+              {requests.filter(r => r.status === 'requested').length > 6 && (
                 <div className="flex justify-center pt-1">
                   <button
                     onClick={() => setActiveTab('open-requests')}
@@ -2065,7 +1975,160 @@ export default function LawyerRole({
             </div>
             )}
 
-            {/* ═══ Row 4: 전담 선임 고객 (overview — 풀 너비 독립 섹션) ═══ */}
+            {/* ═══ Row 3: 고민상담 Q&A 미답변 + 광고/빌링 요약 (2열) ═══ */}
+            {(dashboardSub === 'overview') && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* 좌측: 고민상담 Q&A 미답변 */}
+              <button onClick={() => setActiveTab('qna-answer')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <ListCheck className="w-5 h-5 text-orange-500" />
+                    <span>고민상담 Q&A</span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">전체 보기 <ArrowRight className="w-3 h-3" /></span>
+                </div>
+                {(() => {
+                  const waitingQas = qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).slice(0, 4) : [];
+                  return waitingQas.length > 0 ? (
+                    <div className="space-y-2">
+                      {waitingQas.map(q => (
+                        <div key={q.id} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-slate-800 truncate">{q.question}</p>
+                            <p className="text-[11px] text-slate-400">{q.userName} · {new Date(q.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          {q.category && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-100 whitespace-nowrap shrink-0">{q.category}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center space-y-1">
+                      <ListCheck className="w-8 h-8 text-slate-200 mx-auto" />
+                      <p className="text-xs text-slate-400 font-bold">대기 중인 고민상담이 없습니다</p>
+                    </div>
+                  );
+                })()}
+              </button>
+
+              {/* 우측: 광고 & 요금 현황 */}
+              <button onClick={() => setActiveTab('billing')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-indigo-500" />
+                    <span>광고 & 요금 현황</span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">상세 보기 <ArrowRight className="w-3 h-3" /></span>
+                </div>
+                {(() => {
+                  const activeAds = adOrders.filter(o => o.status === 'active');
+                  const monthlyAdTotal = activeAds.reduce((s, o) => s + o.monthlyPrice, 0);
+                  const currentPlan = platformPlans.find(p => p.current);
+                  return (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-indigo-50/60 rounded-xl p-3 text-center">
+                        <div className="text-[11px] text-slate-400 font-bold">활성 광고</div>
+                        <div className="text-lg font-black text-indigo-600">{activeAds.length}건</div>
+                      </div>
+                      <div className="bg-emerald-50/60 rounded-xl p-3 text-center">
+                        <div className="text-[11px] text-slate-400 font-bold">이달 광고비</div>
+                        <div className="text-lg font-black text-emerald-600">{(monthlyAdTotal / 10000).toFixed(0)}만원</div>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-3 text-center">
+                        <div className="text-[11px] text-slate-400 font-bold">구독 요금제</div>
+                        <div className="text-sm font-black text-slate-800">{currentPlan ? currentPlan.name : '-'}</div>
+                      </div>
+                      <div className="bg-amber-50/60 rounded-xl p-3 text-center">
+                        <div className="text-[11px] text-slate-400 font-bold">월 구독료</div>
+                        <div className="text-lg font-black text-amber-600">{currentPlan ? `${(currentPlan.price / 10000).toFixed(0)}만` : '-'}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </button>
+            </div>
+            )}
+
+            {/* ═══ Row 4: 알림/공지 + 일정/할일 요약 (2열) ═══ */}
+            {(dashboardSub === 'overview') && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* 좌측: 최근 알림 */}
+              <button onClick={() => setActiveTab('settings')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-blue-500" />
+                    <span>알림 & 공지</span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">설정 <ArrowRight className="w-3 h-3" /></span>
+                </div>
+                <div className="space-y-2.5">
+                  <div className="flex items-start gap-3 py-1.5">
+                    <div className="p-1.5 rounded-lg bg-brand/10 text-brand shrink-0 mt-0.5"><Briefcase className="w-3.5 h-3.5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-800">새로운 상담 요청이 접수되었습니다</p>
+                      <p className="text-[11px] text-slate-400">방금 전</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 py-1.5">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 shrink-0 mt-0.5"><MessageSquare className="w-3.5 h-3.5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-800">의뢰인이 채팅 메시지를 보냈습니다</p>
+                      <p className="text-[11px] text-slate-400">5분 전</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 py-1.5">
+                    <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 shrink-0 mt-0.5"><Info className="w-3.5 h-3.5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-800">[공지] 플랫폼 업데이트 안내</p>
+                      <p className="text-[11px] text-slate-400">1시간 전</p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* 우측: 일정/할일 요약 */}
+              <button onClick={() => setActiveTab('tasks-schedule')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <CalendarCheck className="w-5 h-5 text-teal-500" />
+                    <span>일정 / 할일</span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">전체 보기 <ArrowRight className="w-3 h-3" /></span>
+                </div>
+                {(() => {
+                  const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
+                  const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
+                  const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
+                  return (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-slate-50 rounded-xl p-3 text-center">
+                          <div className="text-[11px] text-slate-400 font-bold">상담 참여</div>
+                          <div className="text-lg font-black text-slate-800">{myParticipated}건</div>
+                        </div>
+                        <div className="bg-purple-50/60 rounded-xl p-3 text-center">
+                          <div className="text-[11px] text-slate-400 font-bold">수임 전환</div>
+                          <div className="text-lg font-black text-purple-600">{myCases}건</div>
+                        </div>
+                        <div className="bg-emerald-50/60 rounded-xl p-3 text-center">
+                          <div className="text-[11px] text-slate-400 font-bold">전환율</div>
+                          <div className={`text-lg font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</div>
+                        </div>
+                      </div>
+                      <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 flex items-center gap-2">
+                        <CalendarCheck className="w-4 h-4 text-brand shrink-0" />
+                        <p className="text-xs text-slate-600 font-medium">일정/할일 탭에서 업무 티켓, 캘린더, 활동 기록을 확인하세요</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </button>
+            </div>
+            )}
+
+            {/* ═══ Row 5: 전담 선임 고객 (overview — 풀 너비 독립 섹션) ═══ */}
             {(dashboardSub === 'overview') && (() => {
               const appointedClients = [
                 { id: 'appt-1', clientName: '홍길*', status: 'active' as const, appointedAt: '2026-07-10T14:30:00Z', cancelReason: '', lastActivity: '2026-08-18T10:00:00Z' },
@@ -3892,6 +3955,21 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             setRequests={setRequests}
           />
+        )}
+
+        {/* TAB: 일정 / 할일 */}
+        {activeTab === 'tasks-schedule' && (
+          <div className="animate-fadeIn">
+            <TasksScheduleTab
+              tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+              userId={activeStaffMember?.id || activeLawyer.id}
+              userName={activeStaffMember?.name || activeLawyer.name}
+              requests={requests}
+              cases={cases}
+              qas={qas}
+              activeLawyerId={activeLawyer.id}
+            />
+          </div>
         )}
 
         {/* TAB 7: 알림 및 플랫폼 설정 */}
