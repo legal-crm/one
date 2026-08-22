@@ -31,7 +31,7 @@ interface CrmTabProps {
   getDisplayPhoneNumber: (r: ConsultRequest) => string;
 }
 
-type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus';
+type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
 type SortDir = 'asc' | 'desc';
 type ViewMode = 'list' | 'kanban';
 
@@ -224,6 +224,17 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         case 'clientName': cmp = a.clientName.localeCompare(b.clientName); break;
         case 'createdAt': cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
         case 'debtTotal': cmp = a.financialProfile.debtTotal - b.financialProfile.debtTotal; break;
+        case 'income': cmp = a.financialProfile.income - b.financialProfile.income; break;
+        case 'lastActivity': {
+          const aLast = getCrmExt(a.id).activities.length > 0 ? new Date(getCrmExt(a.id).activities[getCrmExt(a.id).activities.length - 1].timestamp).getTime() : new Date(a.createdAt).getTime();
+          const bLast = getCrmExt(b.id).activities.length > 0 ? new Date(getCrmExt(b.id).activities[getCrmExt(b.id).activities.length - 1].timestamp).getTime() : new Date(b.createdAt).getTime();
+          cmp = aLast - bLast; break;
+        }
+        case 'reminderCount': {
+          const aRem = getCrmExt(a.id).notes.filter(n => n.reminder && !n.reminder.completed).length;
+          const bRem = getCrmExt(b.id).notes.filter(n => n.reminder && !n.reminder.completed).length;
+          cmp = aRem - bRem; break;
+        }
         case 'crmStatus': {
           const ai = CRM_STATUSES.indexOf(getCrmExt(a.id).crmStatus);
           const bi = CRM_STATUSES.indexOf(getCrmExt(b.id).crmStatus);
@@ -722,6 +733,23 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             <option value="all">담당자: 전체</option>
             <option value="unassigned">미배정</option>
             {staffMembers.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+
+          <select value={`${sortField}_${sortDir}`} onChange={e => {
+            const [f, d] = e.target.value.split('_') as [SortField, SortDir];
+            setSortField(f); setSortDir(d); setPage(1);
+          }}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium">
+            <option value="createdAt_desc">{'\uCD5C\uC2E0 \uB4F1\uB85D\uC21C'}</option>
+            <option value="createdAt_asc">{'\uC624\uB798\uB41C \uC21C'}</option>
+            <option value="lastActivity_desc">{'\uCD5C\uADFC \uC218\uC815\uC21C'}</option>
+            <option value="clientName_asc">{'\uACE0\uAC1D\uBA85 \u3131-\u314E'}</option>
+            <option value="clientName_desc">{'\uACE0\uAC1D\uBA85 \u314E-\u3131'}</option>
+            <option value="debtTotal_desc">{'\uCC44\uBB34 \uB192\uC740\uC21C'}</option>
+            <option value="debtTotal_asc">{'\uCC44\uBB34 \uB0AE\uC740\uC21C'}</option>
+            <option value="income_desc">{'\uC18C\uB4DD \uB192\uC740\uC21C'}</option>
+            <option value="crmStatus_asc">{'\uC9C4\uD589 \uB2E8\uACC4\uC21C'}</option>
+            <option value="reminderCount_desc">{'\uB9AC\uB9C8\uC778\uB354 \uB9CE\uC740\uC21C'}</option>
           </select>
 
           <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
