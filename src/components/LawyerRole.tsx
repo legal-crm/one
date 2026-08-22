@@ -3964,6 +3964,8 @@ export default function LawyerRole({
               tenantId={activeLawyer.lawFirmId || activeLawyer.id}
               userId={activeStaffMember?.id || activeLawyer.id}
               userName={activeStaffMember?.name || activeLawyer.name}
+              userRole={activeStaffMember?.role || 'OWNER'}
+              hasManageCalendar={activeStaffMember?.permissions?.manageCalendar ?? true}
               requests={requests}
               cases={cases}
               qas={qas}

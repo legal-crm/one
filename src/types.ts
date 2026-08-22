@@ -228,14 +228,15 @@ export interface StaffPermissions {
   writeNotes: boolean;         // 상담 메모 작성
   manageBilling: boolean;      // 수임료 관리
   deleteClients: boolean;      // 고객 삭제
+  manageCalendar: boolean;     // 전체 공유 일정 관리
 }
 
 const BUILTIN_DEFAULT_PERMISSIONS: Record<string, StaffPermissions> = {
-  OWNER:       { viewAllClients: true,  editClientInfo: true,  changeStatus: true,  assignCases: true,  manageStaff: true,  writeNotes: true,  manageBilling: true,  deleteClients: true },
-  LAWYER:      { viewAllClients: false, editClientInfo: true,  changeStatus: true,  assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
-  CONSULTANT:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
-  STAFF:       { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false },
-  ACCOUNTING:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: false, manageBilling: true,  deleteClients: false },
+  OWNER:       { viewAllClients: true,  editClientInfo: true,  changeStatus: true,  assignCases: true,  manageStaff: true,  writeNotes: true,  manageBilling: true,  deleteClients: true,  manageCalendar: true },
+  LAWYER:      { viewAllClients: false, editClientInfo: true,  changeStatus: true,  assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false },
+  CONSULTANT:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false },
+  STAFF:       { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false },
+  ACCOUNTING:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: false, manageBilling: true,  deleteClients: false, manageCalendar: false },
 };
 
 export const DEFAULT_PERMISSIONS: Record<string, StaffPermissions> = new Proxy(
