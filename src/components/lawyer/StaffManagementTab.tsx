@@ -83,6 +83,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const [staffSearch, setStaffSearch] = useState('');
   const [logFilter, setLogFilter] = useState<string>('all');
   const [logStaffFilter, setLogStaffFilter] = useState<string>('all');
+  const [logTimeFilter, setLogTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   // ── 초대 링크 관리 ──
   const [inviteTokens, setInviteTokens] = useState<InviteToken[]>([]);
@@ -299,12 +300,20 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
 
   // ── 필터된 활동 로그 ──
   const filteredLogs = useMemo(() => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return activityLogs.filter(log => {
       const matchType = logFilter === 'all' || log.type === logFilter;
       const matchStaff = logStaffFilter === 'all' || log.staffId === logStaffFilter;
-      return matchType && matchStaff;
+      let matchTime = true;
+      if (logTimeFilter === 'today') matchTime = new Date(log.timestamp) >= startOfDay;
+      else if (logTimeFilter === 'week') matchTime = new Date(log.timestamp) >= startOfWeek;
+      else if (logTimeFilter === 'month') matchTime = new Date(log.timestamp) >= startOfMonth;
+      return matchType && matchStaff && matchTime;
     });
-  }, [activityLogs, logFilter, logStaffFilter]);
+  }, [activityLogs, logFilter, logStaffFilter, logTimeFilter]);
 
   // ── 역할 뱃지 렌더러 ──
   const renderRoleBadge = (role: StaffRole) => {
@@ -374,6 +383,28 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
           <UserPlus className="w-4 h-4" />
           <span>직원 초대</span>
         </button>
+      </div>
+
+      {/* ── 통계 카드 ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {([
+          { label: '\uC804\uCCB4 \uC9C1\uC6D0', count: allManagedStaff.length, icon: '\uD83D\uDC65', color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', section: 'active' as SubSection },
+          { label: '\uD65C\uC131', count: activeStaff.length, icon: '\uD83D\uDFE2', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', section: 'active' as SubSection },
+          { label: '\uC2B9\uC778 \uB300\uAE30', count: pendingStaff.length, icon: '\u23F3', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', section: 'pending' as SubSection },
+          { label: '\uC815\uC9C0', count: allManagedStaff.filter(s => s.status === 'suspended').length, icon: '\u26A0\uFE0F', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', section: 'active' as SubSection },
+        ]).map(card => (
+          <button key={card.label} onClick={() => setActiveSection(card.section)}
+            className={`${card.bg} ${card.border} border rounded-2xl p-4 text-left transition-all hover:shadow-md active:scale-[0.98] cursor-pointer`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-lg">{card.icon}</span>
+              {card.label === '\uC2B9\uC778 \uB300\uAE30' && card.count > 0 && (
+                <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+              )}
+            </div>
+            <div className={`text-2xl font-black ${card.color}`}>{card.count}</div>
+            <div className="text-xs text-slate-500 font-bold mt-0.5">{card.label}</div>
+          </button>
+        ))}
       </div>
 
       {/* ── 서브 네비게이션 (모바일 반응형) ── */}
@@ -480,103 +511,97 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             />
           </div>
 
-          {/* 테이블 */}
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-slate-50/80 text-slate-600 font-bold border-b border-slate-200">
-                    <th className="p-3.5">이름</th>
-                    <th className="p-3.5">이메일</th>
-                    <th className="p-3.5">권한</th>
-                    <th className="p-3.5">상태</th>
-                    <th className="p-3.5 text-center">담당 건수</th>
-                    <th className="p-3.5 text-right">관리</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredActiveStaff.map(member => (
-                    <tr key={member.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="p-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 border ${
-                            member.role === 'OWNER' ? 'bg-amber-100 text-amber-600 border-amber-200' :
-                            member.role === 'LAWYER' ? 'bg-blue-100 text-blue-600 border-blue-200' :
-                            'bg-slate-100 text-slate-600 border-slate-200'
-                          }`}>
-                            {member.name.charAt(0)}
-                          </div>
-                          <div>
-                            <span className="font-bold text-slate-900 text-base cursor-pointer hover:text-brand transition-colors block" onClick={() => { setSelectedStaffDetail(member); setEditPermissions({...member.permissions}); }}>{member.name}</span>
-                            {member.phone && <div className="text-xs text-slate-400 font-medium">{member.phone}</div>}
-                          </div>
+          {/* 카드 그리드 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {filteredActiveStaff.map(member => {
+              const caseCount = staffCaseCounts[member.id] || 0;
+              const roleConfig = STAFF_ROLE_CONFIG[member.role];
+              const isSuspended = member.status === 'suspended';
+              return (
+                <div key={member.id}
+                  className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all ${isSuspended ? 'opacity-60 border-red-200' : 'border-slate-200'}`}>
+                  {/* 역할 컬러 탑 바 */}
+                  <div className={`h-1 ${
+                    member.role === 'OWNER' ? 'bg-amber-400' :
+                    member.role === 'LAWYER' ? 'bg-brand' :
+                    member.role === 'CONSULTANT' ? 'bg-blue-400' :
+                    member.role === 'ACCOUNTING' ? 'bg-purple-400' : 'bg-slate-300'
+                  }`} />
+                  <div className="p-4">
+                    {/* 상단: 프로필 */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0 border-2 ${
+                        member.role === 'OWNER' ? 'bg-amber-100 text-amber-600 border-amber-300' :
+                        member.role === 'LAWYER' ? 'bg-brand/10 text-brand border-brand/30' :
+                        'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>
+                        {member.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <button onClick={() => { setSelectedStaffDetail(member); setEditPermissions({...member.permissions}); }}
+                          className="font-black text-slate-900 text-base hover:text-brand transition-colors cursor-pointer text-left block truncate w-full">
+                          {member.name}
+                        </button>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {renderRoleBadge(member.role)}
+                          {isSuspended && <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">{'\uC815\uC9C0'}</span>}
                         </div>
-                      </td>
-                      <td className="p-3.5 text-slate-600 font-medium">{member.email || '—'}</td>
-                      <td className="p-3.5">{renderRoleBadge(member.role)}</td>
-                      <td className="p-3.5">{renderStatusBadge(member.status)}</td>
-                      <td className="p-3.5 text-center">
-                        <span className="font-bold text-slate-800 text-sm">{staffCaseCounts[member.id] || 0}건</span>
-                      </td>
-                      <td className="p-3.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {member.role !== 'OWNER' && (
-                            <>
-                              <select
-                                value={member.role}
-                                onChange={e => handleRoleChange(member, e.target.value as StaffRole)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand/30 mr-1"
-                              >
-                                <option value="LAWYER">담당 변호사</option>
-                                <option value="CONSULTANT">상담 직원</option>
-                                <option value="STAFF">사무 직원</option>
-                                <option value="ACCOUNTING">경리 직원</option>
-                              </select>
-                              {member.status === 'active' && (
-                                <button
-                                  onClick={() => handleSuspend(member)}
-                                  title="활동 정지"
-                                  className="p-2 rounded-xl text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-all cursor-pointer"
-                                >
-                                  <AlertTriangle className="w-4 h-4" />
-                                </button>
-                              )}
-                              {member.status === 'suspended' && (
-                                <button
-                                  onClick={() => handleReactivate(member)}
-                                  title="활동 재개"
-                                  className="p-2 rounded-xl text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-all cursor-pointer"
-                                >
-                                  <RotateCcw className="w-4 h-4" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => { setRemoveTargetId(member.id); setShowRemoveModal(true); }}
-                                className="bg-red-500/5 hover:bg-red-500/10 text-red-500 border border-red-500/15 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" /> 강제 탈퇴
-                              </button>
-                            </>
-                          )}
-                          {member.role === 'OWNER' && (
-                            <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
-                              <ShieldCheck className="w-4 h-4" /> 관리자
-                            </span>
-                          )}
+                      </div>
+                    </div>
+                    {/* 중단: 정보 */}
+                    <div className="space-y-2 mb-3">
+                      {member.email && <div className="text-xs text-slate-500 truncate"><Mail className="w-3 h-3 inline mr-1 opacity-50" />{member.email}</div>}
+                      {member.phone && <div className="text-xs text-slate-500"><Phone className="w-3 h-3 inline mr-1 opacity-50" />{member.phone}</div>}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-600">{'\uB2F4\uB2F9'} {caseCount}{'\uAC74'}</span>
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${Math.min(100, caseCount * 10)}%` }} />
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredActiveStaff.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-10 text-center text-slate-400 text-sm font-medium">
-                        등록된 직원이 없습니다.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </div>
+                    {/* 하단: 액션 */}
+                    {member.role !== 'OWNER' ? (
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                        <select value={member.role} onChange={e => handleRoleChange(member, e.target.value as StaffRole)}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-600 flex-1">
+                          <option value="LAWYER">{'\uBCC0\uD638\uC0AC'}</option>
+                          <option value="CONSULTANT">{'\uC0C1\uB2F4'}</option>
+                          <option value="STAFF">{'\uC0AC\uBB34'}</option>
+                          <option value="ACCOUNTING">{'\uACBD\uB9AC'}</option>
+                        </select>
+                        {member.status === 'active' && (
+                          <button onClick={() => handleSuspend(member)} title={'\uD65C\uB3D9 \uC815\uC9C0'}
+                            className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 border border-transparent hover:border-amber-200 cursor-pointer">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {member.status === 'suspended' && (
+                          <button onClick={() => handleReactivate(member)} title={'\uD65C\uB3D9 \uC7AC\uAC1C'}
+                            className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 cursor-pointer">
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button onClick={() => { setRemoveTargetId(member.id); setShowRemoveModal(true); }}
+                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                        <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
+                          <ShieldCheck className="w-4 h-4" /> {'\uAD00\uB9AC\uC790 (\uBCC0\uACBD \uBD88\uAC00)'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {filteredActiveStaff.length === 0 && (
+              <div className="col-span-full text-center py-10 text-slate-400 text-sm font-medium">
+                {'\uB4F1\uB85D\uB41C \uC9C1\uC6D0\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.'}
+              </div>
+            )}
           </div>
 
           {/* 제거된 직원 (접을 수 있음) */}
@@ -704,6 +729,24 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </select>
+          </div>
+
+          {/* 시간대 필터 */}
+          <div className="flex gap-1.5 flex-wrap">
+            {([
+              { key: 'all' as const, label: '\uC804\uCCB4' },
+              { key: 'today' as const, label: '\uC624\uB298' },
+              { key: 'week' as const, label: '\uC774\uBC88 \uC8FC' },
+              { key: 'month' as const, label: '\uC774\uBC88 \uB2EC' },
+            ]).map(tf => (
+              <button key={tf.key} onClick={() => setLogTimeFilter(tf.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all active:scale-[0.98] cursor-pointer ${
+                  logTimeFilter === tf.key
+                    ? 'bg-brand text-white border-brand' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}>
+                {tf.label}
+              </button>
+            ))}
           </div>
 
           {/* 타임라인 */}
