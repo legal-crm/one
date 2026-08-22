@@ -2100,25 +2100,51 @@ export default function LawyerRole({
                   const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
                   const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
                   const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
+                  // 오늘 일정 로드
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  const tenantId = activeLawyer.lawFirmId || activeLawyer.id;
+                  const allEvts: { title: string; date: string; type: string }[] = [];
+                  try {
+                    const raw = localStorage.getItem(`calendar_events_${tenantId}`);
+                    if (raw) {
+                      const evts = JSON.parse(raw);
+                      (evts as { title: string; date: string; type: string }[]).forEach(e => {
+                        if (e.date === todayStr) allEvts.push(e);
+                      });
+                    }
+                  } catch {}
+                  const todayEvents = allEvts.slice(0, 5);
                   return (
                     <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-2">
                         <div className="bg-slate-50 rounded-xl p-3 text-center">
-                          <div className="text-[11px] text-slate-400 font-bold">상담 참여</div>
-                          <div className="text-lg font-black text-slate-800">{myParticipated}건</div>
+                          <div className="text-[11px] text-slate-400 font-bold">{'\uC0C1\uB2F4 \uCC38\uC5EC'}</div>
+                          <div className="text-lg font-black text-slate-800">{myParticipated}{'\uAC74'}</div>
                         </div>
                         <div className="bg-purple-50/60 rounded-xl p-3 text-center">
-                          <div className="text-[11px] text-slate-400 font-bold">수임 전환</div>
-                          <div className="text-lg font-black text-purple-600">{myCases}건</div>
+                          <div className="text-[11px] text-slate-400 font-bold">{'\uC218\uC784 \uC804\uD658'}</div>
+                          <div className="text-lg font-black text-purple-600">{myCases}{'\uAC74'}</div>
                         </div>
                         <div className="bg-emerald-50/60 rounded-xl p-3 text-center">
-                          <div className="text-[11px] text-slate-400 font-bold">전환율</div>
+                          <div className="text-[11px] text-slate-400 font-bold">{'\uC804\uD658\uC728'}</div>
                           <div className={`text-lg font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</div>
                         </div>
                       </div>
-                      <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 flex items-center gap-2">
-                        <CalendarCheck className="w-4 h-4 text-brand shrink-0" />
-                        <p className="text-xs text-slate-600 font-medium">일정/할일 탭에서 업무 티켓, 캘린더, 활동 기록을 확인하세요</p>
+                      {/* 오늘의 일정 */}
+                      <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <CalendarCheck className="w-4 h-4 text-brand shrink-0" />
+                          <span className="text-xs font-bold text-slate-700">{'\uD83D\uDCC5 \uC624\uB298\uC758 \uC77C\uC815'}</span>
+                          <span className="text-[10px] text-slate-400 font-bold">{todayStr.slice(5)}</span>
+                        </div>
+                        {todayEvents.length > 0 ? todayEvents.map((evt, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span>{evt.type === 'deadline' ? '\uD83D\uDD14' : evt.type === 'court' ? '\u2696\uFE0F' : evt.type === 'meeting' ? '\uD83E\uDD1D' : '\uD83D\uDCC5'}</span>
+                            <span className="text-slate-700 font-medium truncate flex-1">{evt.title}</span>
+                          </div>
+                        )) : (
+                          <p className="text-[11px] text-slate-400">{'\uC624\uB298 \uC608\uC815\uB41C \uC77C\uC815\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}</p>
+                        )}
                       </div>
                     </div>
                   );

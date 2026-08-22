@@ -5,8 +5,7 @@ import {
   CheckCircle2, ArrowRightLeft, UserPlus, Settings, Filter,
   FileText, Clock, AlertTriangle
 } from 'lucide-react';
-import InternalThreadTab from './InternalThreadTab';
-import TaskTicketTab from './TaskTicketTab';
+import TeamworkTab from './TeamworkTab';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog,
@@ -73,6 +72,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [showReminder, setShowReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [reminderAction, setReminderAction] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
+  const [reminderMemo, setReminderMemo] = useState('');
   
   // ── 이관 모달 ──
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -89,7 +90,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'docs' | 'notes' | 'thread' | 'tasks' | 'timeline'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline'>('info');
 
   // ── 초기 로드 ──
   useEffect(() => {
@@ -344,8 +345,9 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         createdBy: actor.id,
         createdByName: actor.name,
         createdByRole: actor.role as string,
+        description: reminderMemo.trim() || undefined,
       });
-      reminder = { date: reminderDate, action: reminderAction.trim(), completed: false, calendarEventId: calEvt.id };
+      reminder = { date: reminderDate, time: reminderTime || undefined, action: reminderAction.trim(), memo: reminderMemo.trim() || undefined, completed: false, calendarEventId: calEvt.id };
     }
 
     const note = createCrmNote(
@@ -362,6 +364,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     setShowReminder(false);
     setReminderDate('');
     setReminderAction('');
+    setReminderTime('');
+    setReminderMemo('');
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -842,7 +846,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                 {/* 서브탭 */}
                 <div className="flex border-b border-slate-200">
-                  {([['info','👤 정보'],['docs','📂 서류'],['notes','📝 메모'],['thread','💬 내부대화'],['tasks','✅ 업무'],['timeline','📅 타임라인']] as [typeof detailTab, string][]).map(([key, label]) => (
+                  {([['info','\uD83D\uDC64 \uC815\uBCF4'],['notes','\uD83D\uDCDD \uBA54\uBAA8'],['teamwork','\uD83D\uDCAC \uD300\uC6CC\uD06C'],['timeline','\uD83D\uDCC5 \uD0C0\uC784\uB77C\uC778']] as [typeof detailTab, string][]).map(([key, label]) => (
                     <button key={key} onClick={() => setDetailTab(key)}
                       className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>
                       {label}
@@ -877,17 +881,20 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         </div>
                       )}
 
-                      {/* 채무 현황 + 전체 프로필 */}
+                      {/* 채무 현황 + 전체 프로필 — 2칸 그리드 */}
                       <div className="space-y-3">
-                        <span className="text-sm font-bold text-slate-800 block">📊 채무 현황 및 의뢰인 프로필</span>
+                        <span className="text-sm font-bold text-slate-800 block">{'\uD83D\uDCCA \uCC44\uBB34 \uD604\uD669 \uBC0F \uC758\uB8B0\uC778 \uD504\uB85C\uD544'}</span>
                         
                         {/* 핵심 4대 지표 */}
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="bg-red-50/60 p-3 rounded-xl border border-red-100"><span className="text-red-400 block text-xs font-bold">총 채무</span><span className="font-extrabold text-red-600 text-base">{selectedClient.financialProfile.debtTotal.toLocaleString()}만</span></div>
-                          <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-100"><span className="text-blue-400 block text-xs font-bold">월 소득</span><span className="font-extrabold text-blue-600 text-base">{selectedClient.financialProfile.income}만</span></div>
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200"><span className="text-slate-500 block text-xs font-bold">자산 합산</span><span className="font-bold text-slate-800 text-base">{selectedClient.financialProfile.assetsTotal.toLocaleString()}만</span></div>
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200"><span className="text-slate-500 block text-xs font-bold">소득 대비 부채</span><span className="font-bold text-amber-600 text-base">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}배</span></div>
+                          <div className="bg-red-50/60 p-3 rounded-xl border border-red-100"><span className="text-red-400 block text-xs font-bold">{'\uCD1D \uCC44\uBB34'}</span><span className="font-extrabold text-red-600 text-base">{selectedClient.financialProfile.debtTotal.toLocaleString()}{'\uB9CC'}</span></div>
+                          <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-100"><span className="text-blue-400 block text-xs font-bold">{'\uC6D4 \uC18C\uB4DD'}</span><span className="font-extrabold text-blue-600 text-base">{selectedClient.financialProfile.income}{'\uB9CC'}</span></div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200"><span className="text-slate-500 block text-xs font-bold">{'\uC790\uC0B0 \uD569\uC0B0'}</span><span className="font-bold text-slate-800 text-base">{selectedClient.financialProfile.assetsTotal.toLocaleString()}{'\uB9CC'}</span></div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200"><span className="text-slate-500 block text-xs font-bold">{'\uC18C\uB4DD \uB300\uBE44 \uBD80\uCC44'}</span><span className="font-bold text-amber-600 text-base">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}{'\uBC30'}</span></div>
                         </div>
+
+                        {/* 2칸 그리드: 인적사항 + 직업/주거 */}
+                        <div className="grid grid-cols-2 gap-2.5">
 
                         {/* 인적사항 */}
                         <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-sm text-slate-700 font-medium">
@@ -941,6 +948,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             )}
                           </div>
                         )}
+                        </div> {/* end 2-col grid */}
 
                         {/* 채무 상세 */}
                         <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-sm text-slate-700 font-medium">
@@ -1096,32 +1104,6 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     </>
                   )}
 
-                  {/* ── 서류 탭 ── */}
-                  {detailTab === 'docs' && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-slate-800">📂 필수 서류 체크리스트</span>
-                        <span className="text-sm text-brand font-bold">
-                          {selectedExt.documents.filter(d => d.checked).length}/{selectedExt.documents.length} 완료
-                        </span>
-                      </div>
-                      {/* 프로그레스 바 */}
-                      <div className="w-full bg-slate-100 rounded-full h-2">
-                        <div className="bg-brand rounded-full h-2 transition-all"
-                          style={{ width: `${(selectedExt.documents.filter(d => d.checked).length / Math.max(1, selectedExt.documents.length)) * 100}%` }} />
-                      </div>
-                      <div className="space-y-1.5 max-h-[450px] overflow-y-auto">
-                        {selectedExt.documents.map(doc => (
-                          <div key={doc.id} onClick={() => handleToggleDocument(doc.id)}
-                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${doc.checked ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'}`}>
-                            <span className={`text-base ${doc.checked ? 'text-emerald-600' : 'text-slate-300'}`}>{doc.checked ? '☑' : '☐'}</span>
-                            <span className={`text-sm flex-1 ${doc.checked ? 'text-emerald-700 line-through font-medium' : 'text-slate-800 font-medium'}`}>{doc.label}</span>
-                            {doc.checkedBy && <span className="text-xs text-slate-500 font-medium">{doc.checkedBy}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {/* ── 메모 탭 ── */}
                   {detailTab === 'notes' && currentPermissions.writeNotes && (
@@ -1160,18 +1142,45 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           {'\uD83D\uDD14 \uB9AC\uB9C8\uC778\uB354 \uC124\uC815'}
                         </button>
                         {showReminder && (
-                          <div className="bg-amber-50/50 rounded-xl border border-amber-200 p-3 space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-amber-50/50 rounded-xl border border-amber-200 p-3 space-y-2.5">
+                            {/* 퀵 액션 버튼 */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {[
+                                { label: '\uD83D\uDCDE \uD1B5\uD654', value: '\uD1B5\uD654' },
+                                { label: '\uD83D\uDCAC \uBB38\uC790', value: '\uBB38\uC790' },
+                                { label: '\uD83E\uDD1D \uBC29\uBB38\uBBF8\uD305', value: '\uBC29\uBB38\uBBF8\uD305' },
+                                { label: '\uD83D\uDE97 \uCD9C\uC7A5\uBBF8\uD305', value: '\uCD9C\uC7A5\uBBF8\uD305' },
+                                { label: '\uD83D\uDCB0 \uC785\uAE08\uD655\uC778', value: '\uC785\uAE08\uD655\uC778' },
+                                { label: '\uD83D\uDCC4 \uC11C\uB958\uC694\uCCAD', value: '\uC11C\uB958\uC694\uCCAD' },
+                              ].map(qa => (
+                                <button key={qa.value} onClick={() => setReminderAction(qa.value)}
+                                  className={`text-[10px] px-2 py-1 rounded-lg border cursor-pointer active:scale-[0.98] transition-all ${reminderAction === qa.value ? 'bg-amber-100 text-amber-700 border-amber-300 font-bold' : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300'}`}>
+                                  {qa.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
                               <div>
                                 <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uB0A0\uC9DC'}</label>
                                 <input type="date" value={reminderDate} onChange={e => setReminderDate(e.target.value)}
                                   className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
                               </div>
                               <div>
+                                <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uC2DC\uAC04'}</label>
+                                <input type="time" value={reminderTime} onChange={e => setReminderTime(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                              </div>
+                              <div>
                                 <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uC561\uC158'}</label>
                                 <input type="text" value={reminderAction} onChange={e => setReminderAction(e.target.value)}
-                                  placeholder={'\uC608: \uC7AC\uD1B5\uD654 \uD544\uC694'} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                                  placeholder={'\uC9C1\uC811 \uC785\uB825'} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
                               </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uBA54\uBAA8 (\uC120\uD0DD)'}</label>
+                              <textarea value={reminderMemo} onChange={e => setReminderMemo(e.target.value)}
+                                placeholder={'\uC608: \uC218\uC784\uB8CC \uC870\uC815 \uC774\uC57C\uAE30 \uD544\uC694'}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs resize-none h-14" />
                             </div>
                             <p className="text-[10px] text-amber-600">{'\u2192 \uC77C\uC815/\uD560\uC77C \uCE98\uB9B0\uB354\uC5D0 \uC790\uB3D9 \uB4F1\uB85D\uB429\uB2C8\uB2E4'}</p>
                           </div>
@@ -1199,18 +1208,21 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                               </div>
                               <p className="text-slate-700 leading-relaxed font-normal">{note.content}</p>
                               {rem && (
-                                <div className={`mt-2 flex items-center gap-2 text-[11px] font-bold ${rem.completed ? 'text-slate-400' : remDday !== null && remDday <= 0 ? 'text-red-500' : 'text-amber-600'}`}>
-                                  <span>{rem.completed ? '\u2705' : '\uD83D\uDD14'}</span>
-                                  <span className={rem.completed ? 'line-through' : ''}>{rem.action} ({rem.date.slice(5)})</span>
-                                  {!rem.completed && remDday !== null && <span className="text-[10px]">{remDday === 0 ? 'D-Day' : remDday > 0 ? 'D-' + remDday : 'D+' + Math.abs(remDday)}</span>}
-                                  {!rem.completed && (
-                                    <button onClick={async () => {
-                                      if (!selectedId) return;
-                                      const ext = getCrmExt(selectedId);
-                                      const updatedNotes = ext.notes.map(n => n.id === note.id ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
-                                      await updateCrmExt(selectedId, { notes: updatedNotes });
-                                    }} className="text-emerald-500 hover:text-emerald-700 cursor-pointer ml-1">{'\u2713 \uC644\uB8CC'}</button>
-                                  )}
+                                <div className={`mt-2 p-2 rounded-lg ${rem.completed ? 'bg-slate-50' : remDday !== null && remDday <= 0 ? 'bg-red-50' : 'bg-amber-50'}`}>
+                                  <div className={`flex items-center gap-2 text-[11px] font-bold ${rem.completed ? 'text-slate-400' : remDday !== null && remDday <= 0 ? 'text-red-500' : 'text-amber-600'}`}>
+                                    <span>{rem.completed ? '\u2705' : '\uD83D\uDD14'}</span>
+                                    <span className={rem.completed ? 'line-through' : ''}>{rem.action}{rem.time ? ` ${rem.time}` : ''} ({rem.date.slice(5)})</span>
+                                    {!rem.completed && remDday !== null && <span className="text-[10px]">{remDday === 0 ? 'D-Day' : remDday > 0 ? 'D-' + remDday : 'D+' + Math.abs(remDday)}</span>}
+                                    {!rem.completed && (
+                                      <button onClick={async () => {
+                                        if (!selectedId) return;
+                                        const ext = getCrmExt(selectedId);
+                                        const updatedNotes = ext.notes.map(n => n.id === note.id ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
+                                        await updateCrmExt(selectedId, { notes: updatedNotes });
+                                      }} className="text-emerald-500 hover:text-emerald-700 cursor-pointer ml-auto">{'\u2713 \uC644\uB8CC'}</button>
+                                    )}
+                                  </div>
+                                  {rem.memo && <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{rem.memo}</p>}
                                 </div>
                               )}
                             </div>
@@ -1223,28 +1235,15 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     </div>
                   )}
 
-                  {/* ── 내부 대화 탭 ── */}
-                  {detailTab === 'thread' && (
-                    <InternalThreadTab
+                  {/* ── 팀워크 탭 (내부대화 + 업무지시 통합) ── */}
+                  {detailTab === 'teamwork' && (
+                    <TeamworkTab
                       tenantId={activeLawyer.lawFirmId || activeLawyer.id}
                       targetType="consult_request"
                       targetId={selectedId}
-                      actorId={activeStaff?.id || activeLawyer.id}
-                      actorName={activeStaff?.name || activeLawyer.name}
-                      actorRole={activeStaff?.role || 'OWNER'}
-                      staffMembers={staffMembers}
-                    />
-                  )}
-
-                  {/* ── 업무 탭 ── */}
-                  {detailTab === 'tasks' && (
-                    <TaskTicketTab
-                      tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-                      targetType="consult_request"
-                      targetId={selectedId}
-                      actorId={activeStaff?.id || activeLawyer.id}
-                      actorName={activeStaff?.name || activeLawyer.name}
-                      actorRole={activeStaff?.role || 'OWNER'}
+                      currentUserId={activeStaff?.id || activeLawyer.id}
+                      currentUserName={activeStaff?.name || activeLawyer.name}
+                      currentUserRole={activeStaff?.role || 'OWNER'}
                       staffMembers={staffMembers}
                     />
                   )}

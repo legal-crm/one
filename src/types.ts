@@ -322,7 +322,9 @@ export const OUTCOME_CONFIG: Record<ConsultOutcome, { label: string; emoji: stri
 
 export interface NoteReminder {
   date: string;
+  time?: string;
   action: string;
+  memo?: string;
   completed: boolean;
   completedAt?: string;
   calendarEventId?: string;
