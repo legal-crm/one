@@ -288,7 +288,7 @@ export default function TasksScheduleTab({ tenantId, userId, userName, requests,
             {/* Day headers */}
             <div className="grid grid-cols-7 border-b border-slate-200">
               {DAY_HEADERS.map((d, i) => (
-                <div key={d} className={`text-center text-xs font-bold py-2.5 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'} bg-slate-50`}>{d}</div>
+                <div key={d} className={`text-center text-sm font-bold py-3 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-500'} bg-slate-50`}>{d}</div>
               ))}
             </div>
 
@@ -311,14 +311,17 @@ export default function TasksScheduleTab({ tenantId, userId, userName, requests,
 
                   return (
                     <button key={day} onClick={() => setSelectedDay(sel ? null : day)}
-                      className={`min-h-[90px] p-1.5 border-b border-r border-slate-100 text-left transition-all cursor-pointer hover:bg-blue-50/40 ${sel ? 'bg-brand/5 ring-2 ring-brand/30 ring-inset' : ''} ${isT ? 'bg-brand/5' : ''}`}>
-                      <div className="flex items-start justify-between">
-                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold ${
-                          isT ? 'bg-brand text-white' :
-                          isHoliday ? 'text-red-500' :
-                          dow === 6 ? 'text-blue-500' :
-                          'text-slate-700'
-                        }`}>{day}</span>
+                      className={`min-h-[100px] p-2 border-b border-r border-slate-100 text-left transition-all cursor-pointer hover:bg-blue-50/40 ${sel ? 'bg-brand/5 ring-2 ring-brand/30 ring-inset' : ''} ${isT ? 'bg-brand/5' : ''}`}>
+                      <div className="flex items-start justify-between mb-1">
+                        {isT ? (
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand text-white text-sm font-black">{day}</span>
+                        ) : (
+                          <span className={`text-sm font-bold pl-0.5 pt-0.5 ${
+                            isHoliday ? 'text-red-500' :
+                            dow === 6 ? 'text-blue-500' :
+                            'text-slate-700'
+                          }`}>{day}</span>
+                        )}
                         {holiday && <span className="text-[9px] font-bold text-red-400 truncate max-w-[60px]">{holiday}</span>}
                       </div>
                       {dayTasks.length > 0 && (
