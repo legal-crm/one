@@ -2052,12 +2052,15 @@ export default function LawyerRole({
               )}
 
               {requests.filter(r => r.status === 'requested').length > 3 && (
-                <button
-                  onClick={() => setActiveTab('open-requests')}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl text-sm transition-colors press-scale cursor-pointer active:scale-[0.98]"
-                >
-                  전체 상담 요청 {totalOpenRequestsCount}건 모두 보기 &rarr;
-                </button>
+                <div className="flex justify-center pt-1">
+                  <button
+                    onClick={() => setActiveTab('open-requests')}
+                    className="w-full sm:w-[30%] min-w-[220px] bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-colors press-scale cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <span>전체 상담 요청 {totalOpenRequestsCount}건 모두 보기</span>
+                    <span>&rarr;</span>
+                  </button>
+                </div>
               )}
             </div>
             )}
