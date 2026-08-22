@@ -2438,8 +2438,8 @@ export default function LawyerRole({
               </span>
             </div>
 
-            {/* 요청 목록 */}
-            <div className="space-y-5">
+            {/* 요청 목록: 2열 그리드 배치 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
               {requests
                 .filter(r => {
                   const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
@@ -2454,17 +2454,17 @@ export default function LawyerRole({
                 .map((r, idx) => {
                   const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
                   return (
-                    <div key={r.id} className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all border-l-4 ${
+                    <div key={r.id} className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all border-l-4 flex flex-col justify-between ${
                       r.requestType === 'direct' ? 'border-l-amber-400 border-amber-200' :
                       r.requestType === 'direct_multi' ? 'border-l-violet-400 border-violet-200' :
                       'border-l-brand border-slate-200'
                     }`}>
 
                       {/* 카드 헤더 */}
-                      <div className="px-6 py-4 bg-slate-50/70 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="w-7 h-7 rounded-full bg-slate-800 text-white text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
-                          <span className={`text-xs font-black px-3 py-1 rounded-lg uppercase tracking-wider ${
+                      <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="w-6 h-6 rounded-full bg-slate-800 text-white text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                          <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider ${
                             r.requestType === 'direct' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' :
                             r.requestType === 'direct_multi' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
                             'bg-brand/10 text-brand border border-brand/20'
@@ -2472,7 +2472,7 @@ export default function LawyerRole({
                             {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
                           </span>
                           {r.entryCategory && (
-                            <span className={`text-xs font-bold px-3 py-1 rounded-lg ${
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
                               r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
                               r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
                               'bg-slate-100 text-slate-600 border border-slate-200'
@@ -2480,40 +2480,40 @@ export default function LawyerRole({
                               {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
                             </span>
                           )}
-                          <span className="text-sm sm:text-base font-bold text-slate-800">{r.clientName}</span>
-                          <span className="text-xs text-slate-400">등록 {new Date(r.createdAt).toLocaleString()}</span>
+                          <span className="text-sm font-bold text-slate-800">{r.clientName}</span>
+                          <span className="text-[11px] text-slate-400">등록 {new Date(r.createdAt).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className="text-slate-500">지정 변호사: <strong className="text-slate-800">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
-                          <span className="bg-brand/10 text-brand font-bold px-2.5 py-1 rounded-lg">제안서 작성 대기</span>
+                          <span className="text-slate-500 text-[11px]">지정 변호사: <strong className="text-slate-800">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
+                          <span className="bg-brand/10 text-brand font-bold text-[11px] px-2 py-0.5 rounded-md">제안서 작성 대기</span>
                         </div>
                       </div>
 
                       {/* 카드 본문 */}
-                      <div className="p-6 space-y-5">
+                      <div className="p-5 space-y-4 flex-1 flex flex-col">
                         {/* 제목 + 사연 */}
-                        <div className="space-y-1.5">
-                          <h3 className="font-bold text-base sm:text-lg text-slate-900">{r.title}</h3>
-                          <p className="text-sm sm:text-base text-slate-600 leading-relaxed line-clamp-2">{r.content}</p>
+                        <div className="space-y-1">
+                          <h3 className="font-bold text-base text-slate-900 line-clamp-1">{r.title}</h3>
+                          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-2">{r.content}</p>
                         </div>
 
                         {/* 의뢰인 메모 */}
                         {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
-                          <div className="bg-indigo-50/60 border border-indigo-200/70 rounded-xl p-4">
-                            <div className="flex items-start gap-2.5">
-                              <span className="text-lg shrink-0">📝</span>
+                          <div className="bg-indigo-50/60 border border-indigo-200/70 rounded-xl p-3.5 text-xs sm:text-sm">
+                            <div className="flex items-start gap-2">
+                              <span className="text-base shrink-0">📝</span>
                               <div className="flex-1 min-w-0">
-                                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block mb-1.5">의뢰인 전달 메모</span>
+                                <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
                                 {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
-                                  <ul className="space-y-1 text-left list-none">
+                                  <ul className="space-y-0.5 text-left list-none">
                                     {r.financialProfile.clientNotes.map((note, index) => (
-                                      <li key={index} className="text-sm sm:text-base text-slate-800 leading-relaxed break-all">
+                                      <li key={index} className="text-xs text-slate-800 leading-relaxed break-all">
                                         • {note}
                                       </li>
                                     ))}
                                   </ul>
                                 ) : (
-                                  <p className="text-sm sm:text-base text-slate-800 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
+                                  <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
                                 )}
                               </div>
                             </div>
@@ -2521,11 +2521,11 @@ export default function LawyerRole({
                         )}
 
                         {/* 3열 카드형 지표 */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                           {/* 재무 요약 카드 */}
-                          <div className="bg-red-50/40 rounded-xl p-4.5 border border-red-100/70 space-y-2.5">
-                            <span className="text-xs font-black text-red-500 uppercase tracking-wider">💰 재무 요약</span>
-                            <div className="space-y-2 text-sm sm:text-base">
+                          <div className="bg-red-50/40 rounded-xl p-3.5 border border-red-100/70 space-y-2">
+                            <span className="text-[11px] font-black text-red-500 uppercase tracking-wider">💰 재무 요약</span>
+                            <div className="space-y-1.5 text-xs">
                               <div className="flex justify-between">
                                 <span className="text-slate-500">총 채무</span>
                                 <span className="font-bold text-red-600">{r.financialProfile.debtTotal.toLocaleString()}만</span>
@@ -2538,7 +2538,7 @@ export default function LawyerRole({
                                 <span className="text-slate-500">월 소득</span>
                                 <span className="font-bold text-slate-800">{r.financialProfile.income}만</span>
                               </div>
-                              <div className="flex justify-between border-t border-red-100 pt-2">
+                              <div className="flex justify-between border-t border-red-100 pt-1.5">
                                 <span className="text-slate-500 font-semibold">부채비율</span>
                                 <span className="font-black text-red-600">{debtRatio}배</span>
                               </div>
@@ -2552,9 +2552,9 @@ export default function LawyerRole({
                           </div>
 
                           {/* 인적 정보 카드 */}
-                          <div className="bg-blue-50/40 rounded-xl p-4.5 border border-blue-100/70 space-y-2.5">
-                            <span className="text-xs font-black text-blue-500 uppercase tracking-wider">👤 인적 정보</span>
-                            <div className="space-y-2 text-sm sm:text-base">
+                          <div className="bg-blue-50/40 rounded-xl p-3.5 border border-blue-100/70 space-y-2">
+                            <span className="text-[11px] font-black text-blue-500 uppercase tracking-wider">👤 인적 정보</span>
+                            <div className="space-y-1.5 text-xs">
                               <div className="flex justify-between">
                                 <span className="text-slate-500">나이/성별</span>
                                 <span className="font-bold text-slate-800">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
@@ -2572,7 +2572,7 @@ export default function LawyerRole({
                                 <span className="font-bold text-slate-800">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
                               </div>
                               {r.financialProfile.maritalStatus === 'MARRIED' && r.financialProfile.spouseIncome !== undefined && (
-                                <div className="flex justify-between border-t border-blue-100 pt-2">
+                                <div className="flex justify-between border-t border-blue-100 pt-1.5">
                                   <span className="text-slate-500">배우자 소득</span>
                                   <span className="font-bold text-slate-800">{r.financialProfile.spouseIncome.toLocaleString()}만</span>
                                 </div>
@@ -2581,9 +2581,9 @@ export default function LawyerRole({
                           </div>
 
                           {/* 법적 프로필 카드 */}
-                          <div className="bg-slate-50 rounded-xl p-4.5 border border-slate-200 space-y-2.5">
-                            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">⚖️ 법적 프로필</span>
-                            <div className="space-y-2 text-sm sm:text-base">
+                          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2">
+                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">⚖️ 법적 프로필</span>
+                            <div className="space-y-1.5 text-xs">
                               {r.financialProfile.jobType && (
                                 <div className="flex justify-between">
                                   <span className="text-slate-500">직업</span>
@@ -2605,7 +2605,7 @@ export default function LawyerRole({
                                 </div>
                               )}
                               {r.financialProfile.creditorCount && (
-                                <div className="flex justify-between border-t border-slate-200 pt-2">
+                                <div className="flex justify-between border-t border-slate-200 pt-1.5">
                                   <span className="text-slate-500">채권자</span>
                                   <span className="font-bold text-amber-600">{r.financialProfile.creditorCount}곳 / {r.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : r.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : r.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '가압류'}</span>
                                 </div>
@@ -2615,34 +2615,34 @@ export default function LawyerRole({
                         </div>
 
                         {/* 특례/퇴직금/위험 플래그 — 해당시만 표시 */}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5 mt-auto pt-1">
                           {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
-                            <span className="bg-emerald-500/10 text-emerald-700 text-xs px-3 py-1 rounded-lg font-black border border-emerald-500/20">
+                            <span className="bg-emerald-500/10 text-emerald-700 text-xs px-2.5 py-0.5 rounded-md font-black border border-emerald-500/20">
                               ⚡ 24개월 특례: {r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : r.financialProfile.specialCondition === 'single_parent' ? '한부모' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
                             </span>
                           )}
                           {r.financialProfile.retirementPay !== undefined && r.financialProfile.retirementPay > 0 && (
-                            <span className="bg-slate-100 text-slate-700 text-xs px-3 py-1 rounded-lg font-semibold border border-slate-200">
+                            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-md font-semibold border border-slate-200">
                               💼 퇴직금 {r.financialProfile.retirementPay.toLocaleString()}만 ({r.financialProfile.retirementPensionType === 'pension' ? '연금 0%반영' : r.financialProfile.retirementPensionType === 'none' ? '미가입 50%반영' : '확인필요 50%반영'})
                             </span>
                           )}
                           {r.financialProfile.retirementPensionType === 'unknown' && (
-                            <span className="bg-amber-500/10 text-amber-600 text-xs px-3 py-1 rounded-lg font-bold border border-amber-500/20 animate-pulse">
+                            <span className="bg-amber-500/10 text-amber-600 text-xs px-2.5 py-0.5 rounded-md font-bold border border-amber-500/20 animate-pulse">
                               ⚠️ 퇴직연금 확인 필요
                             </span>
                           )}
                           {r.financialProfile.riskFlags.map(rf => (
-                            <span key={rf} className="bg-red-500/10 text-red-500 text-xs px-3 py-1 rounded-lg font-bold border border-red-500/20">
+                            <span key={rf} className="bg-red-500/10 text-red-500 text-xs px-2.5 py-0.5 rounded-md font-bold border border-red-500/20">
                               ⚠️ {rf}
                             </span>
                           ))}
                           {(r.financialProfile.speculativeLoss && r.financialProfile.speculativeLoss > 0) && (
-                            <span className="bg-orange-500/10 text-orange-600 text-xs px-3 py-1 rounded-lg font-bold border border-orange-500/20">
+                            <span className="bg-orange-500/10 text-orange-600 text-xs px-2.5 py-0.5 rounded-md font-bold border border-orange-500/20">
                               📉 투기손실 {r.financialProfile.speculativeLoss.toLocaleString()}만
                             </span>
                           )}
                           {(r.financialProfile.gamblingLoss && r.financialProfile.gamblingLoss > 0) && (
-                            <span className="bg-orange-500/10 text-orange-600 text-xs px-3 py-1 rounded-lg font-bold border border-orange-500/20">
+                            <span className="bg-orange-500/10 text-orange-600 text-xs px-2.5 py-0.5 rounded-md font-bold border border-orange-500/20">
                               🎰 도박손실 {r.financialProfile.gamblingLoss.toLocaleString()}만
                             </span>
                           )}
@@ -2651,19 +2651,19 @@ export default function LawyerRole({
                       </div>
 
                       {/* 카드 푸터: 액션 버튼 */}
-                      <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
+                      <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2.5 mt-auto">
                         <button 
                           onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
-                          className="bg-white hover:bg-slate-100 text-slate-800 font-bold py-3 px-5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 border border-slate-200 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
+                          className="bg-white hover:bg-slate-100 text-slate-800 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
                         >
                           <Microscope className="w-4 h-4 text-violet-500" />
                           🔬 AI 심층 분석
                         </button>
                         <button 
                           onClick={() => handleOpenProposalDraft(r.id)}
-                          className="bg-brand hover:bg-brand-hover text-white font-black py-3 px-6 rounded-xl text-[15px] tracking-wide transition-all shadow-md flex items-center justify-center gap-2 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
+                          className="bg-brand hover:bg-brand-hover text-white font-black py-2.5 px-5 rounded-xl text-xs sm:text-sm tracking-wide transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
                         >
-                          <CheckCircle2 className="w-5 h-5" />
+                          <CheckCircle2 className="w-4 h-4" />
                           고객 제안서 작성
                         </button>
                       </div>
@@ -2681,7 +2681,7 @@ export default function LawyerRole({
                   const openMatch = r.requestType === 'open';
                   return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
                 }).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).length === 0 && (
-                <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3 shadow-sm">
+                <div className="col-span-full bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3 shadow-sm">
                   <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
                   <p className="text-base text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>
                   <p className="text-sm text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
