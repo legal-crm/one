@@ -996,7 +996,7 @@ export default function LawyerRole({
     // Close consultation
     setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'closed' } : r));
     toast.success(`${req.clientName} 의뢰인이 정식 사건으로 수임 등록되었습니다.`);
-    setActiveTab('cases');
+    setActiveTab('client-crm');
   };
 
   const handleUpdateCaseStatus = (caseId: string, nextStatus: CaseStatus) => {
@@ -1700,12 +1700,6 @@ export default function LawyerRole({
                   <span className="ml-auto text-xs text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">{requests.length}</span>
                 </button>
               )}
-              {permissionCtx.canAccessTab('cases') && (
-                <button onClick={() => setActiveTab('cases')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'cases' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
-                  <FolderHeart className="w-5 h-5 shrink-0" /><span>수임 사건 관리</span>
-                  <span className="ml-auto text-xs text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">{totalCasesCount}</span>
-                </button>
-              )}
               <button onClick={() => setActiveTab('tasks-schedule')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'tasks-schedule' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <CalendarCheck className="w-5 h-5 shrink-0" /><span>일정 / 할일</span>
               </button>
@@ -1828,7 +1822,7 @@ export default function LawyerRole({
                 </div>
               </button>
 
-              <button onClick={() => setActiveTab('cases')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-purple-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              <button onClick={() => setActiveTab('client-crm')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-purple-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
                   <span className="text-xs text-slate-500 block font-bold">수임 전환</span>
                   <span className="text-2xl font-black text-purple-600">{totalCasesCount}</span>
@@ -3030,251 +3024,6 @@ export default function LawyerRole({
 
 
 
-        {/* TAB 4: CASE MANAGEMENT SYSTEM (KANBAN & LIST) */}
-        {/* TAB 4: 수임 사건 관리 */}
-        {activeTab === 'cases' && (
-          <div className="space-y-6 animate-fadeIn">
-            {/* 서브탭 */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
-              {([
-                { key: 'kanban' as const, label: '칸반 보드' },
-                { key: 'active' as const, label: '진행 중' },
-                { key: 'closed' as const, label: '종결' },
-              ]).map(t => (
-                <button key={t.key} onClick={() => setCasesSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${casesSub === t.key ? 'bg-brand text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            
-            {/* Header Banner */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-xl">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-brand/10 via-transparent to-purple-500/5"></div>
-              <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-black text-white flex items-center gap-3">
-                    <div className="w-10 h-10 bg-brand/20 rounded-xl flex items-center justify-center">
-                      <FolderHeart className="w-5 h-5 text-brand" />
-                    </div>
-                    <span>사건 위임 대장 통합 CRM</span>
-                  </h2>
-                  <p className="text-sm text-slate-300 mt-2 ml-[52px]">서류 준비부터 파산 면책까지 전체 진행 현황을 실시간으로 추적합니다.</p>
-                </div>
-                <div className="flex gap-3 ml-[52px] md:ml-0">
-                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 px-5 py-3 rounded-xl">
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">총 진행 사건</div>
-                    <div className="text-2xl font-black text-white mt-1">{cases.length}<span className="text-sm text-slate-400 ml-1">건</span></div>
-                  </div>
-                  <div className="bg-emerald-500/10 backdrop-blur-sm border border-emerald-500/20 px-5 py-3 rounded-xl">
-                    <div className="text-xs text-emerald-400 font-bold uppercase tracking-wider">감면 달성액</div>
-                    <div className="text-2xl font-black text-emerald-400 mt-1">11억 4,200<span className="text-sm ml-1">만</span></div>
-                  </div>
-                </div>
-              </div>
-              <div className="relative mt-6 ml-[52px] md:ml-0">
-                <div className="flex items-center gap-1 text-xs text-slate-400 mb-2 font-medium">
-                  {['서류준비','법원접수','개시결정','최종인가','파산면책'].map((label) => (
-                    <div key={label} className="flex-1 text-center"><span className="text-slate-300">{label}</span></div>
-                  ))}
-                </div>
-                <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden flex gap-1">
-                  {(['document','filing','commencement','approval','discharge'] as const).map((stage, i) => {
-                    const count = cases.filter(c => c.status === stage).length;
-                    const colors = ['bg-indigo-500','bg-brand','bg-violet-500','bg-emerald-500','bg-purple-500'];
-                    return count > 0 ? (<div key={stage} className={`${colors[i]} rounded-full transition-all duration-500`} style={{flex: count}}></div>) : null;
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile Stage Selector */}
-            <div className="md:hidden flex overflow-x-auto gap-2 py-2 scrollbar-hide">
-              {(['document','filing','commencement','approval','discharge'] as const).map((st, i) => {
-                const labels = ['서류준비','법원접수','개시결정','최종인가','파산면책'];
-                const emojis = ['📋','🏛️','⚖️','✅','🎉'];
-                const isActive = mobileStageFilter === st;
-                const count = cases.filter(c => c.status === st).length;
-                return (
-                  <button key={st} onClick={() => setMobileStageFilter(st)}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-extrabold whitespace-nowrap transition-all border cursor-pointer ${
-                      isActive ? 'bg-brand/10 text-brand border-brand/30 shadow-md shadow-brand/10' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}>
-                    {emojis[i]} {labels[i]} ({count})
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Kanban Board */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
-              {(['document','filing','commencement','approval','discharge'] as const).map((stage, idx) => {
-                const isCurrentMobileStage = stage === mobileStageFilter;
-                const stageLabels = ['1. 서류준비','2. 법원접수','3. 개시결정','4. 최종인가','5. 파산면책'];
-                const stageEmojis = ['📋','🏛️','⚖️','✅','🎉'];
-                const stageGradients = [
-                  'from-indigo-500/10 to-indigo-500/5 border-indigo-500/20',
-                  'from-brand/10 to-brand/5 border-brand/20',
-                  'from-violet-500/10 to-violet-500/5 border-violet-500/20',
-                  'from-emerald-500/10 to-emerald-500/5 border-emerald-500/20',
-                  'from-purple-500/10 to-purple-500/5 border-purple-500/20',
-                ];
-                const headerColors = [
-                  'text-indigo-600 bg-indigo-500/10 border-indigo-500/20',
-                  'text-brand bg-brand/10 border-brand/20',
-                  'text-violet-600 bg-violet-500/10 border-violet-500/20',
-                  'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
-                  'text-purple-600 bg-purple-500/10 border-purple-500/20',
-                ];
-                const dotColors = ['bg-indigo-500','bg-brand','bg-violet-500','bg-emerald-500','bg-purple-500'];
-                const stageCases = cases.filter(c => c.status === stage);
-                return (
-                  <div key={stage} className={`bg-gradient-to-b ${stageGradients[idx]} p-3.5 rounded-2xl border space-y-3 min-h-[340px] shadow-xs ${
-                    isCurrentMobileStage ? 'block' : 'hidden md:block'
-                  }`}>
-                    <div className={`flex items-center justify-between p-3 rounded-xl border ${headerColors[idx]}`}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{stageEmojis[idx]}</span>
-                        <span className="font-black text-sm">{stageLabels[idx]}</span>
-                      </div>
-                      <span className={`w-6 h-6 rounded-full ${dotColors[idx]} text-white text-xs font-bold flex items-center justify-center`}>
-                        {stageCases.length}
-                      </span>
-                    </div>
-                    <div className="space-y-2.5">
-                      {stageCases.map(c => {
-                        const isSelected = c.id === selectedCaseId;
-                        return (
-                          <div key={c.id} onClick={() => setSelectedCaseId(c.id)}
-                            className={`group p-3.5 rounded-xl border cursor-pointer transition-all duration-200 space-y-2 text-left backdrop-blur-sm ${
-                              isSelected ? 'bg-white border-brand/40 shadow-md ring-2 ring-brand/20' : 'bg-white/90 border-slate-200/90 hover:bg-white hover:shadow-md hover:border-slate-300'
-                            }`}>
-                            <div className="flex justify-between items-center">
-                              <span className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full ${dotColors[idx]} ${isSelected ? 'animate-pulse' : ''}`}></span>
-                                {c.clientName} 의뢰인
-                              </span>
-                              <span className="text-slate-400 text-xs font-medium">{new Date(c.createdAt).toLocaleDateString('ko-KR', {month:'short',day:'numeric'})}</span>
-                            </div>
-                            <div className="text-xs font-bold text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
-                              <span>위임채무액</span>
-                              <span className="text-red-500 font-extrabold text-sm">{c.debtTotal.toLocaleString()}만 원</span>
-                            </div>
-                            <p className="text-xs text-slate-500 leading-normal line-clamp-1 group-hover:text-slate-700 transition-colors">
-                              {c.notes.length > 0 ? `• ${c.notes[0]}` : '기재 메모 없음'}
-                            </p>
-                          </div>
-                        );
-                      })}
-                      {stageCases.length === 0 && (
-                        <div className="text-center py-12 text-xs text-slate-400 font-medium">
-                          <div className="text-3xl mb-2 opacity-30">{stageEmojis[idx]}</div>
-                          이 단계의 의뢰인이 없습니다.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-            </div>
-
-            {/* Detailed Case Editor Panel when selected */}
-            {selectedCaseId && (() => {
-              const activeCase = cases.find(c => c.id === selectedCaseId);
-              if (!activeCase) return null;
-              
-              return (
-                <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 animate-slideUp shadow-sm">
-                  {/* Left Side: Case general and state change */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-3.5">
-                      <div>
-                        <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">CASE FILE SYSTEM</span>
-                        <h3 className="font-black text-lg text-slate-900 mt-0.5">{activeCase.clientName} 의뢰인 파일정보</h3>
-                      </div>
-
-                      <span className="text-xs text-slate-700 font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
-                        담당: {activeCase.assignedLawyerName}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
-                      <div>• 고객 연락처: <strong className="text-slate-800 font-mono font-bold">{activeCase.phone}</strong></div>
-                      <div>• 세후 월가용소득: <strong className="text-slate-800 font-bold">{activeCase.income}만 원</strong></div>
-                      <div>• 연체 승인부채액: <strong className="text-red-500 font-bold">{activeCase.debtTotal.toLocaleString()}만 원</strong></div>
-                      <div>• 최초 선임 등록일: <strong className="text-slate-800 font-bold">{new Date(activeCase.createdAt).toLocaleDateString()}</strong></div>
-                    </div>
-
-                    {/* Change Status dropdown */}
-                    <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2.5">
-                      <label className="block font-bold text-sm text-slate-800">법원 추진 단계 일괄 변경:</label>
-                      <div className="flex gap-2">
-                        <select 
-                          value={activeCase.status}
-                          onChange={(e) => handleUpdateCaseStatus(activeCase.id, e.target.value as CaseStatus)}
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 text-sm focus:ring-2 focus:ring-brand/30"
-                        >
-                          <option value="document">1. 서류 기획 상태</option>
-                          <option value="filing">2. 본 법원 접수 완료</option>
-                          <option value="commencement">3. 법원 지정 가상 개시 결정 고시</option>
-                          <option value="approval">4. 최종 인가 결정 도달</option>
-                          <option value="discharge">5. 전액 면책 성실 불입 완성</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Side: Log and notes tracking */}
-                  <div className="space-y-4 flex flex-col justify-between">
-                    <div className="space-y-3.5">
-                      <span className="font-black text-brand uppercase tracking-wider block text-sm">📝 보정 및 추진 명세 성과 로그</span>
-                      
-                      {/* Interactive form to add a note */}
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="새로운 보정이나 법원 결정 고시 사항 메모 기입..."
-                          value={newNote}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleAddCaseNote(activeCase.id);
-                          }}
-                          className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30"
-                        />
-                        <button 
-                          onClick={() => handleAddCaseNote(activeCase.id)}
-                          className="bg-brand hover:bg-brand-hover text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shrink-0 cursor-pointer shadow-sm active:scale-[0.98]"
-                        >
-                          등록
-                        </button>
-                      </div>
-
-                      {/* Display of notes */}
-                      <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-700 space-y-2 max-h-48 overflow-y-auto">
-                        {activeCase.notes.map((note, idx) => (
-                          <div key={idx} className="flex gap-2 items-start">
-                            <span className="text-brand font-bold select-none shrink-0">•</span>
-                            <span className="leading-relaxed">{note}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-3 border-t border-slate-200">
-                      <button 
-                        onClick={() => setSelectedCaseId('')}
-                        className="bg-white hover:bg-slate-100 text-slate-700 font-bold px-5 py-2 rounded-xl border border-slate-200 text-sm cursor-pointer transition-colors"
-                      >
-                        닫기
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-          </div>
-        )}
 
         {/* TAB 5: BILLING & SUBSCRIPTIONS */}
         {activeTab === 'billing' && (

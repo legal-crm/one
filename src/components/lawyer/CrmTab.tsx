@@ -191,7 +191,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         r.phone.includes(search);
       
       const ext = getCrmExt(r.id);
-      const matchStatus = statusFilter === 'all' || ext.crmStatus === statusFilter;
+      const matchStatus = statusFilter === 'all' ||
+        (statusFilter === 'consulting' ? ['requested','consulting'].includes(ext.crmStatus) :
+         statusFilter === 'contracted' ? ['contracted','document','filed','commenced','repaying'].includes(ext.crmStatus) :
+         statusFilter === 'discharged' ? ['discharged','cancelled'].includes(ext.crmStatus) :
+         ext.crmStatus === statusFilter);
       
       let matchAssignee = true;
       if (assigneeFilter === 'unassigned') {
@@ -662,6 +666,42 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         </div>
       )}
 
+      {/* ── 빠른 필터 ── */}
+      <div className="flex gap-2 flex-wrap">
+        {([
+          { key: 'all', label: '\uC804\uCCB4 \uACE0\uAC1D', icon: '\uD83D\uDC65', count: requests.length },
+          { key: 'consulting', label: '\uC0C1\uB2F4 \uC911', icon: '\uD83D\uDCDE', count: requests.filter(r => ['requested','consulting'].includes(getCrmExt(r.id).crmStatus)).length },
+          { key: 'contracted', label: '\uC218\uC784 \uC0AC\uAC74', icon: '\uD83D\uDCC2', count: requests.filter(r => ['contracted','document','filed','commenced','repaying'].includes(getCrmExt(r.id).crmStatus)).length },
+          { key: 'discharged', label: '\uC885\uACB0', icon: '\u2705', count: requests.filter(r => ['discharged','cancelled'].includes(getCrmExt(r.id).crmStatus)).length },
+        ] as const).map(f => (
+          <button key={f.key} onClick={() => {
+            if (f.key === 'all') { setStatusFilter('all'); }
+            else if (f.key === 'consulting') { setStatusFilter('consulting'); }
+            else if (f.key === 'contracted') { setStatusFilter('contracted'); }
+            else { setStatusFilter('discharged'); }
+            setPage(1);
+          }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer border ${
+              (f.key === 'all' && statusFilter === 'all') ||
+              (f.key === 'consulting' && statusFilter === 'consulting') ||
+              (f.key === 'contracted' && statusFilter === 'contracted') ||
+              (f.key === 'discharged' && statusFilter === 'discharged')
+                ? 'bg-brand text-white border-brand shadow-sm'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-brand/30 hover:bg-brand/5'
+            }`}>
+            <span>{f.icon}</span>
+            <span>{f.label}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded-md font-black ${
+              (f.key === 'all' && statusFilter === 'all') ||
+              (f.key === 'consulting' && statusFilter === 'consulting') ||
+              (f.key === 'contracted' && statusFilter === 'contracted') ||
+              (f.key === 'discharged' && statusFilter === 'discharged')
+                ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+            }`}>{f.count}</span>
+          </button>
+        ))}
+      </div>
+
       {/* ── 검색 + 필터 + 뷰 토글 ── */}
       <div className="bg-white p-4.5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
         <div className="relative w-full sm:max-w-xs">
@@ -858,6 +898,45 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   {/* ── 정보 탭 ── */}
                   {detailTab === 'info' && (
                     <>
+                      {/* 법원 진행 바 (수임 이후만) */}
+                      {['contracted','document','filed','commenced','repaying','discharged'].includes(selectedExt.crmStatus) && (() => {
+                        const steps = [
+                          { key: 'contracted', label: '\uD83D\uDCDD \uC218\uC784', short: '\uC218\uC784' },
+                          { key: 'document', label: '\uD83D\uDCC2 \uC11C\uB958', short: '\uC11C\uB958' },
+                          { key: 'filed', label: '\u2696\uFE0F \uC811\uC218', short: '\uC811\uC218' },
+                          { key: 'commenced', label: '\uD83D\uDD0D \uAC1C\uC2DC', short: '\uAC1C\uC2DC' },
+                          { key: 'repaying', label: '\uD83D\uDCB0 \uBCC0\uC81C', short: '\uBCC0\uC81C' },
+                          { key: 'discharged', label: '\u2705 \uBA74\uCC45', short: '\uBA74\uCC45' },
+                        ];
+                        const currentIdx = steps.findIndex(s => s.key === selectedExt.crmStatus);
+                        return (
+                          <div className="bg-gradient-to-r from-brand/5 to-emerald-50 p-4 rounded-2xl border border-brand/10 mb-2">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-black text-brand">{'\u2696\uFE0F \uBC95\uC6D0 \uC9C4\uD589 \uD604\uD669'}</span>
+                              <span className="text-[10px] font-bold text-slate-400">{currentIdx + 1}/{steps.length}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {steps.map((step, idx) => (
+                                <React.Fragment key={step.key}>
+                                  <div className={`flex flex-col items-center ${idx <= currentIdx ? '' : 'opacity-40'}`}>
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black border-2 ${
+                                      idx < currentIdx ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                      idx === currentIdx ? 'bg-brand border-brand text-white shadow-md shadow-brand/30' :
+                                      'bg-white border-slate-300 text-slate-400'
+                                    }`}>
+                                      {idx < currentIdx ? '\u2713' : idx + 1}
+                                    </div>
+                                    <span className={`text-[9px] mt-1 font-bold text-center leading-tight ${idx === currentIdx ? 'text-brand' : idx < currentIdx ? 'text-emerald-600' : 'text-slate-400'}`}>{step.short}</span>
+                                  </div>
+                                  {idx < steps.length - 1 && (
+                                    <div className={`flex-1 h-0.5 rounded-full mb-4 ${idx < currentIdx ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                                  )}
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {/* 인적 정보 */}
                       {currentPermissions.editClientInfo && (
                         <div className="space-y-3">
