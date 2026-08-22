@@ -87,7 +87,7 @@ export default function LawyerRole({
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule'>('dashboard');
-  const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity' | 'clients'>('overview');
+  const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity'>('overview');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
   const [settingsSub, setSettingsSub] = useState<'channels' | 'logs'>('channels');
@@ -1788,7 +1788,6 @@ export default function LawyerRole({
               {([
                 { key: 'overview' as const, label: '전체 현황' },
                 { key: 'activity' as const, label: '활동 분석' },
-                { key: 'clients' as const, label: '전담 고객' },
               ]).map(t => (
                 <button key={t.key} onClick={() => setDashboardSub(t.key)} className={`px-5 py-2.5 rounded-lg text-[15px] font-bold transition-all whitespace-nowrap cursor-pointer ${dashboardSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
@@ -2128,51 +2127,6 @@ export default function LawyerRole({
             </div>
             )}
 
-            {/* ═══ Row 5: 전담 선임 고객 (overview — 풀 너비 독립 섹션) ═══ */}
-            {(dashboardSub === 'overview') && (() => {
-              const appointedClients = [
-                { id: 'appt-1', clientName: '홍길*', status: 'active' as const, appointedAt: '2026-07-10T14:30:00Z', cancelReason: '', lastActivity: '2026-08-18T10:00:00Z' },
-                { id: 'appt-3', clientName: '박영*', status: 'active' as const, appointedAt: '2026-07-14T16:00:00Z', cancelReason: '', lastActivity: '2026-08-19T14:30:00Z' },
-                { id: 'appt-2', clientName: '김철*', status: 'cancelled' as const, appointedAt: '2026-07-05T09:00:00Z', cancelReason: '응답이 너무 느려요', lastActivity: '2026-07-20T11:00:00Z' },
-              ];
-              const activeCount = appointedClients.filter(a => a.status === 'active').length;
-              const cancelledCount = appointedClients.filter(a => a.status === 'cancelled').length;
-              return (
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">🤝 전담 선임 고객</h3>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold">활성 {activeCount}명</span>
-                      {cancelledCount > 0 && <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-bold">취소 {cancelledCount}명</span>}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                    {appointedClients.map(appt => {
-                      const daysSince = Math.floor((Date.now() - new Date(appt.appointedAt).getTime()) / (1000 * 60 * 60 * 24));
-                      return (
-                        <div key={appt.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${appt.status === 'active' ? 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
-                              {appt.clientName[0]}
-                            </div>
-                            <div>
-                              <span className="text-base font-bold text-slate-900 block">{appt.clientName}</span>
-                              <span className="text-xs text-slate-400 font-medium">선임 {daysSince}일째</span>
-                              {appt.status === 'cancelled' && appt.cancelReason && (
-                                <span className="text-xs text-red-500 block font-medium">사유: {appt.cancelReason}</span>
-                              )}
-                            </div>
-                          </div>
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                            {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* ═══ 서브탭: 활동 분석 (고도화) ═══ */}
             {dashboardSub === 'activity' && (() => {
@@ -2349,135 +2303,8 @@ export default function LawyerRole({
               );
             })()}
 
-            {/* ═══ 서브탭: 전담 고객 (고도화) ═══ */}
-            {dashboardSub === 'clients' && (() => {
-              const appointedClients = [
-                { id: 'appt-1', clientName: '홍길*', status: 'active' as const, appointedAt: '2026-07-10T14:30:00Z', cancelReason: '', lastActivity: '2026-08-18T10:00:00Z' },
-                { id: 'appt-3', clientName: '박영*', status: 'active' as const, appointedAt: '2026-07-14T16:00:00Z', cancelReason: '', lastActivity: '2026-08-19T14:30:00Z' },
-                { id: 'appt-2', clientName: '김철*', status: 'cancelled' as const, appointedAt: '2026-07-05T09:00:00Z', cancelReason: '응답이 너무 느려요', lastActivity: '2026-07-20T11:00:00Z' },
-              ];
-              const activeClients = appointedClients.filter(a => a.status === 'active');
-              const cancelledClients = appointedClients.filter(a => a.status === 'cancelled');
-              const churnRate = appointedClients.length > 0 ? Math.round((cancelledClients.length / appointedClients.length) * 100) : 0;
 
-              return (
-                <div className="space-y-6">
-                  {/* 상단 통계 카드 3열 */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-brand/10 text-brand"><Users className="w-5 h-5" /></div>
-                      <div>
-                        <span className="text-[11px] text-slate-500 font-bold block">전체 전담 고객</span>
-                        <span className="text-xl font-black text-brand">{appointedClients.length}명</span>
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-emerald-400/10 text-emerald-500"><UserCheck className="w-5 h-5" /></div>
-                      <div>
-                        <span className="text-[11px] text-slate-500 font-bold block">활성 고객</span>
-                        <span className="text-xl font-black text-emerald-500">{activeClients.length}명</span>
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-red-400/10 text-red-400"><UserX className="w-5 h-5" /></div>
-                      <div>
-                        <span className="text-[11px] text-slate-500 font-bold block">이탈/취소</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl font-black text-red-400">{cancelledClients.length}명</span>
-                          <span className="text-[11px] text-slate-400 font-semibold">이탈률 {churnRate}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* 고객 리스트 카드형 */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">🤝 전담 고객 관리</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {appointedClients.map(appt => {
-                        const daysSince = Math.floor((Date.now() - new Date(appt.appointedAt).getTime()) / (1000 * 60 * 60 * 24));
-                        const lastAct = new Date(appt.lastActivity);
-                        const daysSinceActivity = Math.floor((Date.now() - lastAct.getTime()) / (1000 * 60 * 60 * 24));
-                        return (
-                          <div key={appt.id} className={`p-4 rounded-xl border transition-all space-y-3 ${appt.status === 'active' ? 'bg-white border-emerald-200 hover:border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
-                            {/* 상단: 아바타 + 이름 + 상태 */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
-                                  {appt.clientName[0]}
-                                </div>
-                                <div>
-                                  <span className="text-sm font-bold text-slate-800 block">{appt.clientName}</span>
-                                  <span className="text-[11px] text-slate-400">선임 {daysSince}일째</span>
-                                </div>
-                              </div>
-                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap ${appt.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
-                                {appt.status === 'active' ? '🟢 활성' : '🔴 취소'}
-                              </span>
-                            </div>
-                            {/* 중간: 세부 정보 */}
-                            <div className="bg-slate-50 rounded-lg p-2.5 space-y-1.5 text-[12px]">
-                              <div className="flex justify-between">
-                                <span className="text-slate-500">선임일</span>
-                                <span className="font-bold text-slate-700">{new Date(appt.appointedAt).toLocaleDateString('ko-KR')}</span>
-                              </div>
-                              {/* <!-- mock --> */}
-                              <div className="flex justify-between">
-                                <span className="text-slate-500">최근 활동</span>
-                                <span className={`font-bold ${daysSinceActivity <= 3 ? 'text-emerald-500' : daysSinceActivity <= 7 ? 'text-amber-500' : 'text-slate-400'}`}>
-                                  {daysSinceActivity === 0 ? '오늘' : `${daysSinceActivity}일 전`}
-                                </span>
-                              </div>
-                              {appt.status === 'cancelled' && appt.cancelReason && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-500">취소 사유</span>
-                                  <span className="font-bold text-red-400">{appt.cancelReason}</span>
-                                </div>
-                              )}
-                            </div>
-                            {/* 하단: 액션 */}
-                            {appt.status === 'active' && (
-                              <button
-                                onClick={() => setActiveTab('client-crm')}
-                                className="w-full bg-slate-100 hover:bg-slate-200 text-brand font-bold py-2 rounded-xl text-[12px] transition-colors flex items-center justify-center gap-1 press-scale"
-                              >
-                                상담 이동 <ChevronRight className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 이탈 방지 인사이트 (취소 고객 존재 시) */}
-                  {cancelledClients.length > 0 && (
-                    <div className="bg-red-50/50 p-5 rounded-2xl border border-red-100 border-l-4 border-l-red-400 space-y-3">
-                      <h4 className="text-sm font-bold text-red-700 flex items-center gap-1.5">
-                        <AlertTriangle className="w-4 h-4" />
-                        이탈 방지 인사이트
-                      </h4>
-                      <div className="space-y-2">
-                        {cancelledClients.map(c => (
-                          <div key={c.id} className="flex items-start gap-2 text-xs">
-                            <span className="text-red-400 mt-0.5">•</span>
-                            <div>
-                              <span className="font-bold text-slate-700">{c.clientName}</span>
-                              <span className="text-slate-500"> — 취소 사유: "{c.cancelReason}"</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="bg-white/80 rounded-xl p-3 border border-red-100/50">
-                        <p className="text-[12px] text-slate-600 leading-relaxed">
-                          💡 고객 응답 시간을 단축하면 이탈을 줄일 수 있습니다. 신규 메시지 알림을 활성화하고, 24시간 이내 첫 응답을 목표로 해보세요.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
 
           </div>
         )}
