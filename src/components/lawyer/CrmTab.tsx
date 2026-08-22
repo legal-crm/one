@@ -550,13 +550,6 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                 ))}
               </select>
             )}
-            {currentPermissions.manageStaff && (
-              <button onClick={() => setShowStaffPanel(!showStaffPanel)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl transition-colors border border-slate-200 cursor-pointer"
-                title="직원 관리">
-                <Settings className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
 
@@ -618,64 +611,6 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           </span>
         </div>
       </div>
-
-      {/* ── 직원 관리 패널 (토글) ── */}
-      {showStaffPanel && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 animate-fadeIn shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-brand" /> 법무법인 직원 관리
-            </h3>
-            <button onClick={() => setShowStaffPanel(false)} className="text-slate-500 hover:text-slate-700 text-sm font-bold cursor-pointer">닫기 ✕</button>
-          </div>
-
-          <table className="w-full text-sm text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 font-bold">
-                <th className="p-3">이름</th><th className="p-3">역할</th><th className="p-3">담당 건수</th><th className="p-3">상태</th><th className="p-3 text-right">관리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {staffMembers.map(m => (
-                <tr key={m.id} className="hover:bg-slate-50">
-                  <td className="p-3 font-bold text-slate-900 text-base">{m.name}</td>
-                  <td className="p-3">
-                    <span className={`text-xs px-2.5 py-1 rounded-md ${STAFF_ROLE_CONFIG[m.role].bgColor} ${STAFF_ROLE_CONFIG[m.role].color} font-bold border`}>
-                      {STAFF_ROLE_CONFIG[m.role].label}
-                    </span>
-                  </td>
-                  <td className="p-3 text-slate-700 font-medium">
-                    {requests.filter(r => { const ext = getCrmExt(r.id); return ext.assignedLawyerId === m.id || ext.assignedConsultantId === m.id || ext.assignedStaffId === m.id; }).length}건
-                  </td>
-                  <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-md font-bold ${m.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{m.isActive ? '활성' : '비활성'}</span></td>
-                  <td className="p-3 text-right">
-                    {m.role !== 'OWNER' && (
-                      <button onClick={() => handleRemoveStaff(m.id)} className="text-slate-400 hover:text-red-500 cursor-pointer">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="flex gap-2.5 pt-3 border-t border-slate-100">
-            <input type="text" placeholder="직원 이름" value={newStaffName} onChange={e => setNewStaffName(e.target.value)}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900" />
-            <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value as StaffRole)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 font-medium">
-              <option value="LAWYER">담당 변호사</option>
-              <option value="CONSULTANT">상담 직원</option>
-              <option value="STAFF">사무 직원</option>
-              <option value="ACCOUNTING">경리 직원</option>
-            </select>
-            <button onClick={handleAddStaff} className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer">
-              <Plus className="w-4 h-4 inline mr-1" />추가
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── 빠른 필터 ── */}
       <div className="flex gap-2 flex-wrap">
