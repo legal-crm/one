@@ -4,7 +4,7 @@ import { createSecureSession, verifySecureSession, refreshSecureSession } from '
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
-  LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server,
+  LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server, Settings,
   Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner } from '../types';
@@ -634,10 +634,10 @@ export default function AdminRole({
 
   return (
     <div className="flex flex-col min-h-screen bg-[#07090E] text-slate-100 font-sans selection:bg-indigo-600 selection:text-white">
-      <div className="w-full max-w-[1024px] min-h-screen mx-auto bg-[#0F121C] border-x border-[#1E293B]/60 shadow-2xl flex flex-col relative">
+      <div className="w-full min-h-screen flex flex-col relative">
         
         {/* Admin Header */}
-        <header className="sticky top-0 z-40 bg-[#161B26]/90 backdrop-blur-md border-b border-[#1E293B]/60 shadow-xl px-4 py-3.5">
+        <header className="sticky top-0 z-40 bg-[#161B26] h-16 px-4 lg:px-6 flex items-center justify-between shrink-0 shadow-sm border-b border-[#1E293B]/60">
           <div className="w-full flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20">
@@ -669,91 +669,84 @@ export default function AdminRole({
           </div>
         </header>
 
-        {/* Tab row */}
-        <div className="bg-[#161B26] border-b border-[#1E293B]/60 px-4 relative">
-          <div className="w-full flex overflow-x-auto gap-3 py-2 text-xs font-semibold scrollbar-hide pr-8" style={{maskImage: 'linear-gradient(to right, black 92%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 92%, transparent 100%)'}}>
-            <button 
-              onClick={() => setActiveTab('dashboard')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'dashboard' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <BarChart2 className="w-4 h-4" />
-              <span>플랫폼 통합 대시보드</span>
-            </button>
-            
-            <button 
-              onClick={() => setActiveTab('clients')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'clients' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>의뢰인(소비자) 모니터링</span>
-            </button>
+        {/* ── Body: Sidebar + Main Content ── */}
+        <div className="flex flex-1 overflow-hidden">
 
-            <button 
-              onClick={() => setActiveTab('lawyers')}
-              className={`relative pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'lawyers' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>변호사 심사 및 자격 관리</span>
-              {pendingLawyersCount > 0 && (
-                <span className="bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[11px] font-bold animate-pulse">
-                  {pendingLawyersCount}
-                </span>
-              )}
-            </button>
+          {/* ── Desktop Fixed Sidebar (w-64) ── */}
+          <aside className="hidden lg:flex w-64 bg-[#111827] flex-col shrink-0 fixed top-16 left-0 bottom-0 overflow-y-auto z-30 border-r border-slate-800">
+            <nav className="flex-1 py-4 px-3.5 space-y-1.5">
+              {/* 그룹 1: 운영 */}
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-2">운영</p>
+              <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <BarChart2 className="w-5 h-5 shrink-0" /><span>대시보드</span>
+              </button>
+              <button onClick={() => setActiveTab('clients')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'clients' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <Users className="w-5 h-5 shrink-0" /><span>의뢰인 모니터링</span>
+              </button>
+              <button onClick={() => setActiveTab('lawyers')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'lawyers' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <Briefcase className="w-5 h-5 shrink-0" /><span>변호사 심사</span>
+                {pendingLawyersCount > 0 && (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm animate-pulse">{pendingLawyersCount}</span>)}
+              </button>
+              <button onClick={() => setActiveTab('members')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'members' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <Activity className="w-5 h-5 shrink-0" /><span>회원 모니터링</span>
+              </button>
 
-            <button 
-              onClick={() => setActiveTab('billing')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'billing' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>과금 분석 및 예상 정산</span>
-            </button>
+              {/* 그룹 2: 과금 */}
+              <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">과금</p>
+              <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <CreditCard className="w-5 h-5 shrink-0" /><span>과금 분석</span>
+              </button>
 
-            <button 
-              onClick={() => setActiveTab('contents')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'contents' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>콘텐츠 제어</span>
-            </button>
+              {/* 그룹 3: 설정 */}
+              <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">설정</p>
+              <button onClick={() => setActiveTab('contents')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'contents' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <Sparkles className="w-5 h-5 shrink-0" /><span>콘텐츠 제어</span>
+              </button>
+              <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <Lock className="w-5 h-5 shrink-0" /><span>매칭 정책</span>
+              </button>
+            </nav>
 
-            <button 
-              onClick={() => setActiveTab('settings')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'settings' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Lock className="w-4 h-4" />
-              <span>매칭 정책</span>
-            </button>
+            {/* 사이드바 하단: 모니터링 뱃지 + 로그아웃 + 버전 */}
+            <div className="px-3.5 py-4 border-t border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 px-3.5 py-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs text-emerald-400 font-bold">실시간 모니터링 가동 중</span>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] text-slate-300 hover:bg-white/5 hover:text-white transition-all font-bold cursor-pointer"
+              >
+                <LogOut className="w-5 h-5 shrink-0" /><span>로그아웃</span>
+              </button>
+              <p className="text-xs text-slate-500 px-3.5 font-medium">v1.0.0 · Master</p>
+            </div>
+          </aside>
 
-            <button 
-              onClick={() => setActiveTab('members')}
-              className={`pb-2 pt-1 px-1 border-b-2 flex items-center gap-1.5 transition-all text-sm shrink-0 ${
-                activeTab === 'members' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent text-slate-450 hover:text-white'
-              }`}
-            >
-              <Activity className="w-4 h-4" />
-              <span>회원 모니터링</span>
+          {/* ── Main Content Area ── */}
+          <main className="flex-1 overflow-y-auto bg-[#0B0F19] px-4 lg:px-8 py-6 lg:ml-64 pb-20 lg:pb-8">
+
+          {/* ── Mobile Bottom Tab Bar ── */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#161B26] border-t border-[#1E293B]/60 px-2 py-2 flex items-center justify-around shadow-lg">
+            <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'dashboard' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+              <BarChart2 className="w-5 h-5" /><span className="text-xs font-bold">대시보드</span>
+            </button>
+            <button onClick={() => setActiveTab('clients')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'clients' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+              <Users className="w-5 h-5" /><span className="text-xs font-bold">의뢰인</span>
+            </button>
+            <button onClick={() => setActiveTab('lawyers')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors relative cursor-pointer ${activeTab === 'lawyers' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+              <Briefcase className="w-5 h-5" /><span className="text-xs font-bold">변호사</span>
+              {pendingLawyersCount > 0 && (<span className="absolute -top-0.5 right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[11px] font-bold animate-pulse">{pendingLawyersCount}</span>)}
+            </button>
+            <button onClick={() => setActiveTab('billing')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'billing' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+              <CreditCard className="w-5 h-5" /><span className="text-xs font-bold">과금</span>
+            </button>
+            <button onClick={() => { const tabs: Array<typeof activeTab> = ['members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+              <Settings className="w-5 h-5" /><span className="text-xs font-bold">더보기</span>
             </button>
           </div>
-          <div className="absolute right-0 top-0 bottom-0 w-8 flex items-center justify-center pointer-events-none bg-gradient-to-l from-[#161B26] to-transparent">
-            <span className="text-slate-500 text-sm">›</span>
-          </div>
-        </div>
-
-        {/* Workspace Frame */}
-        <main className="flex-1 w-full px-4 py-6 overflow-y-auto">
 
           {/* TAB 1: PLATFORM DASHBOARD */}
           {activeTab === 'dashboard' && (
@@ -5246,6 +5239,7 @@ export default function AdminRole({
           })()}
 
         </main>
+        </div>
 
         {/* 진단서 노출 토글 확인 팝업 */}
         {showReportToggleConfirm && (
@@ -5282,10 +5276,6 @@ export default function AdminRole({
           </div>
         )}
 
-        {/* Footer */}
-        <footer className="bg-[#161B26] border-t border-[#1E293B]/60 text-center py-4 text-[12px] text-slate-600">
-          <p>© 2026 회생 및 파산 전문 어드민 관리센터. All rights reserved.</p>
-        </footer>
 
       </div>
     </div>
