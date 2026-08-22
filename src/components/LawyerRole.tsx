@@ -1882,7 +1882,7 @@ export default function LawyerRole({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {requests
                   .filter(r => r.status === 'requested' && isRelevantRequest(r))
-                  .slice(0, 6)
+                  .slice(0, 3)
                   .map((r, idx) => {
                     const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1);
                     return (
@@ -1961,13 +1961,13 @@ export default function LawyerRole({
                 </div>
               )}
 
-              {requests.filter(r => r.status === 'requested').length > 6 && (
+              {requests.filter(r => r.status === 'requested').length > 0 && (
                 <div className="flex justify-center pt-1">
                   <button
                     onClick={() => setActiveTab('open-requests')}
                     className="w-full sm:w-[30%] min-w-[220px] bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-colors press-scale cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
                   >
-                    <span>전체 상담 요청 {totalOpenRequestsCount}건 모두 보기</span>
+                    <span>신규 상담 {totalOpenRequestsCount}건 자세히 보기</span>
                     <span>&rarr;</span>
                   </button>
                 </div>
