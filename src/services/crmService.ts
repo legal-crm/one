@@ -198,7 +198,9 @@ export function createCrmNote(
   category: CrmNoteCategory,
   content: string,
   authorId: string,
-  authorName: string
+  authorName: string,
+  outcome?: import('../types').ConsultOutcome,
+  reminder?: import('../types').NoteReminder
 ): CrmNote {
   return {
     id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -207,7 +209,20 @@ export function createCrmNote(
     authorId,
     authorName,
     createdAt: new Date().toISOString(),
+    ...(outcome ? { outcome } : {}),
+    ...(reminder ? { reminder } : {}),
   };
+}
+
+/** CRM 고객 데이터 삭제 */
+export function deleteCrmClient(clientId: string): void {
+  const raw = localStorage.getItem('legal_crm_data');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    delete data[clientId];
+    localStorage.setItem('legal_crm_data', JSON.stringify(data));
+  } catch { /* ignore */ }
 }
 
 // ── CrmClientExtension 초기화 헬퍼 ──

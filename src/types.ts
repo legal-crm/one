@@ -306,6 +306,26 @@ export interface CrmNote {
   authorId: string;
   authorName: string;
   createdAt: string;
+  outcome?: ConsultOutcome;
+  reminder?: NoteReminder;
+}
+
+export type ConsultOutcome = 'positive' | 'neutral' | 'negative' | 'contracted' | 'cancelled';
+
+export const OUTCOME_CONFIG: Record<ConsultOutcome, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
+  positive:   { label: '\uAE0D\uC815\uC801', emoji: '\u2705', color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-l-emerald-400' },
+  neutral:    { label: '\uBCF4\uB958',     emoji: '\u2796', color: 'text-amber-600',   bgColor: 'bg-amber-50',   borderColor: 'border-l-amber-400' },
+  negative:   { label: '\uBD80\uC815\uC801', emoji: '\u274C', color: 'text-red-600',     bgColor: 'bg-red-50',     borderColor: 'border-l-red-400' },
+  contracted: { label: '\uC218\uC784 \uD655\uC815', emoji: '\uD83E\uDD1D', color: 'text-brand',      bgColor: 'bg-brand/5',    borderColor: 'border-l-brand' },
+  cancelled:  { label: '\uC758\uB8B0\uC778 \uCDE8\uC18C', emoji: '\uD83D\uDEAB', color: 'text-slate-500',  bgColor: 'bg-slate-50',   borderColor: 'border-l-slate-400' },
+};
+
+export interface NoteReminder {
+  date: string;
+  action: string;
+  completed: boolean;
+  completedAt?: string;
+  calendarEventId?: string;
 }
 
 // 서류 체크리스트

@@ -9,17 +9,20 @@ import InternalThreadTab from './InternalThreadTab';
 import TaskTicketTab from './TaskTicketTab';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
-  CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog
+  CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog,
+  ConsultOutcome, NoteReminder
 } from '../../types';
 import { 
   CRM_STATUS_CONFIG, STAFF_ROLE_CONFIG, CRM_NOTE_CATEGORIES, 
-  DEFAULT_REHAB_DOCUMENTS, DEFAULT_PERMISSIONS
+  DEFAULT_REHAB_DOCUMENTS, DEFAULT_PERMISSIONS, OUTCOME_CONFIG
 } from '../../types';
 import { 
   loadCrmData, saveCrmClient, loadStaffMembers, saveStaffMember, 
   deleteStaffMember, createActivityLog, createCrmNote, createDefaultCrmExtension,
+  deleteCrmClient,
   type CrmDataStore 
 } from '../../services/crmService';
+import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
 
 interface CrmTabProps {
   requests: ConsultRequest[];
@@ -66,6 +69,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [editStaffId, setEditStaffId] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteCategory, setNewNoteCategory] = useState<CrmNoteCategory>('consult');
+  const [newNoteOutcome, setNewNoteOutcome] = useState<import('../../types').ConsultOutcome | ''>('');
+  const [showReminder, setShowReminder] = useState(false);
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderAction, setReminderAction] = useState('');
   
   // ── 이관 모달 ──
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -322,13 +329,39 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     if (!selectedId || !newNoteContent.trim()) return;
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     const ext = getCrmExt(selectedId);
-    const note = createCrmNote(newNoteCategory, newNoteContent.trim(), actor.id, actor.name);
+    const selectedReq = requests.find(r => r.id === selectedId);
+    const clientName = selectedReq?.clientName || '';
+
+    // Build reminder
+    let reminder: NoteReminder | undefined;
+    if (showReminder && reminderDate && reminderAction.trim()) {
+      const tenantId = activeLawyer.lawFirmId || activeLawyer.id;
+      const calEvt = await createCalendarEvent(tenantId, {
+        title: `[\u{1F514}] ${clientName} - ${reminderAction.trim()}`,
+        date: reminderDate,
+        type: 'deadline',
+        visibility: 'personal',
+        createdBy: actor.id,
+        createdByName: actor.name,
+        createdByRole: actor.role as string,
+      });
+      reminder = { date: reminderDate, action: reminderAction.trim(), completed: false, calendarEventId: calEvt.id };
+    }
+
+    const note = createCrmNote(
+      newNoteCategory, newNoteContent.trim(), actor.id, actor.name,
+      newNoteOutcome || undefined, reminder
+    );
     const activities = [...ext.activities, createActivityLog(
       selectedId, actor.id, actor.name, actor.role, 'note_added',
-      `메모 추가 [${CRM_NOTE_CATEGORIES[newNoteCategory].label}]: ${newNoteContent.trim().slice(0, 30)}...`
+      `\uBA54\uBAA8 \uCD94\uAC00 [${CRM_NOTE_CATEGORIES[newNoteCategory].label}]: ${newNoteContent.trim().slice(0, 30)}...`
     )];
     await updateCrmExt(selectedId, { notes: [...ext.notes, note], activities });
     setNewNoteContent('');
+    setNewNoteOutcome('');
+    setShowReminder(false);
+    setReminderDate('');
+    setReminderAction('');
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -509,7 +542,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
             <div className="text-3xl font-black text-slate-900">{stats.total}</div>
             <div className="text-sm text-slate-500 font-bold mt-1">전체 고객</div>
@@ -524,8 +557,28 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           </div>
           <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-100 text-center">
             <div className="text-3xl font-black text-blue-600">+{stats.thisMonth}</div>
-            <div className="text-sm text-blue-600 font-bold mt-1">이번달 신규</div>
+            <div className="text-sm text-blue-600 font-bold mt-1">{'\uC774\uBC88\uB2EC \uC2E0\uADDC'}</div>
           </div>
+          {(() => {
+            const pendingReminders = requests.reduce((count, r) => {
+              const ext = getCrmExt(r.id);
+              return count + ext.notes.filter(n => n.reminder && !n.reminder.completed && new Date(n.reminder.date + 'T23:59:59') <= new Date(Date.now() + 86400000)).length;
+            }, 0);
+            const docIncomplete = requests.filter(r => {
+              const ext = getCrmExt(r.id);
+              return ext.crmStatus === 'document' && ext.documents.filter(d => d.checked).length < ext.documents.length * 0.5;
+            }).length;
+            return (<>
+              <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100 text-center">
+                <div className={`text-3xl font-black ${pendingReminders > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{pendingReminders}</div>
+                <div className="text-sm text-amber-600 font-bold mt-1">{'\uD83D\uDD14 \uBBF8\uC644\uB8CC \uB9AC\uB9C8\uC778\uB354'}</div>
+              </div>
+              <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100 text-center">
+                <div className={`text-3xl font-black ${docIncomplete > 0 ? 'text-purple-600' : 'text-slate-300'}`}>{docIncomplete}</div>
+                <div className="text-sm text-purple-600 font-bold mt-1">{'\uD83D\uDCC2 \uC11C\uB958 \uBBF8\uBE44'}</div>
+              </div>
+            </>);
+          })()}
         </div>
 
         {/* 담당자별 건수 */}
@@ -746,16 +799,29 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             </div>
 
             {/* 페이지네이션 */}
-            {totalPages > 1 && (
-              <div className="p-4 border-t border-slate-200 flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">전체 {filteredRequests.length}명 중 {((page - 1) * perPage) + 1}-{Math.min(page * perPage, filteredRequests.length)}명</span>
-                <div className="flex gap-1">
-                  <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer">이전</button>
-                  <span className="px-3 py-1.5 text-xs font-bold text-slate-700">{page} / {totalPages}</span>
-                  <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer">다음</button>
+            {totalPages > 1 && (() => {
+              const pages: (number | '...')[] = [];
+              if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i); }
+              else {
+                pages.push(1);
+                if (page > 3) pages.push('...');
+                for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+                if (page < totalPages - 2) pages.push('...');
+                pages.push(totalPages);
+              }
+              return (
+                <div className="p-4 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">{'\uC804\uCCB4'} {filteredRequests.length}{'\uBA85 \xB7'} {totalPages}{'\uD398\uC774\uC9C0'}</span>
+                  <div className="flex items-center gap-1">
+                    <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer active:scale-[0.98]">{'\uC774\uC804'}</button>
+                    {pages.map((p, idx) => p === '...' ? <span key={'d' + idx} className="px-1.5 text-xs text-slate-400">...</span> : (
+                      <button key={p} onClick={() => setPage(p as number)} className={`w-8 h-8 rounded-lg text-xs font-bold cursor-pointer active:scale-[0.98] transition-all ${page === p ? 'bg-brand text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{p}</button>
+                    ))}
+                    <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer active:scale-[0.98]">{'\uB2E4\uC74C'}</button>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* ── 우측: 상세 패널 ── */}
@@ -1060,8 +1126,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   {/* ── 메모 탭 ── */}
                   {detailTab === 'notes' && currentPermissions.writeNotes && (
                     <div className="space-y-3.5">
-                      <span className="text-sm font-bold text-slate-800 block">📝 CRM 상담 기록</span>
-                      {/* 카테고리 + 입력 */}
+                      <span className="text-sm font-bold text-slate-800 block">{'\uD83D\uDCDD CRM \uC0C1\uB2F4 \uAE30\uB85D'}</span>
+                      {/* 카테고리 */}
                       <div className="flex flex-wrap gap-1.5 mb-1">
                         {(Object.entries(CRM_NOTE_CATEGORIES) as [CrmNoteCategory, typeof CRM_NOTE_CATEGORIES[CrmNoteCategory]][]).map(([key, cfg]) => (
                           <button key={key} onClick={() => setNewNoteCategory(key)}
@@ -1070,20 +1136,60 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </button>
                         ))}
                       </div>
+                      {/* 메모 입력 */}
                       <div className="flex gap-2">
-                        <input type="text" placeholder="상담 메모 입력..." value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
+                        <input type="text" placeholder={'\uC0C1\uB2F4 \uBA54\uBAA8 \uC785\uB825...'} value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && !showReminder) handleAddNote(); }}
                           className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900" />
-                        <button onClick={handleAddNote} className="bg-brand hover:bg-brand-hover text-white px-4 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer">추가</button>
+                        <button onClick={handleAddNote} className="bg-brand hover:bg-brand-hover text-white px-4 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer active:scale-[0.98] whitespace-nowrap">{'\uCD94\uAC00'}</button>
                       </div>
+                      {/* 상담 결과 선택 */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-bold text-slate-400 shrink-0">{'\uC0C1\uB2F4 \uACB0\uACFC'}</span>
+                        {(Object.entries(OUTCOME_CONFIG) as [ConsultOutcome, typeof OUTCOME_CONFIG[ConsultOutcome]][]).map(([key, cfg]) => (
+                          <button key={key} onClick={() => setNewNoteOutcome(newNoteOutcome === key ? '' : key)}
+                            className={`text-[11px] px-2 py-1 rounded-lg border cursor-pointer active:scale-[0.98] transition-all ${newNoteOutcome === key ? cfg.bgColor + ' ' + cfg.color + ' border-current font-bold ring-1 ring-current/20' : 'text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                            {cfg.emoji} {cfg.label}
+                          </button>
+                        ))}
+                      </div>
+                      {/* 리마인더 토글 */}
+                      <div className="space-y-2">
+                        <button onClick={() => setShowReminder(!showReminder)}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-lg border cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1.5 ${showReminder ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                          {'\uD83D\uDD14 \uB9AC\uB9C8\uC778\uB354 \uC124\uC815'}
+                        </button>
+                        {showReminder && (
+                          <div className="bg-amber-50/50 rounded-xl border border-amber-200 p-3 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uB0A0\uC9DC'}</label>
+                                <input type="date" value={reminderDate} onChange={e => setReminderDate(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uC561\uC158'}</label>
+                                <input type="text" value={reminderAction} onChange={e => setReminderAction(e.target.value)}
+                                  placeholder={'\uC608: \uC7AC\uD1B5\uD654 \uD544\uC694'} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-amber-600">{'\u2192 \uC77C\uC815/\uD560\uC77C \uCE98\uB9B0\uB354\uC5D0 \uC790\uB3D9 \uB4F1\uB85D\uB429\uB2C8\uB2E4'}</p>
+                          </div>
+                        )}
+                      </div>
+                      {/* 메모 목록 */}
                       <div className="space-y-2 max-h-[380px] overflow-y-auto">
                         {[...selectedExt.notes].reverse().map(note => {
                           const catCfg = CRM_NOTE_CATEGORIES[note.category];
+                          const outCfg = note.outcome ? OUTCOME_CONFIG[note.outcome] : null;
+                          const rem = note.reminder;
+                          const remDday = rem && !rem.completed ? Math.ceil((new Date(rem.date + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / 86400000) : null;
                           return (
-                            <div key={note.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm">
+                            <div key={note.id} className={`p-3 rounded-xl border text-sm ${outCfg ? outCfg.bgColor + ' ' + outCfg.borderColor + ' border-l-4' : 'bg-slate-50 border-slate-200'}`}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className={`text-xs px-2 py-0.5 rounded-md ${catCfg.color} bg-white border font-bold`}>{catCfg.emoji} {catCfg.label}</span>
+                                  {outCfg && <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${outCfg.color} font-bold`}>{outCfg.emoji} {outCfg.label}</span>}
                                   <span className="text-xs text-slate-500 font-medium">{note.authorName}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -1092,11 +1198,26 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                 </div>
                               </div>
                               <p className="text-slate-700 leading-relaxed font-normal">{note.content}</p>
+                              {rem && (
+                                <div className={`mt-2 flex items-center gap-2 text-[11px] font-bold ${rem.completed ? 'text-slate-400' : remDday !== null && remDday <= 0 ? 'text-red-500' : 'text-amber-600'}`}>
+                                  <span>{rem.completed ? '\u2705' : '\uD83D\uDD14'}</span>
+                                  <span className={rem.completed ? 'line-through' : ''}>{rem.action} ({rem.date.slice(5)})</span>
+                                  {!rem.completed && remDday !== null && <span className="text-[10px]">{remDday === 0 ? 'D-Day' : remDday > 0 ? 'D-' + remDday : 'D+' + Math.abs(remDday)}</span>}
+                                  {!rem.completed && (
+                                    <button onClick={async () => {
+                                      if (!selectedId) return;
+                                      const ext = getCrmExt(selectedId);
+                                      const updatedNotes = ext.notes.map(n => n.id === note.id ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
+                                      await updateCrmExt(selectedId, { notes: updatedNotes });
+                                    }} className="text-emerald-500 hover:text-emerald-700 cursor-pointer ml-1">{'\u2713 \uC644\uB8CC'}</button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                         {selectedExt.notes.length === 0 && (
-                          <div className="text-center py-6 text-slate-500 text-sm">기록된 메모가 없습니다.</div>
+                          <div className="text-center py-6 text-slate-500 text-sm">{'\uAE30\uB85D\uB41C \uBA54\uBAA8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.'}</div>
                         )}
                       </div>
                     </div>
