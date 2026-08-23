@@ -317,6 +317,7 @@ export default function AdminRole({
   const [clientPage, setClientPage] = useState<number>(1);
   const [lawyerPage, setLawyerPage] = useState<number>(1);
   const [billingPage, setBillingPage] = useState<number>(1);
+  const [memberPage, setMemberPage] = useState<number>(1);
 
   // Sorting states
   const [clientSortKey, setClientSortKey] = useState<'name' | 'status' | 'debt' | 'date'>('date');
@@ -4774,6 +4775,11 @@ export default function AdminRole({
               return matchesSearch && matchesRole && matchesStatus;
             });
 
+            const totalMemberPages = Math.ceil(filteredMembersList.length / ITEMS_PER_PAGE) || 1;
+            const currentMemberPage = Math.min(memberPage, totalMemberPages);
+            const startIndexMember = (currentMemberPage - 1) * ITEMS_PER_PAGE;
+            const paginatedMembers = filteredMembersList.slice(startIndexMember, startIndexMember + ITEMS_PER_PAGE);
+
             const selectedMember = members.find(m => m.id === selectedMemberId);
             const selectedMemberLogs = selectedMemberId 
               ? activityLogs.filter(log => log.memberId === selectedMemberId)
@@ -5067,7 +5073,7 @@ export default function AdminRole({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#1E293B]/30">
-                          {filteredMembersList.map(m => {
+                          {paginatedMembers.map(m => {
                             const isSelected = m.id === selectedMemberId;
                             return (
                               <tr 
@@ -5134,6 +5140,47 @@ export default function AdminRole({
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Member Pagination Controls */}
+                    {totalMemberPages > 1 && (
+                      <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-sm">
+                        <span className="text-slate-500 font-mono">
+                          {filteredMembersList.length}명 중 {startIndexMember + 1}-{Math.min(startIndexMember + ITEMS_PER_PAGE, filteredMembersList.length)} 표시 (Page {currentMemberPage}/{totalMemberPages})
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            disabled={currentMemberPage === 1}
+                            onClick={() => setMemberPage(prev => Math.max(1, prev - 1))}
+                            className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                          >
+                            이전
+                          </button>
+                          {Array.from({ length: totalMemberPages }).map((_, i) => {
+                            const p = i + 1;
+                            return (
+                              <button
+                                key={p}
+                                onClick={() => setMemberPage(p)}
+                                className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                                  currentMemberPage === p
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            );
+                          })}
+                          <button
+                            disabled={currentMemberPage === totalMemberPages}
+                            onClick={() => setMemberPage(prev => Math.min(totalMemberPages, prev + 1))}
+                            className="px-2.5 py-1 rounded bg-[#0B0F19] text-slate-350 hover:text-white border border-[#1E293B]/60 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                          >
+                            다음
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column: Member Details Timeline OR Global Stream */}
