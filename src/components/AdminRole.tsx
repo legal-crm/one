@@ -545,40 +545,40 @@ export default function AdminRole({
               </div>
               <span className="font-black text-xl tracking-tight text-white">my김변 통합 어드민</span>
             </div>
-            <p className="text-slate-500 text-xs">플랫폼 통합 의뢰인 및 파트너 제어 관리 센터</p>
+            <p className="text-slate-500 text-sm">플랫폼 통합 의뢰인 및 파트너 제어 관리 센터</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4 text-left">
-            <h3 className="font-extrabold text-sm text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center gap-1.5">
+            <h3 className="font-extrabold text-base text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center gap-1.5">
               <Lock className="w-4 h-4 text-indigo-400" />
               <span>관리자 인증</span>
             </h3>
 
             {loginError && (
-              <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-xs p-3 rounded-xl">
+              <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-sm p-3 rounded-xl">
                 {loginError}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-[12px] text-slate-600 block uppercase font-bold">어드민 ID</label>
+              <label className="text-sm text-slate-600 block uppercase font-bold">어드민 ID</label>
               <input 
                 type="text" 
                 placeholder="어드민 아이디 입력 (기본: admin 또는 1)"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[12px] text-slate-600 block uppercase font-bold">비밀번호</label>
+              <label className="text-sm text-slate-600 block uppercase font-bold">비밀번호</label>
               <input 
                 type="password" 
                 placeholder="비밀번호 입력 (기본: admin 또는 1)"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
               />
             </div>
 
@@ -595,7 +595,7 @@ export default function AdminRole({
             <div className="flex gap-2 pt-1">
               <button 
                 type="submit"
-                className="flex-1 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>어드민 로그인</span>
@@ -607,7 +607,7 @@ export default function AdminRole({
                   localStorage.setItem(SESSION_KEY, token);
                   setIsLoggedIn(true);
                 }}
-                className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
+                className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-sm border border-[#1E293B]/60 transition-colors cursor-pointer"
               >
                 테스트 계정 1초 로그인
               </button>
@@ -620,7 +620,7 @@ export default function AdminRole({
             <div className="pt-1">
               <button 
                 type="submit"
-                className="w-full bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>어드민 로그인</span>
@@ -630,7 +630,7 @@ export default function AdminRole({
           </form>
 
           {/* Compliance statement */}
-          <div className="text-[12px] text-slate-600 leading-normal border-t border-[#1E293B]/30 pt-3 flex items-center justify-center gap-1">
+          <div className="text-sm text-slate-600 leading-normal border-t border-[#1E293B]/30 pt-3 flex items-center justify-center gap-1">
             <span>🔒 플랫폼 보안 1등급 마스터 라이선스 적용됨</span>
           </div>
         </div>
@@ -651,22 +651,22 @@ export default function AdminRole({
               </div>
               <div className="flex flex-col text-left">
                 <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-black text-sm tracking-tight text-white">my김변 플랫폼 어드민</span>
-                  <span className="bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded font-extrabold text-[11px] tracking-wider uppercase">Master</span>
+                  <span className="font-black text-base tracking-tight text-white">my김변 플랫폼 어드민</span>
+                  <span className="bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded font-extrabold text-xs tracking-wider uppercase">Master</span>
                 </div>
-                <span className="text-[12px] text-slate-500 mt-0.5">통합 통합 의뢰인 및 파트너 자격 제어 모듈</span>
+                <span className="text-sm text-slate-500 mt-0.5">통합 통합 의뢰인 및 파트너 자격 제어 모듈</span>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[12px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-sm font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>실시간 운영 모니터링 가동 중</span>
               </span>
 
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-1 bg-[#111622] hover:bg-[#161B26] text-slate-500 hover:text-white px-2.5 py-1.5 rounded-[200px] border border-[#1E293B]/60 text-[12px] transition-colors"
+                className="flex items-center gap-1 bg-[#111622] hover:bg-[#161B26] text-slate-500 hover:text-white px-2.5 py-1.5 rounded-[200px] border border-[#1E293B]/60 text-sm transition-colors"
               >
                 <LogOut className="w-3 h-3" />
                 <span>로그아웃</span>
@@ -682,7 +682,7 @@ export default function AdminRole({
           <aside className="hidden lg:flex w-64 bg-[#111827] flex-col shrink-0 fixed top-16 left-0 bottom-0 overflow-y-auto z-30 border-r border-slate-800">
             <nav className="flex-1 py-4 px-3.5 space-y-1.5">
               {/* 그룹 1: 운영 */}
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-2">운영</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-2">운영</p>
               <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <BarChart2 className="w-5 h-5 shrink-0" /><span>대시보드</span>
               </button>
@@ -691,7 +691,7 @@ export default function AdminRole({
               </button>
               <button onClick={() => setActiveTab('lawyers')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'lawyers' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <Briefcase className="w-5 h-5 shrink-0" /><span>변호사 심사</span>
-                {pendingLawyersCount > 0 && (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm animate-pulse">{pendingLawyersCount}</span>)}
+                {pendingLawyersCount > 0 && (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-sm font-bold shadow-sm animate-pulse">{pendingLawyersCount}</span>)}
               </button>
               <button onClick={() => setActiveTab('members')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'members' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <Activity className="w-5 h-5 shrink-0" /><span>회원 모니터링</span>
@@ -699,14 +699,14 @@ export default function AdminRole({
 
               {/* 그룹 2: 과금 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">과금</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">과금</p>
               <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <CreditCard className="w-5 h-5 shrink-0" /><span>과금 분석</span>
               </button>
 
               {/* 그룹 3: 설정 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">설정</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">설정</p>
               <button onClick={() => setActiveTab('contents')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'contents' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <Sparkles className="w-5 h-5 shrink-0" /><span>콘텐츠 제어</span>
               </button>
@@ -719,7 +719,7 @@ export default function AdminRole({
             <div className="px-3.5 py-4 border-t border-slate-800 space-y-2">
               <div className="flex items-center gap-2 px-3.5 py-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs text-emerald-400 font-bold">실시간 모니터링 가동 중</span>
+                <span className="text-sm text-emerald-400 font-bold">실시간 모니터링 가동 중</span>
               </div>
               <button 
                 onClick={handleLogout}
@@ -727,7 +727,7 @@ export default function AdminRole({
               >
                 <LogOut className="w-5 h-5 shrink-0" /><span>로그아웃</span>
               </button>
-              <p className="text-xs text-slate-500 px-3.5 font-medium">v1.0.0 · Master</p>
+              <p className="text-sm text-slate-500 px-3.5 font-medium">v1.0.0 · Master</p>
             </div>
           </aside>
 
@@ -737,20 +737,20 @@ export default function AdminRole({
           {/* ── Mobile Bottom Tab Bar ── */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#161B26] border-t border-[#1E293B]/60 px-2 py-2 flex items-center justify-around shadow-lg">
             <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'dashboard' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
-              <BarChart2 className="w-5 h-5" /><span className="text-xs font-bold">대시보드</span>
+              <BarChart2 className="w-5 h-5" /><span className="text-sm font-bold">대시보드</span>
             </button>
             <button onClick={() => setActiveTab('clients')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'clients' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
-              <Users className="w-5 h-5" /><span className="text-xs font-bold">의뢰인</span>
+              <Users className="w-5 h-5" /><span className="text-sm font-bold">의뢰인</span>
             </button>
             <button onClick={() => setActiveTab('lawyers')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors relative cursor-pointer ${activeTab === 'lawyers' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
-              <Briefcase className="w-5 h-5" /><span className="text-xs font-bold">변호사</span>
-              {pendingLawyersCount > 0 && (<span className="absolute -top-0.5 right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[11px] font-bold animate-pulse">{pendingLawyersCount}</span>)}
+              <Briefcase className="w-5 h-5" /><span className="text-sm font-bold">변호사</span>
+              {pendingLawyersCount > 0 && (<span className="absolute -top-0.5 right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold animate-pulse">{pendingLawyersCount}</span>)}
             </button>
             <button onClick={() => setActiveTab('billing')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'billing' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
-              <CreditCard className="w-5 h-5" /><span className="text-xs font-bold">과금</span>
+              <CreditCard className="w-5 h-5" /><span className="text-sm font-bold">과금</span>
             </button>
             <button onClick={() => { const tabs: Array<typeof activeTab> = ['members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
-              <Settings className="w-5 h-5" /><span className="text-xs font-bold">더보기</span>
+              <Settings className="w-5 h-5" /><span className="text-sm font-bold">더보기</span>
             </button>
           </div>
 
@@ -761,7 +761,7 @@ export default function AdminRole({
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-[12px] text-slate-600 block uppercase font-bold">누적 상담 신청 건수</span>
+                    <span className="text-sm text-slate-600 block uppercase font-bold">누적 상담 신청 건수</span>
                     <span className="text-2xl font-black text-indigo-400">{totalRequestsCount}개</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
@@ -771,7 +771,7 @@ export default function AdminRole({
 
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-[12px] text-slate-600 block uppercase font-bold">진행 사건 전환율</span>
+                    <span className="text-sm text-slate-600 block uppercase font-bold">진행 사건 전환율</span>
                     <span className="text-2xl font-black text-emerald-400">{conversionRate}%</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
@@ -781,9 +781,9 @@ export default function AdminRole({
 
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-[12px] text-slate-600 block uppercase font-bold">등록 파트너 대리인</span>
+                    <span className="text-sm text-slate-600 block uppercase font-bold">등록 파트너 대리인</span>
                     <span className="text-2xl font-black text-sky-400">
-                      {totalLawyersCount}명 {pendingLawyersCount > 0 && <strong className="text-red-400 text-xs font-bold">({pendingLawyersCount} 대기)</strong>}
+                      {totalLawyersCount}명 {pendingLawyersCount > 0 && <strong className="text-red-400 text-sm font-bold">({pendingLawyersCount} 대기)</strong>}
                     </span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/10">
@@ -793,7 +793,7 @@ export default function AdminRole({
 
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-[12px] text-slate-600 block uppercase font-bold">일일 방문자수</span>
+                    <span className="text-sm text-slate-600 block uppercase font-bold">일일 방문자수</span>
                     <span className="text-2xl font-black text-rose-400">248명</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/10">
@@ -803,7 +803,7 @@ export default function AdminRole({
 
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-[12px] text-slate-600 block uppercase font-bold">오늘 신규 가입자</span>
+                    <span className="text-sm text-slate-600 block uppercase font-bold">오늘 신규 가입자</span>
                     <span className="text-2xl font-black text-indigo-400">
                       {members.filter(m => {
                         const todayStr = new Date().toISOString().split('T')[0];
@@ -818,13 +818,13 @@ export default function AdminRole({
 
                 <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center justify-between">
                   <div className="space-y-1">
-                    <span className="text-[12px] text-slate-600 block uppercase font-bold">시스템 서버 상태</span>
+                    <span className="text-sm text-slate-600 block uppercase font-bold">시스템 서버 상태</span>
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                       </span>
-                      <span className="text-xs font-black text-emerald-400 uppercase tracking-wider">ONLINE</span>
+                      <span className="text-sm font-black text-emerald-400 uppercase tracking-wider">ONLINE</span>
                     </div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
@@ -839,14 +839,14 @@ export default function AdminRole({
                 {/* Platform Health and Compliance status */}
                 <div className="md:col-span-2 bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 space-y-4">
                   <div className="flex items-center justify-between border-b border-[#1E293B]/50 pb-3">
-                    <h3 className="font-bold text-sm text-slate-200 flex items-center gap-1.5">
+                    <h3 className="font-bold text-base text-slate-200 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-indigo-400" />
                       <span>변호사법 제34조 알선수수료 배제 준수율</span>
                     </h3>
-                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] px-2 py-0.5 rounded font-mono">COMPLIANT</span>
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2 py-0.5 rounded font-mono">COMPLIANT</span>
                   </div>
 
-                  <div className="space-y-3.5 text-xs leading-relaxed text-slate-500">
+                  <div className="space-y-3.5 text-sm leading-relaxed text-slate-500">
                     <p>my김변 플랫폼은 가입 변호사로부터 <strong>사건 성사당 수임 소개 수수료를 1원도 징수하지 않습니다.</strong></p>
                     <div className="p-3 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-2">
                       <div className="flex justify-between text-[13px]">
@@ -867,14 +867,14 @@ export default function AdminRole({
 
                 {/* Estimation Box */}
                 <div className="bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="font-bold text-sm text-slate-200 border-b border-[#1E293B]/50 pb-3 flex items-center gap-1.5">
+                  <h3 className="font-bold text-base text-slate-200 border-b border-[#1E293B]/50 pb-3 flex items-center gap-1.5">
                     <CreditCard className="w-4 h-4 text-indigo-400" />
                     <span>이달 예상 플랫폼 매출 (MRR)</span>
                   </h3>
                   <div className="space-y-3 text-center py-2">
-                    <span className="text-[12px] text-slate-600 block uppercase font-bold">월 고정 회원제 정산액</span>
+                    <span className="text-sm text-slate-600 block uppercase font-bold">월 고정 회원제 정산액</span>
                     <strong className="text-2xl font-black text-indigo-400">{estimateMRR.toLocaleString()} 원</strong>
-                    <span className="text-[11px] text-slate-450 block leading-tight">* 소속 변호사 {totalLawyersCount}명의 구독 멤버십 징수 추정액입니다.</span>
+                    <span className="text-xs text-slate-450 block leading-tight">* 소속 변호사 {totalLawyersCount}명의 구독 멤버십 징수 추정액입니다.</span>
                   </div>
                 </div>
 
@@ -883,14 +883,14 @@ export default function AdminRole({
               {/* SignUp & Traffic Analytics Chart Panel */}
               <div className="bg-[#111622] p-6 rounded-2xl border border-[#1E293B]/60 space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-[#1E293B]/50 pb-3 gap-3">
-                  <h3 className="font-bold text-sm text-slate-200 flex items-center gap-1.5">
+                  <h3 className="font-bold text-base text-slate-200 flex items-center gap-1.5">
                     <BarChart2 className="w-4 h-4 text-indigo-400" />
                     <span>가입자 추이 및 방문자(유입량) 분석</span>
                   </h3>
                   <div className="flex bg-[#0B0F19] p-0.5 rounded-lg border border-[#1E293B]/60">
                     <button
                       onClick={() => setDashboardSortType('weekly')}
-                      className={`text-[12px] font-black px-2.5 py-1 rounded-md transition-all ${
+                      className={`text-sm font-black px-2.5 py-1 rounded-md transition-all ${
                         dashboardSortType === 'weekly' 
                           ? 'bg-indigo-600 text-white shadow-sm' 
                           : 'text-slate-500 hover:text-white'
@@ -900,7 +900,7 @@ export default function AdminRole({
                     </button>
                     <button
                       onClick={() => setDashboardSortType('monthly')}
-                      className={`text-[12px] font-black px-2.5 py-1 rounded-md transition-all ${
+                      className={`text-sm font-black px-2.5 py-1 rounded-md transition-all ${
                         dashboardSortType === 'monthly' 
                           ? 'bg-indigo-600 text-white shadow-sm' 
                           : 'text-slate-500 hover:text-white'
@@ -915,7 +915,7 @@ export default function AdminRole({
                 <div className="space-y-6">
                   <div className="flex items-end justify-between h-48 pt-4 px-2 sm:px-6 bg-[#0B0F19]/40 rounded-xl border border-[#1E293B]/30 gap-3 sm:gap-6">
                     {/* Y-axis Labels */}
-                    <div className="flex flex-col justify-between h-full text-[11px] text-slate-600 font-mono pr-2 border-r border-[#1E293B]/30 pb-4">
+                    <div className="flex flex-col justify-between h-full text-xs text-slate-600 font-mono pr-2 border-r border-[#1E293B]/30 pb-4">
                       <span>{dashboardSortType === 'weekly' ? '250명' : '1000명'}</span>
                       <span>{dashboardSortType === 'weekly' ? '125명' : '500명'}</span>
                       <span>0명</span>
@@ -945,7 +945,7 @@ export default function AdminRole({
                           <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-32 relative">
                             
                             {/* Tooltip */}
-                            <div className="absolute -top-10 scale-0 group-hover:scale-100 bg-slate-900 border border-[#1E293B] rounded-lg p-2 text-[12px] text-slate-200 z-10 transition-all shadow-xl pointer-events-none whitespace-nowrap">
+                            <div className="absolute -top-10 scale-0 group-hover:scale-100 bg-slate-900 border border-[#1E293B] rounded-lg p-2 text-sm text-slate-200 z-10 transition-all shadow-xl pointer-events-none whitespace-nowrap">
                               <div className="font-bold text-slate-100 mb-0.5">{data.label}</div>
                               <div className="flex items-center gap-1.5 text-indigo-400">
                                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
@@ -970,7 +970,7 @@ export default function AdminRole({
                           </div>
                           
                           {/* Label */}
-                          <span className="text-[12px] text-slate-500 mt-2 font-medium truncate max-w-full text-center">
+                          <span className="text-sm text-slate-500 mt-2 font-medium truncate max-w-full text-center">
                             {data.label}
                           </span>
                         </div>
@@ -979,7 +979,7 @@ export default function AdminRole({
                   </div>
 
                   {/* Chart Legend */}
-                  <div className="flex items-center justify-center gap-6 text-xs border-t border-[#1E293B]/20 pt-3">
+                  <div className="flex items-center justify-center gap-6 text-sm border-t border-[#1E293B]/20 pt-3">
                     <div className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-sm bg-gradient-to-t from-indigo-500/20 to-indigo-500/80" />
                       <span className="text-slate-500">신규 가입자수</span>
@@ -997,12 +997,12 @@ export default function AdminRole({
                 
                 {/* 1) 회원가입 종합 요약 지표 */}
                 <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="font-bold text-sm text-slate-200 border-b border-[#1E293B]/50 pb-3 flex items-center gap-1.5">
+                  <h3 className="font-bold text-base text-slate-200 border-b border-[#1E293B]/50 pb-3 flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-indigo-400" />
                     <span>실시간 가입 및 회원 종합 지표</span>
                   </h3>
                   
-                  <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="bg-[#07090E]/60 p-3 rounded-xl border border-[#1E293B]/30 flex flex-col justify-between">
                       <span className="text-slate-600 font-bold block mb-1">전체 회원수</span>
                       <strong className="text-lg font-black text-slate-200">{members.length}명</strong>
@@ -1026,7 +1026,7 @@ export default function AdminRole({
                       <span className="text-slate-600 font-bold block mb-1">정지 회원 / 대기</span>
                       <strong className="text-lg font-black text-red-400">
                         {members.filter(m => m.status === 'suspended').length}명
-                        <span className="text-slate-600 text-[12px] font-normal"> / {members.filter(m => m.status === 'pending').length}명</span>
+                        <span className="text-slate-600 text-sm font-normal"> / {members.filter(m => m.status === 'pending').length}명</span>
                       </strong>
                     </div>
                     <div className="bg-[#07090E]/65 p-3 rounded-xl border border-[#1E293B]/30 col-span-2 flex flex-col justify-between">
@@ -1051,7 +1051,7 @@ export default function AdminRole({
                 {/* 2) 마케팅 유입 채널별 전환 효과 분석 (Funnel Analytics) */}
                 <div className="lg:col-span-2 bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
                   <div className="flex items-center justify-between border-b border-[#1E293B]/50 pb-3">
-                    <h3 className="font-bold text-sm text-slate-200 flex items-center gap-1.5">
+                    <h3 className="font-bold text-base text-slate-200 flex items-center gap-1.5">
                       <TrendingUp className="w-4 h-4 text-indigo-400" />
                       <span>마케팅 유입 경로별 전환율 (Funnel)</span>
                     </h3>
@@ -1076,7 +1076,7 @@ export default function AdminRole({
                       });
 
                       return maxConv > 0 ? (
-                        <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[11px] px-2 py-0.5 rounded font-black tracking-wider uppercase flex items-center gap-1">
+                        <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs px-2 py-0.5 rounded font-black tracking-wider uppercase flex items-center gap-1">
                           🏆 최우수 채널: {bestChannel} ({Math.round(maxConv)}% 전환)
                         </span>
                       ) : null;
@@ -1085,7 +1085,7 @@ export default function AdminRole({
 
                   {/* 채널 테이블 및 상세 마케팅 성과 매트릭스 */}
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="text-slate-600 font-bold border-b border-[#1E293B]/30 pb-2">
                           <th className="pb-2">가입 채널</th>
@@ -1128,7 +1128,7 @@ export default function AdminRole({
                     </table>
                   </div>
                   
-                  <p className="text-[12px] text-slate-600 leading-normal">
+                  <p className="text-sm text-slate-600 leading-normal">
                     * 상담 전환율 = (해당 유입 채널 가입자의 총 상담신청 건수 / 총 가입자 수) × 100 <br />
                     * 인당 계산기 실행수 = (해당 채널 가입자의 자가진단 계산 실행 횟수 / 총 가입자 수). 수치가 높을수록 서비스 적극 관여 고객입니다.
                   </p>
@@ -1138,19 +1138,19 @@ export default function AdminRole({
               {/* 🤝 전담 선임 현황 + 취소 사유 분석 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">🤝 전담 선임 현황</h3>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">🤝 전담 선임 현황</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-center">
                       <strong className="text-lg font-black text-emerald-400 block">3명</strong>
-                      <span className="text-[11px] text-emerald-400/70 font-bold">활성 선임</span>
+                      <span className="text-xs text-emerald-400/70 font-bold">활성 선임</span>
                     </div>
                     <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 text-center">
                       <strong className="text-lg font-black text-indigo-400 block">2명</strong>
-                      <span className="text-[11px] text-indigo-400/70 font-bold">이달 신규</span>
+                      <span className="text-xs text-indigo-400/70 font-bold">이달 신규</span>
                     </div>
                     <div className="bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center">
                       <strong className="text-lg font-black text-red-400 block">2건</strong>
-                      <span className="text-[11px] text-red-400/70 font-bold">취소</span>
+                      <span className="text-xs text-red-400/70 font-bold">취소</span>
                     </div>
                   </div>
                   <div className="space-y-1.5 mt-2">
@@ -1161,7 +1161,7 @@ export default function AdminRole({
                       { name: '김철*', lawyer: '이소민', status: 'cancelled', date: '07/05', reason: '응답 느림' },
                       { name: '정수*', lawyer: '김영수', status: 'cancelled', date: '06/28', reason: '비용 부담' },
                     ].map((a, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:bg-[#0B0F19]/30">
+                      <div key={i} className="flex items-center justify-between text-sm py-1.5 px-2 rounded-lg hover:bg-[#0B0F19]/30">
                         <div className="flex items-center gap-2">
                           <span className={`w-1.5 h-1.5 rounded-full ${a.status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                           <span className="text-white font-bold">{a.name}</span>
@@ -1169,8 +1169,8 @@ export default function AdminRole({
                           <span className="text-slate-400">{a.lawyer}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-600 font-mono text-[11px]">{a.date}</span>
-                          {a.reason && <span className="text-red-400 text-[11px]">{a.reason}</span>}
+                          <span className="text-slate-600 font-mono text-xs">{a.date}</span>
+                          {a.reason && <span className="text-red-400 text-xs">{a.reason}</span>}
                         </div>
                       </div>
                     ))}
@@ -1178,8 +1178,8 @@ export default function AdminRole({
                 </div>
 
                 <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">📊 취소 사유 분석</h3>
-                  <p className="text-[11px] text-slate-600">서비스 고도화를 위한 취소 원인 통계</p>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">📊 취소 사유 분석</h3>
+                  <p className="text-xs text-slate-600">서비스 고도화를 위한 취소 원인 통계</p>
                   <div className="space-y-3">
                     {[
                       { reason: '응답이 너무 느려요', count: 2, pct: 40, color: 'bg-red-500' },
@@ -1188,7 +1188,7 @@ export default function AdminRole({
                       { reason: '상담 불만족', count: 1, pct: 20, color: 'bg-slate-500' },
                     ].map((item, i) => (
                       <div key={i} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center justify-between text-sm">
                           <span className="text-slate-300 font-bold">{item.reason}</span>
                           <span className="text-slate-500">{item.count}건 ({item.pct}%)</span>
                         </div>
@@ -1199,8 +1199,8 @@ export default function AdminRole({
                     ))}
                   </div>
                   <div className="bg-[#0B0F19] rounded-xl p-3 border border-[#1E293B]/30 mt-2">
-                    <span className="text-[11px] text-amber-400 font-bold flex items-center gap-1">💡 인사이트</span>
-                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">"응답 속도"가 취소 원인 1위입니다. 변호사 응답 SLA 정책 도입을 검토하세요.</p>
+                    <span className="text-xs text-amber-400 font-bold flex items-center gap-1">💡 인사이트</span>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">"응답 속도"가 취소 원인 1위입니다. 변호사 응답 SLA 정책 도입을 검토하세요.</p>
                   </div>
                 </div>
               </div>
@@ -1219,15 +1219,15 @@ export default function AdminRole({
                     placeholder="의뢰인 성명 검색..." 
                     value={clientSearch}
                     onChange={(e) => setClientSearch(e.target.value)}
-                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
                   />
-                  <span className="absolute left-3 top-2 text-slate-600 text-xs">🔍</span>
+                  <span className="absolute left-3 top-2 text-slate-600 text-sm">🔍</span>
                 </div>
 
                 <select 
                   value={clientStatusFilter} 
                   onChange={(e) => setClientStatusFilter(e.target.value)}
-                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-xs text-slate-300"
+                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300"
                 >
                   <option value="all">전체 상태 조회</option>
                   <option value="requested">요청 대기</option>
@@ -1243,7 +1243,7 @@ export default function AdminRole({
                 {/* List container */}
                 <div className="lg:col-span-7 bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                           <th className="p-3">의뢰인명</th>
@@ -1267,14 +1267,14 @@ export default function AdminRole({
                               <td className="p-3 font-bold text-white flex items-center gap-1.5">
                                 <span>{c.clientName}</span>
                                 {isSpamBlocked && (
-                                  <span className="bg-red-500/15 text-red-400 border border-red-500/20 text-[10px] px-1 py-0.2 rounded font-extrabold uppercase">
+                                  <span className="bg-red-500/15 text-red-400 border border-red-500/20 text-xs px-1 py-0.2 rounded font-extrabold uppercase">
                                     SPAM
                                   </span>
                                 )}
                               </td>
                               <td className="p-3 font-mono text-slate-500">{maskPhone(c.phone)}</td>
                               <td className="p-3">
-                                <span className={`text-[11px] px-2 py-0.5 rounded border ${
+                                <span className={`text-xs px-2 py-0.5 rounded border ${
                                   c.status === 'requested' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                                   c.status === 'counseling' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                                   c.status === 'closed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
@@ -1303,7 +1303,7 @@ export default function AdminRole({
 
                   {/* Client Pagination Controls */}
                   {totalClientPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-xs">
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-sm">
                       <span className="text-slate-500 font-mono">
                         Page {currentClientPage} of {totalClientPages}
                       </span>
@@ -1349,18 +1349,18 @@ export default function AdminRole({
                     <>
                       <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
                         <div>
-                          <span className="text-[11px] text-indigo-400 font-bold block uppercase tracking-wider">CLIENT INFO MONITORS</span>
-                          <h3 className="text-sm font-extrabold text-white">{selectedClient.clientName} 의뢰 모니터링</h3>
+                          <span className="text-xs text-indigo-400 font-bold block uppercase tracking-wider">CLIENT INFO MONITORS</span>
+                          <h3 className="text-base font-extrabold text-white">{selectedClient.clientName} 의뢰 모니터링</h3>
                         </div>
-                        <span className="text-[12px] bg-[#0B0F19] border border-[#1E293B]/60 text-slate-500 px-2 py-0.5 rounded">
+                        <span className="text-sm bg-[#0B0F19] border border-[#1E293B]/60 text-slate-500 px-2 py-0.5 rounded">
                           ID: {selectedClient.id}
                         </span>
                       </div>
 
-                      <div className="space-y-3.5 text-xs text-slate-500">
+                      <div className="space-y-3.5 text-sm text-slate-500">
                         {/* Legal warning */}
                         <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40 space-y-1.5">
-                          <span className="text-[12px] font-extrabold text-indigo-400 block uppercase">⚖️ 법률 데이터 무결성 보호 안내</span>
+                          <span className="text-sm font-extrabold text-indigo-400 block uppercase">⚖️ 법률 데이터 무결성 보호 안내</span>
                           <p className="leading-relaxed text-[13px]">
                             개인정보 보호법 및 변호사법 준수에 근거하여 관리자는 의뢰인의 원본 기재 금융 채무 구조 금액을 임의 수정할 수 없습니다. 아래 정보는 읽기 전용 상태로 안전하게 렌더링됩니다.
                           </p>
@@ -1464,7 +1464,7 @@ export default function AdminRole({
                                     </strong>
                                   </div>
                                   {selectedClient.financialProfile.retirementPensionType === 'unknown' && (
-                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded text-[12px] text-amber-400 font-bold text-center animate-pulse">
+                                    <div className="bg-amber-500/10 border border-amber-500/20 p-2 rounded text-sm text-amber-400 font-bold text-center animate-pulse">
                                       ⚠️ [확인 필요] 예상 퇴직금 조회 및 가입 형태 확인 요망
                                     </div>
                                   )}
@@ -1488,26 +1488,26 @@ export default function AdminRole({
                               <EyeOff className="w-3.5 h-3.5" />
                               <span>불량 광고 및 허위 의뢰글 숨김</span>
                             </span>
-                            <p className="text-[12px] leading-relaxed text-slate-500">
+                            <p className="text-sm leading-relaxed text-slate-500">
                               해당 게시물이 광고글, 장난, 또는 변호사법상 의뢰가 아닌 유해글로 판정되면 노출을 영구 차단할 수 있습니다. (클릭 시 제목 및 내용이 치환되며 대기열에서 즉시 숨겨집니다)
                             </p>
                             <button 
                               onClick={() => handleToggleBlockRequest(selectedClient.id)}
-                              className="w-full bg-red-600/10 hover:bg-red-600 hover:text-white text-red-400 py-2 rounded-[200px] text-xs font-extrabold border border-red-500/20 transition-all flex items-center justify-center gap-1"
+                              className="w-full bg-red-600/10 hover:bg-red-600 hover:text-white text-red-400 py-2 rounded-[200px] text-sm font-extrabold border border-red-500/20 transition-all flex items-center justify-center gap-1"
                             >
                               <Trash2 className="w-4 h-4" />
                               <span>이 의뢰글 노출 영구 차단</span>
                             </button>
                           </div>
                         ) : (
-                          <div className="bg-red-500/5 border border-red-500/25 p-4 rounded-xl text-center text-red-400 text-xs font-bold leading-normal">
+                          <div className="bg-red-500/5 border border-red-500/25 p-4 rounded-xl text-center text-red-400 text-sm font-bold leading-normal">
                             🔒 본 의뢰글은 스팸 필터링에 의거하여 노출이 완벽히 차단된 상태입니다.
                           </div>
                         )}
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-12 text-slate-600 text-xs">
+                    <div className="text-center py-12 text-slate-600 text-sm">
                       조회 또는 모니터링할 의뢰인을 왼쪽 표에서 선택해 주십시오.
                     </div>
                   )}
@@ -1528,15 +1528,15 @@ export default function AdminRole({
                     placeholder="변호사명 또는 ID 검색..." 
                     value={lawyerSearch}
                     onChange={(e) => setLawyerSearch(e.target.value)}
-                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
                   />
-                  <span className="absolute left-3 top-2 text-slate-600 text-xs">🔍</span>
+                  <span className="absolute left-3 top-2 text-slate-600 text-sm">🔍</span>
                 </div>
 
                 <select 
                   value={lawyerApprovalFilter} 
                   onChange={(e) => setLawyerApprovalFilter(e.target.value)}
-                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-xs text-slate-300"
+                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300"
                 >
                   <option value="all">전체 자격 승인 현황</option>
                   <option value="approved">정식 활동 중 (승인 완료)</option>
@@ -1550,7 +1550,7 @@ export default function AdminRole({
                 {/* List container */}
                 <div className="lg:col-span-7 bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                           <th className="p-3">성명 (역할)</th>
@@ -1579,12 +1579,12 @@ export default function AdminRole({
                                 />
                                 <div className="flex flex-col">
                                   <span className="font-bold text-white">{l.name}</span>
-                                  <span className="text-[11px] text-slate-600 font-semibold">{l.role}</span>
+                                  <span className="text-xs text-slate-600 font-semibold">{l.role}</span>
                                 </div>
                               </td>
                               <td className="p-3 text-slate-350">{l.region} 지부</td>
                               <td className="p-3">
-                                <span className={`text-[11px] px-2 py-0.5 rounded border ${
+                                <span className={`text-xs px-2 py-0.5 rounded border ${
                                   isApproved 
                                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                                   : 'bg-red-500/10 text-red-400 border-red-500/20'
@@ -1612,7 +1612,7 @@ export default function AdminRole({
 
                   {/* Lawyer Pagination Controls */}
                   {totalLawyerPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-xs">
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-sm">
                       <span className="text-slate-500 font-mono">
                         Page {currentLawyerPage} of {totalLawyerPages}
                       </span>
@@ -1664,16 +1664,16 @@ export default function AdminRole({
                             className="w-10 h-10 rounded-full object-cover border border-indigo-500/30" 
                           />
                           <div>
-                            <span className="text-[11px] text-indigo-400 font-bold block uppercase tracking-wider">{selectedLawyer.role} DETAILS</span>
-                            <h3 className="text-sm font-extrabold text-white">{selectedLawyer.name}</h3>
+                            <span className="text-xs text-indigo-400 font-bold block uppercase tracking-wider">{selectedLawyer.role} DETAILS</span>
+                            <h3 className="text-base font-extrabold text-white">{selectedLawyer.name}</h3>
                           </div>
                         </div>
-                        <span className="text-[12px] bg-[#0B0F19] border border-[#1E293B]/60 text-slate-500 px-2 py-0.5 rounded">
+                        <span className="text-sm bg-[#0B0F19] border border-[#1E293B]/60 text-slate-500 px-2 py-0.5 rounded">
                           ID: {selectedLawyer.id}
                         </span>
                       </div>
 
-                      <div className="space-y-4 text-xs text-slate-500">
+                      <div className="space-y-4 text-sm text-slate-500">
                         {/* Bio summary */}
                         <div className="space-y-1">
                           <span className="font-bold text-slate-350 block">소개 약력:</span>
@@ -1696,14 +1696,14 @@ export default function AdminRole({
                               <ShieldAlert className="w-3.5 h-3.5" />
                               <span>변호사 자격 승인 검토 요청</span>
                             </span>
-                            <p className="text-[12px] leading-relaxed text-slate-500">
+                            <p className="text-sm leading-relaxed text-slate-500">
                               가입 시 제출한 자격 확인서 및 소속 로펌 인증을 심사하십시오. 승인을 완료하면 대리인은 my김변의 모든 상담 세션 및 실시간 채팅 매칭에 정식으로 참여할 권한을 부여받습니다.
                             </p>
 
                             {/* 변호사 등록증 미리보기 */}
                             {selectedLawyer.licenseImageData && (
                               <div className="space-y-1.5 bg-[#0B0F19] border border-amber-500/20 rounded-xl p-3">
-                                <span className="text-[12px] font-bold text-amber-400 block">📋 첨부된 변호사 등록증</span>
+                                <span className="text-sm font-bold text-amber-400 block">📋 첨부된 변호사 등록증</span>
                                 <img src={selectedLawyer.licenseImageData} alt="변호사 등록증" className="w-full max-h-48 object-contain rounded-lg border border-[#1E293B]/40" />
                               </div>
                             )}
@@ -1711,21 +1711,21 @@ export default function AdminRole({
                               <div className="text-[13px] text-slate-300 bg-[#0B0F19] p-2.5 rounded-xl border border-[#1E293B]/40">
                                 • 변호사 등록번호: <strong className="text-white">{selectedLawyer.licenseNumber}</strong>
                                 {selectedLawyer.licenseStatus && (
-                                  <span className={`ml-2 text-[12px] font-bold px-1.5 py-0.5 rounded ${selectedLawyer.licenseStatus === 'pending' ? 'bg-amber-500/10 text-amber-400' : selectedLawyer.licenseStatus === 'verified' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                  <span className={`ml-2 text-sm font-bold px-1.5 py-0.5 rounded ${selectedLawyer.licenseStatus === 'pending' ? 'bg-amber-500/10 text-amber-400' : selectedLawyer.licenseStatus === 'verified' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                                     {selectedLawyer.licenseStatus === 'pending' ? '심사 대기' : selectedLawyer.licenseStatus === 'verified' ? '검증 완료' : '반려됨'}
                                   </span>
                                 )}
                               </div>
                             )}
                             {!selectedLawyer.licenseImageData && !selectedLawyer.licenseNumber && (
-                              <div className="text-[12px] text-red-400 bg-red-500/5 border border-red-500/10 p-2.5 rounded-xl">
+                              <div className="text-sm text-red-400 bg-red-500/5 border border-red-500/10 p-2.5 rounded-xl">
                                 ⚠️ 등록증 미첨부 — 가입자에게 등록증 제출을 요청하세요.
                               </div>
                             )}
 
                             <button 
                               onClick={() => handleApproveLawyer(selectedLawyer.id)}
-                              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1"
+                              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1"
                             >
                               <CheckCircle2 className="w-4 h-4" />
                               <span>소속 대리인 자격 정식 승인</span>
@@ -1737,12 +1737,12 @@ export default function AdminRole({
                               <ShieldCheck className="w-3.5 h-3.5" />
                               <span>정식 활동 자격 승인 완료됨</span>
                             </span>
-                            <p className="text-[12px] leading-relaxed text-slate-500">
+                            <p className="text-sm leading-relaxed text-slate-500">
                               위 회원은 현재 변호사 자격 및 로펌 심사가 승인된 활성화 파트너 상태입니다. 운영 원칙 및 광고 규정 위반이 감지될 경우 수임 권한을 임시 정지(블록)할 수 있습니다.
                             </p>
                             <button 
                               onClick={() => handleSuspendLawyer(selectedLawyer.id)}
-                              className="w-full bg-slate-900 hover:bg-red-600 hover:text-white text-slate-500 py-2 rounded-[200px] text-xs font-extrabold border border-slate-800 transition-colors flex items-center justify-center gap-1"
+                              className="w-full bg-slate-900 hover:bg-red-600 hover:text-white text-slate-500 py-2 rounded-[200px] text-sm font-extrabold border border-slate-800 transition-colors flex items-center justify-center gap-1"
                             >
                               <EyeOff className="w-4 h-4" />
                               <span>변호사 정식 자격 임시 정지</span>
@@ -1757,7 +1757,7 @@ export default function AdminRole({
                           <div className="flex gap-2">
                             <button 
                               onClick={() => handleChangeLawyerPlan(selectedLawyer.id, 10)}
-                              className={`flex-1 py-1.5 rounded-xl border text-[12px] font-bold ${
+                              className={`flex-1 py-1.5 rounded-xl border text-sm font-bold ${
                                 selectedLawyer.matchedCount <= 50 
                                 ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/30' 
                                 : 'bg-[#111622] text-slate-600 border-[#1E293B]/60 hover:text-slate-200'
@@ -1768,7 +1768,7 @@ export default function AdminRole({
                             
                             <button 
                               onClick={() => handleChangeLawyerPlan(selectedLawyer.id, 90)}
-                              className={`flex-1 py-1.5 rounded-xl border text-[12px] font-bold ${
+                              className={`flex-1 py-1.5 rounded-xl border text-sm font-bold ${
                                 selectedLawyer.matchedCount > 50 && selectedLawyer.matchedCount <= 100
                                 ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/30' 
                                 : 'bg-[#111622] text-slate-600 border-[#1E293B]/60 hover:text-slate-200'
@@ -1779,7 +1779,7 @@ export default function AdminRole({
 
                             <button 
                               onClick={() => handleChangeLawyerPlan(selectedLawyer.id, 130)}
-                              className={`flex-1 py-1.5 rounded-xl border text-[12px] font-bold ${
+                              className={`flex-1 py-1.5 rounded-xl border text-sm font-bold ${
                                 selectedLawyer.matchedCount > 100
                                 ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/30' 
                                 : 'bg-[#111622] text-slate-600 border-[#1E293B]/60 hover:text-slate-200'
@@ -1793,7 +1793,7 @@ export default function AdminRole({
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-12 text-slate-600 text-xs">
+                    <div className="text-center py-12 text-slate-600 text-sm">
                       조회할 변호사 파트너를 왼쪽 명부에서 클릭하십시오.
                     </div>
                   )}
@@ -1808,7 +1808,7 @@ export default function AdminRole({
             <div className="space-y-6 animate-fadeIn text-left">
               
               {/* Local Navigation Bar */}
-              <div className="flex border-b border-[#1E293B]/60 gap-4 text-xs font-bold pb-1 text-slate-500">
+              <div className="flex border-b border-[#1E293B]/60 gap-4 text-sm font-bold pb-1 text-slate-500">
                 <button
                   onClick={() => setBillingSubTab('overview')}
                   className={`pb-2 border-b-2 transition-all cursor-pointer ${
@@ -1857,32 +1857,32 @@ export default function AdminRole({
                   {/* Financial Overview Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
-                      <span className="text-[11px] text-slate-600 font-bold block uppercase">일 평균 예상 매출</span>
+                      <span className="text-xs text-slate-600 font-bold block uppercase">일 평균 예상 매출</span>
                       <strong className="text-xl font-black text-emerald-400">
                         {Math.round(activeMRR / 30).toLocaleString()} 원
                       </strong>
-                      <p className="text-[12px] text-slate-600 leading-normal">구독 활성 파트너 기준 일정산 환산</p>
+                      <p className="text-sm text-slate-600 leading-normal">구독 활성 파트너 기준 일정산 환산</p>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
-                      <span className="text-[11px] text-slate-600 font-bold block uppercase">주간 누적 예상 매출</span>
+                      <span className="text-xs text-slate-600 font-bold block uppercase">주간 누적 예상 매출</span>
                       <strong className="text-xl font-black text-indigo-400">
                         {Math.round(activeMRR / 4).toLocaleString()} 원
                       </strong>
-                      <p className="text-[12px] text-slate-600 leading-normal">최근 7일간의 총 정산 구독료</p>
+                      <p className="text-sm text-slate-600 leading-normal">최근 7일간의 총 정산 구독료</p>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
-                      <span className="text-[11px] text-slate-600 font-bold block uppercase">월 고정 구독 매출 (MRR)</span>
+                      <span className="text-xs text-slate-600 font-bold block uppercase">월 고정 구독 매출 (MRR)</span>
                       <strong className="text-xl font-black text-white">
                         {activeMRR.toLocaleString()} 원
                       </strong>
-                      <p className="text-[12px] text-slate-600 leading-normal">현재 활성화된 대리인 광고 구독 총액</p>
+                      <p className="text-sm text-slate-600 leading-normal">현재 활성화된 대리인 광고 구독 총액</p>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-red-500/20 bg-red-950/5 space-y-2">
-                      <span className="text-[11px] text-red-400/80 font-bold block uppercase">이탈/정지 누수 매출액</span>
+                      <span className="text-xs text-red-400/80 font-bold block uppercase">이탈/정지 누수 매출액</span>
                       <strong className="text-xl font-black text-red-400">
                         -{lostMRR.toLocaleString()} 원
                       </strong>
-                      <p className="text-[12px] text-red-500/60 leading-normal">정지/탈퇴 대리인의 미청구 구독 손실</p>
+                      <p className="text-sm text-red-500/60 leading-normal">정지/탈퇴 대리인의 미청구 구독 손실</p>
                     </div>
                   </div>
 
@@ -1891,9 +1891,9 @@ export default function AdminRole({
                     
                     {/* 1. Daily Breakdown */}
                     <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
-                      <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                      <h4 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center justify-between">
                         <span>일별 매출 추이 (최근 5일)</span>
-                        <span className="text-[12px] text-slate-600 font-mono">Daily Trend</span>
+                        <span className="text-sm text-slate-600 font-mono">Daily Trend</span>
                       </h4>
                       <div className="space-y-2">
                         {[
@@ -1911,7 +1911,7 @@ export default function AdminRole({
                             <div className="w-full bg-[#1E293B]/40 h-1 rounded overflow-hidden">
                               <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${d.pct}%` }} />
                             </div>
-                            <div className="flex justify-between items-center text-[11px] text-slate-600">
+                            <div className="flex justify-between items-center text-xs text-slate-600">
                               <span>정수 구독 수납</span>
                               <span>{d.count}건 정산완료</span>
                             </div>
@@ -1922,9 +1922,9 @@ export default function AdminRole({
 
                     {/* 2. Weekly Breakdown */}
                     <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
-                      <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                      <h4 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center justify-between">
                         <span>주별 매출 추이 (6월 누적)</span>
-                        <span className="text-[12px] text-slate-600 font-mono">Weekly Trend</span>
+                        <span className="text-sm text-slate-600 font-mono">Weekly Trend</span>
                       </h4>
                       <div className="space-y-2">
                         {[
@@ -1941,7 +1941,7 @@ export default function AdminRole({
                             <div className="w-full bg-[#1E293B]/40 h-1.5 rounded overflow-hidden">
                               <div className={`${w.color} h-full rounded-full`} style={{ width: `${w.pct}%` }} />
                             </div>
-                            <div className="flex justify-between items-center text-[11px] text-slate-600">
+                            <div className="flex justify-between items-center text-xs text-slate-600">
                               <span>상태: {w.status}</span>
                               <span>실적 보정 완료</span>
                             </div>
@@ -1952,9 +1952,9 @@ export default function AdminRole({
 
                     {/* 3. Monthly Breakdown */}
                     <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
-                      <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                      <h4 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center justify-between">
                         <span>월별 매출 추이 (최근 5개월)</span>
-                        <span className="text-[12px] text-slate-600 font-mono">Monthly Trend</span>
+                        <span className="text-sm text-slate-600 font-mono">Monthly Trend</span>
                       </h4>
                       <div className="space-y-2">
                         {[
@@ -1972,7 +1972,7 @@ export default function AdminRole({
                             <div className="w-full bg-[#1E293B]/40 h-1.5 rounded overflow-hidden">
                               <div className={`bg-gradient-to-r ${m.color} h-full rounded-full`} style={{ width: `${m.pct}%` }} />
                             </div>
-                            <div className="flex justify-between items-center text-[11px] text-slate-600">
+                            <div className="flex justify-between items-center text-xs text-slate-600">
                               <span>활성 구독 파트너 {m.count}명</span>
                               <span>수납률 100%</span>
                             </div>
@@ -1989,12 +1989,12 @@ export default function AdminRole({
               {billingSubTab === 'active' && (
                 <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">구독료 징수 현황 명세 (활성 파트너)</h3>
-                    <span className="text-[12px] text-slate-500 font-mono">총 {billingActiveLawyers.length}명 대리인 활성 구독 중</span>
+                    <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">구독료 징수 현황 명세 (활성 파트너)</h3>
+                    <span className="text-sm text-slate-500 font-mono">총 {billingActiveLawyers.length}명 대리인 활성 구독 중</span>
                   </div>
                   
                   <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                           <th className="p-3">정산 대상 변호사</th>
@@ -2024,7 +2024,7 @@ export default function AdminRole({
                               <td className="p-3">{planName}</td>
                               <td className="p-3 font-semibold text-indigo-400">{planPrice}</td>
                               <td className="p-3">
-                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] px-2 py-0.5 rounded flex items-center gap-1 w-max">
+                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2 py-0.5 rounded flex items-center gap-1 w-max">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                   <span>정상수납</span>
                                 </span>
@@ -2047,7 +2047,7 @@ export default function AdminRole({
 
                   {/* Billing List Pagination Controls */}
                   {totalBillingPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-xs">
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#161B26] border-t border-[#1E293B]/60 text-sm">
                       <span className="text-slate-500 font-mono">
                         Page {currentBillingPage} of {totalBillingPages}
                       </span>
@@ -2093,14 +2093,14 @@ export default function AdminRole({
               {billingSubTab === 'exited' && (
                 <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-4">
                   <div className="space-y-1 text-left">
-                    <h3 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">이탈 및 정지 대리인 정산조정 명세</h3>
-                    <p className="text-[12px] text-slate-500 leading-normal">
+                    <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">이탈 및 정지 대리인 정산조정 명세</h3>
+                    <p className="text-sm text-slate-500 leading-normal">
                       정지, 탈퇴, 휴면 처리되어 정상적인 구독이 중단된 대리인 명단입니다. 일할 정산(환불/조정) 금액이 자동 계산됩니다.
                     </p>
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-[#1E293B]/40">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                           <th className="p-3">대리인 성명</th>
@@ -2134,13 +2134,13 @@ export default function AdminRole({
                           return (
                             <tr key={m.id} className="hover:bg-[#0B0F19]/20 transition-colors">
                               <td className="p-3 font-bold text-white flex items-center gap-1.5">
-                                <div className="w-5 h-5 rounded-full bg-slate-800 text-[12px] flex items-center justify-center font-extrabold text-slate-350">
+                                <div className="w-5 h-5 rounded-full bg-slate-800 text-sm flex items-center justify-center font-extrabold text-slate-350">
                                   {m.alias.charAt(0)}
                                 </div>
                                 <span>{m.alias}</span>
                               </td>
                               <td className="p-3">
-                                <span className={`text-[11px] px-2 py-0.5 rounded border font-bold ${
+                                <span className={`text-xs px-2 py-0.5 rounded border font-bold ${
                                   m.status === 'suspended' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                                   m.status === 'withdrawn' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                                   'bg-slate-800 text-slate-500 border-slate-750'
@@ -2174,32 +2174,32 @@ export default function AdminRole({
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
-                      <span className="text-[11px] text-amber-400/80 font-bold block uppercase">입금 대기</span>
+                      <span className="text-xs text-amber-400/80 font-bold block uppercase">입금 대기</span>
                       <strong className="text-xl font-black text-amber-400">{adminAdOrders.filter(o => o.status === 'pending').length}건</strong>
-                      <p className="text-[12px] text-slate-600">{adminAdOrders.filter(o => o.status === 'pending').reduce((s,o) => s + o.totalPrice, 0).toLocaleString()}원</p>
+                      <p className="text-sm text-slate-600">{adminAdOrders.filter(o => o.status === 'pending').reduce((s,o) => s + o.totalPrice, 0).toLocaleString()}원</p>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
-                      <span className="text-[11px] text-emerald-400/80 font-bold block uppercase">활성 광고</span>
+                      <span className="text-xs text-emerald-400/80 font-bold block uppercase">활성 광고</span>
                       <strong className="text-xl font-black text-emerald-400">{adminAdOrders.filter(o => o.status === 'active').length}건</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
-                      <span className="text-[11px] text-indigo-400/80 font-bold block uppercase">이달 광고 매출</span>
+                      <span className="text-xs text-indigo-400/80 font-bold block uppercase">이달 광고 매출</span>
                       <strong className="text-xl font-black text-indigo-400">{adminAdOrders.filter(o => o.status === 'active').reduce((s,o) => s + o.monthlyPrice, 0).toLocaleString()}원</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-slate-500/20 space-y-2">
-                      <span className="text-[11px] text-slate-400/80 font-bold block uppercase">취소/만료</span>
+                      <span className="text-xs text-slate-400/80 font-bold block uppercase">취소/만료</span>
                       <strong className="text-xl font-black text-slate-400">{adminAdOrders.filter(o => o.status === 'cancelled' || o.status === 'expired').length}건</strong>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-slate-400">상태 필터:</span>
+                    <span className="text-sm font-bold text-slate-400">상태 필터:</span>
                     {[{v:'all',l:'전체'},{v:'pending',l:'입금대기'},{v:'active',l:'활성'},{v:'cancelled',l:'취소'}].map(f => (
-                      <button key={f.v} onClick={() => setAdOrderFilter(f.v)} className={`text-[11px] px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${adOrderFilter === f.v ? 'bg-indigo-600 text-white' : 'bg-[#0B0F19] text-slate-400 border border-[#1E293B]/60 hover:text-white'}`}>{f.l}</button>
+                      <button key={f.v} onClick={() => setAdOrderFilter(f.v)} className={`text-xs px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${adOrderFilter === f.v ? 'bg-indigo-600 text-white' : 'bg-[#0B0F19] text-slate-400 border border-[#1E293B]/60 hover:text-white'}`}>{f.l}</button>
                     ))}
                   </div>
                   <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">신청일</th>
@@ -2215,14 +2215,14 @@ export default function AdminRole({
                         <tbody className="divide-y divide-[#1E293B]/30">
                           {adminAdOrders.filter(o => adOrderFilter === 'all' || o.status === adOrderFilter).map(order => (
                             <tr key={order.id} className="hover:bg-[#0B0F19]/20 transition-colors">
-                              <td className="p-3 text-slate-400 font-mono text-[11px]">{new Date(order.requestedAt).toLocaleDateString('ko-KR')}</td>
+                              <td className="p-3 text-slate-400 font-mono text-xs">{new Date(order.requestedAt).toLocaleDateString('ko-KR')}</td>
                               <td className="p-3 font-bold text-white">{order.lawyerName}</td>
                               <td className="p-3 text-slate-300">{order.productName}{order.region && <span className="text-emerald-400 ml-1">({order.region})</span>}</td>
                               <td className="p-3 text-slate-400">{order.contractMonths}개월</td>
                               <td className="p-3 font-bold text-indigo-400">{order.totalPrice.toLocaleString()}원</td>
                               <td className="p-3 text-slate-300">{order.depositorName || '-'}</td>
-                              <td className="p-3"><span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : order.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-500 border-slate-700'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-500'}`}></span>{order.status === 'pending' ? '입금대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
-                              <td className="p-3 text-right">{order.status === 'pending' && (<button onClick={() => { setInvoiceConfirmOrder(order); setInvoiceResult(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm flex items-center gap-1 ml-auto"><Receipt className="w-3 h-3" />입금 확인 + 발행</button>)}{order.status === 'active' && (<span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1 justify-end">{order.taxInvoice ? <><FileText className="w-3 h-3" />발행완료</> : <>✅ 활성 중</>}</span>)}{order.status === 'cancelled' && (<span className="text-[11px] text-slate-500">취소됨</span>)}</td>
+                              <td className="p-3"><span className={`text-xs font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : order.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-500 border-slate-700'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-500'}`}></span>{order.status === 'pending' ? '입금대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
+                              <td className="p-3 text-right">{order.status === 'pending' && (<button onClick={() => { setInvoiceConfirmOrder(order); setInvoiceResult(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm flex items-center gap-1 ml-auto"><Receipt className="w-3 h-3" />입금 확인 + 발행</button>)}{order.status === 'active' && (<span className="text-xs text-emerald-400 font-bold flex items-center gap-1 justify-end">{order.taxInvoice ? <><FileText className="w-3 h-3" />발행완료</> : <>✅ 활성 중</>}</span>)}{order.status === 'cancelled' && (<span className="text-xs text-slate-500">취소됨</span>)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2232,9 +2232,9 @@ export default function AdminRole({
                   <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center gap-4">
                     <span className="text-lg">🏦</span>
                     <div>
-                      <span className="text-[11px] text-slate-500 block">입금 안내 계좌</span>
-                      <span className="text-sm font-black text-white">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
-                      <span className="text-[11px] text-slate-400 ml-2">예금주: {BANK_ACCOUNT_INFO.holder}</span>
+                      <span className="text-xs text-slate-500 block">입금 안내 계좌</span>
+                      <span className="text-base font-black text-white">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber}</span>
+                      <span className="text-xs text-slate-400 ml-2">예금주: {BANK_ACCOUNT_INFO.holder}</span>
                     </div>
                   </div>
 
@@ -2248,60 +2248,60 @@ export default function AdminRole({
                           </div>
                           <div>
                             <h3 className="text-white font-extrabold">입금 확인 + 세금계산서 발행</h3>
-                            <p className="text-[11px] text-slate-500">입금 확인 시 세금계산서가 자동으로 발행됩니다</p>
+                            <p className="text-xs text-slate-500">입금 확인 시 세금계산서가 자동으로 발행됩니다</p>
                           </div>
                         </div>
 
                         <div className="space-y-3 mb-5">
                           <div className="bg-[#0B0F19] rounded-xl p-4 space-y-2">
-                            <div className="flex justify-between text-xs">
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">변호사</span>
                               <span className="text-white font-bold">{invoiceConfirmOrder.lawyerName}</span>
                             </div>
-                            <div className="flex justify-between text-xs">
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">광고 상품</span>
                               <span className="text-white font-bold">{invoiceConfirmOrder.productName}</span>
                             </div>
-                            <div className="flex justify-between text-xs">
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">공급가액</span>
                               <span className="text-indigo-400 font-bold">{Math.round(invoiceConfirmOrder.totalPrice / 1.1).toLocaleString()}원</span>
                             </div>
-                            <div className="flex justify-between text-xs">
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">부가세 (10%)</span>
                               <span className="text-indigo-400 font-bold">{(invoiceConfirmOrder.totalPrice - Math.round(invoiceConfirmOrder.totalPrice / 1.1)).toLocaleString()}원</span>
                             </div>
-                            <div className="border-t border-[#1E293B] pt-2 flex justify-between text-xs">
+                            <div className="border-t border-[#1E293B] pt-2 flex justify-between text-sm">
                               <span className="text-slate-400 font-bold">합계 금액</span>
-                              <span className="text-white font-extrabold text-sm">{invoiceConfirmOrder.totalPrice.toLocaleString()}원</span>
+                              <span className="text-white font-extrabold text-base">{invoiceConfirmOrder.totalPrice.toLocaleString()}원</span>
                             </div>
                           </div>
 
                           <div className="bg-[#0B0F19] rounded-xl p-4 space-y-2">
-                            <span className="text-[11px] text-slate-500 font-bold block mb-1">공급받는 자 (변호사)</span>
-                            <div className="flex justify-between text-xs">
+                            <span className="text-xs text-slate-500 font-bold block mb-1">공급받는 자 (변호사)</span>
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">사업자번호</span>
                               <span className="text-white font-mono">{invoiceConfirmOrder.buyerCorpNum || '미등록'}</span>
                             </div>
-                            <div className="flex justify-between text-xs">
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">상호</span>
                               <span className="text-white">{invoiceConfirmOrder.buyerCorpName || '미등록'}</span>
                             </div>
-                            <div className="flex justify-between text-xs">
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">대표자</span>
                               <span className="text-white">{invoiceConfirmOrder.buyerCEOName || '미등록'}</span>
                             </div>
-                            <div className="flex justify-between text-xs">
+                            <div className="flex justify-between text-sm">
                               <span className="text-slate-500">이메일</span>
                               <span className="text-white">{invoiceConfirmOrder.buyerEmail || '미등록'}</span>
                             </div>
                             {!invoiceConfirmOrder.buyerCorpNum && (
-                              <p className="text-[10px] text-amber-400 mt-1">⚠️ 사업자 정보 미등록 — 세금계산서 없이 입금 확인만 진행됩니다</p>
+                              <p className="text-xs text-amber-400 mt-1">⚠️ 사업자 정보 미등록 — 세금계산서 없이 입금 확인만 진행됩니다</p>
                             )}
                           </div>
                         </div>
 
                         {invoiceResult && (
-                          <div className={`mb-4 p-3 rounded-xl text-xs font-bold ${invoiceResult.ok ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                          <div className={`mb-4 p-3 rounded-xl text-sm font-bold ${invoiceResult.ok ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                             {invoiceResult.message}
                           </div>
                         )}
@@ -2310,7 +2310,7 @@ export default function AdminRole({
                           <button
                             onClick={() => setInvoiceConfirmOrder(null)}
                             disabled={invoiceIssuing}
-                            className="flex-1 py-2.5 bg-[#0B0F19] hover:bg-[#161B26] text-slate-400 text-sm font-bold rounded-xl transition-colors disabled:opacity-50"
+                            className="flex-1 py-2.5 bg-[#0B0F19] hover:bg-[#161B26] text-slate-400 text-base font-bold rounded-xl transition-colors disabled:opacity-50"
                           >취소</button>
                           <button
                             onClick={async () => {
@@ -2370,7 +2370,7 @@ export default function AdminRole({
                               setInvoiceIssuing(false);
                             }}
                             disabled={invoiceIssuing}
-                            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-base font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
                           >
                             {invoiceIssuing ? (
                               <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>처리 중...</>
@@ -2398,29 +2398,29 @@ export default function AdminRole({
                     {/* Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
-                        <span className="text-[11px] text-indigo-400/80 font-bold block uppercase">총 발행 건수</span>
+                        <span className="text-xs text-indigo-400/80 font-bold block uppercase">총 발행 건수</span>
                         <strong className="text-xl font-black text-indigo-400">{invoicedOrders.length}건</strong>
                       </div>
                       <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
-                        <span className="text-[11px] text-emerald-400/80 font-bold block uppercase">총 공급가액</span>
+                        <span className="text-xs text-emerald-400/80 font-bold block uppercase">총 공급가액</span>
                         <strong className="text-xl font-black text-emerald-400">{totalSupply.toLocaleString()}원</strong>
-                        <p className="text-[11px] text-slate-600">부가세: {totalTax.toLocaleString()}원</p>
+                        <p className="text-xs text-slate-600">부가세: {totalTax.toLocaleString()}원</p>
                       </div>
                       <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
-                        <span className="text-[11px] text-amber-400/80 font-bold block uppercase">총 발행 금액</span>
+                        <span className="text-xs text-amber-400/80 font-bold block uppercase">총 발행 금액</span>
                         <strong className="text-xl font-black text-amber-400">{totalAmount.toLocaleString()}원</strong>
                       </div>
                       <div className="bg-[#111622] p-5 rounded-2xl border border-violet-500/20 space-y-2">
-                        <span className="text-[11px] text-violet-400/80 font-bold block uppercase">이달 발행</span>
+                        <span className="text-xs text-violet-400/80 font-bold block uppercase">이달 발행</span>
                         <strong className="text-xl font-black text-violet-400">{thisMonthOrders.length}건</strong>
-                        <p className="text-[11px] text-slate-600">{thisMonthOrders.reduce((s, o) => s + (o.taxInvoice?.totalAmount || 0), 0).toLocaleString()}원</p>
+                        <p className="text-xs text-slate-600">{thisMonthOrders.reduce((s, o) => s + (o.taxInvoice?.totalAmount || 0), 0).toLocaleString()}원</p>
                       </div>
                     </div>
 
                     {/* Invoice Table */}
                     <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden">
                       <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
+                        <table className="w-full text-left text-sm border-collapse">
                           <thead>
                             <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                               <th className="p-3">발행일</th>
@@ -2439,14 +2439,14 @@ export default function AdminRole({
                             ) : invoicedOrders.map(order => (
                               <React.Fragment key={order.id}>
                                 <tr className="hover:bg-[#0B0F19]/20 transition-colors cursor-pointer" onClick={() => setExpandedInvoiceId(expandedInvoiceId === order.id ? null : order.id)}>
-                                  <td className="p-3 text-slate-400 font-mono text-[11px]">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : '-'}</td>
+                                  <td className="p-3 text-slate-400 font-mono text-xs">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : '-'}</td>
                                   <td className="p-3 font-bold text-white">{order.lawyerName}</td>
                                   <td className="p-3 text-slate-300">{order.productName}</td>
                                   <td className="p-3 text-right text-slate-300">{(order.taxInvoice?.supplyCost || 0).toLocaleString()}원</td>
                                   <td className="p-3 text-right text-slate-400">{(order.taxInvoice?.tax || 0).toLocaleString()}원</td>
                                   <td className="p-3 text-right font-bold text-indigo-400">{(order.taxInvoice?.totalAmount || 0).toLocaleString()}원</td>
-                                  <td className="p-3 font-mono text-[11px] text-slate-400">{order.taxInvoice?.ntsConfirmNum || '-'}</td>
-                                  <td className="p-3"><span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>발행완료</span></td>
+                                  <td className="p-3 font-mono text-xs text-slate-400">{order.taxInvoice?.ntsConfirmNum || '-'}</td>
+                                  <td className="p-3"><span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>발행완료</span></td>
                                 </tr>
                                 {expandedInvoiceId === order.id && (
                                   <tr>
@@ -2454,8 +2454,8 @@ export default function AdminRole({
                                       <div className="bg-[#0B0F19] p-4 border-t border-[#1E293B]/30">
                                         <div className="flex items-start gap-6">
                                           <div className="space-y-1.5 flex-1">
-                                            <span className="text-[10px] text-indigo-400 font-bold uppercase block">공급받는 자 (변호사) 사업자 정보</span>
-                                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                                            <span className="text-xs text-indigo-400 font-bold uppercase block">공급받는 자 (변호사) 사업자 정보</span>
+                                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
                                               <div><span className="text-slate-600">사업자번호</span> <span className="text-white font-mono ml-1">{order.buyerCorpNum || '미등록'}</span></div>
                                               <div><span className="text-slate-600">상호</span> <span className="text-white ml-1">{order.buyerCorpName || '미등록'}</span></div>
                                               <div><span className="text-slate-600">대표자</span> <span className="text-white ml-1">{order.buyerCEOName || '미등록'}</span></div>
@@ -2463,8 +2463,8 @@ export default function AdminRole({
                                             </div>
                                           </div>
                                           <div className="space-y-1.5">
-                                            <span className="text-[10px] text-indigo-400 font-bold uppercase block">발행 상세</span>
-                                            <div className="grid grid-cols-1 gap-1 text-xs">
+                                            <span className="text-xs text-indigo-400 font-bold uppercase block">발행 상세</span>
+                                            <div className="grid grid-cols-1 gap-1 text-sm">
                                               <div><span className="text-slate-600">주문 ID</span> <span className="text-slate-400 font-mono ml-1">{order.id}</span></div>
                                               <div><span className="text-slate-600">계약기간</span> <span className="text-white ml-1">{order.contractMonths}개월</span></div>
                                               <div><span className="text-slate-600">입금확인일</span> <span className="text-white ml-1">{order.paidAt ? new Date(order.paidAt).toLocaleDateString('ko-KR') : '-'}</span></div>
@@ -2495,9 +2495,9 @@ export default function AdminRole({
               {/* Header card */}
               <div className="bg-gradient-to-r from-indigo-950/40 to-slate-900/40 p-6 rounded-2xl border border-indigo-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
                 <div className="space-y-1">
-                  <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider">PLATFORM MULTI-CONTENT CONTROL PANEL</span>
+                  <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider">PLATFORM MULTI-CONTENT CONTROL PANEL</span>
                   <h2 className="text-xl font-black text-white">통합 사이트 콘텐츠 CRUD 제어 센터</h2>
-                  <p className="text-xs text-slate-500">의뢰인 전용 페이지의 주요 칼럼 기사, 고민사례 Q&A, 실제 해결 성공후기, 메인 캐러셀 배너를 실시간 제어합니다.</p>
+                  <p className="text-sm text-slate-500">의뢰인 전용 페이지의 주요 칼럼 기사, 고민사례 Q&A, 실제 해결 성공후기, 메인 캐러셀 배너를 실시간 제어합니다.</p>
                 </div>
                 
                 {/* New Content Create Button tailored to active subtab */}
@@ -2514,7 +2514,7 @@ export default function AdminRole({
                       setFormAuthorId(lawyers[0]?.id || 'lawyer-1');
                       setFormImageUrl('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 법률 칼럼 등록</span>
@@ -2533,7 +2533,7 @@ export default function AdminRole({
                       setQaLawyerId(lawyers[0]?.id || 'lawyer-1');
                       setQaBadge('추천 답변');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 고민 상담사례 등록</span>
@@ -2554,7 +2554,7 @@ export default function AdminRole({
                       setReviewContent('');
                       setReviewTagsText('');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 해결 성공후기 등록</span>
@@ -2572,7 +2572,7 @@ export default function AdminRole({
                       setBannerColor('rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)');
                       setBannerImage('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 메인 배너 등록</span>
@@ -2588,7 +2588,7 @@ export default function AdminRole({
                       setNoticeContent('');
                       setNoticeIsImportant(false);
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 공지사항 등록</span>
@@ -2597,7 +2597,7 @@ export default function AdminRole({
               </div>
 
               {/* Sub-tab navigation */}
-              <div className="flex flex-wrap border-b border-[#1E293B]/60 pb-3 gap-x-5 gap-y-2 text-xs font-bold text-slate-500">
+              <div className="flex flex-wrap border-b border-[#1E293B]/60 pb-3 gap-x-5 gap-y-2 text-sm font-bold text-slate-500">
                 <button 
                   onClick={() => { setContentSubTab('news'); setIsCreateMode(false); setEditingArticle(null); }}
                   className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'news' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
@@ -2655,14 +2655,14 @@ export default function AdminRole({
                   {/* Creator / Editor Form Panel */}
                   {(isCreateMode || editingArticle) && (
                     <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
-                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-base text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4" />
                         <span>{isCreateMode ? '신규 법률 정보 아티클 등록' : '법률 정보 아티클 수정'}</span>
                       </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">카테고리 분야</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">카테고리 분야</label>
                           <select 
                             value={formCategory} 
                             onChange={(e) => setFormCategory(e.target.value)}
@@ -2676,7 +2676,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">노출용 태그 배지</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">노출용 태그 배지</label>
                           <select 
                             value={formBadge || ''} 
                             onChange={(e) => setFormBadge((e.target.value as any) || null)}
@@ -2690,7 +2690,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">칼럼 제목</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">칼럼 제목</label>
                           <input 
                             type="text" 
                             placeholder="이목을 끄는 굵직하고 신뢰감 높은 제목을 입력하세요"
@@ -2701,7 +2701,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">작성 변호사 지정</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">작성 변호사 지정</label>
                           <select 
                             value={formAuthorId} 
                             onChange={(e) => setFormAuthorId(e.target.value)}
@@ -2714,7 +2714,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">대표 커버 이미지 URL</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">대표 커버 이미지 URL</label>
                           <input 
                             type="text" 
                             placeholder="대표 이미지 unsplash URL 입력"
@@ -2725,7 +2725,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">기사 요약 요약문 (Excerpt)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">기사 요약 요약문 (Excerpt)</label>
                           <input 
                             type="text" 
                             placeholder="목록 화면에 노출될 2줄 이내의 매력적인 한글 요약문을 작성하세요"
@@ -2736,13 +2736,13 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">칼럼 상세 법률 본문 (HTML/Markdown 줄 바꿈 지원)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">칼럼 상세 법률 본문 (HTML/Markdown 줄 바꿈 지원)</label>
                           <textarea 
                             rows={8}
                             placeholder="의뢰인에게 해결 방안을 명확히 안내하는 고품격 전문 법률 본문 원고를 작성하세요."
                             value={formContent}
                             onChange={(e) => setFormContent(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 placeholder-slate-655 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 placeholder-slate-655 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
                           />
                         </div>
                       </div>
@@ -2753,7 +2753,7 @@ export default function AdminRole({
                             setIsCreateMode(false);
                             setEditingArticle(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -2799,7 +2799,7 @@ export default function AdminRole({
                             setIsCreateMode(false);
                             setEditingArticle(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isCreateMode ? '✍️ 기사 영구 발행' : '💾 변경 사항 저장'}
                         </button>
@@ -2810,7 +2810,7 @@ export default function AdminRole({
                   {/* Contents Table Data Grid */}
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">커버</th>
@@ -2833,7 +2833,7 @@ export default function AdminRole({
                                 />
                               </td>
                               <td className="p-3">
-                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${
+                                <span className={`text-xs font-extrabold px-2 py-0.5 rounded border ${
                                   art.category === '개인회생' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                                   art.category === '개인파산' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                                   art.category === '금지명령/추심' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
@@ -2910,14 +2910,14 @@ export default function AdminRole({
                   {/* Creator / Editor Form Panel */}
                   {(isQaCreateMode || editingQa) && (
                     <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
-                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-base text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4" />
                         <span>{isQaCreateMode ? '신규 고민 상담사례 등록' : '고민 상담사례 수정'}</span>
                       </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">카테고리 분야</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">카테고리 분야</label>
                           <select 
                             value={qaCategory} 
                             onChange={(e) => setQaCategory(e.target.value)}
@@ -2940,7 +2940,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">노출용 상담사례 배지</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">노출용 상담사례 배지</label>
                           <input 
                             type="text" 
                             placeholder="예: 추천 답변, 실시간 답변, 전문가 소견 등"
@@ -2951,7 +2951,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">의뢰 가명 작성자</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">의뢰 가명 작성자</label>
                           <input 
                             type="text" 
                             placeholder="예: 김*현 (직장인)"
@@ -2962,7 +2962,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">대표 집필 변호사</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">대표 집필 변호사</label>
                           <select 
                             value={qaLawyerId} 
                             onChange={(e) => setQaLawyerId(e.target.value)}
@@ -2975,7 +2975,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">의뢰인 질문 (Question)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">의뢰인 질문 (Question)</label>
                           <input 
                             type="text" 
                             placeholder="의뢰인의 핵심 고민 질문 내용을 입력하세요"
@@ -2986,7 +2986,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">변호사 답변 상세 (Answer)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">변호사 답변 상세 (Answer)</label>
                           <textarea 
                             rows={6}
                             placeholder="변호사의 친절하고 논리정연한 법률 검토 답변을 입력하세요."
@@ -3003,7 +3003,7 @@ export default function AdminRole({
                             setIsQaCreateMode(false);
                             setEditingQa(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -3043,7 +3043,7 @@ export default function AdminRole({
                             setIsQaCreateMode(false);
                             setEditingQa(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isQaCreateMode ? '✍️ 상담사례 발행' : '💾 변경 사항 저장'}
                         </button>
@@ -3054,7 +3054,7 @@ export default function AdminRole({
                   {/* Q&A Data Grid */}
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">분류</th>
@@ -3069,7 +3069,7 @@ export default function AdminRole({
                           {qas.map(qa => (
                             <tr key={qa.id} className="hover:bg-[#0B0F19]/25 transition-colors">
                               <td className="p-3 shrink-0 whitespace-nowrap">
-                                <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-extrabold px-2 py-0.5 rounded">
+                                <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-extrabold px-2 py-0.5 rounded">
                                   {qa.category}
                                 </span>
                               </td>
@@ -3077,7 +3077,7 @@ export default function AdminRole({
                               <td className="p-3 text-slate-500">{qa.author}</td>
                               <td className="p-3 text-slate-300 font-bold">{qa.lawyerName}</td>
                               <td className="p-3">
-                                <span className="bg-slate-800 text-slate-500 text-[10px] px-1.5 py-0.2 rounded font-semibold border border-slate-700">
+                                <span className="bg-slate-800 text-slate-500 text-xs px-1.5 py-0.2 rounded font-semibold border border-slate-700">
                                   {qa.badge}
                                 </span>
                               </td>
@@ -3133,14 +3133,14 @@ export default function AdminRole({
                   {/* Creator / Editor Form Panel */}
                   {(isReviewCreateMode || editingReview) && (
                     <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
-                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-base text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4" />
                         <span>{isReviewCreateMode ? '신규 채무 해결 성공후기 등록' : '채무 해결 성공후기 수정'}</span>
                       </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">후기 대리인 변호사</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">후기 대리인 변호사</label>
                           <select 
                             value={reviewLawyerId} 
                             onChange={(e) => setReviewLawyerId(e.target.value)}
@@ -3153,7 +3153,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">의뢰 분야 카테고리</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">의뢰 분야 카테고리</label>
                           <select 
                             value={reviewCategory} 
                             onChange={(e) => setReviewCategory(e.target.value)}
@@ -3168,7 +3168,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">의뢰인 가명 및 인적 (Author)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">의뢰인 가명 및 인적 (Author)</label>
                           <input 
                             type="text" 
                             placeholder="예: 홍*동 님 (30대 직장인)"
@@ -3179,7 +3179,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">기존 채무총액 (원금, 만 원 단위)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">기존 채무총액 (원금, 만 원 단위)</label>
                           <input 
                             type="number" 
                             placeholder="예: 8000"
@@ -3190,7 +3190,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">조정 후 갚을 원금 (만 원 단위, 파산 면책은 0)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">조정 후 갚을 원금 (만 원 단위, 파산 면책은 0)</label>
                           <input 
                             type="number" 
                             placeholder="예: 1200"
@@ -3201,7 +3201,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">해시태그 키워드들 (쉼표로 구분 입력)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">해시태그 키워드들 (쉼표로 구분 입력)</label>
                           <input 
                             type="text" 
                             placeholder="예: #코인실패, #추심동결, #탕감율85%"
@@ -3212,7 +3212,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-3 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">성공후기 매력적인 제목</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">성공후기 매력적인 제목</label>
                           <input 
                             type="text" 
                             placeholder="의뢰인의 극적인 탕감 성과를 한눈에 보여주는 임팩트 있는 제목"
@@ -3223,7 +3223,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-3 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">성공후기 상세 서술 원고 (Content)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">성공후기 상세 서술 원고 (Content)</label>
                           <textarea 
                             rows={6}
                             placeholder="사건 수임 전 빚 독촉 상황, 소명 방향성, 탕감 성과 및 최종 대리인에 대한 감사 내용 등을 실감나게 서술하세요."
@@ -3240,7 +3240,7 @@ export default function AdminRole({
                             setIsReviewCreateMode(false);
                             setEditingReview(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -3290,7 +3290,7 @@ export default function AdminRole({
                             setIsReviewCreateMode(false);
                             setEditingReview(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isReviewCreateMode ? '✍️ 성공후기 게재' : '💾 변경 사항 저장'}
                         </button>
@@ -3301,7 +3301,7 @@ export default function AdminRole({
                   {/* Reviews Data Grid */}
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">후기 분류</th>
@@ -3320,14 +3320,14 @@ export default function AdminRole({
                             return (
                               <tr key={rev.id} className="hover:bg-[#0B0F19]/25 transition-colors">
                                 <td className="p-3 shrink-0 whitespace-nowrap">
-                                  <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-extrabold px-2 py-0.5 rounded">
+                                  <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-extrabold px-2 py-0.5 rounded">
                                     {rev.category}
                                   </span>
                                 </td>
                                 <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate">
                                   <div className="flex flex-col gap-0.5">
                                     <span>{rev.title}</span>
-                                    <span className="text-[12px] text-emerald-400 font-bold font-mono">원금 {cutPct}% 면제</span>
+                                    <span className="text-sm text-emerald-400 font-bold font-mono">원금 {cutPct}% 면제</span>
                                   </div>
                                 </td>
                                 <td className="p-3 font-bold text-slate-200 font-mono">
@@ -3335,7 +3335,7 @@ export default function AdminRole({
                                 </td>
                                 <td className="p-3 text-slate-350">{rev.lawyerName}</td>
                                 <td className="p-3 text-slate-450">{rev.author}</td>
-                                <td className="p-3 max-w-[120px] truncate text-[11px] text-slate-455">
+                                <td className="p-3 max-w-[120px] truncate text-xs text-slate-455">
                                   {rev.tags.join(' ')}
                                 </td>
                                 <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
@@ -3392,14 +3392,14 @@ export default function AdminRole({
                   {/* Creator / Editor Form Panel */}
                   {(isBannerCreateMode || editingBanner) && (
                     <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
-                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-base text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4" />
                         <span>{isBannerCreateMode ? '신규 메인배너 등록' : '메인배너 수정'}</span>
                       </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">노출용 얇은 배지명</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">노출용 얇은 배지명</label>
                           <input 
                             type="text" 
                             placeholder="예: 신속한 독촉 차단, 투자 실패 전문 등"
@@ -3410,7 +3410,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">배너 백그라운드 그라데이션 색상 (CSS gradient 값)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">배너 백그라운드 그라데이션 색상 (CSS gradient 값)</label>
                           <input 
                             type="text" 
                             placeholder="예: rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)"
@@ -3421,7 +3421,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">배너 굵은 제목</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">배너 굵은 제목</label>
                           <input 
                             type="text" 
                             placeholder="예: 빚 독촉의 고통, 오늘 끊을 수 있습니다."
@@ -3432,7 +3432,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">배너 커버 이미지 unsplash 주소</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">배너 커버 이미지 unsplash 주소</label>
                           <input 
                             type="text" 
                             placeholder="예: https://images.unsplash.com/photo-1589829545856-d10d557cf95f?..."
@@ -3443,7 +3443,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">배너 상세 설명 부제</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">배너 상세 설명 부제</label>
                           <textarea 
                             rows={3}
                             placeholder="배너 타이틀 아래에 출력될 2줄 분량의 호소력 짙은 문장을 작성해 주세요."
@@ -3460,7 +3460,7 @@ export default function AdminRole({
                             setIsBannerCreateMode(false);
                             setEditingBanner(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -3495,7 +3495,7 @@ export default function AdminRole({
                             setIsBannerCreateMode(false);
                             setEditingBanner(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isBannerCreateMode ? '✍️ 배너 등록' : '💾 변경 사항 저장'}
                         </button>
@@ -3506,7 +3506,7 @@ export default function AdminRole({
                   {/* Banners Data Grid */}
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">배경 썸네일</th>
@@ -3528,13 +3528,13 @@ export default function AdminRole({
                                 />
                               </td>
                               <td className="p-3">
-                                <span className="bg-slate-800 text-slate-350 text-[11px] px-2 py-0.5 rounded border border-slate-700 font-semibold whitespace-nowrap">
+                                <span className="bg-slate-800 text-slate-350 text-xs px-2 py-0.5 rounded border border-slate-700 font-semibold whitespace-nowrap">
                                   {bann.badge}
                                 </span>
                               </td>
                               <td className="p-3 font-bold text-slate-100 max-w-[150px] truncate">{bann.title}</td>
                               <td className="p-3 text-slate-500 max-w-[150px] truncate">{bann.subtitle}</td>
-                              <td className="p-3 font-mono text-[11px] text-slate-455 max-w-[120px] truncate">{bann.color}</td>
+                              <td className="p-3 font-mono text-xs text-slate-455 max-w-[120px] truncate">{bann.color}</td>
                               <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
                                 <button 
                                   onClick={() => {
@@ -3585,12 +3585,12 @@ export default function AdminRole({
                   {/* Creator / Editor Form Panel */}
                   {(isNoticeCreateMode || editingNotice) && (
                     <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
-                      <h3 className="font-extrabold text-sm text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-base text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4" />
                         <span>{isNoticeCreateMode ? '신규 공지사항 등록' : '공지사항 수정'}</span>
                       </h3>
 
-                      <div className="grid grid-cols-1 gap-4 text-xs">
+                      <div className="grid grid-cols-1 gap-4 text-sm">
                         <div className="flex items-center gap-2 py-1">
                           <input 
                             type="checkbox" 
@@ -3605,7 +3605,7 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">공지사항 제목</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">공지사항 제목</label>
                           <input 
                             type="text" 
                             placeholder="공지사항 제목을 입력하세요"
@@ -3616,13 +3616,13 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">공지사항 상세 본문 (줄 바꿈 지원)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">공지사항 상세 본문 (줄 바꿈 지원)</label>
                           <textarea 
                             rows={8}
                             placeholder="공지사항 상세 본문을 작성해 주세요."
                             value={noticeContent}
                             onChange={(e) => setNoticeContent(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
                           />
                         </div>
                       </div>
@@ -3633,7 +3633,7 @@ export default function AdminRole({
                             setIsNoticeCreateMode(false);
                             setEditingNotice(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -3666,7 +3666,7 @@ export default function AdminRole({
                             setIsNoticeCreateMode(false);
                             setEditingNotice(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isNoticeCreateMode ? '✍️ 공지 발행' : '💾 변경 사항 저장'}
                         </button>
@@ -3677,7 +3677,7 @@ export default function AdminRole({
                   {/* Notices Table Data Grid */}
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">중요 여부</th>
@@ -3691,7 +3691,7 @@ export default function AdminRole({
                           {notices.map(notice => (
                             <tr key={notice.id} className="hover:bg-[#0B0F19]/25 transition-colors">
                               <td className="p-3">
-                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${
+                                <span className={`text-xs font-extrabold px-2 py-0.5 rounded border ${
                                   notice.isImportant 
                                   ? 'bg-red-500/10 text-red-400 border-red-500/20' 
                                   : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
@@ -3762,7 +3762,7 @@ export default function AdminRole({
                         <button
                           key={f.key}
                           onClick={() => { setInquirySourceFilter(f.key); setSelectedInquiryId(''); setSelectedLawyerInquiryId(''); setReplyText(''); }}
-                          className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${inquirySourceFilter === f.key ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${inquirySourceFilter === f.key ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
                         >
                           {f.label} <span className="ml-1 opacity-70">({f.count})</span>
                         </button>
@@ -3774,12 +3774,12 @@ export default function AdminRole({
                     {/* Left Column: Inquiry List */}
                     <div className="lg:col-span-7 bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden flex flex-col">
                       <div className="p-4 bg-[#161B26] border-b border-[#1E293B]/60 flex items-center justify-between">
-                        <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">{inquirySourceFilter === 'lawyer' ? '변호사 문의 내역' : inquirySourceFilter === 'client' ? '의뢰인 1:1 문의 내역' : '전체 문의 내역'}</h4>
-                        <span className="text-[12px] text-slate-500">총 {inquirySourceFilter === 'lawyer' ? lawyerInquiries.length : inquirySourceFilter === 'client' ? inquiries.length : inquiries.length + lawyerInquiries.length}건</span>
+                        <h4 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">{inquirySourceFilter === 'lawyer' ? '변호사 문의 내역' : inquirySourceFilter === 'client' ? '의뢰인 1:1 문의 내역' : '전체 문의 내역'}</h4>
+                        <span className="text-sm text-slate-500">총 {inquirySourceFilter === 'lawyer' ? lawyerInquiries.length : inquirySourceFilter === 'client' ? inquiries.length : inquiries.length + lawyerInquiries.length}건</span>
                       </div>
                       
                       <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
+                        <table className="w-full text-left text-sm border-collapse">
                           <thead>
                             <tr className="bg-[#161B26]/30 text-slate-500 font-bold border-b border-[#1E293B]/60">
                               <th className="p-3">출처</th>
@@ -3806,19 +3806,19 @@ export default function AdminRole({
                                   }`}
                                 >
                                   <td className="p-3">
-                                    <span className="text-[11px] px-2 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-400 border-blue-500/20">🙋 의뢰인</span>
+                                    <span className="text-xs px-2 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-400 border-blue-500/20">🙋 의뢰인</span>
                                   </td>
                                   <td className="p-3">
                                     <div className="flex flex-col">
                                       <span className="font-extrabold text-slate-100">{inq.clientName}</span>
-                                      <span className="text-[11px] text-slate-600 font-mono">{inq.clientId}</span>
+                                      <span className="text-xs text-slate-600 font-mono">{inq.clientId}</span>
                                     </div>
                                   </td>
                                   <td className="p-3 font-semibold text-slate-200 max-w-[200px] truncate">
                                     {inq.title}
                                   </td>
                                   <td className="p-3">
-                                    <span className={`text-[11px] px-2 py-0.5 rounded border font-bold ${
+                                    <span className={`text-xs px-2 py-0.5 rounded border font-bold ${
                                       inq.status === 'replied' 
                                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                                       : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -3849,19 +3849,19 @@ export default function AdminRole({
                                   }`}
                                 >
                                   <td className="p-3">
-                                    <span className="text-[11px] px-2 py-0.5 rounded border font-bold bg-teal-500/10 text-teal-400 border-teal-500/20">⚖️ 변호사</span>
+                                    <span className="text-xs px-2 py-0.5 rounded border font-bold bg-teal-500/10 text-teal-400 border-teal-500/20">⚖️ 변호사</span>
                                   </td>
                                   <td className="p-3">
                                     <div className="flex flex-col">
                                       <span className="font-extrabold text-slate-100">{inq.lawyerName}</span>
-                                      <span className="text-[11px] text-slate-600 font-mono">{inq.lawyerId}</span>
+                                      <span className="text-xs text-slate-600 font-mono">{inq.lawyerId}</span>
                                     </div>
                                   </td>
                                   <td className="p-3 font-semibold text-slate-200 max-w-[200px] truncate">
                                     {inq.title}
                                   </td>
                                   <td className="p-3">
-                                    <span className={`text-[11px] px-2 py-0.5 rounded border font-bold ${
+                                    <span className={`text-xs px-2 py-0.5 rounded border font-bold ${
                                       inq.status === 'replied' 
                                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                                       : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -3894,32 +3894,32 @@ export default function AdminRole({
                         <div className="space-y-4 animate-fadeIn">
                           <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
                             <div className="space-y-1">
-                              <span className="text-[11px] text-blue-400 font-black block uppercase tracking-wider">🙋 의뢰인 문의 상세</span>
-                              <h3 className="text-sm font-extrabold text-white">
+                              <span className="text-xs text-blue-400 font-black block uppercase tracking-wider">🙋 의뢰인 문의 상세</span>
+                              <h3 className="text-base font-extrabold text-white">
                                 {selectedInq.clientName} 의뢰인의 문의
                               </h3>
                             </div>
                             <button
                               onClick={() => setSelectedInquiryId('')}
-                              className="text-slate-500 hover:text-white text-xs font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
+                              className="text-slate-500 hover:text-white text-sm font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
                             >
                               닫기
                             </button>
                           </div>
-                          <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-xs">
-                            <div className="text-[12px] text-slate-600 font-mono">
+                          <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-sm">
+                            <div className="text-sm text-slate-600 font-mono">
                               등록일시: {new Date(selectedInq.createdAt).toLocaleString()}
                               {selectedInq.category && <span className="ml-2 text-indigo-400">카테고리: {selectedInq.category === 'site_usage' ? '사이트 이용' : selectedInq.category === 'account' ? '회원가입·로그인' : selectedInq.category === 'diagnosis' ? '진단 결과' : selectedInq.category === 'lawyer_matching' ? '변호사 매칭' : '기타'}</span>}
                               {selectedInq.source && <span className="ml-2 text-slate-500">({selectedInq.source === 'popup_modal' ? '팝업 문의' : '문의 페이지'})</span>}
                             </div>
-                            <h4 className="text-slate-100 font-extrabold text-xs mb-1">Q. {selectedInq.title}</h4>
+                            <h4 className="text-slate-100 font-extrabold text-sm mb-1">Q. {selectedInq.title}</h4>
                             <p className="text-slate-350 leading-relaxed font-normal whitespace-pre-wrap">{selectedInq.content}</p>
                             {selectedInq.attachments && selectedInq.attachments.length > 0 && (
                               <div className="mt-2 pt-2 border-t border-[#1E293B]/40 space-y-1">
-                                <span className="text-[11px] text-slate-500 font-bold">📎 첨부파일 ({selectedInq.attachments.length})</span>
+                                <span className="text-xs text-slate-500 font-bold">📎 첨부파일 ({selectedInq.attachments.length})</span>
                                 <div className="flex gap-2 flex-wrap">
                                   {selectedInq.attachments.map(att => (
-                                    <a key={att.id} href={att.dataUrl} download={att.fileName} className="text-[11px] text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 font-medium">
+                                    <a key={att.id} href={att.dataUrl} download={att.fileName} className="text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 font-medium">
                                       {att.fileName} ({(att.fileSize / 1024).toFixed(0)}KB)
                                     </a>
                                   ))}
@@ -3928,13 +3928,13 @@ export default function AdminRole({
                             )}
                           </div>
                           <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-3">
-                            <span className="text-[12px] font-black text-indigo-400 block uppercase tracking-wider">✍️ 관리자 답변 작성 에디터</span>
-                            <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="의뢰인의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none" />
+                            <span className="text-sm font-black text-indigo-400 block uppercase tracking-wider">✍️ 관리자 답변 작성 에디터</span>
+                            <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="의뢰인의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-indigo-500 outline-none" />
                             <div className="flex gap-2">
                               {selectedInq.status === 'replied' && (
-                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
+                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
                               )}
-                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변: ${selectedInq.id}`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">{selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
+                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변: ${selectedInq.id}`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
                             </div>
                           </div>
                         </div>
@@ -3942,28 +3942,28 @@ export default function AdminRole({
                         <div className="space-y-4 animate-fadeIn">
                           <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
                             <div className="space-y-1">
-                              <span className="text-[11px] text-teal-400 font-black block uppercase tracking-wider">⚖️ 변호사 문의 상세</span>
-                              <h3 className="text-sm font-extrabold text-white">
+                              <span className="text-xs text-teal-400 font-black block uppercase tracking-wider">⚖️ 변호사 문의 상세</span>
+                              <h3 className="text-base font-extrabold text-white">
                                 {selectedLawyerInq.lawyerName}의 문의
                               </h3>
                             </div>
                             <button
                               onClick={() => setSelectedLawyerInquiryId('')}
-                              className="text-slate-500 hover:text-white text-xs font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
+                              className="text-slate-500 hover:text-white text-sm font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
                             >
                               닫기
                             </button>
                           </div>
-                          <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-xs">
-                            <div className="text-[12px] text-slate-600 font-mono">
+                          <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-sm">
+                            <div className="text-sm text-slate-600 font-mono">
                               등록일시: {new Date(selectedLawyerInq.createdAt).toLocaleString()}
                               <span className="ml-2 text-teal-400">카테고리: {selectedLawyerInq.category === 'platform_usage' ? '플랫폼 사용법' : selectedLawyerInq.category === 'feature_request' ? '기능 개선 제안' : selectedLawyerInq.category === 'billing_contract' ? '요금·계약' : selectedLawyerInq.category === 'ad_marketing' ? '광고·마케팅' : '기타'}</span>
                             </div>
-                            <h4 className="text-slate-100 font-extrabold text-xs mb-1">Q. {selectedLawyerInq.title}</h4>
+                            <h4 className="text-slate-100 font-extrabold text-sm mb-1">Q. {selectedLawyerInq.title}</h4>
                             <p className="text-slate-350 leading-relaxed font-normal whitespace-pre-wrap">{selectedLawyerInq.content}</p>
                             {selectedLawyerInq.attachments.length > 0 && (
                               <div className="mt-2 pt-2 border-t border-[#1E293B]/40 space-y-1">
-                                <span className="text-[11px] text-slate-500 font-bold">📎 첨부파일 ({selectedLawyerInq.attachments.length})</span>
+                                <span className="text-xs text-slate-500 font-bold">📎 첨부파일 ({selectedLawyerInq.attachments.length})</span>
                                 <div className="flex gap-2 flex-wrap">
                                   {selectedLawyerInq.attachments.map(att => (
                                     att.fileType.startsWith('image/') ? (
@@ -3971,7 +3971,7 @@ export default function AdminRole({
                                         <img src={att.dataUrl} alt={att.fileName} className="w-20 h-20 object-cover rounded-lg border border-[#1E293B]" />
                                       </a>
                                     ) : (
-                                      <a key={att.id} href={att.dataUrl} download={att.fileName} className="text-[11px] text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 font-medium">
+                                      <a key={att.id} href={att.dataUrl} download={att.fileName} className="text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 font-medium">
                                         📄 {att.fileName} ({(att.fileSize / 1024).toFixed(0)}KB)
                                       </a>
                                     )
@@ -3981,18 +3981,18 @@ export default function AdminRole({
                             )}
                           </div>
                           <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-3">
-                            <span className="text-[12px] font-black text-teal-400 block uppercase tracking-wider">✍️ 변호사 문의 답변 작성</span>
-                            <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="변호사의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-teal-500 outline-none" />
+                            <span className="text-sm font-black text-teal-400 block uppercase tracking-wider">✍️ 변호사 문의 답변 작성</span>
+                            <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="변호사의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-teal-500 outline-none" />
                             <div className="flex gap-2">
                               {selectedLawyerInq.status === 'replied' && (
-                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
+                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
                               )}
-                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 문의 답변: ${selectedLawyerInq.id} (${selectedLawyerInq.lawyerName})`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">{selectedLawyerInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
+                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 문의 답변: ${selectedLawyerInq.id} (${selectedLawyerInq.lawyerName})`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedLawyerInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center py-12 text-slate-600 text-xs">
+                        <div className="text-center py-12 text-slate-600 text-sm">
                           상세 조회 및 답변 작성을 위해 왼쪽의 문의 건을 클릭하십시오.
                         </div>
                       )}
@@ -4008,14 +4008,14 @@ export default function AdminRole({
                 <div className="space-y-6 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">🧪 간이 진단 문항 편집</h3>
+                      <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">🧪 간이 진단 문항 편집</h3>
                       <p className="text-[13px] text-slate-600 mt-1">고객 랜딩 페이지의 5문항 진단 퀴즈를 편집합니다. 변경 후 저장하면 즉시 반영됩니다.</p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { if (confirm('모든 문항을 기본값으로 초기화하시겠습니까?')) { setDiagQuestions(DEFAULT_DIAGNOSIS_QUESTIONS); setEditingDiagIdx(null); } }} className="flex items-center gap-1 px-3 py-1.5 bg-[#111622] border border-[#1E293B]/60 rounded-lg text-xs text-slate-500 hover:text-white transition-colors">
+                      <button onClick={() => { if (confirm('모든 문항을 기본값으로 초기화하시겠습니까?')) { setDiagQuestions(DEFAULT_DIAGNOSIS_QUESTIONS); setEditingDiagIdx(null); } }} className="flex items-center gap-1 px-3 py-1.5 bg-[#111622] border border-[#1E293B]/60 rounded-lg text-sm text-slate-500 hover:text-white transition-colors">
                         <RotateCcw className="w-3.5 h-3.5" /> 기본값 복원
                       </button>
-                      <button onClick={async () => { setDiagSaving(true); try { await saveDiagnosisConfig({ questions: diagQuestions, isActive: true, lastUpdatedAt: new Date().toISOString(), lastUpdatedBy: 'admin' }); alert('진단 문항이 저장되었습니다.'); } catch { alert('저장에 실패했습니다.'); } finally { setDiagSaving(false); } }} disabled={diagSaving} className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50">
+                      <button onClick={async () => { setDiagSaving(true); try { await saveDiagnosisConfig({ questions: diagQuestions, isActive: true, lastUpdatedAt: new Date().toISOString(), lastUpdatedBy: 'admin' }); alert('진단 문항이 저장되었습니다.'); } catch { alert('저장에 실패했습니다.'); } finally { setDiagSaving(false); } }} disabled={diagSaving} className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50">
                         <Save className="w-3.5 h-3.5" /> {diagSaving ? '저장 중...' : '전체 저장'}
                       </button>
                     </div>
@@ -4025,9 +4025,9 @@ export default function AdminRole({
                     <div key={q.id} className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden">
                       <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#161B26] transition-colors" onClick={() => setEditingDiagIdx(editingDiagIdx === qIdx ? null : qIdx)}>
                         <div className="flex items-center gap-3">
-                          <span className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-black text-sm">{q.step}</span>
+                          <span className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-black text-base">{q.step}</span>
                           <div>
-                            <p className="text-sm font-bold text-slate-200">{q.title}</p>
+                            <p className="text-base font-bold text-slate-200">{q.title}</p>
                             <p className="text-[13px] text-slate-600">{q.subtitle} · 옵션 {q.options.length}개</p>
                           </div>
                         </div>
@@ -4038,25 +4038,25 @@ export default function AdminRole({
                         <div className="px-4 pb-4 pt-2 border-t border-[#1E293B]/40 space-y-4 animate-fadeIn">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                              <label className="text-[12px] text-slate-600 block mb-1 font-bold uppercase">질문 제목</label>
-                              <input type="text" value={q.title} onChange={(e) => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], title: e.target.value }; setDiagQuestions(u); }} className="w-full bg-[#0B0F19] border border-[#1E293B]/60 rounded-lg p-2.5 text-xs text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                              <label className="text-sm text-slate-600 block mb-1 font-bold uppercase">질문 제목</label>
+                              <input type="text" value={q.title} onChange={(e) => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], title: e.target.value }; setDiagQuestions(u); }} className="w-full bg-[#0B0F19] border border-[#1E293B]/60 rounded-lg p-2.5 text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
                             </div>
                             <div>
-                              <label className="text-[12px] text-slate-600 block mb-1 font-bold uppercase">질문 부제</label>
-                              <input type="text" value={q.subtitle || ''} onChange={(e) => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], subtitle: e.target.value }; setDiagQuestions(u); }} className="w-full bg-[#0B0F19] border border-[#1E293B]/60 rounded-lg p-2.5 text-xs text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                              <label className="text-sm text-slate-600 block mb-1 font-bold uppercase">질문 부제</label>
+                              <input type="text" value={q.subtitle || ''} onChange={(e) => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], subtitle: e.target.value }; setDiagQuestions(u); }} className="w-full bg-[#0B0F19] border border-[#1E293B]/60 rounded-lg p-2.5 text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
                             </div>
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <label className="text-[12px] text-slate-600 font-bold uppercase">선택지 옵션</label>
-                              <button type="button" onClick={() => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], options: [...u[qIdx].options, { id: `opt-${Date.now()}`, label: '새 옵션', icon: '❓' }] }; setDiagQuestions(u); }} className="flex items-center gap-1 text-[12px] text-indigo-400 hover:text-indigo-300 font-bold"><Plus className="w-3 h-3" /> 옵션 추가</button>
+                              <label className="text-sm text-slate-600 font-bold uppercase">선택지 옵션</label>
+                              <button type="button" onClick={() => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], options: [...u[qIdx].options, { id: `opt-${Date.now()}`, label: '새 옵션', icon: '❓' }] }; setDiagQuestions(u); }} className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 font-bold"><Plus className="w-3 h-3" /> 옵션 추가</button>
                             </div>
                             <div className="space-y-2">
                               {q.options.map((opt, optIdx) => (
                                 <div key={opt.id} className="flex items-center gap-2 bg-[#0B0F19] p-2.5 rounded-lg border border-[#1E293B]/40">
-                                  <input type="text" value={opt.icon} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], icon: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="w-12 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-center text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none" title="아이콘" />
-                                  <input type="text" value={opt.label} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], label: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="flex-1 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-xs text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="옵션 텍스트" />
-                                  <input type="text" value={opt.description || ''} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], description: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="w-40 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-xs text-slate-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="설명 (선택)" />
+                                  <input type="text" value={opt.icon} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], icon: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="w-12 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-center text-base focus:ring-1 focus:ring-indigo-500 focus:outline-none" title="아이콘" />
+                                  <input type="text" value={opt.label} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], label: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="flex-1 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="옵션 텍스트" />
+                                  <input type="text" value={opt.description || ''} onChange={(e) => { const u = [...diagQuestions]; const o = [...u[qIdx].options]; o[optIdx] = { ...o[optIdx], description: e.target.value }; u[qIdx] = { ...u[qIdx], options: o }; setDiagQuestions(u); }} className="w-40 bg-transparent border border-[#1E293B]/60 rounded p-1.5 text-sm text-slate-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="설명 (선택)" />
                                   {q.options.length > 2 && (<button type="button" onClick={() => { const u = [...diagQuestions]; u[qIdx] = { ...u[qIdx], options: u[qIdx].options.filter((_, i) => i !== optIdx) }; setDiagQuestions(u); }} className="p-1 text-slate-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>)}
                                 </div>
                               ))}
@@ -4076,19 +4076,19 @@ export default function AdminRole({
                   {/* Stats */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
-                      <span className="text-[11px] text-amber-400/80 font-bold block uppercase">전체 등록</span>
+                      <span className="text-xs text-amber-400/80 font-bold block uppercase">전체 등록</span>
                       <strong className="text-xl font-black text-amber-400">{adminAdBanners.length}건</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
-                      <span className="text-[11px] text-emerald-400/80 font-bold block uppercase">활성 노출</span>
+                      <span className="text-xs text-emerald-400/80 font-bold block uppercase">활성 노출</span>
                       <strong className="text-xl font-black text-emerald-400">{adminAdBanners.filter(b => b.isActive).length}건</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-slate-500/20 space-y-2">
-                      <span className="text-[11px] text-slate-400/80 font-bold block uppercase">숨김 처리</span>
+                      <span className="text-xs text-slate-400/80 font-bold block uppercase">숨김 처리</span>
                       <strong className="text-xl font-black text-slate-400">{adminAdBanners.filter(b => !b.isActive).length}건</strong>
                     </div>
                     <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
-                      <span className="text-[11px] text-indigo-400/80 font-bold block uppercase">월 광고 매출 (예상)</span>
+                      <span className="text-xs text-indigo-400/80 font-bold block uppercase">월 광고 매출 (예상)</span>
                       <strong className="text-xl font-black text-indigo-400">{(adminAdBanners.filter(b => b.isActive).length * 500000).toLocaleString()}원</strong>
                     </div>
                   </div>
@@ -4108,7 +4108,7 @@ export default function AdminRole({
                           isActive: true,
                         });
                       }}
-                      className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
+                      className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-600/20 cursor-pointer flex items-center gap-1.5"
                     >
                       <Plus className="w-3.5 h-3.5" /> 신규 프리미엄 광고 등록
                     </button>
@@ -4117,13 +4117,13 @@ export default function AdminRole({
                   {/* Creator / Editor Form */}
                   {(isAdBannerCreateMode || editingAdBanner) && (
                     <div className="bg-[#111622] p-6 rounded-2xl border border-amber-500/20 space-y-4 animate-slideDown">
-                      <h3 className="font-extrabold text-sm text-amber-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-base text-amber-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4" />
                         <span>{isAdBannerCreateMode ? '신규 프리미엄 광고 등록' : '프리미엄 광고 수정'}</span>
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">변호사 선택</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">변호사 선택</label>
                           <select
                             value={adBannerForm.lawyerId}
                             onChange={(e) => {
@@ -4136,7 +4136,7 @@ export default function AdminRole({
                           </select>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">그라데이션 컬러</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">그라데이션 컬러</label>
                           <select
                             value={adBannerForm.gradient}
                             onChange={(e) => setAdBannerForm(prev => ({ ...prev, gradient: e.target.value }))}
@@ -4151,19 +4151,19 @@ export default function AdminRole({
                           </select>
                         </div>
                         <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">광고 타이틀 (굵은 제목)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">광고 타이틀 (굵은 제목)</label>
                           <input type="text" placeholder="예: 회생·파산 전문 20년 경력" value={adBannerForm.title}
                             onChange={(e) => setAdBannerForm(prev => ({ ...prev, title: e.target.value }))}
                             className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">부제 (경력/실적)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">부제 (경력/실적)</label>
                           <input type="text" placeholder="예: 서울회생법원 인가율 98%" value={adBannerForm.subtitle}
                             onChange={(e) => setAdBannerForm(prev => ({ ...prev, subtitle: e.target.value }))}
                             className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[12px] text-slate-450 block uppercase font-bold">태그라인 (캐치프레이즈)</label>
+                          <label className="text-sm text-slate-450 block uppercase font-bold">태그라인 (캐치프레이즈)</label>
                           <input type="text" placeholder="예: 채무 문제, 함께 해결합니다" value={adBannerForm.tagline}
                             onChange={(e) => setAdBannerForm(prev => ({ ...prev, tagline: e.target.value }))}
                             className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
@@ -4181,7 +4181,7 @@ export default function AdminRole({
                       {/* Preview */}
                       {adBannerForm.title && (
                         <div className="bg-[#0B0F19] rounded-xl p-4 border border-[#1E293B]/40">
-                          <span className="text-[10px] text-amber-400 font-bold uppercase block mb-2">미리보기</span>
+                          <span className="text-xs text-amber-400 font-bold uppercase block mb-2">미리보기</span>
                           <div className="flex items-center gap-4">
                             <div className="relative">
                               <img src={adBannerForm.lawyerAvatar || 'https://via.placeholder.com/80'} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-700" />
@@ -4190,10 +4190,10 @@ export default function AdminRole({
                               </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-white">{adBannerForm.lawyerName || '변호사명'}</h4>
-                              <p className="text-xs font-semibold text-slate-300">{adBannerForm.title}</p>
-                              <p className="text-[11px] text-slate-500">{adBannerForm.subtitle}</p>
-                              <p className="text-[10px] text-amber-400/70 italic">"{adBannerForm.tagline}"</p>
+                              <h4 className="text-base font-bold text-white">{adBannerForm.lawyerName || '변호사명'}</h4>
+                              <p className="text-sm font-semibold text-slate-300">{adBannerForm.title}</p>
+                              <p className="text-xs text-slate-500">{adBannerForm.subtitle}</p>
+                              <p className="text-xs text-amber-400/70 italic">"{adBannerForm.tagline}"</p>
                             </div>
                             <div className={`w-3 h-14 rounded-full bg-gradient-to-b ${adBannerForm.gradient}`} />
                           </div>
@@ -4202,7 +4202,7 @@ export default function AdminRole({
 
                       <div className="flex gap-2 justify-end pt-2">
                         <button onClick={() => { setIsAdBannerCreateMode(false); setEditingAdBanner(null); }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-xs transition-colors cursor-pointer">취소하기</button>
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer">취소하기</button>
                         <button
                           onClick={() => {
                             if (!adBannerForm.title.trim() || !adBannerForm.lawyerName.trim()) { alert('변호사 선택과 광고 타이틀은 필수입니다.'); return; }
@@ -4224,7 +4224,7 @@ export default function AdminRole({
                             }
                             setIsAdBannerCreateMode(false); setEditingAdBanner(null);
                           }}
-                          className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-xs transition-all shadow-sm cursor-pointer"
+                          className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
                         >{isAdBannerCreateMode ? '✍️ 광고 등록' : '💾 변경 사항 저장'}</button>
                       </div>
                     </div>
@@ -4233,7 +4233,7 @@ export default function AdminRole({
                   {/* Table */}
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">프로필</th>
@@ -4253,11 +4253,11 @@ export default function AdminRole({
                               <td className="p-3 font-bold text-white whitespace-nowrap">{banner.lawyerName}</td>
                               <td className="p-3 text-slate-200 max-w-[150px] truncate font-semibold">{banner.title}</td>
                               <td className="p-3 text-slate-500 max-w-[120px] truncate">{banner.subtitle}</td>
-                              <td className="p-3 text-amber-400/70 italic text-[11px] max-w-[100px] truncate">"{banner.tagline}"</td>
+                              <td className="p-3 text-amber-400/70 italic text-xs max-w-[100px] truncate">"{banner.tagline}"</td>
                               <td className="p-3"><div className={`w-16 h-3 rounded-full bg-gradient-to-r ${banner.gradient}`} /></td>
                               <td className="p-3 text-center">
                                 <button onClick={() => setAdminAdBanners(prev => prev.map(b => b.id === banner.id ? { ...b, isActive: !b.isActive } : b))}
-                                  className={`text-[11px] font-bold px-3 py-1 rounded-full border cursor-pointer transition-all ${banner.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'}`}>
+                                  className={`text-xs font-bold px-3 py-1 rounded-full border cursor-pointer transition-all ${banner.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'}`}>
                                   {banner.isActive ? '✅ 노출 중' : '🚫 숨김'}
                                 </button>
                               </td>
@@ -4281,8 +4281,8 @@ export default function AdminRole({
                   <div className="bg-[#111622] p-4 rounded-2xl border border-amber-500/10 flex items-start gap-3">
                     <span className="text-lg">💡</span>
                     <div className="space-y-1">
-                      <span className="text-[11px] text-amber-400 font-bold block">프리미엄 광고 운영 안내</span>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                      <span className="text-xs text-amber-400 font-bold block">프리미엄 광고 운영 안내</span>
+                      <p className="text-xs text-slate-500 leading-relaxed">
                         이 광고는 의뢰인 홈페이지 중간("검증된 전문 변호사가 함께합니다" 섹션)에 카드 형태로 노출됩니다.<br/>
                         활성 상태의 광고만 노출되며, 동일 등급 내 매 로드 시 <strong className="text-slate-400">랜덤 셔플 정렬</strong>로 운영됩니다.<br/>
                         월 50만원 (부가세 별도) · 최대 슬롯 제한 없음. 숨김 토글로 즉시 노출/비노출 전환 가능.
@@ -4313,7 +4313,7 @@ export default function AdminRole({
                     <Lock className="w-5 h-5 text-indigo-400" />
                     <span>상담 매칭 및 견적 제한 정책 설정</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-sm text-slate-500 mt-1">
                     의뢰인이 상담 신청 후 최대 3명의 변호사로부터 견적/상담을 받을 수 있는 주기 정책을 구성합니다.<br />
                     과도한 연속 신청으로 인한 플랫폼 스패밍 및 변호사단 피로도를 예방합니다.
                   </p>
@@ -4321,13 +4321,13 @@ export default function AdminRole({
 
                 <div className="space-y-5 pt-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-extrabold text-slate-300">쿨다운 시간 (시간 단위)</label>
+                    <label className="text-base font-extrabold text-slate-300">쿨다운 시간 (시간 단위)</label>
                     <input
                       type="number"
                       min={0}
                       value={matchingCooldownHours}
                       onChange={(e) => setMatchingCooldownHours(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full px-4 py-3 rounded-xl bg-[#161B26] border border-[#1E293B] text-white text-sm font-bold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                      className="w-full px-4 py-3 rounded-xl bg-[#161B26] border border-[#1E293B] text-white text-base font-bold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                       placeholder="쿨다운 시간을 입력하세요"
                     />
                   </div>
@@ -4343,7 +4343,7 @@ export default function AdminRole({
                         key={preset.value}
                         type="button"
                         onClick={() => setMatchingCooldownHours(preset.value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-extrabold border transition-all cursor-pointer ${
+                        className={`px-4 py-2 rounded-lg text-base font-extrabold border transition-all cursor-pointer ${
                           matchingCooldownHours === preset.value
                             ? 'bg-indigo-600/10 border-indigo-500 text-white shadow-lg'
                             : 'bg-[#161B26]/50 border-[#1E293B]/60 text-slate-355 hover:border-slate-700'
@@ -4354,7 +4354,7 @@ export default function AdminRole({
                     ))}
                   </div>
 
-                  <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B] text-sm">
+                  <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B] text-base">
                     <span className="text-slate-400">현재 설정: </span>
                     <span className="font-extrabold text-white">
                       {matchingCooldownHours === 0
@@ -4366,13 +4366,13 @@ export default function AdminRole({
                   <button
                     type="button"
                     onClick={() => alert(`쿨다운 시간이 ${matchingCooldownHours === 0 ? '무제한(제한 없음)' : matchingCooldownHours + '시간'}으로 변경되었습니다.`)}
-                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold transition-all cursor-pointer"
+                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-extrabold transition-all cursor-pointer"
                   >
                     정책 저장
                   </button>
                 </div>
 
-                <div className="bg-[#161B26] p-4 rounded-xl border border-indigo-500/10 flex items-start gap-3 mt-4 text-xs text-slate-500">
+                <div className="bg-[#161B26] p-4 rounded-xl border border-indigo-500/10 flex items-start gap-3 mt-4 text-sm text-slate-500">
                   <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <strong className="text-slate-300">정책 변경 시 주의사항</strong>
@@ -4387,10 +4387,10 @@ export default function AdminRole({
               {/* 📞 050 Virtual Number Real-time Allocation Monitor */}
               <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6 mt-6">
                 <div>
-                  <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                  <h4 className="font-extrabold text-base text-white flex items-center gap-1.5">
                     <span>📞</span> 050 안심번호 실시간 배정 현황 (72시간 유지 정책)
                   </h4>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-sm text-slate-500 mt-1">
                     현재 의뢰인들의 실시간 전화 상담 신청으로 인해 임시 배정된 050 가상 회선 매칭 내역입니다.<br />
                     신청 시점으로부터 72시간이 지나면 자동으로 매칭이 종료되며, 필요한 경우 수동으로 즉시 회수할 수 있습니다.
                   </p>
@@ -4398,7 +4398,7 @@ export default function AdminRole({
 
                 <div className="bg-[#161B26]/50 rounded-xl border border-[#1E293B]/60 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#111622] text-slate-500 font-bold border-b border-[#1E293B]/60">
                           <th className="p-3">의뢰인</th>
@@ -4418,14 +4418,14 @@ export default function AdminRole({
                               <td className="p-3 font-mono text-slate-350">{r.phone}</td>
                               <td className="p-3 font-mono text-indigo-400 font-extrabold">{r.safeNumber || '배정 대기'}</td>
                               <td className="p-3 text-slate-500 space-y-0.5">
-                                <div className="text-[12px]">배정: {r.safeNumberAssignedAt ? new Date(r.safeNumberAssignedAt).toLocaleString() : '-'}</div>
-                                <div className="text-[12px] text-amber-500/80">만료: {r.safeNumberExpiresAt ? new Date(r.safeNumberExpiresAt).toLocaleString() : '-'}</div>
+                                <div className="text-sm">배정: {r.safeNumberAssignedAt ? new Date(r.safeNumberAssignedAt).toLocaleString() : '-'}</div>
+                                <div className="text-sm text-amber-500/80">만료: {r.safeNumberExpiresAt ? new Date(r.safeNumberExpiresAt).toLocaleString() : '-'}</div>
                               </td>
                               <td className="p-3">
                                 {isExpired ? (
-                                  <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[12px] font-bold">만료됨 (회선 해제)</span>
+                                  <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-sm font-bold">만료됨 (회선 해제)</span>
                                 ) : (
-                                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[12px] font-bold">사용중 (72H 이내)</span>
+                                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-sm font-bold">사용중 (72H 이내)</span>
                                 )}
                               </td>
                               <td className="p-3 text-right">
@@ -4446,7 +4446,7 @@ export default function AdminRole({
                                     }));
                                     alert('050 안심번호 매칭이 강제 해제되어 회선이 회수되었습니다.');
                                   }}
-                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2 py-1 rounded transition-all cursor-pointer text-[12px]"
+                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2 py-1 rounded transition-all cursor-pointer text-sm"
                                 >
                                   회선 강제 회수
                                 </button>
@@ -4474,15 +4474,15 @@ export default function AdminRole({
                       <span>⚙️</span>
                       <span>기본 홈페이지 설정 및 법률 약관 관리</span>
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-sm text-slate-500 mt-1">
                       플랫폼 전역(의뢰인/변호사 포털)에 적용되는 공통 브랜딩 정보 및 이용약관 내용을 실시간 변경/저장합니다.
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-left">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-left">
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">홈페이지 브라우저 타이틀</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">홈페이지 브라우저 타이틀</label>
                         <input 
                           type="text" 
                           value={formSiteTitle}
@@ -4493,7 +4493,7 @@ export default function AdminRole({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">네비게이션 로고 텍스트 (CI/BI)</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">네비게이션 로고 텍스트 (CI/BI)</label>
                         <input 
                           type="text" 
                           value={formSiteLogoText}
@@ -4504,7 +4504,7 @@ export default function AdminRole({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">회사 공식 주소</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">회사 공식 주소</label>
                         <input 
                           type="text" 
                           value={formCompanyAddress}
@@ -4517,7 +4517,7 @@ export default function AdminRole({
 
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">사업자 등록 번호</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">사업자 등록 번호</label>
                         <input 
                           type="text" 
                           value={formCompanyBusinessNumber}
@@ -4528,7 +4528,7 @@ export default function AdminRole({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">대표자명</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">대표자명</label>
                         <input 
                           type="text" 
                           value={formCompanyRepresentative}
@@ -4539,7 +4539,7 @@ export default function AdminRole({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">로고 이미지 URL (선택)</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">로고 이미지 URL (선택)</label>
                         <input 
                           type="text" 
                           value={formSiteLogoUrl}
@@ -4552,23 +4552,23 @@ export default function AdminRole({
 
                     <div className="md:col-span-2 space-y-4 pt-2">
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">이용약관 본문 (가입 동의 약관)</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">이용약관 본문 (가입 동의 약관)</label>
                         <textarea 
                           rows={6}
                           value={formTermsOfService}
                           onChange={(e) => setFormTermsOfService(e.target.value)}
-                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
                           placeholder="이용약관 내용을 입력하세요"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[12px] text-slate-455 block uppercase font-bold">개인정보처리방침 본문</label>
+                        <label className="text-sm text-slate-455 block uppercase font-bold">개인정보처리방침 본문</label>
                         <textarea 
                           rows={6}
                           value={formPrivacyPolicy}
                           onChange={(e) => setFormPrivacyPolicy(e.target.value)}
-                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-slate-200 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
                           placeholder="개인정보처리방침 내용을 입력하세요"
                         />
                       </div>
@@ -4599,7 +4599,7 @@ export default function AdminRole({
                         );
                         alert('기본 환경 설정 및 약관이 성공적으로 저장 및 전역 반영되었습니다!');
                       }}
-                      className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-8 py-3 rounded-[200px] text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer"
+                      className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-8 py-3 rounded-[200px] text-sm transition-all shadow-lg flex items-center gap-1.5 cursor-pointer"
                     >
                       <Check className="w-4 h-4" />
                       <span>기본 설정 저장 및 전역 적용</span>
@@ -4610,15 +4610,15 @@ export default function AdminRole({
                 <div className="mt-6">
                   {/* 법률 리스크 관리 */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                       <Scale className="w-5 h-5 text-amber-500" />
                       법률 리스크 관리
                     </h3>
                     <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                       <div className="space-y-1">
-                        <div className="font-bold text-sm text-slate-900 dark:text-white">진단서 노출</div>
-                        <div className="text-[12px] text-slate-500">종합 채무·자산 분석 리포트 및 PDF 다운로드 기능의 의뢰인 노출 여부를 제어합니다.</div>
-                        <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">ℹ️ OFF 상태에서는 진단 완료 후 변호사 선택 플로우로 바로 전환됩니다.</div>
+                        <div className="font-bold text-base text-slate-900 dark:text-white">진단서 노출</div>
+                        <div className="text-sm text-slate-500">종합 채무·자산 분석 리포트 및 PDF 다운로드 기능의 의뢰인 노출 여부를 제어합니다.</div>
+                        <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">ℹ️ OFF 상태에서는 진단 완료 후 변호사 선택 플로우로 바로 전환됩니다.</div>
                       </div>
                       <button
                         onClick={() => {
@@ -4637,9 +4637,9 @@ export default function AdminRole({
                     {/* 법률 정보 노출 토글 */}
                     <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                       <div className="space-y-1">
-                        <div className="font-bold text-sm text-slate-900 dark:text-white">법률 정보 칼럼 노출</div>
-                        <div className="text-[12px] text-slate-500">랜딩페이지에 '알아두면 좋을 법률 정보' 섹션의 노출 여부를 제어합니다.</div>
-                        <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">ℹ️ OFF 상태에서는 랜딩 하단에 법률 정보 칼럼이 표시되지 않습니다.</div>
+                        <div className="font-bold text-base text-slate-900 dark:text-white">법률 정보 칼럼 노출</div>
+                        <div className="text-sm text-slate-500">랜딩페이지에 '알아두면 좋을 법률 정보' 섹션의 노출 여부를 제어합니다.</div>
+                        <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">ℹ️ OFF 상태에서는 랜딩 하단에 법률 정보 칼럼이 표시되지 않습니다.</div>
                       </div>
                       <button
                         onClick={() => setPlatformConfig(prev => ({ ...prev, showLegalNews: !prev.showLegalNews }))}
@@ -4842,20 +4842,20 @@ export default function AdminRole({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Stats breakdown card */}
                   <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3.5 flex flex-col justify-between">
-                    <span className="text-[12px] text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
+                    <span className="text-sm text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
                       <Users className="w-3.5 h-3.5" />
                       <span>전체 회원 지표</span>
                     </span>
                     <div className="grid grid-cols-2 gap-3 text-center">
                       <div className="bg-[#07090E]/60 p-2.5 rounded-xl border border-[#1E293B]/30">
-                        <span className="text-[12px] text-slate-600 block font-bold">의뢰인 회원</span>
+                        <span className="text-sm text-slate-600 block font-bold">의뢰인 회원</span>
                         <strong className="text-xl font-black text-indigo-400">{totalClientsCount}명</strong>
                       </div>
                       <div className="bg-[#07090E]/60 p-2.5 rounded-xl border border-[#1E293B]/30">
-                        <span className="text-[12px] text-slate-600 block font-bold">대리인 파트너</span>
+                        <span className="text-sm text-slate-600 block font-bold">대리인 파트너</span>
                         <strong className="text-xl font-black text-sky-400">{totalPartnersCount}명</strong>
                       </div>
-                      <div className="bg-[#07090E]/65 p-2.5 rounded-xl border border-[#1E293B]/30 col-span-2 flex flex-col gap-2 text-[12px] text-left">
+                      <div className="bg-[#07090E]/65 p-2.5 rounded-xl border border-[#1E293B]/30 col-span-2 flex flex-col gap-2 text-sm text-left">
                         <div className="flex justify-around text-center border-b border-[#1E293B]/20 pb-1.5 flex-wrap gap-y-1">
                           <div>정상: <strong className="text-emerald-400 font-bold">{totalActiveCount}명</strong></div>
                           <div className="border-r border-[#1E293B]/30 h-3 my-auto"></div>
@@ -4876,14 +4876,14 @@ export default function AdminRole({
 
                   {/* Channel chart card */}
                   <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
-                    <span className="text-[12px] text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
+                    <span className="text-sm text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
                       <Smartphone className="w-3.5 h-3.5" />
                       <span>가입 채널 분포</span>
                     </span>
-                    <div className="space-y-2 text-xs text-slate-500">
+                    <div className="space-y-2 text-sm text-slate-500">
                       {/* Naver */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[12px]">
+                        <div className="flex justify-between text-sm">
                           <span>네이버 간편가입 ({channelCounts['naver'] || 0}명)</span>
                           <strong className="text-slate-200">{pctNaver}%</strong>
                         </div>
@@ -4893,7 +4893,7 @@ export default function AdminRole({
                       </div>
                       {/* Kakao */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[12px]">
+                        <div className="flex justify-between text-sm">
                           <span>카카오 간편가입 ({channelCounts['kakao'] || 0}명)</span>
                           <strong className="text-slate-200">{pctKakao}%</strong>
                         </div>
@@ -4903,7 +4903,7 @@ export default function AdminRole({
                       </div>
                       {/* Google */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[12px]">
+                        <div className="flex justify-between text-sm">
                           <span>구글 간편가입 ({channelCounts['google'] || 0}명)</span>
                           <strong className="text-slate-200">{pctGoogle}%</strong>
                         </div>
@@ -4912,7 +4912,7 @@ export default function AdminRole({
                         </div>
                       </div>
                       {/* SMS & Email combined */}
-                      <div className="flex gap-4 text-[12px] pt-1">
+                      <div className="flex gap-4 text-sm pt-1">
                         <div>SMS OTP: <strong className="text-slate-200">{pctSms}%</strong> ({channelCounts['sms'] || 0}명)</div>
                         <div>일반 이메일: <strong className="text-slate-200">{pctEmail}%</strong> ({channelCounts['email'] || 0}명)</div>
                       </div>
@@ -4921,7 +4921,7 @@ export default function AdminRole({
 
                   {/* Daily signups sparkline chart */}
                   <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2.5">
-                    <span className="text-[12px] text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
+                    <span className="text-sm text-indigo-400 block uppercase font-black tracking-wider flex items-center gap-1">
                       <TrendingUp className="w-3.5 h-3.5" />
                       <span>최근 7일 가입 추이</span>
                     </span>
@@ -4931,14 +4931,14 @@ export default function AdminRole({
                         const heightPct = Math.round((d.count / maxSignupCount) * 100);
                         return (
                           <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group cursor-default">
-                            <span className="text-[11px] text-slate-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity leading-none">
+                            <span className="text-xs text-slate-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity leading-none">
                               {d.count}명
                             </span>
                             <div 
                               style={{ height: `${Math.max(5, heightPct)}%` }} 
                               className="w-full bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-md transition-all duration-300 hover:from-indigo-400 hover:to-indigo-300"
                             />
-                            <span className="text-[11px] text-slate-600 font-bold">{d.label}</span>
+                            <span className="text-xs text-slate-600 font-bold">{d.label}</span>
                           </div>
                         );
                       })}
@@ -4959,7 +4959,7 @@ export default function AdminRole({
                           placeholder="성명, 가명, 연락처, ID 검색..." 
                           value={memberSearch}
                           onChange={(e) => setMemberSearch(e.target.value)}
-                          className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                          className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
                         />
                         <Search className="absolute left-3 top-2.5 text-slate-600 w-3.5 h-3.5" />
                       </div>
@@ -4968,7 +4968,7 @@ export default function AdminRole({
                         <select 
                           value={memberRoleFilter} 
                           onChange={(e) => setMemberRoleFilter(e.target.value)}
-                          className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2.5 py-1.5 text-[12px] font-bold text-slate-350 focus:outline-none"
+                          className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2.5 py-1.5 text-sm font-bold text-slate-350 focus:outline-none"
                         >
                           <option value="all">전체 역할</option>
                           <option value="CLIENT">의뢰인 (CLIENT)</option>
@@ -4979,7 +4979,7 @@ export default function AdminRole({
                         <select 
                           value={memberStatusFilter} 
                           onChange={(e) => setMemberStatusFilter(e.target.value)}
-                          className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2.5 py-1.5 text-[12px] font-bold text-slate-350 focus:outline-none"
+                          className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2.5 py-1.5 text-sm font-bold text-slate-350 focus:outline-none"
                         >
                           <option value="all">전체 상태</option>
                           <option value="active">정상 (Active)</option>
@@ -4993,7 +4993,7 @@ export default function AdminRole({
 
                     {/* Table View */}
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26]/30 text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">회원명/가명</th>
@@ -5019,11 +5019,11 @@ export default function AdminRole({
                                 <td className="p-3">
                                   <div className="flex flex-col">
                                     <span className="font-extrabold text-slate-100">{m.alias}</span>
-                                    <span className="text-[12px] text-slate-600 font-mono">{m.id}</span>
+                                    <span className="text-sm text-slate-600 font-mono">{m.id}</span>
                                   </div>
                                 </td>
                                 <td className="p-3">
-                                  <span className={`text-[11px] px-1.5 py-0.5 rounded font-black tracking-wider uppercase border ${
+                                  <span className={`text-xs px-1.5 py-0.5 rounded font-black tracking-wider uppercase border ${
                                     m.role === 'CLIENT' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                                     m.role === 'LAWYER' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
                                     m.role === 'STAFF' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
@@ -5044,7 +5044,7 @@ export default function AdminRole({
                                   </span>
                                 </td>
                                 <td className="p-3">
-                                  <span className={`text-[11px] px-2 py-0.5 rounded border font-bold ${
+                                  <span className={`text-xs px-2 py-0.5 rounded border font-bold ${
                                     m.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                     m.status === 'suspended' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                                     m.status === 'withdrawn' ? 'bg-slate-500/10 text-slate-500 border-slate-500/20' :
@@ -5054,7 +5054,7 @@ export default function AdminRole({
                                     {m.status === 'active' ? '정상 활동' : m.status === 'suspended' ? '이용 정지' : m.status === 'withdrawn' ? '탈퇴 완료' : m.status === 'dormant' ? '휴면 계정' : '승인 대기'}
                                   </span>
                                 </td>
-                                <td className="p-3 text-right text-slate-500 font-mono text-[12px]">
+                                <td className="p-3 text-right text-slate-500 font-mono text-sm">
                                   {new Date(m.lastActiveAt).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                 </td>
                               </tr>
@@ -5081,24 +5081,24 @@ export default function AdminRole({
                         {/* Member Identity Details Card */}
                         <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
                           <div className="space-y-1">
-                            <span className="text-[11px] text-indigo-400 font-black block uppercase tracking-wider">MEMBER ACCOUNT DETAIL</span>
-                            <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                            <span className="text-xs text-indigo-400 font-black block uppercase tracking-wider">MEMBER ACCOUNT DETAIL</span>
+                            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                               <span>{selectedMember.alias}</span>
-                              <span className="text-[11px] bg-slate-800 text-slate-500 border border-slate-700 px-1.5 py-0.2 rounded font-mono">
+                              <span className="text-xs bg-slate-800 text-slate-500 border border-slate-700 px-1.5 py-0.2 rounded font-mono">
                                 {selectedMember.role}
                               </span>
                             </h3>
                           </div>
                           <button 
                             onClick={() => setSelectedMemberId('')}
-                            className="text-slate-500 hover:text-white text-xs font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
+                            className="text-slate-500 hover:text-white text-sm font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
                           >
                             닫기 (전체 로그)
                           </button>
                         </div>
 
                         {/* Masked Data sheet */}
-                        <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-xs">
+                        <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-sm">
                           <div className="flex justify-between border-b border-[#1E293B]/20 pb-1.5">
                             <span>계정 식별 ID:</span>
                             <strong className="text-white font-mono text-[13px]">{selectedMember.id}</strong>
@@ -5125,20 +5125,20 @@ export default function AdminRole({
 
                         {/* Account Controls */}
                         <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-2.5">
-                          <span className="text-[12px] font-black text-indigo-400 block uppercase tracking-wider">🔒 관리자 계정 활동 제어 조치</span>
-                          <p className="text-[12px] leading-relaxed text-slate-500">
+                          <span className="text-sm font-black text-indigo-400 block uppercase tracking-wider">🔒 관리자 계정 활동 제어 조치</span>
+                          <p className="text-sm leading-relaxed text-slate-500">
                             불량 의뢰 등록, 스팸성 계산기 조작, 혹은 허위 자격 정보 기입이 감지되면 이 계정을 즉각 일시정지 조치할 수 있습니다. 즉시 모든 포털의 로그인 세션이 끊기고 활동이 차단됩니다.
                           </p>
                           <div className="flex flex-col gap-2">
                             <div className="flex gap-2">
                               {selectedMember.status === 'withdrawn' ? (
-                                <div className="flex-1 bg-[#0F121C] text-slate-600 py-2 rounded-[200px] text-xs font-extrabold text-center border border-slate-800">
+                                <div className="flex-1 bg-[#0F121C] text-slate-600 py-2 rounded-[200px] text-sm font-extrabold text-center border border-slate-800">
                                   🔒 이미 탈퇴가 완료된 회원 계정입니다.
                                 </div>
                               ) : selectedMember.status === 'pending' ? (
                                 <button 
                                   onClick={() => handleApproveLawyer(selectedMember.id)}
-                                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>대리인 자격 승인</span>
@@ -5146,7 +5146,7 @@ export default function AdminRole({
                               ) : selectedMember.status === 'dormant' ? (
                                 <button 
                                   onClick={() => handleToggleDormantStatus(selectedMember.id)}
-                                  className="flex-1 bg-emerald-650 hover:bg-emerald-600 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                  className="flex-1 bg-emerald-650 hover:bg-emerald-600 text-white py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>휴면 해제 (활성화)</span>
@@ -5155,7 +5155,7 @@ export default function AdminRole({
                                 <div className="flex-1 flex flex-col sm:flex-row gap-2 w-full">
                                   <button 
                                     onClick={() => handleToggleMemberStatus(selectedMember.id)}
-                                    className={`flex-1 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    className={`flex-1 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                       selectedMember.status === 'active'
                                       ? 'bg-[#1E293B]/20 hover:bg-red-950/20 border border-red-500/30 text-red-400'
                                       : 'bg-emerald-650 hover:bg-emerald-600 text-white'
@@ -5176,7 +5176,7 @@ export default function AdminRole({
                                   {selectedMember.status === 'active' && (
                                     <button 
                                       onClick={() => handleToggleDormantStatus(selectedMember.id)}
-                                      className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/30 text-amber-400 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                      className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/30 text-amber-400 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
                                       <Lock className="w-3.5 h-3.5" />
                                       <span>휴면 계정 수동 전환</span>
@@ -5189,7 +5189,7 @@ export default function AdminRole({
                             {selectedMember.status !== 'withdrawn' && (
                               <button 
                                 onClick={() => handleWithdrawMember(selectedMember.id)}
-                                className="w-full bg-[#1E293B]/10 hover:bg-red-650 text-slate-500 hover:text-white border border-red-500/20 py-2 rounded-[200px] text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="w-full bg-[#1E293B]/10 hover:bg-red-650 text-slate-500 hover:text-white border border-red-500/20 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 <span>회원 강제 탈퇴 처리 (Withdraw)</span>
@@ -5200,25 +5200,25 @@ export default function AdminRole({
 
                         {/* Chronological Activity Timeline */}
                         <div className="space-y-3 pt-1">
-                          <span className="text-[12px] font-black text-slate-500 block uppercase tracking-wider">⏱️ 회원 개별 활동 타임라인</span>
-                          <div className="border-l-2 border-[#1E293B]/60 ml-2.5 pl-4 space-y-4 py-1 text-xs">
+                          <span className="text-sm font-black text-slate-500 block uppercase tracking-wider">⏱️ 회원 개별 활동 타임라인</span>
+                          <div className="border-l-2 border-[#1E293B]/60 ml-2.5 pl-4 space-y-4 py-1 text-sm">
                             {selectedMemberLogs.map(log => (
                               <div key={log.id} className="relative space-y-1">
                                 {/* Chronology dot */}
                                 <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full border-2 border-[#0F121C] bg-indigo-500" />
-                                <div className="flex items-center justify-between text-[12px] text-slate-600">
-                                  <span className="bg-[#161B26] border border-[#1E293B]/65 px-1.5 py-0.2 rounded font-bold text-[11px] text-indigo-400">
+                                <div className="flex items-center justify-between text-sm text-slate-600">
+                                  <span className="bg-[#161B26] border border-[#1E293B]/65 px-1.5 py-0.2 rounded font-bold text-xs text-indigo-400">
                                     {log.action}
                                   </span>
                                   <span className="font-mono">{new Date(log.createdAt).toLocaleTimeString()}</span>
                                 </div>
-                                <p className="text-slate-200 text-xs font-semibold leading-normal">{log.details}</p>
-                                <span className="text-[12px] text-slate-600 block font-mono">IP: {log.ipAddress}</span>
+                                <p className="text-slate-200 text-sm font-semibold leading-normal">{log.details}</p>
+                                <span className="text-sm text-slate-600 block font-mono">IP: {log.ipAddress}</span>
                               </div>
                             ))}
 
                             {selectedMemberLogs.length === 0 && (
-                              <div className="text-center py-6 text-slate-600 text-xs pl-0">
+                              <div className="text-center py-6 text-slate-600 text-sm pl-0">
                                 타임라인에 수집된 가입자 활동 내역이 아직 없습니다.
                               </div>
                             )}
@@ -5230,8 +5230,8 @@ export default function AdminRole({
                       <div className="space-y-4 animate-fadeIn">
                         <div className="flex justify-between items-center border-b border-[#1E293B]/60 pb-3">
                           <div className="space-y-1 text-left">
-                            <span className="text-[11px] text-indigo-400 font-black block uppercase tracking-wider">PLATFORM AUDIT TRAIL MONITOR</span>
-                            <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5">
+                            <span className="text-xs text-indigo-400 font-black block uppercase tracking-wider">PLATFORM AUDIT TRAIL MONITOR</span>
+                            <h3 className="text-base font-extrabold text-white flex items-center gap-1.5">
                               <Activity className="w-4 h-4 text-indigo-500 animate-pulse" />
                               <span>실시간 통합 플랫폼 활동 피드</span>
                             </h3>
@@ -5240,7 +5240,7 @@ export default function AdminRole({
                           <select 
                             value={activityActionFilter}
                             onChange={(e) => setActivityActionFilter(e.target.value)}
-                            className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2 py-1 text-[11px] font-black text-slate-500 focus:outline-none"
+                            className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2 py-1 text-xs font-black text-slate-500 focus:outline-none"
                           >
                             <option value="all">모든 액션</option>
                             <option value="SIGNUP">가입 (SIGNUP)</option>
@@ -5254,14 +5254,14 @@ export default function AdminRole({
                         </div>
 
                         {/* Scrolling live feed */}
-                        <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1 text-xs">
+                        <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1 text-sm">
                           {filteredGlobalLogs.slice(0, 25).map(log => {
                             const isClient = log.role === 'CLIENT';
                             return (
                               <div key={log.id} className="bg-[#0B0F19]/45 border border-[#1E293B]/30 hover:border-slate-800 p-3 rounded-xl space-y-1.5 transition-all">
                                 <div className="flex justify-between items-center">
                                   <div className="flex items-center gap-1.5">
-                                    <span className={`text-[10px] font-black px-1 rounded-sm text-white ${
+                                    <span className={`text-xs font-black px-1 rounded-sm text-white ${
                                       log.action === 'SIGNUP' ? 'bg-orange-650' :
                                       log.action === 'LOGIN' ? 'bg-blue-650' :
                                       log.action === 'CALCULATE' ? 'bg-purple-650' :
@@ -5273,18 +5273,18 @@ export default function AdminRole({
                                       {log.action}
                                     </span>
                                     <strong className="text-slate-200 text-[13px]">{log.memberName}</strong>
-                                    <span className={`text-[10px] font-extrabold px-1 rounded-md border ${
+                                    <span className={`text-xs font-extrabold px-1 rounded-md border ${
                                       isClient ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
                                     }`}>
                                       {log.role}
                                     </span>
                                   </div>
-                                  <span className="font-mono text-slate-600 text-[11px]">
+                                  <span className="font-mono text-slate-600 text-xs">
                                     {new Date(log.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                   </span>
                                 </div>
                                 <p className="text-slate-350 leading-normal text-[13px] font-medium">{log.details}</p>
-                                <div className="flex justify-between items-center text-[11px] text-slate-600 font-mono">
+                                <div className="flex justify-between items-center text-xs text-slate-600 font-mono">
                                   <span>ID: {log.memberId}</span>
                                   <span>IP: {log.ipAddress}</span>
                                 </div>
@@ -5293,7 +5293,7 @@ export default function AdminRole({
                           })}
 
                           {filteredGlobalLogs.length === 0 && (
-                            <div className="text-center py-12 text-slate-600 text-xs">
+                            <div className="text-center py-12 text-slate-600 text-sm">
                               수집된 실시간 활동 로그 내역이 존재하지 않습니다.
                             </div>
                           )}
@@ -5320,14 +5320,14 @@ export default function AdminRole({
                 </div>
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">진단서 노출 활성화</h3>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                 진단서(종합 채무·자산 분석 리포트)는 <strong className="text-amber-600">법률 자문으로 해석될 위험</strong>이 있습니다.
                 활성화 시 의뢰인에게 진단 리포트와 PDF 다운로드 기능이 노출됩니다.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowReportToggleConfirm(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold text-base hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   취소
                 </button>
@@ -5336,7 +5336,7 @@ export default function AdminRole({
                     setPlatformConfig(prev => ({ ...prev, showDiagnosisReport: true }));
                     setShowReportToggleConfirm(false);
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-base transition-colors cursor-pointer"
                 >
                   활성화
                 </button>
