@@ -1689,27 +1689,27 @@ export default function LawyerRole({
               {/* 그룹 1: 업무 */}
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-2">업무</p>
               {permissionCtx.canAccessTab('dashboard') && (
-                <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <BarChart2 className="w-5 h-5 shrink-0" /><span>종합 대시보드</span>
                 </button>
               )}
               {permissionCtx.canAccessTab('open-requests') && (
-                <button onClick={() => setActiveTab('open-requests')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'open-requests' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <button onClick={() => setActiveTab('open-requests')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'open-requests' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <Briefcase className="w-5 h-5 shrink-0" /><span>신규 상담 요청</span>
-                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{totalOpenRequestsCount}</span>)}
+                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-rose-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{totalOpenRequestsCount}</span>)}
                 </button>
               )}
-              <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+              <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                 <MessageSquare className="w-5 h-5 shrink-0" /><span>상담 채팅</span>
-                {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-brand/90 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{c}</span>) : null; })()}
+                {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-slate-700 text-slate-200 rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{c}</span>) : null; })()}
               </button>
               {permissionCtx.canAccessTab('client-crm') && (
-                <button onClick={() => setActiveTab('client-crm')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'client-crm' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <button onClick={() => setActiveTab('client-crm')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'client-crm' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <Users className="w-5 h-5 shrink-0" /><span>고객 관리 (CRM)</span>
                   <span className="ml-auto text-xs text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-md">{requests.length}</span>
                 </button>
               )}
-              <button onClick={() => setActiveTab('tasks-schedule')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'tasks-schedule' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+              <button onClick={() => setActiveTab('tasks-schedule')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'tasks-schedule' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                 <CalendarCheck className="w-5 h-5 shrink-0" /><span>일정 / 할일</span>
               </button>
 
@@ -1717,35 +1717,35 @@ export default function LawyerRole({
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">AI 도구</p>
               {permissionCtx.canAccessTab('case-copilot') && (
-                <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <Microscope className="w-5 h-5 shrink-0" /><span>AI 사건 분석</span>
-                {(() => { const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; return n > 0 ? (<span className="ml-auto bg-violet-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{n}</span>) : null; })()}
+                {(() => { const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; return n > 0 ? (<span className="ml-auto bg-slate-700 text-slate-200 rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{n}</span>) : null; })()}
                 </button>
               )}
-              <button onClick={() => setActiveTab('qna-answer')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'qna-answer' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+              <button onClick={() => setActiveTab('qna-answer')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'qna-answer' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                 <ListCheck className="w-5 h-5 shrink-0" /><span>고민상담 Q&A</span>
-                {qas && (() => { const w = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length; return w > 0 ? (<span className="ml-auto bg-orange-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{w}</span>) : null; })()}
+                {qas && (() => { const w = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length; return w > 0 ? (<span className="ml-auto bg-rose-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{w}</span>) : null; })()}
               </button>
 
               {/* 그룹 3: 관리 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">관리</p>
               {permissionCtx.canAccessTab('billing') && (
-                <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <CreditCard className="w-5 h-5 shrink-0" /><span>요금제 / 빌링</span>
                 </button>
               )}
               {permissionCtx.canAccessTab('staff-management') && (
-                <button onClick={() => setActiveTab('staff-management')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'staff-management' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <button onClick={() => setActiveTab('staff-management')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'staff-management' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <Shield className="w-5 h-5 shrink-0" /><span>직원 관리</span>
-                  {(() => { const p = staffMembers.filter(m => m.status === 'pending').length; return p > 0 ? (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold animate-pulse">{p}</span>) : null; })()}
+                  {(() => { const p = staffMembers.filter(m => m.status === 'pending').length; return p > 0 ? (<span className="ml-auto bg-rose-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold">{p}</span>) : null; })()}
                 </button>
               )}
-              <button onClick={() => setActiveTab('inquiry-to-admin')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'inquiry-to-admin' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+              <button onClick={() => setActiveTab('inquiry-to-admin')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'inquiry-to-admin' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                 <MessageCircle className="w-5 h-5 shrink-0" /><span>마이김변 문의</span>
               </button>
               {permissionCtx.canAccessTab('settings') && (
-                <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <Settings className="w-5 h-5 shrink-0" /><span>알림 및 설정</span>
                 </button>
               )}
@@ -1790,76 +1790,98 @@ export default function LawyerRole({
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-fadeIn">
             {/* 서브탭 */}
-            <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-sm">
+            <div className="bg-white rounded-xl border border-slate-200/80 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
                 { key: 'overview' as const, label: '전체 현황' },
                 { key: 'activity' as const, label: '활동 분석' },
               ]).map(t => (
-                <button key={t.key} onClick={() => setDashboardSub(t.key)} className={`px-5 py-2.5 rounded-lg text-[15px] font-bold transition-all whitespace-nowrap cursor-pointer ${dashboardSub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                <button key={t.key} onClick={() => setDashboardSub(t.key)} className={`px-5 py-2.5 rounded-lg text-[15px] font-bold transition-all whitespace-nowrap cursor-pointer ${dashboardSub === t.key ? 'bg-[#1E3A5F] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
                 </button>
               ))}
             </div>
 
-            {/* ═══ 섹션 1: 상단 요약 카드 6열 (클릭→해당 탭 이동) ═══ */}
+            {/* ═══ 섹션 1: 상단 요약 카드 6열 (모노크롬 고대비 리디자인) ═══ */}
             {(dashboardSub === 'overview') && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-brand/30 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 1. 신규 상담 */}
+              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-xs text-slate-500 block font-bold">신규 상담</span>
-                  <span className="text-2xl font-black text-brand">{totalOpenRequestsCount}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500 font-bold tracking-tight">신규 상담</span>
+                    {totalOpenRequestsCount > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    )}
+                  </div>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{totalOpenRequestsCount}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-brand/10 text-brand group-hover:bg-brand group-hover:text-white transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <Briefcase className="w-5 h-5" />
                 </div>
               </button>
 
-              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-amber-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 2. 응답 대기 */}
+              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-xs text-slate-500 block font-bold">응답 대기</span>
-                  <span className="text-2xl font-black text-amber-500">{directCounselingCount}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500 font-bold tracking-tight">응답 대기</span>
+                    {directCounselingCount > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    )}
+                  </div>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{directCounselingCount}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
               </button>
 
-              <button onClick={() => setActiveTab('chat')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-emerald-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 3. 진행 중 상담 */}
+              <button onClick={() => setActiveTab('chat')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-xs text-slate-500 block font-bold">진행 중 상담</span>
-                  <span className="text-2xl font-black text-emerald-600">{activeChatsCount}</span>
+                  <span className="text-xs text-slate-500 font-bold tracking-tight block">진행 중 상담</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{activeChatsCount}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <MessageSquare className="w-5 h-5" />
                 </div>
               </button>
 
-              <button onClick={() => setActiveTab('client-crm')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-purple-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 4. 수임 전환 */}
+              <button onClick={() => setActiveTab('client-crm')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-xs text-slate-500 block font-bold">수임 전환</span>
-                  <span className="text-2xl font-black text-purple-600">{totalCasesCount}</span>
+                  <span className="text-xs text-slate-500 font-bold tracking-tight block">수임 전환</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{totalCasesCount}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <FolderHeart className="w-5 h-5" />
                 </div>
               </button>
 
-              <button onClick={() => setActiveTab('qna-answer')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-orange-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 5. 미답변 Q&A */}
+              <button onClick={() => setActiveTab('qna-answer')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-xs text-slate-500 block font-bold">미답변 Q&A</span>
-                  <span className="text-2xl font-black text-orange-500">{qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length : 0}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500 font-bold tracking-tight">미답변 Q&A</span>
+                    {(() => {
+                      const waitingCount = qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length : 0;
+                      return waitingCount > 0 ? <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> : null;
+                    })()}
+                  </div>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length : 0}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <ListCheck className="w-5 h-5" />
                 </div>
               </button>
 
-              <button onClick={() => setActiveTab('billing')} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-indigo-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 6. 활성 광고 */}
+              <button onClick={() => setActiveTab('billing')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
-                  <span className="text-xs text-slate-500 block font-bold">활성 광고</span>
-                  <span className="text-2xl font-black text-indigo-600">{adOrders.filter(o => o.status === 'active').length}</span>
+                  <span className="text-xs text-slate-500 font-bold tracking-tight block">활성 광고</span>
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{adOrders.filter(o => o.status === 'active').length}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <Megaphone className="w-5 h-5" />
                 </div>
               </button>
@@ -1868,18 +1890,15 @@ export default function LawyerRole({
 
             {/* ═══ Row 3: 지금 상담을 기다리는 의뢰인 — 긴급 Action Zone ═══ */}
             {(dashboardSub === 'overview') && (
-            <div className="bg-amber-50/60 p-6 rounded-2xl border border-amber-200 border-l-4 border-l-amber-400 shadow-md space-y-4">
-              <div className="flex items-center justify-between border-b border-amber-200/60 pb-3">
-                <h3 className="font-black text-lg text-amber-900 flex items-center gap-2">
-                  <div className="relative">
-                    <Bell className="w-6 h-6 text-amber-500" />
-                    {totalOpenRequestsCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse" />
-                    )}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-rose-50 text-rose-500 shrink-0">
+                    <Bell className="w-5 h-5" />
                   </div>
                   <span>지금 상담을 기다리는 의뢰인</span>
                 </h3>
-                <span className="bg-amber-500 text-white text-xs sm:text-sm font-black px-3 py-1 rounded-lg whitespace-nowrap shadow-sm">
+                <span className="bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-xs">
                   {totalOpenRequestsCount}건 대기 중
                 </span>
               </div>
@@ -1894,46 +1913,42 @@ export default function LawyerRole({
                     <button
                       key={r.id}
                       onClick={() => setActiveTab('open-requests')}
-                      className="bg-white hover:bg-amber-50/60 rounded-xl border border-amber-100 hover:border-amber-300 hover:shadow-md p-4 flex flex-col gap-3 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left"
+                      className="bg-slate-50/70 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:shadow-sm p-4 flex flex-col gap-3 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left"
                     >
                       {/* 상단: 뱃지 + 이름 + 날짜 */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="w-5 h-5 rounded-full bg-slate-800 text-white text-[10px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded whitespace-nowrap ${
+                          <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${
                             r.requestType === 'direct'
-                              ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-                              : 'bg-brand/10 text-brand border border-brand/20'
+                              ? 'bg-[#1E3A5F] text-white'
+                              : 'bg-slate-200 text-slate-700'
                           }`}>
                             {r.requestType === 'direct' ? '지명' : '오픈'}
                           </span>
                           {r.entryCategory && (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap truncate max-w-[80px] ${
-                              r.entryCategory.type === 'debt_type' ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20' :
-                              r.entryCategory.type === 'solution' ? 'bg-teal-500/10 text-teal-600 border border-teal-500/20' :
-                              'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap truncate max-w-[80px] bg-white text-slate-700 border border-slate-200">
                               {r.entryCategory.label}
                             </span>
                           )}
-                          <span className="text-sm font-bold text-slate-800 truncate">{r.clientName}</span>
+                          <span className="text-sm font-bold text-slate-900 truncate">{r.clientName}</span>
                         </div>
                         <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">{new Date(r.createdAt).toLocaleDateString()}</span>
                       </div>
 
-                      {/* 핵심 지표 3열 */}
+                      {/* 핵심 지표 3열 (고대비 모던 박스) */}
                       <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-red-50/60 rounded-lg py-1.5 px-1">
-                          <div className="text-[10px] text-slate-400">채무</div>
-                          <div className="text-xs font-bold text-red-500">{r.financialProfile.debtTotal.toLocaleString()}만</div>
+                        <div className="bg-white rounded-lg py-2 px-1 border border-slate-200/60 shadow-xs">
+                          <div className="text-[10px] text-slate-400 font-medium">채무</div>
+                          <div className="text-xs font-black text-slate-900">{r.financialProfile.debtTotal.toLocaleString()}만</div>
                         </div>
-                        <div className="bg-slate-50 rounded-lg py-1.5 px-1">
-                          <div className="text-[10px] text-slate-400">월소득</div>
-                          <div className="text-xs font-bold text-slate-800">{r.financialProfile.income}만</div>
+                        <div className="bg-white rounded-lg py-2 px-1 border border-slate-200/60 shadow-xs">
+                          <div className="text-[10px] text-slate-400 font-medium">월소득</div>
+                          <div className="text-xs font-bold text-slate-700">{r.financialProfile.income}만</div>
                         </div>
-                        <div className="bg-red-50/60 rounded-lg py-1.5 px-1">
-                          <div className="text-[10px] text-slate-400">부채비율</div>
-                          <div className="text-xs font-black text-red-500">{debtRatio}배</div>
+                        <div className="bg-white rounded-lg py-2 px-1 border border-slate-200/60 shadow-xs">
+                          <div className="text-[10px] text-slate-400 font-medium">부채비율</div>
+                          <div className={`text-xs font-black ${parseFloat(debtRatio) > 3 ? 'text-rose-600' : 'text-slate-900'}`}>{debtRatio}배</div>
                         </div>
                       </div>
 
@@ -1941,17 +1956,17 @@ export default function LawyerRole({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1 min-w-0">
                           {r.financialProfile.riskFlags.length > 0 && (
-                            <span className="text-[10px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded border border-red-100 truncate">
+                            <span className="text-[10px] text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200 truncate">
                               ⚠ 위험 {r.financialProfile.riskFlags.length}건
                             </span>
                           )}
                           {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
-                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                            <span className="text-[10px] text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                               ⚡특례
                             </span>
                           )}
                         </div>
-                        <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-brand transition-colors shrink-0" />
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E3A5F] transition-colors shrink-0" />
                       </div>
                     </button>
                     );
@@ -1960,7 +1975,7 @@ export default function LawyerRole({
 
               {requests.filter(r => r.status === 'requested').length === 0 && (
                 <div className="py-12 text-center space-y-2">
-                  <Briefcase className="w-12 h-12 text-amber-300 mx-auto" />
+                  <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
                   <p className="text-sm text-slate-700 font-bold">현재 대기 중인 신규 상담 요청이 없습니다.</p>
                   <p className="text-xs text-slate-500">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
                 </div>
@@ -1970,7 +1985,7 @@ export default function LawyerRole({
                 <div className="flex justify-center pt-1">
                   <button
                     onClick={() => setActiveTab('open-requests')}
-                    className="w-full sm:w-[30%] min-w-[220px] bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-colors press-scale cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
+                    className="w-full sm:w-[32%] min-w-[240px] bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-3 px-5 rounded-xl text-sm transition-all press-scale cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
                   >
                     <span>신규 상담 {totalOpenRequestsCount}건 자세히 보기</span>
                     <span>&rarr;</span>
@@ -1984,13 +1999,13 @@ export default function LawyerRole({
             {(dashboardSub === 'overview') && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {/* 좌측: 고민상담 Q&A 미답변 */}
-              <button onClick={() => setActiveTab('qna-answer')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              <button onClick={() => setActiveTab('qna-answer')} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <ListCheck className="w-5 h-5 text-orange-500" />
+                    <ListCheck className="w-5 h-5 text-slate-700" />
                     <span>고민상담 Q&A</span>
                   </h3>
-                  <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">전체 보기 <ArrowRight className="w-3 h-3" /></span>
+                  <span className="text-xs text-slate-400 font-bold group-hover:text-[#1E3A5F] transition-colors flex items-center gap-1">전체 보기 <ArrowRight className="w-3 h-3" /></span>
                 </div>
                 {(() => {
                   const waitingQas = qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).slice(0, 4) : [];
@@ -1998,13 +2013,13 @@ export default function LawyerRole({
                     <div className="space-y-2">
                       {waitingQas.map(q => (
                         <div key={q.id} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-slate-800 truncate">{q.question}</p>
+                            <p className="text-sm font-bold text-slate-900 truncate">{q.question}</p>
                             <p className="text-[11px] text-slate-400">{q.userName} · {new Date(q.createdAt).toLocaleDateString()}</p>
                           </div>
                           {q.category && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-100 whitespace-nowrap shrink-0">{q.category}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap shrink-0">{q.category}</span>
                           )}
                         </div>
                       ))}
@@ -2019,13 +2034,13 @@ export default function LawyerRole({
               </button>
 
               {/* 우측: 광고 & 요금 현황 */}
-              <button onClick={() => setActiveTab('billing')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              <button onClick={() => setActiveTab('billing')} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-indigo-500" />
+                    <CreditCard className="w-5 h-5 text-slate-700" />
                     <span>광고 & 요금 현황</span>
                   </h3>
-                  <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">상세 보기 <ArrowRight className="w-3 h-3" /></span>
+                  <span className="text-xs text-slate-400 font-bold group-hover:text-[#1E3A5F] transition-colors flex items-center gap-1">상세 보기 <ArrowRight className="w-3 h-3" /></span>
                 </div>
                 {(() => {
                   const activeAds = adOrders.filter(o => o.status === 'active');
@@ -2033,21 +2048,21 @@ export default function LawyerRole({
                   const currentPlan = platformPlans.find(p => p.current);
                   return (
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-indigo-50/60 rounded-xl p-3 text-center">
-                        <div className="text-[11px] text-slate-400 font-bold">활성 광고</div>
-                        <div className="text-lg font-black text-indigo-600">{activeAds.length}건</div>
+                      <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
+                        <div className="text-[11px] text-slate-500 font-bold mb-1">활성 광고</div>
+                        <div className="text-xl font-black text-slate-900 tabular-nums">{activeAds.length}건</div>
                       </div>
-                      <div className="bg-emerald-50/60 rounded-xl p-3 text-center">
-                        <div className="text-[11px] text-slate-400 font-bold">이달 광고비</div>
-                        <div className="text-lg font-black text-emerald-600">{(monthlyAdTotal / 10000).toFixed(0)}만원</div>
+                      <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
+                        <div className="text-[11px] text-slate-500 font-bold mb-1">이달 광고비</div>
+                        <div className="text-xl font-black text-slate-900 tabular-nums">{(monthlyAdTotal / 10000).toFixed(0)}만원</div>
                       </div>
-                      <div className="bg-slate-50 rounded-xl p-3 text-center">
-                        <div className="text-[11px] text-slate-400 font-bold">구독 요금제</div>
-                        <div className="text-sm font-black text-slate-800">{currentPlan ? currentPlan.name : '-'}</div>
+                      <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
+                        <div className="text-[11px] text-slate-500 font-bold mb-1">구독 요금제</div>
+                        <div className="text-sm font-black text-slate-900">{currentPlan ? currentPlan.name : '-'}</div>
                       </div>
-                      <div className="bg-amber-50/60 rounded-xl p-3 text-center">
-                        <div className="text-[11px] text-slate-400 font-bold">월 구독료</div>
-                        <div className="text-lg font-black text-amber-600">{currentPlan ? `${(currentPlan.price / 10000).toFixed(0)}만` : '-'}</div>
+                      <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
+                        <div className="text-[11px] text-slate-500 font-bold mb-1">월 구독료</div>
+                        <div className="text-xl font-black text-slate-900 tabular-nums">{currentPlan ? `${(currentPlan.price / 10000).toFixed(0)}만` : '-'}</div>
                       </div>
                     </div>
                   );
@@ -2185,36 +2200,36 @@ export default function LawyerRole({
 
               return (
                 <div className="space-y-6">
-                  {/* 상단 핵심 성과 지표 카드 */}
+                  {/* 상단 핵심 성과 지표 카드 (모노크롬 리디자인) */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
-                      <div className="p-3 rounded-xl bg-brand/10 text-brand"><Users className="w-6 h-6" /></div>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
+                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0"><Users className="w-6 h-6" /></div>
                       <div>
                         <span className="text-xs text-slate-500 font-bold block">총 상담 참여</span>
-                        <span className="text-2xl font-black text-brand">{myParticipated}건</span>
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{myParticipated}건</span>
                       </div>
                     </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
-                      <div className="p-3 rounded-xl bg-emerald-400/10 text-emerald-600"><MessageCircle className="w-6 h-6" /></div>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
+                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0"><MessageCircle className="w-6 h-6" /></div>
                       <div>
                         <span className="text-xs text-slate-500 font-bold block">현재 진행 중</span>
-                        <span className="text-2xl font-black text-emerald-600">{myCounseling}건</span>
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{myCounseling}건</span>
                       </div>
                     </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
-                      <div className="p-3 rounded-xl bg-purple-400/10 text-purple-600"><Trophy className="w-6 h-6" /></div>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
+                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0"><Trophy className="w-6 h-6" /></div>
                       <div>
                         <span className="text-xs text-slate-500 font-bold block">수임 전환</span>
-                        <span className="text-2xl font-black text-purple-600">{myCases}건</span>
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{myCases}건</span>
                       </div>
                     </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center gap-3.5 shadow-sm">
-                      <div className={`p-3 rounded-xl ${conversionRate >= 40 ? 'bg-emerald-400/10 text-emerald-600' : conversionRate >= 20 ? 'bg-amber-400/10 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
+                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0">
                         <TrendingUp className="w-6 h-6" />
                       </div>
                       <div>
-                        <span className="text-xs text-slate-500 font-bold block">전환율</span>
-                        <span className={`text-2xl font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</span>
+                        <span className="text-xs text-slate-500 font-bold block">수임 전환율</span>
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{conversionRate}%</span>
                       </div>
                     </div>
                   </div>
