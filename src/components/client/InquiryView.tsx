@@ -49,9 +49,12 @@ export default function InquiryView({
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-10 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
         <div className="space-y-3 relative z-10">
-          <span className="text-xs sm:text-sm bg-brand/20 text-brand-light px-3.5 py-1 rounded-full font-bold uppercase tracking-wider">의뢰인 전용 1:1 안심 상담 창구</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold">관리자 1:1 문의 게시판</h2>
-          <p className="text-sm md:text-base text-slate-300 max-w-xl leading-relaxed font-medium">개인회생/파산 절차 및 변호사 매칭 정책에 대해 궁금한 점을 문의하십시오. 정보는 오직 본인과 관리자만 볼 수 있도록 철저하게 비공개 보호됩니다.</p>
+          <span className="text-xs sm:text-sm bg-brand/20 text-brand-light px-3.5 py-1 rounded-full font-bold uppercase tracking-wider">사이트 이용 관련 1:1 문의</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold">1:1 고객 문의</h2>
+          <p className="text-sm md:text-base text-slate-300 max-w-xl leading-relaxed font-medium">사이트 사용법, 계정, 기능 활용 등에 대해 궁금한 점을 문의하세요. 문의 내용은 본인과 관리자만 확인할 수 있습니다.</p>
+          <div className="mt-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-amber-300 font-medium">
+            💡 채무·개인회생·파산 등 법률 관련 질문은 <strong>고민상담 Q&A</strong> 게시판을 이용하시거나, <strong>전담 변호사</strong>에게 직접 문의하시기 바랍니다.
+          </div>
         </div>
       </div>
 
