@@ -2088,7 +2088,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   상담할 전문가는 직접 선택하세요
                 </h1>
                 
-                <p className="text-slate-600 text-base md:text-lg font-medium leading-relaxed max-w-xl">
+                <p className="hidden md:block text-slate-600 text-base md:text-lg font-medium leading-relaxed max-w-xl">
                   이름 없이 1분 만에 내 채무 상황을 간편하게 정리하고,<br />
                   신뢰할 수 있는 전문가 정보를 직접 비교해 보세요.
                 </p>
@@ -2160,7 +2160,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">01</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">이름 없이 1분이면<br />충분합니다</h3>
-                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 부가 정보를 입력하면 채무 전문 변호사에게 무료 상담 가능합니다. 회원가입도 필요 없습니다.</p>
+                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">주민번호, 실명 없이 채무 규모와 부가 정보를 입력하면 채무 전문 변호사에게 무료 상담 가능합니다. 회원가입도 필요 없습니다.</p>
                     <div className="flex flex-wrap gap-3 text-sm sm:text-base">
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><ShieldCheck className="w-4.5 h-4.5" />실명 불필요</span>
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Zap className="w-4.5 h-4.5" />1분 소요</span>
@@ -2260,7 +2260,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="order-1 lg:order-2 space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">02</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">나에게 맞는 변호사를 골라<br />한번에 상담을 요청하세요</h3>
-                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 전문가를 선택할 수 있습니다.</p>
+                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 전문가를 선택할 수 있습니다.</p>
                     <div className="flex flex-wrap gap-3 text-sm sm:text-base">
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Users className="w-4.5 h-4.5" />다수 변호사 동시 선택</span>
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Send className="w-4.5 h-4.5" />한번에 상담 요청</span>
@@ -2285,7 +2285,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">03</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">여러 전문가의 답변을<br />직접 비교하세요</h3>
-                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 전문가를 선택하세요.</p>
+                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 전문가를 선택하세요.</p>
                     <div className="flex flex-wrap gap-3 text-sm sm:text-base">
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4.5 h-4.5" />여러 변호사 답변 비교</span>
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Star className="w-4.5 h-4.5" />실제 의뢰인 후기</span>
@@ -2384,7 +2384,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="order-1 lg:order-2 space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">04</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">가명으로 안전하게<br />1:1 상담을 진행하세요</h3>
-                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">선택한 전문가와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
+                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">선택한 전문가와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
                     <div className="flex flex-wrap gap-3 text-sm sm:text-base">
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Lock className="w-4.5 h-4.5" />스텔스 가명 보호</span>
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ShieldCheck className="w-4.5 h-4.5" />SSL/TLS 암호화</span>
