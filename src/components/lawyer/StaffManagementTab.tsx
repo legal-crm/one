@@ -24,17 +24,17 @@ import {
 
 // ── 활동 타입 한글 라벨 ──
 const ACTIVITY_TYPE_LABELS: Record<StaffActivityType, { label: string; emoji: string; color: string }> = {
-  staff_invited:          { label: '직원 초대',     emoji: '📨', color: 'text-blue-400' },
-  staff_approved:         { label: '가입 승인',     emoji: '✅', color: 'text-emerald-400' },
-  staff_rejected:         { label: '가입 거부',     emoji: '❌', color: 'text-red-400' },
-  staff_suspended:        { label: '활동 정지',     emoji: '⚠️', color: 'text-amber-400' },
-  staff_removed:          { label: '강제 탈퇴',     emoji: '🚫', color: 'text-red-500' },
-  staff_reactivated:      { label: '활동 재개',     emoji: '🔄', color: 'text-emerald-400' },
-  case_assigned:          { label: '사건 배정',     emoji: '📋', color: 'text-blue-400' },
-  case_transferred:       { label: '사건 이관',     emoji: '🔀', color: 'text-purple-400' },
-  case_bulk_transferred:  { label: '일괄 이관',     emoji: '📦', color: 'text-amber-400' },
-  permission_changed:     { label: '권한 변경',     emoji: '🔑', color: 'text-pink-400' },
-  role_changed:           { label: '역할 변경',     emoji: '🏷️', color: 'text-indigo-400' },
+  staff_invited:          { label: '직원 초대',     emoji: '📨', color: 'text-blue-700 font-bold' },
+  staff_approved:         { label: '가입 승인',     emoji: '✅', color: 'text-emerald-700 font-bold' },
+  staff_rejected:         { label: '가입 거부',     emoji: '❌', color: 'text-rose-700 font-bold' },
+  staff_suspended:        { label: '활동 정지',     emoji: '⚠️', color: 'text-amber-800 font-bold' },
+  staff_removed:          { label: '강제 탈퇴',     emoji: '🚫', color: 'text-rose-800 font-bold' },
+  staff_reactivated:      { label: '활동 재개',     emoji: '🔄', color: 'text-emerald-700 font-bold' },
+  case_assigned:          { label: '사건 배정',     emoji: '📋', color: 'text-blue-700 font-bold' },
+  case_transferred:       { label: '사건 이관',     emoji: '🔀', color: 'text-purple-700 font-bold' },
+  case_bulk_transferred:  { label: '일괄 이관',     emoji: '📦', color: 'text-amber-800 font-bold' },
+  permission_changed:     { label: '권한 변경',     emoji: '🔑', color: 'text-pink-700 font-bold' },
+  role_changed:           { label: '역할 변경',     emoji: '🏷️', color: 'text-[#1E3A5F] font-bold' },
 };
 
 interface StaffManagementTabProps {
@@ -319,7 +319,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const renderRoleBadge = (role: StaffRole) => {
     const cfg = STAFF_ROLE_CONFIG[role];
     return (
-      <span className={`text-[11px] px-2.5 py-1 rounded-lg font-bold border ${cfg.bgColor} ${cfg.color} ${cfg.borderColor}`}>
+      <span className={`text-xs px-2.5 py-1 rounded-lg font-black border ${cfg.bgColor} ${cfg.color} ${cfg.borderColor} tracking-tight`}>
         {cfg.label}
       </span>
     );
@@ -329,13 +329,13 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const renderStatusBadge = (status: StaffMemberStatus) => {
     switch (status) {
       case 'active':
-        return <span className="text-emerald-500 text-[12px] font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> 정상</span>;
+        return <span className="text-emerald-700 text-xs font-black flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"><CheckCircle2 className="w-3.5 h-3.5" /> 정상</span>;
       case 'pending':
-        return <span className="text-amber-400 text-[12px] font-bold flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 대기</span>;
+        return <span className="text-amber-800 text-xs font-black flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200"><Clock className="w-3.5 h-3.5" /> 대기</span>;
       case 'suspended':
-        return <span className="text-amber-500 text-[12px] font-bold flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> 정지</span>;
+        return <span className="text-amber-900 text-xs font-black flex items-center gap-1 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300"><AlertTriangle className="w-3.5 h-3.5" /> 정지</span>;
       case 'removed':
-        return <span className="text-red-400 text-[12px] font-bold flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> 탈퇴</span>;
+        return <span className="text-rose-700 text-xs font-black flex items-center gap-1 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200"><XCircle className="w-3.5 h-3.5" /> 탈퇴</span>;
     }
   };
 
@@ -806,79 +806,79 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             <div className="flex border-b border-slate-200">
               <button
                 onClick={() => { setShowInviteLinkMode(false); setGeneratedInviteUrl(''); }}
-                className={`flex-1 py-2 text-xs font-bold transition-colors ${!showInviteLinkMode ? 'text-brand border-b-2 border-brand' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-2.5 text-xs font-extrabold transition-colors cursor-pointer ${!showInviteLinkMode ? 'text-[#1E3A5F] border-b-2 border-[#1E3A5F]' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 직접 초대
               </button>
               <button
                 onClick={() => setShowInviteLinkMode(true)}
-                className={`flex-1 py-2 text-xs font-bold transition-colors ${showInviteLinkMode ? 'text-brand border-b-2 border-brand' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-2.5 text-xs font-extrabold transition-colors cursor-pointer ${showInviteLinkMode ? 'text-[#1E3A5F] border-b-2 border-[#1E3A5F]' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 🔗 초대 링크
               </button>
             </div>
 
             {showInviteLinkMode ? (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[12px] text-slate-600 font-bold block">역할 지정 *</label>
+              <div className="space-y-3.5">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-700 font-bold block">역할 지정 *</label>
                   <select value={inviteRole} onChange={e => setInviteRole(e.target.value as StaffRole)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]">
                     <option value="LAWYER">담당 변호사</option>
                     <option value="CONSULTANT">상담 직원</option>
                     <option value="STAFF">사무 직원</option>
                     <option value="ACCOUNTING">경리 직원</option>
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[12px] text-slate-600 font-bold block">이메일 (선택)</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-700 font-bold block">이메일 (선택)</label>
                   <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                    placeholder="특정 이메일로 제한 (선택사항)" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
-                  <p className="text-[11px] text-slate-400">입력하면 해당 이메일로만 가입 가능합니다.</p>
+                    placeholder="특정 이메일로 제한 (선택사항)" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
+                  <p className="text-[11px] text-slate-400 font-medium">입력하면 해당 이메일로만 가입 가능합니다.</p>
                 </div>
                 <button onClick={handleGenerateInviteLink}
-                  className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors">
+                  className="w-full bg-[#1E3A5F] hover:bg-[#163152] text-white py-3 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-[0.98]">
                   🔗 초대 링크 생성 (48시간 유효)
                 </button>
                 {generatedInviteUrl && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
-                    <label className="text-[11px] text-slate-500 font-bold block">생성된 초대 링크</label>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+                    <label className="text-xs text-slate-700 font-bold block">생성된 초대 링크</label>
                     <div className="flex gap-2">
                       <input type="text" readOnly value={generatedInviteUrl}
-                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-[11px] text-slate-600 font-mono select-all" />
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-mono select-all font-bold" />
                       <button onClick={handleCopyInviteLink}
-                        className={`px-3 py-2 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
-                          inviteLinkCopied ? 'bg-emerald-500 text-white' : 'bg-brand/10 text-brand hover:bg-brand/20 border border-brand/20'
+                        className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                          inviteLinkCopied ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white hover:bg-[#163152]'
                         }`}>
                         {inviteLinkCopied ? '✓ 복사됨' : '복사'}
                       </button>
                     </div>
-                    <p className="text-[11px] text-amber-500 font-medium">⏰ 이 링크는 48시간 후 만료됩니다.</p>
+                    <p className="text-xs text-amber-700 font-bold">⏰ 이 링크는 48시간 후 만료됩니다.</p>
                   </div>
                 )}
               </div>
             ) : (
               <>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[12px] text-slate-600 font-bold block">이름 *</label>
+                <div className="space-y-3.5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-700 font-bold block">이름 *</label>
                     <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
-                      placeholder="직원 이름 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                      placeholder="직원 이름 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[12px] text-slate-600 font-bold block">이메일</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-700 font-bold block">이메일</label>
                     <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                      placeholder="이메일 주소" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                      placeholder="이메일 주소" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[12px] text-slate-600 font-bold block">연락처</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-700 font-bold block">연락처</label>
                     <input type="tel" value={invitePhone} onChange={e => setInvitePhone(e.target.value)}
-                      placeholder="010-XXXX-XXXX" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                      placeholder="010-XXXX-XXXX" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[12px] text-slate-600 font-bold block">역할 지정</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-700 font-bold block">역할 지정</label>
                     <select value={inviteRole} onChange={e => setInviteRole(e.target.value as StaffRole)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]">
                       <option value="LAWYER">담당 변호사</option>
                       <option value="CONSULTANT">상담 직원</option>
                       <option value="STAFF">사무 직원</option>
@@ -890,11 +890,11 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                 <div className="flex gap-2 pt-2">
                   <button onClick={handleInviteStaff}
                     disabled={!inviteName.trim()}
-                    className="flex-1 bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none">
+                    className="flex-1 bg-[#1E3A5F] hover:bg-[#163152] text-white py-3 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow-xs active:scale-[0.98]">
                     초대하기
                   </button>
                   <button onClick={() => setShowInviteModal(false)}
-                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold border border-slate-200 transition-colors">
+                    className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer">
                     취소
                   </button>
                 </div>
@@ -911,7 +911,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={() => setShowRemoveModal(false)}>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20">
+              <div className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-200">
                 <UserMinus className="w-5 h-5" />
               </div>
               <div>
@@ -922,7 +922,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
               </div>
             </div>
 
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 flex items-start gap-2">
+            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-700 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <div className="text-left">
                 강제 탈퇴 시 해당 직원의 모든 접근 권한이 즉시 회수됩니다.
@@ -937,18 +937,18 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                 onChange={e => setRemoveReason(e.target.value)}
                 placeholder="강제 탈퇴 사유를 입력해주세요..."
                 rows={3}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none"
               />
             </div>
 
             <div className="flex gap-2 pt-2">
               <button onClick={handleRemove}
                 disabled={!removeReason.trim()}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none">
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow-xs">
                 강제 탈퇴 확인
               </button>
               <button onClick={() => { setShowRemoveModal(false); setRemoveReason(''); }}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold border border-slate-200 transition-colors">
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer">
                 취소
               </button>
             </div>
@@ -963,7 +963,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={() => setShowBulkTransferModal(false)}>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-brand/10 text-brand border border-brand/20">
+              <div className="p-2 rounded-xl bg-slate-100 text-[#1E3A5F] border border-slate-200">
                 <ArrowRightLeft className="w-5 h-5" />
               </div>
               <div>
@@ -978,7 +978,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
               <div className="space-y-1">
                 <label className="text-[12px] text-slate-600 font-bold block">이관 대상 (인수 직원) *</label>
                 <select value={bulkToId} onChange={e => setBulkToId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20">
                   <option value="">직원을 선택하세요</option>
                   {activeStaff.filter(m => m.id !== bulkFromId).map(m => (
                     <option key={m.id} value={m.id}>
@@ -992,11 +992,11 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             <div className="flex gap-2 pt-2">
               <button onClick={handleBulkTransfer}
                 disabled={!bulkToId}
-                className="flex-1 bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none">
+                className="flex-1 bg-[#1E3A5F] hover:bg-[#163152] text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow-xs">
                 일괄 이관 실행
               </button>
               <button onClick={() => { setShowBulkTransferModal(false); setBulkToId(''); }}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold border border-slate-200 transition-colors">
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer">
                 취소
               </button>
             </div>
@@ -1007,130 +1007,144 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       {/* 섹션 5: 초대 링크 관리 */}
       {/* ══════════════════════════════════════════════════════════ */}
       {activeSection === 'invite-links' && (
-        <div className="space-y-4 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h4 className="font-extrabold text-slate-900 text-sm">🔗 발급된 초대 링크 목록</h4>
-            <button
-              onClick={() => { setShowInviteModal(true); setShowInviteLinkMode(true); }}
-              className="bg-brand hover:bg-brand-hover text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 self-start"
-            >
-              <UserPlus className="w-3.5 h-3.5" /> 새 초대 링크 생성
-            </button>
+        <div className="space-y-6 animate-fadeIn">
+          {/* 초대 링크 목록 카드 */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 md:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">🔗 발급된 초대 링크 목록</h4>
+                <p className="text-xs text-slate-500 mt-0.5">사무실 직원 및 담당 변호사를 초대할 수 있는 링크를 관리합니다.</p>
+              </div>
+              <button
+                onClick={() => { setShowInviteModal(true); setShowInviteLinkMode(true); }}
+                className="bg-[#1E3A5F] hover:bg-[#163152] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 self-start cursor-pointer active:scale-[0.98]"
+              >
+                <UserPlus className="w-3.5 h-3.5" /> 새 초대 링크 생성
+              </button>
+            </div>
+
+            {inviteTokens.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200 space-y-2">
+                <Mail className="w-8 h-8 text-slate-400 mx-auto" />
+                <p className="text-sm font-extrabold text-slate-800">발급된 초대 링크가 없습니다.</p>
+                <p className="text-xs text-slate-400">새 초대 링크를 발급하여 직원 또는 담당 변호사에게 전달하세요.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="text-left p-3 font-bold text-slate-600">역할</th>
+                      <th className="text-left p-3 font-bold text-slate-600 hidden sm:table-cell">이메일 제한</th>
+                      <th className="text-left p-3 font-bold text-slate-600">상태</th>
+                      <th className="text-left p-3 font-bold text-slate-600 hidden md:table-cell">만료</th>
+                      <th className="text-left p-3 font-bold text-slate-600">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {inviteTokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(token => {
+                      const isExpired = new Date(token.expiresAt) <= new Date();
+                      const status = token.isUsed ? 'used' : isExpired ? 'expired' : 'active';
+                      return (
+                        <tr key={token.token} className="hover:bg-slate-50/50">
+                          <td className="p-3">{renderRoleBadge(token.role)}</td>
+                          <td className="p-3 text-slate-700 font-medium hidden sm:table-cell">{token.email || <span className="text-slate-400">제한 없음</span>}</td>
+                          <td className="p-3">
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-black ${
+                              status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                              status === 'used' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                              'bg-slate-50 text-slate-500 border border-slate-200'
+                            }`}>
+                              {status === 'active' ? '활성' : status === 'used' ? '사용됨' : '만료'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-600 font-medium hidden md:table-cell">{new Date(token.expiresAt).toLocaleDateString('ko-KR')} {new Date(token.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</td>
+                          <td className="p-3">
+                            <div className="flex gap-1.5">
+                              {status === 'active' && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(buildInviteUrl(token.token));
+                                      alert('초대 링크가 복사되었습니다.');
+                                    }}
+                                    className="bg-[#1E3A5F] hover:bg-[#163152] text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                  >
+                                    복사
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm('이 초대 링크를 만료 처리하시겠습니까?')) {
+                                        await expireInviteToken(token.token);
+                                        const updated = loadInviteTokens();
+                                        setInviteTokens(updated);
+                                      }
+                                    }}
+                                    className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
+                                  >
+                                    만료
+                                  </button>
+                                </>
+                              )}
+                              {status !== 'active' && (
+                                <span className="text-slate-400 text-xs">—</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          {inviteTokens.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">발급된 초대 링크가 없습니다.</div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="text-left p-3 font-bold text-slate-500">역할</th>
-                    <th className="text-left p-3 font-bold text-slate-500 hidden sm:table-cell">이메일 제한</th>
-                    <th className="text-left p-3 font-bold text-slate-500">상태</th>
-                    <th className="text-left p-3 font-bold text-slate-500 hidden md:table-cell">만료</th>
-                    <th className="text-left p-3 font-bold text-slate-500">관리</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {inviteTokens.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(token => {
-                    const isExpired = new Date(token.expiresAt) <= new Date();
-                    const status = token.isUsed ? 'used' : isExpired ? 'expired' : 'active';
-                    return (
-                      <tr key={token.token} className="hover:bg-slate-50/50">
-                        <td className="p-3">{renderRoleBadge(token.role)}</td>
-                        <td className="p-3 text-slate-600 hidden sm:table-cell">{token.email || <span className="text-slate-300">제한 없음</span>}</td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
-                            status === 'active' ? 'bg-emerald-50 text-emerald-500 border border-emerald-200' :
-                            status === 'used' ? 'bg-blue-50 text-blue-500 border border-blue-200' :
-                            'bg-slate-50 text-slate-400 border border-slate-200'
-                          }`}>
-                            {status === 'active' ? '활성' : status === 'used' ? '사용됨' : '만료'}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-500 hidden md:table-cell">{new Date(token.expiresAt).toLocaleDateString('ko-KR')} {new Date(token.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</td>
-                        <td className="p-3">
-                          <div className="flex gap-1">
-                            {status === 'active' && (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(buildInviteUrl(token.token));
-                                    alert('초대 링크가 복사되었습니다.');
-                                  }}
-                                  className="bg-brand/10 text-brand px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-brand/20 transition-colors"
-                                >
-                                  복사
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    if (confirm('이 초대 링크를 만료 처리하시겠습니까?')) {
-                                      await expireInviteToken(token.token);
-                                      const updated = loadInviteTokens();
-                                      setInviteTokens(updated);
-                                    }
-                                  }}
-                                  className="bg-red-50 text-red-500 px-2 py-1 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors"
-                                >
-                                  만료
-                                </button>
-                              </>
-                            )}
-                            {status !== 'active' && (
-                              <span className="text-slate-300 text-[10px]">—</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* 커스텀 역할 관리 */}
-          <div className="mt-6 space-y-4">
+          {/* 커스텀 역할 관리 카드 */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 md:p-6 shadow-xs space-y-5">
             <div className="flex items-center justify-between">
-              <h4 className="font-extrabold text-slate-900 text-sm">🏷️ 커스텀 역할 관리</h4>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">🏷️ 커스텀 역할 관리</h4>
+                <p className="text-xs text-slate-500 mt-0.5">사무실 특성에 맞게 직책/역할을 정의하고 권한을 부여할 수 있습니다.</p>
+              </div>
               <button
                 onClick={() => setShowCustomRoleForm(!showCustomRoleForm)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 transition-colors"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer shadow-2xs active:scale-[0.98]"
               >
                 {showCustomRoleForm ? '접기' : '+ 새 역할 추가'}
               </button>
             </div>
 
             {showCustomRoleForm && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fadeIn">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-slate-500 font-bold block">역할 ID (영문 대문자)</label>
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-5 space-y-4 animate-fadeIn">
+                <h5 className="font-extrabold text-slate-900 text-sm">새로운 역할 정의</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-700 font-bold block">역할 ID (영문 대문자) *</label>
                     <input type="text" value={newRoleId} onChange={e => setNewRoleId(e.target.value.toUpperCase().replace(/[^A-Z_]/g, ''))}
-                      placeholder="예: INTERN" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                      placeholder="예: INTERN, PARALEGAL" className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-slate-500 font-bold block">표시 이름</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-700 font-bold block">표시 이름 *</label>
                     <input type="text" value={newRoleLabel} onChange={e => setNewRoleLabel(e.target.value)}
-                      placeholder="예: 인턴" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                      placeholder="예: 인턴, 파라리걸" className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]" />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] text-slate-500 font-bold block">테마 색상</label>
+                <div className="space-y-2">
+                  <label className="text-xs text-slate-700 font-bold block">테마 색상</label>
                   <div className="flex gap-2 flex-wrap">
                     {[
-                      { color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20', label: '청록' },
-                      { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', label: '주황' },
-                      { color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', label: '하늘' },
-                      { color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', label: '장미' },
-                      { color: 'text-lime-400', bg: 'bg-lime-500/10', border: 'border-lime-500/20', label: '연두' },
-                      { color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20', label: '보라' },
+                      { color: 'text-teal-900', bg: 'bg-teal-50', border: 'border-teal-200', label: '청록' },
+                      { color: 'text-amber-900', bg: 'bg-amber-50', border: 'border-amber-200', label: '주황' },
+                      { color: 'text-blue-900', bg: 'bg-blue-50', border: 'border-blue-200', label: '하늘' },
+                      { color: 'text-rose-900', bg: 'bg-rose-50', border: 'border-rose-200', label: '장미' },
+                      { color: 'text-emerald-900', bg: 'bg-emerald-50', border: 'border-emerald-200', label: '연두' },
+                      { color: 'text-purple-900', bg: 'bg-purple-50', border: 'border-purple-200', label: '보라' },
                     ].map(opt => (
                       <button key={opt.color} type="button"
                         onClick={() => { setNewRoleColor(opt.color); setNewRoleBg(opt.bg); setNewRoleBorder(opt.border); }}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
-                          newRoleColor === opt.color ? `${opt.bg} ${opt.color} ${opt.border} ring-2 ring-brand/30` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                          newRoleColor === opt.color ? `${opt.bg} ${opt.color} ${opt.border} ring-2 ring-[#1E3A5F]/40 shadow-xs` : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
                         {opt.label}
@@ -1157,28 +1171,28 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                     setShowCustomRoleForm(false);
                     recordActivity('system', '시스템', 'role_changed', `커스텀 역할 "${newRoleLabel}" (${newRoleId})이 생성되었습니다.`);
                   }}
-                  className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
+                  className="w-full bg-[#1E3A5F] hover:bg-[#163152] text-white py-3 rounded-xl text-sm font-bold transition-all shadow-xs cursor-pointer"
                 >
-                  역할 생성
+                  역할 생성하기
                 </button>
               </div>
             )}
 
             {/* 기존 + 커스텀 역할 목록 */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
               {['OWNER','LAWYER','CONSULTANT','STAFF','ACCOUNTING'].map(role => {
                 const cfg = STAFF_ROLE_CONFIG[role];
                 return (
-                  <div key={role} className={`${cfg.bgColor} border ${cfg.borderColor} rounded-xl p-3 text-center`}>
-                    <span className={`text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">기본 역할</div>
+                  <div key={role} className={`${cfg.bgColor} border ${cfg.borderColor} rounded-xl p-4 text-center shadow-2xs transition-all hover:shadow-sm`}>
+                    <span className={`text-sm font-black ${cfg.color} block tracking-tight`}>{cfg.label}</span>
+                    <div className="text-xs text-slate-500 font-medium mt-1">기본 역할</div>
                   </div>
                 );
               })}
               {customRoles.map(role => (
-                <div key={role.id} className={`${role.bgColor} border ${role.borderColor} rounded-xl p-3 text-center relative group`}>
-                  <span className={`text-xs font-bold ${role.color}`}>{role.label}</span>
-                  <div className="text-[10px] text-slate-400 mt-0.5">{role.id}</div>
+                <div key={role.id} className={`${role.bgColor} border ${role.borderColor} rounded-xl p-4 text-center relative group shadow-2xs transition-all hover:shadow-sm`}>
+                  <span className={`text-sm font-black ${role.color} block tracking-tight`}>{role.label}</span>
+                  <div className="text-xs text-slate-500 font-medium mt-1">{role.id}</div>
                   <button
                     onClick={() => {
                       if (confirm(`"${role.label}" 역할을 삭제하시겠습니까?`)) {
@@ -1186,7 +1200,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                         setCustomRoles(loadCustomRoles());
                       }
                     }}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-black opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-xs cursor-pointer"
                   >
                     ×
                   </button>

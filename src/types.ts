@@ -112,11 +112,11 @@ export interface CustomStaffRole {
 
 // 기본 역할 설정
 const BUILTIN_ROLE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  OWNER:       { label: '대표 변호사', color: 'text-amber-400',   bgColor: 'bg-amber-500/10',   borderColor: 'border-amber-500/20' },
-  LAWYER:      { label: '담당 변호사', color: 'text-blue-400',    bgColor: 'bg-blue-500/10',    borderColor: 'border-blue-500/20' },
-  CONSULTANT:  { label: '상담 직원',   color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/20' },
-  STAFF:       { label: '사무 직원',   color: 'text-purple-400',  bgColor: 'bg-purple-500/10',  borderColor: 'border-purple-500/20' },
-  ACCOUNTING:  { label: '경리 직원',   color: 'text-pink-400',    bgColor: 'bg-pink-500/10',    borderColor: 'border-pink-500/20' },
+  OWNER:       { label: '대표 변호사', color: 'text-amber-900',   bgColor: 'bg-amber-50',   borderColor: 'border-amber-200' },
+  LAWYER:      { label: '담당 변호사', color: 'text-[#1E3A5F]',   bgColor: 'bg-slate-100',  borderColor: 'border-slate-300' },
+  CONSULTANT:  { label: '상담 직원',   color: 'text-emerald-800', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200' },
+  STAFF:       { label: '사무 직원',   color: 'text-purple-900',  bgColor: 'bg-purple-50',  borderColor: 'border-purple-200' },
+  ACCOUNTING:  { label: '경리 직원',   color: 'text-rose-900',    bgColor: 'bg-rose-50',    borderColor: 'border-rose-200' },
 };
 
 // 런타임 커스텀 역할 레지스트리
