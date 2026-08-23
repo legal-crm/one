@@ -2933,13 +2933,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </div>
                 {!faqExpanded && (
                   <div className="mt-6 text-center">
-                    <button
-                      onClick={() => setFaqExpanded(true)}
+                    <a
+                      href="/faq"
                       className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-sm transition-all cursor-pointer active:scale-[0.98] border border-white/10"
                     >
-                      <ChevronDown className="w-4 h-4" />
                       더보기
-                    </button>
+                    </a>
                   </div>
                 )}
                 <div className="mt-10 bg-white/5 border border-white/10 rounded-xl p-6 text-center space-y-3">
