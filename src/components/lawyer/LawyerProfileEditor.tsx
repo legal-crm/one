@@ -13,9 +13,10 @@ interface LawyerProfileEditorProps {
   lawyer: User;
   onSave: (updatedLawyer: User) => void;
   onClose: () => void;
+  inline?: boolean;
 }
 
-export default function LawyerProfileEditor({ lawyer, onSave, onClose }: LawyerProfileEditorProps) {
+export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = false }: LawyerProfileEditorProps) {
   // ── 편집 상태 (임시) ──
   const [form, setForm] = useState<User>({ ...lawyer });
   const [fieldsText, setFieldsText] = useState(lawyer.fields.join(', '));
@@ -92,11 +93,30 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose }: LawyerP
   const officeInfo = getOfficeInfo();
 
   // ── 입력 필드 스타일 ──
-  const inputCls = 'w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl py-2 px-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors';
-  const labelCls = 'block text-xs font-bold text-slate-400 mb-1.5';
-  const sectionCls = 'space-y-4 bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5';
+  const inputCls = inline
+    ? 'w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors'
+    : 'w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl py-2 px-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors';
+  const labelCls = inline
+    ? 'block text-xs font-bold text-slate-600 mb-1.5'
+    : 'block text-xs font-bold text-slate-400 mb-1.5';
+  const sectionCls = inline
+    ? 'space-y-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs'
+    : 'space-y-4 bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5';
+  const sectionTitleCls = inline
+    ? 'text-sm font-extrabold text-brand flex items-center gap-1.5'
+    : 'text-sm font-extrabold text-indigo-400 flex items-center gap-1.5';
+  const careerItemCls = inline
+    ? 'flex-1 bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-sm text-slate-700'
+    : 'flex-1 bg-[#0B0F19] border border-[#1E293B]/60 rounded-xl py-1.5 px-3 text-sm text-slate-300';
+  const tagCls = inline
+    ? 'bg-brand/10 border border-brand/20 text-brand text-xs px-2.5 py-1 rounded-lg font-bold'
+    : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs px-2.5 py-1 rounded-lg font-bold';
+  const addBtnCls = inline
+    ? 'flex items-center gap-1 bg-brand/10 hover:bg-brand/20 text-brand px-3 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap'
+    : 'flex items-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 px-3 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap';
 
-  return createPortal(
+  // ── 메인 콘텐츠 렌더링 ──
+  const renderContent = () => (
     <div className="fixed inset-0 z-[99998] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
       <div
         className="relative w-full max-w-[1400px] h-[90vh] bg-[#0B0F19] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
@@ -868,7 +888,244 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose }: LawyerP
           </div>
         </div>
       )}
-    </div>,
-    document.body
+    </div>
   );
+
+  // ── inline 모드: 페이지 내부에 직접 렌더링 ──
+  if (inline) {
+    return (
+      <div className="space-y-5">
+        {/* 헤더 */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-brand/20 shadow-sm">
+              <img src={previewAvatar} alt={form.name} className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900">{form.name} 프로필 편집</h2>
+              <p className="text-xs text-slate-500 font-medium">의뢰인에게 노출되는 프로필 정보를 수정합니다</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setShowFullPreview(true)}
+              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-[0.98]"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="whitespace-nowrap">전체 미리보기</span>
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-extrabold transition-all cursor-pointer active:scale-[0.98] shadow-sm"
+            >
+              <Save className="w-4 h-4" />
+              <span className="whitespace-nowrap">저장</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 좌우 분할 */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* 좌측 편집 폼 */}
+          <div className="lg:col-span-7 space-y-5">
+
+            {/* § 기본 정보 */}
+            <div className={sectionCls}>
+              <h3 className={sectionTitleCls}><Building className="w-4 h-4" /> 기본 정보</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label className={labelCls}>변호사명</label><input className={inputCls} value={form.name} onChange={e => updateForm({ name: e.target.value })} placeholder="홍길동 변호사" /></div>
+                <div><label className={labelCls}>소속 법무법인명</label><input className={inputCls} value={form.firmName || ''} onChange={e => updateForm({ firmName: e.target.value })} placeholder="법무법인 한빛" /></div>
+                <div><label className={labelCls}>활동 지역</label><input className={inputCls} value={form.region} onChange={e => updateForm({ region: e.target.value })} placeholder="서울" /></div>
+                <div><label className={labelCls}>한줄 캐치프레이즈</label><input className={inputCls} value={form.catchphrase || ''} onChange={e => updateForm({ catchphrase: e.target.value })} placeholder="빠르고 안전한 회생의 시작" /></div>
+              </div>
+            </div>
+
+            {/* § 프로필 이미지 */}
+            <div className={sectionCls}>
+              <h3 className={sectionTitleCls}><ImageIcon className="w-4 h-4" /> 프로필 이미지</h3>
+              <div className="flex items-center gap-5">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 shrink-0">
+                  <img src={previewAvatar} alt="프로필" className="w-full h-full object-cover" />
+                </div>
+                <div className="space-y-2 flex-1">
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-[0.98]">
+                    <Upload className="w-4 h-4" /><span>이미지 업로드</span>
+                  </button>
+                  <p className="text-xs text-slate-500">JPG, PNG, WebP (최대 5MB 권장)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* § 전문 분야 */}
+            <div className={sectionCls}>
+              <h3 className={sectionTitleCls}><Scale className="w-4 h-4" /> 전문 분야</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>주요 전문 분야 (콤마로 구분)</label>
+                  <input className={inputCls} value={fieldsText} onChange={e => handleFieldsChange(e.target.value)} placeholder="개인회생, 개인파산, 신용회복" />
+                  {form.fields.length > 0 && (<div className="flex flex-wrap gap-1.5 mt-2">{form.fields.map(f => (<span key={f} className={tagCls}>#{f}</span>))}</div>)}
+                </div>
+                <div>
+                  <label className={labelCls}>상세 전문 분야 (콤마로 구분)</label>
+                  <input className={inputCls} value={specialtiesText} onChange={e => handleSpecialtiesChange(e.target.value)} placeholder="개인회생 인가, 보정명령 대응, 채권추심 차단" />
+                </div>
+              </div>
+            </div>
+
+            {/* § 소개 & 경력 */}
+            <div className={sectionCls}>
+              <h3 className={sectionTitleCls}><BookOpen className="w-4 h-4" /> 소개 & 경력</h3>
+              <div className="space-y-4">
+                <div><label className={labelCls}>변호사 소개글</label><textarea className={`${inputCls} min-h-[100px] resize-y`} value={form.bio} onChange={e => updateForm({ bio: e.target.value })} placeholder="변호사 소개글을 입력하세요..." /></div>
+                <div>
+                  <label className={labelCls}>경력 사항</label>
+                  <div className="space-y-2">
+                    {(form.career || []).map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className={careerItemCls}>{item}</span>
+                        <button onClick={() => handleRemoveCareer(idx)} className="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <input className={`${inputCls} flex-1`} value={newCareerItem} onChange={e => setNewCareerItem(e.target.value)} placeholder="경력 항목 입력 후 추가" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCareer(); } }} />
+                      <button onClick={handleAddCareer} className={addBtnCls}><Plus className="w-3.5 h-3.5" />추가</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div><label className={labelCls}>학력</label><input className={inputCls} value={form.education || ''} onChange={e => updateForm({ education: e.target.value })} placeholder="법학전문대학원 졸업" /></div>
+                  <div><label className={labelCls}>변호사 자격</label><input className={inputCls} value={form.certYear || ''} onChange={e => updateForm({ certYear: e.target.value })} placeholder="제7회 변호사시험 합격" /></div>
+                  <div><label className={labelCls}>소속 변호사회</label><input className={inputCls} value={form.barAssociation || ''} onChange={e => updateForm({ barAssociation: e.target.value })} placeholder="서울지방변호사회" /></div>
+                  <div><label className={labelCls}>관할 법원</label><input className={inputCls} value={form.courtJurisdiction || ''} onChange={e => updateForm({ courtJurisdiction: e.target.value })} placeholder="서울회생법원" /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* § 실적 정보 */}
+            <div className={sectionCls}>
+              <h3 className={sectionTitleCls}><Award className="w-4 h-4" /> 실적 정보</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div><label className={labelCls}>누적 수임 건수</label><input type="number" className={inputCls} value={form.totalCases || ''} onChange={e => updateForm({ totalCases: Number(e.target.value) || undefined })} placeholder="842" /></div>
+                <div><label className={labelCls}>인가 성공률 (%)</label><input type="number" className={inputCls} value={form.successRate || ''} onChange={e => updateForm({ successRate: Number(e.target.value) || undefined })} placeholder="98" max={100} /></div>
+                <div><label className={labelCls}>평균 변제율 (%)</label><input type="number" className={inputCls} value={form.avgRepaymentRate || ''} onChange={e => updateForm({ avgRepaymentRate: Number(e.target.value) || undefined })} placeholder="31" max={100} /></div>
+              </div>
+            </div>
+
+            {/* § 관련 링크 */}
+            <div className={sectionCls}>
+              <h3 className={sectionTitleCls}><Link className="w-4 h-4" /> 관련 링크</h3>
+              <div className="space-y-4">
+                <div><label className={labelCls}><span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" />공식 홈페이지 URL</span></label><input className={inputCls} value={form.websiteUrl || ''} onChange={e => updateForm({ websiteUrl: e.target.value })} placeholder="https://hanbitlaw.co.kr" /></div>
+                <div><label className={labelCls}><span className="flex items-center gap-1.5"><svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>유튜브 채널 URL</span></label><input className={inputCls} value={form.youtubeUrl || ''} onChange={e => updateForm({ youtubeUrl: e.target.value })} placeholder="https://www.youtube.com/@channel" /></div>
+                <div><label className={labelCls}><span className="flex items-center gap-1.5"><svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>네이버 블로그 URL</span></label><input className={inputCls} value={form.blogUrl || ''} onChange={e => updateForm({ blogUrl: e.target.value })} placeholder="https://blog.naver.com/example" /></div>
+              </div>
+            </div>
+          </div>
+
+          {/* 우측 미리보기 */}
+          <div className="lg:col-span-5">
+            <div className="sticky top-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" /> 실시간 미리보기
+                </span>
+                <div className="flex gap-1">
+                  <button onClick={() => setPreviewTab('home')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${previewTab === 'home' ? 'bg-brand/10 text-brand' : 'text-slate-400 hover:text-slate-600'}`}>변호사홈</button>
+                  <button onClick={() => setPreviewTab('info')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${previewTab === 'info' ? 'bg-brand/10 text-brand' : 'text-slate-400 hover:text-slate-600'}`}>변호사 정보</button>
+                </div>
+              </div>
+
+              {/* 미리보기 카드 — 기존 renderContent의 미리보기 섹션 재사용 */}
+              <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                {/* 히어로 */}
+                <div className="relative bg-gradient-to-br from-slate-900 via-[#1e1b4b] to-[#1E3A5F] overflow-hidden">
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute top-1/4 left-1/3 w-[200px] h-[200px] bg-[#1E3A5F]/40 rounded-full blur-[80px]"></div>
+                  </div>
+                  <div className="relative z-10 px-5 pt-8 pb-5 flex items-start gap-4">
+                    <div className="relative shrink-0">
+                      <div className="w-20 h-20 rounded-2xl overflow-hidden border-[2px] border-white/20 shadow-xl"><img src={previewAvatar} alt={form.name} className="w-full h-full object-cover" /></div>
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-[2px] border-white rounded-full"></div>
+                    </div>
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-lg font-black text-white truncate">{displayName} 변호사</h3>
+                        <div className="bg-[#1E3A5F]/30 border border-[#1E3A5F]/40 rounded-full p-0.5 shrink-0"><CheckCircle className="w-3 h-3 text-sky-300" /></div>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-white/60">
+                        <Building className="w-3 h-3 shrink-0" /><span className="font-medium truncate">{form.firmName || firm?.name || '법률사무소'}</span>
+                        <span className="text-white/30">·</span><MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{form.region}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 pt-0.5">{form.fields.slice(0, 4).map(f => (<span key={f} className="bg-white/10 border border-white/10 text-white/80 text-[10px] px-1.5 py-0.5 rounded font-bold">#{f}</span>))}</div>
+                      {form.catchphrase && <p className="text-[11px] text-white/40 font-medium truncate">"{form.catchphrase}"</p>}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <div className="w-7 h-7 rounded-full bg-white/10 border border-white/15 flex items-center justify-center"><Home className="w-3 h-3 text-slate-300" /></div>
+                        <div className="w-7 h-7 rounded-full bg-white/10 border border-white/15 flex items-center justify-center"><svg className="w-3 h-3 text-slate-300 fill-current" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></div>
+                        <div className="w-7 h-7 rounded-full bg-white/10 border border-white/15 flex items-center justify-center"><svg className="w-2.5 h-2.5 text-slate-300 fill-current" viewBox="0 0 24 24"><path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 미리보기 탭 콘텐츠 */}
+                <div className="p-4 space-y-4 text-left">
+                  {previewTab === 'home' && (
+                    <div className="space-y-4 animate-fadeIn">
+                      <div className="bg-gradient-to-r from-[#1E3A5F]/5 to-indigo-500/5 border border-[#1E3A5F]/10 rounded-xl p-4 space-y-2">
+                        <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-[#1E3A5F]" />변호사 소개</h4>
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium">{form.bio || '소개글을 입력해주세요.'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#1E3A5F]" />전담 서비스 안내</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[{ title: '무료 초기 상담', emoji: '💬' },{ title: '1:1 밀착 관리', emoji: '🤝' },{ title: '보정명령 긴급 대응', emoji: '⚡' },{ title: '신용 회복 가이드', emoji: '📈' }].map(svc => (
+                            <div key={svc.title} className="bg-white border border-slate-100 rounded-lg p-2.5 flex items-center gap-2"><span className="text-sm">{svc.emoji}</span><h5 className="font-bold text-[10px] text-slate-900">{svc.title}</h5></div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {previewTab === 'info' && (
+                    <div className="space-y-4 animate-fadeIn">
+                      <div className="space-y-2">
+                        <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5"><Scale className="w-4 h-4 text-[#1E3A5F]" />전문 분야</h4>
+                        <div className="flex flex-wrap gap-1.5">{(form.specialties || form.fields).map(s => (<span key={s} className="bg-[#1E3A5F]/5 border border-[#1E3A5F]/15 text-[#1E3A5F] text-[11px] px-2.5 py-1 rounded-lg font-bold">{s}</span>))}</div>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+                        {[
+                          { label: '관할 법원', value: form.courtJurisdiction || `${form.region} 법원`, icon: Building },
+                          { label: '자격', value: form.certYear || '변호사시험 합격', icon: Award },
+                          { label: '소속', value: form.barAssociation || '대한변호사협회', icon: Users },
+                          { label: '학력', value: form.education || '법학전문대학원 졸업', icon: GraduationCap },
+                        ].map(row => (
+                          <div key={row.label} className="flex items-center gap-3 px-3.5 py-2.5">
+                            <div className="flex items-center gap-1.5 w-16 shrink-0"><row.icon className="w-3 h-3 text-slate-500" /><span className="text-[10px] text-slate-600 font-bold">{row.label}</span></div>
+                            <span className="text-[10px] text-slate-700 font-medium">{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 전체 미리보기 모달 */}
+        {showFullPreview && renderContent()}
+
+        {/* 저장 토스트 */}
+        {saveToast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-bold animate-fadeIn z-[99999]">
+            <CheckCircle className="w-4 h-4" />프로필이 저장되었습니다
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── 모달 모드: 포탈로 렌더링 ──
+  return createPortal(renderContent(), document.body);
 }

@@ -36,6 +36,7 @@ import {
 import type { NotificationSettings, NotificationLog } from '../types';
 import PopupContainer from './popup/PopupContainer';
 import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
+import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   if (req.phoneConsultationRequested) {
@@ -98,7 +99,7 @@ export default function LawyerRole({
   const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity'>('overview');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
-  const [settingsSub, setSettingsSub] = useState<'channels' | 'logs'>('channels');
+  const [settingsSub, setSettingsSub] = useState<'channels' | 'logs' | 'profile'>('channels');
   const [copilotPreselectedReqId, setCopilotPreselectedReqId] = useState<string | undefined>();
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
@@ -3605,6 +3606,7 @@ export default function LawyerRole({
             {/* 서브탭 */}
             <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
+                { key: 'profile' as const, label: '내 프로필' },
                 { key: 'channels' as const, label: '알림 채널 설정' },
                 { key: 'logs' as const, label: '알림 로그' },
               ]).map(t => (
@@ -3613,6 +3615,20 @@ export default function LawyerRole({
                 </button>
               ))}
             </div>
+            {settingsSub === 'profile' && (
+              <div className="animate-fadeIn">
+                <LawyerProfileEditor
+                  lawyer={activeLawyer}
+                  onSave={(updatedLawyer) => {
+                    setLawyers(prev => prev.map(l => l.id === updatedLawyer.id ? updatedLawyer : l));
+                    setActiveLawyer(updatedLawyer);
+                    toast.success('프로필이 저장되었습니다');
+                  }}
+                  onClose={() => setSettingsSub('channels')}
+                  inline={true}
+                />
+              </div>
+            )}
             {settingsSub === 'channels' && (<>
             {/* Header info */}
             <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
