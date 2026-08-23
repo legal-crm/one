@@ -5,7 +5,15 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/((?!api|assets/).*)", "destination": "/index.html" }
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/faq", "destination": "/faq.html" },
+    { "source": "/security", "destination": "/security.html" },
+    { "source": "/tos", "destination": "/tos.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/legal", "destination": "/legal.html" },
+    { "source": "/guide/:path", "destination": "/guide/:path.html" },
+    { "source": "/articles/:path", "destination": "/articles/:path.html" },
+    { "source": "/((?!api|assets|guide|articles/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
