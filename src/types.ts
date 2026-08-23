@@ -508,6 +508,10 @@ export interface User {
   courtJurisdiction?: string; // 관할 법원
   adTier?: 'top' | 'regional' | 'basic' | null; // 광고 등급
   adRegion?: string; // 지역 상단 노출 구매 지역
+  // ── 공식 채널 링크 ──
+  websiteUrl?: string; // 공식 홈페이지 URL
+  youtubeUrl?: string; // 유튜브 채널 URL
+  blogUrl?: string; // 네이버 블로그 URL
 }
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';

@@ -27,9 +27,9 @@ function getLawyerOfficeInfo(lawyer: User, firm?: LawFirm) {
   const displayName = lawyer.name.replace(' 변호사', '');
   
   const baseChannels = {
-    websiteUrl: 'https://hanbitlaw.co.kr',
-    youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
-    blogUrl: `https://section.blog.naver.com/Search/Post.naver?pageNo=1&rangeType=ALL&orderBy=sim&keyword=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
+    websiteUrl: lawyer.websiteUrl || 'https://hanbitlaw.co.kr',
+    youtubeUrl: lawyer.youtubeUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
+    blogUrl: lawyer.blogUrl || `https://section.blog.naver.com/Search/Post.naver?pageNo=1&rangeType=ALL&orderBy=sim&keyword=${encodeURIComponent(displayName + ' 변호사 개인회생')}`,
   };
   
   if (region.includes('부산') || firmName.includes('해원')) {

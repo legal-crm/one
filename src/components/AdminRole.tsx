@@ -14,6 +14,7 @@ import { saveDiagnosisConfig } from '../services/diagnosisService';
 import { issueTaxInvoice } from '../services/taxInvoiceService';
 import RehabSettingsPanel from './RehabSettingsPanel';
 import PopupEditor from './popup/PopupEditor';
+import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -313,6 +314,7 @@ export default function AdminRole({
   // Selected entities for detail panels
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedLawyerId, setSelectedLawyerId] = useState<string>('');
+  const [showProfileEditor, setShowProfileEditor] = useState<boolean>(false);
 
   // Pagination states
   const [clientPage, setClientPage] = useState<number>(1);
@@ -1836,7 +1838,7 @@ export default function AdminRole({
                       <div className="flex items-start justify-between border-b border-[#1E293B]/60 pb-3">
                         <div className="flex items-center gap-2.5">
                           <img 
-                            src={selectedLawyer.avatar} 
+                            src={selectedLawyer.avatarData || selectedLawyer.avatar} 
                             alt={selectedLawyer.name} 
                             className="w-10 h-10 rounded-full object-cover border border-indigo-500/30" 
                           />
@@ -1849,6 +1851,15 @@ export default function AdminRole({
                           ID: {selectedLawyer.id}
                         </span>
                       </div>
+
+                      {/* 프로필 편집 버튼 */}
+                      <button
+                        onClick={() => setShowProfileEditor(true)}
+                        className="w-full flex items-center justify-center gap-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 hover:text-indigo-300 py-2.5 rounded-xl text-sm font-extrabold border border-indigo-500/20 hover:border-indigo-500/30 transition-all cursor-pointer active:scale-[0.98]"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        <span className="whitespace-nowrap">프로필 정보 편집 및 미리보기</span>
+                      </button>
 
                       <div className="space-y-4 text-sm text-slate-500">
                         {/* Bio summary */}
@@ -1977,6 +1988,18 @@ export default function AdminRole({
                 </div>
 
               </div>
+
+              {/* 변호사 프로필 편집 모달 */}
+              {showProfileEditor && selectedLawyer && (
+                <LawyerProfileEditor
+                  lawyer={selectedLawyer}
+                  onSave={(updatedLawyer) => {
+                    setLawyers(prev => prev.map(l => l.id === updatedLawyer.id ? updatedLawyer : l));
+                    setShowProfileEditor(false);
+                  }}
+                  onClose={() => setShowProfileEditor(false)}
+                />
+              )}
             </div>
           )}
 
