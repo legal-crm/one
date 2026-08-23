@@ -106,29 +106,48 @@
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans antialiased flex flex-col min-h-screen" style="letter-spacing: -0.02em; word-break: keep-all;">
   <!-- Sticky Header -->
-  <header class="sticky top-0 z-50 w-full h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200">
-    <div class="max-w-[1240px] h-full mx-auto px-4 sm:px-6 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-2.5 sm:gap-3">
-        <img src="/mykim_logo.png" alt="my김변 로고" class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover shadow-sm"/>
-        <div class="flex flex-col">
-          <span class="font-extrabold text-lg text-slate-900 tracking-tight">my김변</span>
-          <span class="text-xs text-slate-500 font-medium hidden sm:block -mt-0.5">나의 채무관리 변호사</span>
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 w-full transition-all duration-300">
+    <div class="max-w-[1240px] w-full mx-auto px-4 md:px-6 h-[72px] flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0 min-w-0">
+        <img src="/mykim_logo.png" alt="my김변 로고" class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover shadow-sm shadow-[#1E3A5F]/20 hover:scale-105 transition-transform shrink-0" />
+        <div class="flex flex-col items-start leading-tight shrink-0 whitespace-nowrap">
+          <span class="font-extrabold text-lg sm:text-xl text-slate-900 flex items-center gap-1 font-brand tracking-tight">
+            my김변
+          </span>
+          <span class="text-xs sm:text-[13px] text-slate-500 font-bold whitespace-nowrap hidden sm:block">
+            나의 채무관리 변호사
+          </span>
         </div>
       </a>
-      
-      <nav class="hidden md:flex items-center gap-8">
-        <a href="/" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">홈</a>
-        <a href="/?tab=request" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">내 상황 체크하기</a>
-        <a href="/?tab=chat" class="relative text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">내 관리방<span class="absolute -top-1 -right-2.5 flex h-2 w-2"><span class="animate-pulse absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-brand"></span></span></a>
-        <a href="/?tab=lawyers" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">전담 변호사 찾기</a>
-        <a href="/?tab=qna" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">고민상담 Q&A</a>
-      </nav>
 
-      <div class="flex items-center gap-3">
-        <button onclick="window.location.href='/?tab=login'" class="px-5 py-2.5 bg-[#1E3A5F] text-white text-sm font-bold rounded-xl hover:bg-[#163152] transition-colors shadow-sm">
-          로그인 / 시작하기
-        </button>
-      </div>
+      <nav class="flex items-center gap-1.5 lg:gap-2 shrink-0">
+        <div class="hidden md:flex items-center gap-1 lg:gap-1.5">
+          <a href="/" class="whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border border-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-bold">
+            홈
+          </a>
+          <a href="/?tab=request" class="whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border border-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-bold">
+            내 상황 체크하기
+          </a>
+          <a href="/?tab=chat" class="relative whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border border-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-bold">
+            내 관리방
+            <span class="absolute 0 -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1E3A5F] opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#1E3A5F]"></span>
+            </span>
+          </a>
+          <a href="/?tab=lawyers" class="whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border border-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-bold">
+            전담 변호사 찾기
+          </a>
+          <a href="/?tab=qna" class="whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border border-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-bold">
+            고민상담 Q&A
+          </a>
+        </div>
+
+        <a href="/?auth=login" class="ml-2 flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-xl text-sm sm:text-base font-bold transition-all shadow-sm hover:shadow-md active:scale-[0.98] whitespace-nowrap shrink-0">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke-width="2"/></svg>
+          <span>로그인 및 회원가입</span>
+        </a>
+      </nav>
     </div>
   </header>
 
