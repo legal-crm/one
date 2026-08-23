@@ -318,6 +318,24 @@ export default function AdminRole({
   const [lawyerPage, setLawyerPage] = useState<number>(1);
   const [billingPage, setBillingPage] = useState<number>(1);
 
+  // Sorting states
+  const [clientSortKey, setClientSortKey] = useState<'name' | 'status' | 'debt' | 'date'>('date');
+  const [clientSortDir, setClientSortDir] = useState<'asc' | 'desc'>('desc');
+  const [lawyerSortKey, setLawyerSortKey] = useState<'name' | 'region' | 'status' | 'matches'>('matches');
+  const [lawyerSortDir, setLawyerSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const toggleClientSort = (key: typeof clientSortKey) => {
+    if (clientSortKey === key) { setClientSortDir(d => d === 'asc' ? 'desc' : 'asc'); }
+    else { setClientSortKey(key); setClientSortDir('desc'); }
+    setClientPage(1);
+  };
+  const toggleLawyerSort = (key: typeof lawyerSortKey) => {
+    if (lawyerSortKey === key) { setLawyerSortDir(d => d === 'asc' ? 'desc' : 'asc'); }
+    else { setLawyerSortKey(key); setLawyerSortDir('desc'); }
+    setLawyerPage(1);
+  };
+  const sortIcon = (active: boolean, dir: 'asc' | 'desc') => active ? (dir === 'asc' ? ' ▲' : ' ▼') : '';
+
   // Reset billing page when subtab changes
   useEffect(() => {
     setBillingPage(1);
@@ -417,6 +435,15 @@ export default function AdminRole({
     const matchesSearch = r.clientName.toLowerCase().includes(clientSearch.toLowerCase());
     const matchesStatus = clientStatusFilter === 'all' || r.status === clientStatusFilter;
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    const dir = clientSortDir === 'asc' ? 1 : -1;
+    switch (clientSortKey) {
+      case 'name': return dir * a.clientName.localeCompare(b.clientName, 'ko');
+      case 'status': return dir * a.status.localeCompare(b.status);
+      case 'debt': return dir * (a.financialProfile.debtTotal - b.financialProfile.debtTotal);
+      case 'date': return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      default: return 0;
+    }
   });
 
   const selectedClient = requests.find(r => r.id === selectedClientId);
@@ -440,12 +467,21 @@ export default function AdminRole({
     }
     
     return matchesSearch && matchesApproval;
+  }).sort((a, b) => {
+    const dir = lawyerSortDir === 'asc' ? 1 : -1;
+    switch (lawyerSortKey) {
+      case 'name': return dir * a.name.localeCompare(b.name, 'ko');
+      case 'region': return dir * a.region.localeCompare(b.region, 'ko');
+      case 'status': return dir * ((a.approved === false ? 0 : 1) - (b.approved === false ? 0 : 1));
+      case 'matches': return dir * (a.matchedCount - b.matchedCount);
+      default: return 0;
+    }
   });
 
   const selectedLawyer = lawyers.find(l => l.id === selectedLawyerId);
 
   // Pagination constants & calculation
-  const ITEMS_PER_PAGE = 8;
+  const ITEMS_PER_PAGE = 10;
   const BILLING_ITEMS_PER_PAGE = 5;
 
   // Paginated Clients
@@ -1235,6 +1271,20 @@ export default function AdminRole({
                   <option value="counseling">상담 중</option>
                   <option value="closed">수임/종결</option>
                 </select>
+
+                <select
+                  value={`${clientSortKey}-${clientSortDir}`}
+                  onChange={(e) => { const [k, d] = e.target.value.split('-') as [typeof clientSortKey, 'asc' | 'desc']; setClientSortKey(k); setClientSortDir(d); setClientPage(1); }}
+                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300"
+                >
+                  <option value="date-desc">최신 등록순</option>
+                  <option value="date-asc">오래된 순</option>
+                  <option value="name-asc">이름 가나다순</option>
+                  <option value="name-desc">이름 역순</option>
+                  <option value="debt-desc">채무 많은순</option>
+                  <option value="debt-asc">채무 적은순</option>
+                  <option value="status-asc">상태순</option>
+                </select>
               </div>
 
               {/* Data Table */}
@@ -1246,10 +1296,10 @@ export default function AdminRole({
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                          <th className="p-3">의뢰인명</th>
+                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('name')}>의뢰인명{sortIcon(clientSortKey === 'name', clientSortDir)}</th>
                           <th className="p-3">연락처 (마스킹)</th>
-                          <th className="p-3">상태</th>
-                          <th className="p-3 text-right">총 채무 규모</th>
+                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('status')}>상태{sortIcon(clientSortKey === 'status', clientSortDir)}</th>
+                          <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('debt')}>총 채무 규모{sortIcon(clientSortKey === 'debt', clientSortDir)}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/30">
@@ -1542,6 +1592,19 @@ export default function AdminRole({
                   <option value="approved">정식 활동 중 (승인 완료)</option>
                   <option value="pending">승인 대기 중</option>
                 </select>
+
+                <select
+                  value={`${lawyerSortKey}-${lawyerSortDir}`}
+                  onChange={(e) => { const [k, d] = e.target.value.split('-') as [typeof lawyerSortKey, 'asc' | 'desc']; setLawyerSortKey(k); setLawyerSortDir(d); setLawyerPage(1); }}
+                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300"
+                >
+                  <option value="matches-desc">매칭수 높은순</option>
+                  <option value="matches-asc">매칭수 낮은순</option>
+                  <option value="name-asc">이름 가나다순</option>
+                  <option value="name-desc">이름 역순</option>
+                  <option value="region-asc">지역순</option>
+                  <option value="status-desc">활동 상태순</option>
+                </select>
               </div>
 
               {/* Split Layout */}
@@ -1553,10 +1616,10 @@ export default function AdminRole({
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                          <th className="p-3">성명 (역할)</th>
-                          <th className="p-3">소속 로펌 지부</th>
-                          <th className="p-3">활동 상태</th>
-                          <th className="p-3 text-right">이달 매칭수</th>
+                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('name')}>성명 (역할){sortIcon(lawyerSortKey === 'name', lawyerSortDir)}</th>
+                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('region')}>소속 로펌 지부{sortIcon(lawyerSortKey === 'region', lawyerSortDir)}</th>
+                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('status')}>활동 상태{sortIcon(lawyerSortKey === 'status', lawyerSortDir)}</th>
+                          <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('matches')}>이달 매칭수{sortIcon(lawyerSortKey === 'matches', lawyerSortDir)}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/30">
