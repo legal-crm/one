@@ -319,6 +319,12 @@ export default function AdminRole({
   const [billingPage, setBillingPage] = useState<number>(1);
   const [memberPage, setMemberPage] = useState<number>(1);
 
+  // Client memos (admin internal notes)
+  const [clientMemos, setClientMemos] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('legal_crm_client_memos');
+    return saved ? JSON.parse(saved) : {};
+  });
+
   // Sorting states
   const [clientSortKey, setClientSortKey] = useState<'name' | 'status' | 'debt' | 'date'>('date');
   const [clientSortDir, setClientSortDir] = useState<'asc' | 'desc'>('desc');
@@ -346,6 +352,10 @@ export default function AdminRole({
   useEffect(() => {
     setClientPage(1);
   }, [clientSearch, clientStatusFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_client_memos', JSON.stringify(clientMemos));
+  }, [clientMemos]);
 
   useEffect(() => {
     setLawyerPage(1);
@@ -1248,6 +1258,24 @@ export default function AdminRole({
           {/* TAB 2: CLIENT MONITORING */}
           {activeTab === 'clients' && (
             <div className="space-y-6 animate-fadeIn">
+              {/* Summary Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { label: '전체 의뢰', value: requests.length, icon: '📋', color: 'text-white', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+                  { label: '요청 대기', value: requests.filter(r => r.status === 'requested').length, icon: '⏳', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+                  { label: '지정 응답', value: requests.filter(r => r.status === 'responding').length, icon: '💬', color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
+                  { label: '상담 중', value: requests.filter(r => r.status === 'counseling').length, icon: '🤝', color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+                  { label: '수임/종결', value: requests.filter(r => r.status === 'closed').length, icon: '✅', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                  { label: '평균 채무', value: `${requests.length > 0 ? Math.round(requests.reduce((s, r) => s + r.financialProfile.debtTotal, 0) / requests.length).toLocaleString() : 0}만`, icon: '💰', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' },
+                ].map((stat, i) => (
+                  <div key={i} className={`${stat.bg} border rounded-xl p-3 text-center space-y-1`}>
+                    <span className="text-lg">{stat.icon}</span>
+                    <div className={`text-lg font-extrabold ${stat.color}`}>{stat.value}</div>
+                    <div className="text-xs text-slate-500 font-bold">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+
               {/* Search Control */}
               <div className="bg-[#111622] p-4 rounded-xl border border-[#1E293B]/60 flex flex-col sm:flex-row gap-4 items-center justify-between">
                 <div className="relative w-full sm:max-w-xs">
@@ -1300,13 +1328,15 @@ export default function AdminRole({
                           <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('name')}>의뢰인명{sortIcon(clientSortKey === 'name', clientSortDir)}</th>
                           <th className="p-3">연락처 (마스킹)</th>
                           <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('status')}>상태{sortIcon(clientSortKey === 'status', clientSortDir)}</th>
-                          <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('debt')}>총 채무 규모{sortIcon(clientSortKey === 'debt', clientSortDir)}</th>
+                          <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('debt')}>총 채무{sortIcon(clientSortKey === 'debt', clientSortDir)}</th>
+                          <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleClientSort('date')}>등록일{sortIcon(clientSortKey === 'date', clientSortDir)}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/30">
                         {paginatedClients.map(c => {
                           const isSelected = c.id === selectedClientId;
                           const isSpamBlocked = c.title.includes('[노출 차단]');
+                          const statusLabel = c.status === 'requested' ? '요청 대기' : c.status === 'responding' ? '지정 응답' : c.status === 'counseling' ? '상담 중' : c.status === 'closed' ? '수임 종결' : c.status;
                           return (
                             <tr 
                               key={c.id}
@@ -1326,16 +1356,20 @@ export default function AdminRole({
                               <td className="p-3 font-mono text-slate-500">{maskPhone(c.phone)}</td>
                               <td className="p-3">
                                 <span className={`text-xs px-2 py-0.5 rounded border ${
-                                  c.status === 'requested' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                  c.status === 'requested' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                  c.status === 'responding' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
                                   c.status === 'counseling' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                                   c.status === 'closed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                   'bg-slate-800 text-slate-500 border-slate-750'
                                 }`}>
-                                  {c.status}
+                                  {statusLabel}
                                 </span>
                               </td>
                               <td className="p-3 text-right font-bold text-slate-200">
                                 {c.financialProfile.debtTotal.toLocaleString()}만원
+                              </td>
+                              <td className="p-3 text-right text-slate-500 font-mono text-xs">
+                                {new Date(c.createdAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
                               </td>
                             </tr>
                           );
@@ -1343,7 +1377,7 @@ export default function AdminRole({
 
                         {filteredClients.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="p-8 text-center text-slate-600">
+                            <td colSpan={5} className="p-8 text-center text-slate-600">
                               등록된 의뢰 데이터가 없습니다.
                             </td>
                           </tr>
@@ -1407,6 +1441,70 @@ export default function AdminRole({
                           ID: {selectedClient.id}
                         </span>
                       </div>
+
+                      {/* Quick Management Controls */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Status Change */}
+                        <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40 space-y-1.5">
+                          <span className="text-xs text-slate-500 font-bold block">진행 상태</span>
+                          <select
+                            value={selectedClient.status}
+                            onChange={(e) => {
+                              const newStatus = e.target.value;
+                              setRequests(prev => prev.map(r => r.id === selectedClient.id ? { ...r, status: newStatus as any } : r));
+                              onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰 상태 변경: ${selectedClient.clientName} → ${newStatus}`);
+                            }}
+                            className="w-full bg-[#111622] border border-[#1E293B]/60 rounded-lg px-2 py-1.5 text-sm text-white font-bold cursor-pointer"
+                          >
+                            <option value="requested">⏳ 요청 대기</option>
+                            <option value="responding">💬 지정 응답</option>
+                            <option value="counseling">🤝 상담 중</option>
+                            <option value="closed">✅ 수임/종결</option>
+                          </select>
+                        </div>
+                        {/* Registration Info */}
+                        <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40 space-y-1.5">
+                          <span className="text-xs text-slate-500 font-bold block">등록일</span>
+                          <span className="text-sm text-white font-bold block">
+                            {new Date(selectedClient.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          </span>
+                          <span className="text-xs text-slate-600 block">
+                            ({Math.floor((Date.now() - new Date(selectedClient.createdAt).getTime()) / (1000 * 60 * 60 * 24))}일 경과)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Assigned Lawyer */}
+                      {(() => {
+                        const assignedLawyer = lawyers.find(l => selectedClient.assignedLawyerId === l.id);
+                        return assignedLawyer ? (
+                          <div className="bg-sky-500/5 border border-sky-500/20 p-3 rounded-xl flex items-center gap-3">
+                            <img src={assignedLawyer.avatar} alt={assignedLawyer.name} className="w-8 h-8 rounded-full object-cover border border-sky-500/30" />
+                            <div className="flex-1">
+                              <span className="text-xs text-sky-400 font-bold block">배정 변호사</span>
+                              <span className="text-sm text-white font-bold">{assignedLawyer.name}</span>
+                              <span className="text-xs text-slate-500 ml-1.5">{assignedLawyer.region} 지부</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-slate-800/30 border border-[#1E293B]/40 p-3 rounded-xl text-center">
+                            <span className="text-xs text-slate-600 font-bold">배정 변호사 미지정</span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* DTI Indicator */}
+                      {(() => {
+                        const dti = selectedClient.financialProfile.income > 0 ? Math.round(selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income) : 0;
+                        const dtiColor = dti >= 50 ? 'text-red-400 bg-red-500/10 border-red-500/20' : dti >= 30 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                        const dtiLabel = dti >= 50 ? '고위험' : dti >= 30 ? '주의' : '정상';
+                        return (
+                          <div className={`${dtiColor} border rounded-xl p-3 flex items-center justify-between`}>
+                            <span className="text-xs font-bold">채무/소득 비율 (DTI)</span>
+                            <span className="text-sm font-extrabold">{dti}배 · {dtiLabel}</span>
+                          </div>
+                        );
+                      })()}
 
                       <div className="space-y-3.5 text-sm text-slate-500">
                         {/* Legal warning */}
@@ -1555,6 +1653,20 @@ export default function AdminRole({
                             🔒 본 의뢰글은 스팸 필터링에 의거하여 노출이 완벽히 차단된 상태입니다.
                           </div>
                         )}
+
+                        {/* Admin Memo / Internal Notes */}
+                        <div className="bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 space-y-2">
+                          <span className="text-sm font-bold text-slate-350 flex items-center gap-1.5">📝 관리자 내부 메모</span>
+                          <textarea
+                            value={clientMemos[selectedClient.id] || ''}
+                            onChange={(e) => setClientMemos(prev => ({ ...prev, [selectedClient.id]: e.target.value }))}
+                            placeholder="이 의뢰인에 대한 내부 메모를 작성하세요 (관리자만 볼 수 있습니다)"
+                            className="w-full bg-[#111622] border border-[#1E293B]/60 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[80px]"
+                          />
+                          {clientMemos[selectedClient.id] && (
+                            <span className="text-xs text-emerald-500 font-bold">✓ 자동 저장됨</span>
+                          )}
+                        </div>
                       </div>
                     </>
                   ) : (
