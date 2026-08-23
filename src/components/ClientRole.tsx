@@ -2060,7 +2060,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             상담정보는 가명 처리되니, 안심하고 의뢰하세요.
           </p>
         </div>
-        <p className="text-xs sm:text-sm text-white/60 mt-0.5 font-medium">
+        <p className="hidden md:block text-xs sm:text-sm text-white/60 mt-0.5 font-medium">
           상담정보는 변호사님이 사건 내용을 파악하고 답변을 하기 위한 목적으로 사용됩니다.
         </p>
       </div>
