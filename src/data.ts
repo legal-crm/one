@@ -1,4 +1,4 @@
-import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, PlatformConfig, PopupConfig, AdBanner, AdOrder } from './types';
+import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, LawyerInquiry, PlatformConfig, PopupConfig, AdBanner, AdOrder } from './types';
 import type { LawyerAppointment } from './types';
 
 
@@ -2421,6 +2421,7 @@ export const initialInquiries: ClientInquiry[] = [
     clientName: '새출발_385',
     title: '개인회생 변제금 산정 기준 문의',
     content: '추가 생계비로 부양가족 1명을 인정받으려면 어떤 서류를 준비해야 하나요? 현재 따로 사는 고령의 부모님이 계십니다.',
+    source: 'inquiry_page',
     createdAt: '2026-06-02T10:00:00Z',
     status: 'replied',
     replyContent: '고령의 부모님을 부양가족으로 인정받기 위해서는 기본증명서, 가족관계증명서와 함께 부모님의 소득 및 재산이 없음을 증명하는 지방세 세목별 과세증명서, 그리고 정기적인 생활비 송금 이력 등을 제출하셔야 합니다.',
@@ -2432,7 +2433,35 @@ export const initialInquiries: ClientInquiry[] = [
     clientName: '새출발_590',
     title: '채무 독촉전화 금지명령 관련 질문',
     content: '개인회생 신청을 하면 채권추심 독촉전화가 언제쯤 금지되는 건가요? 하루에 수십 번씩 전화가 와서 일상생활이 불가능합니다.',
+    source: 'inquiry_page',
     createdAt: '2026-06-03T11:00:00Z',
+    status: 'pending'
+  }
+];
+
+export const initialLawyerInquiries: LawyerInquiry[] = [
+  {
+    id: 'lawyer-inquiry-1',
+    lawyerId: 'lawyer-1',
+    lawyerName: '김민수 변호사',
+    category: 'platform_usage',
+    title: '의뢰인 상담 채팅 알림 설정 문의',
+    content: '새로운 상담 요청이 들어왔을 때 텔레그램 알림이 간헐적으로 누락되는 현상이 있습니다. 알림 설정을 확인해 주실 수 있을까요?',
+    attachments: [],
+    createdAt: '2026-07-15T09:30:00Z',
+    status: 'replied',
+    replyContent: '안녕하세요 김민수 변호사님. 텔레그램 봇 토큰과 Chat ID를 다시 연동해 주시면 정상 작동됩니다. 설정 > 알림 채널에서 "연결 테스트" 버튼으로 확인해 보시기 바랍니다.',
+    repliedAt: '2026-07-15T14:00:00Z'
+  },
+  {
+    id: 'lawyer-inquiry-2',
+    lawyerId: 'lawyer-2',
+    lawyerName: '이서연 변호사',
+    category: 'feature_request',
+    title: '사건 관리 탭에 메모 기능 추가 요청',
+    content: '각 사건별로 간단한 내부 메모를 남길 수 있는 기능이 있으면 좋겠습니다. 현재는 별도 문서에 기록하고 있어 불편합니다.',
+    attachments: [],
+    createdAt: '2026-08-01T11:00:00Z',
     status: 'pending'
   }
 ];

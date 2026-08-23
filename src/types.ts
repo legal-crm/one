@@ -1167,12 +1167,53 @@ export interface ActivityLog {
 }
 
 // --- 1:1 Inquiries & Basic Config Types ---
+export type ClientInquiryCategory = 
+  | 'site_usage'
+  | 'account'
+  | 'diagnosis'
+  | 'lawyer_matching'
+  | 'other';
+
+export type LawyerInquiryCategory = 
+  | 'platform_usage'
+  | 'feature_request'
+  | 'billing_contract'
+  | 'ad_marketing'
+  | 'other';
+
+export interface InquiryAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  dataUrl: string;
+}
+
 export interface ClientInquiry {
   id: string;
   clientId: string;
   clientName: string;
+  category?: ClientInquiryCategory;
+  contactInfo?: string;
   title: string;
   content: string;
+  attachments?: InquiryAttachment[];
+  source?: 'inquiry_page' | 'popup_modal';
+  tempPassword?: string;  // for non-logged-in users to check inquiry status
+  createdAt: string;
+  replyContent?: string;
+  repliedAt?: string;
+  status: 'pending' | 'replied';
+}
+
+export interface LawyerInquiry {
+  id: string;
+  lawyerId: string;
+  lawyerName: string;
+  category: LawyerInquiryCategory;
+  title: string;
+  content: string;
+  attachments: InquiryAttachment[];
   createdAt: string;
   replyContent?: string;
   repliedAt?: string;

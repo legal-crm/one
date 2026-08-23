@@ -7,7 +7,7 @@ import {
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server, Settings,
   Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
@@ -43,6 +43,8 @@ interface AdminRoleProps {
   setInquiries: React.Dispatch<React.SetStateAction<ClientInquiry[]>>;
   popupConfig: PopupConfig;
   setPopupConfig: React.Dispatch<React.SetStateAction<PopupConfig>>;
+  lawyerInquiries: LawyerInquiry[];
+  setLawyerInquiries: React.Dispatch<React.SetStateAction<LawyerInquiry[]>>;
 }
 
 export default function AdminRole({
@@ -72,7 +74,9 @@ export default function AdminRole({
   inquiries,
   setInquiries,
   popupConfig,
-  setPopupConfig
+  setPopupConfig,
+  lawyerInquiries,
+  setLawyerInquiries
 }: AdminRoleProps) {
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
@@ -333,6 +337,8 @@ export default function AdminRole({
 
   // Client inquiry states
   const [selectedInquiryId, setSelectedInquiryId] = useState<string>('');
+  const [inquirySourceFilter, setInquirySourceFilter] = useState<'all' | 'client' | 'lawyer'>('all');
+  const [selectedLawyerInquiryId, setSelectedLawyerInquiryId] = useState<string>('');
   const [replyText, setReplyText] = useState<string>('');
 
   // Global platform configuration states (form fields)
@@ -3740,23 +3746,43 @@ export default function AdminRole({
                 </div>
               )}
 
-              {/* 6. CLIENT 1:1 INQUIRY BOARD SECTION */}
+              {/* 6. CLIENT & LAWYER 1:1 INQUIRY BOARD SECTION */}
               {contentSubTab === 'inquiry' && (() => {
-                const selectedInq = inquiries.find(inq => inq.id === selectedInquiryId);
+                const selectedInq = inquirySourceFilter !== 'lawyer' ? inquiries.find(inq => inq.id === selectedInquiryId) : null;
+                const selectedLawyerInq = inquirySourceFilter !== 'client' ? lawyerInquiries.find(inq => inq.id === selectedLawyerInquiryId) : null;
                 return (
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-fadeIn">
+                  <div className="space-y-4 animate-fadeIn">
+                    {/* Source Filter Tabs */}
+                    <div className="flex items-center gap-2 bg-[#111622] rounded-xl border border-[#1E293B]/60 p-1.5">
+                      {([
+                        { key: 'all' as const, label: '📋 전체', count: inquiries.length + lawyerInquiries.length },
+                        { key: 'client' as const, label: '🙋 의뢰인 문의', count: inquiries.length },
+                        { key: 'lawyer' as const, label: '⚖️ 변호사 문의', count: lawyerInquiries.length },
+                      ]).map(f => (
+                        <button
+                          key={f.key}
+                          onClick={() => { setInquirySourceFilter(f.key); setSelectedInquiryId(''); setSelectedLawyerInquiryId(''); setReplyText(''); }}
+                          className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${inquirySourceFilter === f.key ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          {f.label} <span className="ml-1 opacity-70">({f.count})</span>
+                        </button>
+                      ))}
+                    </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
                     {/* Left Column: Inquiry List */}
                     <div className="lg:col-span-7 bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden flex flex-col">
                       <div className="p-4 bg-[#161B26] border-b border-[#1E293B]/60 flex items-center justify-between">
-                        <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">의뢰인 1:1 문의 내역</h4>
-                        <span className="text-[12px] text-slate-500">총 {inquiries.length}건</span>
+                        <h4 className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">{inquirySourceFilter === 'lawyer' ? '변호사 문의 내역' : inquirySourceFilter === 'client' ? '의뢰인 1:1 문의 내역' : '전체 문의 내역'}</h4>
+                        <span className="text-[12px] text-slate-500">총 {inquirySourceFilter === 'lawyer' ? lawyerInquiries.length : inquirySourceFilter === 'client' ? inquiries.length : inquiries.length + lawyerInquiries.length}건</span>
                       </div>
                       
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs border-collapse">
                           <thead>
                             <tr className="bg-[#161B26]/30 text-slate-500 font-bold border-b border-[#1E293B]/60">
+                              <th className="p-3">출처</th>
                               <th className="p-3">작성자</th>
                               <th className="p-3">문의 제목</th>
                               <th className="p-3">상태</th>
@@ -3764,19 +3790,24 @@ export default function AdminRole({
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#1E293B]/30">
-                            {inquiries.map(inq => {
+                            {/* Client Inquiries */}
+                            {inquirySourceFilter !== 'lawyer' && inquiries.map(inq => {
                               const isSelected = inq.id === selectedInquiryId;
                               return (
                                 <tr
                                   key={inq.id}
                                   onClick={() => {
                                     setSelectedInquiryId(inq.id);
+                                    setSelectedLawyerInquiryId('');
                                     setReplyText(inq.replyContent || '');
                                   }}
                                   className={`cursor-pointer transition-colors ${
                                     isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/45'
                                   }`}
                                 >
+                                  <td className="p-3">
+                                    <span className="text-[11px] px-2 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-400 border-blue-500/20">🙋 의뢰인</span>
+                                  </td>
                                   <td className="p-3">
                                     <div className="flex flex-col">
                                       <span className="font-extrabold text-slate-100">{inq.clientName}</span>
@@ -3802,10 +3833,53 @@ export default function AdminRole({
                               );
                             })}
 
-                            {inquiries.length === 0 && (
+                            {/* Lawyer Inquiries */}
+                            {inquirySourceFilter !== 'client' && lawyerInquiries.map(inq => {
+                              const isSelected = inq.id === selectedLawyerInquiryId;
+                              return (
+                                <tr
+                                  key={inq.id}
+                                  onClick={() => {
+                                    setSelectedLawyerInquiryId(inq.id);
+                                    setSelectedInquiryId('');
+                                    setReplyText(inq.replyContent || '');
+                                  }}
+                                  className={`cursor-pointer transition-colors ${
+                                    isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/45'
+                                  }`}
+                                >
+                                  <td className="p-3">
+                                    <span className="text-[11px] px-2 py-0.5 rounded border font-bold bg-teal-500/10 text-teal-400 border-teal-500/20">⚖️ 변호사</span>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="flex flex-col">
+                                      <span className="font-extrabold text-slate-100">{inq.lawyerName}</span>
+                                      <span className="text-[11px] text-slate-600 font-mono">{inq.lawyerId}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 font-semibold text-slate-200 max-w-[200px] truncate">
+                                    {inq.title}
+                                  </td>
+                                  <td className="p-3">
+                                    <span className={`text-[11px] px-2 py-0.5 rounded border font-bold ${
+                                      inq.status === 'replied' 
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                      : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    }`}>
+                                      {inq.status === 'replied' ? '답변 완료' : '답변 대기'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right font-mono text-slate-450">
+                                    {new Date(inq.createdAt).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+
+                            {((inquirySourceFilter === 'client' && inquiries.length === 0) || (inquirySourceFilter === 'lawyer' && lawyerInquiries.length === 0) || (inquirySourceFilter === 'all' && inquiries.length === 0 && lawyerInquiries.length === 0)) && (
                               <tr>
-                                <td colSpan={4} className="p-12 text-center text-slate-600 font-semibold bg-[#111622]/50">
-                                  등록된 1:1 문의 사항이 없습니다.
+                                <td colSpan={5} className="p-12 text-center text-slate-600 font-semibold bg-[#111622]/50">
+                                  등록된 문의 사항이 없습니다.
                                 </td>
                               </tr>
                             )}
@@ -3820,7 +3894,7 @@ export default function AdminRole({
                         <div className="space-y-4 animate-fadeIn">
                           <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
                             <div className="space-y-1">
-                              <span className="text-[11px] text-indigo-400 font-black block uppercase tracking-wider">INQUIRY DETAIL VIEW</span>
+                              <span className="text-[11px] text-blue-400 font-black block uppercase tracking-wider">🙋 의뢰인 문의 상세</span>
                               <h3 className="text-sm font-extrabold text-white">
                                 {selectedInq.clientName} 의뢰인의 문의
                               </h3>
@@ -3832,104 +3906,99 @@ export default function AdminRole({
                               닫기
                             </button>
                           </div>
-
-                          {/* Inquiry Content box */}
                           <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-xs">
                             <div className="text-[12px] text-slate-600 font-mono">
                               등록일시: {new Date(selectedInq.createdAt).toLocaleString()}
+                              {selectedInq.category && <span className="ml-2 text-indigo-400">카테고리: {selectedInq.category === 'site_usage' ? '사이트 이용' : selectedInq.category === 'account' ? '회원가입·로그인' : selectedInq.category === 'diagnosis' ? '진단 결과' : selectedInq.category === 'lawyer_matching' ? '변호사 매칭' : '기타'}</span>}
+                              {selectedInq.source && <span className="ml-2 text-slate-500">({selectedInq.source === 'popup_modal' ? '팝업 문의' : '문의 페이지'})</span>}
                             </div>
-                            <h4 className="text-slate-100 font-extrabold text-xs mb-1">
-                              Q. {selectedInq.title}
-                            </h4>
-                            <p className="text-slate-350 leading-relaxed font-normal whitespace-pre-wrap">
-                              {selectedInq.content}
-                            </p>
+                            <h4 className="text-slate-100 font-extrabold text-xs mb-1">Q. {selectedInq.title}</h4>
+                            <p className="text-slate-350 leading-relaxed font-normal whitespace-pre-wrap">{selectedInq.content}</p>
+                            {selectedInq.attachments && selectedInq.attachments.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-[#1E293B]/40 space-y-1">
+                                <span className="text-[11px] text-slate-500 font-bold">📎 첨부파일 ({selectedInq.attachments.length})</span>
+                                <div className="flex gap-2 flex-wrap">
+                                  {selectedInq.attachments.map(att => (
+                                    <a key={att.id} href={att.dataUrl} download={att.fileName} className="text-[11px] text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 font-medium">
+                                      {att.fileName} ({(att.fileSize / 1024).toFixed(0)}KB)
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-
-                          {/* Answer Editor Section */}
                           <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-3">
                             <span className="text-[12px] font-black text-indigo-400 block uppercase tracking-wider">✍️ 관리자 답변 작성 에디터</span>
-                            
-                            <textarea
-                              rows={6}
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              placeholder="의뢰인의 문의사항에 대한 답변을 작성하십시오. 등록 즉시 의뢰인의 마이페이지에서 확인이 가능합니다."
-                              className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
-                            />
-
+                            <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="의뢰인의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-indigo-500 outline-none" />
                             <div className="flex gap-2">
                               {selectedInq.status === 'replied' && (
-                                <button
-                                  onClick={() => {
-                                    if (confirm('등록된 답변을 삭제하시겠습니까?')) {
-                                      setInquiries(prev => prev.map(inq => {
-                                        if (inq.id === selectedInq.id) {
-                                          return {
-                                            ...inq,
-                                            replyContent: undefined,
-                                            repliedAt: undefined,
-                                            status: 'pending'
-                                          };
-                                        }
-                                        return inq;
-                                      }));
-                                      setReplyText('');
-                                      onLogActivity(
-                                        'admin',
-                                        '최고관리자',
-                                        'ADMIN',
-                                        'ADMIN_ACTION',
-                                        `1:1 문의 답변 삭제: 문의 ID ${selectedInq.id}`
-                                      );
-                                      alert('답변이 삭제되었습니다.');
-                                    }
-                                  }}
-                                  className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-[200px] text-xs font-extrabold transition-all text-center cursor-pointer"
-                                >
-                                  답변 삭제
-                                </button>
+                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
                               )}
-                              <button
-                                onClick={() => {
-                                  if (!replyText.trim()) {
-                                    alert('답변 내용을 입력해 주세요.');
-                                    return;
-                                  }
-                                  setInquiries(prev => prev.map(inq => {
-                                    if (inq.id === selectedInq.id) {
-                                      return {
-                                        ...inq,
-                                        replyContent: replyText.trim(),
-                                        repliedAt: new Date().toISOString(),
-                                        status: 'replied'
-                                      };
-                                    }
-                                    return inq;
-                                  }));
-                                  onLogActivity(
-                                    'admin',
-                                    '최고관리자',
-                                    'ADMIN',
-                                    'ADMIN_ACTION',
-                                    `1:1 문의 답변 등록/수정: 문의 ID ${selectedInq.id} (의뢰인: ${selectedInq.clientName})`
-                                  );
-                                  alert('답변이 성공적으로 등록되었습니다.');
-                                }}
-                                className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-[200px] text-xs font-extrabold transition-all text-center cursor-pointer"
-                              >
-                                {selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}
-                              </button>
+                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변: ${selectedInq.id}`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">{selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : selectedLawyerInq ? (
+                        <div className="space-y-4 animate-fadeIn">
+                          <div className="flex justify-between items-start border-b border-[#1E293B]/60 pb-3">
+                            <div className="space-y-1">
+                              <span className="text-[11px] text-teal-400 font-black block uppercase tracking-wider">⚖️ 변호사 문의 상세</span>
+                              <h3 className="text-sm font-extrabold text-white">
+                                {selectedLawyerInq.lawyerName}의 문의
+                              </h3>
+                            </div>
+                            <button
+                              onClick={() => setSelectedLawyerInquiryId('')}
+                              className="text-slate-500 hover:text-white text-xs font-bold bg-[#07090E] border border-[#1E293B]/60 px-2 py-0.5 rounded transition-all"
+                            >
+                              닫기
+                            </button>
+                          </div>
+                          <div className="space-y-2 bg-[#0B0F19] p-4 rounded-xl border border-[#1E293B]/40 text-xs">
+                            <div className="text-[12px] text-slate-600 font-mono">
+                              등록일시: {new Date(selectedLawyerInq.createdAt).toLocaleString()}
+                              <span className="ml-2 text-teal-400">카테고리: {selectedLawyerInq.category === 'platform_usage' ? '플랫폼 사용법' : selectedLawyerInq.category === 'feature_request' ? '기능 개선 제안' : selectedLawyerInq.category === 'billing_contract' ? '요금·계약' : selectedLawyerInq.category === 'ad_marketing' ? '광고·마케팅' : '기타'}</span>
+                            </div>
+                            <h4 className="text-slate-100 font-extrabold text-xs mb-1">Q. {selectedLawyerInq.title}</h4>
+                            <p className="text-slate-350 leading-relaxed font-normal whitespace-pre-wrap">{selectedLawyerInq.content}</p>
+                            {selectedLawyerInq.attachments.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-[#1E293B]/40 space-y-1">
+                                <span className="text-[11px] text-slate-500 font-bold">📎 첨부파일 ({selectedLawyerInq.attachments.length})</span>
+                                <div className="flex gap-2 flex-wrap">
+                                  {selectedLawyerInq.attachments.map(att => (
+                                    att.fileType.startsWith('image/') ? (
+                                      <a key={att.id} href={att.dataUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                        <img src={att.dataUrl} alt={att.fileName} className="w-20 h-20 object-cover rounded-lg border border-[#1E293B]" />
+                                      </a>
+                                    ) : (
+                                      <a key={att.id} href={att.dataUrl} download={att.fileName} className="text-[11px] text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 font-medium">
+                                        📄 {att.fileName} ({(att.fileSize / 1024).toFixed(0)}KB)
+                                      </a>
+                                    )
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-3">
+                            <span className="text-[12px] font-black text-teal-400 block uppercase tracking-wider">✍️ 변호사 문의 답변 작성</span>
+                            <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="변호사의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-xs focus:ring-1 focus:ring-teal-500 outline-none" />
+                            <div className="flex gap-2">
+                              {selectedLawyerInq.status === 'replied' && (
+                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
+                              )}
+                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 문의 답변: ${selectedLawyerInq.id} (${selectedLawyerInq.lawyerName})`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer">{selectedLawyerInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
                             </div>
                           </div>
                         </div>
                       ) : (
                         <div className="text-center py-12 text-slate-600 text-xs">
-                          상세 조회 및 답변 작성을 위해 왼쪽의 1:1 문의 건을 클릭하십시오.
+                          상세 조회 및 답변 작성을 위해 왼쪽의 문의 건을 클릭하십시오.
                         </div>
                       )}
                     </div>
 
+                  </div>
                   </div>
                 );
               })()}

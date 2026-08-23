@@ -6,7 +6,7 @@ import {
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry 
 } from '../types';
 import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
@@ -35,6 +35,7 @@ import {
 } from '../services/notificationService';
 import type { NotificationSettings, NotificationLog } from '../types';
 import PopupContainer from './popup/PopupContainer';
+import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   if (req.phoneConsultationRequested) {
@@ -68,6 +69,8 @@ interface LawyerRoleProps {
   qas?: ClientQA[];
   setQas?: React.Dispatch<React.SetStateAction<ClientQA[]>>;
   popupConfig?: PopupConfig;
+  lawyerInquiries?: LawyerInquiry[];
+  setLawyerInquiries?: React.Dispatch<React.SetStateAction<LawyerInquiry[]>>;
 }
 
 export default function LawyerRole({
@@ -86,10 +89,12 @@ export default function LawyerRole({
   platformConfig,
   qas,
   setQas,
-  popupConfig
+  popupConfig,
+  lawyerInquiries,
+  setLawyerInquiries
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin'>('dashboard');
   const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity'>('overview');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
@@ -1735,6 +1740,9 @@ export default function LawyerRole({
                   {(() => { const p = staffMembers.filter(m => m.status === 'pending').length; return p > 0 ? (<span className="ml-auto bg-red-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold animate-pulse">{p}</span>) : null; })()}
                 </button>
               )}
+              <button onClick={() => setActiveTab('inquiry-to-admin')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'inquiry-to-admin' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <MessageCircle className="w-5 h-5 shrink-0" /><span>마이김변 문의</span>
+              </button>
               {permissionCtx.canAccessTab('settings') && (
                 <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-3 border-teal-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                   <Settings className="w-5 h-5 shrink-0" /><span>알림 및 설정</span>
@@ -3575,6 +3583,18 @@ export default function LawyerRole({
               cases={cases}
               qas={qas}
               activeLawyerId={activeLawyer.id}
+            />
+          </div>
+        )}
+
+        {/* TAB: 마이김변 문의 */}
+        {activeTab === 'inquiry-to-admin' && lawyerInquiries && setLawyerInquiries && (
+          <div className="animate-fadeIn">
+            <LawyerInquiryTab
+              lawyerInquiries={lawyerInquiries}
+              setLawyerInquiries={setLawyerInquiries}
+              currentLawyerId={activeLawyer.id}
+              currentLawyerName={activeLawyer.name}
             />
           </div>
         )}

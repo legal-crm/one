@@ -34,6 +34,7 @@ const AuthModal = React.lazy(() => import('./client/AuthModal'));
 const MyPageView = React.lazy(() => import('./client/MyPageView'));
 const MySettingsView = React.lazy(() => import('./client/MySettingsView'));
 const InquiryView = React.lazy(() => import('./client/InquiryView'));
+const InquiryPopupModal = React.lazy(() => import('./client/InquiryPopupModal'));
 
 import ClientFooter from './client/ClientFooter';
 const TermsModal = React.lazy(() => import('./client/TermsModal'));
@@ -834,6 +835,7 @@ export default function ClientRole({
   const [alertMode, setAlertMode] = useState<'NORMAL' | 'STEALTH' | 'SECRET'>('STEALTH');
   const [senderNameOverride, setSenderNameOverride] = useState<string>('my김변');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showInquiryPopup, setShowInquiryPopup] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showLogoutSuccessModal, setShowLogoutSuccessModal] = useState<boolean>(false);
   const [showResetDiagnosisModal, setShowResetDiagnosisModal] = useState<boolean>(false);
@@ -2944,8 +2946,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <div className="mt-10 bg-white/5 border border-white/10 rounded-xl p-6 text-center space-y-3">
                   <p className="text-sm md:text-base text-slate-400 font-medium">원하시는 답변을 찾지 못하셨나요?</p>
                   <button
-                    onClick={() => { setActiveTab('inquiry'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-white/20 text-white hover:bg-white/10 font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer"
+                    onClick={() => setShowInquiryPopup(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-white/20 text-white hover:bg-white/10 font-bold rounded-xl text-sm transition-all whitespace-nowrap cursor-pointer active:scale-[0.98]"
                   >
                     <HelpCircle className="w-4 h-4" />
                     1:1 고객 문의하기
@@ -3401,6 +3403,22 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             setRequestStep(1);
           }}
         />
+      )}
+
+      {/* 1:1 고객 문의 팝업 모달 */}
+      {showInquiryPopup && (
+        <React.Suspense fallback={null}>
+          <InquiryPopupModal
+            isOpen={showInquiryPopup}
+            onClose={() => setShowInquiryPopup(false)}
+            inquiries={inquiries}
+            setInquiries={setInquiries}
+            isLoggedIn={isLoggedIn}
+            userAlias={userAlias}
+            onNavigateToQnA={() => { setActiveTab('qna'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            onNavigateToLawyers={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          />
+        </React.Suspense>
       )}
 
       {/* 기존 확인 데이터 존재 시 재확인 커스텀 모달 */}

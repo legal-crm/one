@@ -23,9 +23,10 @@ import {
   initialActivityLogs,
   initialInquiries,
   initialPlatformConfig,
-  initialPopupConfig
+  initialPopupConfig,
+  initialLawyerInquiries
 } from './data';
-import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, PlatformConfig, PopupConfig } from './types';
+import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, LawyerInquiry, PlatformConfig, PopupConfig } from './types';
 import ClientRole from './components/ClientRole';
 const LawyerRole = React.lazy(() => import('./components/LawyerRole'));
 const AdminRole = React.lazy(() => import('./components/AdminRole'));
@@ -251,6 +252,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialPopupConfig;
   });
 
+  const [lawyerInquiries, setLawyerInquiries] = useState<LawyerInquiry[]>(() => {
+    const saved = localStorage.getItem('legal_crm_lawyer_inquiries');
+    return saved ? JSON.parse(saved) : initialLawyerInquiries;
+  });
+
   // Sync states to localStorage
   useEffect(() => {
     localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
@@ -289,6 +295,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('legal_crm_popup_config', JSON.stringify(popupConfig));
   }, [popupConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('legal_crm_lawyer_inquiries', JSON.stringify(lawyerInquiries));
+  }, [lawyerInquiries]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
@@ -573,6 +583,8 @@ export default function App() {
               qas={qas}
               setQas={setQas}
               popupConfig={popupConfig}
+              lawyerInquiries={lawyerInquiries}
+              setLawyerInquiries={setLawyerInquiries}
             />
           ) : (
             <AdminRole 
@@ -603,6 +615,8 @@ export default function App() {
               setInquiries={setInquiries}
               popupConfig={popupConfig}
               setPopupConfig={setPopupConfig}
+              lawyerInquiries={lawyerInquiries}
+              setLawyerInquiries={setLawyerInquiries}
             />
           )}
         </React.Suspense>
