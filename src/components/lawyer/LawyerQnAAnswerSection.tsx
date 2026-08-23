@@ -114,10 +114,10 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      <div className="bg-white border border-slate-200/80 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div className="space-y-1">
-          <h3 className="font-black text-xl text-slate-900 flex items-center gap-2.5">
-            <MessageSquare className="w-6 h-6 text-brand" />
+          <h3 className="font-extrabold text-xl text-slate-900 flex items-center gap-2.5">
+            <MessageSquare className="w-6 h-6 text-slate-700" />
             <span>고민상담 Q&A 답변 관리</span>
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed text-left">
@@ -125,10 +125,10 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="bg-orange-500/10 border border-orange-500/20 text-orange-600 text-xs font-bold px-3.5 py-1.5 rounded-lg whitespace-nowrap">
+          <span className="bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold px-3.5 py-1.5 rounded-xl whitespace-nowrap">
             답변 대기 {waitingCount}건
           </span>
-          <span className="bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold px-3.5 py-1.5 rounded-lg whitespace-nowrap">
+          <span className="bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold px-3.5 py-1.5 rounded-xl whitespace-nowrap">
             전체 {qas.length}건
           </span>
         </div>
@@ -147,7 +147,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
             onClick={() => setFilterMode(f.key)}
             className={`px-4 py-2 text-sm font-bold rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${
               filterMode === f.key
-                ? 'bg-brand text-white border-brand shadow-sm'
+                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
                 : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
             }`}
           >
@@ -165,7 +165,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
             placeholder="질문 검색..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm focus:ring-2 focus:ring-brand/30 focus:border-brand focus:outline-none"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] focus:outline-none text-slate-900"
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -176,7 +176,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
         <select
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
-          className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand/30 shrink-0"
+          className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 shrink-0"
         >
           {QNA_CATEGORIES.map(cat => (
             <option key={cat} value={cat}>{cat}</option>
@@ -186,7 +186,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
 
       {/* Q&A List */}
       {filteredQAs.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center space-y-3 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center space-y-3 shadow-xs">
           <HelpCircle className="w-12 h-12 text-slate-300 mx-auto" />
           <h4 className="font-bold text-base text-slate-700">해당 조건의 질문이 없습니다</h4>
           <p className="text-sm text-slate-500">필터를 변경하거나 검색어를 확인해주세요.</p>
@@ -201,7 +201,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
             const currentAnswerText = answerTexts[qa.id] || '';
 
             return (
-              <div key={qa.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden transition-all shadow-xs">
+              <div key={qa.id} className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all shadow-xs hover:border-slate-300">
                 {/* Question Header */}
                 <div
                   onClick={() => setExpandedQaId(isExpanded ? null : qa.id)}
@@ -210,24 +210,24 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 space-y-2 text-left">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md">{qa.category}</span>
+                        <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">{qa.category}</span>
                         {qa.isSecret && (
-                          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md flex items-center gap-1">
-                            <Lock className="w-3.5 h-3.5" />비밀
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                            <Lock className="w-3.5 h-3.5 text-slate-500" />비밀
                           </span>
                         )}
                         {isWaiting ? (
-                          <span className="text-xs font-bold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-md">답변 대기</span>
+                          <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-md">답변 대기</span>
                         ) : (
-                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />답변 {totalAnswers}개
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-slate-600" />답변 {totalAnswers}개
                           </span>
                         )}
                         {alreadyAnswered && (
-                          <span className="text-xs font-bold text-brand bg-brand/10 px-2.5 py-0.5 rounded-md">내 답변 있음</span>
+                          <span className="text-xs font-bold text-white bg-[#1E3A5F] px-2.5 py-0.5 rounded-md">내 답변 있음</span>
                         )}
                       </div>
-                      <h4 className="font-bold text-base md:text-lg text-slate-900 leading-snug">Q. {qa.question}</h4>
+                      <h4 className="font-extrabold text-base md:text-lg text-slate-900 leading-snug">Q. {qa.question}</h4>
                       <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
                         <span>{qa.author}</span>
                         {qa.createdAt && (
@@ -314,7 +314,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
                             type="button"
                             onClick={() => handleSubmitAnswer(qa.id)}
                             disabled={currentAnswerText.trim().length < ANSWER_MIN_LENGTH}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-brand-hover disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap shadow-sm"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1E3A5F] hover:bg-[#163152] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap shadow-xs"
                           >
                             <Send className="w-4 h-4" />
                             답변 등록

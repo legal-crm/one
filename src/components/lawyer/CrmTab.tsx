@@ -553,23 +553,23 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           </div>
         </div>
 
-        {/* 통계 카드 */}
+        {/* 통계 카드 (모노크롬 리디자인) */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-            <div className="text-3xl font-black text-slate-900">{stats.total}</div>
-            <div className="text-sm text-slate-500 font-bold mt-1">전체 고객</div>
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{stats.total}</div>
+            <div className="text-xs text-slate-500 font-bold mt-1">전체 고객</div>
           </div>
-          <div className="bg-yellow-50/60 p-4 rounded-xl border border-yellow-100 text-center">
-            <div className="text-3xl font-black text-yellow-600">{stats.consulting}</div>
-            <div className="text-sm text-yellow-600 font-bold mt-1">상담/수임 중</div>
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{stats.consulting}</div>
+            <div className="text-xs text-slate-500 font-bold mt-1">상담/수임 중</div>
           </div>
-          <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 text-center">
-            <div className="text-3xl font-black text-emerald-600">{stats.active}</div>
-            <div className="text-sm text-emerald-600 font-bold mt-1">진행 사건</div>
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{stats.active}</div>
+            <div className="text-xs text-slate-500 font-bold mt-1">진행 사건</div>
           </div>
-          <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-100 text-center">
-            <div className="text-3xl font-black text-blue-600">+{stats.thisMonth}</div>
-            <div className="text-sm text-blue-600 font-bold mt-1">{'\uC774\uBC88\uB2EC \uC2E0\uADDC'}</div>
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">+{stats.thisMonth}</div>
+            <div className="text-xs text-slate-500 font-bold mt-1">이번달 신규</div>
           </div>
           {(() => {
             const pendingReminders = requests.reduce((count, r) => {
@@ -581,32 +581,32 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               return ext.crmStatus === 'document' && ext.documents.filter(d => d.checked).length < ext.documents.length * 0.5;
             }).length;
             return (<>
-              <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100 text-center">
-                <div className={`text-3xl font-black ${pendingReminders > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{pendingReminders}</div>
-                <div className="text-sm text-amber-600 font-bold mt-1">{'\uD83D\uDD14 \uBBF8\uC644\uB8CC \uB9AC\uB9C8\uC778\uB354'}</div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
+                <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${pendingReminders > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{pendingReminders}</div>
+                <div className="text-xs text-slate-500 font-bold mt-1">🔔 미완료 리마인더</div>
               </div>
-              <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100 text-center">
-                <div className={`text-3xl font-black ${docIncomplete > 0 ? 'text-purple-600' : 'text-slate-300'}`}>{docIncomplete}</div>
-                <div className="text-sm text-purple-600 font-bold mt-1">{'\uD83D\uDCC2 \uC11C\uB958 \uBBF8\uBE44'}</div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center">
+                <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${docIncomplete > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{docIncomplete}</div>
+                <div className="text-xs text-slate-500 font-bold mt-1">📁 서류 미비</div>
               </div>
             </>);
           })()}
         </div>
 
         {/* 담당자별 건수 */}
-        <div className="flex flex-wrap gap-2 mt-4 text-sm text-slate-600 font-medium">
+        <div className="flex flex-wrap gap-2 mt-4 text-xs sm:text-sm text-slate-600 font-medium">
           {staffMembers.filter(m => m.isActive).map(m => {
             const count = requests.filter(r => {
               const ext = getCrmExt(r.id);
               return ext.assignedLawyerId === m.id || ext.assignedConsultantId === m.id || ext.assignedStaffId === m.id;
             }).length;
             return (
-              <span key={m.id} className="bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+              <span key={m.id} className="bg-slate-100 px-3 py-1 rounded-lg border border-slate-200 text-slate-700 font-semibold">
                 {m.name}({count})
               </span>
             );
           })}
-          <span className="bg-red-50 px-3 py-1 rounded-lg border border-red-100 text-red-500 font-bold">
+          <span className="bg-rose-50 px-3 py-1 rounded-lg border border-rose-200 text-rose-600 font-bold">
             미배정({requests.filter(r => { const ext = getCrmExt(r.id); return !ext.assignedLawyerId && !ext.assignedConsultantId; }).length})
           </span>
         </div>
@@ -615,10 +615,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       {/* ── 빠른 필터 ── */}
       <div className="flex gap-2 flex-wrap">
         {([
-          { key: 'all', label: '\uC804\uCCB4 \uACE0\uAC1D', icon: '\uD83D\uDC65', count: requests.length },
-          { key: 'consulting', label: '\uC0C1\uB2F4 \uC911', icon: '\uD83D\uDCDE', count: requests.filter(r => ['requested','consulting'].includes(getCrmExt(r.id).crmStatus)).length },
-          { key: 'contracted', label: '\uC218\uC784 \uC0AC\uAC74', icon: '\uD83D\uDCC2', count: requests.filter(r => ['contracted','document','filed','commenced','repaying'].includes(getCrmExt(r.id).crmStatus)).length },
-          { key: 'discharged', label: '\uC885\uACB0', icon: '\u2705', count: requests.filter(r => ['discharged','cancelled'].includes(getCrmExt(r.id).crmStatus)).length },
+          { key: 'all', label: '전체 고객', icon: '👥', count: requests.length },
+          { key: 'consulting', label: '상담 중', icon: '📞', count: requests.filter(r => ['requested','consulting'].includes(getCrmExt(r.id).crmStatus)).length },
+          { key: 'contracted', label: '수임 사건', icon: '📁', count: requests.filter(r => ['contracted','document','filed','commenced','repaying'].includes(getCrmExt(r.id).crmStatus)).length },
+          { key: 'discharged', label: '종결', icon: '✅', count: requests.filter(r => ['discharged','cancelled'].includes(getCrmExt(r.id).crmStatus)).length },
         ] as const).map(f => (
           <button key={f.key} onClick={() => {
             if (f.key === 'all') { setStatusFilter('all'); }
@@ -632,8 +632,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               (f.key === 'consulting' && statusFilter === 'consulting') ||
               (f.key === 'contracted' && statusFilter === 'contracted') ||
               (f.key === 'discharged' && statusFilter === 'discharged')
-                ? 'bg-brand text-white border-brand shadow-sm'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-brand/30 hover:bg-brand/5'
+                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
             }`}>
             <span>{f.icon}</span>
             <span>{f.label}</span>
@@ -642,7 +642,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               (f.key === 'consulting' && statusFilter === 'consulting') ||
               (f.key === 'contracted' && statusFilter === 'contracted') ||
               (f.key === 'discharged' && statusFilter === 'discharged')
-                ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
             }`}>{f.count}</span>
           </button>
         ))}

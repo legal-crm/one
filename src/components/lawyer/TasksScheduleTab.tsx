@@ -204,15 +204,15 @@ export default function TasksScheduleTab({ tenantId, userId, userName, userRole,
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Sub-tab bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-sm">
+      {/* Sub-tab bar (모노크롬 딥 네이비 리디자인) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
         {([
-          { key: 'tasks' as const, label: '\uD560\uC77C \uBAA9\uB85D', icon: CalendarCheck },
-          { key: 'calendar' as const, label: '\uC77C\uC815 \uCE98\uB9B0\uB354', icon: Calendar },
-          { key: 'activity' as const, label: '\uD65C\uB3D9 \uAE30\uB85D', icon: Activity },
+          { key: 'tasks' as const, label: '할일 목록', icon: CalendarCheck },
+          { key: 'calendar' as const, label: '일정 캘린더', icon: Calendar },
+          { key: 'activity' as const, label: '활동 기록', icon: Activity },
         ]).map(t => (
           <button key={t.key} onClick={() => setSub(t.key)}
-            className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap cursor-pointer press-scale active:scale-[0.98] flex items-center gap-2 ${sub === t.key ? 'bg-[#0F766E] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer press-scale active:scale-[0.98] flex items-center gap-2 ${sub === t.key ? 'bg-[#1E3A5F] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
         ))}
@@ -222,8 +222,8 @@ export default function TasksScheduleTab({ tenantId, userId, userName, userRole,
       {sub === 'tasks' && (
         <div className="space-y-4">
           <div className="flex gap-2 flex-wrap">
-            {([{ key: 'all' as const, label: '\uD65C\uC131 \uC804\uCCB4' }, { key: 'pending' as const, label: '\uB300\uAE30' }, { key: 'in_progress' as const, label: '\uC9C4\uD589\uC911' }, { key: 'completed' as const, label: '\uC644\uB8CC' }]).map(f => (
-              <button key={f.key} onClick={() => setFilter(f.key)} className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer active:scale-[0.98] ${filter === f.key ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{f.label}</button>
+            {([{ key: 'all' as const, label: '전체' }, { key: 'pending' as const, label: '대기' }, { key: 'in_progress' as const, label: '진행중' }, { key: 'completed' as const, label: '완료' }]).map(f => (
+              <button key={f.key} onClick={() => setFilter(f.key)} className={`px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-[0.98] ${filter === f.key ? 'bg-[#1E3A5F] text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{f.label}</button>
             ))}
           </div>
           {filteredTasks.length === 0 ? (

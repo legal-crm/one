@@ -368,46 +368,46 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
         }
       `}</style>
       {/* ── 페이지 헤더 ── */}
-      <div className="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      <div className="bg-white border border-slate-200/80 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div className="space-y-1">
-          <h3 className="font-black text-xl text-slate-900 flex items-center gap-2.5">
-            <Shield className="w-6 h-6 text-brand" />
+          <h3 className="font-extrabold text-xl text-slate-900 flex items-center gap-2.5">
+            <Shield className="w-6 h-6 text-slate-700" />
             <span>사용자 관리 (Admin)</span>
           </h3>
           <p className="text-sm text-slate-500">사무실 직원의 접속 권한을 관리합니다.</p>
         </div>
         <button
           onClick={() => setShowInviteModal(true)}
-          className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all self-start md:self-center cursor-pointer shadow-sm active:scale-[0.98]"
+          className="bg-[#1E3A5F] hover:bg-[#163152] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all self-start md:self-center cursor-pointer shadow-xs active:scale-[0.98]"
         >
           <UserPlus className="w-4 h-4" />
           <span>직원 초대</span>
         </button>
       </div>
 
-      {/* ── 통계 카드 ── */}
+      {/* ── 통계 카드 (모노크롬 리디자인) ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {([
-          { label: '\uC804\uCCB4 \uC9C1\uC6D0', count: allManagedStaff.length, icon: '\uD83D\uDC65', color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', section: 'active' as SubSection },
-          { label: '\uD65C\uC131', count: activeStaff.length, icon: '\uD83D\uDFE2', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', section: 'active' as SubSection },
-          { label: '\uC2B9\uC778 \uB300\uAE30', count: pendingStaff.length, icon: '\u23F3', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', section: 'pending' as SubSection },
-          { label: '\uC815\uC9C0', count: allManagedStaff.filter(s => s.status === 'suspended').length, icon: '\u26A0\uFE0F', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', section: 'active' as SubSection },
+          { label: '전체 직원', count: allManagedStaff.length, icon: '👥', section: 'active' as SubSection },
+          { label: '활성', count: activeStaff.length, icon: '🟢', section: 'active' as SubSection },
+          { label: '승인 대기', count: pendingStaff.length, icon: '⏳', section: 'pending' as SubSection },
+          { label: '정지', count: allManagedStaff.filter(s => s.status === 'suspended').length, icon: '⚠️', section: 'active' as SubSection },
         ]).map(card => (
           <button key={card.label} onClick={() => setActiveSection(card.section)}
-            className={`${card.bg} ${card.border} border rounded-2xl p-4 text-left transition-all hover:shadow-md active:scale-[0.98] cursor-pointer`}>
+            className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left transition-all hover:shadow-sm hover:border-slate-300 active:scale-[0.98] cursor-pointer">
             <div className="flex items-center justify-between mb-1">
               <span className="text-lg">{card.icon}</span>
-              {card.label === '\uC2B9\uC778 \uB300\uAE30' && card.count > 0 && (
-                <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+              {card.label === '승인 대기' && card.count > 0 && (
+                <span className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse" />
               )}
             </div>
-            <div className={`text-2xl font-black ${card.color}`}>{card.count}</div>
+            <div className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums ${card.label === '승인 대기' && card.count > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{card.count}</div>
             <div className="text-xs text-slate-500 font-bold mt-0.5">{card.label}</div>
           </button>
         ))}
       </div>
 
-      {/* ── 서브 네비게이션 (모바일 반응형) ── */}
+      {/* ── 서브 네비게이션 ── */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {([
           { key: 'pending' as SubSection, label: '승인 대기', icon: Clock, count: pendingStaff.length, pulse: pendingStaff.length > 0 },
@@ -421,7 +421,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             onClick={() => setActiveSection(item.key)}
             className={`px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 transition-all shrink-0 border cursor-pointer ${
               activeSection === item.key
-                ? 'bg-brand/5 text-brand border-brand/20 shadow-sm'
+                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -430,8 +430,8 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
             <span className="sm:hidden">{item.label.substring(0, 2)}</span>
             {item.count !== undefined && item.count > 0 && (
               <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                item.pulse ? 'bg-red-500 text-white animate-pulse' :
-                activeSection === item.key ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-600'
+                item.pulse ? 'bg-rose-500 text-white animate-pulse' :
+                activeSection === item.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
               }`}>
                 {item.count}
               </span>

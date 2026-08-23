@@ -208,7 +208,7 @@ export default function LawyerInquiryTab({
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3.5 rounded-xl text-sm transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-3.5 rounded-xl text-sm transition-all shadow-xs active:scale-[0.98] cursor-pointer"
             >
               <Send className="w-4 h-4" />
               문의 등록하기
