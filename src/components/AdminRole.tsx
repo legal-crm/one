@@ -95,6 +95,7 @@ export default function AdminRole({
   const [memberStatusFilter, setMemberStatusFilter] = useState<string>('all');
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [activityActionFilter, setActivityActionFilter] = useState<string>('all');
+  const [memberSubTab, setMemberSubTab] = useState<'all' | 'clients' | 'partners'>('clients');
 
   // CRUD states for News Article Management
   const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
@@ -4884,7 +4885,8 @@ export default function AdminRole({
                 (m.phone && m.phone.includes(memberSearch));
               const matchesRole = memberRoleFilter === 'all' || m.role === memberRoleFilter;
               const matchesStatus = memberStatusFilter === 'all' || m.status === memberStatusFilter;
-              return matchesSearch && matchesRole && matchesStatus;
+              const matchesSubTab = memberSubTab === 'all' ? true : memberSubTab === 'clients' ? m.role === 'CLIENT' : (m.role === 'LAWYER' || m.role === 'STAFF');
+              return matchesSearch && matchesRole && matchesStatus && matchesSubTab;
             });
 
             const totalMemberPages = Math.ceil(filteredMembersList.length / ITEMS_PER_PAGE) || 1;
@@ -5019,7 +5021,68 @@ export default function AdminRole({
 
             return (
               <div className="space-y-6 animate-fadeIn text-left">
+                {/* Sub-tab Navigation */}
+                <div className="flex border-b border-[#1E293B]/60 gap-1 text-sm font-bold">
+                  {([
+                    { key: 'all' as const, label: '전체 회원', count: members.length, icon: '👥' },
+                    { key: 'clients' as const, label: '일반 회원', count: totalClientsCount, icon: '👤' },
+                    { key: 'partners' as const, label: '파트너 회원', count: totalPartnersCount, icon: '⚖️' },
+                  ]).map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => { setMemberSubTab(tab.key); setMemberPage(1); setSelectedMemberId(''); }}
+                      className={`flex items-center gap-1.5 px-4 py-2.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                        memberSubTab === tab.key
+                          ? 'border-indigo-500 text-indigo-400 font-extrabold'
+                          : 'border-transparent text-slate-500 hover:text-white'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-lg ${memberSubTab === tab.key ? 'bg-indigo-500/20 text-indigo-400' : 'bg-[#1E293B]/40 text-slate-600'}`}>{tab.count}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sub-tab Specific Stats */}
+                {memberSubTab === 'clients' && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {[
+                      { label: '총 일반 회원', value: totalClientsCount, icon: '👤', color: 'text-white', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+                      { label: '활성', value: members.filter(m => m.role === 'CLIENT' && m.status === 'active').length, icon: '✅', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                      { label: '정지', value: members.filter(m => m.role === 'CLIENT' && m.status === 'suspended').length, icon: '🚫', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+                      { label: '휴면', value: members.filter(m => m.role === 'CLIENT' && m.status === 'dormant').length, icon: '💤', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+                      { label: '의뢰 제출', value: requests.length, icon: '📋', color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
+                    ].map((s, i) => (
+                      <div key={i} className={`${s.bg} border rounded-xl p-3 text-center space-y-1`}>
+                        <span className="text-base">{s.icon}</span>
+                        <div className={`text-lg font-extrabold ${s.color}`}>{s.value}</div>
+                        <div className="text-xs text-slate-500 font-bold">{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {memberSubTab === 'partners' && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {[
+                      { label: '총 파트너', value: totalPartnersCount, icon: '⚖️', color: 'text-white', bg: 'bg-sky-500/10 border-sky-500/20' },
+                      { label: '변호사', value: members.filter(m => m.role === 'LAWYER').length, icon: '👨‍⚖️', color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
+                      { label: '실장/직원', value: members.filter(m => m.role === 'STAFF').length, icon: '🧑‍💼', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+                      { label: '승인 완료', value: members.filter(m => (m.role === 'LAWYER' || m.role === 'STAFF') && m.status === 'active').length, icon: '✅', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                      { label: '승인 대기', value: members.filter(m => (m.role === 'LAWYER' || m.role === 'STAFF') && m.status === 'pending').length, icon: '⏳', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+                    ].map((s, i) => (
+                      <div key={i} className={`${s.bg} border rounded-xl p-3 text-center space-y-1`}>
+                        <span className="text-base">{s.icon}</span>
+                        <div className={`text-lg font-extrabold ${s.color}`}>{s.value}</div>
+                        <div className="text-xs text-slate-500 font-bold">{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* 1. Stats and Charts Header Grid */}
+                {memberSubTab === 'all' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Stats breakdown card */}
                   <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3.5 flex flex-col justify-between">
@@ -5126,6 +5189,7 @@ export default function AdminRole({
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* 2. Split Screen View */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -5179,8 +5243,10 @@ export default function AdminRole({
                           <tr className="bg-[#161B26]/30 text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">회원명/가명</th>
                             <th className="p-3">역할</th>
+                            {memberSubTab === 'partners' && <th className="p-3">소속 지부</th>}
                             <th className="p-3">가입 경로</th>
                             <th className="p-3">상태</th>
+                            {memberSubTab === 'clients' && <th className="p-3 text-right">의뢰 건수</th>}
                             <th className="p-3 text-right">최근 접속 시각</th>
                           </tr>
                         </thead>
@@ -5213,6 +5279,11 @@ export default function AdminRole({
                                     {m.role}
                                   </span>
                                 </td>
+                                {memberSubTab === 'partners' && (
+                                  <td className="p-3 text-sm text-slate-400">
+                                    {(() => { const ll = lawyers.find(l => l.id === m.id); return ll ? `${ll.region} 지부` : '—'; })()}
+                                  </td>
+                                )}
                                 <td className="p-3">
                                   <span className="text-slate-350 capitalize font-medium text-[13px] flex items-center gap-1">
                                     {m.loginChannel === 'google' || m.loginChannel === 'kakao' || m.loginChannel === 'naver' ? (
@@ -5235,6 +5306,11 @@ export default function AdminRole({
                                     {m.status === 'active' ? '정상 활동' : m.status === 'suspended' ? '이용 정지' : m.status === 'withdrawn' ? '탈퇴 완료' : m.status === 'dormant' ? '휴면 계정' : '승인 대기'}
                                   </span>
                                 </td>
+                                {memberSubTab === 'clients' && (
+                                  <td className="p-3 text-right font-bold text-indigo-400 text-sm">
+                                    {requests.filter(r => r.clientName === m.alias || r.clientId === m.id).length}건
+                                  </td>
+                                )}
                                 <td className="p-3 text-right text-slate-500 font-mono text-sm">
                                   {new Date(m.lastActiveAt).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                 </td>
@@ -5244,7 +5320,7 @@ export default function AdminRole({
 
                           {filteredMembersList.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-12 text-center text-slate-600 font-semibold bg-[#111622]/50">
+                              <td colSpan={memberSubTab === 'all' ? 5 : 6} className="p-12 text-center text-slate-600 font-semibold bg-[#111622]/50">
                                 조건에 부합하는 가입 회원 데이터가 존재하지 않습니다.
                               </td>
                             </tr>
@@ -5345,6 +5421,83 @@ export default function AdminRole({
                           </div>
                         </div>
 
+                        {/* Role-specific Linked Info */}
+                        {(selectedMember.role === 'LAWYER' || selectedMember.role === 'STAFF') && (() => {
+                          const linkedLawyer = lawyers.find(l => l.id === selectedMember.id);
+                          return linkedLawyer ? (
+                            <div className="bg-sky-500/5 border border-sky-500/20 p-4 rounded-xl space-y-2.5">
+                              <span className="text-sm font-bold text-sky-400 flex items-center gap-1.5">⚖️ 변호사 프로필 연동 정보</span>
+                              <div className="flex items-center gap-3 pb-2">
+                                <img src={linkedLawyer.avatar} alt={linkedLawyer.name} className="w-10 h-10 rounded-full object-cover border border-sky-500/30" />
+                                <div>
+                                  <span className="text-sm text-white font-bold block">{linkedLawyer.name}</span>
+                                  <span className="text-xs text-slate-500">{linkedLawyer.region} 지부 · {linkedLawyer.fields?.join(', ')}</span>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40 text-center">
+                                  <span className="text-slate-500 block">이달 매칭</span>
+                                  <strong className="text-white text-sm">{linkedLawyer.matchedCount}건</strong>
+                                </div>
+                                <div className="bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40 text-center">
+                                  <span className="text-slate-500 block">승인 상태</span>
+                                  <strong className={`text-sm ${linkedLawyer.approved !== false ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                    {linkedLawyer.approved !== false ? '정식 파트너' : '승인 대기'}
+                                  </strong>
+                                </div>
+                              </div>
+                              {linkedLawyer.licenseNumber && (
+                                <div className="text-xs text-slate-400 bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40">
+                                  등록번호: <strong className="text-white">{linkedLawyer.licenseNumber}</strong>
+                                </div>
+                              )}
+                              <button 
+                                onClick={() => { setActiveTab('lawyers'); setSelectedLawyerId(linkedLawyer.id); }}
+                                className="w-full bg-sky-600/10 hover:bg-sky-600/20 text-sky-400 py-2 rounded-xl text-sm font-bold border border-sky-500/20 transition-all cursor-pointer"
+                              >
+                                → 변호사 심사 탭에서 상세 확인
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="bg-slate-800/30 border border-[#1E293B]/40 p-3 rounded-xl text-center text-xs text-slate-600">
+                              연동된 변호사 프로필이 없습니다.
+                            </div>
+                          );
+                        })()}
+
+                        {selectedMember.role === 'CLIENT' && (() => {
+                          const clientRequests = requests.filter(r => r.clientName === selectedMember.alias || r.clientId === selectedMember.id);
+                          return (
+                            <div className="bg-indigo-500/5 border border-indigo-500/20 p-4 rounded-xl space-y-2.5">
+                              <span className="text-sm font-bold text-indigo-400 flex items-center gap-1.5">📋 의뢰 현황</span>
+                              {clientRequests.length > 0 ? (
+                                <>
+                                  <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40 text-center">
+                                      <span className="text-slate-500 block">총 의뢰 건수</span>
+                                      <strong className="text-white text-sm">{clientRequests.length}건</strong>
+                                    </div>
+                                    <div className="bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40 text-center">
+                                      <span className="text-slate-500 block">최근 상태</span>
+                                      <strong className="text-indigo-400 text-sm">
+                                        {clientRequests[0].status === 'requested' ? '요청 대기' : clientRequests[0].status === 'responding' ? '지정 응답' : clientRequests[0].status === 'counseling' ? '상담 중' : '수임 종결'}
+                                      </strong>
+                                    </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => { setActiveTab('clients'); setClientSearch(selectedMember.alias); }}
+                                    className="w-full bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 py-2 rounded-xl text-sm font-bold border border-indigo-500/20 transition-all cursor-pointer"
+                                  >
+                                    → 의뢰인 모니터링에서 상세 확인
+                                  </button>
+                                </>
+                              ) : (
+                                <p className="text-xs text-slate-600">등록된 의뢰 건이 없습니다.</p>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         {/* Account Controls */}
                         <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/40 space-y-2.5">
                           <span className="text-sm font-black text-indigo-400 block uppercase tracking-wider">🔒 관리자 계정 활동 제어 조치</span>
@@ -5359,11 +5512,11 @@ export default function AdminRole({
                                 </div>
                               ) : selectedMember.status === 'pending' ? (
                                 <button 
-                                  onClick={() => handleApproveLawyer(selectedMember.id)}
-                                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  onClick={() => { setActiveTab('lawyers'); const linked = lawyers.find(l => l.id === selectedMember.id); if (linked) setSelectedLawyerId(linked.id); }}
+                                  className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer border border-amber-500/20"
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>대리인 자격 승인</span>
+                                  <ShieldAlert className="w-3.5 h-3.5" />
+                                  <span>변호사 심사 탭에서 자격 승인 처리</span>
                                 </button>
                               ) : selectedMember.status === 'dormant' ? (
                                 <button 
