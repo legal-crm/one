@@ -6,7 +6,7 @@ import {
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig 
 } from '../types';
 import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
@@ -34,6 +34,7 @@ import {
   requestBrowserPushPermission, sendBrowserPushNotification,
 } from '../services/notificationService';
 import type { NotificationSettings, NotificationLog } from '../types';
+import PopupContainer from './popup/PopupContainer';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   if (req.phoneConsultationRequested) {
@@ -66,6 +67,7 @@ interface LawyerRoleProps {
   platformConfig: PlatformConfig;
   qas?: ClientQA[];
   setQas?: React.Dispatch<React.SetStateAction<ClientQA[]>>;
+  popupConfig?: PopupConfig;
 }
 
 export default function LawyerRole({
@@ -83,7 +85,8 @@ export default function LawyerRole({
   onLogActivity,
   platformConfig,
   qas,
-  setQas
+  setQas,
+  popupConfig
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule'>('dashboard');
@@ -4360,6 +4363,15 @@ export default function LawyerRole({
           onSendProposal={(proposalData) => {
             handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
           }}
+        />
+      )}
+
+      {/* Popup Container for Lawyer-targeted popups */}
+      {popupConfig && (
+        <PopupContainer
+          config={popupConfig}
+          landingId="legal-crm-lawyer"
+          viewerRole="lawyer"
         />
       )}
 

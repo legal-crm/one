@@ -12,7 +12,7 @@
  * - 슬라이드 전환 애니메이션
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { PopupConfig, PopupItem } from '../../types';
+import { PopupConfig, PopupItem, PopupTargetAudience } from '../../types';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PopupContainerProps {
@@ -20,11 +20,12 @@ interface PopupContainerProps {
     landingId: string;
     isPreview?: boolean;
     forceMobile?: boolean;
+    viewerRole?: 'client' | 'lawyer'; // audience filtering
     onScrollToForm?: () => void;
     onOpenChat?: () => void;
 }
 
-const PopupContainer: React.FC<PopupContainerProps> = ({ config, landingId, isPreview = false, forceMobile = false, onScrollToForm, onOpenChat }) => {
+const PopupContainer: React.FC<PopupContainerProps> = ({ config, landingId, isPreview = false, forceMobile = false, viewerRole, onScrollToForm, onOpenChat }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -58,6 +59,11 @@ const PopupContainer: React.FC<PopupContainerProps> = ({ config, landingId, isPr
         const valid = config.items.filter(item => {
             if (item.startDate && item.startDate > todayStr) return false;
             if (item.endDate && item.endDate < todayStr) return false;
+            // Audience-based filtering
+            if (viewerRole) {
+                const audience = item.targetAudience || 'all';
+                if (audience !== 'all' && audience !== viewerRole) return false;
+            }
             return true;
         });
 
@@ -67,7 +73,7 @@ const PopupContainer: React.FC<PopupContainerProps> = ({ config, landingId, isPr
         } else {
             setIsVisible(false);
         }
-    }, [config, landingId, isPreview]);
+    }, [config, landingId, isPreview, viewerRole]);
 
     const effectiveItems = isPreview ? (config?.items || []) : activeItems;
 

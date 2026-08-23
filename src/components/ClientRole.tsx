@@ -3388,6 +3388,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         <PopupContainer
           config={popupConfig}
           landingId="legal-crm-main"
+          viewerRole="client"
           onScrollToForm={() => {
             setRequestType('open');
             setRequestStep(1);

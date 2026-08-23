@@ -1262,6 +1262,8 @@ export interface DiagnosisConfig {
 }
 
 // --- Popup Types ---
+export type PopupTargetAudience = 'all' | 'client' | 'lawyer';
+
 export interface PopupItem {
   id: string;
   title?: string;
@@ -1271,6 +1273,7 @@ export interface PopupItem {
   openInNewWindow: boolean;
   startDate: string;   // YYYY-MM-DD
   endDate: string;     // YYYY-MM-DD
+  targetAudience?: PopupTargetAudience; // 'all' (default) | 'client' | 'lawyer'
 }
 
 export interface PopupStyleConfig {

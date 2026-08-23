@@ -13,8 +13,8 @@
  * - 실시간 프리뷰 패널
  */
 import React, { useState, useRef } from 'react';
-import { PopupConfig, PopupItem } from '../../types';
-import { X, Upload, Monitor, Smartphone, ArrowUp, ArrowDown, Play, Pause, Eye, Image as ImageIcon, Link, Type } from 'lucide-react';
+import { PopupConfig, PopupItem, PopupTargetAudience } from '../../types';
+import { X, Upload, Monitor, Smartphone, ArrowUp, ArrowDown, Play, Pause, Eye, Image as ImageIcon, Link, Type, Users } from 'lucide-react';
 import PopupContainer from './PopupContainer';
 
 interface PopupEditorProps {
@@ -283,6 +283,43 @@ const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
                                                     className="w-full border rounded-lg p-1.5 text-xs focus:border-blue-400 outline-none"
                                                 />
                                             </div>
+                                        </div>
+
+                                        {/* Target Audience Selector */}
+                                        <div className="pt-1">
+                                            <label className="block text-[10px] text-gray-500 mb-1 flex items-center gap-1">
+                                                <Users className="w-3 h-3" /> 노출 대상
+                                            </label>
+                                            <div className="flex gap-1">
+                                                {([
+                                                    { id: 'all' as PopupTargetAudience, label: '👥 전체', desc: '모든 사용자' },
+                                                    { id: 'client' as PopupTargetAudience, label: '🙋 의뢰인만', desc: '의뢰인 페이지' },
+                                                    { id: 'lawyer' as PopupTargetAudience, label: '⚖️ 변호사만', desc: '변호사 페이지' }
+                                                ] as const).map(audience => (
+                                                    <button
+                                                        key={audience.id}
+                                                        onClick={() => updateItem(idx, { targetAudience: audience.id })}
+                                                        className={`flex-1 py-1.5 px-2 text-[10px] rounded-lg border transition-all ${
+                                                            (!item.targetAudience && audience.id === 'all') || item.targetAudience === audience.id
+                                                                ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-sm'
+                                                                : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'
+                                                        }`}
+                                                        title={audience.desc}
+                                                    >
+                                                        {audience.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {(item.targetAudience === 'lawyer') && (
+                                                <p className="text-[10px] text-indigo-500 mt-1 pl-0.5">
+                                                    ⚖️ 이 팝업은 변호사 회원 페이지에서만 노출됩니다.
+                                                </p>
+                                            )}
+                                            {(item.targetAudience === 'client') && (
+                                                <p className="text-[10px] text-emerald-500 mt-1 pl-0.5">
+                                                    🙋 이 팝업은 의뢰인 페이지에서만 노출됩니다.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

@@ -572,6 +572,7 @@ export default function App() {
               platformConfig={platformConfig}
               qas={qas}
               setQas={setQas}
+              popupConfig={popupConfig}
             />
           ) : (
             <AdminRole 
