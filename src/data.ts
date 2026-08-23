@@ -977,8 +977,8 @@ export const adProducts = [
       { months: 12, rate: 25, price: '월 37.5만원' },
     ],
     badge: 'PREMIUM',
-    color: 'from-amber-500 to-orange-600',
-    borderColor: 'border-amber-400/40',
+    color: 'from-[#0F2440] via-[#163152] to-[#1E3A5F]',
+    borderColor: 'border-slate-200',
   },
   {
     id: 'ad-top-exposure',
@@ -1004,8 +1004,8 @@ export const adProducts = [
       { months: 12, rate: 20, price: '월 24만원' },
     ],
     badge: 'PREMIUM',
-    color: 'from-violet-500 to-purple-600',
-    borderColor: 'border-violet-400/40',
+    color: 'from-[#0F2440] via-[#163152] to-[#1E3A5F]',
+    borderColor: 'border-slate-200',
   },
   {
     id: 'ad-regional-top',
@@ -1031,8 +1031,8 @@ export const adProducts = [
       { months: 12, rate: 20, price: '월 16만원' },
     ],
     badge: 'REGIONAL',
-    color: 'from-emerald-500 to-teal-600',
-    borderColor: 'border-emerald-400/40',
+    color: 'from-[#0F2440] via-[#163152] to-[#1E3A5F]',
+    borderColor: 'border-slate-200',
   },
   {
     id: 'ad-free-basic',
