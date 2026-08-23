@@ -662,35 +662,35 @@ export default function CaseReviewCopilot({
 
   return (
     <>
-    <div className="space-y-4 animate-fadeIn">
+    <div className="space-y-3.5 animate-fadeIn">
 
-      {/* ── 상단 경고 배너 ── */}
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+      {/* ── 상단 경고 배너 (컴팩트 바) ── */}
+      <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs text-amber-800 shadow-xs">
+        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
         <div>
-          <p className="text-sm font-bold text-amber-800">내부 업무보조 초안</p>
-          <p className="text-xs text-amber-700 mt-0.5">
-            본 결과는 내부 업무보조를 위한 초안입니다. 담당 변호사의 검토·수정·승인 전에는 고객에게 제공할 수 없습니다.
-          </p>
+          <span className="font-bold">내부 업무보조 초안: </span>
+          <span>본 결과는 내부 업무보조를 위한 초안이며, 담당 변호사의 검토·수정·승인 전에는 고객에게 제공할 수 없습니다.</span>
         </div>
       </div>
 
       {/* ── 헤더: 의뢰인 + 상태 + 액션 ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1">
-            <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-brand" />
-              사건검토 코파일럿
-            </h3>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span>의뢰인: <span className="font-bold text-slate-700">{consultRequest.client_name || consultRequest.clientName || '미확인'}</span></span>
-              {' · '}상태: <span className={`inline-flex items-center gap-1 font-bold ${statusCfg.color}`}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#1E3A5F]" />
+                <span>사건검토 코파일럿</span>
+              </h3>
+              <span className="font-bold text-slate-900 bg-slate-100 border border-slate-200 text-xs px-2.5 py-1 rounded-lg">
+                의뢰인: {consultRequest.client_name || consultRequest.clientName || '미확인'}
+              </span>
+              <span className={`inline-flex items-center gap-1 font-bold text-xs px-2.5 py-1 rounded-lg border ${statusCfg.color}`}>
                 {statusCfg.emoji} {statusCfg.label}
               </span>
               <button onClick={() => { setSelectedClientIdx(-1); setFactOutput(null); setRuleOutput(null); setReviewStatus('DRAFT'); }}
-                className="ml-2 text-[10px] bg-slate-100 text-slate-500 rounded-lg px-2 py-0.5 hover:bg-slate-200 font-bold active:scale-[0.98] transition-all">
-                ← 다른 고객
+                className="text-xs bg-white border border-slate-200 text-slate-600 rounded-lg px-2.5 py-1 hover:bg-slate-50 font-bold active:scale-[0.98] transition-all cursor-pointer">
+                ← 다른 고객 선택
               </button>
             </div>
           </div>
@@ -699,17 +699,17 @@ export default function CaseReviewCopilot({
               <button
                 onClick={handleRunCopilot}
                 disabled={isRunning}
-                className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-sm hover:bg-brand/90 active:scale-[0.98] transition-all whitespace-nowrap disabled:opacity-50 flex items-center gap-1.5"
+                className="bg-[#1E3A5F] hover:bg-[#163152] text-white rounded-xl px-5 py-2.5 font-bold text-sm shadow-xs active:scale-[0.98] transition-all whitespace-nowrap disabled:opacity-50 flex items-center gap-2 cursor-pointer"
               >
                 {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                {factOutput ? '초안 재생성' : '검토 초안 생성'}
+                <span>{factOutput ? '초안 재생성' : '⚡ 검토 초안 생성'}</span>
               </button>
             )}
             {permissions.canManageRuleSets && (
               <button
                 onClick={() => setSettingsView(settingsView === 'ruleset' ? 'none' : 'ruleset')}
-                className={`rounded-xl px-3 py-2 font-bold text-sm active:scale-[0.98] transition-all flex items-center gap-1.5 ${
-                  settingsView === 'ruleset' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                className={`rounded-xl px-3.5 py-2.5 font-bold text-sm active:scale-[0.98] transition-all flex items-center gap-1.5 border cursor-pointer ${
+                  settingsView === 'ruleset' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <Settings className="w-4 h-4" /> 기준 관리
@@ -718,8 +718,8 @@ export default function CaseReviewCopilot({
             {permissions.canManageRuleSets && (
               <button
                 onClick={() => setSettingsView(settingsView === 'style' ? 'none' : 'style')}
-                className={`rounded-xl px-3 py-2 font-bold text-sm active:scale-[0.98] transition-all flex items-center gap-1.5 ${
-                  settingsView === 'style' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                className={`rounded-xl px-3.5 py-2.5 font-bold text-sm active:scale-[0.98] transition-all flex items-center gap-1.5 border cursor-pointer ${
+                  settingsView === 'style' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <MessageSquare className="w-4 h-4" /> 상담 스타일
@@ -728,7 +728,7 @@ export default function CaseReviewCopilot({
             {permissions.canRequestLawyerReview && factOutput && reviewStatus === 'STAFF_REVIEWED' && (
               <button
                 onClick={handleRequestLawyerReview}
-                className="bg-indigo-600 text-white rounded-xl px-4 py-2 font-bold text-sm hover:bg-indigo-700 active:scale-[0.98] transition-all whitespace-nowrap"
+                className="bg-indigo-600 text-white rounded-xl px-4 py-2.5 font-bold text-sm hover:bg-indigo-700 active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer shadow-xs"
               >
                 변호사 검토 요청
               </button>
@@ -760,10 +760,10 @@ export default function CaseReviewCopilot({
 
       {/* ── 진행 단계 표시기 + 탭 바 ── */}
       {settingsView === 'none' && (
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
         {/* Step Progress Bar */}
-        <div className="px-4 pt-3 pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-1 text-[10px] font-bold">
+        <div className="px-4 pt-3 pb-2.5 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-1.5 text-xs font-bold">
             {[
               { step: 1, label: '자동 분석', done: !!factOutput, tabs: ['client-info', 'court-notes'] },
               { step: 2, label: '직원 확인', done: reviewStatus !== 'DRAFT' && reviewStatus !== 'LAWYER_REVIEW_REQUIRED', tabs: ['staff-memo'] },
@@ -772,21 +772,21 @@ export default function CaseReviewCopilot({
               const isCurrent = s.tabs.includes(activeTab);
               return (
                 <React.Fragment key={s.step}>
-                  {i > 0 && <div className={`flex-1 h-px ${s.done || isCurrent ? 'bg-brand' : 'bg-slate-200'}`} />}
+                  {i > 0 && <div className={`flex-1 h-0.5 ${s.done || isCurrent ? 'bg-[#1E3A5F]' : 'bg-slate-200'}`} />}
                   <button
                     onClick={() => setActiveTab(s.tabs[0] as CopilotTab)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
-                      isCurrent ? 'bg-brand/10 text-brand' :
-                      s.done ? 'text-green-600' : 'text-slate-400'
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      isCurrent ? 'bg-[#1E3A5F]/10 text-[#1E3A5F]' :
+                      s.done ? 'text-emerald-700' : 'text-slate-400'
                     }`}
                   >
-                    <span className={`w-4 h-4 rounded-full text-[9px] flex items-center justify-center shrink-0 ${
-                      s.done ? 'bg-green-500 text-white' :
-                      isCurrent ? 'bg-brand text-white' : 'bg-slate-200 text-slate-500'
+                    <span className={`w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
+                      s.done ? 'bg-emerald-500 text-white' :
+                      isCurrent ? 'bg-[#1E3A5F] text-white' : 'bg-slate-200 text-slate-500'
                     }`}>
                       {s.done ? '✓' : s.step}
                     </span>
-                    {s.label}
+                    <span>{s.label}</span>
                   </button>
                 </React.Fragment>
               );
@@ -796,27 +796,27 @@ export default function CaseReviewCopilot({
 
         {/* Tab Bar with Group Labels */}
         <div className="border-b border-slate-100 px-4 overflow-x-auto">
-          <div className="flex gap-0.5 min-w-max">
-            {accessibleTabs.map((t, idx) => {
+          <div className="flex gap-1 min-w-max">
+            {accessibleTabs.map((t) => {
               const groupBreak = t.key === 'staff-memo' || t.key === 'lawyer-opinion';
               return (
                 <React.Fragment key={t.key}>
                   {groupBreak && <div className="w-px bg-slate-200 mx-1 my-2" />}
                   <button
                     onClick={() => setActiveTab(t.key)}
-                    className={`pb-2.5 pt-3 px-2.5 border-b-2 flex items-center gap-1 transition-all text-[11px] font-bold shrink-0 ${
+                    className={`pb-2.5 pt-3 px-3 border-b-2 flex items-center gap-1.5 transition-all text-xs sm:text-sm font-bold shrink-0 cursor-pointer ${
                       activeTab === t.key
-                        ? 'border-brand text-brand'
-                        : 'border-transparent text-slate-400 hover:text-slate-700'
+                        ? 'border-[#1E3A5F] text-[#1E3A5F]'
+                        : 'border-transparent text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     {t.icon}
                     <span>{t.label}</span>
                     {t.key === 'review-flags' && ruleOutput && (
-                      <span className="bg-red-100 text-red-700 rounded-full px-1.5 text-[10px] font-extrabold">{ruleOutput.flags.length}</span>
+                      <span className="bg-rose-100 text-rose-700 rounded-full px-1.5 text-xs font-black">{ruleOutput.flags.length}</span>
                     )}
                     {t.key === 'missing-info' && factOutput && factOutput.missingFields.length > 0 && (
-                      <span className="bg-amber-100 text-amber-700 rounded-full px-1.5 text-[10px] font-extrabold">{factOutput.missingFields.length}</span>
+                      <span className="bg-amber-100 text-amber-700 rounded-full px-1.5 text-xs font-black">{factOutput.missingFields.length}</span>
                     )}
                   </button>
                 </React.Fragment>
@@ -826,408 +826,398 @@ export default function CaseReviewCopilot({
         </div>
 
         {/* ── 탭 콘텐츠 ── */}
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
           {!factOutput && activeTab !== 'client-info' ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Eye className="w-10 h-10 text-slate-300 mb-3" />
-              <p className="text-sm text-slate-500 font-bold">검토 초안을 먼저 생성하세요</p>
+              <p className="text-sm text-slate-600 font-bold">검토 초안을 먼저 생성하세요</p>
               <p className="text-xs text-slate-400 mt-1">상단의 "검토 초안 생성" 버튼을 클릭하면 분석이 시작됩니다.</p>
             </div>
           ) : (
             <>
-              {/* TAB 1: 고객 입력정보 */}
+              {/* TAB 1: 고객 입력정보 & AI 초안 분석 2열 분할 뷰 */}
               {activeTab === 'client-info' && (
-                <div className="space-y-3 max-w-3xl">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><FileText className="w-4 h-4 text-brand" /> 고객이 입력한 원본 정보</h4>
-
-                  {/* 1. 기본 정보 */}
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
-                      <h5 className="text-[11px] font-bold text-slate-600">👤 기본 정보</h5>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
-                      {[
-                        { label: '의뢰인명', value: fp.clientName || consultRequest.clientName || consultRequest.client_name || '-' },
-                        { label: '연락처', value: fp.clientPhone || consultRequest.phone || '-' },
-                        { label: '나이', value: fp.age ? `${fp.age}세` : '-' },
-                        { label: '성별', value: fp.gender === 'male' ? '남성' : fp.gender === 'female' ? '여성' : '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100 border-t border-slate-100">
-                      {[
-                        { label: '혼인 상태', value: fp.maritalStatus === 'MARRIED' || fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus === 'DIVORCED' || fp.maritalStatus === 'divorced' ? '이혼' : fp.maritalStatus === 'SINGLE' || fp.maritalStatus === 'single' ? '미혼' : '-' },
-                        { label: '미성년 자녀', value: fp.minorChildren != null ? `${fp.minorChildren}명` : `${fp.dependents || 0}명` },
-                        { label: '거주지', value: fp.residence || fp.residenceRegion || fp.address || '-' },
-                        { label: '거주 형태', value: fp.housingType === 'rent' ? '월세' : fp.housingType === 'jeonse' ? '전세' : fp.housingType === 'owned' ? '자가' : fp.housingType === 'free' ? '무상거주' : fp.housingType || '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 2. 소득 및 직업 */}
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="bg-blue-50/60 px-3 py-2 border-b border-slate-200">
-                      <h5 className="text-[11px] font-bold text-slate-600">💼 소득 및 직업</h5>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
-                      {[
-                        { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
-                        { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
-                        { label: '근무지', value: fp.workLocation || '-' },
-                        { label: '배우자 소득', value: fp.spouseIncome ? fmtMoney(fp.spouseIncome) : '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 3. 채무 요약 */}
-                  <div className="bg-white border border-red-100 rounded-xl overflow-hidden">
-                    <div className="bg-red-50/60 px-3 py-2 border-b border-red-100 flex items-center justify-between">
-                      <h5 className="text-[11px] font-bold text-slate-600">🔴 채무 요약</h5>
-                      <span className="text-[10px] text-slate-400">상세 → '채무현황' 탭</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
-                      {[
-                        { label: '총 채무', value: fmtMoney(fp.debtTotal || 0), highlight: true },
-                        { label: '채권자 수', value: fp.creditorCount ? `${fp.creditorCount}개` : `${(fp.debts || []).length}개` },
-                        { label: '채무 원인', value: fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-' },
-                        { label: '독촉/법적조치', value: fp.harassmentLevel === 'CALL' ? '독촉 전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-' },
-                      ].map((item: any, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className={`text-xs font-bold mt-0.5 ${item.highlight ? 'text-red-600 font-extrabold' : 'text-slate-800'}`}>{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 4. 자산 현황 */}
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="bg-emerald-50/60 px-3 py-2 border-b border-slate-200">
-                      <h5 className="text-[11px] font-bold text-slate-600">🏦 자산 현황</h5>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
-                      {[
-                        { label: '총 자산', value: fmtMoney(fp.assetsTotal || 0) },
-                        { label: '본인 재산', value: fp.myAssets ? `${fp.myAssets}만원` : '-' },
-                        { label: '배우자 자산', value: fp.spouseAsset ? `${fp.spouseAsset}만원` : '-' },
-                        { label: '임대보증금', value: fp.rentalDeposit ? `${fp.rentalDeposit}만원` : '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100 border-t border-slate-100">
-                      {[
-                        { label: '퇴직금', value: fp.retirementPay ? `${fp.retirementPay}만원` : '-' },
-                        { label: '퇴직연금', value: fp.retirementPensionType === 'pension' ? '가입' : fp.retirementPensionType === 'none' ? '미가입' : fp.retirementPensionType === 'unknown' ? '모름' : '-' },
-                        { label: '주택 명의', value: fp.housingContractHolder === 'self' ? '본인' : fp.housingContractHolder === 'spouse' ? '배우자' : fp.housingContractHolder || '-' },
-                        { label: '보증금 대출', value: fp.depositLoan ? `${fp.depositLoan}만원` : '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {fp.assets && fp.assets.length > 0 && (
-                      <table className="w-full text-xs border-t border-slate-100">
-                        <thead><tr className="bg-slate-50 text-slate-500">
-                          <th className="px-3 py-1.5 text-left font-bold text-[10px]">자산명</th>
-                          <th className="px-3 py-1.5 text-right font-bold text-[10px]">시장가</th>
-                          <th className="px-3 py-1.5 text-center font-bold text-[10px]">유형</th>
-                        </tr></thead>
-                        <tbody>
-                          {fp.assets.map((a: any, i: number) => (
-                            <tr key={i} className="border-t border-slate-50">
-                              <td className="px-3 py-1.5 text-slate-700">{a.label || a.description || `자산 ${i+1}`}</td>
-                              <td className="px-3 py-1.5 text-right font-bold text-slate-800">{fmtMoney(a.marketValue || a.value || 0)}</td>
-                              <td className="px-3 py-1.5 text-center"><span className="bg-slate-100 rounded-lg px-1.5 py-0.5 text-[10px] font-bold">{a.type || '-'}</span></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-
-                  {/* 5. 생활비 */}
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="bg-amber-50/60 px-3 py-2 border-b border-slate-200">
-                      <h5 className="text-[11px] font-bold text-slate-600">🏠 월 생활비</h5>
-                    </div>
-                    <div className="grid grid-cols-3 divide-x divide-slate-100">
-                      {[
-                        { label: '월세', value: fp.rentCost ? `${fp.rentCost}만` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
-                        { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만` : '-' },
-                        { label: '교육비', value: fp.educationCost ? `${fp.educationCost}만` : '-' },
-                        { label: '고정지출', value: fp.monthlyFixedExpenses ? `${fp.monthlyFixedExpenses}만` : '-' },
-                        { label: '합계', value: fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 6. 특이사항 */}
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="bg-violet-50/60 px-3 py-2 border-b border-slate-200">
-                      <h5 className="text-[11px] font-bold text-slate-600">⚠️ 특이사항</h5>
-                    </div>
-                    <div className="grid grid-cols-3 divide-x divide-slate-100">
-                      {[
-                        { label: '24개월 특례', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
-                        { label: '상담 유형', value: consultRequest.consultType || consultRequest.request_type || consultRequest.requestType || '-' },
-                        { label: '요청일', value: consultRequest.createdAt?.split('T')[0] || consultRequest.created_at?.split('T')[0] || '-' },
-                      ].map((item, i) => (
-                        <div key={i} className="px-3 py-2">
-                          <p className="text-[10px] text-slate-400">{item.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {fp.riskFlags && fp.riskFlags.length > 0 && (
-                      <div className="px-3 py-2 border-t border-slate-100">
-                        <p className="text-[10px] text-slate-400 mb-1">위험 플래그</p>
-                        <div className="flex gap-1 flex-wrap">
-                          {fp.riskFlags.map((flag: string, i: number) => (
-                            <span key={i} className="bg-red-50 text-red-600 rounded-lg px-2 py-0.5 text-[10px] font-bold border border-red-100">{flag}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {(fp.clientNote || (fp.clientNotes && fp.clientNotes.length > 0)) && (
-                      <div className="px-3 py-2 border-t border-slate-100 bg-amber-50/50">
-                        <p className="text-[10px] text-amber-600 font-bold mb-0.5">의뢰인 전달 사항</p>
-                        <p className="text-xs text-slate-700">{fp.clientNote || (fp.clientNotes || []).join('\n')}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 7. 코파일럿 채무 분석 (초안 생성 후 표시) */}
-                  {factOutput && (
-                  <div className="mt-2 pt-4 border-t border-slate-200">
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">📊 코파일럿 채무 분석 <span className="text-[10px] text-green-500 font-normal ml-1">✓ 초안 생성됨</span></h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {[
-                        { label: '총 채무', value: fmtMoney(factOutput.factSummary.totalDebt), color: 'text-red-600' },
-                        { label: '무담보 채무', value: fmtMoney(factOutput.factSummary.unsecuredDebt) },
-                        { label: '담보 채무', value: fmtMoney(factOutput.factSummary.securedDebt) },
-                        { label: '조세 채무', value: fmtMoney(factOutput.factSummary.taxDebt) },
-                        { label: '월 소득', value: fmtMoney(factOutput.factSummary.monthlyIncome), color: 'text-green-600' },
-                        { label: '월 지출 (생계비)', value: fmtMoney(factOutput.factSummary.monthlyExpense) },
-                        { label: '가용소득', value: fmtMoney(factOutput.factSummary.disposableIncome), color: factOutput.factSummary.disposableIncome > 0 ? 'text-blue-600' : 'text-red-600' },
-                        { label: '부양가족', value: `${factOutput.factSummary.dependents}명` },
-                      ].map((item, i) => (
-                        <div key={i} className="bg-indigo-50/50 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-indigo-400 font-bold">{item.label}</p>
-                          <p className={`text-xs font-extrabold ${item.color || 'text-slate-800'}`}>{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {factOutput.factSummary.assets && (
-                      <div className="bg-indigo-50/30 rounded-xl p-3 mt-2">
-                        <p className="text-[10px] font-bold text-indigo-400 mb-1">자산 요약</p>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div><span className="text-slate-400">총 시가:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.totalMarketValue)}</span></div>
-                          <div><span className="text-slate-400">담보대출:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.totalLoanBalance)}</span></div>
-                          <div><span className="text-slate-400">순자산:</span> <span className="font-bold">{fmtMoney(factOutput.factSummary.assets.netAssetValue)}</span></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  )}
-                  {/* 7-1. 변제금 진단 결과 (초안 생성 후 표시) */}
-                  {rehabCalcResult && (
-                  <div className="mt-2 pt-4 border-t border-slate-200">
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">📋 변제금 진단 결과 <span className="text-[10px] text-green-500 font-normal ml-1">✓ 자동 산출</span></h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                      {[
-                        { label: '예상 월 변제금', value: formatCurrency(rehabCalcResult.monthlyPayment), color: 'text-brand' },
-                        { label: '변제 기간', value: `${rehabCalcResult.repaymentMonths}개월`, color: 'text-slate-800' },
-                        { label: '예상 탕감률', value: `${rehabCalcResult.debtReductionRate}%`, color: rehabCalcResult.debtReductionRate >= 50 ? 'text-green-600' : 'text-amber-600' },
-                        { label: '진행 가능성', value: rehabCalcResult.status === 'POSSIBLE' ? '가능' : rehabCalcResult.status === 'DIFFICULT' ? '어려움' : '불가', color: rehabCalcResult.status === 'POSSIBLE' ? 'text-green-600' : rehabCalcResult.status === 'DIFFICULT' ? 'text-amber-600' : 'text-red-600' },
-                      ].map((item, i) => (
-                        <div key={i} className="bg-gradient-to-br from-brand/5 to-brand/10 rounded-xl p-2.5 space-y-0.5">
-                          <p className="text-[10px] text-brand/60 font-bold">{item.label}</p>
-                          <p className={`text-sm font-extrabold ${item.color}`}>{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {rehabCalcResult.statusReason && (
-                      <p className="text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2 mb-2">{rehabCalcResult.statusReason}</p>
-                    )}
-                    <button
-                      onClick={() => setShowRehabReport(true)}
-                      className="w-full bg-brand/10 hover:bg-brand/20 text-brand font-bold text-xs py-2.5 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
-                    >
-                      <Scale className="w-3.5 h-3.5" />
-                      고객 제안서 초안 작성
-                    </button>
-                  </div>
-                  )}
-                  {/* 7-2. 변호사 컨펌 요청 카드 */}
-                  {confirmRequest && (
-                  <div className="mt-2 pt-4 border-t border-slate-200">
-                    <div className={`rounded-2xl p-4 border-2 ${
-                      reviewStatus === 'LAWYER_REVIEW_REQUIRED' ? 'bg-amber-50 border-amber-300' :
-                      reviewStatus === 'LAWYER_APPROVED' ? 'bg-green-50 border-green-300' :
-                      reviewStatus === 'LAWYER_REJECTED' ? 'bg-red-50 border-red-300' : 'bg-slate-50 border-slate-200'
-                    }`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && <Clock className="w-4 h-4 text-amber-500" />}
-                        {reviewStatus === 'LAWYER_APPROVED' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                        {reviewStatus === 'LAWYER_REJECTED' && <XCircle className="w-4 h-4 text-red-500" />}
-                        <h5 className="text-xs font-bold text-slate-700">
-                          {reviewStatus === 'LAWYER_REVIEW_REQUIRED' ? '🔔 변호사 컨펌 대기 중' :
-                           reviewStatus === 'LAWYER_APPROVED' ? '✅ 변호사 컨펌 완료' :
-                           reviewStatus === 'LAWYER_REJECTED' ? '❌ 변호사 반려' : '컨펌 요청'}
-                        </h5>
-                      </div>
-                      <div className="text-[11px] text-slate-600 space-y-1 mb-3">
-                        <p><span className="font-bold">요청자:</span> {confirmRequest.requester} ({confirmRequest.role})</p>
-                        <p><span className="font-bold">메모:</span> {confirmRequest.memo}</p>
-                        <p><span className="font-bold">요청일:</span> {confirmRequest.requestedAt}</p>
-                      </div>
-                      {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && permissions.canApproveCaseReview && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setReviewStatus('LAWYER_REJECTED');
-                              addAuditLog('LAWYER_REJECTED', '변호사 반려');
-                            }}
-                            className="flex-1 py-2 bg-white hover:bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200 transition-colors active:scale-[0.98]"
-                          >
-                            ❌ 반려
-                          </button>
-                          <button
-                            onClick={() => {
-                              setReviewStatus('LAWYER_APPROVED');
-                              addAuditLog('LAWYER_CONFIRMED', '변호사 컨펌 승인');
-                            }}
-                            className="flex-[2] py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" /> 승인
-                          </button>
-                        </div>
-                      )}
-                      {reviewStatus === 'LAWYER_APPROVED' && permissions.canSendToClient && (
-                        <button
-                          onClick={() => addAuditLog('PROPOSAL_INITIATED', '제안서 발송 시작')}
-                          className="w-full py-2.5 bg-brand hover:bg-brand/90 text-white text-xs font-bold rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
-                        >
-                          <Send className="w-3.5 h-3.5" /> 고객에게 제안서 발송
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  )}
-                  {/* 8. 누락정보 (초안 생성 후 표시) */}
-                  {factOutput && (factOutput.missingFields.length > 0 || factOutput.conflicts.length > 0) && (
-                  <div className="mt-2 pt-4 border-t border-slate-200">
-                    <h5 className="text-xs font-bold text-slate-500 mb-2">⚠️ 누락·불일치 항목</h5>
-                    <div className="space-y-2">
-                      {factOutput.missingFields.map((f, i) => (
-                        <div key={i} className={`rounded-xl p-2.5 flex items-start gap-2 border ${
-                          f.importance === 'required' ? 'bg-red-50 border-red-200' :
-                          f.importance === 'recommended' ? 'bg-amber-50 border-amber-200' :
-                          'bg-slate-50 border-slate-200'
-                        }`}>
-                          <span className={`rounded-lg px-1.5 py-0.5 text-[9px] font-extrabold shrink-0 mt-0.5 ${
-                            f.importance === 'required' ? 'bg-red-100 text-red-700' :
-                            f.importance === 'recommended' ? 'bg-amber-100 text-amber-700' :
-                            'bg-slate-200 text-slate-600'
-                          }`}>
-                            {f.importance === 'required' ? '필수' : f.importance === 'recommended' ? '권장' : '선택'}
-                          </span>
-                          <div>
-                            <p className="text-xs font-bold text-slate-800">{f.fieldLabel}</p>
-                            <p className="text-[10px] text-slate-500">{f.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {factOutput.conflicts.map((c, i) => (
-                        <div key={`c-${i}`} className="bg-orange-50 border border-orange-200 rounded-xl p-2.5">
-                          <p className="text-xs font-bold text-orange-800">{c.description}</p>
-                          <p className="text-[10px] text-orange-600">{c.fieldA} ↔ {c.fieldB}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  )}
-
-                  {/* 9. 위험 플래그 (초안 생성 후 표시) */}
-                  {ruleOutput && ruleOutput.flags.length > 0 && (
-                  <div className="mt-2 pt-4 border-t border-slate-200">
-                    <h5 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
-                      🚨 위험 플래그
-                      {ruleOutput.reviewGrade !== 'NORMAL_REVIEW' && (
-                        <span className="bg-red-100 text-red-700 rounded-lg px-1.5 py-0.5 text-[9px] font-extrabold">
-                          {ruleOutput.reviewGrade === 'ENHANCED_REVIEW' ? '⚡ 강화 검토' : '🔴 이중 검토'}
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                  
+                  {/* ══════════════════════════════════════════════════════════ */}
+                  {/* 좌측 패널 (xl:col-span-5): AI 사건 검토 초안 (즉시 노출) */}
+                  {/* ══════════════════════════════════════════════════════════ */}
+                  <div className="xl:col-span-5 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                        <Scale className="w-5 h-5 text-[#1E3A5F]" />
+                        <span>AI 사건 검토 초안</span>
+                      </h4>
+                      {factOutput && (
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> 초안 산출됨
                         </span>
                       )}
-                    </h5>
-                    <div className="space-y-2">
-                      {ruleOutput.flags.map((flag, i) => {
-                        const ftCfg = FLAG_TYPE_CONFIG[flag.flagType] || FLAG_TYPE_CONFIG.INFO;
-                        return (
-                          <div key={i} className={`rounded-xl p-3 border-l-4 bg-white border border-slate-200 ${
-                            flag.flagType === 'HIGH_RISK' ? 'border-l-red-500' :
-                            flag.flagType === 'CAUTION' ? 'border-l-amber-500' :
-                            flag.flagType === 'ADDITIONAL_CHECK' ? 'border-l-blue-500' :
-                            'border-l-slate-300'
-                          }`}>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className={`rounded-lg px-1.5 py-0.5 text-[9px] font-extrabold ${ftCfg.bgColor} ${ftCfg.color}`}>
-                                {ftCfg.emoji} {ftCfg.label}
-                              </span>
+                    </div>
+
+                    {factOutput || rehabCalcResult ? (
+                      <>
+                        {/* 1. 변제금 진단 결과 핵심 카드 */}
+                        {rehabCalcResult && (
+                          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                              <div>
+                                <span className="text-xs text-slate-500 font-bold block">예상 월 변제금</span>
+                                <span className="text-2xl sm:text-3xl font-black text-[#1E3A5F] tracking-tight tabular-nums block mt-0.5">
+                                  {formatCurrency(rehabCalcResult.monthlyPayment)}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs text-slate-500 font-bold block">예상 탕감률</span>
+                                <span className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight tabular-nums block mt-0.5">
+                                  {rehabCalcResult.debtReductionRate}%
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-xs font-bold text-slate-800">{flag.message}</p>
-                            {flag.usedInputValues && Object.keys(flag.usedInputValues).length > 0 && (
-                              <div className="mt-1.5 bg-slate-50 rounded-lg p-2 space-y-0.5">
-                                {Object.entries(flag.usedInputValues).map(([k, v]) => (
-                                  <p key={k} className="text-[10px] text-slate-600">
-                                    <span className="text-slate-400">{k}:</span> <span className="font-bold">{typeof v === 'number' ? fmtMoney(v) : String(v)}</span>
-                                  </p>
-                                ))}
+
+                            <div className="grid grid-cols-2 gap-2 text-center">
+                              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                <span className="text-xs text-slate-500 font-bold block">변제 기간</span>
+                                <span className="text-sm font-extrabold text-slate-900 block mt-0.5">{rehabCalcResult.repaymentMonths}개월</span>
+                              </div>
+                              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                <span className="text-xs text-slate-500 font-bold block">진행 가능성</span>
+                                <span className={`text-sm font-extrabold block mt-0.5 ${rehabCalcResult.status === 'POSSIBLE' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                  {rehabCalcResult.status === 'POSSIBLE' ? '신청 적격' : '정밀 검토'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {rehabCalcResult.statusReason && (
+                              <p className="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100 leading-relaxed text-left">
+                                {rehabCalcResult.statusReason}
+                              </p>
+                            )}
+
+                            <button
+                              onClick={() => setShowRehabReport(true)}
+                              className="w-full bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold text-sm py-3 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                            >
+                              <FileText className="w-4 h-4" />
+                              고객 제안서 초안 작성하기 →
+                            </button>
+                          </div>
+                        )}
+
+                        {/* 2. 코파일럿 재무 및 가용소득 정밀 분석 */}
+                        {factOutput && (
+                          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                            <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">📊 채무 및 가용소득 분석</h5>
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                <span className="text-xs text-slate-500 font-bold block">총 채무</span>
+                                <span className="text-base font-black text-slate-900 block mt-0.5 tracking-tight tabular-nums">{fmtMoney(factOutput.factSummary.totalDebt)}</span>
+                              </div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                <span className="text-xs text-slate-500 font-bold block">월 가용소득</span>
+                                <span className={`text-base font-black block mt-0.5 tracking-tight tabular-nums ${factOutput.factSummary.disposableIncome > 0 ? 'text-[#1E3A5F]' : 'text-rose-600'}`}>
+                                  {fmtMoney(factOutput.factSummary.disposableIncome)}
+                                </span>
+                              </div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                <span className="text-xs text-slate-500 font-bold block">월 소득</span>
+                                <span className="text-sm font-extrabold text-slate-900 block mt-0.5 tracking-tight tabular-nums">{fmtMoney(factOutput.factSummary.monthlyIncome)}</span>
+                              </div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                <span className="text-xs text-slate-500 font-bold block">월 생계비</span>
+                                <span className="text-sm font-extrabold text-slate-700 block mt-0.5 tracking-tight tabular-nums">{fmtMoney(factOutput.factSummary.monthlyExpense)}</span>
+                              </div>
+                            </div>
+                            {factOutput.factSummary.assets && (
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-xs">
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div><span className="text-slate-400 font-bold">총 시가:</span> <span className="font-extrabold text-slate-900">{fmtMoney(factOutput.factSummary.assets.totalMarketValue)}</span></div>
+                                  <div><span className="text-slate-400 font-bold">담보대출:</span> <span className="font-extrabold text-slate-900">{fmtMoney(factOutput.factSummary.assets.totalLoanBalance)}</span></div>
+                                  <div><span className="text-slate-400 font-bold">순자산:</span> <span className="font-extrabold text-slate-900">{fmtMoney(factOutput.factSummary.assets.netAssetValue)}</span></div>
+                                </div>
                               </div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-                    {ruleOutput.additionalQuestions.length > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-2">
-                        <p className="text-[10px] font-bold text-blue-700 mb-1">📋 추가 질문</p>
-                        <ul className="space-y-0.5">{ruleOutput.additionalQuestions.map((q, i) => <li key={i} className="text-[10px] text-blue-600">• {q}</li>)}</ul>
-                      </div>
-                    )}
-                    {ruleOutput.requiredDocuments.length > 0 && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mt-2">
-                        <p className="text-[10px] font-bold text-purple-700 mb-1">📄 필요 서류</p>
-                        <ul className="space-y-0.5">{ruleOutput.requiredDocuments.map((d, i) => <li key={i} className="text-[10px] text-purple-600">• {d}</li>)}</ul>
+                        )}
+
+                        {/* 3. 위험 요인 및 법적 쟁점 (Risk Flags) */}
+                        {ruleOutput && ruleOutput.flags.length > 0 && (
+                          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">⚠️ 위험 요인 및 쟁점 ({ruleOutput.flags.length}건)</h5>
+                            </div>
+                            <div className="space-y-2">
+                              {ruleOutput.flags.map((flag, i) => (
+                                <div key={i} className="rounded-xl p-3 bg-slate-50 border border-slate-200 text-left">
+                                  <p className="text-xs font-extrabold text-slate-900 leading-snug">{flag.message}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 4. 확인 필요 항목 (Missing Fields) */}
+                        {factOutput && factOutput.missingFields.length > 0 && (
+                          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-2.5">
+                            <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">📋 확인 필요 항목 ({factOutput.missingFields.length}건)</h5>
+                            <div className="space-y-1.5">
+                              {factOutput.missingFields.map((f, i) => (
+                                <div key={i} className="rounded-xl p-2.5 bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
+                                  <span className="font-bold text-slate-800">{f.fieldLabel}</span>
+                                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">{f.importance === 'required' ? '필수' : '권장'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 5. 변호사 컨펌 요청 카드 */}
+                        {confirmRequest && (
+                          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                            <div className="flex items-center gap-2">
+                              {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && <Clock className="w-4 h-4 text-amber-500" />}
+                              {reviewStatus === 'LAWYER_APPROVED' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                              {reviewStatus === 'LAWYER_REJECTED' && <XCircle className="w-4 h-4 text-rose-500" />}
+                              <h5 className="text-xs font-bold text-slate-700">
+                                {reviewStatus === 'LAWYER_REVIEW_REQUIRED' ? '🔔 변호사 컨펌 대기 중' :
+                                 reviewStatus === 'LAWYER_APPROVED' ? '✅ 변호사 컨펌 완료' :
+                                 reviewStatus === 'LAWYER_REJECTED' ? '❌ 변호사 반려' : '컨펌 요청'}
+                              </h5>
+                            </div>
+                            <div className="text-xs text-slate-600 space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                              <p><span className="font-bold">요청자:</span> {confirmRequest.requester} ({confirmRequest.role})</p>
+                              <p><span className="font-bold">메모:</span> {confirmRequest.memo}</p>
+                              <p><span className="font-bold">요청일:</span> {confirmRequest.requestedAt}</p>
+                            </div>
+                            {reviewStatus === 'LAWYER_REVIEW_REQUIRED' && permissions.canApproveCaseReview && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setReviewStatus('LAWYER_REJECTED');
+                                    addAuditLog('LAWYER_REJECTED', '변호사 반려');
+                                  }}
+                                  className="flex-1 py-2 bg-white hover:bg-rose-50 text-rose-600 text-xs font-bold rounded-xl border border-rose-200 transition-colors active:scale-[0.98]"
+                                >
+                                  ❌ 반려
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setReviewStatus('LAWYER_APPROVED');
+                                    addAuditLog('LAWYER_CONFIRMED', '변호사 컨펌 승인');
+                                  }}
+                                  className="flex-[2] py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> 승인
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      /* 초안 생성 전 안내 및 즉시 생성 플레이스홀더 */
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xs">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 text-[#1E3A5F] flex items-center justify-center mx-auto">
+                          <Microscope className="w-6 h-6" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <h4 className="font-extrabold text-base text-slate-900">AI 사건 검토 초안 생성 대기</h4>
+                          <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+                            우측 고객 원본 정보를 바탕으로 <strong>예상 월 변제금, 탕감률, 법적 쟁점</strong>을 AI가 즉시 심층 분석합니다.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleRunCopilot}
+                          disabled={isRunning}
+                          className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold text-sm px-5 py-3 rounded-xl transition-all shadow-xs active:scale-[0.98] cursor-pointer inline-flex items-center gap-2"
+                        >
+                          {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                          <span>⚡ 지금 검토 초안 생성하기</span>
+                        </button>
                       </div>
                     )}
                   </div>
-                  )}
 
+                  {/* ══════════════════════════════════════════════════════════ */}
+                  {/* 우측 패널 (xl:col-span-7): 고객이 입력한 원본 정보 */}
+                  {/* ══════════════════════════════════════════════════════════ */}
+                  <div className="xl:col-span-7 space-y-3.5">
+                    <h4 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-slate-700" />
+                      <span>고객이 입력한 원본 정보</span>
+                    </h4>
+
+                    {/* 1. 기본 정보 */}
+                    <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+                      <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200/80">
+                        <h5 className="text-xs sm:text-sm font-extrabold text-slate-700">👤 기본 정보</h5>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                        {[
+                          { label: '의뢰인명', value: fp.clientName || consultRequest.clientName || consultRequest.client_name || '-' },
+                          { label: '연락처', value: fp.clientPhone || consultRequest.phone || '-' },
+                          { label: '나이', value: fp.age ? `${fp.age}세` : '-' },
+                          { label: '성별', value: fp.gender === 'male' ? '남성' : fp.gender === 'female' ? '여성' : '-' },
+                        ].map((item, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className="text-sm font-extrabold text-slate-900 mt-0.5">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100 border-t border-slate-100">
+                        {[
+                          { label: '혼인 상태', value: fp.maritalStatus === 'MARRIED' || fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus === 'DIVORCED' || fp.maritalStatus === 'divorced' ? '이혼' : fp.maritalStatus === 'SINGLE' || fp.maritalStatus === 'single' ? '미혼' : '-' },
+                          { label: '미성년 자녀', value: fp.minorChildren != null ? `${fp.minorChildren}명` : `${fp.dependents || 0}명` },
+                          { label: '거주지', value: fp.residence || fp.residenceRegion || fp.address || '-' },
+                          { label: '거주 형태', value: fp.housingType === 'rent' ? '월세' : fp.housingType === 'jeonse' ? '전세' : fp.housingType === 'owned' ? '자가' : fp.housingType === 'free' ? '무상거주' : fp.housingType || '-' },
+                        ].map((item, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className="text-sm font-extrabold text-slate-900 mt-0.5">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. 소득 및 직업 */}
+                    <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+                      <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200/80">
+                        <h5 className="text-xs sm:text-sm font-extrabold text-slate-700">💼 소득 및 직업</h5>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                        {[
+                          { label: '월 소득', value: fmtMoney(fp.income || fp.monthlyIncome || 0) },
+                          { label: '직업 유형', value: fp.jobType === 'SALARIED' ? '급여소득자' : fp.jobType === 'BUSINESS' ? '자영업' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-' },
+                          { label: '근무지', value: fp.workLocation || '-' },
+                          { label: '배우자 소득', value: fp.spouseIncome ? fmtMoney(fp.spouseIncome) : '-' },
+                        ].map((item, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className="text-sm font-extrabold text-slate-900 mt-0.5 tracking-tight tabular-nums">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. 채무 요약 */}
+                    <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+                      <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200/80 flex items-center justify-between">
+                        <h5 className="text-xs sm:text-sm font-extrabold text-slate-700">🔴 채무 요약</h5>
+                        <span className="text-xs text-slate-400">상세 → '채무현황' 탭</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                        {[
+                          { label: '총 채무', value: fmtMoney(fp.debtTotal || 0), highlight: true },
+                          { label: '채권자 수', value: fp.creditorCount ? `${fp.creditorCount}개` : `${(fp.debts || []).length}개` },
+                          { label: '채무 원인', value: fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-' },
+                          { label: '독촉/법적조치', value: fp.harassmentLevel === 'CALL' ? '독촉 전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-' },
+                        ].map((item: any, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className={`text-sm font-black mt-0.5 tracking-tight tabular-nums ${item.highlight ? 'text-slate-900 text-base' : 'text-slate-900'}`}>{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 4. 자산 현황 */}
+                    <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+                      <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200/80">
+                        <h5 className="text-xs sm:text-sm font-extrabold text-slate-700">🏦 자산 현황</h5>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                        {[
+                          { label: '총 자산', value: fmtMoney(fp.assetsTotal || 0) },
+                          { label: '본인 재산', value: fp.myAssets ? `${fp.myAssets}만원` : '-' },
+                          { label: '배우자 자산', value: fp.spouseAsset ? `${fp.spouseAsset}만원` : '-' },
+                          { label: '임대보증금', value: fp.rentalDeposit ? `${fp.rentalDeposit}만원` : '-' },
+                        ].map((item, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className="text-sm font-extrabold text-slate-900 mt-0.5 tracking-tight tabular-nums">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100 border-t border-slate-100">
+                        {[
+                          { label: '퇴직금', value: fp.retirementPay ? `${fp.retirementPay}만원` : '-' },
+                          { label: '퇴직연금', value: fp.retirementPensionType === 'pension' ? '가입' : fp.retirementPensionType === 'none' ? '미가입' : fp.retirementPensionType === 'unknown' ? '모름' : '-' },
+                          { label: '주택 명의', value: fp.housingContractHolder === 'self' ? '본인' : fp.housingContractHolder === 'spouse' ? '배우자' : fp.housingContractHolder || '-' },
+                          { label: '보증금 대출', value: fp.depositLoan ? `${fp.depositLoan}만원` : '-' },
+                        ].map((item, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className="text-sm font-extrabold text-slate-900 mt-0.5 tracking-tight tabular-nums">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {fp.assets && fp.assets.length > 0 && (
+                        <table className="w-full text-xs border-t border-slate-100">
+                          <thead><tr className="bg-slate-50 text-slate-500">
+                            <th className="px-3 py-1.5 text-left font-bold text-xs">자산명</th>
+                            <th className="px-3 py-1.5 text-right font-bold text-xs">시장가</th>
+                            <th className="px-3 py-1.5 text-center font-bold text-xs">유형</th>
+                          </tr></thead>
+                          <tbody>
+                            {fp.assets.map((a: any, i: number) => (
+                              <tr key={i} className="border-t border-slate-50">
+                                <td className="px-3 py-1.5 text-slate-700 font-bold">{a.label || a.description || `자산 ${i+1}`}</td>
+                                <td className="px-3 py-1.5 text-right font-black text-slate-900">{fmtMoney(a.marketValue || a.value || 0)}</td>
+                                <td className="px-3 py-1.5 text-center"><span className="bg-slate-100 rounded-lg px-2 py-0.5 text-xs font-bold">{a.type || '-'}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    {/* 5. 생활비 */}
+                    <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+                      <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200/80">
+                        <h5 className="text-xs sm:text-sm font-extrabold text-slate-700">🏠 월 생활비</h5>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                        {[
+                          { label: '월세', value: fp.rentCost ? `${fp.rentCost}만` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-' },
+                          { label: '의료비', value: fp.medicalCost ? `${fp.medicalCost}만` : '-' },
+                          { label: '교육비', value: fp.educationCost ? `${fp.educationCost}만` : '-' },
+                          { label: '합계', value: fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-' },
+                        ].map((item, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className="text-sm font-extrabold text-slate-900 mt-0.5 tracking-tight tabular-nums">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 6. 특이사항 */}
+                    <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+                      <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200/80">
+                        <h5 className="text-xs sm:text-sm font-extrabold text-slate-700">⚠️ 특이사항 및 전달사항</h5>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-slate-100">
+                        {[
+                          { label: '24개월 특례', value: fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음' },
+                          { label: '상담 유형', value: consultRequest.consultType || consultRequest.request_type || consultRequest.requestType || '-' },
+                          { label: '요청일', value: consultRequest.createdAt?.split('T')[0] || consultRequest.created_at?.split('T')[0] || '-' },
+                        ].map((item, i) => (
+                          <div key={i} className="px-3.5 py-2.5 text-left">
+                            <p className="text-xs font-bold text-slate-400">{item.label}</p>
+                            <p className="text-sm font-extrabold text-slate-900 mt-0.5">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {(fp.clientNote || (fp.clientNotes && fp.clientNotes.length > 0)) && (
+                        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 text-left">
+                          <p className="text-xs text-slate-500 font-bold mb-1">의뢰인 전달 메모</p>
+                          <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{fp.clientNote || (fp.clientNotes || []).join('\n')}</p>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
               )}
 
@@ -1283,7 +1273,7 @@ export default function CaseReviewCopilot({
                       <button
                         onClick={handleStaffSubmit}
                         disabled={!missingInfoChecked || !factVerified}
-                        className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-sm hover:bg-brand/90 active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="bg-[#1E3A5F] text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-[#163152] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
                       >
                         사실확인 제출 → 변호사 검토 요청
                       </button>
@@ -1295,9 +1285,9 @@ export default function CaseReviewCopilot({
                         <h5 className="text-xs font-bold text-slate-500">📋 검토 피드백 이력</h5>
                         {feedbackThread.map(fb => (
                           <div key={fb.id} className={`rounded-xl p-3 text-xs ${
-                            fb.type === 'reject' ? 'bg-red-50 border border-red-200' :
+                            fb.type === 'reject' ? 'bg-rose-50 border border-rose-200' :
                             fb.type === 'more_info' ? 'bg-amber-50 border border-amber-200' :
-                            'bg-green-50 border border-green-200'
+                            'bg-emerald-50 border border-emerald-200'
                           }`}>
                             <div className="flex items-center gap-1.5 mb-1">
                               <span className="font-bold">{fb.type === 'reject' ? '❌ 반려' : fb.type === 'more_info' ? '❓ 추가확인' : '✅ 보완답변'}</span>
@@ -1312,19 +1302,19 @@ export default function CaseReviewCopilot({
 
                     {/* 직원 보완 제출 (반려/추가확인 상태일 때) */}
                     {(reviewStatus === 'LAWYER_REJECTED' || reviewStatus === 'MORE_INFO_REQUIRED') && permissions.canCreateStaffReview && (
-                      <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
-                        <h5 className="text-xs font-bold text-blue-700">↩️ 보완 내용 작성</h5>
+                      <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                        <h5 className="text-xs font-bold text-slate-800">↩️ 보완 내용 작성</h5>
                         <textarea
                           value={staffResponseContent}
                           onChange={e => setStaffResponseContent(e.target.value)}
                           placeholder="변호사 피드백에 대한 보완 내용을 작성하세요..."
-                          className="w-full bg-white border border-blue-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-brand/30 outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-[#1E3A5F]/20 outline-none"
                           rows={3}
                         />
                         <button
                           onClick={handleStaffResponse}
                           disabled={!staffResponseContent.trim()}
-                          className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-brand/90 active:scale-[0.98] transition-all disabled:opacity-50"
+                          className="bg-[#1E3A5F] text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-[#163152] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
                         >
                           보완 제출 → 변호사 재검토 요청
                         </button>
@@ -1352,14 +1342,14 @@ export default function CaseReviewCopilot({
                         value={(lawyerOpinion as any)[field.key]}
                         onChange={e => setLawyerOpinion(prev => ({ ...prev, [field.key]: e.target.value }))}
                         placeholder={field.placeholder}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] outline-none"
                         rows={3}
                       />
                     </div>
                   ))}
                   <button
                     onClick={handleSaveOpinion}
-                    className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-sm hover:bg-brand/90 active:scale-[0.98] transition-all"
+                    className="bg-[#1E3A5F] text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-[#163152] active:scale-[0.98] transition-all cursor-pointer shadow-xs"
                   >
                     의견 저장
                   </button>
@@ -1372,9 +1362,9 @@ export default function CaseReviewCopilot({
                   <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><Send className="w-4 h-4 text-brand" /> 승인 및 고객 발송</h4>
 
                   {reviewStatus === 'SENT_TO_CLIENT' ? (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      <p className="text-sm text-green-700 font-bold">고객에게 발송 완료되었습니다.</p>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <p className="text-sm text-emerald-700 font-bold">고객에게 발송 완료되었습니다.</p>
                     </div>
                   ) : (
                     <>
@@ -1405,7 +1395,7 @@ export default function CaseReviewCopilot({
                           value={clientMessage}
                           onChange={e => setClientMessage(e.target.value)}
                           placeholder="고객에게 보낼 1차 검토 의견을 작성하세요..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] outline-none"
                           rows={6}
                         />
                         <p className="text-[10px] text-slate-400 italic mt-1">
@@ -1418,21 +1408,21 @@ export default function CaseReviewCopilot({
                           <button
                             onClick={handleApprove}
                             disabled={!allChecked}
-                            className="bg-green-600 text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-green-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1.5"
+                            className="bg-emerald-600 text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-xs"
                           >
                             <CheckCircle2 className="w-4 h-4" /> 승인
                           </button>
                         ) : (
                           <button
                             onClick={handleSendToClient}
-                            className="bg-brand text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-brand/90 active:scale-[0.98] transition-all flex items-center gap-1.5"
+                            className="bg-[#1E3A5F] text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-[#163152] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                           >
                             <Send className="w-4 h-4" /> 승인 후 고객에게 발송
                           </button>
                         )}
                         <button
                           onClick={() => setShowRejectForm(!showRejectForm)}
-                          className="bg-slate-100 text-slate-700 rounded-xl px-4 py-2.5 font-bold text-sm hover:bg-slate-200 active:scale-[0.98] transition-all flex items-center gap-1.5"
+                          className="bg-slate-100 text-slate-700 rounded-xl px-4 py-2.5 font-bold text-sm hover:bg-slate-200 active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                           <XCircle className="w-4 h-4" /> {showRejectForm ? '취소' : '반려 / 추가확인'}
                         </button>
