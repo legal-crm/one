@@ -9,7 +9,8 @@ interface ClientFooterProps {
 
 export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }: ClientFooterProps) {
   const navItems = [
-    { label: '회사소개', tab: 'company' },
+    { label: '서비스 소개', tab: 'about', isExternal: true },
+    { label: '자주 묻는 질문', tab: 'faq', isExternal: true },
     { label: '이용가이드', tab: 'guide' },
     { label: '공지사항', tab: 'notices' },
     { label: '1:1 문의', tab: 'inquiry' },
@@ -22,13 +23,23 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             {navItems.map((item, idx) => (
-              <button
-                key={idx}
-                onClick={() => onNavigate?.(item.tab)}
-                className="text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
-              >
-                {item.label}
-              </button>
+              (item as any).isExternal ? (
+                <a
+                  key={idx}
+                  href={`/${item.tab}`}
+                  className="text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <button
+                  key={idx}
+                  onClick={() => onNavigate?.(item.tab)}
+                  className="text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  {item.label}
+                </button>
+              )
             ))}
           </nav>
         </div>

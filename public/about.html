@@ -22,30 +22,25 @@
     <meta property="og:image" content="https://mykim.kr/mykim_logo.png">
     <meta property="og:locale" content="ko_KR">
     <meta property="og:site_name" content="my김변">
-    <style>
-        body { font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #fafafa; }
-        h1 { font-size: 24px; border-bottom: 2px solid #6C5CE7; padding-bottom: 12px; color: #2d3436; }
-        h2 { margin-top: 36px; font-size: 17px; color: #6C5CE7; border-left: 3px solid #6C5CE7; padding-left: 12px; }
-        h3 { font-size: 15px; color: #2d3436; margin-top: 20px; }
-        p, li { font-size: 14px; color: #555; }
-        ul, ol { padding-left: 20px; }
-        li { margin-bottom: 6px; }
-        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
-        th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
-        th { background: #f0edfc; color: #6C5CE7; font-weight: 600; }
-        .highlight-box { background: #f0edfc; border-left: 4px solid #6C5CE7; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; color: #2d3436; }
-        .cta-box { background: linear-gradient(135deg, #6C5CE7, #a29bfe); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 32px 0; }
-        .cta-box a { color: white; text-decoration: none; font-weight: 700; font-size: 16px; }
-        .effective-date { background: #f0edfc; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #6C5CE7; font-weight: 600; margin-bottom: 24px; }
-        .footer-note { margin-top: 48px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; }
-        .step-flow { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
-        .step-card { flex: 1; min-width: 160px; background: white; border: 1px solid #e8e5f8; border-radius: 10px; padding: 16px; text-align: center; }
-        .step-num { display: inline-block; background: #6C5CE7; color: white; width: 28px; height: 28px; border-radius: 50%; line-height: 28px; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
-        .step-title { font-size: 13px; font-weight: 700; color: #2d3436; }
-        .step-desc { font-size: 12px; color: #888; margin-top: 4px; }
-        nav.breadcrumb { font-size: 12px; color: #999; margin-bottom: 16px; }
-        nav.breadcrumb a { color: #6C5CE7; text-decoration: none; }
-    </style>
+    
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#1E3A5F', hover: '#163152', light: '#EEF4FA', deep: '#0F2440' },
+            accent: { DEFAULT: '#3B82F6', hover: '#2563EB', light: '#EFF6FF' }
+          },
+          fontFamily: {
+            sans: ['"Pretendard Variable"', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+    </script>
+    
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -54,7 +49,7 @@
           "@type": "BreadcrumbList",
           "itemListElement": [
             { "@type": "ListItem", "position": 1, "name": "홈", "item": "https://mykim.kr" },
-            { "@type": "ListItem", "position": 2, "name": "서비스 소개", "item": "https://mykim.kr/about.html" }
+            { "@type": "ListItem", "position": 2, "name": "서비스 소개", "item": "https://mykim.kr/about" }
           ]
         },
         {
@@ -64,7 +59,7 @@
           "alternateName": ["my김변", "마이김변", "mykim", "마이김변 채무관리"],
           "url": "https://mykim.kr",
           "logo": "https://mykim.kr/mykim_logo.png",
-          "description": "개인회생·파산·신용회복 등 채무 문제 해결을 위한 익명 채무 진단 및 전담 변호사 무료 매칭 플랫폼. 김변호사(kimbyun.co.kr)와는 별개의 독립 서비스입니다.",
+          "description": "개인회생·파산·신용회복 채무 문제, 익명으로 상황을 정리하고 여러 전문 변호사와 상담 후 나에게 맞는 전담 변호사를 선택하는 채무관리 플랫폼.",
           "disambiguatingDescription": "my김변(mykim.kr)은 일반 의뢰인 대상 채무관리 플랫폼이며, 변호사 간 업무 공유 플랫폼인 김변호사(kimbyun.co.kr)와는 운영 주체·서비스 대상·사업 모델이 모두 다른 완전히 별개의 서비스입니다.",
           "foundingDate": "2024",
           "founder": { "@type": "Person", "name": "진성호" },
@@ -85,109 +80,202 @@
     }
     </script>
 </head>
-<body>
-    <nav class="breadcrumb"><a href="/">홈</a> &gt; 서비스 소개</nav>
-
-    <h1>my김변 서비스 소개</h1>
-
-    <div class="effective-date">대한민국 채무관리 플랫폼 · https://mykim.kr</div>
-
-    <h2>my김변이란?</h2>
-    <div class="highlight-box">
-        <strong>my김변(마이김변)은 채무 문제를 겪는 사용자가 익명으로 상황을 정리한 뒤, 여러 전문 변호사와 상담하고 나에게 맞는 전담 변호사를 직접 선택하여 개인회생·파산·신용회복을 진행할 수 있는 채무관리 플랫폼입니다.</strong>
-    </div>
-    <p>my김변(마이김변)은 단순히 변호사를 소개하는 서비스가 아닙니다. 채무 상황 정리부터 해결 방향 확인, 여러 변호사 상담, 전담 변호사 선택, 비공개 관리방 운영까지 — 채무 문제 해결의 전 과정을 하나의 플랫폼에서 익명으로 안전하게 진행할 수 있습니다.</p>
-
-    <h2>서비스 철학</h2>
-    <div class="highlight-box">
-        <strong>「개인회생이 정답이 아닐 수도 있습니다」</strong><br><br>
-        채무 문제를 겪고 있는 많은 분들이 '개인회생'만이 유일한 해결책이라고 생각합니다. 하지만 연체 기간, 소득 안정성, 세금체납, 압류 위험에 따라 신용회복·채무자대리·개인파산이 더 적합할 수 있습니다. my김변은 먼저 내 채무 상태를 정확히 진단하고, 가장 적합한 해결 방향을 찾아드립니다.
-    </div>
-
-    <h2>핵심 서비스</h2>
-    <table>
-        <tr><th>서비스</th><th>설명</th><th>특징</th></tr>
-        <tr><td><strong>익명 채무 체크</strong></td><td>간단한 질문을 통해 내 채무 상황을 익명으로 정리하고 해결 방향을 확인합니다.</td><td>실명 불필요</td></tr>
-        <tr><td><strong>맞춤형 해결방향 확인</strong></td><td>채무 상황을 바탕으로 개인회생, 파산, 신용회복, 채무자대리 중 적합한 방향을 확인합니다.</td><td>4가지 경로 비교</td></tr>
-        <tr><td><strong>변호사 상담 & 전담 변호사 선택</strong></td><td>여러 전문 변호사와 상담한 뒤, 나에게 맞는 전담 변호사를 직접 선택합니다.</td><td>변호사법 준수</td></tr>
-        <tr><td><strong>비공개 관리방 운영</strong></td><td>가명 기반의 전용 상담방에서 전담 변호사와 지속적으로 채무 상황을 관리합니다.</td><td>상담 내용 암호화</td></tr>
-        <tr><td><strong>탕감액 계산기</strong></td><td>소득과 채무 정보를 입력하면 예상 탕감액과 월 변제금을 즉시 계산합니다.</td><td>실시간 라이브 계산</td></tr>
-        <tr><td><strong>실시간 고민상담 Q&amp;A</strong></td><td>도산 전문 변호사들이 실제 해결한 채무 고민 사례를 열람할 수 있습니다.</td><td>유사 사례 검색 가능</td></tr>
-    </table>
-
-    <h2>이용 흐름</h2>
-    <div class="step-flow">
-        <div class="step-card">
-            <div class="step-num">1</div>
-            <div class="step-title">익명 채무 체크</div>
-            <div class="step-desc">실명 없이 채무 상황을 정리합니다</div>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased flex flex-col min-h-screen" style="letter-spacing: -0.02em; word-break: keep-all;">
+    
+    <!-- Sticky Header -->
+    <header class="sticky top-0 z-40 h-[72px] bg-white/90 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-[1240px] mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2">
+                <img src="/mykim_logo.png" alt="my김변 로고" class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover shadow-sm"/>
+                <div class="flex flex-col">
+                    <span class="font-extrabold text-lg text-slate-900">my김변</span>
+                    <span class="text-xs text-slate-500 hidden sm:block">나의 채무관리 변호사</span>
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-6 lg:gap-8">
+                <a href="/" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">홈</a>
+                <a href="/?tab=request" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">내 상황 체크하기</a>
+                <a href="/?tab=chat" class="relative text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">내 관리방<span class="absolute -top-1 -right-2 flex h-2 w-2"><span class="animate-pulse absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-brand"></span></span></a>
+                <a href="/?tab=lawyers" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">전담 변호사 찾기</a>
+                <a href="/?tab=qna" class="text-[15px] font-semibold text-slate-700 hover:text-brand transition-colors">고민상담 Q&A</a>
+            </nav>
+            <div>
+                <a href="/login" class="bg-[#1E3A5F] text-white text-sm font-bold px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl hover:bg-[#163152] transition-colors">로그인</a>
+            </div>
         </div>
-        <div class="step-card">
-            <div class="step-num">2</div>
-            <div class="step-title">해결 방향 확인</div>
-            <div class="step-desc">개인회생·파산·신용회복·채무자대리 중 적합한 방향을 확인합니다</div>
-        </div>
-        <div class="step-card">
-            <div class="step-num">3</div>
-            <div class="step-title">여러 변호사 상담</div>
-            <div class="step-desc">여러 전문 변호사와 상담합니다</div>
-        </div>
-        <div class="step-card">
-            <div class="step-num">4</div>
-            <div class="step-title">전담 변호사 선택 & 진행</div>
-            <div class="step-desc">나에게 맞는 전담 변호사를 선택하고 함께 진행합니다</div>
+    </header>
+
+    <!-- Privacy Strip Banner -->
+    <div class="w-full bg-[#1A3C4D] text-white text-center py-3 px-4">
+        <div class="flex items-center justify-center gap-2">
+            <svg class="w-5 h-5 text-white/90 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-width="2"/><path d="m9 12 2 2 4-4" stroke-width="2"/></svg>
+            <p class="text-sm sm:text-base font-bold">상담정보는 가명 처리되니, 안심하고 의뢰하세요.</p>
         </div>
     </div>
 
-    <h2>my김변의 차별점</h2>
-    <h3>1. 철저한 익명성</h3>
-    <p>초기 진단은 완전한 익명으로 진행됩니다. 가명(별칭)을 사용하여 변호사와 소통하며, 실명과 연락처는 고객이 동의하기 전까지 변호사에게 공개되지 않습니다. 빚이 있다는 사실이 주변에 알려질 걱정 없이 안심하고 첫 상담을 시작할 수 있습니다.</p>
-
-    <h3>2. 전담 관리 구조</h3>
-    <p>my김변은 1회성 상담 연결이 아닌, 전담 변호사가 배정되어 채무 해결까지 지속적으로 관리하는 구조입니다. 의뢰인의 채무 상황이 변경되면 실시간으로 전략을 재조정하고, 법원 접수부터 면책까지의 전 과정을 함께합니다.</p>
-
-    <h3>3. 완전한 투명성</h3>
-    <p>my김변은 변호사법 제34조 및 제109조에 의거, 변호사 알선료·소개료·수수료 등 어떠한 명목의 금전적 대가도 수취하지 않습니다. 「전자상거래 등에서의 소비자보호에 관한 법률」에 따른 통신판매중개자로서 의뢰인과 변호사 간의 중개 시스템만을 제공합니다.</p>
-
-    <h3>4. 보안 최우선</h3>
-    <p>모든 상담 내용은 암호화되어 관리되며, 상담방 접근·다운로드·열람 기록은 감사 로그로 관리됩니다. 플랫폼 운영자는 상담 원문을 기본적으로 열람하지 않습니다. 자세한 내용은 <a href="/security.html">보안센터</a>에서 확인하실 수 있습니다.</p>
-
-    <h2>채무관리 가이드</h2>
-    <p>my김변은 채무 문제에 대한 전문 가이드를 제공합니다.</p>
-    <ul>
-        <li><a href="/guide/debt-management.html">채무관리란 무엇인가요?</a> — 채무관리의 정의와 4가지 해결 방향</li>
-        <li><a href="/guide/personal-rehabilitation.html">개인회생 완전 가이드</a> — 자격요건, 비용, 절차, FAQ</li>
-        <li><a href="/guide/bankruptcy.html">개인파산과 면책 가이드</a> — 파산 vs 회생, 면책 조건</li>
-        <li><a href="/guide/credit-recovery.html">신용회복과 워크아웃 가이드</a> — 프리워크아웃, 개인워크아웃</li>
-        <li><a href="/guide/debt-agent.html">채무자대리인과 추심대응 가이드</a> — 불법추심 대응, 긴급 방어</li>
-        <li><a href="/guide/tax-debt.html">세금체납 관리 가이드</a> — 소멸시효, 압류 대응</li>
-    </ul>
-
-    <div class="cta-box">
-        <p style="margin: 0 0 12px 0; font-size: 18px; font-weight: 800; color: white;">나에게 맞는 전담 변호사를 찾아보세요</p>
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: rgba(255,255,255,0.9);">익명으로 채무 상황을 정리하고, 여러 변호사와 상담해 보세요.</p>
-        <a href="https://mykim.kr/?tab=request">📋 익명으로 채무 체크 시작하기 →</a>
-    </div>
-
-    <h2>회사 정보</h2>
-    <table>
-        <tr><th>항목</th><th>내용</th></tr>
-        <tr><td>회사명</td><td>(주)my김변컴퍼니</td></tr>
-        <tr><td>대표</td><td>진성호</td></tr>
-        <tr><td>사업자등록번호</td><td>521-39-01355</td></tr>
-        <tr><td>이메일</td><td>help@rebirthtalk.com</td></tr>
-        <tr><td>사이트</td><td><a href="https://mykim.kr">https://mykim.kr</a></td></tr>
-    </table>
-
-    <div class="footer-note">
-        <div style="margin-bottom: 12px; font-size: 13px;">
-            <a href="/" style="color: #6C5CE7; text-decoration: none;">홈</a> ·
-            <a href="/faq" style="color: #6C5CE7; text-decoration: none;">자주 묻는 질문</a> ·
-            <a href="/guide/debt-management" style="color: #6C5CE7; text-decoration: none;">채무관리 가이드</a> ·
-            <a href="/?tab=calculator" style="color: #6C5CE7; text-decoration: none;">탕감액 계산기</a> ·
-            <a href="/?tab=lawyers" style="color: #6C5CE7; text-decoration: none;">변호사 상담</a>
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-10 pb-24 md:pb-12">
+        <nav class="text-xs text-slate-400 mb-4"><a href="/" class="text-brand hover:underline font-medium">홈</a> <span class="mx-1">›</span> 서비스 소개</nav>
+        
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 pb-4 border-b-2 border-brand">my김변 서비스 소개</h1>
+        
+        <div class="bg-brand-light px-4 py-3 rounded-xl text-sm text-brand font-semibold mb-6 mt-6">대한민국 채무관리 플랫폼 · https://mykim.kr</div>
+        
+        <h2 class="mt-10 text-lg font-bold text-brand border-l-[3px] border-brand pl-3">my김변이란?</h2>
+        <div class="bg-brand-light border-l-4 border-brand p-4 sm:p-5 rounded-r-xl my-5 text-sm sm:text-[15px] text-slate-800">
+            <strong>my김변(마이김변)은 채무 문제를 겪는 사용자가 익명으로 상황을 정리한 뒤, 여러 전문 변호사와 상담하고 나에게 맞는 전담 변호사를 직접 선택하여 개인회생·파산·신용회복을 진행할 수 있는 채무관리 플랫폼입니다.</strong>
         </div>
-        <p>© 2026 (주)my김변컴퍼니. All rights reserved. | <a href="/tos.html">이용약관</a> | <a href="/privacy.html">개인정보 처리방침</a> | <a href="/legal.html">법적 고지사항</a> | <a href="/security.html">보안센터</a></p>
-    </div>
+        <p class="text-sm sm:text-[15px] text-slate-600 leading-relaxed mb-4">my김변(마이김변)은 단순히 변호사를 소개하는 서비스가 아닙니다. 채무 상황 정리부터 해결 방향 확인, 여러 변호사 상담, 전담 변호사 선택, 비공개 관리방 운영까지 — 채무 문제 해결의 전 과정을 하나의 플랫폼에서 익명으로 안전하게 진행할 수 있습니다.</p>
+        
+        <h2 class="mt-10 text-lg font-bold text-brand border-l-[3px] border-brand pl-3">서비스 철학</h2>
+        <div class="bg-brand-light border-l-4 border-brand p-4 sm:p-5 rounded-r-xl my-5 text-sm sm:text-[15px] text-slate-800">
+            <strong>「개인회생이 정답이 아닐 수도 있습니다」</strong><br><br>
+            채무 문제를 겪고 있는 많은 분들이 '개인회생'만이 유일한 해결책이라고 생각합니다. 하지만 연체 기간, 소득 안정성, 세금체납, 압류 위험에 따라 신용회복·채무자대리·개인파산이 더 적합할 수 있습니다. my김변은 먼저 내 채무 상태를 정확히 진단하고, 가장 적합한 해결 방향을 찾아드립니다.
+        </div>
+        
+        <h2 class="mt-10 text-lg font-bold text-brand border-l-[3px] border-brand pl-3">핵심 서비스</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse my-4">
+                <tr><th class="bg-brand-light text-brand font-semibold p-3 border border-slate-200 text-left">서비스</th><th class="bg-brand-light text-brand font-semibold p-3 border border-slate-200 text-left">설명</th><th class="bg-brand-light text-brand font-semibold p-3 border border-slate-200 text-left">특징</th></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600"><strong>익명 채무 체크</strong></td><td class="p-3 border border-slate-200 text-slate-600">간단한 질문을 통해 내 채무 상황을 익명으로 정리하고 해결 방향을 확인합니다.</td><td class="p-3 border border-slate-200 text-slate-600">실명 불필요</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600"><strong>맞춤형 해결방향 확인</strong></td><td class="p-3 border border-slate-200 text-slate-600">채무 상황을 바탕으로 개인회생, 파산, 신용회복, 채무자대리 중 적합한 방향을 확인합니다.</td><td class="p-3 border border-slate-200 text-slate-600">4가지 경로 비교</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600"><strong>변호사 상담 & 전담 변호사 선택</strong></td><td class="p-3 border border-slate-200 text-slate-600">여러 전문 변호사와 상담한 뒤, 나에게 맞는 전담 변호사를 직접 선택합니다.</td><td class="p-3 border border-slate-200 text-slate-600">변호사법 준수</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600"><strong>비공개 관리방 운영</strong></td><td class="p-3 border border-slate-200 text-slate-600">가명 기반의 전용 상담방에서 전담 변호사와 지속적으로 채무 상황을 관리합니다.</td><td class="p-3 border border-slate-200 text-slate-600">상담 내용 암호화</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600"><strong>탕감액 계산기</strong></td><td class="p-3 border border-slate-200 text-slate-600">소득과 채무 정보를 입력하면 예상 탕감액과 월 변제금을 즉시 계산합니다.</td><td class="p-3 border border-slate-200 text-slate-600">실시간 라이브 계산</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600"><strong>실시간 고민상담 Q&amp;A</strong></td><td class="p-3 border border-slate-200 text-slate-600">도산 전문 변호사들이 실제 해결한 채무 고민 사례를 열람할 수 있습니다.</td><td class="p-3 border border-slate-200 text-slate-600">유사 사례 검색 가능</td></tr>
+            </table>
+        </div>
+        
+        <h2 class="mt-10 text-lg font-bold text-brand border-l-[3px] border-brand pl-3">이용 흐름</h2>
+        <div class="flex flex-wrap gap-3 my-5">
+            <div class="flex-1 min-w-[150px] bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                <div class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand text-white text-xs font-bold mb-2">1</div>
+                <div class="text-sm font-bold text-slate-900">익명 채무 체크</div>
+                <div class="text-xs text-slate-500 mt-1">실명 없이 채무 상황을 정리합니다</div>
+            </div>
+            <div class="flex-1 min-w-[150px] bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                <div class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand text-white text-xs font-bold mb-2">2</div>
+                <div class="text-sm font-bold text-slate-900">해결 방향 확인</div>
+                <div class="text-xs text-slate-500 mt-1">개인회생·파산·신용회복·채무자대리 중 적합한 방향을 확인합니다</div>
+            </div>
+            <div class="flex-1 min-w-[150px] bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                <div class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand text-white text-xs font-bold mb-2">3</div>
+                <div class="text-sm font-bold text-slate-900">여러 변호사 상담</div>
+                <div class="text-xs text-slate-500 mt-1">여러 전문 변호사와 상담합니다</div>
+            </div>
+            <div class="flex-1 min-w-[150px] bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm">
+                <div class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand text-white text-xs font-bold mb-2">4</div>
+                <div class="text-sm font-bold text-slate-900">전담 변호사 선택 & 진행</div>
+                <div class="text-xs text-slate-500 mt-1">나에게 맞는 전담 변호사를 선택하고 함께 진행합니다</div>
+            </div>
+        </div>
+        
+        <h2 class="mt-10 text-lg font-bold text-brand border-l-[3px] border-brand pl-3">my김변의 차별점</h2>
+        
+        <h3 class="text-base font-bold text-slate-900 mt-5">1. 철저한 익명성</h3>
+        <p class="text-sm sm:text-[15px] text-slate-600 leading-relaxed mb-4">초기 진단은 완전한 익명으로 진행됩니다. 가명(별칭)을 사용하여 변호사와 소통하며, 실명과 연락처는 고객이 동의하기 전까지 변호사에게 공개되지 않습니다. 빚이 있다는 사실이 주변에 알려질 걱정 없이 안심하고 첫 상담을 시작할 수 있습니다.</p>
+        
+        <h3 class="text-base font-bold text-slate-900 mt-5">2. 전담 관리 구조</h3>
+        <p class="text-sm sm:text-[15px] text-slate-600 leading-relaxed mb-4">my김변은 1회성 상담 연결이 아닌, 전담 변호사가 배정되어 채무 해결까지 지속적으로 관리하는 구조입니다. 의뢰인의 채무 상황이 변경되면 실시간으로 전략을 재조정하고, 법원 접수부터 면책까지의 전 과정을 함께합니다.</p>
+        
+        <h3 class="text-base font-bold text-slate-900 mt-5">3. 완전한 투명성</h3>
+        <p class="text-sm sm:text-[15px] text-slate-600 leading-relaxed mb-4">my김변은 변호사법 제34조 및 제109조에 의거, 변호사 알선료·소개료·수수료 등 어떠한 명목의 금전적 대가도 수취하지 않습니다. 「전자상거래 등에서의 소비자보호에 관한 법률」에 따른 통신판매중개자로서 의뢰인과 변호사 간의 중개 시스템만을 제공합니다.</p>
+        
+        <h3 class="text-base font-bold text-slate-900 mt-5">4. 보안 최우선</h3>
+        <p class="text-sm sm:text-[15px] text-slate-600 leading-relaxed mb-4">모든 상담 내용은 암호화되어 관리되며, 상담방 접근·다운로드·열람 기록은 감사 로그로 관리됩니다. 플랫폼 운영자는 상담 원문을 기본적으로 열람하지 않습니다. 자세한 내용은 <a href="/security.html" class="text-brand hover:underline font-medium">보안센터</a>에서 확인하실 수 있습니다.</p>
+        
+        <h2 class="mt-10 text-lg font-bold text-brand border-l-[3px] border-brand pl-3">채무관리 가이드</h2>
+        <p class="text-sm sm:text-[15px] text-slate-600 leading-relaxed mb-2">my김변은 채무 문제에 대한 전문 가이드를 제공합니다.</p>
+        <ul class="list-disc pl-5 text-sm sm:text-[15px] text-slate-600 leading-relaxed mb-4">
+            <li class="mb-1.5"><a href="/guide/debt-management.html" class="text-brand hover:underline font-medium">채무관리란 무엇인가요?</a> — 채무관리의 정의와 4가지 해결 방향</li>
+            <li class="mb-1.5"><a href="/guide/personal-rehabilitation.html" class="text-brand hover:underline font-medium">개인회생 완전 가이드</a> — 자격요건, 비용, 절차, FAQ</li>
+            <li class="mb-1.5"><a href="/guide/bankruptcy.html" class="text-brand hover:underline font-medium">개인파산과 면책 가이드</a> — 파산 vs 회생, 면책 조건</li>
+            <li class="mb-1.5"><a href="/guide/credit-recovery.html" class="text-brand hover:underline font-medium">신용회복과 워크아웃 가이드</a> — 프리워크아웃, 개인워크아웃</li>
+            <li class="mb-1.5"><a href="/guide/debt-agent.html" class="text-brand hover:underline font-medium">채무자대리인과 추심대응 가이드</a> — 불법추심 대응, 긴급 방어</li>
+            <li class="mb-1.5"><a href="/guide/tax-debt.html" class="text-brand hover:underline font-medium">세금체납 관리 가이드</a> — 소멸시효, 압류 대응</li>
+        </ul>
+        
+        <div class="bg-gradient-to-br from-[#1E3A5F] to-[#3B82F6] text-white p-6 sm:p-8 rounded-2xl text-center my-8 shadow-lg">
+            <p class="text-lg sm:text-xl font-extrabold mb-3">나에게 맞는 전담 변호사를 찾아보세요</p>
+            <p class="text-sm text-white/90 mb-4">익명으로 채무 상황을 정리하고, 여러 변호사와 상담해 보세요.</p>
+            <a href="/?tab=request" class="inline-block px-6 py-3 bg-white text-brand font-bold rounded-xl hover:bg-slate-50 transition-all text-base shadow-sm">📋 익명으로 채무 체크 시작하기 →</a>
+        </div>
+        
+        <h2 class="mt-10 text-lg font-bold text-brand border-l-[3px] border-brand pl-3">회사 정보</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse my-4">
+                <tr><th class="bg-brand-light text-brand font-semibold p-3 border border-slate-200 text-left w-1/3">항목</th><th class="bg-brand-light text-brand font-semibold p-3 border border-slate-200 text-left">내용</th></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600">회사명</td><td class="p-3 border border-slate-200 text-slate-600">(주)my김변컴퍼니</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600">대표</td><td class="p-3 border border-slate-200 text-slate-600">진성호</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600">사업자등록번호</td><td class="p-3 border border-slate-200 text-slate-600">521-39-01355</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600">이메일</td><td class="p-3 border border-slate-200 text-slate-600">help@rebirthtalk.com</td></tr>
+                <tr><td class="p-3 border border-slate-200 text-slate-600">사이트</td><td class="p-3 border border-slate-200 text-slate-600"><a href="https://mykim.kr" class="text-brand hover:underline font-medium">https://mykim.kr</a></td></tr>
+            </table>
+        </div>
+    </main>
+    
+    <!-- 3-Zone Dark Footer -->
+    <footer class="w-full bg-[#111827] text-slate-400 mt-auto">
+      <div class="border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-5">
+          <nav class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium">
+            <a href="/about" class="text-slate-400 hover:text-white transition-colors">서비스 소개</a>
+            <a href="/faq" class="text-slate-400 hover:text-white transition-colors">자주 묻는 질문</a>
+            <a href="/guide/debt-management" class="text-slate-400 hover:text-white transition-colors">이용가이드</a>
+            <a href="/?tab=inquiry" class="text-slate-400 hover:text-white transition-colors">1:1 문의</a>
+          </nav>
+        </div>
+      </div>
+      <div class="border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+          <div class="space-y-1">
+            <p class="text-white font-bold text-base">채무 해결, 전문가와 함께</p>
+            <p class="text-xs sm:text-sm text-slate-400">내 사건에 맞는 변호사를 비교하세요.</p>
+          </div>
+          <p class="text-base font-bold text-slate-200">(주) my김변컴퍼니</p>
+          <div class="space-y-1.5 text-xs sm:text-sm text-slate-400">
+            <p>사업자등록번호 521-39-01355 <span class="mx-1.5 text-slate-600">|</span> 대표이사 진성호 <span class="mx-1.5 text-slate-600">|</span> 고객문의 help@rebirthtalk.com</p>
+            <p>주소: 서울특별시 서초구 서초대로 254 (서초동, 오퓨런스) 7층</p>
+          </div>
+          <div class="pt-4 border-t border-white/5 text-xs text-slate-500 leading-relaxed">
+            <p>본 서비스는 통신판매중개자로서 통신판매의 당사자가 아니며, 변호사회원이 제공하는 법률 서비스의 내용과 질에 대해 법적 책임을 부담하지 않습니다. 변호사법 제34조에 의거 변호사 알선료·수수료 수취를 금지합니다.</p>
+          </div>
+        </div>
+      </div>
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 py-5">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+          <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <a href="/tos" class="text-slate-400 hover:text-white transition-colors">서비스 이용약관</a>
+            <a href="/privacy" class="text-slate-400 hover:text-white transition-colors font-bold">개인정보 처리방침</a>
+            <a href="/legal" class="text-slate-400 hover:text-white transition-colors">법적 고지 및 책임한계</a>
+          </div>
+          <p class="text-slate-500">© 2026 my김변. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+    
+    <!-- Mobile Bottom GNB -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+      <a href="/" class="flex flex-col items-center gap-0.5 flex-1 text-center text-slate-500 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-width="2"/></svg>
+        <span class="text-xs font-bold">홈</span>
+      </a>
+      <a href="/?tab=request" class="flex flex-col items-center gap-0.5 flex-1 text-center text-slate-500 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke-width="2"/><path d="m9 14 2 2 4-4" stroke-width="2"/></svg>
+        <span class="text-xs font-bold">내 상황 체크</span>
+      </a>
+      <a href="/?tab=chat" class="relative flex flex-col items-center gap-0.5 flex-1 text-center text-slate-500 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-width="2"/></svg>
+        <span class="text-xs font-bold">내 관리방</span>
+        <span class="absolute top-0.5 right-2 flex h-2 w-2"><span class="animate-pulse absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-brand"></span></span>
+      </a>
+      <a href="/?tab=lawyers" class="flex flex-col items-center gap-0.5 flex-1 text-center text-slate-500 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke-width="2"/></svg>
+        <span class="text-xs font-bold">변호사 찾기</span>
+      </a>
+      <a href="/?tab=qna" class="flex flex-col items-center gap-0.5 flex-1 text-center text-slate-500 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke-width="2"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+        <span class="text-xs font-bold">고민상담 Q&A</span>
+      </a>
+    </nav>
 </body>
 </html>
