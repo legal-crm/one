@@ -55,20 +55,24 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
               <p className="text-white font-bold text-base">채무 해결, 전문가와 함께</p>
               <p className="text-xs sm:text-sm text-slate-400">내 사건에 맞는 변호사를 비교하세요.</p>
             </div>
-            <p className="text-base font-bold text-slate-200">(주) my김변컴퍼니</p>
+            <p className="text-base font-bold text-slate-200">몬스터랩</p>
           </div>
 
           {/* 회사 정보 */}
           <div className="space-y-1.5 text-xs sm:text-sm text-slate-400 leading-relaxed">
             <p>
-              사업자등록번호 {platformConfig.companyBusinessNumber}
+              상호: 몬스터랩
               <span className="mx-1.5 text-slate-600">|</span>
-              대표이사 {platformConfig.companyRepresentative}
+              대표이사: {platformConfig.companyRepresentative || '진성호'}
               <span className="mx-1.5 text-slate-600">|</span>
-              고객문의 help@rebirthtalk.com
+              사업자등록번호: {platformConfig.companyBusinessNumber || '521-39-01355'}
             </p>
             <p>
-              주소: {platformConfig.companyAddress}
+              사업장 주소지: {platformConfig.companyAddress || '서울특별시 서초구 강남대로53길 8'}
+              <span className="mx-1.5 text-slate-600">|</span>
+              전화번호: 070-4187-2882
+              <span className="mx-1.5 text-slate-600">|</span>
+              고객문의: support@mykim.kr
             </p>
           </div>
 
