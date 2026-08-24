@@ -438,7 +438,7 @@ export default function CaseReviewCopilot({
   const [clientSearch, setClientSearch] = useState('');
   const [clientSort, setClientSort] = useState<'latest' | 'debt-high' | 'debt-low' | 'name'>('latest');
   const [clientFilter, setClientFilter] = useState<'all' | 'new' | 'in-progress'>('all');
-  const ITEMS_PER_PAGE = 8;
+  const ITEMS_PER_PAGE = 10;
   const [clientPage, setClientPage] = useState(0);
 
   const filteredClients = useMemo(() => {
@@ -520,92 +520,80 @@ export default function CaseReviewCopilot({
           </div>
         </div>
 
-        {/* 의뢰인 카드 리스트 */}
+        {/* 의뢰인 리스트 */}
         {pagedClients.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            {/* 테이블 헤더 - 데스크톱 */}
+            <div className="hidden md:flex items-center px-5 py-2.5 border-b border-slate-100 text-[11px] font-semibold text-slate-400 tracking-wide">
+              <span className="w-[200px] shrink-0">의뢰인</span>
+              <span className="w-[72px] shrink-0">상태</span>
+              <span className="w-[76px] shrink-0">접수일</span>
+              <span className="w-[110px] shrink-0 text-right">총 채무</span>
+              <span className="w-[90px] shrink-0 text-right">월 소득</span>
+              <span className="w-[56px] shrink-0 text-right">DTI</span>
+              <span className="flex-1 text-right pr-6">위험요인</span>
+            </div>
+            <div className="divide-y divide-slate-50">
             {pagedClients.map((client) => {
               const cfp = client.financialProfile || {};
               const isSample = (client.id || '').startsWith('sample');
-              const dateStr = client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '';
+              const dateStr = client.createdAt ? new Date(client.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '';
               const debtTotal = cfp.debtTotal || 0;
               const income = cfp.income || 0;
               const dti = income > 0 ? Math.round((debtTotal / (income * 12)) * 100) : 0;
               const riskLevel = dti > 300 ? 'high' : dti > 150 ? 'mid' : 'low';
               const statusLabel = client.status === 'requested' ? '접수' : client.status === 'responding' ? '응답중' : client.status === 'comparing' ? '비교상담' : client.status === 'counseling' ? '전담상담' : client.status || '대기';
-              const statusColor = client.status === 'requested' ? 'bg-blue-100 text-blue-700' : client.status === 'responding' ? 'bg-amber-100 text-amber-700' : client.status === 'comparing' ? 'bg-violet-100 text-violet-700' : client.status === 'counseling' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600';
+              const flagCount = (cfp.riskFlags || []).length;
               const originalIdx = allClients.findIndex(c => c.id === client.id);
 
               return (
                 <button key={client.id} onClick={() => setSelectedClientIdx(originalIdx)}
-                  className="text-left bg-white border border-slate-200 rounded-2xl hover:border-brand/50 hover:shadow-md active:scale-[0.98] transition-all group overflow-hidden cursor-pointer">
-                  {/* 상단 위험도 바 */}
-                  <div className={`h-1.5 w-full ${riskLevel === 'high' ? 'bg-red-400' : riskLevel === 'mid' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                  <div className="p-4.5 space-y-3.5">
-                    {/* 아바타 + 이름 + 상태 */}
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-base shrink-0 ${riskLevel === 'high' ? 'bg-red-50 text-red-600' : riskLevel === 'mid' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {(client.clientName || client.client_name || '?')[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-extrabold text-base text-slate-900 truncate">{client.clientName || client.client_name}</p>
-                          {isSample && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0">샘플</span>}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${statusColor}`}>{statusLabel}</span>
-                          {dateStr && <span className="text-xs text-slate-400 font-medium">{dateStr}</span>}
-                        </div>
-                      </div>
+                  className={`w-full text-left flex items-center px-5 py-3 hover:bg-slate-50/80 active:scale-[0.998] transition-all cursor-pointer border-l-2 ${riskLevel === 'high' ? 'border-l-red-400' : riskLevel === 'mid' ? 'border-l-amber-400' : 'border-l-transparent'} group`}>
+                  
+                  {/* 의뢰인 이름 */}
+                  <div className="flex items-center gap-2.5 w-full md:w-[200px] shrink-0 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
+                      {(client.clientName || client.client_name || '?')[0]}
                     </div>
-
-                    {/* 핵심 지표 */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500 font-medium">총 채무</span>
-                        <span className="text-sm sm:text-base font-extrabold text-slate-900">{debtTotal > 0 ? `${debtTotal.toLocaleString()}만원` : '-'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-bold text-slate-900 truncate">{client.clientName || client.client_name}</p>
+                        {isSample && <span className="bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0">샘플</span>}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500 font-medium">월 소득</span>
-                        <span className="text-sm sm:text-base font-bold text-slate-800">{income > 0 ? `${income.toLocaleString()}만원` : '-'}</span>
-                      </div>
-                      {/* DTI 바 */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-slate-400 font-medium">채무비율 (DTI)</span>
-                          <span className={`text-xs font-bold ${riskLevel === 'high' ? 'text-red-500' : riskLevel === 'mid' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                            {dti > 0 ? `${dti}%` : '-'}
-                          </span>
-                        </div>
-                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${riskLevel === 'high' ? 'bg-red-400' : riskLevel === 'mid' ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                            style={{ width: `${Math.min(dti / 5, 100)}%` }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 리스크 플래그 */}
-                    {(cfp.riskFlags || []).length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {(cfp.riskFlags || []).slice(0, 2).map((flag: string, i: number) => (
-                          <span key={i} className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-md font-bold truncate max-w-[130px]">⚠ {flag}</span>
-                        ))}
-                        {(cfp.riskFlags || []).length > 2 && (
-                          <span className="text-xs text-slate-400 font-bold">+{cfp.riskFlags.length - 2}</span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* 분석 시작 버튼 */}
-                    <div className="pt-1">
-                      <div className="w-full bg-slate-50 group-hover:bg-brand/5 text-slate-500 group-hover:text-brand text-[11px] font-bold py-2 rounded-xl text-center transition-all flex items-center justify-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        AI 분석 시작
+                      {/* 모바일: 핵심 지표 한 줄 */}
+                      <div className="flex items-center gap-1.5 md:hidden text-[11px] text-slate-400 mt-0.5">
+                        <span>{statusLabel}</span>
+                        <span className="text-slate-200">·</span>
+                        <span className="text-slate-600 font-semibold">{debtTotal > 0 ? `${debtTotal.toLocaleString()}만원` : '-'}</span>
+                        {dti > 0 && <>
+                          <span className="text-slate-200">·</span>
+                          <span className={dti > 300 ? 'text-red-500 font-bold' : ''}>DTI {dti}%</span>
+                        </>}
                       </div>
                     </div>
                   </div>
+
+                  {/* 데스크톱 전용 컬럼 */}
+                  <span className="hidden md:block w-[72px] shrink-0 text-xs text-slate-500 font-medium">{statusLabel}</span>
+                  <span className="hidden md:block w-[76px] shrink-0 text-xs text-slate-400">{dateStr}</span>
+                  <span className="hidden md:block w-[110px] shrink-0 text-right text-sm font-bold text-slate-800">{debtTotal > 0 ? `${debtTotal.toLocaleString()}만원` : '-'}</span>
+                  <span className="hidden md:block w-[90px] shrink-0 text-right text-sm text-slate-600">{income > 0 ? `${income.toLocaleString()}만원` : '-'}</span>
+                  <span className={`hidden md:block w-[56px] shrink-0 text-right text-xs font-bold ${riskLevel === 'high' ? 'text-red-500' : 'text-slate-500'}`}>
+                    {dti > 0 ? `${dti}%` : '-'}
+                  </span>
+                  <span className="hidden md:flex flex-1 justify-end pr-2">
+                    {flagCount > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 font-medium">
+                        <AlertTriangle className="w-3 h-3" />
+                        {flagCount}건
+                      </span>
+                    )}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-slate-300 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block" />
                 </button>
               );
             })}
+            </div>
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
@@ -621,18 +609,24 @@ export default function CaseReviewCopilot({
 
         {/* 페이지네이션 */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-1 pt-1">
             <button onClick={() => setClientPage(p => Math.max(0, p - 1))} disabled={clientPage === 0}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all">
-              이전
+              className="w-8 h-8 rounded-lg text-sm text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all flex items-center justify-center cursor-pointer">
+              ‹
             </button>
-            <span className="text-xs text-slate-500">
-              {clientPage + 1} / {totalPages} 페이지
-            </span>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button key={i} onClick={() => setClientPage(i)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${clientPage === i ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
+                {i + 1}
+              </button>
+            ))}
             <button onClick={() => setClientPage(p => Math.min(totalPages - 1, p + 1))} disabled={clientPage >= totalPages - 1}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all">
-              다음
+              className="w-8 h-8 rounded-lg text-sm text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all flex items-center justify-center cursor-pointer">
+              ›
             </button>
+            <span className="text-[11px] text-slate-400 ml-3">
+              {filteredClients.length}건 중 {clientPage * ITEMS_PER_PAGE + 1}–{Math.min((clientPage + 1) * ITEMS_PER_PAGE, filteredClients.length)}
+            </span>
           </div>
         )}
 
