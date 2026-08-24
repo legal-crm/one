@@ -18,7 +18,7 @@ import {
 import type { IntakeData, StaffRole } from '../../types';
 import { DEFAULT_SETTINGS } from '../../constants';
 import CopilotRuleSetManager from './CopilotRuleSetManager';
-import ConsultStyleProfileSettings from './ConsultStyleProfile';
+
 import { calculateRepayment, type RehabUserInput, type RehabCalculationResult, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 import LawyerProposalDraft from './LawyerProposalDraft';
@@ -256,7 +256,7 @@ export default function CaseReviewCopilot({
   const [ruleOutput, setRuleOutput] = useState<ReviewRuleEngineOutput | null>(null);
   const [reviewStatus, setReviewStatus] = useState<CaseReviewStatus>('DRAFT');
   const [isRunning, setIsRunning] = useState(false);
-  const [settingsView, setSettingsView] = useState<'none' | 'ruleset' | 'style'>('none');
+  const [settingsView, setSettingsView] = useState<'none' | 'ruleset'>('none');
 
   // 사무직원 메모 상태
   const [staffNotes, setStaffNotes] = useState('');
@@ -709,16 +709,7 @@ export default function CaseReviewCopilot({
                 <Settings className="w-4 h-4" /> 기준 관리
               </button>
             )}
-            {permissions.canManageRuleSets && (
-              <button
-                onClick={() => setSettingsView(settingsView === 'style' ? 'none' : 'style')}
-                className={`rounded-xl px-3.5 py-2.5 font-bold text-sm active:scale-[0.98] transition-all flex items-center gap-1.5 border cursor-pointer ${
-                  settingsView === 'style' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" /> 상담 스타일
-              </button>
-            )}
+
             {permissions.canRequestLawyerReview && factOutput && reviewStatus === 'STAFF_REVIEWED' && (
               <button
                 onClick={handleRequestLawyerReview}
@@ -737,16 +728,6 @@ export default function CaseReviewCopilot({
           tenantId={tenantId}
           actorId={actorId}
           actorRole={actorRole}
-          actorName={actorName}
-          onBack={() => setSettingsView('none')}
-        />
-      )}
-
-      {/* ── 설정 뷰: 상담 스타일 프로필 ── */}
-      {settingsView === 'style' && (
-        <ConsultStyleProfileSettings
-          tenantId={tenantId}
-          actorId={actorId}
           actorName={actorName}
           onBack={() => setSettingsView('none')}
         />
