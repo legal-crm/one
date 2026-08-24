@@ -558,6 +558,25 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                           <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${Math.min(100, caseCount * 10)}%` }} />
                         </div>
                       </div>
+                      {/* 담당 변호사 지정 (비변호사 직원만) */}
+                      {member.role !== 'OWNER' && member.role !== 'LAWYER' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">감독 변호사</span>
+                          <select
+                            value={member.supervisingLawyerId || ''}
+                            onChange={e => {
+                              const newId = e.target.value;
+                              setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, supervisingLawyerId: newId || undefined } : m));
+                            }}
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-600 flex-1 min-w-0"
+                          >
+                            <option value="">대표 변호사 (기본)</option>
+                            {lawyers.filter(l => l.role === 'LAWYER' || (l as any).isOwner).map(l => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                     {/* 하단: 액션 */}
                     {member.role !== 'OWNER' ? (

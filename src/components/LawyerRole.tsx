@@ -1827,6 +1827,31 @@ export default function LawyerRole({
             <NotificationBell
               tenantId={activeLawyer.lawFirmId || activeLawyer.id}
               userId={activeStaffMember?.id || activeLawyer.id}
+              onNavigate={(linkType, linkId) => {
+                if (linkType === 'proposal_review') {
+                  const pending = pendingProposals.find(p => p.id === linkId);
+                  if (pending) {
+                    const req = requests.find(r => r.id === pending.reqId);
+                    if (req) {
+                      const rehabInput = mapToRehabUserInput(req);
+                      const rehabResult = calculateRepayment(rehabInput);
+                      setProposalRehabResult(rehabResult);
+                      setProposalRehabInput(rehabInput);
+                      setProposalConsultRequest(req);
+                      setReviewModalProposal(pending);
+                    }
+                  }
+                  setActiveTab('dashboard');
+                } else if (linkType === 'consult_request') {
+                  setActiveTab('open-requests');
+                } else if (linkType === 'case') {
+                  setActiveTab('cases');
+                } else if (linkType === 'copilot_review') {
+                  setActiveTab('case-copilot');
+                } else if (linkType === 'task') {
+                  setActiveTab('tasks-schedule');
+                }
+              }}
             />
           </div>
         </header>
