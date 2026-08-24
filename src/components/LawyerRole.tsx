@@ -28,6 +28,7 @@ import { DEFAULT_PERMISSIONS } from '../types';
 import { validateInviteToken, consumeInviteToken } from '../services/inviteService';
 import { loadStaffMembers } from '../services/crmService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { createNotification } from '../services/notificationCenterService';
 import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCorpNum, type LawyerBusinessInfo } from '../services/taxInvoiceService';
 import {
   loadNotificationSettings, saveNotificationSettings, loadNotificationLogs,
@@ -1008,6 +1009,122 @@ export default function LawyerRole({
     setProposalConsultRequest(null);
   };
 
+  // ── 직원용: 변호사 컨펌 요청 (변호사법 준수) ──
+  const [pendingProposals, setPendingProposals] = useState<Array<{
+    id: string;
+    reqId: string;
+    clientName: string;
+    staffId: string;
+    staffName: string;
+    proposalData: any;
+    supervisingLawyerId: string;
+    memo: string;
+    createdAt: string;
+  }>>([]);
+  const [reviewModalProposal, setReviewModalProposal] = useState<typeof pendingProposals[0] | null>(null);
+
+  const staffRole = activeStaffMember?.role || 'OWNER';
+  const isLawyerOrOwner = staffRole === 'OWNER' || staffRole === 'LAWYER';
+
+  const handleRequestProposalConfirm = (reqId: string, proposalData: any, memo: string) => {
+    const req = requests.find(r => r.id === reqId);
+    if (!req) return;
+
+    // 담당 변호사 결정
+    const supervisingId = activeStaffMember?.supervisingLawyerId || activeLawyer.id;
+    const supervisingLawyer = lawyers.find(l => l.id === supervisingId) || activeLawyer;
+
+    const pending = {
+      id: `pending-${Date.now()}`,
+      reqId,
+      clientName: req.clientName || req.client_name || '고객',
+      staffId: activeStaffMember?.id || '',
+      staffName: activeStaffMember?.name || '직원',
+      proposalData,
+      supervisingLawyerId: supervisingId,
+      memo,
+      createdAt: new Date().toISOString()
+    };
+
+    setPendingProposals(prev => [...prev, pending]);
+
+    // 알림 발송
+    createNotification(
+      activeLawyer.firmName || 'default',
+      supervisingId,
+      {
+        type: 'REVIEW_REQUESTED',
+        title: '제안서 컨펌 요청',
+        body: `${pending.staffName}님이 ${pending.clientName}님 제안서 검토를 요청했습니다.`,
+        senderId: pending.staffId,
+        senderName: pending.staffName,
+        linkType: 'proposal_review',
+        linkId: pending.id
+      }
+    );
+
+    toast.success(`${supervisingLawyer.name} 변호사에게 컨펌 요청을 보냈습니다.`);
+
+    setProposalModalReqId(null);
+    setProposalRehabResult(null);
+    setProposalRehabInput(null);
+    setProposalConsultRequest(null);
+  };
+
+  const handleApproveProposal = (pendingId: string, proposalData: any) => {
+    const pending = pendingProposals.find(p => p.id === pendingId);
+    if (!pending) return;
+
+    // 제안서를 승인 → 고객에게 실제 발송
+    handleSubmitProposalFromDraft(pending.reqId, proposalData);
+
+    // pending에서 제거
+    setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
+    setReviewModalProposal(null);
+
+    // 직원에게 승인 알림
+    createNotification(
+      activeLawyer.firmName || 'default',
+      pending.staffId,
+      {
+        type: 'REVIEW_APPROVED',
+        title: '제안서 승인 완료',
+        body: `${activeLawyer.name} 변호사가 ${pending.clientName}님 제안서를 승인하고 발송했습니다.`,
+        senderId: activeLawyer.id,
+        senderName: activeLawyer.name,
+        linkType: 'consult_request',
+        linkId: pending.reqId
+      }
+    );
+
+    toast.success('제안서를 승인하고 고객에게 발송했습니다.');
+  };
+
+  const handleRejectProposal = (pendingId: string, reason: string) => {
+    const pending = pendingProposals.find(p => p.id === pendingId);
+    if (!pending) return;
+
+    setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
+    setReviewModalProposal(null);
+
+    // 직원에게 반려 알림
+    createNotification(
+      activeLawyer.firmName || 'default',
+      pending.staffId,
+      {
+        type: 'REVIEW_REJECTED',
+        title: '제안서 반려',
+        body: `${activeLawyer.name} 변호사가 ${pending.clientName}님 제안서를 반려했습니다. 사유: ${reason}`,
+        senderId: activeLawyer.id,
+        senderName: activeLawyer.name,
+        linkType: 'consult_request',
+        linkId: pending.reqId
+      }
+    );
+
+    toast.info('제안서를 반려했습니다.');
+  };
+
   // Turn active request into an formal Case (수임 완료)
   const handleConvertToCase = (req: ConsultRequest) => {
     const isAlreadyCase = cases.some(c => c.clientId === req.clientId);
@@ -1834,6 +1951,46 @@ export default function LawyerRole({
                 </button>
               ))}
             </div>
+            {/* ═══ 컨펌 대기 제안서 위젯 (변호사/대표만 표시) ═══ */}
+            {isLawyerOrOwner && pendingProposals.filter(p => p.supervisingLawyerId === activeLawyer.id).length > 0 && (
+              <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-extrabold text-amber-900 flex items-center gap-2 text-sm">
+                    📋 컨펌 대기 제안서
+                    <span className="bg-amber-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                      {pendingProposals.filter(p => p.supervisingLawyerId === activeLawyer.id).length}
+                    </span>
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {pendingProposals.filter(p => p.supervisingLawyerId === activeLawyer.id).map(p => (
+                    <div key={p.id} className="bg-white rounded-xl border border-amber-200/60 p-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm">{p.clientName}</p>
+                        <p className="text-xs text-slate-500">작성: {p.staffName} · {new Date(p.createdAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                        {p.memo && <p className="text-xs text-amber-700 mt-0.5">💬 {p.memo}</p>}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const req = requests.find(r => r.id === p.reqId);
+                          if (req) {
+                            const rehabInput = mapToRehabUserInput(req);
+                            const rehabResult = calculateRepayment(rehabInput);
+                            setProposalRehabResult(rehabResult);
+                            setProposalRehabInput(rehabInput);
+                            setProposalConsultRequest(req);
+                            setReviewModalProposal(p);
+                          }
+                        }}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 transition-all active:scale-[0.98] whitespace-nowrap"
+                      >
+                        검토하기
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ═══ 섹션 1: 상단 요약 카드 6열 (모노크롬 고대비 리디자인) ═══ */}
             {(dashboardSub === 'overview') && (
@@ -4365,9 +4522,36 @@ export default function LawyerRole({
             setProposalRehabInput(null);
             setProposalConsultRequest(null);
           }}
-          viewerRole="lawyer"
+          viewerRole={isLawyerOrOwner ? 'lawyer' : 'staff'}
           onSendProposal={(proposalData) => {
             handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
+          }}
+          onRequestConfirm={(proposalData, memo) => {
+            handleRequestProposalConfirm(proposalModalReqId, proposalData, memo);
+          }}
+        />
+      )}
+
+      {/* 제안서 검토 모달 (변호사용) */}
+      {reviewModalProposal && proposalRehabResult && proposalRehabInput && (
+        <LawyerProposalDraft
+          rehabCalcResult={proposalRehabResult}
+          rehabUserInput={proposalRehabInput}
+          consultRequest={proposalConsultRequest}
+          onClose={() => {
+            setReviewModalProposal(null);
+            setProposalRehabResult(null);
+            setProposalRehabInput(null);
+            setProposalConsultRequest(null);
+          }}
+          viewerRole="reviewer"
+          pendingStaffName={reviewModalProposal.staffName}
+          onSendProposal={() => {}}
+          onApproveProposal={(proposalData) => {
+            handleApproveProposal(reviewModalProposal.id, proposalData);
+          }}
+          onRejectProposal={(reason) => {
+            handleRejectProposal(reviewModalProposal.id, reason);
           }}
         />
       )}

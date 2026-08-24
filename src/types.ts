@@ -217,6 +217,8 @@ export interface StaffMember {
   linkedUserId?: string;       // 기존 User(변호사) 체계 연결 ID
   inviteToken?: string;        // 초대 시 사용된 토큰
   passwordLastChanged?: string;// 비밀번호 최종 변경 일시
+  // ── 담당 변호사 지정 (제안서 컨펌 워크플로우) ──
+  supervisingLawyerId?: string;  // 감독/담당 변호사 ID (제안서 컨펌 대상)
 }
 
 export interface StaffPermissions {
@@ -443,6 +445,15 @@ export interface ConsultProposal {
   installment: string;       // 분납 조건
   remark: string;            // 변호사 솔루션 한줄 의견
   createdAt: string;
+  // ── 제안서 컨펌 워크플로우 (변호사법 준수) ──
+  approvalStatus?: 'approved' | 'pending' | 'rejected';  // 기본값 'approved' (변호사 직접 작성)
+  createdByStaffId?: string;     // 직원이 작성한 경우 직원 ID
+  createdByStaffName?: string;   // 직원명
+  approvedByLawyerId?: string;   // 승인한 변호사 ID
+  approvedByLawyerName?: string; // 승인한 변호사명
+  approvedAt?: string;           // 승인 일시
+  rejectionReason?: string;      // 반려 사유
+  proposalData?: any;            // 원본 ProposalData (검토용 전체 데이터)
 }
 
 export interface ConsultParticipant {

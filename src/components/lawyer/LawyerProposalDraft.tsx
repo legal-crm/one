@@ -21,8 +21,11 @@ interface LawyerProposalDraftProps {
   consultRequest: any;
   onClose: () => void;
   onSendProposal: (proposalData: ProposalData) => void;
-  viewerRole?: 'lawyer' | 'staff';
-  onRequestConfirm?: (memo: string) => void;
+  viewerRole?: 'lawyer' | 'staff' | 'reviewer';
+  onRequestConfirm?: (proposalData: ProposalData, memo: string) => void;
+  onApproveProposal?: (proposalData: ProposalData) => void;
+  onRejectProposal?: (reason: string) => void;
+  pendingStaffName?: string;   // 검토 모드 시 작성 직원명
 }
 
 interface ProposalData {
@@ -62,7 +65,10 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   onClose,
   onSendProposal,
   viewerRole = 'lawyer',
-  onRequestConfirm
+  onRequestConfirm,
+  onApproveProposal,
+  onRejectProposal,
+  pendingStaffName
 }) => {
   const clientName = rehabUserInput.name || consultRequest?.clientName || consultRequest?.financialProfile?.clientName || '고객';
 
@@ -144,6 +150,9 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // Staff confirmation memo state
   const [showStaffMemo, setShowStaffMemo] = useState(false);
   const [staffMemo, setStaffMemo] = useState('');
+  // Reviewer rejection state
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Derived Summary Values
   const totalDebt = rehabUserInput.totalDebt || 0;
@@ -157,36 +166,36 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   };
   const statusInfo = getStatusInfo(rehabCalcResult.status);
 
-  const handleSubmit = () => {
-    const proposalData: ProposalData = {
-      diagnosis: {
-        monthlyPayment: rehabCalcResult.monthlyPayment,
-        repaymentMonths: rehabCalcResult.repaymentMonths,
-        debtReductionRate: rehabCalcResult.debtReductionRate,
-        totalDebt: totalDebt,
-        totalRepayment: totalRepayment,
-        estimatedReduction: estimatedReduction,
-        status: rehabCalcResult.status,
-        statusReason: rehabCalcResult.statusReason,
-        court: (rehabCalcResult as any).court || '관할 법원 미정'
-      },
-      specialNotes,
-      fees: {
-        totalFee,
-        downPayment,
-        installments,
-        monthlyInstallment,
-        courtDeposit,
-        feeMemo
-      },
-      lawyerOpinion,
-      clientQnA: clientQuestions.map((q, idx) => ({
-        question: q,
-        answer: clientAnswers[idx] || ''
-      }))
-    };
+  const getProposalData = (): ProposalData => ({
+    diagnosis: {
+      monthlyPayment: rehabCalcResult.monthlyPayment,
+      repaymentMonths: rehabCalcResult.repaymentMonths,
+      debtReductionRate: rehabCalcResult.debtReductionRate,
+      totalDebt: totalDebt,
+      totalRepayment: totalRepayment,
+      estimatedReduction: estimatedReduction,
+      status: rehabCalcResult.status,
+      statusReason: rehabCalcResult.statusReason,
+      court: (rehabCalcResult as any).court || '관할 법원 미정'
+    },
+    specialNotes,
+    fees: {
+      totalFee,
+      downPayment,
+      installments,
+      monthlyInstallment,
+      courtDeposit,
+      feeMemo
+    },
+    lawyerOpinion,
+    clientQnA: clientQuestions.map((q, idx) => ({
+      question: q,
+      answer: clientAnswers[idx] || ''
+    }))
+  });
 
-    onSendProposal(proposalData);
+  const handleSubmit = () => {
+    onSendProposal(getProposalData());
   };
 
   const handleAddNote = () => {
@@ -206,10 +215,13 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
           <div>
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <FileText className="w-6 h-6 text-[#7264FF]" />
-              고객 제안서 초안
+              {viewerRole === 'reviewer' ? '제안서 컨펌 요청' : '고객 제안서 초안'}
             </h2>
             <p className="text-sm text-slate-500 mt-1">
               {clientName}님 · 개인회생 진단 결과
+              {viewerRole === 'reviewer' && pendingStaffName && (
+                <span className="ml-2 inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-lg">📋 작성: {pendingStaffName}</span>
+              )}
             </p>
           </div>
           <button 
@@ -510,6 +522,47 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               <Send className="w-5 h-5" />
               고객에게 제안서 발송
             </button>
+          ) : viewerRole === 'reviewer' ? (
+            <div className="flex items-center gap-2">
+              {showRejectInput ? (
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="text"
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="반려 사유 입력..."
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-red-500/30 focus:border-red-500 outline-none w-52"
+                    autoFocus
+                  />
+                  <button 
+                    onClick={() => { onRejectProposal && onRejectProposal(rejectReason); }}
+                    disabled={!rejectReason.trim()}
+                    className="px-5 py-3 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+                  >
+                    반려
+                  </button>
+                  <button onClick={() => setShowRejectInput(false)} className="px-3 py-3 rounded-xl text-slate-400 hover:text-slate-600">
+                    취소
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setShowRejectInput(true)}
+                    className="px-5 py-3 rounded-xl font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+                  >
+                    반려
+                  </button>
+                  <button 
+                    onClick={() => onApproveProposal && onApproveProposal(getProposalData())}
+                    className="px-6 py-3 rounded-xl font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                    승인 및 발송
+                  </button>
+                </>
+              )}
+            </div>
           ) : (
             <div className="flex items-center gap-3">
               {showStaffMemo ? (
@@ -522,7 +575,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                     className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none w-48"
                   />
                   <button 
-                    onClick={() => onRequestConfirm && onRequestConfirm(staffMemo)}
+                    onClick={() => onRequestConfirm && onRequestConfirm(getProposalData(), staffMemo)}
                     className="px-6 py-3 rounded-xl font-semibold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
                   >
                     요청하기
@@ -533,7 +586,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                   onClick={() => setShowStaffMemo(true)}
                   className="px-8 py-3 rounded-xl font-semibold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
                 >
-                  변호사 컨펌 요청
+                  📋 변호사 컨펌 요청
                 </button>
               )}
             </div>
