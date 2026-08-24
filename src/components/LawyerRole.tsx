@@ -170,6 +170,39 @@ export default function LawyerRole({
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const permissionCtx = usePermissions(activeStaffMember);
 
+  // ── Browser history management: 뒤로 가기로 사이트 이탈 방지 ──
+  const isPopStateRef = useRef(false);
+
+  // 1) popstate listener: 뒤로 가기 시 이전 탭으로 이동, dashboard 이전은 차단
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      isPopStateRef.current = true;
+      if (event.state && event.state.lawyerTab) {
+        setActiveTab(event.state.lawyerTab);
+      } else {
+        // history에 상태가 없으면 dashboard로 복귀 + guard 재설치
+        setActiveTab('dashboard');
+        window.history.pushState({ lawyerTab: 'dashboard', guard: true }, '');
+      }
+      setTimeout(() => { isPopStateRef.current = false; }, 50);
+    };
+
+    // 초기 guard: dashboard 상태를 history에 넣어서 이전으로 못 빠지게
+    window.history.replaceState({ lawyerTab: activeTab, guard: true }, '');
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 2) 탭 변경 시 pushState로 history에 기록
+  useEffect(() => {
+    if (isPopStateRef.current) return;
+    const currentState = window.history.state;
+    if (!currentState || currentState.lawyerTab !== activeTab) {
+      window.history.pushState({ lawyerTab: activeTab }, '');
+    }
+  }, [activeTab]);
+
   // Dynamically sync document title
   useEffect(() => {
     if (platformConfig.siteTitle) {
