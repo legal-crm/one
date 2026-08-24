@@ -1,10 +1,10 @@
 import React from 'react';
 
-function fmtMoney(v: number): string {
+function fmt(v: number): string {
   if (!v && v !== 0) return '-';
   if (v >= 100000000) return `${(v / 100000000).toFixed(1)}억`;
   if (v >= 10000) return `${Math.round(v / 10000).toLocaleString()}만`;
-  return `${v.toLocaleString()}원`;
+  return `${v.toLocaleString()}`;
 }
 
 interface ClientOriginalInfoProps {
@@ -13,123 +13,100 @@ interface ClientOriginalInfoProps {
   phone?: string;
   consultType?: string;
   createdAt?: string;
-  /** 2-col compact mode for narrow containers like cards */
   compact?: boolean;
 }
 
-/** 고객이 입력한 원본 정보 — 6개 섹션 그리드 (컴팩트) */
-export default function ClientOriginalInfo({ fp, clientName, phone, consultType, createdAt, compact }: ClientOriginalInfoProps) {
+/** 인라인 키-값 플랫 테이블 — 1개 컨테이너, divide-y 행 구분 */
+export default function ClientOriginalInfo({ fp, clientName, phone, consultType, createdAt }: ClientOriginalInfoProps) {
   if (!fp) return null;
-  const cols = compact ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4';
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="border border-slate-200/80 rounded-xl overflow-hidden">
-      <div className="bg-slate-50 px-3 py-1.5 border-b border-slate-200/80">
-        <h5 className="text-[11px] font-extrabold text-slate-600">{title}</h5>
-      </div>
-      {children}
-    </div>
-  );
+  const V = ({ l, v, unit }: { l: string; v: string | number | undefined | null; unit?: string }) => {
+    const val = v == null || v === '' || v === '-' ? '-' : `${v}${unit || ''}`;
+    return <span className="inline-flex items-baseline gap-0.5"><span className="text-slate-400">{l}</span> <span className="font-extrabold text-slate-900">{val}</span></span>;
+  };
 
-  const Cell = ({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) => (
-    <div className="px-2.5 py-1.5 text-left">
-      <p className="text-[10px] font-bold text-slate-400 leading-tight">{label}</p>
-      <p className={`text-xs font-extrabold tracking-tight tabular-nums leading-snug ${highlight ? 'text-slate-900 text-sm' : 'text-slate-900'}`}>{value}</p>
-    </div>
-  );
+  const Sep = () => <span className="text-slate-300 mx-0.5">·</span>;
+
+  const name = fp.clientName || clientName || '-';
+  const phoneVal = fp.clientPhone || phone || '-';
+  const age = fp.age ? `${fp.age}세` : '-';
+  const gender = fp.gender === 'male' ? '남' : fp.gender === 'female' ? '여' : '';
+  const marital = fp.maritalStatus === 'MARRIED' || fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus === 'DIVORCED' || fp.maritalStatus === 'divorced' ? '이혼' : fp.maritalStatus === 'SINGLE' || fp.maritalStatus === 'single' ? '미혼' : '-';
+  const children = fp.minorChildren != null ? fp.minorChildren : (fp.dependents || 0);
+  const region = fp.residence || fp.residenceRegion || fp.address || '-';
+  const housing = fp.housingType === 'rent' ? '월세' : fp.housingType === 'jeonse' ? '전세' : fp.housingType === 'owned' ? '자가' : fp.housingType === 'free' ? '무상' : fp.housingType || '-';
+  const income = fmt(fp.income || fp.monthlyIncome || 0);
+  const job = fp.jobType === 'SALARIED' ? '급여소득' : fp.jobType === 'BUSINESS' ? '자영업' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-';
+  const work = fp.workLocation || '';
+  const spouseIncome = fp.spouseIncome ? fmt(fp.spouseIncome) : '';
+  const debt = fmt(fp.debtTotal || 0);
+  const creditors = fp.creditorCount || (fp.debts || []).length || 0;
+  const cause = fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-';
+  const harass = fp.harassmentLevel === 'CALL' ? '독촉전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-';
+  const assets = fmt(fp.assetsTotal || 0);
+  const myAsset = fp.myAssets ? `${fp.myAssets}만` : '';
+  const deposit = fp.rentalDeposit ? `${fp.rentalDeposit}만` : '';
+  const retire = fp.retirementPay ? `${fp.retirementPay}만` : '';
+  const retirePension = fp.retirementPensionType === 'pension' ? '연금0%' : fp.retirementPensionType === 'none' ? '미가입50%' : fp.retirementPensionType === 'unknown' ? '확인필요' : '';
+  const housingHolder = fp.housingContractHolder === 'self' ? '본인' : fp.housingContractHolder === 'spouse' ? '배우자' : '';
+  const rent = fp.rentCost ? `${fp.rentCost}만` : '';
+  const medical = fp.medicalCost ? `${fp.medicalCost}만` : '';
+  const edu = fp.educationCost ? `${fp.educationCost}만` : '';
+  const special = fp.specialCondition === 'basic_recipient' ? '기초수급' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '';
 
   return (
-    <div className="space-y-1.5">
-      {/* 1. 기본 정보 */}
-      <Section title="👤 기본 정보">
-        <div className={`grid ${cols} divide-x divide-slate-100`}>
-          <Cell label="의뢰인명" value={fp.clientName || clientName || '-'} />
-          <Cell label="연락처" value={fp.clientPhone || phone || '-'} />
-          <Cell label="나이" value={fp.age ? `${fp.age}세` : '-'} />
-          {!compact && <Cell label="성별" value={fp.gender === 'male' ? '남성' : fp.gender === 'female' ? '여성' : '-'} />}
-        </div>
-        <div className={`grid ${cols} divide-x divide-slate-100 border-t border-slate-100`}>
-          <Cell label="혼인" value={fp.maritalStatus === 'MARRIED' || fp.maritalStatus === 'married' ? '기혼' : fp.maritalStatus === 'DIVORCED' || fp.maritalStatus === 'divorced' ? '이혼' : fp.maritalStatus === 'SINGLE' || fp.maritalStatus === 'single' ? '미혼' : '-'} />
-          <Cell label="자녀" value={fp.minorChildren != null ? `${fp.minorChildren}명` : `${fp.dependents || 0}명`} />
-          <Cell label="거주지" value={fp.residence || fp.residenceRegion || fp.address || '-'} />
-          {!compact && <Cell label="거주 형태" value={fp.housingType === 'rent' ? '월세' : fp.housingType === 'jeonse' ? '전세' : fp.housingType === 'owned' ? '자가' : fp.housingType === 'free' ? '무상거주' : fp.housingType || '-'} />}
-        </div>
-      </Section>
-
-      {/* 2+3. 소득/직업 + 채무 — 2열 병합 */}
-      <div className={compact ? 'grid grid-cols-2 gap-1.5' : 'space-y-1.5'}>
-        <Section title="💼 소득/직업">
-          <div className="divide-y divide-slate-100">
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="월 소득" value={fmtMoney(fp.income || fp.monthlyIncome || 0)} />
-              <Cell label="직업" value={fp.jobType === 'SALARIED' ? '급여소득' : fp.jobType === 'BUSINESS' ? '자영업' : fp.jobType === 'DAILY' ? '일용직' : fp.jobType === 'FREELANCER' ? '프리랜서' : fp.employmentType || fp.incomeType || '-'} />
-            </div>
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="근무지" value={fp.workLocation || '-'} />
-              <Cell label="배우자 소득" value={fp.spouseIncome ? fmtMoney(fp.spouseIncome) : '-'} />
-            </div>
-          </div>
-        </Section>
-
-        <Section title="🔴 채무 요약">
-          <div className="divide-y divide-slate-100">
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="총 채무" value={fmtMoney(fp.debtTotal || 0)} highlight />
-              <Cell label="채권자" value={fp.creditorCount ? `${fp.creditorCount}곳` : `${(fp.debts || []).length}곳`} />
-            </div>
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="채무 원인" value={fp.debtCause === 'LIVING' ? '생활비' : fp.debtCause === 'BUSINESS' ? '사업' : fp.debtCause === 'INVESTMENT' ? '투자' : fp.debtCause === 'GUARANTEE' ? '보증' : fp.debtCause === 'GAMBLING' ? '도박' : fp.debtCause || '-'} />
-              <Cell label="독촉/법적조치" value={fp.harassmentLevel === 'CALL' ? '독촉전화' : fp.harassmentLevel === 'LETTER' ? '내용증명' : fp.harassmentLevel === 'LAWSUIT' ? '소송' : fp.harassmentLevel === 'SEIZURE' ? '압류' : fp.harassmentLevel || '-'} />
-            </div>
-          </div>
-        </Section>
+    <div className="border border-slate-200/80 rounded-xl overflow-hidden text-[11px] leading-relaxed">
+      {/* 기본 정보 */}
+      <div className="px-3 py-2 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <span className="text-slate-500 font-bold mr-0.5">👤</span>
+        <span className="font-extrabold text-slate-900">{name}</span>
+        <Sep /><span className="text-slate-700">{phoneVal}</span>
+        <Sep /><span className="text-slate-700">{age}{gender && ` ${gender}`}</span>
+        <Sep /><span className="text-slate-700">{marital}</span>
+        <Sep /><V l="자녀" v={children} unit="명" />
+        <Sep /><span className="text-slate-700">{region}</span>
+        <Sep /><span className="text-slate-700">{housing}</span>
       </div>
 
-      {/* 4. 자산 현황 */}
-      <Section title="🏦 자산 현황">
-        <div className={`grid ${cols} divide-x divide-slate-100`}>
-          <Cell label="총 자산" value={fmtMoney(fp.assetsTotal || 0)} />
-          <Cell label="본인 재산" value={fp.myAssets ? `${fp.myAssets}만` : '-'} />
-          <Cell label="임대보증금" value={fp.rentalDeposit ? `${fp.rentalDeposit}만` : '-'} />
-          {!compact && <Cell label="배우자 자산" value={fp.spouseAsset ? `${fp.spouseAsset}만` : '-'} />}
-        </div>
-        <div className={`grid ${cols} divide-x divide-slate-100 border-t border-slate-100`}>
-          <Cell label="퇴직금" value={fp.retirementPay ? `${fp.retirementPay}만` : '-'} />
-          <Cell label="퇴직연금" value={fp.retirementPensionType === 'pension' ? '가입' : fp.retirementPensionType === 'none' ? '미가입' : fp.retirementPensionType === 'unknown' ? '모름' : '-'} />
-          <Cell label="주택 명의" value={fp.housingContractHolder === 'self' ? '본인' : fp.housingContractHolder === 'spouse' ? '배우자' : fp.housingContractHolder || '-'} />
-          {!compact && <Cell label="보증금 대출" value={fp.depositLoan ? `${fp.depositLoan}만` : '-'} />}
-        </div>
-      </Section>
-
-      {/* 5+6. 생활비 + 특이사항 — 2열 병합 */}
-      <div className={compact ? 'grid grid-cols-2 gap-1.5' : 'space-y-1.5'}>
-        <Section title="🏠 월 생활비">
-          <div className="divide-y divide-slate-100">
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="월세" value={fp.rentCost ? `${fp.rentCost}만` : fp.monthlyRent ? fmtMoney(fp.monthlyRent) : '-'} />
-              <Cell label="의료비" value={fp.medicalCost ? `${fp.medicalCost}만` : '-'} />
-            </div>
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="교육비" value={fp.educationCost ? `${fp.educationCost}만` : '-'} />
-              <Cell label="합계" value={fp.monthlyExpense ? fmtMoney(fp.monthlyExpense) : fp.livingCost ? fmtMoney(fp.livingCost) : '-'} />
-            </div>
-          </div>
-        </Section>
-
-        <Section title="⚠️ 특이사항">
-          <div className="divide-y divide-slate-100">
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="24개월 특례" value={fp.specialCondition === 'basic_recipient' ? '기초수급자' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'elderly' ? '고령자' : '해당없음'} />
-              <Cell label="거주 형태" value={fp.housingType === 'rent' ? '월세' : fp.housingType === 'jeonse' ? '전세' : fp.housingType === 'owned' ? '자가' : fp.housingType === 'free' ? '무상거주' : '-'} />
-            </div>
-            <div className="grid grid-cols-2 divide-x divide-slate-100">
-              <Cell label="상담 유형" value={consultType || '-'} />
-              <Cell label="요청일" value={createdAt?.split('T')[0] || '-'} />
-            </div>
-          </div>
-        </Section>
+      {/* 소득/직업 */}
+      <div className="px-3 py-2 border-t border-slate-100 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <span className="text-slate-500 font-bold mr-0.5">💼</span>
+        <V l="소득" v={income} />
+        <Sep /><span className="text-slate-700">{job}</span>
+        {work && <><Sep /><span className="text-slate-700">{work}</span></>}
+        {spouseIncome && <><Sep /><V l="배우자" v={spouseIncome} /></>}
       </div>
 
+      {/* 채무 */}
+      <div className="px-3 py-2 border-t border-slate-100 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <span className="text-slate-500 font-bold mr-0.5">🔴</span>
+        <V l="채무" v={debt} />
+        <Sep /><V l="채권자" v={creditors} unit="곳" />
+        <Sep /><span className="text-slate-700">{cause}</span>
+        <Sep /><span className="text-slate-700">{harass}</span>
+      </div>
+
+      {/* 자산 */}
+      <div className="px-3 py-2 border-t border-slate-100 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <span className="text-slate-500 font-bold mr-0.5">🏦</span>
+        <V l="자산" v={assets} />
+        {myAsset && <><Sep /><V l="본인" v={myAsset} /></>}
+        {deposit && <><Sep /><V l="보증금" v={deposit} /></>}
+        {retire && <><Sep /><V l="퇴직금" v={`${retire}${retirePension ? `(${retirePension})` : ''}`} /></>}
+        {fp.depositLoan ? <><Sep /><V l="보증금대출" v={`${fp.depositLoan}만`} /></> : null}
+        {housingHolder && <><Sep /><V l="주택" v={housingHolder} /></>}
+      </div>
+
+      {/* 생활비 + 특이사항 */}
+      <div className="px-3 py-2 border-t border-slate-100 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <span className="text-slate-500 font-bold mr-0.5">🏠</span>
+        {rent && <><V l="월세" v={rent} /><Sep /></>}
+        {medical && <><V l="의료" v={medical} /><Sep /></>}
+        {edu && <><V l="교육" v={edu} /><Sep /></>}
+        {special && <><span className="text-amber-600 font-bold">⚡ {special}</span><Sep /></>}
+        <span className="text-slate-400">{consultType || '-'}</span>
+        <Sep /><span className="text-slate-400">{createdAt?.split('T')[0] || '-'}</span>
+      </div>
     </div>
   );
 }
