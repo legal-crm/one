@@ -16,7 +16,7 @@
     <meta name="keywords" content="마이김변,my김변,세금체납,국세 체납,지방세 체납,세금 체납 압류,국세 소멸시효,지방세 소멸시효,세금체납 개인회생,세금체납 파산,부가세 체납 개인회생,4대보험 체납,건강보험료 체납,체납세금 소멸시효">
     <link rel="canonical" href="https://mykim.kr/guide/tax-debt.html">
     <style>
-        body { font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #fafafa; }
+        body { font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background: #fafafa; min-height: 100vh; display: flex; flex-direction: column; }
         h1 { font-size: 24px; border-bottom: 2px solid #6C5CE7; padding-bottom: 12px; color: #2d3436; }
         h2 { margin-top: 36px; font-size: 17px; color: #6C5CE7; border-left: 3px solid #6C5CE7; padding-left: 12px; }
         h3 { font-size: 15px; color: #2d3436; margin-top: 20px; }
@@ -76,8 +76,10 @@
       ]
     }
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased flex flex-col min-h-screen">
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-10 pb-20">
     <nav class="breadcrumb"><a href="/">홈</a> &gt; <a href="/guide/debt-management.html">채무관리 가이드</a> &gt; 세금체납</nav>
 
     <h1>세금체납과 채무관리 완전 가이드</h1>
@@ -194,9 +196,74 @@
         <a href="https://mykim.kr">🔍 익명 채무진단 시작하기 →</a>
     </div>
 
-    <div class="footer-note">
-        <p>본 가이드는 「국세기본법」 및 「지방세기본법」에 근거한 일반 정보 제공입니다.</p>
-        <p>© 2026 (주)my김변컴퍼니 | <a href="/guide/debt-management.html">채무관리 가이드</a> | <a href="/guide/personal-rehabilitation.html">개인회생 가이드</a> | <a href="/about.html">서비스 소개</a></p>
-    </div>
+    </main>
+
+    <!-- 3-Zone Dark Footer -->
+    <footer class="w-full bg-[#111827] text-slate-400 mt-auto">
+      <!-- ZONE 1: 내비게이션 링크 -->
+      <div class="border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <nav class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium">
+            <a href="/about" class="text-slate-400 hover:text-white transition-colors">서비스 소개</a>
+            <a href="/faq" class="text-slate-400 hover:text-white transition-colors">자주 묻는 질문</a>
+            <a href="/?tab=guide" class="text-slate-400 hover:text-white transition-colors">서비스 이용안내</a>
+            <a href="/guide/debt-management" class="text-slate-400 hover:text-white transition-colors">채무관리 가이드</a>
+            <a href="/?tab=notices" class="text-slate-400 hover:text-white transition-colors">공지사항</a>
+            <a href="/?tab=inquiry" class="text-slate-400 hover:text-white transition-colors">1:1 문의</a>
+          </nav>
+        </div>
+      </div>
+
+      <!-- ZONE 2: 회사 정보 + 법적 면책 -->
+      <div class="border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+          <!-- 브랜드 -->
+          <div class="space-y-4 mb-6">
+            <div class="space-y-1">
+              <p class="text-white font-bold text-base">채무 해결, 전문가와 함께</p>
+              <p class="text-xs sm:text-sm text-slate-400">내 사건에 맞는 변호사를 비교하세요.</p>
+            </div>
+            <p class="text-base font-bold text-slate-200">(주) my김변컴퍼니</p>
+          </div>
+
+          <!-- 회사 정보 -->
+          <div class="space-y-1.5 text-xs sm:text-sm text-slate-400 leading-relaxed">
+            <p>
+              사업자등록번호 521-39-01355
+              <span class="mx-1.5 text-slate-600">|</span>
+              대표이사 진성호
+              <span class="mx-1.5 text-slate-600">|</span>
+              고객문의 help@rebirthtalk.com
+            </p>
+            <p>
+              주소: 서울특별시 서초구 서초대로 123 서초빌딩 5층 (주)my김변컴퍼니
+            </p>
+            <p>통신판매업신고번호 제 2026-서울강남-0000호</p>
+          </div>
+
+          <!-- 법적 면책 요약 -->
+          <div class="mt-6 pt-5 border-t border-white/5 space-y-2 text-xs text-slate-500 leading-relaxed">
+            <p>
+              본 서비스는 이용자가 자신의 채무·소득·지출 정보를 정리하고, 공개된 전문가 정보를 검색·열람할 수 있도록 지원하는 정보기술 플랫폼입니다. 플랫폼은 통신판매중개자로서 통신판매의 당사자가 아니며, 변호사회원이 제공하는 법률 서비스의 내용과 질에 대해 법적 책임을 부담하지 않습니다.
+            </p>
+            <p>
+              플랫폼은 변호사법 제34조에 의거 변호사 알선료·수수료 수취를 금지하는 구조를 채택하고 있으며, 광고비는 정액제로 상담 건수·수임 여부·사건 결과와 연동되지 않습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ZONE 3: 하단 바 -->
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+          <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <a href="/tos" class="text-slate-400 hover:text-white transition-colors font-medium">서비스 이용약관</a>
+            <a href="/privacy" class="text-slate-400 hover:text-white transition-colors font-bold">개인정보 처리방침</a>
+            <a href="/legal" class="text-slate-400 hover:text-white transition-colors font-medium">법적 고지 및 책임한계</a>
+          </div>
+          <p class="text-slate-500 font-medium">© 2026 my김변. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
 </body>
 </html>
