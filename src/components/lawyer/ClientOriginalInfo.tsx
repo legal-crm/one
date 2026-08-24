@@ -130,13 +130,6 @@ export default function ClientOriginalInfo({ fp, clientName, phone, consultType,
         </Section>
       </div>
 
-      {/* 의뢰인 메모 */}
-      {(fp.clientNote || (fp.clientNotes && fp.clientNotes.length > 0)) && (
-        <div className="px-3 py-2 border border-slate-200/80 rounded-xl bg-slate-50 text-left">
-          <p className="text-[10px] text-slate-500 font-bold mb-0.5">의뢰인 전달 메모</p>
-          <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap">{fp.clientNote || (fp.clientNotes || []).join('\n')}</p>
-        </div>
-      )}
     </div>
   );
 }
