@@ -2477,6 +2477,18 @@ export default function LawyerRole({
                                   <span className="font-bold text-slate-700">{r.financialProfile.monthlyFixedExpenses.toLocaleString()}만</span>
                                 </div>
                               )}
+                              {r.financialProfile.priorityDebt !== undefined && r.financialProfile.priorityDebt > 0 && (
+                                <div className="flex justify-between text-rose-600 font-semibold">
+                                  <span>세금 체납</span>
+                                  <span>{r.financialProfile.priorityDebt.toLocaleString()}만</span>
+                                </div>
+                              )}
+                              {r.financialProfile.depositLoan !== undefined && r.financialProfile.depositLoan > 0 && (
+                                <div className="flex justify-between text-slate-600">
+                                  <span>보증금 대출</span>
+                                  <span>{r.financialProfile.depositLoan.toLocaleString()}만</span>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -2486,24 +2498,33 @@ export default function LawyerRole({
                             <div className="space-y-1.5 text-xs">
                               <div className="flex justify-between">
                                 <span className="text-slate-500">나이/성별</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '미기재'} / {r.financialProfile.gender === 'male' ? '남' : r.financialProfile.gender === 'female' ? '여' : '-'}</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.age ? `${r.financialProfile.age}세` : '30대'} / {r.financialProfile.gender === 'female' ? '여' : '남'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">가구원</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.dependents + 1}인 (부양 {r.financialProfile.dependents}명)</span>
+                                <span className="font-bold text-slate-700">{(r.financialProfile.dependents || 0) + 1}인 (부양 {r.financialProfile.dependents || 0}명)</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">미성년 자녀</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : '-'}</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.minorChildren !== undefined ? `${r.financialProfile.minorChildren}명` : `${r.financialProfile.dependents || 0}명`}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">혼인</span>
                                 <span className="font-bold text-slate-700">{r.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : r.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span>
                               </div>
-                              {r.financialProfile.maritalStatus === 'MARRIED' && r.financialProfile.spouseIncome !== undefined && (
+                              {r.financialProfile.maritalStatus === 'MARRIED' && (r.financialProfile.spouseIncome !== undefined || r.financialProfile.spouseAsset !== undefined) && (
                                 <div className="flex justify-between border-t border-slate-200 pt-1.5">
-                                  <span className="text-slate-500">배우자 소득</span>
-                                  <span className="font-bold text-slate-700">{r.financialProfile.spouseIncome.toLocaleString()}만</span>
+                                  <span className="text-slate-500">배우자</span>
+                                  <span className="font-bold text-slate-700">
+                                    {r.financialProfile.spouseIncome ? `소득 ${r.financialProfile.spouseIncome}만` : '무소득'}
+                                    {r.financialProfile.spouseAsset ? ` / 자산 ${r.financialProfile.spouseAsset}만` : ''}
+                                  </span>
+                                </div>
+                              )}
+                              {r.financialProfile.childSupportCost !== undefined && r.financialProfile.childSupportCost > 0 && (
+                                <div className="flex justify-between border-t border-slate-200 pt-1.5">
+                                  <span className="text-slate-500">양육비</span>
+                                  <span className="font-bold text-slate-700">월 {Math.round(r.financialProfile.childSupportCost / 10000)}만</span>
                                 </div>
                               )}
                             </div>
@@ -2519,13 +2540,22 @@ export default function LawyerRole({
                                   <span className="font-bold text-slate-700">{r.financialProfile.jobType === 'SALARIED' ? '급여소득' : r.financialProfile.jobType === 'BUSINESS' ? '영업소득' : r.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}</span>
                                 </div>
                               )}
+                              {r.financialProfile.companyNameMasked && r.financialProfile.companyNameMasked !== '미기재' && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">직장</span>
+                                  <span className="font-medium text-slate-700 truncate max-w-[110px]">{r.financialProfile.companyNameMasked}</span>
+                                </div>
+                              )}
                               <div className="flex justify-between">
                                 <span className="text-slate-500">채무원인</span>
                                 <span className="font-bold text-slate-700">{r.financialProfile.debtCause === 'LIVING' ? '생활비' : r.financialProfile.debtCause === 'BUSINESS' ? '사업실패' : r.financialProfile.debtCause === 'INVESTMENT' ? '투자실패' : r.financialProfile.debtCause === 'GAMBLING' ? '도박' : r.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-500">거주형태</span>
-                                <span className="font-bold text-slate-700">{r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-'}</span>
+                                <span className="font-bold text-slate-700">
+                                  {r.financialProfile.housingType === 'rent' ? '월세' : r.financialProfile.housingType === 'jeonse' ? '전세' : r.financialProfile.housingType === 'owned' ? '자가' : r.financialProfile.housingType === 'free' ? '무상거주' : '-'}
+                                  {r.financialProfile.rentalDeposit ? ` (${r.financialProfile.rentalDeposit.toLocaleString()}만)` : ''}
+                                </span>
                               </div>
                               {r.financialProfile.residenceRegion && (
                                 <div className="flex justify-between">

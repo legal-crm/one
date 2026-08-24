@@ -876,6 +876,10 @@ export interface IntakeData {
   housingType?: 'rent' | 'jeonse' | 'owned' | 'free' | 'dormitory'; // 거주 형태
   housingContractHolder?: 'self' | 'spouse' | 'others'; // 계약 명의자
   depositLoan?: number; // 보증금 대출금 (원 단위)
+  age?: number;
+  specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud';
+  monthlyFixedExpenses?: number;
+  spouseAsset?: number;
 }
 
 export interface MedianIncomeTable {

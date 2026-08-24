@@ -1384,10 +1384,14 @@ export default function ClientRole({
       content,
       financialProfile: {
         clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || 'client-temp') : 'client-temp',
+        clientName: isLoggedIn ? `${userAlias} (의뢰인)` : '익명 의뢰인',
+        age: 38,
+        gender: 'male',
         income,
         debtTotal: finalDebtTotal,
         assetsTotal,
         dependents,
+        minorChildren: dependents,
         maritalStatus,
         debtTypes: {
           banks: debtBanks,
@@ -1410,7 +1414,10 @@ export default function ClientRole({
         rentalDeposit,
         debtCause,
         harassmentLevel,
-        creditorCount
+        creditorCount,
+        monthlyFixedExpenses: 45,
+        clientNotes: content ? [content] : [],
+        clientNote: content || undefined,
       }
     };
 
@@ -1682,6 +1689,10 @@ export default function ClientRole({
       housingType: input.housingType,
       housingContractHolder: input.housingContractHolder,
       depositLoan: input.depositLoan,
+      age: input.age || (birthYear ? 2026 - birthYear : 35),
+      specialCondition: input.specialCondition || (input.age && input.age >= 65 ? 'elderly' : (input.specialCondition as any) || 'none'),
+      monthlyFixedExpenses: input.monthlyFixedExpenses || ((input.rentCost || 0) + (input.medicalCost || 0) + (input.educationCost || 0) + (input.specialEducationCost || 0)),
+      spouseAsset: input.spouseAssets || 0,
       consultationLogs
     };
   };
@@ -1816,11 +1827,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 - 자산 청산가치 충족 여부 사전 확인.
 ==================================`,
       financialProfile: {
-        clientId: 'client-temp',
+        clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
+        clientName: isLoggedIn ? userAlias : (intakeData.clientName || '익명 의뢰인'),
+        age: intakeData.age || (intakeData.birthDate ? (2026 - parseInt(intakeData.birthDate.split('-')[0])) : 35),
+        gender: intakeData.gender || 'male',
         income: incomeManWon,
         debtTotal: debtManWon,
         assetsTotal: assetsManWon,
         dependents: result.client.dependents,
+        minorChildren: intakeData.minorChildren || 0,
         maritalStatus: intakeData.maritalStatus === 'single' ? 'SINGLE' : intakeData.maritalStatus === 'married' ? 'MARRIED' : 'DIVORCED',
         debtTypes: {
           banks,
@@ -1830,12 +1845,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
           coinCrypto: intakeData.speculativeLoss ? Math.round(intakeData.speculativeLoss / 10000) : (intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : coinCrypto)
         },
         riskFlags,
-        jobType: intakeData.incomeSources[0]?.type === 'worker' ? 'SALARIED' : 'BUSINESS',
+        jobType: intakeData.incomeSources[0]?.type === 'worker' ? 'SALARIED' : 
+                 intakeData.incomeSources[0]?.type === 'business' ? 'BUSINESS' : 
+                 intakeData.incomeSources[0]?.type === 'daily' || intakeData.incomeSources[0]?.type === 'worker_no_ins' ? 'DAILY' : 'FREELANCER',
         companyName: intakeData.workplace || '',
         companyNameMasked: intakeData.workplace ? intakeData.workplace.replace(/./g, (c, i) => i > 0 && i < intakeData.workplace.length - 1 ? '*' : c) : '미기재',
         employmentDate: intakeData.consultDate,
         residenceRegion: intakeData.residence,
-        spouseAsset: Math.round((intakeData.spouseIncome || 0) / 10000),
+        spouseAsset: Math.round((intakeData.spouseAsset || (intakeData.assets.find(a => a.owner === 'spouse')?.marketValue || 0)) / 10000),
         spouseIncome: Math.round((intakeData.spouseIncome || 0) / 10000),
         hasRecentJobChange: intakeData.debts.some(d => d.isRecent),
         rentalDeposit: Math.round((intakeData.assets.find(a => a.type === 'deposit')?.marketValue || 0) / 10000),
@@ -1845,15 +1862,17 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         housingContractHolder: intakeData.housingContractHolder,
         debtCause: intakeData.speculativeLoss ? 'INVESTMENT' : (intakeData.gamblingLoss ? 'GAMBLING' : 'LIVING'),
         harassmentLevel,
-        creditorCount: intakeData.debts.length,
+        creditorCount: intakeData.debts.length || 3,
+        priorityDebt: Math.round((intakeData.debts.find(d => d.type === 'tax')?.principal || 0) / 10000),
         speculativeLoss: intakeData.speculativeLoss ? Math.round(intakeData.speculativeLoss / 10000) : undefined,
         gamblingLoss: intakeData.gamblingLoss ? Math.round(intakeData.gamblingLoss / 10000) : undefined,
         legalActions: intakeData.legalActions,
         retirementPensionType: intakeData.retirementPensionType,
         retirementPay: intakeData.retirementPay ? Math.round(intakeData.retirementPay / 10000) : undefined,
+        specialCondition: (intakeData.specialCondition as any) || (intakeData.specialCircumstances?.basicLivelihood ? 'basic_recipient' : intakeData.specialCircumstances?.severeDisability ? 'severe_disability' : intakeData.specialCircumstances?.singleParent ? 'single_parent' : intakeData.specialCircumstances?.rentFraud ? 'rent_fraud' : 'none'),
+        monthlyFixedExpenses: Math.round((intakeData.monthlyFixedExpenses || (intakeData.monthlyRent + (intakeData.extraLivingCost?.medical || 0) + (intakeData.extraLivingCost?.education || 0) + (intakeData.extraLivingCost?.specialEducation || 0))) / 10000),
         clientNote: intakeData.notes || undefined,
         clientNotes: intakeData.clientNotes || (intakeData.notes ? [intakeData.notes] : []),
-        gender: intakeData.gender
       },
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };
