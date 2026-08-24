@@ -14,9 +14,10 @@ interface LawyerProfileEditorProps {
   onSave: (updatedLawyer: User) => void;
   onClose: () => void;
   inline?: boolean;
+  onImageChange?: (newAvatar: string) => void;
 }
 
-export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = false }: LawyerProfileEditorProps) {
+export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = false, onImageChange }: LawyerProfileEditorProps) {
   // ── 편집 상태 (임시) ──
   const [form, setForm] = useState<User>({ ...lawyer });
   const [fieldsText, setFieldsText] = useState(lawyer.fields.join(', '));
@@ -59,13 +60,20 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      updateForm({ avatarData: reader.result as string });
+      const dataUrl = reader.result as string;
+      updateForm({ avatarData: dataUrl, avatar: dataUrl });
+      onImageChange?.(dataUrl);
     };
     reader.readAsDataURL(file);
   };
 
   const handleSave = () => {
-    onSave(form);
+    const finalForm = {
+      ...form,
+      avatar: form.avatarData || form.avatar,
+      avatarData: form.avatarData || form.avatar,
+    };
+    onSave(finalForm);
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 2000);
   };

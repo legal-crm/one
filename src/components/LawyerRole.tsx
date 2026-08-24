@@ -1663,7 +1663,7 @@ export default function LawyerRole({
           <div className="flex items-center gap-3.5">
             <div className="flex items-center gap-2.5">
               <img 
-                src={activeLawyer.avatar} 
+                src={activeLawyer.avatarData || activeLawyer.avatar} 
                 alt={activeLawyer.name} 
                 className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-white/20 shadow-sm" 
               />
@@ -3630,9 +3630,18 @@ export default function LawyerRole({
               <div className="animate-fadeIn">
                 <LawyerProfileEditor
                   lawyer={activeLawyer}
+                  onImageChange={(newAvatar) => {
+                    setActiveLawyer(prev => ({ ...prev, avatar: newAvatar, avatarData: newAvatar }));
+                    setLawyers(prev => prev.map(l => l.id === activeLawyer.id ? { ...l, avatar: newAvatar, avatarData: newAvatar } : l));
+                  }}
                   onSave={(updatedLawyer) => {
-                    setLawyers(prev => prev.map(l => l.id === updatedLawyer.id ? updatedLawyer : l));
-                    setActiveLawyer(updatedLawyer);
+                    const finalLawyer = {
+                      ...updatedLawyer,
+                      avatar: updatedLawyer.avatarData || updatedLawyer.avatar,
+                      avatarData: updatedLawyer.avatarData || updatedLawyer.avatar,
+                    };
+                    setLawyers(prev => prev.map(l => l.id === finalLawyer.id ? finalLawyer : l));
+                    setActiveLawyer(finalLawyer);
                     toast.success('프로필이 저장되었습니다');
                   }}
                   onClose={() => setSettingsSub('channels')}
