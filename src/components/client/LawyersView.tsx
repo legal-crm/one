@@ -126,9 +126,8 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1"><ShieldCheck className="w-4 h-4 text-teal-400" /></div>
-            <p className="text-xl font-extrabold text-white">4.8<span className="text-sm font-bold text-slate-400 ml-0.5">/5.0</span></p>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">평균 만족도</p>
-            {/* <!-- mock: 서비스 예시 데이터 --> */}
+            <p className="text-xl font-extrabold text-white">100<span className="text-sm font-bold text-slate-400 ml-0.5">%</span></p>
+            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">철저한 익명 상담 보장</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1"><Clock className="w-4 h-4 text-teal-400" /></div>

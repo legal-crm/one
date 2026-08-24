@@ -52,7 +52,7 @@ export default function CompanyView({ onNavigate }: CompanyViewProps) {
               { value: '8,400+', label: '누적 이용자 수', color: 'text-[#0F766E]' },
               { value: '47초', label: '평균 체크 소요시간', color: 'text-[#1E3A5F]' },
               { value: '120+', label: '등록 전문 변호사', color: 'text-[#0F766E]' },
-              { value: '4.8/5.0', label: '평균 만족도', color: 'text-[#1E3A5F]' },
+              { value: '100%', label: '철저한 익명 상담 보장', color: 'text-[#1E3A5F]' },
             ].map((stat, idx) => (
               <div key={idx} className="text-center space-y-2">
                 <p className={`text-3xl md:text-4xl font-extrabold ${stat.color} tracking-tight`}>{stat.value}</p>

@@ -2441,8 +2441,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     <p className="text-xs sm:text-sm text-slate-400 font-medium">평균 체크 소요시간</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">4.8<span className="text-base font-bold text-slate-400">/5.0</span></p>
-                    <p className="text-xs sm:text-sm text-slate-400 font-medium">평균 만족도</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">100<span className="text-base font-bold text-slate-400">%</span></p>
+                    <p className="text-xs sm:text-sm text-slate-400 font-medium">철저한 익명 상담 보장</p>
                   </div>
                 </div>
                 {/* <!-- mock: 위 수치는 서비스 예시 데이터입니다 --> */}
