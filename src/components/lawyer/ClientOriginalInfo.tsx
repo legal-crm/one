@@ -91,11 +91,26 @@ export default function ClientOriginalInfo({ fp, clientName, phone, consultType,
         <span className="text-slate-500 font-bold mr-0.5">🏦</span>
         <V l="자산" v={assets} />
         {myAsset && <><Sep /><V l="본인" v={myAsset} /></>}
+        {fp.spouseAsset ? <><Sep /><V l="배우자" v={`${fp.spouseAsset}만`} /></> : null}
         {deposit && <><Sep /><V l="보증금" v={deposit} /></>}
         {retire && <><Sep /><V l="퇴직금" v={`${retire}${retirePension ? `(${retirePension})` : ''}`} /></>}
         {fp.depositLoan ? <><Sep /><V l="보증금대출" v={`${fp.depositLoan}만`} /></> : null}
         {housingHolder && <><Sep /><V l="주택" v={housingHolder} /></>}
       </div>
+
+      {/* 개별 자산 목록 (있을 경우) */}
+      {fp.assets && fp.assets.length > 0 && (
+        <div className="px-3 py-1.5 border-t border-slate-100 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className="text-slate-400 text-[10px] font-bold">자산목록</span>
+          {fp.assets.map((a: any, i: number) => (
+            <span key={i} className="inline-flex items-baseline gap-0.5 bg-slate-50 rounded px-1.5 py-0.5 text-[10px]">
+              <span className="text-slate-600">{a.label || a.description || `자산${i+1}`}</span>
+              <span className="font-extrabold text-slate-900">{fmt(a.marketValue || a.value || 0)}</span>
+              {a.type && <span className="text-slate-400">({a.type})</span>}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 생활비 + 특이사항 */}
       <div className="px-3 py-2 border-t border-slate-100 flex flex-wrap items-center gap-x-1 gap-y-0.5">
@@ -103,6 +118,7 @@ export default function ClientOriginalInfo({ fp, clientName, phone, consultType,
         {rent && <><V l="월세" v={rent} /><Sep /></>}
         {medical && <><V l="의료" v={medical} /><Sep /></>}
         {edu && <><V l="교육" v={edu} /><Sep /></>}
+        {(fp.monthlyExpense || fp.livingCost) ? <><V l="합계" v={fmt(fp.monthlyExpense || fp.livingCost)} /><Sep /></> : null}
         {special && <><span className="text-amber-600 font-bold">⚡ {special}</span><Sep /></>}
         <span className="text-slate-400">{consultType || '-'}</span>
         <Sep /><span className="text-slate-400">{createdAt?.split('T')[0] || '-'}</span>
