@@ -70,7 +70,6 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
             <p>
               주소: {platformConfig.companyAddress}
             </p>
-            <p>통신판매업신고번호 제 2026-서울강남-0000호</p>
           </div>
 
           {/* 법적 면책 요약 */}
