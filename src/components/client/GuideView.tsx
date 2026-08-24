@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, BarChart3, Users, Lock, ArrowRight, CheckCircle2, ChevronDown, Shield, Clock, Search } from 'lucide-react';
+import { MessageSquare, BarChart3, Users, Lock, ArrowRight, CheckCircle2, ChevronDown, Shield, Clock, Search, BookOpen } from 'lucide-react';
 
 interface GuideViewProps {
   onNavigate?: (tab: string) => void;
@@ -80,8 +80,11 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
       <section className="w-full bg-gradient-to-br from-[#0F2440] via-[#1E3A5F] to-[#162D4A] py-18 md:py-24 relative overflow-hidden">
         <div className="absolute top-10 right-10 w-64 h-64 bg-teal-500/[0.06] rounded-full blur-[80px] pointer-events-none" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-teal-300 text-xs sm:text-sm font-semibold mb-1 backdrop-blur-sm">
+            <span>플랫폼 이용 가이드</span>
+          </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            이용가이드
+            서비스 이용안내
           </h1>
           <p className="text-base md:text-lg text-slate-200 font-medium max-w-md mx-auto leading-relaxed">
             4단계로 진행되는 my김변 서비스를<br className="md:hidden" /> 자세히 안내해 드립니다
@@ -140,6 +143,32 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Legal Guide Cross-link Banner */}
+      <section className="w-full py-10 bg-slate-100/80 border-y border-slate-200">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div className="space-y-1 text-left">
+                <h4 className="text-lg font-bold text-slate-900">회생·파산·신용회복 등 법률 제도가 궁금하신가요?</h4>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  개인회생, 개인파산, 신용회복, 채무자대리 4가지 제도의 차이점과 상세 해결 전략을 확인하세요.
+                </p>
+              </div>
+            </div>
+            <a
+              href="/guide/debt-management"
+              className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold transition-all shrink-0 active:scale-[0.98] whitespace-nowrap shadow-sm"
+            >
+              채무관리 가이드 보기
+              <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
         </div>
       </section>
 

@@ -11,7 +11,8 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
   const navItems = [
     { label: '서비스 소개', tab: 'about', isExternal: true },
     { label: '자주 묻는 질문', tab: 'faq', isExternal: true },
-    { label: '이용가이드', tab: 'guide' },
+    { label: '서비스 이용안내', tab: 'guide' },
+    { label: '채무관리 가이드', tab: 'guide/debt-management', isExternal: true },
     { label: '공지사항', tab: 'notices' },
     { label: '1:1 문의', tab: 'inquiry' },
   ];
