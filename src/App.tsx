@@ -600,6 +600,7 @@ export default function App() {
               popupConfig={popupConfig}
               lawyerInquiries={lawyerInquiries}
               setLawyerInquiries={setLawyerInquiries}
+              notices={notices}
             />
           ) : (
             <AdminRole 

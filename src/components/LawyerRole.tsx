@@ -6,9 +6,9 @@ import {
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice 
 } from '../types';
-import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO } from '../data';
+import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
 import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
@@ -76,6 +76,7 @@ interface LawyerRoleProps {
   popupConfig?: PopupConfig;
   lawyerInquiries?: LawyerInquiry[];
   setLawyerInquiries?: React.Dispatch<React.SetStateAction<LawyerInquiry[]>>;
+  notices?: Notice[];
 }
 
 export default function LawyerRole({
@@ -96,14 +97,17 @@ export default function LawyerRole({
   setQas,
   popupConfig,
   lawyerInquiries,
-  setLawyerInquiries
+  setLawyerInquiries,
+  notices = initialNotices
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin'>('dashboard');
   const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity'>('overview');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
-  const [settingsSub, setSettingsSub] = useState<'channels' | 'logs' | 'profile' | 'calc-rules'>('channels');
+  const [settingsSub, setSettingsSub] = useState<'profile' | 'notices' | 'channels' | 'logs' | 'calc-rules'>('profile');
+  const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
+  const [noticeSearchTerm, setNoticeSearchTerm] = useState<string>('');
   const [copilotPreselectedReqId, setCopilotPreselectedReqId] = useState<string | undefined>();
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
@@ -2292,39 +2296,51 @@ export default function LawyerRole({
             {/* ═══ Row 4: 알림/공지 + 일정/할일 요약 (2열) ═══ */}
             {(dashboardSub === 'overview') && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* 좌측: 최근 알림 */}
-              <button onClick={() => setActiveTab('settings')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 좌측: 공지 사항 */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all text-left">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-blue-500" />
-                    <span>알림 & 공지</span>
+                  <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <Megaphone className="w-5 h-5 text-brand" />
+                    <span>공지 사항</span>
                   </h3>
-                  <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">설정 <ArrowRight className="w-3 h-3" /></span>
+                  <button 
+                    onClick={() => { setActiveTab('settings'); setSettingsSub('notices'); }}
+                    className="text-xs text-slate-500 hover:text-brand font-extrabold transition-colors flex items-center gap-1 cursor-pointer py-1 px-2 rounded-lg hover:bg-slate-50"
+                  >
+                    <span>더보기</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <div className="space-y-2.5">
-                  <div className="flex items-start gap-3 py-1.5">
-                    <div className="p-1.5 rounded-lg bg-brand/10 text-brand shrink-0 mt-0.5"><Briefcase className="w-3.5 h-3.5" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-800">새로운 상담 요청이 접수되었습니다</p>
-                      <p className="text-[11px] text-slate-400">방금 전</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 py-1.5">
-                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 shrink-0 mt-0.5"><MessageSquare className="w-3.5 h-3.5" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-800">의뢰인이 채팅 메시지를 보냈습니다</p>
-                      <p className="text-[11px] text-slate-400">5분 전</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 py-1.5">
-                    <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 shrink-0 mt-0.5"><Info className="w-3.5 h-3.5" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-800">[공지] 플랫폼 업데이트 안내</p>
-                      <p className="text-[11px] text-slate-400">1시간 전</p>
-                    </div>
-                  </div>
+                  {(notices || []).slice(0, 3).map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => {
+                        setSelectedNoticeId(n.id);
+                        setActiveTab('settings');
+                        setSettingsSub('notices');
+                      }}
+                      className="w-full flex items-start gap-3 py-1.5 hover:bg-slate-50/80 p-1.5 rounded-xl transition-all text-left cursor-pointer group/item"
+                    >
+                      <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${n.isImportant ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-brand/10 text-brand'}`}>
+                        {n.isImportant ? <AlertTriangle className="w-3.5 h-3.5" /> : <Info className="w-3.5 h-3.5" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          {n.isImportant && (
+                            <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded shrink-0">중요</span>
+                          )}
+                          <p className="text-sm font-bold text-slate-800 group-hover/item:text-brand transition-colors truncate">{n.title}</p>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{n.date}</p>
+                      </div>
+                    </button>
+                  ))}
+                  {(!notices || notices.length === 0) && (
+                    <p className="text-xs text-slate-400 py-4 text-center">등록된 공지사항이 없습니다.</p>
+                  )}
                 </div>
-              </button>
+              </div>
 
               {/* 우측: 일정/할일 요약 */}
               <button onClick={() => setActiveTab('tasks-schedule')} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
@@ -3776,6 +3792,7 @@ export default function LawyerRole({
             <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
                 { key: 'profile' as const, label: '내 프로필' },
+                { key: 'notices' as const, label: '공지 사항' },
                 { key: 'channels' as const, label: '알림 채널 설정' },
                 { key: 'logs' as const, label: '알림 로그' },
                 { key: 'calc-rules' as const, label: '회생/파산 계산 기준 확인' },
@@ -3803,11 +3820,131 @@ export default function LawyerRole({
                     setActiveLawyer(finalLawyer);
                     toast.success('프로필이 저장되었습니다');
                   }}
-                  onClose={() => setSettingsSub('channels')}
+                  onClose={() => setSettingsSub('notices')}
                   inline={true}
                 />
               </div>
             )}
+
+            {/* 공지 사항 탭 */}
+            {settingsSub === 'notices' && (() => {
+              const filteredNotices = (notices || []).filter(n => {
+                if (!noticeSearchTerm.trim()) return true;
+                const q = noticeSearchTerm.toLowerCase();
+                return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q);
+              });
+              const importantCount = (notices || []).filter(n => n.isImportant).length;
+
+              return (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Header info */}
+                  <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                    <div className="space-y-1">
+                      <h3 className="font-black text-xl text-slate-900 flex items-center gap-2.5">
+                        <Megaphone className="w-6 h-6 text-brand" />
+                        <span>공지 사항</span>
+                      </h3>
+                      <p className="text-sm text-slate-500 leading-relaxed text-left">
+                        회생/파산 플랫폼의 주요 정책 변경, 시스템 업데이트 및 법률 실무 가이드라인을 확인하세요.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-brand/10 text-brand text-xs font-black px-3 py-1.5 rounded-full whitespace-nowrap shadow-xs">
+                        전체 {notices?.length || 0}건
+                      </span>
+                      {importantCount > 0 && (
+                        <span className="bg-red-50 border border-red-200 text-red-600 text-xs font-black px-3 py-1.5 rounded-full whitespace-nowrap shadow-xs">
+                          중요 {importantCount}건
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Search Bar */}
+                  <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
+                    <div className="relative w-full sm:max-w-md">
+                      <input
+                        type="text"
+                        placeholder="공지사항 제목 또는 내용 검색..."
+                        value={noticeSearchTerm}
+                        onChange={e => setNoticeSearchTerm(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:bg-white"
+                      />
+                    </div>
+                    {noticeSearchTerm && (
+                      <button
+                        onClick={() => setNoticeSearchTerm('')}
+                        className="text-xs text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
+                      >
+                        검색 초기화
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Notices List */}
+                  <div className="space-y-3">
+                    {filteredNotices.map((n) => {
+                      const isExpanded = selectedNoticeId === n.id;
+                      return (
+                        <div
+                          key={n.id}
+                          className={`bg-white rounded-2xl border transition-all shadow-xs overflow-hidden ${
+                            n.isImportant 
+                              ? 'border-red-200 bg-gradient-to-r from-red-50/20 to-white' 
+                              : 'border-slate-200/80 hover:border-slate-300'
+                          }`}
+                        >
+                          <button
+                            onClick={() => setSelectedNoticeId(isExpanded ? null : n.id)}
+                            className="w-full p-5 md:p-6 text-left flex items-start justify-between gap-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+                          >
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {n.isImportant ? (
+                                  <span className="bg-red-500 text-white text-[11px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 shrink-0 shadow-xs">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    중요 공지
+                                  </span>
+                                ) : (
+                                  <span className="bg-slate-100 text-slate-600 text-[11px] font-bold px-2.5 py-0.5 rounded-lg shrink-0">
+                                    일반 공지
+                                  </span>
+                                )}
+                                <span className="text-xs text-slate-400 font-medium">{n.date}</span>
+                                <span className="text-xs text-slate-300">·</span>
+                                <span className="text-xs text-slate-400 font-medium">조회 {n.views || 0}</span>
+                              </div>
+                              <h4 className="text-base font-extrabold text-slate-900 leading-snug">
+                                {n.title}
+                              </h4>
+                            </div>
+                            <div className="p-1 rounded-lg text-slate-400 hover:text-slate-600 shrink-0 mt-1">
+                              {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="px-5 md:px-6 pb-6 pt-2 border-t border-slate-100 animate-fadeIn">
+                              <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200/60 text-sm text-slate-800 leading-relaxed whitespace-pre-wrap font-medium">
+                                {n.content}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {filteredNotices.length === 0 && (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-2 shadow-sm">
+                        <Megaphone className="w-8 h-8 text-slate-300 mx-auto" />
+                        <p className="text-sm font-bold text-slate-700">해당하는 공지사항이 없습니다.</p>
+                        <p className="text-xs text-slate-400">검색어를 변경하거나 다시 시도해 주세요.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             {settingsSub === 'channels' && (<>
             {/* Header info */}
             <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
