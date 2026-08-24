@@ -2557,10 +2557,14 @@ export default function LawyerRole({
                                   {r.financialProfile.rentalDeposit ? ` (${r.financialProfile.rentalDeposit.toLocaleString()}만)` : ''}
                                 </span>
                               </div>
-                              {r.financialProfile.residenceRegion && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">거주지역</span>
+                                <span className="font-bold text-slate-700">{r.financialProfile.residenceRegion || r.financialProfile.address || '미기재'}</span>
+                              </div>
+                              {r.financialProfile.workLocation && (
                                 <div className="flex justify-between">
-                                  <span className="text-slate-500">지역</span>
-                                  <span className="font-bold text-slate-700">{r.financialProfile.residenceRegion}</span>
+                                  <span className="text-slate-500">직장·사업장</span>
+                                  <span className="font-bold text-slate-700 truncate max-w-[120px]" title={r.financialProfile.workLocation}>{r.financialProfile.workLocation}</span>
                                 </div>
                               )}
                               {r.financialProfile.creditorCount && (

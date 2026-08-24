@@ -1852,6 +1852,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         companyNameMasked: intakeData.workplace ? intakeData.workplace.replace(/./g, (c, i) => i > 0 && i < intakeData.workplace.length - 1 ? '*' : c) : '미기재',
         employmentDate: intakeData.consultDate,
         residenceRegion: intakeData.residence,
+        workLocation: intakeData.workplace || '',
+        address: intakeData.residence || '',
         spouseAsset: Math.round((intakeData.spouseAsset || (intakeData.assets.find(a => a.owner === 'spouse')?.marketValue || 0)) / 10000),
         spouseIncome: Math.round((intakeData.spouseIncome || 0) / 10000),
         hasRecentJobChange: intakeData.debts.some(d => d.isRecent),
