@@ -16,6 +16,8 @@ import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import ClientOriginalInfo from './lawyer/ClientOriginalInfo';
+import RequestWorkflowPanel from './lawyer/RequestWorkflowPanel';
+import RequestTimeline from './lawyer/RequestTimeline';
 import NotificationBell from './lawyer/NotificationBell';
 import MyTasksWidget from './lawyer/MyTasksWidget';
 import TasksScheduleTab from './lawyer/TasksScheduleTab';
@@ -2709,6 +2711,30 @@ export default function LawyerRole({
                           )}
                         </div>
 
+                      </div>
+
+                      {/* 워크플로우 패널 (직원 메모, 변호사 의견, 승인) */}
+                      <div className="px-5">
+                        <RequestWorkflowPanel
+                          requestId={r.id}
+                          clientName={r.clientName || r.client_name || '고객'}
+                          isLawyerOrOwner={isLawyerOrOwner}
+                          workflow={{
+                            staffMemo: (r as any).staffMemo,
+                            staffChecklist: (r as any).staffChecklist,
+                            lawyerOpinion: (r as any).lawyerOpinion,
+                            reviewStatus: (r as any).reviewStatus,
+                          }}
+                          onUpdateWorkflow={(reqId, updates) => {
+                            setRequests(prev => prev.map(req => req.id === reqId ? { ...req, ...updates } : req));
+                          }}
+                        />
+                        {/* 처리 이력 타임라인 */}
+                        <RequestTimeline
+                          events={(r as any).timeline || [
+                            { id: `tl-${r.id}-1`, action: 'RECEIVED' as const, actor: '시스템', timestamp: r.createdAt || new Date().toISOString() }
+                          ]}
+                        />
                       </div>
 
                       {/* 카드 푸터: 액션 버튼 */}

@@ -128,15 +128,11 @@ const SAMPLE_CLIENTS: any[] = [
 ];
 
 type CopilotTab =
-  | 'client-info' | 'court-notes' | 'staff-memo' | 'lawyer-opinion' | 'approval' | 'audit-log';
+  | 'client-info' | 'court-notes';
 
 const COPILOT_TABS: { key: CopilotTab; label: string; icon: React.ReactNode; requiresLawyer?: boolean; requiresOwner?: boolean }[] = [
   { key: 'client-info', label: '의뢰인 정보', icon: <FileText className="w-3.5 h-3.5" /> },
   { key: 'court-notes', label: '관할법원 참고', icon: <Scale className="w-3.5 h-3.5" /> },
-  { key: 'staff-memo', label: '사무직원 메모', icon: <StickyNote className="w-3.5 h-3.5" /> },
-  { key: 'lawyer-opinion', label: '변호사 검토 의견', icon: <Gavel className="w-3.5 h-3.5" />, requiresLawyer: true },
-  { key: 'approval', label: '승인 및 발송', icon: <Send className="w-3.5 h-3.5" />, requiresLawyer: true },
-  { key: 'audit-log', label: '변경·감사 로그', icon: <History className="w-3.5 h-3.5" />, requiresOwner: true },
 ];
 
 /** 금액 포맷 */
@@ -737,39 +733,7 @@ export default function CaseReviewCopilot({
       {settingsView === 'none' && (
       <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
         {/* Step Progress Bar */}
-        <div className="px-4 pt-3 pb-2.5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-1.5 text-xs font-bold">
-            {[
-              { step: 1, label: '자동 분석', done: !!factOutput, tabs: ['client-info', 'court-notes'] },
-              { step: 2, label: '직원 확인', done: reviewStatus !== 'DRAFT' && reviewStatus !== 'LAWYER_REVIEW_REQUIRED', tabs: ['staff-memo'] },
-              { step: 3, label: '변호사 검토·승인', done: reviewStatus === 'LAWYER_APPROVED' || reviewStatus === 'SENT_TO_CLIENT', tabs: ['lawyer-opinion', 'approval', 'audit-log'] },
-            ].map((s, i) => {
-              const isCurrent = s.tabs.includes(activeTab);
-              return (
-                <React.Fragment key={s.step}>
-                  {i > 0 && <div className={`flex-1 h-0.5 ${s.done || isCurrent ? 'bg-[#1E3A5F]' : 'bg-slate-200'}`} />}
-                  <button
-                    onClick={() => setActiveTab(s.tabs[0] as CopilotTab)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                      isCurrent ? 'bg-[#1E3A5F]/10 text-[#1E3A5F]' :
-                      s.done ? 'text-emerald-700' : 'text-slate-400'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
-                      s.done ? 'bg-emerald-500 text-white' :
-                      isCurrent ? 'bg-[#1E3A5F] text-white' : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      {s.done ? '✓' : s.step}
-                    </span>
-                    <span>{s.label}</span>
-                  </button>
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tab Bar with Group Labels */}
+        {/* Tab Bar */}
         <div className="border-b border-slate-100 px-4 overflow-x-auto">
           <div className="flex gap-1 min-w-max">
             {accessibleTabs.map((t) => {
@@ -1224,271 +1188,6 @@ export default function CaseReviewCopilot({
                 </div>
               )}
 
-              {/* TAB 6: 사무직원 메모 */}
-              {activeTab === 'staff-memo' && (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><StickyNote className="w-4 h-4 text-brand" /> 사무직원 사실확인 및 메모</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2 bg-slate-50 rounded-xl p-3 cursor-pointer hover:bg-slate-100 transition-colors">
-                      <input type="checkbox" checked={missingInfoChecked} onChange={e => setMissingInfoChecked(e.target.checked)} className="rounded" />
-                      <span className="text-sm text-slate-700 font-bold">누락정보 확인 완료</span>
-                    </label>
-                    <label className="flex items-center gap-2 bg-slate-50 rounded-xl p-3 cursor-pointer hover:bg-slate-100 transition-colors">
-                      <input type="checkbox" checked={factVerified} onChange={e => setFactVerified(e.target.checked)} className="rounded" />
-                      <span className="text-sm text-slate-700 font-bold">사실관계 검증 완료</span>
-                    </label>
-                    <textarea
-                      value={staffNotes}
-                      onChange={e => setStaffNotes(e.target.value)}
-                      placeholder="내부 메모를 작성하세요 (확인 사항, 추가 질문 등)..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none"
-                      rows={4}
-                    />
-                    {permissions.canCreateStaffReview && (
-                      <button
-                        onClick={handleStaffSubmit}
-                        disabled={!missingInfoChecked || !factVerified}
-                        className="bg-[#1E3A5F] text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-[#163152] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
-                      >
-                        사실확인 제출 → 변호사 검토 요청
-                      </button>
-                    )}
-
-                    {/* Q&A 피드백 스레드 */}
-                    {feedbackThread.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <h5 className="text-xs font-bold text-slate-500">📋 검토 피드백 이력</h5>
-                        {feedbackThread.map(fb => (
-                          <div key={fb.id} className={`rounded-xl p-3 text-xs ${
-                            fb.type === 'reject' ? 'bg-rose-50 border border-rose-200' :
-                            fb.type === 'more_info' ? 'bg-amber-50 border border-amber-200' :
-                            'bg-emerald-50 border border-emerald-200'
-                          }`}>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className="font-bold">{fb.type === 'reject' ? '❌ 반려' : fb.type === 'more_info' ? '❓ 추가확인' : '✅ 보완답변'}</span>
-                              <span className="text-slate-500">{fb.author} ({fb.role})</span>
-                              <span className="text-slate-400 text-[10px]">{new Date(fb.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                            <p className="text-slate-700">{fb.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* 직원 보완 제출 (반려/추가확인 상태일 때) */}
-                    {(reviewStatus === 'LAWYER_REJECTED' || reviewStatus === 'MORE_INFO_REQUIRED') && permissions.canCreateStaffReview && (
-                      <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
-                        <h5 className="text-xs font-bold text-slate-800">↩️ 보완 내용 작성</h5>
-                        <textarea
-                          value={staffResponseContent}
-                          onChange={e => setStaffResponseContent(e.target.value)}
-                          placeholder="변호사 피드백에 대한 보완 내용을 작성하세요..."
-                          className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-[#1E3A5F]/20 outline-none"
-                          rows={3}
-                        />
-                        <button
-                          onClick={handleStaffResponse}
-                          disabled={!staffResponseContent.trim()}
-                          className="bg-[#1E3A5F] text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-[#163152] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
-                        >
-                          보완 제출 → 변호사 재검토 요청
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 7: 변호사 검토 의견 */}
-              {activeTab === 'lawyer-opinion' && permissions.canEditLawyerOpinion && (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><Gavel className="w-4 h-4 text-brand" /> 담당 변호사 검토 의견</h4>
-                  <p className="text-xs text-slate-500">아래 항목은 AI가 확정하지 않으며, 변호사가 직접 작성합니다.</p>
-                  {[
-                    { key: 'procedureOpinion', label: '검토 가능한 절차 의견', placeholder: '개인회생, 파산, 채무조정 등 검토 의견을 작성하세요...' },
-                    { key: 'legalIssues', label: '법률적 쟁점', placeholder: '이 사건의 주요 법률적 쟁점을 기재하세요...' },
-                    { key: 'consultationConclusion', label: '상담 결론', placeholder: '1차 상담 결론을 작성하세요...' },
-                    { key: 'clientGuidance', label: '고객 안내사항', placeholder: '고객에게 안내할 주의사항을 작성하세요...' },
-                    { key: 'nextSteps', label: '다음 단계', placeholder: '추가 상담 일정, 필요 서류 등...' },
-                  ].map(field => (
-                    <div key={field.key} className="space-y-1">
-                      <label className="text-xs font-bold text-slate-600">{field.label}</label>
-                      <textarea
-                        value={(lawyerOpinion as any)[field.key]}
-                        onChange={e => setLawyerOpinion(prev => ({ ...prev, [field.key]: e.target.value }))}
-                        placeholder={field.placeholder}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] outline-none"
-                        rows={3}
-                      />
-                    </div>
-                  ))}
-                  <button
-                    onClick={handleSaveOpinion}
-                    className="bg-[#1E3A5F] text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-[#163152] active:scale-[0.98] transition-all cursor-pointer shadow-xs"
-                  >
-                    의견 저장
-                  </button>
-                </div>
-              )}
-
-              {/* TAB 8: 승인 및 발송 */}
-              {activeTab === 'approval' && permissions.canApproveCaseReview && (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><Send className="w-4 h-4 text-brand" /> 승인 및 고객 발송</h4>
-
-                  {reviewStatus === 'SENT_TO_CLIENT' ? (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <p className="text-sm text-emerald-700 font-bold">고객에게 발송 완료되었습니다.</p>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-xs text-slate-500">승인 전 아래 5가지 항목을 모두 확인하세요.</p>
-                      <div className="space-y-2">
-                        {[
-                          { key: 'clientDataReviewed', label: '고객 입력자료 확인 완료' },
-                          { key: 'missingInfoReviewed', label: '누락정보 확인 완료' },
-                          { key: 'ruleSetReviewed', label: '적용 기준(RuleSet) 확인 완료' },
-                          { key: 'legalOpinionReviewed', label: '법률 의견 직접 검토 완료' },
-                          { key: 'clientMessageReviewed', label: '고객 발송문 확인 완료' },
-                        ].map(item => (
-                          <label key={item.key} className="flex items-center gap-2 bg-slate-50 rounded-xl p-3 cursor-pointer hover:bg-slate-100 transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={(checklist as any)[item.key]}
-                              onChange={e => setChecklist(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                              className="rounded"
-                            />
-                            <span className="text-sm text-slate-700 font-bold">{item.label}</span>
-                          </label>
-                        ))}
-                      </div>
-
-                      <div className="space-y-1 mt-4">
-                        <label className="text-xs font-bold text-slate-600">고객 발송문 편집</label>
-                        <textarea
-                          value={clientMessage}
-                          onChange={e => setClientMessage(e.target.value)}
-                          placeholder="고객에게 보낼 1차 검토 의견을 작성하세요..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] outline-none"
-                          rows={6}
-                        />
-                        <p className="text-[10px] text-slate-400 italic mt-1">
-                          고객이 입력한 자료의 정리와 내부 검토 초안 작성에 업무보조 시스템이 사용되었으며, 최종 내용은 담당 변호사가 검토·승인했습니다.
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-4">
-                        {reviewStatus !== 'LAWYER_APPROVED' ? (
-                          <button
-                            onClick={handleApprove}
-                            disabled={!allChecked}
-                            className="bg-emerald-600 text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-xs"
-                          >
-                            <CheckCircle2 className="w-4 h-4" /> 승인
-                          </button>
-                        ) : (
-                          <button
-                            onClick={handleSendToClient}
-                            className="bg-[#1E3A5F] text-white rounded-xl px-5 py-2.5 font-bold text-sm hover:bg-[#163152] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                          >
-                            <Send className="w-4 h-4" /> 승인 후 고객에게 발송
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setShowRejectForm(!showRejectForm)}
-                          className="bg-slate-100 text-slate-700 rounded-xl px-4 py-2.5 font-bold text-sm hover:bg-slate-200 active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <XCircle className="w-4 h-4" /> {showRejectForm ? '취소' : '반려 / 추가확인'}
-                        </button>
-                      </div>
-
-                      {/* 반려/추가확인 사유 입력 폼 */}
-                      {showRejectForm && (
-                        <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
-                          <h5 className="text-xs font-bold text-red-700">반려 사유 또는 추가 확인 질문</h5>
-                          <textarea
-                            value={rejectReason}
-                            onChange={e => setRejectReason(e.target.value)}
-                            placeholder="반려 사유 또는 직원에게 추가 확인할 내용을 작성하세요..."
-                            className="w-full bg-white border border-red-200 rounded-xl p-3 text-sm resize-none focus:ring-2 focus:ring-red-300 outline-none"
-                            rows={3}
-                            autoFocus
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={handleReject}
-                              disabled={!rejectReason.trim()}
-                              className="bg-red-600 text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1"
-                            >
-                              <XCircle className="w-3.5 h-3.5" /> 반려
-                            </button>
-                            <button
-                              onClick={handleRequestMoreInfo}
-                              disabled={!rejectReason.trim()}
-                              className="bg-amber-500 text-white rounded-xl px-4 py-2 font-bold text-xs hover:bg-amber-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-1"
-                            >
-                              <AlertTriangle className="w-3.5 h-3.5" /> 추가확인 요청
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 피드백 이력 */}
-                      {feedbackThread.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                          <h5 className="text-xs font-bold text-slate-500">📋 검토 피드백 이력</h5>
-                          {feedbackThread.map(fb => (
-                            <div key={fb.id} className={`rounded-xl p-3 text-xs ${
-                              fb.type === 'reject' ? 'bg-red-50 border border-red-200' :
-                              fb.type === 'more_info' ? 'bg-amber-50 border border-amber-200' :
-                              'bg-green-50 border border-green-200'
-                            }`}>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className="font-bold">{fb.type === 'reject' ? '❌ 반려' : fb.type === 'more_info' ? '❓ 추가확인' : '✅ 보완답변'}</span>
-                                <span className="text-slate-500">{fb.author}</span>
-                                <span className="text-slate-400 text-[10px]">{new Date(fb.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-                              </div>
-                              <p className="text-slate-700">{fb.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 9: 감사 로그 */}
-              {activeTab === 'audit-log' && permissions.canViewAuditLog && (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><History className="w-4 h-4 text-brand" /> 변경·감사 로그</h4>
-                  {auditLogs.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-8">아직 기록된 이벤트가 없습니다.</p>
-                  ) : (
-                    <div className="bg-slate-50 rounded-xl overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead><tr className="bg-slate-100 text-slate-500">
-                          <th className="p-2 text-left font-bold">시간</th>
-                          <th className="p-2 text-left font-bold">동작</th>
-                          <th className="p-2 text-left font-bold">실행자</th>
-                          <th className="p-2 text-left font-bold">상세</th>
-                        </tr></thead>
-                        <tbody>
-                          {auditLogs.map((log, i) => (
-                            <tr key={i} className="border-t border-slate-100">
-                              <td className="p-2 text-slate-500 whitespace-nowrap">{log.time}</td>
-                              <td className="p-2"><span className="bg-indigo-100 text-indigo-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold">{log.action}</span></td>
-                              <td className="p-2 text-slate-700">{log.actor}</td>
-                              <td className="p-2 text-slate-600">{log.detail}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           )}
         </div>
@@ -1512,7 +1211,7 @@ export default function CaseReviewCopilot({
             setShowRehabReport(false);
             addAuditLog('PROPOSAL_INITIATED', `제안서 발송 - 수임료: ${proposalData.fees.totalFee}원, 의견: ${proposalData.lawyerOpinion.substring(0, 50)}...`);
           }}
-          onRequestConfirm={(memo) => {
+          onRequestConfirm={(proposalData, memo) => {
             setShowRehabReport(false);
             setReviewStatus('LAWYER_REVIEW_REQUIRED');
             setConfirmRequest({ requester: actorName, role: actorRole, memo, requestedAt: new Date().toLocaleString('ko-KR') });
