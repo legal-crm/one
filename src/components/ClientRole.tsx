@@ -730,20 +730,23 @@ export default function ClientRole({
 
   // 의뢰인이 변호사 선택 완료 시 호출
   const handleConfirmLawyerSelection = (lawyerIds: string[]) => {
-    // 기존 활성 상담 요청이 있는지 확인
+    const finalClientId = localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp';
+    const targetReqId = pendingNewRequest?.id || activeChatReqId;
+
+    // 기존 활성 상담 요청이 있는지 확인 (사용자 본인의 요청만 정확히 매칭)
     const existingRequest = requests.find(r => 
-      r.status === 'requested' || r.status === 'responding'
+      r.id === targetReqId || (!r.id.startsWith('req-mock-') && r.clientId === finalClientId && (r.status === 'requested' || r.status === 'responding'))
     );
 
     if (existingRequest) {
-      // 기존 요청에 변호사 병합
+      // 기존 요청에 변호사 병합 및 direct_multi 설정
       const existingIds = existingRequest.selectedLawyerIds || [];
       const mergedIds = [...new Set([...existingIds, ...lawyerIds])].slice(0, 3); // 최대 3명
       const newlyAdded = lawyerIds.filter(id => !existingIds.includes(id));
 
       setRequests(prev => prev.map(r => 
         r.id === existingRequest.id
-          ? { ...r, selectedLawyerIds: mergedIds, maxParticipants: mergedIds.length }
+          ? { ...r, selectedLawyerIds: mergedIds, requestType: 'direct_multi' as const, maxParticipants: mergedIds.length }
           : r
       ));
       setActiveChatReqId(existingRequest.id);
@@ -754,7 +757,7 @@ export default function ClientRole({
         const newNames = newlyAdded.map(id => mockLawyers.find(x => x.id === id)?.name).filter(Boolean);
         onAddMessage(
           existingRequest.id,
-          `${newNames.join(', ')} 변호사님에게 추가 상담 요청이 전달되었습니다.`,
+          `${newNames.join(', ')} 변호사님에게 상담 요청이 전달되었습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,
           'lawyer', 'system', '시스템 안내'
         );
       }
@@ -772,12 +775,13 @@ export default function ClientRole({
       proposals: [],
       maxParticipants: Math.min(lawyerIds.length, 3),
     };
-    setRequests(prev => [finalRequest, ...prev]);
+    setRequests(prev => {
+      const filtered = prev.filter(r => r.id !== finalRequest.id);
+      return [finalRequest, ...filtered];
+    });
     setActiveChatReqId(finalRequest.id);
     setLawyerSelectionMode(false);
     setPendingNewRequest(null);
-
-    const finalClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
 
     setTimeout(() => {
       onAddMessage(
@@ -1778,7 +1782,7 @@ export default function ClientRole({
       clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
       clientName: isLoggedIn ? userAlias : '익명 의뢰인',
       phone: intakeData.phoneNumber || '010-4567-8901',
-      requestType: 'direct_multi' as const,
+      requestType: 'open' as const,
       maxParticipants: 3,
       status: 'requested' as const,
       createdAt: new Date().toISOString(),
