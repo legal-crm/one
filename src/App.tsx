@@ -130,7 +130,8 @@ export default function App() {
         const parsed = JSON.parse(saved).filter((r: any) => 
           r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3'
         );
-        if (parsed.length > 0) return parsed;
+        const nonMockRequests = parsed.filter((r: any) => !r.id.startsWith('req-mock-'));
+        return [...initialConsultRequests, ...nonMockRequests];
       }
     } catch {}
     return initialConsultRequests;
@@ -167,10 +168,9 @@ export default function App() {
         ]);
         if (!isMounted) return;
         if (dbRequests.length > 0) {
-          // initialConsultRequests의 mock 데이터를 Supabase 결과에 병합 (중복 제거)
-          const dbIds = new Set(dbRequests.map((r: any) => r.id));
-          const missingMocks = initialConsultRequests.filter(m => !dbIds.has(m.id));
-          const merged = [...dbRequests, ...missingMocks];
+          // initialConsultRequests의 mock 데이터는 최신 정의로 유지하고 사용자 생성 데이터와 병합
+          const userRequests = dbRequests.filter((r: any) => !r.id.startsWith('req-mock-'));
+          const merged = [...initialConsultRequests, ...userRequests];
           _setRequests(merged);
           try { localStorage.setItem('legal_crm_requests', JSON.stringify(merged)); } catch {}
         }
