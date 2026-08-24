@@ -886,7 +886,7 @@ export default function ChatView({
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center space-y-4">
             <h3 className="font-bold text-lg">전화상담 신청</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">안심번호(050)를 통해 안전하게 상담이 진행됩니다.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">등록하신 연락처로 변호사가 직접 안전하게 상담 전화를 드립니다.</p>
             <button onClick={() => setShowPhoneConsultModal(false)} className="w-full py-2 bg-brand text-white rounded-lg font-bold">닫기</button>
           </div>
         </div>

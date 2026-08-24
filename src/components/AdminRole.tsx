@@ -4584,90 +4584,7 @@ export default function AdminRole({
                 </div>
               </div>
 
-              {/* 📞 050 Virtual Number Real-time Allocation Monitor */}
-              <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6 mt-6">
-                <div>
-                  <h4 className="font-extrabold text-base text-white flex items-center gap-1.5">
-                    <span>📞</span> 050 안심번호 실시간 배정 현황 (72시간 유지 정책)
-                  </h4>
-                  <p className="text-sm text-slate-500 mt-1">
-                    현재 의뢰인들의 실시간 전화 상담 신청으로 인해 임시 배정된 050 가상 회선 매칭 내역입니다.<br />
-                    신청 시점으로부터 72시간이 지나면 자동으로 매칭이 종료되며, 필요한 경우 수동으로 즉시 회수할 수 있습니다.
-                  </p>
-                </div>
-
-                <div className="bg-[#161B26]/50 rounded-xl border border-[#1E293B]/60 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead>
-                        <tr className="bg-[#111622] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                          <th className="p-3">의뢰인</th>
-                          <th className="p-3">실제 연락처</th>
-                          <th className="p-3">배정된 050 번호</th>
-                          <th className="p-3">배정 시점 / 만료 시점</th>
-                          <th className="p-3">상태</th>
-                          <th className="p-3 text-right">제어</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#1E293B]/40">
-                        {requests.filter(r => r.phoneConsultationRequested).map(r => {
-                          const isExpired = r.safeNumberExpiresAt ? new Date().getTime() > new Date(r.safeNumberExpiresAt).getTime() : true;
-                          return (
-                            <tr key={r.id} className="hover:bg-[#111622]/50">
-                              <td className="p-3 font-bold text-white">{r.clientName}</td>
-                              <td className="p-3 font-mono text-slate-350">{r.phone}</td>
-                              <td className="p-3 font-mono text-indigo-400 font-extrabold">{r.safeNumber || '배정 대기'}</td>
-                              <td className="p-3 text-slate-500 space-y-0.5">
-                                <div className="text-sm">배정: {r.safeNumberAssignedAt ? new Date(r.safeNumberAssignedAt).toLocaleString() : '-'}</div>
-                                <div className="text-sm text-amber-500/80">만료: {r.safeNumberExpiresAt ? new Date(r.safeNumberExpiresAt).toLocaleString() : '-'}</div>
-                              </td>
-                              <td className="p-3">
-                                {isExpired ? (
-                                  <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-sm font-bold">만료됨 (회선 해제)</span>
-                                ) : (
-                                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-sm font-bold">사용중 (72H 이내)</span>
-                                )}
-                              </td>
-                              <td className="p-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setRequests(prev => prev.map(req => {
-                                      if (req.id === r.id) {
-                                        return {
-                                          ...req,
-                                          safeNumber: undefined,
-                                          safeNumberAssignedAt: undefined,
-                                          safeNumberExpiresAt: undefined,
-                                          phoneConsultationRequested: false
-                                        };
-                                      }
-                                      return req;
-                                    }));
-                                    alert('050 안심번호 매칭이 강제 해제되어 회선이 회수되었습니다.');
-                                  }}
-                                  className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2 py-1 rounded transition-all cursor-pointer text-sm"
-                                >
-                                  회선 강제 회수
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-
-                        {requests.filter(r => r.phoneConsultationRequested).length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="p-8 text-center text-slate-600 font-semibold bg-[#111622]">
-                              현재 활성화되거나 요청된 050 안심번호 가상 배정 내역이 없습니다.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* 📋 기본 홈페이지 설정 및 약관/법률 관리 패널 */}
+              {/* 📋 기본 홈페이지 설정 및 약관/법률 관리 패널 */}
                 <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6 mt-6">
                   <div>
                     <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
@@ -4838,7 +4755,7 @@ export default function AdminRole({
                     <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                       <div className="space-y-1">
                         <div className="font-bold text-base text-slate-900 dark:text-white">법률 정보 칼럼 노출</div>
-                        <div className="text-sm text-slate-500">랜딩페이지에 '알아두면 좋을 법률 정보' 섹션의 노출 여부를 제어합니다.</div>
+                        <div className="text-sm text-slate-500">랜딩페이지에 &quot;알아두면 좋을 법률 정보&quot; 섹션의 노출 여부를 제어합니다.</div>
                         <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">ℹ️ OFF 상태에서는 랜딩 하단에 법률 정보 칼럼이 표시되지 않습니다.</div>
                       </div>
                       <button
@@ -4857,8 +4774,7 @@ export default function AdminRole({
                 </div>
 
               </div>
-            </div>
-          )}
+            )}
 
           {/* TAB 7: MEMBER MANAGEMENT & ACTIVITY MONITORING */}
           {activeTab === 'members' && (() => {

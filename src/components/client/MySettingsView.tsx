@@ -283,8 +283,8 @@ export default function MySettingsView({
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4.5 h-4.5 text-brand shrink-0 mt-0.5" />
                   <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">가명 안심 번호 필터링</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">050 가상번호 매핑 필터 작동 중</span>
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">개인정보 안심 보호 필터</span>
+                    <span className="text-xs text-slate-555 dark:text-slate-450 block">실시간 데이터 암호화 필터 작동 중</span>
                   </div>
                 </div>
 

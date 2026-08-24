@@ -43,18 +43,7 @@ import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
-  if (req.phoneConsultationRequested) {
-    if (req.safeNumber) {
-      const now = Date.now();
-      const expires = req.safeNumberExpiresAt ? new Date(req.safeNumberExpiresAt).getTime() : 0;
-      if (now > expires) {
-        return "050 안심번호 만료됨 (72시간 초과)";
-      }
-      return `${req.safeNumber} (050 안심번호)`;
-    }
-    return `${req.phone} (일반 번호)`;
-  }
-  return "050 미배정 (전화 상담 요청 시 자동 연동)";
+  return req.phone || (req as any).clientPhone || (req as any).userPhone || "-";
 };
 
 interface LawyerRoleProps {
@@ -1665,7 +1654,7 @@ export default function LawyerRole({
                     { icon: '📑', title: '솔루션 제안서 발송', desc: '예상 변제금, 탕감률, 수임 비용을 정리한 제안서 전송' },
                     { icon: '📊', title: '사건 진행 관리', desc: '수임 → 접수 → 보정 → 인가까지 단계별 사건 관리' },
                     { icon: '👥', title: '의뢰인 CRM', desc: '의뢰인 연락처, 상담 이력, 진행 상태를 통합 관리' },
-                    { icon: '📞', title: '050 안심번호', desc: '의뢰인 개인정보 보호를 위한 가상 전화번호 자동 발급' }
+                    { icon: '🔒', title: '개인정보 보호', desc: '의뢰인 익명성 및 민감 금융 정보 암호화 보호' }
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-3.5 bg-slate-50 rounded-xl p-4 hover:bg-slate-100 transition-colors">
                       <span className="text-2xl shrink-0">{item.icon}</span>
