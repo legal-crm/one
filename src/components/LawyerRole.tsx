@@ -103,7 +103,7 @@ export default function LawyerRole({
   const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity'>('overview');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
-  const [settingsSub, setSettingsSub] = useState<'channels' | 'logs' | 'profile'>('channels');
+  const [settingsSub, setSettingsSub] = useState<'channels' | 'logs' | 'profile' | 'calc-rules'>('channels');
   const [copilotPreselectedReqId, setCopilotPreselectedReqId] = useState<string | undefined>();
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
@@ -3778,6 +3778,7 @@ export default function LawyerRole({
                 { key: 'profile' as const, label: '내 프로필' },
                 { key: 'channels' as const, label: '알림 채널 설정' },
                 { key: 'logs' as const, label: '알림 로그' },
+                { key: 'calc-rules' as const, label: '회생/파산 계산 기준 확인' },
               ]).map(t => (
                 <button key={t.key} onClick={() => setSettingsSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${settingsSub === t.key ? 'bg-[#1E3A5F] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
@@ -4539,12 +4540,13 @@ export default function LawyerRole({
 
             </div>
 
-            {/* ── 회생/파산 계산 기준 설정 ── */}
-            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
-              <RehabSettingsPanel mode="lawyer" />
-            </div>
-
             </>)}
+
+            {settingsSub === 'calc-rules' && (
+              <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm animate-fadeIn">
+                <RehabSettingsPanel mode="lawyer" />
+              </div>
+            )}
 
           </div>
         )}
