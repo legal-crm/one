@@ -244,7 +244,22 @@ export default function App() {
   const [inquiries, setInquiries] = useState<ClientInquiry[]>([]);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(() => {
     const saved = localStorage.getItem('legal_crm_platform_config');
-    return saved ? JSON.parse(saved) : initialPlatformConfig;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          companyRepresentative: initialPlatformConfig.companyRepresentative,
+          companyBusinessNumber: initialPlatformConfig.companyBusinessNumber,
+          companyAddress: initialPlatformConfig.companyAddress,
+          termsOfService: initialPlatformConfig.termsOfService,
+          privacyPolicy: initialPlatformConfig.privacyPolicy,
+        };
+      } catch (e) {
+        return initialPlatformConfig;
+      }
+    }
+    return initialPlatformConfig;
   });
 
   const [popupConfig, setPopupConfig] = useState<PopupConfig>(() => {

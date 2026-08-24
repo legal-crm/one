@@ -63,12 +63,12 @@ export default function ClientFooter({ platformConfig, onShowTerms, onNavigate }
             <p>
               상호: 몬스터랩
               <span className="mx-1.5 text-slate-600">|</span>
-              대표이사: {platformConfig.companyRepresentative || '진성호'}
+              대표이사: 진성호
               <span className="mx-1.5 text-slate-600">|</span>
-              사업자등록번호: {platformConfig.companyBusinessNumber || '521-39-01355'}
+              사업자등록번호: 521-39-01355
             </p>
             <p>
-              사업장 주소지: {platformConfig.companyAddress || '서울특별시 서초구 강남대로53길 8'}
+              사업장 주소지: 서울특별시 서초구 강남대로53길 8
               <span className="mx-1.5 text-slate-600">|</span>
               전화번호: 070-4187-2882
               <span className="mx-1.5 text-slate-600">|</span>
