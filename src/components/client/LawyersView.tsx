@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, Heart, ChevronRight, CheckCircle2, MapPin, Paperclip, Search, X, ShieldCheck, Scale, Clock, Users, Briefcase, Award, Sparkles, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Heart, ChevronRight, ChevronDown, CheckCircle2, MapPin, Paperclip, Search, X, ShieldCheck, Scale, Clock, Users, Briefcase, Award, Sparkles, ArrowRight } from 'lucide-react';
 import type { User } from '../../types';
 import LawyerProfileModal from './LawyerProfileModal';
 
@@ -65,6 +65,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedLawyerIds, setSelectedLawyerIds] = useState<string[]>([]);
+  const [regionOpen, setRegionOpen] = useState(false);
 
   // ChatView에서 "무료 상담 변호사 수임하기" 클릭 시 좋아요 필터 자동 활성화
   useEffect(() => {
@@ -136,7 +137,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
           </div>
           <div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">전담 변호사 찾기</h2>
-            <p className="text-base text-slate-300 mt-1">관할 법원별 독립 변호사를 비교하고, 나에게 맞는 전문가를 선택하세요</p>
+            <p className="text-base text-slate-300 mt-1">전국의 회생·파산 전문 변호사를 비교하고, 나에게 맞는 전문가를 선택하세요</p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 pt-2">
@@ -272,28 +273,54 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
         </div>
       )}
 
-      {/* Region Selection Grid */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5 text-left">
-        <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-brand rounded-full"></span>
-          <span>지역별 관할 법원 전담 파트너 찾기</span>
-        </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
-          {REGIONS.map((reg) => (
-            <button 
-              key={reg.value} 
-              type="button" 
-              onClick={() => { setSelectedRegion(reg.value); setPage(1); }} 
-              className={`py-3 text-[13px] font-bold rounded-xl text-center transition-all duration-300 cursor-pointer border ${
-                selectedRegion === reg.value 
-                  ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white shadow-md scale-[1.03]' 
-                  : 'bg-slate-50/50 hover:bg-slate-100/80 dark:bg-slate-950/40 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold'
-              }`}
-            >
-              {reg.label}
-            </button>
-          ))}
-        </div>
+      {/* Region Selection — 접이식 (기본 접힘) */}
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setRegionOpen(!regionOpen)}
+          className="w-full px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <MapPin className="w-4 h-4 text-slate-400" />
+            <span className="font-bold text-sm text-slate-700 dark:text-slate-300">사무소 소재지로 필터</span>
+            {selectedRegion !== '전체' && (
+              <span className="bg-brand/10 text-brand text-xs font-bold px-2 py-0.5 rounded-lg">{selectedRegion}</span>
+            )}
+          </div>
+          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${regionOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {regionOpen && (
+          <div className="px-5 pb-5 space-y-3">
+            <p className="text-xs text-slate-500 leading-relaxed">
+              개인회생·파산은 전국 어디서나 비대면으로 진행 가능합니다. 방문 상담을 원하시면 지역을 선택하세요.
+            </p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+              {REGIONS.map((reg) => (
+                <button 
+                  key={reg.value} 
+                  type="button" 
+                  onClick={() => { setSelectedRegion(reg.value); setPage(1); }} 
+                  className={`py-2.5 text-[13px] font-bold rounded-xl text-center transition-all duration-200 cursor-pointer border ${
+                    selectedRegion === reg.value 
+                      ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white shadow-sm' 
+                      : 'bg-slate-50/50 hover:bg-slate-100/80 dark:bg-slate-950/40 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {reg.label}
+                </button>
+              ))}
+            </div>
+            {selectedRegion !== '전체' && (
+              <button
+                type="button"
+                onClick={() => { setSelectedRegion('전체'); setPage(1); }}
+                className="text-xs text-slate-400 hover:text-slate-600 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <X className="w-3 h-3" /> 지역 필터 해제
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Grid of Lawyers */}
