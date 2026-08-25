@@ -75,7 +75,7 @@ export default function MyPageView({
           <div className="space-y-2">
             <h2 className="text-xl font-black text-slate-900 dark:text-white">아직 자가진단 기록이 없습니다</h2>
             <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-              1분 만에 예상 조정 비율과 월 예상 변제금 범위를 시뮬레이션할 수 있는 무료 채무 체크를 시작해 보세요.
+              1분 만에 예상 조정 비율과 월 예상 변제금 범위를 시뮬레이션할 수 있는 채무 체크를 시작해 보세요.
             </p>
           </div>
           <button

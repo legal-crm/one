@@ -454,7 +454,7 @@ export default function ChatView({
                   </div>
                   <div className="text-left">
                     <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">아직 변호사 매칭 전이에요</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">관심 있는 변호사를 선택하여 무료 상담을 요청해 보세요</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">관심 있는 변호사를 선택하여 상담을 요청해 보세요</p>
                   </div>
                 </div>
 
@@ -479,11 +479,11 @@ export default function ChatView({
                   className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-3 rounded-xl text-sm transition-all shadow-md shadow-brand/20 cursor-pointer active:scale-[0.97]"
                 >
                   <Search className="w-4 h-4" />
-                  무료 상담 변호사 수임하기
+                  변호사에게 상담 요청하기
                   <ArrowRight className="w-4 h-4 text-white/70" />
                 </button>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                  ♥ 좋아요한 변호사 중 최대 3명에게 무료 상담을 요청할 수 있어요
+                  ♥ 좋아요한 변호사 중 최대 3명에게 상담을 요청할 수 있어요
                 </p>
               </div>
             )}
@@ -992,7 +992,7 @@ export default function ChatView({
                   <p className="text-xs text-slate-500 mt-0.5">
                     {activeRequestedCount > 0 
                       ? `현재 ${activeRequestedCount}명 상담 대기 중 · 추가 ${remainingSlots}명 선택 가능`
-                      : '최대 3명을 선택하여 무료 상담을 요청하세요'}
+                      : '최대 3명을 선택하여 상담을 요청하세요'}
                   </p>
                 </div>
                 <button onClick={() => setShowFavLawyerModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer">
@@ -1049,7 +1049,7 @@ export default function ChatView({
                   <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3 flex items-start gap-2.5">
                     <Shield className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                     <div className="text-xs text-indigo-600 dark:text-indigo-400 leading-relaxed">
-                      <strong>최대 3명의 변호사에게 무료 상담을 요청할 수 있어요.</strong><br />
+                      <strong>최대 3명의 변호사에게 상담을 요청할 수 있어요.</strong><br />
                       여러 변호사의 제안을 비교한 뒤 가장 적합한 변호사를 선택하세요.
                     </div>
                   </div>
@@ -1167,7 +1167,7 @@ export default function ChatView({
                         ));
                         onAddMessage(
                           currentRequest.id,
-                          `${selectedNames.join(', ')} 변호사님에게 무료 상담을 요청했습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,
+                          `${selectedNames.join(', ')} 변호사님에게 상담을 요청했습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,
                           'lawyer', 'system', '시스템 안내'
                         );
                       }
@@ -1212,7 +1212,7 @@ export default function ChatView({
                 마음에 드는 변호사를 <span className="text-rose-500 font-bold">♥ 좋아요</span> 해 주세요!
               </p>
               <p className="text-xs text-slate-400 dark:text-slate-500">
-                좋아요한 변호사 중 최대 3명에게 무료 상담을 요청할 수 있어요.
+                좋아요한 변호사 중 최대 3명에게 상담을 요청할 수 있어요.
               </p>
             </div>
 

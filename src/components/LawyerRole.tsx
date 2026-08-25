@@ -1583,7 +1583,7 @@ export default function LawyerRole({
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                   <button onClick={() => { setShowServiceGuide(false); setAuthMode('signup'); }} className="bg-brand hover:bg-brand-hover text-white font-bold px-8 py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
-                    지금 무료로 시작하기
+                    지금 바로 시작하기
                   </button>
                   <button onClick={() => setShowServiceGuide(false)} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-3.5 rounded-2xl text-sm transition-all">
                     로그인 하기
@@ -1728,10 +1728,10 @@ export default function LawyerRole({
             <section className="py-16 md:py-20 bg-slate-900 text-white text-center">
               <div className="max-w-3xl mx-auto px-4 space-y-6">
                 <h2 className="text-2xl md:text-3xl font-black">지금 바로 시작하세요</h2>
-                <p className="text-sm text-slate-400">가입비 0원, 월정액 0원. AI가 정리한 의뢰인 데이터로 더 효율적인 수임을 경험하세요.</p>
+                <p className="text-sm text-slate-400">가입비·월정액 없음. AI가 정리한 의뢰인 데이터로 더 효율적인 수임을 경험하세요.</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button onClick={() => { setShowServiceGuide(false); setAuthMode('signup'); }} className="bg-brand hover:bg-brand-hover text-white font-bold px-10 py-4 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
-                    무료 회원가입
+                    회원가입
                   </button>
                   <button onClick={() => setShowServiceGuide(false)} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-10 py-4 rounded-2xl text-sm transition-all">
                     로그인 페이지로 돌아가기

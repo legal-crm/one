@@ -255,10 +255,10 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { title: '무료 초기 상담', desc: '채무 현황 분석 및 최적 해결 방안 무료 안내', emoji: '💬' },
+                    { title: '초기 상담 지원', desc: '채무 현황 분석 및 최적 해결 방안 안내', emoji: '💬' },
                     { title: '1:1 밀착 관리', desc: '사건 접수부터 인가까지 전 과정 전담 케어', emoji: '🤝' },
                     { title: '보정명령 긴급 대응', desc: '법원 보정명령 발생 시 48시간 내 즉시 대응', emoji: '⚡' },
-                    { title: '신용 회복 가이드', desc: '면책 후 신용 등급 회복 로드맵 무료 제공', emoji: '📈' },
+                    { title: '신용 회복 가이드', desc: '면책 후 신용 등급 회복 로드맵 제공', emoji: '📈' },
                   ].map(svc => (
                     <div key={svc.title} className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3 hover:border-brand/20 hover:shadow-sm transition-all">
                       <span className="text-lg">{svc.emoji}</span>

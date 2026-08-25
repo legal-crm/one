@@ -178,7 +178,7 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                         나도 채무 감면율을 확인하고 싶다면?
                     </h3>
                     <p className="text-[13px] text-slate-600">
-                        회원가입 없이 5분 만에 무료로 예상 조정 범위 체크하기
+                        회원가입 없이 5분 만에 예상 조정 범위 체크하기
                     </p>
                 </div>
                 
@@ -186,7 +186,7 @@ export default function SharedReportViewer({ result, userInput, onStartSelfDiagn
                     onClick={onStartSelfDiagnosis}
                     className="w-full py-4 bg-[#7264FF] hover:bg-[#5b4cf5] text-white text-xs font-extrabold rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#7264FF]/25 active:scale-[0.98]"
                 >
-                    <span>⚡ 나도 무료로 5분 개인회생 진단해보기</span>
+                    <span>⚡ 나도 5분 만에 개인회생 진단해보기</span>
                     <ArrowRight className="w-4 h-4" />
                 </button>
                 

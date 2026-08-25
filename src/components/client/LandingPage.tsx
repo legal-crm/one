@@ -228,7 +228,7 @@ export default function LandingPage({
           >
             <Shield className="w-4 h-4 text-indigo-400" />
             <span className="text-sm text-indigo-300 tracking-wide">
-              익명 · 무료 · 즉시 확인
+              익명 · 간편 · 즉시 확인
             </span>
           </motion.div>
 
@@ -264,7 +264,7 @@ export default function LandingPage({
             transition={{ duration: 0.7, delay: 0.85 }}
             className="text-base text-indigo-400 mb-10 tracking-wide font-semibold"
           >
-            ※ 지금 단계에서는 일체의 비용 없이 상황 체크 및 초기 정보 정리가 시작됩니다.
+            ※ 상황 체크 및 초기 정보 정리 단계에서 플랫폼 이용료는 발생하지 않습니다.
           </motion.p>
 
           {/* Primary CTA */}
