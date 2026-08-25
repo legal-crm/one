@@ -194,7 +194,7 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
           <h3 className="text-xl md:text-2xl font-extrabold text-[#0f172a] tracking-tight">
             지금 바로 시작해 보세요
           </h3>
-          <p className="text-base text-slate-600 font-medium">소요시간 1분 · 회원가입 불필요 · 결과 즉시 확인</p>
+          <p className="text-base text-slate-600 font-medium">소요시간 1분 · 실명 노출 없음 · 변호사 직접 선택</p>
           <button
             onClick={() => onNavigate?.('landing')}
             className="inline-flex items-center gap-2 bg-[#1E3A5F] hover:bg-[#162D4A] text-white font-bold px-8 py-4 rounded-xl text-base transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap shadow-md hover:shadow-lg"
