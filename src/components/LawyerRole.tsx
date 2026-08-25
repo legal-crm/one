@@ -1867,7 +1867,7 @@ export default function LawyerRole({
               {permissionCtx.canAccessTab('open-requests') && (
                 <button onClick={() => setActiveTab('open-requests')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'open-requests' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <Briefcase className="w-5 h-5 shrink-0" /><span>신규 상담 요청</span>
-                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-rose-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{totalOpenRequestsCount}</span>)}
+                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-rose-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm shimmer-badge">{totalOpenRequestsCount}</span>)}
                 </button>
               )}
               <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
@@ -2016,17 +2016,20 @@ export default function LawyerRole({
             {(dashboardSub === 'overview') && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* 1. 신규 상담 */}
-              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              <button onClick={() => setActiveTab('open-requests')} className={`p-4.5 rounded-2xl border flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all press-scale cursor-pointer active:scale-[0.98] group text-left ${totalOpenRequestsCount > 0 ? 'bg-rose-50/20 border-rose-200/80 hover:border-rose-300' : 'bg-white border-slate-200/80 hover:border-slate-300'}`}>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-slate-500 font-bold tracking-tight">신규 상담</span>
                     {totalOpenRequestsCount > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                      </span>
                     )}
                   </div>
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{totalOpenRequestsCount}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
+                <div className={`p-2.5 rounded-xl transition-all shrink-0 ${totalOpenRequestsCount > 0 ? 'bg-rose-50 text-rose-600 group-hover:bg-[#1E3A5F] group-hover:text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white'}`}>
                   <Briefcase className="w-5 h-5" />
                 </div>
               </button>
@@ -2109,7 +2112,7 @@ export default function LawyerRole({
                   </div>
                   <span>지금 상담을 기다리는 의뢰인</span>
                 </h3>
-                <span className="bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-xs">
+                <span className="bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-xs shimmer-badge">
                   {totalOpenRequestsCount}건 대기 중
                 </span>
               </div>
@@ -2124,7 +2127,7 @@ export default function LawyerRole({
                     <button
                       key={r.id}
                       onClick={() => setActiveTab('open-requests')}
-                      className="bg-slate-50/70 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:shadow-sm p-4 flex flex-col gap-3 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left"
+                      className={`bg-slate-50/70 hover:bg-slate-100/90 rounded-xl border border-slate-200/90 hover:border-blue-300 hover:shadow-md p-4 flex flex-col gap-3 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left shimmer-card shimmer-delay-${(idx % 3) + 1}`}
                     >
                       {/* 상단: 뱃지 + 이름 + 날짜 */}
                       <div className="flex items-center justify-between gap-2">
@@ -2177,7 +2180,7 @@ export default function LawyerRole({
                             </span>
                           )}
                         </div>
-                        <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E3A5F] transition-colors shrink-0" />
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E3A5F] group-hover:translate-x-0.5 transition-all shrink-0" />
                       </div>
                     </button>
                     );
@@ -2196,7 +2199,7 @@ export default function LawyerRole({
                 <div className="flex justify-center pt-1">
                   <button
                     onClick={() => setActiveTab('open-requests')}
-                    className="w-full sm:w-[32%] min-w-[240px] bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-3 px-5 rounded-xl text-sm transition-all press-scale cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
+                    className="w-full sm:w-[32%] min-w-[240px] bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-3 px-5 rounded-xl text-sm transition-all press-scale cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-2 shimmer-btn"
                   >
                     <span>신규 상담 {totalOpenRequestsCount}건 자세히 보기</span>
                     <span>&rarr;</span>
@@ -2614,7 +2617,7 @@ export default function LawyerRole({
                 .map((r, idx) => {
                   const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
                   return (
-                    <div key={r.id} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between">
+                    <div key={r.id} className={`bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between shimmer-card shimmer-delay-${(idx % 3) + 1}`}>
 
                       {/* 카드 헤더 */}
                       <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
@@ -2637,7 +2640,7 @@ export default function LawyerRole({
                         </div>
                         <div className="flex items-center gap-2 text-xs">
                           <span className="text-slate-500 text-[11px]">지정 변호사: <strong className="text-slate-800">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
-                          <span className="bg-rose-50 text-rose-600 font-bold text-[11px] px-2 py-0.5 rounded-md border border-rose-200">제안서 작성 대기</span>
+                          <span className="bg-rose-50 text-rose-600 font-bold text-[11px] px-2.5 py-0.5 rounded-md border border-rose-200 shimmer-badge">제안서 작성 대기</span>
                         </div>
                       </div>
 
