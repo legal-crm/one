@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, Heart, ChevronRight, CheckCircle2, MapPin, Paperclip, Search, X, ShieldCheck, Scale, Clock, Users } from 'lucide-react';
+import { AlertTriangle, Heart, ChevronRight, CheckCircle2, MapPin, Paperclip, Search, X, ShieldCheck, Scale, Clock, Users, Briefcase, Award, Sparkles, ArrowRight } from 'lucide-react';
 import type { User } from '../../types';
 import LawyerProfileModal from './LawyerProfileModal';
 
@@ -34,9 +34,28 @@ interface LawyersViewProps {
   selectionMode?: boolean;
   maxSelections?: number;
   onConfirmSelection?: (lawyerIds: string[]) => void;
+  hasCompletedCheck?: boolean;
+  onStartCheck?: () => void;
 }
 
-export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, maxSelections = 3, onConfirmSelection }: LawyersViewProps) {
+/** certYear 문자열에서 경력년수 계산 (예: "제8회 변호사시험 합격 (2019년)" → 7) */
+function getExperienceYears(certYear?: string): number | null {
+  if (!certYear) return null;
+  const match = certYear.match(/(\d{4})년/);
+  if (!match) return null;
+  const year = parseInt(match[1], 10);
+  const diff = new Date().getFullYear() - year;
+  return diff > 0 ? diff : 1;
+}
+
+/** firmName 또는 career 첫 항목에서 소속 추출 */
+function getAffiliation(l: User): string | null {
+  if (l.firmName) return l.firmName;
+  if (l.career && l.career.length > 0) return l.career[0];
+  return null;
+}
+
+export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, maxSelections = 3, onConfirmSelection, hasCompletedCheck, onStartCheck }: LawyersViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('전체');
   const [page, setPage] = useState(1);
@@ -352,14 +371,21 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                         </div>
                       )}
                       <div className="relative shrink-0 self-start sm:self-center">
-                        <img src={l.avatar} alt={l.name} className="w-20 h-20 rounded-full object-cover bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 shadow-sm" />
-                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></span>
+                        <img src={l.avatar} alt={l.name} className="w-24 h-24 rounded-xl object-cover bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 shadow-sm" />
+                        <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></span>
                       </div>
-                      <div className="flex-1 space-y-3">
+                      <div className="flex-1 space-y-2.5">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="font-bold text-xl text-slate-900 dark:text-white tracking-tight">{l.name}</h3>
-                            <span className="text-sm text-slate-500 dark:text-slate-500 font-medium">{l.courtJurisdiction || l.region + ' 법원'} 전담 지원</span>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-xl text-slate-900 dark:text-white tracking-tight">{l.name}</h3>
+                              {(() => { const yrs = getExperienceYears(l.certYear); return yrs ? <span className="bg-amber-50 text-amber-700 text-[11px] font-bold px-2 py-0.5 rounded-lg border border-amber-200 flex items-center gap-1"><Award className="w-3 h-3" />{yrs}년차</span> : null; })()}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {getAffiliation(l) && <span className="text-sm text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" />{getAffiliation(l)}</span>}
+                              <span className="text-slate-300">·</span>
+                              <span className="text-sm text-slate-500 dark:text-slate-500 font-medium">{l.courtJurisdiction || l.region + ' 법원'}</span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="bg-blue-50 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-lg border border-blue-200">광고</span>
@@ -368,18 +394,17 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             </button>
                           </div>
                         </div>
-                        <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{l.bio}</p>
+                        <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium line-clamp-2">{l.bio}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {l.fields.map(f => (
                             <span key={f} className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs px-2.5 py-0.5 rounded-md font-bold">#{f}</span>
                           ))}
                         </div>
-                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
-                          <span className="flex items-center gap-1.5"><span className="text-xs text-brand/75">•</span>상황 밀착 상담</span>
-                          <span className="flex items-center gap-1.5"><span className="text-xs text-brand/75">•</span>채무 전략 관리</span>
-                          <span className="flex items-center gap-1.5"><span className="text-xs text-brand/75">•</span>사건 신속 진행</span>
-                          <span className="flex items-center gap-1.5"><span className="text-xs text-brand/75">•</span>면책 후 신용 케어</span>
-                        </div>
+                        {l.catchphrase && (
+                          <p className="text-sm text-slate-500 italic leading-relaxed border-l-2 border-brand/30 pl-3 py-0.5">
+                            "{l.catchphrase}"
+                          </p>
+                        )}
                         <div className="pt-2 flex items-center justify-between text-sm border-t border-slate-100 dark:border-slate-800">
                           <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-sm font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -396,7 +421,47 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
               </div>
             )}
 
-            {/* ── 기본등록 변호사 (무료 회원) — 첨부파일 스타일 컴팩트 카드 ── */}
+            {/* ── 중간 전환 배너 (채무 체크 유도) ── */}
+            {!selectionMode && (
+              <div className={`rounded-2xl p-5 md:p-6 border ${hasCompletedCheck
+                ? 'bg-emerald-50/80 border-emerald-200'
+                : 'bg-gradient-to-r from-[#1E3A5F]/5 to-indigo-500/5 border-[#1E3A5F]/15'
+              }`}>
+                <div className="flex items-start gap-4">
+                  <div className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center ${hasCompletedCheck ? 'bg-emerald-500/10' : 'bg-[#1E3A5F]/10'}`}>
+                    {hasCompletedCheck
+                      ? <CheckCircle2 className="w-5.5 h-5.5 text-emerald-600" />
+                      : <Sparkles className="w-5.5 h-5.5 text-[#1E3A5F]" />
+                    }
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <h4 className="font-bold text-base text-slate-900">
+                      {hasCompletedCheck
+                        ? '✅ 채무 체크 완료! 변호사에게 상담을 요청해 보세요'
+                        : '채무 상황을 먼저 정리하셨나요?'
+                      }
+                    </h4>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {hasCompletedCheck
+                        ? '아래 변호사 목록에서 관심 있는 전문가를 선택하면, AI가 정리한 채무 데이터와 함께 상담을 요청할 수 있습니다.'
+                        : 'AI 채무 체크를 완료하면 변호사에게 더 정확한 상담을 요청할 수 있습니다. 1분이면 충분합니다.'
+                      }
+                    </p>
+                    {!hasCompletedCheck && onStartCheck && (
+                      <button
+                        onClick={onStartCheck}
+                        className="mt-2 inline-flex items-center gap-2 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all cursor-pointer active:scale-[0.98] shadow-md whitespace-nowrap"
+                      >
+                        1분 채무 체크 시작하기
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── 기본등록 변호사 — 컴팩트 카드 ── */}
             {freeLawyers.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -410,7 +475,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                     <div
                       key={l.id}
                       onClick={() => selectionMode ? toggleSelection(l.id) : setProfileLawyer(l)}
-                      className={`bg-slate-50/80 border border-slate-100 rounded-2xl p-5 flex items-center gap-4 hover:bg-white hover:border-slate-200 hover:shadow-md transition-all cursor-pointer group/file relative ${
+                      className={`bg-slate-50/80 border border-slate-100 rounded-2xl p-5 flex gap-4 hover:bg-white hover:border-slate-200 hover:shadow-md transition-all cursor-pointer group/file relative ${
                         selectionMode && selectedLawyerIds.includes(l.id)
                           ? 'border-brand ring-2 ring-brand/20 bg-brand/5'
                           : ''
@@ -433,18 +498,25 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                         <img src={l.avatar} alt={l.name} className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
                         <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-1.5">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-lg text-slate-900 truncate">{l.name}</span>
-                          <span className="text-sm text-slate-500 font-medium shrink-0">{l.courtJurisdiction || l.region}</span>
+                          {(() => { const yrs = getExperienceYears(l.certYear); return yrs ? <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200 shrink-0">{yrs}년차</span> : null; })()}
                         </div>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {l.fields.slice(0, 3).map(f => (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                          {getAffiliation(l) && <><span className="truncate max-w-[140px]">{getAffiliation(l)}</span><span className="text-slate-300">·</span></>}
+                          <span className="shrink-0">{l.courtJurisdiction || l.region}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {l.fields.slice(0, 4).map(f => (
                             <span key={f} className="text-xs text-slate-600 font-bold px-2 py-0.5 bg-white border border-slate-200 rounded-md">{f}</span>
                           ))}
                         </div>
+                        {l.catchphrase && (
+                          <p className="text-xs text-slate-400 italic truncate">"{l.catchphrase}"</p>
+                        )}
                       </div>
-                      <ChevronRight className="w-5 h-5 text-slate-300 shrink-0 group-hover/file:text-slate-500 transition-colors" />
+                      <ChevronRight className="w-5 h-5 text-slate-300 shrink-0 self-center group-hover/file:text-slate-500 transition-colors" />
                     </div>
                   ))}
                 </div>
