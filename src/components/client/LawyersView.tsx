@@ -411,7 +411,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             <span>{l.recentActivity}</span>
                           </span>
                           <button onClick={() => onSelectLawyer(l.id)} className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all duration-300 text-sm cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]">
-                            이 전문가에게 상담 요청하기
+                            상담 요청하기
                           </button>
                         </div>
                       </div>
