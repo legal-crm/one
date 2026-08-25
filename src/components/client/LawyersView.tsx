@@ -48,10 +48,12 @@ function getExperienceYears(certYear?: string): number | null {
   return diff > 0 ? diff : 1;
 }
 
-/** firmName 또는 career 첫 항목에서 소속 추출 */
+/** firmName 또는 career 첫 항목에서 소속명만 추출 (직함 제거) */
 function getAffiliation(l: User): string | null {
   if (l.firmName) return l.firmName;
-  if (l.career && l.career.length > 0) return l.career[0];
+  if (l.career && l.career.length > 0) {
+    return l.career[0].replace(/\s*(대표변호사|파트너변호사|소속변호사|변호사|대표|파트너|구성원|소속)$/g, '').trim();
+  }
   return null;
 }
 
@@ -383,8 +385,6 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               {getAffiliation(l) && <span className="text-sm text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" />{getAffiliation(l)}</span>}
-                              <span className="text-slate-300">·</span>
-                              <span className="text-sm text-slate-500 dark:text-slate-500 font-medium">{l.courtJurisdiction || l.region + ' 법원'}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -405,13 +405,9 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                             "{l.catchphrase}"
                           </p>
                         )}
-                        <div className="pt-2 flex items-center justify-between text-sm border-t border-slate-100 dark:border-slate-800">
-                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-sm font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span>{l.recentActivity}</span>
-                          </span>
+                        <div className="pt-2 flex items-center justify-end text-sm border-t border-slate-100 dark:border-slate-800">
                           <button onClick={() => onSelectLawyer(l.id)} className="bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all duration-300 text-sm cursor-pointer shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 active:scale-[0.98]">
-                            상담 요청하기
+                            상담하기
                           </button>
                         </div>
                       </div>
@@ -504,8 +500,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                           {(() => { const yrs = getExperienceYears(l.certYear); return yrs ? <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200 shrink-0">{yrs}년차</span> : null; })()}
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                          {getAffiliation(l) && <><span className="truncate max-w-[140px]">{getAffiliation(l)}</span><span className="text-slate-300">·</span></>}
-                          <span className="shrink-0">{l.courtJurisdiction || l.region}</span>
+                          {getAffiliation(l) && <span className="truncate max-w-[180px]">{getAffiliation(l)}</span>}
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {l.fields.slice(0, 4).map(f => (
