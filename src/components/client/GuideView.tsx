@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, BarChart3, Users, Lock, ArrowRight, CheckCircle2, ChevronDown, Shield, Clock, Search, BookOpen } from 'lucide-react';
+import { MessageSquare, Users, Lock, ArrowRight, CheckCircle2, ChevronDown, Shield, Clock, Search, BookOpen } from 'lucide-react';
 
 interface GuideViewProps {
   onNavigate?: (tab: string) => void;
@@ -25,34 +25,20 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
     },
     {
       step: 'STEP 2',
-      title: 'AI 분석 결과 확인',
-      desc: '입력한 정보를 바탕으로 적합한 채무 해결 방안을 분석합니다.',
+      title: '전문 변호사 비교',
+      desc: '회생·파산 전문 변호사들의 간단 답변을 비교하고 선택합니다.',
       details: [
-        '개인회생, 개인파산, 채무조정 등 방안 비교',
-        '예상 변제금액·기간 시뮬레이션 제공',
-        '법원 공개 기준 기반의 참고 분석',
+        '변호사들이 내 사건에 대한 초기 답변 제공',
+        '경력, 전문 분야, 실제 이용 후기 확인',
+        '마음에 드는 변호사가 없으면 진행하지 않아도 무방',
       ],
-      icon: <BarChart3 className="w-7 h-7" />,
+      icon: <Users className="w-7 h-7" />,
       color: 'bg-[#1E3A5F]',
       lightColor: 'bg-[#EEF4FA]',
       textColor: 'text-[#1E3A5F]',
     },
     {
       step: 'STEP 3',
-      title: '전문 변호사 비교',
-      desc: '회생·파산 전문 변호사들의 간단 답변을 비교하고 선택합니다.',
-      details: [
-        '전문가들이 내 사건에 대한 초기 답변 제공',
-        '경력, 전문 분야, 실제 이용 후기 확인',
-        '마음에 드는 전문가가 없으면 진행하지 않아도 무방',
-      ],
-      icon: <Users className="w-7 h-7" />,
-      color: 'bg-[#0F766E]',
-      lightColor: 'bg-teal-50',
-      textColor: 'text-[#0F766E]',
-    },
-    {
-      step: 'STEP 4',
       title: '1:1 프라이빗 상담',
       desc: '선택한 변호사와 암호화된 채팅방에서 안전하게 상담합니다.',
       details: [
@@ -61,9 +47,9 @@ export default function GuideView({ onNavigate }: GuideViewProps) {
         '선임 여부는 상담 후 자유롭게 결정',
       ],
       icon: <Lock className="w-7 h-7" />,
-      color: 'bg-[#1E3A5F]',
-      lightColor: 'bg-[#EEF4FA]',
-      textColor: 'text-[#1E3A5F]',
+      color: 'bg-[#0F766E]',
+      lightColor: 'bg-teal-50',
+      textColor: 'text-[#0F766E]',
     },
   ];
 
