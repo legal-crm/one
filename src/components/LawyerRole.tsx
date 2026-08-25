@@ -1257,7 +1257,7 @@ export default function LawyerRole({
   if (!isLoggedIn) {
     return (
       <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
+        <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center">
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
@@ -1363,7 +1363,7 @@ export default function LawyerRole({
                 </button>
               </div>
               {showPasswordReset && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fadeIn">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                   <p className="text-sm text-slate-600 leading-relaxed">가입 시 사용한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.</p>
                   <input
                     type="email"
@@ -1551,7 +1551,7 @@ export default function LawyerRole({
 
         {/* ── 서비스 안내 모달 (풀스크린) ── */}
         {showServiceGuide && (
-          <div className="fixed inset-0 z-[100] bg-white overflow-y-auto animate-fadeIn">
+          <div className="fixed inset-0 z-[100] bg-white overflow-y-auto">
             {/* 상단 네비 */}
             <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3">
               <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -1571,7 +1571,7 @@ export default function LawyerRole({
               </div>
               <div className="relative z-10 max-w-4xl mx-auto px-4 text-center space-y-6">
                 <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
                   변호사 전용 파트너 플랫폼
                 </div>
                 <h1 className="text-3xl md:text-5xl font-black leading-tight">
@@ -1674,7 +1674,7 @@ export default function LawyerRole({
                 <h2 className="text-2xl md:text-3xl font-black text-slate-900">합리적인 비용 구조</h2>
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 md:p-10 space-y-6">
                   <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-bold px-4 py-1.5 rounded-full">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     초기 비용 0원
                   </div>
                   <h3 className="text-xl font-bold text-slate-900">가입비·월정액 없음. 수임 성공 시에만 과금.</h3>
@@ -1754,7 +1754,7 @@ export default function LawyerRole({
   if (isLoggedIn && activeLawyer.approved === false) {
     return (
       <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center animate-fadeIn">
+        <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center">
           {/* logo & brand header */}
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
@@ -1959,7 +1959,7 @@ export default function LawyerRole({
 
         {/* TAB 1: LAWYER DASHBOARD */}
         {activeTab === 'dashboard' && (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6">
             {/* 서브탭 */}
             <div className="bg-white rounded-xl border border-slate-200/80 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
@@ -2022,7 +2022,7 @@ export default function LawyerRole({
                     <span className="text-xs text-slate-500 font-bold tracking-tight">신규 상담</span>
                     {totalOpenRequestsCount > 0 && (
                       <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                       </span>
                     )}
@@ -2040,7 +2040,7 @@ export default function LawyerRole({
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-slate-500 font-bold tracking-tight">응답 대기</span>
                     {directCounselingCount > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
                     )}
                   </div>
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{directCounselingCount}</span>
@@ -2079,7 +2079,7 @@ export default function LawyerRole({
                     <span className="text-xs text-slate-500 font-bold tracking-tight">미답변 Q&A</span>
                     {(() => {
                       const waitingCount = qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length : 0;
-                      return waitingCount > 0 ? <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> : null;
+                      return waitingCount > 0 ? <span className="w-2 h-2 rounded-full bg-rose-500" /> : null;
                     })()}
                   </div>
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{qas ? qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length : 0}</span>
@@ -2586,7 +2586,7 @@ export default function LawyerRole({
 
         {/* TAB 2: INCOMING COUNSEL REQUESTS LIST */}
         {activeTab === 'open-requests' && (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6">
             {/* 페이지 헤더 */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
               <div>
@@ -2791,7 +2791,7 @@ export default function LawyerRole({
           const chatThreads = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id));
           const chatEndRef = React.createRef<HTMLDivElement>();
           return (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white rounded-2xl overflow-hidden shadow-md border border-slate-200 min-h-[550px] h-[calc(100vh-14rem)] lg:h-[720px] animate-fadeIn">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white rounded-2xl overflow-hidden shadow-md border border-slate-200 min-h-[550px] h-[calc(100vh-14rem)] lg:h-[720px]">
             
             {/* PANEL I: INBOX THREADS (LEFT) */}
             <div className={`lg:col-span-3 border-r border-slate-200 flex flex-col h-full bg-white ${mobilePane === 'threads' ? 'block' : 'hidden lg:flex'}`}>
@@ -2885,7 +2885,7 @@ export default function LawyerRole({
                       <div className="min-w-0">
                         <h3 className="font-bold text-base text-slate-900 line-clamp-1">{currentChatRequest.clientName}</h3>
                         <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                           보안 채널 연결됨
                         </span>
                       </div>
@@ -3112,7 +3112,7 @@ export default function LawyerRole({
                                 </span>
                               </div>
                               {currentChatRequest.financialProfile.retirementPensionType === 'unknown' && (
-                                <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-xs text-amber-700 font-bold text-center animate-pulse">
+                                <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-xs text-amber-700 font-bold text-center">
                                   ⚠️ 퇴직연금 확인 필요
                                 </div>
                               )}
@@ -3212,7 +3212,7 @@ export default function LawyerRole({
 
         {/* TAB 5: BILLING & SUBSCRIPTIONS */}
         {activeTab === 'billing' && (
-          <div className="space-y-8 animate-fadeIn">
+          <div className="space-y-8">
             {/* 서브탭 */}
             <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
@@ -3235,7 +3235,7 @@ export default function LawyerRole({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="bg-white/10 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-white/20">Active</span>
-                      <span className="text-emerald-400 text-sm font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>정상 운영 중</span>
+                      <span className="text-emerald-400 text-sm font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400"></span>정상 운영 중</span>
                     </div>
                     <h2 className="text-2xl sm:text-3xl font-black text-white">이용 요금제 · 빌링 관리</h2>
                     <p className="text-sm text-slate-400">다음 결제 예정일: 2026년 07월 25일 (월 800,000 원)</p>
@@ -3401,7 +3401,7 @@ export default function LawyerRole({
                           <td className="p-3.5 text-slate-700 font-medium">{order.contractMonths}개월</td>
                           <td className="p-3.5 font-bold text-slate-800 tracking-tight tabular-nums">{order.monthlyPrice.toLocaleString()}원</td>
                           <td className="p-3.5 font-black text-slate-900 tracking-tight tabular-nums">{order.totalPrice.toLocaleString()}원</td>
-                          <td className="p-3.5"><span className={`text-xs font-bold px-3 py-1 rounded-full border inline-flex items-center gap-1.5 ${order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : order.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-rose-500' : 'bg-slate-400'}`}></span>{order.status === 'pending' ? '입금 대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
+                          <td className="p-3.5"><span className={`text-xs font-bold px-3 py-1 rounded-full border inline-flex items-center gap-1.5 ${order.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : order.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500' : order.status === 'cancelled' ? 'bg-rose-500' : 'bg-slate-400'}`}></span>{order.status === 'pending' ? '입금 대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -3750,7 +3750,7 @@ export default function LawyerRole({
 
         {/* TAB: 일정 / 할일 */}
         {activeTab === 'tasks-schedule' && (
-          <div className="animate-fadeIn">
+          <div className="">
             <TasksScheduleTab
               tenantId={activeLawyer.lawFirmId || activeLawyer.id}
               userId={activeStaffMember?.id || activeLawyer.id}
@@ -3767,7 +3767,7 @@ export default function LawyerRole({
 
         {/* TAB: 마이김변 문의 */}
         {activeTab === 'inquiry-to-admin' && lawyerInquiries && setLawyerInquiries && (
-          <div className="animate-fadeIn">
+          <div className="">
             <LawyerInquiryTab
               lawyerInquiries={lawyerInquiries}
               setLawyerInquiries={setLawyerInquiries}
@@ -3779,7 +3779,7 @@ export default function LawyerRole({
 
         {/* TAB 7: 알림 및 플랫폼 설정 */}
         {activeTab === 'settings' && (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6">
             {/* 서브탭 */}
             <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {([
@@ -3795,7 +3795,7 @@ export default function LawyerRole({
               ))}
             </div>
             {settingsSub === 'profile' && (
-              <div className="animate-fadeIn">
+              <div className="">
                 <LawyerProfileEditor
                   lawyer={activeLawyer}
                   onImageChange={(newAvatar) => {
@@ -3828,7 +3828,7 @@ export default function LawyerRole({
               const importantCount = (notices || []).filter(n => n.isImportant).length;
 
               return (
-                <div className="space-y-6 animate-fadeIn">
+                <div className="space-y-6">
                   {/* Header info */}
                   <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
                     <div className="space-y-1">
@@ -3916,7 +3916,7 @@ export default function LawyerRole({
                           </button>
 
                           {isExpanded && (
-                            <div className="px-5 md:px-6 pb-6 pt-2 border-t border-slate-100 animate-fadeIn">
+                            <div className="px-5 md:px-6 pb-6 pt-2 border-t border-slate-100">
                               <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200/60 text-sm text-slate-800 leading-relaxed whitespace-pre-wrap font-medium">
                                 {n.content}
                               </div>
@@ -4008,7 +4008,7 @@ export default function LawyerRole({
               </div>
 
               {showPasswordChange && (
-                <div className="space-y-4 animate-fadeIn border-t border-slate-100 pt-4">
+                <div className="space-y-4 border-t border-slate-100 pt-4">
                   <div className="space-y-2">
                     <label className="text-sm text-slate-700 font-bold block">현재 비밀번호</label>
                     <input
@@ -4171,7 +4171,7 @@ export default function LawyerRole({
 
               {/* 봇 생성 가이드 (토글) */}
               {showBotTokenGuide && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4 animate-fadeIn">
+                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4">
                   <h4 className="font-black text-base text-slate-900 flex items-center gap-2">📖 텔레그램 봇 생성 가이드</h4>
                   <ol className="text-sm text-slate-700 space-y-2.5 list-decimal list-inside leading-relaxed font-medium">
                     <li>텔레그램 앱에서 <strong className="text-brand">@BotFather</strong> 검색 후 대화 시작</li>
@@ -4237,7 +4237,7 @@ export default function LawyerRole({
 
               {/* 이메일 설정 (토글) */}
               {showEmailSetup && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4 animate-fadeIn">
+                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4">
                   <h4 className="font-black text-base text-slate-900 flex items-center gap-2">📧 Gmail 이메일 알림 설정</h4>
                   <p className="text-xs text-slate-600 leading-relaxed font-medium">
                     로펌의 Gmail 계정에서 변호사/직원에게 상담 알림 이메일을 자동 발송합니다. Gmail <strong>앱 비밀번호</strong>가 필요합니다.
@@ -4596,7 +4596,7 @@ export default function LawyerRole({
                                     {/* Actions */}
                                     <div className="pt-2 border-t border-[#2C3B4B] flex flex-col gap-1.5">
                                       {m.card.assignedLawyer ? (
-                                        <div className="w-full py-2 bg-emerald-950/40 text-emerald-400 text-center rounded-lg border border-emerald-500/20 text-[11px] font-extrabold flex items-center justify-center gap-1 animate-fadeIn select-none">
+                                        <div className="w-full py-2 bg-emerald-950/40 text-emerald-400 text-center rounded-lg border border-emerald-500/20 text-[11px] font-extrabold flex items-center justify-center gap-1 select-none">
                                           <Check className="w-3 h-3" />
                                           <span>{m.card.assignedLawyer} 수임 배정 완료</span>
                                         </div>
@@ -4672,7 +4672,7 @@ export default function LawyerRole({
             </>)}
 
             {settingsSub === 'calc-rules' && (
-              <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm animate-fadeIn">
+              <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm">
                 <RehabSettingsPanel mode="lawyer" />
               </div>
             )}
