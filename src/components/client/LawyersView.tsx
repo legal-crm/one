@@ -137,7 +137,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
           </div>
           <div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">변호사 찾기</h2>
-            <p className="text-base text-slate-300 mt-1">전국의 회생·파산 전문 변호사를 비교하고, 나에게 맞는 전문가를 선택하세요</p>
+            <p className="text-base text-slate-300 mt-1">전국의 회생·파산 전문 변호사를 비교하고, 나에게 맞는 변호사를 선택하세요</p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 pt-2">
@@ -210,7 +210,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
           <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-1">
             <h3 className="font-bold text-lg text-slate-900 tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-4 bg-[#1E3A5F] rounded-full"></span>
-              광고 전문가
+              광고 변호사
             </h3>
             <span className="flex items-center gap-1 text-xs text-slate-400 font-medium select-none" title="변호사가 직접 등록한 유료 노출 광고입니다">
               AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-xs text-slate-400 font-bold">ⓘ</span>
@@ -328,7 +328,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="text-left text-sm text-slate-600 dark:text-slate-400 font-bold">
-            아래 전문가 목록에서 상담을 요청할 변호사를 직접 선택하세요. 플랫폼은 특정 전문가를 추천·배정하지 않습니다. 상담 및 사건 수행은 선택하신 변호사가 독립적으로 진행합니다.
+            아래 변호사 목록에서 상담을 요청할 변호사를 직접 선택하세요. 플랫폼은 특정 변호사를 추천·배정하지 않습니다. 상담 및 사건 수행은 선택하신 변호사가 독립적으로 진행합니다.
           </div>
           <button
             type="button"
@@ -372,7 +372,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-4 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></span>
-                  <h3 className="font-bold text-lg text-slate-900 tracking-tight">광고 · 지역 전문가</h3>
+                  <h3 className="font-bold text-lg text-slate-900 tracking-tight">광고 · 지역 변호사</h3>
                   <span className="text-sm text-slate-400 font-medium">({paidLawyers.length}명)</span>
                   <span className="ml-auto flex items-center gap-1 text-xs text-slate-400 font-medium select-none">
                     AD 광고 <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-slate-200 text-xs text-slate-400 font-bold">ⓘ</span>
@@ -466,7 +466,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
                     </h4>
                     <p className="text-sm text-slate-600 leading-relaxed">
                       {hasCompletedCheck
-                        ? '아래 변호사 목록에서 관심 있는 전문가를 선택하면, AI가 정리한 채무 데이터와 함께 상담을 요청할 수 있습니다.'
+                        ? '아래 변호사 목록에서 관심 있는 변호사를 선택하면, AI가 정리한 채무 데이터와 함께 상담을 요청할 수 있습니다.'
                         : 'AI 채무 체크를 완료하면 변호사에게 더 정확한 상담을 요청할 수 있습니다. 1분이면 충분합니다.'
                       }
                     </p>

@@ -517,7 +517,7 @@ export default function LawyerProfileModal({ lawyer, onClose, onConsult, isFavor
             onClick={() => onConsult(lawyer.id)}
             className="w-full sm:w-auto bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold py-3.5 px-8 rounded-xl transition-all shadow-md cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98]"
           >
-            <span>이 전문가를 직접 선택하여 상담 요청</span>
+            <span>이 변호사를 직접 선택하여 상담 요청</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

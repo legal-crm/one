@@ -2112,12 +2112,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight text-[#0f172a]">
                   내 채무를 먼저 정리하고,<br />
-                  상담할 전문가는 직접 선택하세요
+                  상담할 변호사는 직접 선택하세요
                 </h1>
                 
                 <p className="hidden md:block text-slate-600 text-base md:text-lg font-medium leading-relaxed max-w-xl">
                   이름 없이 1분 만에 내 채무 상황을 간편하게 정리하고,<br />
-                  신뢰할 수 있는 전문가 정보를 직접 비교해 보세요.
+                  신뢰할 수 있는 변호사 정보를 직접 비교해 보세요.
                 </p>
 
                 {/* Unified CTA Button */}
@@ -2149,7 +2149,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
                 <div className="space-y-3">
                   {[
-                    { icon: <MessageSquare className="w-5 h-5 text-[#3B82F6]" />, title: '부담 없는 초기 상담 절차', desc: '채무 현황 AI 정리 및 전문가 매칭까지의 과정에서 플랫폼 이용료가 발생하지 않습니다.' },
+                    { icon: <MessageSquare className="w-5 h-5 text-[#3B82F6]" />, title: '부담 없는 초기 상담 절차', desc: '채무 현황 AI 정리 및 변호사 매칭까지의 과정에서 플랫폼 이용료가 발생하지 않습니다.' },
                     { icon: <Lock className="w-5 h-5 text-[#10B981]" />, title: '100% 익명성 보장', desc: '실명, 주민번호 노출 없이 스텔스 가명으로 안전하게 상담 가능합니다.' },
                     { icon: <Users className="w-5 h-5 text-[#1E3A5F]" />, title: '1:1 전담 변호사 직접 지정', desc: '의뢰인이 직접 신뢰하는 변호사를 선택하여 전담 상담방을 개설합니다.' },
                     { icon: <ShieldCheck className="w-5 h-5 text-slate-500" />, title: 'SSL/TLS 암호화 통신 보호', desc: '모든 상담 데이터는 SSL/TLS 암호화 전송 및 서버 암호화 저장으로 안전하게 보호됩니다.' },
@@ -2175,7 +2175,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             <section className="w-full bg-[#0D9488] py-5">
               <div className="max-w-5xl mx-auto px-4 text-center">
                 <p className="text-white font-extrabold text-lg md:text-xl tracking-tight">✔ my김변 이용안내</p>
-                <p className="text-white/80 text-sm font-medium mt-1">채무 정리부터 전문가 상담까지, 단 4단계로 완료됩니다</p>
+                <p className="text-white/80 text-sm font-medium mt-1">채무 정리부터 변호사 상담까지, 단 4단계로 완료됩니다</p>
               </div>
             </section>
 
@@ -2287,7 +2287,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="order-1 lg:order-2 space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">02</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">나에게 맞는 변호사를 골라<br />한번에 상담을 요청하세요</h3>
-                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 전문가를 선택할 수 있습니다.</p>
+                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">분야별 전문 변호사 목록에서 원하는 변호사를 여러 명 선택하고, 한 번의 요청으로 동시에 상담을 받아보세요. 각 변호사의 답변을 비교한 뒤 가장 맞는 변호사를 선택할 수 있습니다.</p>
                     <div className="flex flex-wrap gap-3 text-sm sm:text-base">
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Users className="w-4.5 h-4.5" />다수 변호사 동시 선택</span>
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Send className="w-4.5 h-4.5" />한번에 상담 요청</span>
@@ -2297,7 +2297,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       className="inline-flex items-center gap-2 px-7 py-4 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                     >
-                      전문가 둘러보기 →
+                      변호사 둘러보기 →
                     </button>
                   </div>
                 </div>
@@ -2311,8 +2311,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   {/* 좌측: 텍스트 */}
                   <div className="space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#0D9488] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">03</div>
-                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">여러 전문가의 답변을<br />직접 비교하세요</h3>
-                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 전문가를 선택하세요.</p>
+                    <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">여러 변호사의 답변을<br />직접 비교하세요</h3>
+                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">채무 상황을 등록하면 여러 전문 변호사가 직접 상담 답변을 남깁니다. 각 답변을 비교하고 가장 신뢰가 가는 변호사를 선택하세요.</p>
                     <div className="flex flex-wrap gap-3 text-sm sm:text-base">
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Users className="w-4.5 h-4.5" />여러 변호사 답변 비교</span>
                       <span className="flex items-center gap-1.5 text-[#0D9488] font-bold"><Star className="w-4.5 h-4.5" />실제 의뢰인 후기</span>
@@ -2322,14 +2322,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       onClick={() => { setActiveTab('lawyers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       className="inline-flex items-center gap-2 px-7 py-4 bg-[#0D9488] hover:bg-[#0B8276] text-white font-bold rounded-xl text-base transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] shadow-md"
                     >
-                      전문가 프로필 둘러보기 →
+                      변호사 프로필 둘러보기 →
                     </button>
                   </div>
                   {/* 우측: 변호사 상담 답변 목업 */}
                   <div className="flex justify-center">
                     <div className="w-full max-w-[390px] space-y-3">
                       <div className="bg-[#EEF4FA] rounded-xl px-4 py-3 text-center">
-                        <p className="text-sm font-bold text-[#1E3A5F]">📋 내 사건에 도착한 전문가 답변 <span className="text-[#0D9488]">3건</span></p>
+                        <p className="text-sm font-bold text-[#1E3A5F]">📋 내 사건에 도착한 변호사 답변 <span className="text-[#0D9488]">3건</span></p>
                       </div>
                       {[
                         { name: '김도현', specialty: '개인회생 전문', answer: '회생 신청이 적합합니다. 현재 소득 대비 채무 비율을 보면 월 38만원 수준의 변제 계획이 가능합니다.', time: '15분 전', color: 'bg-[#1E3A5F]' },
@@ -2411,7 +2411,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <div className="order-1 lg:order-2 space-y-5 text-left">
                     <div className="w-12 h-12 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-extrabold text-lg shadow-lg">04</div>
                     <h3 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-snug">가명으로 안전하게<br />1:1 상담을 진행하세요</h3>
-                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">선택한 전문가와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
+                    <p className="hidden md:block text-base sm:text-lg text-slate-600 leading-relaxed font-medium">선택한 변호사와 스텔스 가명으로 보호된 프라이빗 채팅방에서 상담합니다. 실명이나 연락처 노출 없이 안전합니다.</p>
                     <div className="flex flex-wrap gap-3 text-sm sm:text-base">
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><Lock className="w-4.5 h-4.5" />스텔스 가명 보호</span>
                       <span className="flex items-center gap-1.5 text-[#1E3A5F] font-bold"><ShieldCheck className="w-4.5 h-4.5" />SSL/TLS 암호화</span>
@@ -2860,7 +2860,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                               <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-bold text-base text-slate-900 dark:text-white">{qa.lawyerName}</span>
-                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold px-2 py-0.5 rounded-md">전문가 답변</span>
+                                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold px-2 py-0.5 rounded-md">변호사 답변</span>
                                 </div>
                                 <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed font-normal pt-1.5 whitespace-pre-wrap text-left">
                                   {qa.answer}
@@ -2921,16 +2921,16 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <div className="space-y-3">
                   {(() => {
                     const faqItems = [
-                      { q: '플랫폼 이용에 비용이 발생하나요?', a: '채무 현황 AI 정리부터 전문가 상담 요청까지 플랫폼 이용료는 발생하지 않습니다. 정식 선임 시 비용은 각 변호사가 개별 안내합니다.' },
+                      { q: '플랫폼 이용에 비용이 발생하나요?', a: '채무 현황 AI 정리부터 변호사 상담 요청까지 플랫폼 이용료는 발생하지 않습니다. 정식 선임 시 비용은 각 변호사가 개별 안내합니다.' },
                       { q: '제 개인정보가 노출되지 않나요?', a: '스텔스 가명 시스템을 통해 실명이나 연락처 없이 상담이 진행됩니다. 변호사에게도 가명만 공개되며, 모든 데이터는 SSL/TLS 암호화로 보호됩니다.' },
-                      { q: '상담을 받으면 반드시 변호사를 선임해야 하나요?', a: '아닙니다. 상담 후 선임 여부는 전적으로 의뢰인의 자유입니다. 마음에 드는 전문가가 없을 경우 진행하지 않으셔도 불이익이 전혀 없습니다.' },
+                      { q: '상담을 받으면 반드시 변호사를 선임해야 하나요?', a: '아닙니다. 상담 후 선임 여부는 전적으로 의뢰인의 자유입니다. 마음에 드는 변호사가 없을 경우 진행하지 않으셔도 불이익이 전혀 없습니다.' },
                       { q: '어떤 변호사들이 등록되어 있나요?', a: '회생·파산 분야에서 실무 경험이 풍부한 전문 변호사만 등록되어 있으며, 프로필에서 경력, 전문 분야, 실제 의뢰인 후기를 직접 확인할 수 있습니다.' },
                       { q: '상담은 어떤 방식으로 진행되나요?', a: '1:1 프라이빗 상담방에서 텍스트 채팅으로 진행됩니다. 실시간 또는 비실시간 모두 가능하며, 변호사가 직접 답변합니다.' },
-                      { q: '회생/파산 외에 다른 채무 해결 방법도 안내받을 수 있나요?', a: '네, 채무 상황 체크 결과에 따라 개인회생, 개인파산, 신용회복, 채무조정 등 다양한 방안을 비교해 드립니다. 가장 유리한 방법을 전문가가 안내합니다.' },
+                      { q: '회생/파산 외에 다른 채무 해결 방법도 안내받을 수 있나요?', a: '네, 채무 상황 체크 결과에 따라 개인회생, 개인파산, 신용회복, 채무조정 등 다양한 방안을 비교해 드립니다. 가장 유리한 방법을 변호사가 안내합니다.' },
                       { q: '개인회생과 개인파산의 차이는 무엇인가요?', a: '개인회생은 일정 소득이 있는 경우 채무의 일부를 3~5년간 변제하고 나머지를 면제받는 제도입니다. 개인파산은 변제 능력이 없는 경우 모든 채무를 면책받는 제도입니다. 소득 유무와 채무 규모에 따라 적합한 방안이 달라집니다.' },
                       { q: '채무 체크 결과는 얼마나 정확한가요?', a: '법원 공개 기준과 실제 판례 데이터를 기반으로 분석하므로 참고 지표로 활용하기에 충분합니다. 다만, 정확한 법적 판단은 전문 변호사와의 상담을 통해 확인하시는 것을 권장합니다.' },
                       { q: '변호사 상담 비용은 얼마인가요?', a: '플랫폼 내 상담 요청 및 제안서 수신 과정에서 의뢰인에게 별도 플랫폼 이용료는 없습니다. 정식 선임 시 발생하는 비용은 각 변호사가 개별 안내하며, 사전에 투명하게 비용을 확인한 뒤 결정하실 수 있습니다.' },
-                      { q: '이미 다른 곳에서 상담을 받은 적이 있는데, 다시 이용해도 되나요?', a: '물론입니다. 기존 상담 내역과 관계없이 새롭게 채무 상황을 체크하고, 다른 전문가의 의견을 비교해 보실 수 있습니다.' },
+                      { q: '이미 다른 곳에서 상담을 받은 적이 있는데, 다시 이용해도 되나요?', a: '물론입니다. 기존 상담 내역과 관계없이 새롭게 채무 상황을 체크하고, 다른 변호사의 의견을 비교해 보실 수 있습니다.' },
                       { q: '채무가 소액이어도 이용할 수 있나요?', a: '네, 채무 금액에 상관없이 이용 가능합니다. 소액 채무의 경우에도 채무조정, 신용회복 등 적합한 해결 방안을 안내해 드립니다.' },
                       { q: '상담 내용이 가족이나 직장에 알려질 수 있나요?', a: '절대 알려지지 않습니다. 모든 상담은 스텔스 가명과 암호화된 채널을 통해 진행되며, 제3자에게 정보가 전달되는 일은 없습니다.' },
                       { q: '서비스 이용 시간에 제한이 있나요?', a: '채무 상황 체크는 24시간 언제든 이용 가능합니다. 변호사 상담의 경우 비실시간 메시지를 남기시면 업무 시간 내에 답변을 받으실 수 있습니다.' },
