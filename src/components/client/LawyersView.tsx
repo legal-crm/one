@@ -136,7 +136,7 @@ export default function LawyersView({ lawyers, onSelectLawyer, selectionMode, ma
             <Scale className="w-6 h-6 text-teal-400" />
           </div>
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">전담 변호사 찾기</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">변호사 찾기</h2>
             <p className="text-base text-slate-300 mt-1">전국의 회생·파산 전문 변호사를 비교하고, 나에게 맞는 전문가를 선택하세요</p>
           </div>
         </div>

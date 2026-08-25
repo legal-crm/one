@@ -1996,7 +1996,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
                 }`}
               >
-                전담 변호사 찾기
+                변호사 찾기
               </button>
               <button 
                 onClick={() => {
