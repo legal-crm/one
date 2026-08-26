@@ -3,7 +3,7 @@ import {
   CalendarCheck, CheckCircle2, Clock, AlertTriangle,
   Calendar, ChevronLeft, ChevronRight, Activity,
   ListCheck, Briefcase, MessageSquare, FolderHeart,
-  Plus, Trash2, X
+  Plus, Trash2, X, Repeat, Bell, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getMyTasks, updateTaskStatus } from '../../services/taskTicketService';
@@ -12,9 +12,9 @@ import { TASK_PRIORITY_CONFIG } from '../../types/communication';
 import {
   getVisibleEvents, createEvent, deleteEvent, canDeleteEvent,
   getAvailableVisibilities, getDefaultVisibility,
-  EVENT_TYPE_CONFIG, VISIBILITY_CONFIG
+  EVENT_TYPE_CONFIG, VISIBILITY_CONFIG, RECURRENCE_CONFIG, REMINDER_CONFIG
 } from '../../services/calendarEventService';
-import type { CalendarEvent, EventType, EventVisibility } from '../../services/calendarEventService';
+import type { CalendarEvent, EventType, EventVisibility, RecurrenceType, ReminderType } from '../../services/calendarEventService';
 
 interface TasksScheduleTabProps {
   tenantId: string;
@@ -89,7 +89,7 @@ export default function TasksScheduleTab({ tenantId, userId, userName, userRole,
   const defaultVis = getDefaultVisibility(userRole, hasManageCalendar);
   const availableVis = getAvailableVisibilities(userRole, hasManageCalendar);
 
-  const [newEvt, setNewEvt] = useState({ title: '', date: '', startTime: '', endTime: '', type: 'consult' as EventType, visibility: defaultVis, description: '', clientName: '' });
+  const [newEvt, setNewEvt] = useState({ title: '', date: '', startTime: '', endTime: '', type: 'consult' as EventType, visibility: defaultVis, description: '', clientName: '', recurrence: 'none' as RecurrenceType, reminder: 'none' as ReminderType });
 
   const refreshTasks = useCallback(async () => {
     const all = await getMyTasks(tenantId, userId);
@@ -111,7 +111,7 @@ export default function TasksScheduleTab({ tenantId, userId, userName, userRole,
     await createEvent(tenantId, { ...newEvt, createdBy: userId, createdByName: userName, createdByRole: userRole });
     toast.success('\uC77C\uC815\uC774 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4');
     setShowAddModal(false);
-    setNewEvt({ title: '', date: '', startTime: '', endTime: '', type: 'consult', visibility: defaultVis, description: '', clientName: '' });
+    setNewEvt({ title: '', date: '', startTime: '', endTime: '', type: 'consult', visibility: defaultVis, description: '', clientName: '', recurrence: 'none', reminder: 'none' });
     refreshEvents();
   };
 
@@ -123,7 +123,7 @@ export default function TasksScheduleTab({ tenantId, userId, userName, userRole,
   };
 
   const openAddModalForDate = (dateStr: string) => {
-    setNewEvt({ title: '', date: dateStr, startTime: '', endTime: '', type: 'consult', visibility: defaultVis, description: '', clientName: '' });
+    setNewEvt({ title: '', date: dateStr, startTime: '', endTime: '', type: 'consult', visibility: defaultVis, description: '', clientName: '', recurrence: 'none', reminder: 'none' });
     setShowAddModal(true);
   };
 
@@ -480,6 +480,12 @@ export default function TasksScheduleTab({ tenantId, userId, userName, userRole,
                               {e.clientName && <span>{e.clientName}</span>}
                               <span>{e.createdByName}</span>
                             </div>
+                            {(e.recurrence && e.recurrence !== 'none' || e.reminder && e.reminder !== 'none') && (
+                              <div className="flex gap-1.5 mt-1">
+                                {e.recurrence && e.recurrence !== 'none' && <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-lg"><Repeat className="w-3 h-3" />{RECURRENCE_CONFIG[e.recurrence].label}</span>}
+                                {e.reminder && e.reminder !== 'none' && <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-lg"><Bell className="w-3 h-3" />{REMINDER_CONFIG[e.reminder].label}</span>}
+                              </div>
+                            )}
                             {e.description && <p className="text-[11px] text-slate-500 mt-0.5">{e.description}</p>}
                           </div>
                           {canDel && <button onClick={(ev) => { ev.stopPropagation(); handleDeleteEvent(e); }} className="p-1.5 rounded-lg hover:bg-red-100 text-red-400 hover:text-red-600 cursor-pointer active:scale-[0.95] transition-all shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>}
@@ -592,9 +598,51 @@ export default function TasksScheduleTab({ tenantId, userId, userName, userRole,
 
             {/* Date + Time */}
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="text-xs font-bold text-slate-500 mb-1.5 block">{'\uB0A0\uC9DC'} *</label><input type="date" value={newEvt.date} onChange={e => setNewEvt(p => ({ ...p, date: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" /></div>
-              <div><label className="text-xs font-bold text-slate-500 mb-1.5 block">{'\uC2DC\uC791'}</label><input type="time" value={newEvt.startTime} onChange={e => setNewEvt(p => ({ ...p, startTime: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" /></div>
-              <div><label className="text-xs font-bold text-slate-500 mb-1.5 block">{'\uC885\uB8CC'}</label><input type="time" value={newEvt.endTime} onChange={e => setNewEvt(p => ({ ...p, endTime: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1.5 block">{'날짜'} *</label><input type="date" value={newEvt.date} onChange={e => setNewEvt(p => ({ ...p, date: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1.5 block">{'시작'}</label><input type="time" value={newEvt.startTime} onChange={e => setNewEvt(p => ({ ...p, startTime: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1.5 block">{'종료'}</label><input type="time" value={newEvt.endTime} onChange={e => setNewEvt(p => ({ ...p, endTime: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand" /></div>
+            </div>
+
+            {/* Recurrence + Reminder */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1">
+                  <Repeat className="w-3.5 h-3.5" />{'반복'}
+                </label>
+                <div className="relative">
+                  <select
+                    value={newEvt.recurrence}
+                    onChange={e => setNewEvt(p => ({ ...p, recurrence: e.target.value as RecurrenceType }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none cursor-pointer"
+                  >
+                    {(Object.keys(RECURRENCE_CONFIG) as RecurrenceType[]).map(key => (
+                      <option key={key} value={key}>
+                        {RECURRENCE_CONFIG[key].emoji ? RECURRENCE_CONFIG[key].emoji + ' ' : ''}{RECURRENCE_CONFIG[key].label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1">
+                  <Bell className="w-3.5 h-3.5" />{'알림'}
+                </label>
+                <div className="relative">
+                  <select
+                    value={newEvt.reminder}
+                    onChange={e => setNewEvt(p => ({ ...p, reminder: e.target.value as ReminderType }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none cursor-pointer"
+                  >
+                    {(Object.keys(REMINDER_CONFIG) as ReminderType[]).map(key => (
+                      <option key={key} value={key}>
+                        {REMINDER_CONFIG[key].emoji ? REMINDER_CONFIG[key].emoji + ' ' : ''}{REMINDER_CONFIG[key].label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
             </div>
 
             {/* Client + Desc */}

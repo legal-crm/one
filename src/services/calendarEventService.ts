@@ -5,6 +5,25 @@
 
 export type EventType = 'court' | 'consult' | 'meeting' | 'deadline' | 'other';
 export type EventVisibility = 'firm' | 'lawyers' | 'personal';
+export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type ReminderType = 'none' | 'at_time' | '10min' | '30min' | '1hour' | '1day';
+
+export const RECURRENCE_CONFIG: Record<RecurrenceType, { label: string; emoji: string }> = {
+  none:     { label: '반복 없음', emoji: '' },
+  daily:    { label: '매일',     emoji: '🔄' },
+  weekly:   { label: '매주',     emoji: '🔄' },
+  biweekly: { label: '격주',     emoji: '🔄' },
+  monthly:  { label: '매월',     emoji: '🔄' },
+};
+
+export const REMINDER_CONFIG: Record<ReminderType, { label: string; emoji: string }> = {
+  none:    { label: '알림 없음',    emoji: '' },
+  at_time: { label: '일정 시작 시', emoji: '🔔' },
+  '10min': { label: '10분 전',     emoji: '🔔' },
+  '30min': { label: '30분 전',     emoji: '🔔' },
+  '1hour': { label: '1시간 전',    emoji: '🔔' },
+  '1day':  { label: '1일 전',      emoji: '🔔' },
+};
 
 export interface CalendarEvent {
   id: string;
@@ -15,6 +34,8 @@ export interface CalendarEvent {
   endTime?: string;       // HH:mm
   type: EventType;
   visibility: EventVisibility;
+  recurrence: RecurrenceType;
+  reminder: ReminderType;
   description?: string;
   clientName?: string;
   createdBy: string;
