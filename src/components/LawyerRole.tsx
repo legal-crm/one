@@ -97,6 +97,25 @@ export default function LawyerRole({
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [noticeSearchTerm, setNoticeSearchTerm] = useState<string>('');
   const [copilotPreselectedReqId, setCopilotPreselectedReqId] = useState<string | undefined>();
+  // 건너뛴 상담 요청 ID 관리 (localStorage 영속)
+  const [dismissedReqIds, setDismissedReqIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(`dismissed_reqs_${activeLawyer?.id}`);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  });
+  const handleDismissReq = (reqId: string) => {
+    setDismissedReqIds(prev => {
+      const next = new Set(prev);
+      next.add(reqId);
+      localStorage.setItem(`dismissed_reqs_${activeLawyer?.id}`, JSON.stringify([...next]));
+      return next;
+    });
+  };
+  const handleRestoreDismissed = () => {
+    setDismissedReqIds(new Set());
+    localStorage.removeItem(`dismissed_reqs_${activeLawyer?.id}`);
+  };
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
   const [adModalMonths, setAdModalMonths] = useState(1);
@@ -2498,6 +2517,16 @@ export default function LawyerRole({
               </span>
             </div>
 
+            {/* 건너뛴 요청 복원 안내 */}
+            {dismissedReqIds.size > 0 && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">건너뛴 요청 {dismissedReqIds.size}건이 숨겨져 있습니다</span>
+                <button onClick={handleRestoreDismissed} className="text-xs text-brand font-bold hover:underline cursor-pointer whitespace-nowrap">
+                  모두 다시 보기
+                </button>
+              </div>
+            )}
+
             {/* 요청 목록: 2열 그리드 배치 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
               {requests
@@ -2511,6 +2540,7 @@ export default function LawyerRole({
                   return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
                 })
                 .filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id))
+                .filter(r => !dismissedReqIds.has(r.id))
                 .map((r, idx) => {
                   const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
                   return (
@@ -2643,21 +2673,29 @@ export default function LawyerRole({
                       </div>
 
                       {/* 카드 푸터: 액션 버튼 */}
-                      <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2.5 mt-auto">
+                      <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5 mt-auto">
                         <button 
-                          onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
-                          className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
+                          onClick={() => handleDismissReq(r.id)}
+                          className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-[0.98]"
                         >
-                          <Microscope className="w-4 h-4 text-slate-600" />
-                          🔬 AI 심층 분석
+                          ✕ 건너뛰기
                         </button>
-                        <button 
-                          onClick={() => handleOpenProposalDraft(r.id)}
-                          className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2.5 px-5 rounded-xl text-xs sm:text-sm tracking-wide transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          고객 제안서 작성
-                        </button>
+                        <div className="flex flex-wrap gap-2.5">
+                          <button 
+                            onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
+                            className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
+                          >
+                            <Microscope className="w-4 h-4 text-slate-600" />
+                            🔬 AI 심층 분석
+                          </button>
+                          <button 
+                            onClick={() => handleOpenProposalDraft(r.id)}
+                            className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2.5 px-5 rounded-xl text-xs sm:text-sm tracking-wide transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            고객 제안서 작성
+                          </button>
+                        </div>
                       </div>
 
                     </div>
@@ -2672,7 +2710,7 @@ export default function LawyerRole({
                   });
                   const openMatch = r.requestType === 'open';
                   return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
-                }).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).length === 0 && (
+                }).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).filter(r => !dismissedReqIds.has(r.id)).length === 0 && (
                 <div className="col-span-full bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3 shadow-sm">
                   <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
                   <p className="text-base text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>

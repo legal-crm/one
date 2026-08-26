@@ -47,6 +47,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   // ── 검색/필터/정렬 ──
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [hideCompleted, setHideCompleted] = useState(true);
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -197,6 +198,9 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
          statusFilter === 'discharged' ? ['discharged','cancelled'].includes(ext.crmStatus) :
          ext.crmStatus === statusFilter);
       
+      // 완료 건 숨기기 (전체 보기에서만 적용)
+      if (hideCompleted && statusFilter === 'all' && ['discharged','cancelled'].includes(ext.crmStatus)) return false;
+      
       let matchAssignee = true;
       if (assigneeFilter === 'unassigned') {
         matchAssignee = !ext.assignedLawyerId && !ext.assignedConsultantId;
@@ -245,7 +249,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     });
 
     return result;
-  }, [requests, search, statusFilter, assigneeFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff, activeLawyer, lawyers]);
+  }, [requests, search, statusFilter, hideCompleted, assigneeFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff, activeLawyer, lawyers]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / perPage));
   const pagedRequests = filteredRequests.slice((page - 1) * perPage, page * perPage);
@@ -693,6 +697,17 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             <option value={20}>20건</option>
             <option value={50}>50건</option>
           </select>
+
+          <button 
+            onClick={() => setHideCompleted(h => !h)}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] border whitespace-nowrap ${
+              hideCompleted 
+                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' 
+                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {hideCompleted ? '✓ 완료 건 숨김' : '완료 건 표시 중'}
+          </button>
 
           <div className="flex border border-slate-200 rounded-xl overflow-hidden">
             <button onClick={() => setViewMode('list')} className={`p-2.5 cursor-pointer ${viewMode === 'list' ? 'bg-brand text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
@@ -1143,6 +1158,26 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </button>
                         </div>
                       )}
+
+                      {/* 아카이브 */}
+                      <div className="space-y-2 bg-red-50/50 p-4 rounded-2xl border border-red-100">
+                        <span className="text-sm font-bold text-red-600 block">🗑️ 고객 아카이브</span>
+                        <p className="text-xs text-slate-500">이 고객의 CRM 확장 데이터(서류, 메모, 활동 로그)를 삭제합니다. 상담 요청 원본은 유지됩니다.</p>
+                        <button onClick={async () => {
+                          if (!confirm(`${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브하시겠습니까?`)) return;
+                          await deleteCrmClient(selectedId);
+                          setCrmData(prev => {
+                            const next = { ...prev };
+                            delete next[selectedId];
+                            return next;
+                          });
+                          setSelectedId('');
+                        }}
+                          className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" /> CRM 데이터 아카이브
+                        </button>
+                      </div>
                     </>
                   )}
 
