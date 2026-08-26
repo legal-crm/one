@@ -91,7 +91,6 @@ export default function LawyerRole({
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin'>('dashboard');
-  const [dashboardSub, setDashboardSub] = useState<'overview' | 'requests' | 'activity'>('overview');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
   const [settingsSub, setSettingsSub] = useState<'profile' | 'notices' | 'channels' | 'logs' | 'calc-rules'>('profile');
@@ -1960,17 +1959,7 @@ export default function LawyerRole({
         {/* TAB 1: LAWYER DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* 서브탭 */}
-            <div className="bg-white rounded-xl border border-slate-200/80 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
-              {([
-                { key: 'overview' as const, label: '전체 현황' },
-                { key: 'activity' as const, label: '활동 분석' },
-              ]).map(t => (
-                <button key={t.key} onClick={() => setDashboardSub(t.key)} className={`px-5 py-2.5 rounded-lg text-[15px] font-bold transition-all whitespace-nowrap cursor-pointer ${dashboardSub === t.key ? 'bg-[#1E3A5F] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
+
             {/* ═══ 컨펌 대기 제안서 위젯 (변호사/대표만 표시) ═══ */}
             {isLawyerOrOwner && pendingProposals.filter(p => p.supervisingLawyerId === activeLawyer.id).length > 0 && (
               <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 shadow-xs">
@@ -2013,7 +2002,7 @@ export default function LawyerRole({
             )}
 
             {/* ═══ 섹션 1: 상단 요약 카드 6열 (모노크롬 고대비 리디자인) ═══ */}
-            {(dashboardSub === 'overview') && (
+            {(
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* 1. 신규 상담 */}
               <button onClick={() => setActiveTab('open-requests')} className={`p-4.5 rounded-2xl border flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all press-scale cursor-pointer active:scale-[0.98] group text-left ${totalOpenRequestsCount > 0 ? 'bg-rose-50/20 border-rose-200/80 hover:border-rose-300' : 'bg-white border-slate-200/80 hover:border-slate-300'}`}>
@@ -2103,7 +2092,7 @@ export default function LawyerRole({
             )}
 
             {/* ═══ Row 3: 지금 상담을 기다리는 의뢰인 — 긴급 Action Zone ═══ */}
-            {(dashboardSub === 'overview') && (
+            {(
             <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
@@ -2210,7 +2199,7 @@ export default function LawyerRole({
             )}
 
             {/* ═══ Row 3: 고민상담 Q&A 미답변 + 광고/빌링 요약 (2열) ═══ */}
-            {(dashboardSub === 'overview') && (
+            {(
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {/* 좌측: 고민상담 Q&A 미답변 */}
               <button onClick={() => setActiveTab('qna-answer')} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
@@ -2286,7 +2275,7 @@ export default function LawyerRole({
             )}
 
             {/* ═══ Row 4: 알림/공지 + 일정/할일 요약 (2열) ═══ */}
-            {(dashboardSub === 'overview') && (
+            {(
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {/* 좌측: 공지 사항 */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all text-left">
@@ -2344,9 +2333,6 @@ export default function LawyerRole({
                   <span className="text-xs text-slate-400 font-bold group-hover:text-brand transition-colors flex items-center gap-1">전체 보기 <ArrowRight className="w-3 h-3" /></span>
                 </div>
                 {(() => {
-                  const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
-                  const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
-                  const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
                   // 오늘 일정 로드
                   const todayStr = new Date().toISOString().slice(0, 10);
                   const tenantId = activeLawyer.lawFirmId || activeLawyer.id;
@@ -2362,21 +2348,7 @@ export default function LawyerRole({
                   } catch {}
                   const todayEvents = allEvts.slice(0, 5);
                   return (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-slate-50 rounded-xl p-3 text-center">
-                          <div className="text-[11px] text-slate-400 font-bold">{'\uC0C1\uB2F4 \uCC38\uC5EC'}</div>
-                          <div className="text-lg font-black text-slate-800">{myParticipated}{'\uAC74'}</div>
-                        </div>
-                        <div className="bg-purple-50/60 rounded-xl p-3 text-center">
-                          <div className="text-[11px] text-slate-400 font-bold">{'\uC218\uC784 \uC804\uD658'}</div>
-                          <div className="text-lg font-black text-purple-600">{myCases}{'\uAC74'}</div>
-                        </div>
-                        <div className="bg-emerald-50/60 rounded-xl p-3 text-center">
-                          <div className="text-[11px] text-slate-400 font-bold">{'\uC804\uD658\uC728'}</div>
-                          <div className={`text-lg font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</div>
-                        </div>
-                      </div>
+                    <div>
                       {/* 오늘의 일정 */}
                       <div className="bg-brand/5 border border-brand/10 rounded-xl p-3 space-y-2">
                         <div className="flex items-center gap-2">
@@ -2400,15 +2372,13 @@ export default function LawyerRole({
             </div>
             )}
 
-
-            {/* ═══ 서브탭: 활동 분석 (고도화) ═══ */}
-            {dashboardSub === 'activity' && (() => {
+            {/* ═══ Row 5: 수임 전환 퍼널 + 주요 상담 유형 ═══ */}
+            {(() => {
               const myParticipated = requests.filter(r => r.selectedLawyerId === activeLawyer.id).length;
               const myCounseling = requests.filter(r => r.status === 'counseling' && r.selectedLawyerId === activeLawyer.id).length;
               const myCases = cases.filter(c => c.assignedLawyerId === activeLawyer.id).length;
               const conversionRate = myParticipated > 0 ? Math.round((myCases / myParticipated) * 100) : 0;
               const totalRequested = requests.filter(r => isRelevantRequest(r)).length;
-              // 퍼널 단계별 비율 계산
               const funnelStages = [
                 { label: '상담 요청 접수', count: totalRequested, color: 'bg-slate-400', icon: <Briefcase className="w-4 h-4" /> },
                 { label: '상담 참여', count: myParticipated, color: 'bg-brand', icon: <MessageCircle className="w-4 h-4" /> },
@@ -2416,7 +2386,6 @@ export default function LawyerRole({
                 { label: '수임 전환 성공', count: myCases, color: 'bg-emerald-500', icon: <Trophy className="w-4 h-4" /> },
               ];
               const funnelMax = Math.max(totalRequested, 1);
-              // 주요 상담 유형 분석
               const categoryMap: Record<string, number> = {};
               requests.filter(r => r.selectedLawyerId === activeLawyer.id && r.entryCategory).forEach(r => {
                 const label = r.entryCategory!.label;
@@ -2425,152 +2394,80 @@ export default function LawyerRole({
               const topCategories = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
               return (
-                <div className="space-y-6">
-                  {/* 상단 핵심 성과 지표 카드 (모노크롬 리디자인) */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
-                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0"><Users className="w-6 h-6" /></div>
-                      <div>
-                        <span className="text-xs text-slate-500 font-bold block">총 상담 참여</span>
-                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{myParticipated}건</span>
-                      </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  {/* 수임 전환 퍼널 */}
+                  <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 space-y-5 shadow-sm">
+                    <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+                      <Target className="w-5 h-5 text-brand" />
+                      <span>수임 전환 퍼널</span>
+                    </h3>
+                    <div className="space-y-4">
+                      {funnelStages.map((stage, i) => {
+                        const pct = funnelMax > 0 ? Math.round((stage.count / funnelMax) * 100) : 0;
+                        const dropRate = i > 0 && funnelStages[i - 1].count > 0
+                          ? Math.round(((funnelStages[i - 1].count - stage.count) / funnelStages[i - 1].count) * 100)
+                          : 0;
+                        return (
+                          <div key={stage.label} className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                                <span className={`p-1.5 rounded-lg ${stage.color} text-white`}>{stage.icon}</span>
+                                {stage.label}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {i > 0 && dropRate > 0 && (
+                                  <span className="text-xs text-red-500 font-bold">-{dropRate}% 이탈</span>
+                                )}
+                                <span className="font-black text-slate-900 text-base">{stage.count}건</span>
+                                <span className="text-slate-400 w-12 text-right font-medium">{pct}%</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-700 ${stage.color}`}
+                                style={{ width: `${Math.max(pct, 2)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
-                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0"><MessageCircle className="w-6 h-6" /></div>
-                      <div>
-                        <span className="text-xs text-slate-500 font-bold block">현재 진행 중</span>
-                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{myCounseling}건</span>
+                    {/* 전환율 프로그레스 */}
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-700 font-bold">전체 수임 전환율</span>
+                        <span className={`text-xl font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</span>
                       </div>
-                    </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
-                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0"><Trophy className="w-6 h-6" /></div>
-                      <div>
-                        <span className="text-xs text-slate-500 font-bold block">수임 전환</span>
-                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{myCases}건</span>
-                      </div>
-                    </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center gap-3.5 shadow-xs">
-                      <div className="p-3 rounded-xl bg-slate-100 text-slate-600 shrink-0">
-                        <TrendingUp className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-xs text-slate-500 font-bold block">수임 전환율</span>
-                        <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">{conversionRate}%</span>
+                      <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${conversionRate >= 40 ? 'bg-emerald-500' : conversionRate >= 20 ? 'bg-amber-500' : 'bg-slate-300'}`}
+                          style={{ width: `${Math.min(100, conversionRate)}%` }}
+                        />
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* 수임 전환 퍼널 */}
-                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 space-y-5 shadow-sm">
-                      <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-                        <Target className="w-5 h-5 text-brand" />
-                        <span>수임 전환 퍼널</span>
-                      </h3>
-                      <div className="space-y-4">
-                        {funnelStages.map((stage, i) => {
-                          const pct = funnelMax > 0 ? Math.round((stage.count / funnelMax) * 100) : 0;
-                          const dropRate = i > 0 && funnelStages[i - 1].count > 0
-                            ? Math.round(((funnelStages[i - 1].count - stage.count) / funnelStages[i - 1].count) * 100)
-                            : 0;
-                          return (
-                            <div key={stage.label} className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2 text-slate-800 font-semibold">
-                                  <span className={`p-1.5 rounded-lg ${stage.color} text-white`}>{stage.icon}</span>
-                                  {stage.label}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  {i > 0 && dropRate > 0 && (
-                                    <span className="text-xs text-red-500 font-bold">-{dropRate}% 이탈</span>
-                                  )}
-                                  <span className="font-black text-slate-900 text-base">{stage.count}건</span>
-                                  <span className="text-slate-400 w-12 text-right font-medium">{pct}%</span>
-                                </div>
-                              </div>
-                              <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-700 ${stage.color}`}
-                                  style={{ width: `${Math.max(pct, 2)}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* 전환율 프로그레스 */}
-                      <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-slate-700 font-bold">전체 수임 전환율</span>
-                          <span className={`text-xl font-black ${conversionRate >= 40 ? 'text-emerald-600' : conversionRate >= 20 ? 'text-amber-500' : 'text-slate-700'}`}>{conversionRate}%</span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-700 ${conversionRate >= 40 ? 'bg-emerald-500' : conversionRate >= 20 ? 'bg-amber-500' : 'bg-slate-300'}`}
-                            style={{ width: `${Math.min(100, conversionRate)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 활동 요약 인사이트 */}
-                    <div className="space-y-4">
-                      {/* 활동 요약 카드 */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
-                        <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-                          <BarChart2 className="w-5 h-5 text-emerald-500" />
-                          <span>활동 요약</span>
-                        </h3>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-slate-600 font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> 평균 응답 시간</span>
-                            {/* <!-- mock --> */}
-                            <span className="font-black text-slate-900">2.3시간</span>
+                  {/* 주요 상담 유형 */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                    <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+                      <Tag className="w-5 h-5 text-violet-500" />
+                      <span>주요 상담 유형</span>
+                    </h3>
+                    {topCategories.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {topCategories.map(([label, count], i) => (
+                          <div key={label} className="flex items-center justify-between text-sm">
+                            <span className="text-slate-700 font-semibold flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-violet-500' : i === 1 ? 'bg-teal-500' : 'bg-slate-400'}`} />
+                              {label}
+                            </span>
+                            <span className="font-black text-slate-700">{count}건</span>
                           </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-slate-600 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4" /> 최근 7일 참여</span>
-                            {/* <!-- mock --> */}
-                            <span className="font-black text-brand">{Math.min(myParticipated, 3)}건</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-slate-600 font-semibold flex items-center gap-2"><Target className="w-4 h-4" /> 응답률</span>
-                            {/* <!-- mock --> */}
-                            <span className="font-black text-emerald-600">85%</span>
-                          </div>
-                        </div>
+                        ))}
                       </div>
-
-                      {/* 주요 상담 유형 */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
-                        <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-                          <Tag className="w-5 h-5 text-violet-500" />
-                          <span>주요 상담 유형</span>
-                        </h3>
-                        {topCategories.length > 0 ? (
-                          <div className="space-y-2.5">
-                            {topCategories.map(([label, count], i) => (
-                              <div key={label} className="flex items-center justify-between text-sm">
-                                <span className="text-slate-700 font-semibold flex items-center gap-1.5">
-                                  <span className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-violet-500' : i === 1 ? 'bg-teal-500' : 'bg-slate-400'}`} />
-                                  {label}
-                                </span>
-                                <span className="font-black text-slate-700">{count}건</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-400 text-center py-4">상담 데이터가 쌓이면 유형별 분석이 표시됩니다.</p>
-                        )}
-                      </div>
-
-                      {/* 상담 TIP */}
-                      <div className="bg-brand/5 border border-brand/10 rounded-xl p-4 space-y-1.5">
-                        <span className="text-[11px] font-black text-brand uppercase tracking-wide">💡 상담 TIP</span>
-                        <p className="text-[12px] text-slate-600 leading-relaxed">
-                          의뢰인의 채무 원인에 맞춘 구체적인 해결 방안을 제시하면 수임 전환율이 높아집니다. 채무 구조를 꼼꼼히 분석해 보세요.
-                        </p>
-                      </div>
-                    </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 text-center py-4">상담 데이터가 쌓이면 유형별 분석이 표시됩니다.</p>
+                    )}
                   </div>
                 </div>
               );
