@@ -670,7 +670,7 @@ export default function CaseReviewCopilot({
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-[#1E3A5F]" />
-                <span>사건검토 코파일럿</span>
+                <span>AI 사건 분석</span>
               </h3>
               <span className="font-bold text-slate-900 bg-slate-100 border border-slate-200 text-xs px-2.5 py-1 rounded-lg">
                 의뢰인: {consultRequest.client_name || consultRequest.clientName || '미확인'}

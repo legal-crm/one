@@ -30,7 +30,7 @@ export const TAB_LABELS: Record<LawyerTab, string> = {
   'client-crm':       '고객 CRM',
   'staff-management': '사용자 관리',
   'settings':         '설정',
-  'case-copilot':     '사건검토 코파일럿',
+  'case-copilot':     'AI 사건 분석',
 };
 
 export interface PermissionContext {
