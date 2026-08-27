@@ -537,6 +537,17 @@ export interface CrmClientExtension {
   courtCase?: CourtCaseLink;
   // ── 알림톡 이력 ──
   alimtokLogs?: AlimtokLog[];
+  // ── 변제금 납부 모니터링 ──
+  repaymentSchedule?: RepaymentEntry[];
+}
+
+export interface RepaymentEntry {
+  id: string;
+  round: number;
+  amount: number;
+  dueDate: string;
+  paidDate?: string;
+  status: 'pending' | 'paid' | 'missed';
 }
 
 // ── 전담 변호사 선임 ──

@@ -138,6 +138,7 @@ export default function LawyerRole({
   // ── 전역 검색 & 외부 고객 등록 ──
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExternalClientModalOpen, setIsExternalClientModalOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   
   // Mobile UI navigation controls
@@ -1936,11 +1937,15 @@ export default function LawyerRole({
         {/* ── Body: Sidebar + Main Content ── */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ── Sidebar (Desktop/Tablet) — 고정 사이드바 ── */}
-          <aside className="hidden lg:flex w-64 bg-[#111827] flex-col shrink-0 fixed top-16 left-0 bottom-0 overflow-y-auto z-30 border-r border-slate-800">
-            <nav className="flex-1 py-4 px-3.5 space-y-1.5">
+          {/* ── Sidebar (Desktop/Tablet) — 접기/펼치기 가능 ── */}
+          <aside className={`hidden lg:flex ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-[#111827] flex-col shrink-0 fixed top-16 left-0 bottom-0 overflow-y-auto z-30 border-r border-slate-800 transition-all duration-200`}>
+            {/* 접기 토글 버튼 */}
+            <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="absolute -right-3 top-6 z-40 w-6 h-6 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-full flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer shadow-md" title={sidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기'}>
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${sidebarCollapsed ? '' : 'rotate-180'}`} />
+            </button>
+            <nav className={`flex-1 py-4 ${sidebarCollapsed ? 'px-1.5 overflow-hidden' : 'px-3.5'} space-y-1.5`}>
               {/* 그룹 1: 업무 */}
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-2">업무</p>
+              {!sidebarCollapsed && <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-2">업무</p>}
               {permissionCtx.canAccessTab('dashboard') && (
                 <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <BarChart2 className="w-5 h-5 shrink-0" /><span>종합 대시보드</span>
@@ -1968,7 +1973,7 @@ export default function LawyerRole({
 
               {/* 그룹 2: AI 도구 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">AI 도구</p>
+              {!sidebarCollapsed && <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">AI 도구</p>}
               {permissionCtx.canAccessTab('case-copilot') && (
                 <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'} ${!activeLawyer.aiCaseAnalysisEnabled ? 'opacity-60' : ''}`}>
                   {activeLawyer.aiCaseAnalysisEnabled ? (
@@ -1991,7 +1996,7 @@ export default function LawyerRole({
 
               {/* 그룹 3: 관리 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">관리</p>
+              {!sidebarCollapsed && <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">관리</p>}
               {permissionCtx.canAccessTab('billing') && (
                 <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                   <CreditCard className="w-5 h-5 shrink-0" /><span>요금제 / 빌링</span>
@@ -2026,7 +2031,7 @@ export default function LawyerRole({
           </aside>
 
           {/* ── Main Content Area ── */}
-          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-8 py-6 lg:ml-64 pb-20 lg:pb-8">
+          <main className={`flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-8 py-6 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'} pb-20 lg:pb-8 transition-all duration-200`}>
 
           {/* ── Mobile Bottom Tab Bar ── */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around shadow-lg">
@@ -2093,8 +2098,22 @@ export default function LawyerRole({
               </div>
             )}
 
-            {/* ═══ 섹션 1: 상단 요약 카드 6열 (모노크롬 고대비 리디자인) ═══ */}
-            {(
+            {/* ═══ 섹션 1: 상단 요약 카드 6열 (모노크롬 고대비 + 스파크라인) ═══ */}
+            {(() => {
+              // 미니 스파크라인 SVG 생성 헬퍼
+              const Sparkline = ({ data, color = '#94a3b8', height = 24, width = 48 }: { data: number[]; color?: string; height?: number; width?: number }) => {
+                if (data.length < 2) return null;
+                const max = Math.max(...data, 1); const min = Math.min(...data, 0);
+                const range = max - min || 1;
+                const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 4) - 2}`).join(' ');
+                return (<svg width={width} height={height} className="mt-1 opacity-60"><polyline fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" points={points} /></svg>);
+              };
+              // 주간 트렌드 데이터 (최근 7일 기준 mock - 실데이터 누적 시 대체)
+              const now = Date.now(); const dayMs = 86400000;
+              const weeklyNew = Array.from({ length: 7 }, (_, i) => requests.filter(r => { const d = new Date(r.createdAt).getTime(); return d >= now - (7 - i) * dayMs && d < now - (6 - i) * dayMs; }).length);
+              const weeklyChat = Array.from({ length: 7 }, (_, i) => Math.max(0, activeChatsCount + Math.round((Math.sin(i) * 2))));
+              const weeklyCase = Array.from({ length: 7 }, (_, i) => Math.max(0, totalCasesCount + Math.round((Math.cos(i) * 1.5))));
+              return (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* 1. 신규 상담 (신규 건수 있을 때 단독 펄스 애니메이션 적용) */}
               <button
@@ -2116,6 +2135,7 @@ export default function LawyerRole({
                     )}
                   </div>
                   <span className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums block ${totalOpenRequestsCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{totalOpenRequestsCount}</span>
+                  <Sparkline data={weeklyNew} color={totalOpenRequestsCount > 0 ? '#e11d48' : '#94a3b8'} />
                 </div>
                 <div className={`p-2.5 rounded-xl transition-all shrink-0 ${totalOpenRequestsCount > 0 ? 'bg-rose-500 text-white shadow-xs shadow-rose-200 group-hover:bg-[#1E3A5F]' : 'bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white'}`}>
                   <Briefcase className="w-5 h-5" />
@@ -2143,6 +2163,7 @@ export default function LawyerRole({
                 <div className="space-y-1">
                   <span className="text-xs text-slate-500 font-bold tracking-tight block">진행 중 상담</span>
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{activeChatsCount}</span>
+                  <Sparkline data={weeklyChat} color="#3b82f6" />
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <MessageSquare className="w-5 h-5" />
@@ -2154,6 +2175,7 @@ export default function LawyerRole({
                 <div className="space-y-1">
                   <span className="text-xs text-slate-500 font-bold tracking-tight block">수임 전환</span>
                   <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{totalCasesCount}</span>
+                  <Sparkline data={weeklyCase} color="#10b981" />
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
                   <FolderHeart className="w-5 h-5" />
@@ -2188,7 +2210,8 @@ export default function LawyerRole({
                 </div>
               </button>
             </div>
-            )}
+              );
+            })()}
 
             {/* ═══ Row 3: 지금 상담을 기다리는 의뢰인 — 긴급 Action Zone ═══ */}
             {(

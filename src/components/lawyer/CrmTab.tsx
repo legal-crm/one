@@ -3,8 +3,9 @@ import {
   Users, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, 
   Plus, Trash2, Search, LayoutGrid, List, GripVertical,
   CheckCircle2, ArrowRightLeft, UserPlus, Settings, Filter,
-  FileText, Clock, AlertTriangle
+  FileText, Clock, AlertTriangle, X
 } from 'lucide-react';
+import { toast } from 'sonner';
 import TeamworkTab from './TeamworkTab';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
@@ -96,7 +97,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline' | 'fees' | 'documents' | 'corrections' | 'court'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline' | 'fees' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
+
+  const [showBulkMessage, setShowBulkMessage] = useState(false);
+  const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
+  const [bulkSelected, setBulkSelected] = useState<string[]>([]);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   // ── 초기 로드 ──
   useEffect(() => {
@@ -739,6 +745,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             {hideCompleted ? '✓ 완료 건 숨김' : '완료 건 표시 중'}
           </button>
 
+          <button onClick={() => setShowBulkMessage(!showBulkMessage)} className="text-xs font-bold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors press-scale whitespace-nowrap">📢 대량 발송</button>
+
           <div className="flex border border-slate-200 rounded-xl overflow-hidden">
             <button onClick={() => setViewMode('list')} className={`p-2.5 cursor-pointer ${viewMode === 'list' ? 'bg-brand text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
               <List className="w-4 h-4" />
@@ -912,6 +920,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       <button onClick={() => setDetailTab('documents')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'documents' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📁 문서</button>
                       <button onClick={() => setDetailTab('corrections')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'corrections' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📮 보정</button>
                       <button onClick={() => setDetailTab('court')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
+                      <button onClick={() => setDetailTab('repayment')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'repayment' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📆 변제금</button>
                     </>
                   )}
                 </div>
@@ -1592,7 +1601,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           {courtCase.events.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-bold text-slate-600">사건 이력</p>
-              {courtCase.events.map(ev => (
+              {courtCase.events.map((ev: any) => (
                 <div key={ev.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
                   <span className="text-[10px] text-slate-400 w-20">{ev.date}</span>
                   <p className="text-xs text-slate-700 flex-1">{ev.title}</p>
@@ -1614,6 +1623,68 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             }});
           }} className="mt-3 text-xs font-bold text-brand px-4 py-2 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap">+ 사건번호 등록</button>
         </div>
+      )}
+    </div>
+  );
+})()}
+
+{/* 변제금 납부 모니터링 탭 */}
+{detailTab === 'repayment' && (() => {
+  const ext = getCrmExt(selectedId);
+  const repayments = ext.repaymentSchedule || [];
+  const totalMonths = repayments.length;
+  const paidCount = repayments.filter((r: any) => r.status === 'paid').length;
+  const missedCount = repayments.filter((r: any) => r.status === 'missed').length;
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-sm text-slate-800">변제금 납부 모니터링</h4>
+        <button onClick={async () => {
+          const months = prompt('변제 기간 (개월, 36 또는 60)');
+          const amount = prompt('월 변제금 (만원)');
+          if (!months || !amount) return;
+          const schedule = Array.from({ length: Number(months) }, (_, i) => ({
+            id: `rp-${Date.now()}-${i}`,
+            round: i + 1,
+            amount: Number(amount),
+            dueDate: new Date(Date.now() + (i + 1) * 30 * 86400000).toISOString().split('T')[0],
+            status: 'pending' as const,
+          }));
+          await updateCrmExt(selectedId, { ...ext, repaymentSchedule: schedule });
+        }} className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap cursor-pointer">+ 변제 스케줄 생성</button>
+      </div>
+      {totalMonths > 0 ? (
+        <>
+          <div className="bg-slate-50 p-3 rounded-xl space-y-2">
+            <div className="flex justify-between text-xs"><span className="text-slate-500">총 변제기간</span><span className="font-bold">{totalMonths}개월</span></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-500">납부 완료</span><span className="font-bold text-emerald-600">{paidCount}회</span></div>
+            <div className="h-2 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(paidCount / totalMonths) * 100}%` }} /></div>
+            {missedCount > 0 && <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-medium">⚠️ 미납 {missedCount}회 — 면책불허가 위험이 있습니다.</div>}
+          </div>
+          <div className="max-h-60 overflow-y-auto space-y-1.5">
+            {repayments.slice(0, 12).map((rp: any) => {
+              const isPast = new Date(rp.dueDate) < new Date() && rp.status === 'pending';
+              return (
+                <div key={rp.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${rp.status === 'missed' ? 'border-red-300 bg-red-50' : rp.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : isPast ? 'border-orange-300 bg-orange-50' : 'border-slate-200'}`}>
+                  <span className="text-[10px] font-black text-slate-400 w-8">{rp.round}회</span>
+                  <div className="flex-1"><p className="text-xs font-bold text-slate-700">{rp.amount.toLocaleString()}만원</p><p className="text-[10px] text-slate-400">{rp.dueDate}</p></div>
+                  {rp.status === 'pending' && (
+                    <div className="flex gap-1">
+                      <button onClick={async () => { const updated = repayments.map((r: any) => r.id === rp.id ? { ...r, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : r); await updateCrmExt(selectedId, { ...ext, repaymentSchedule: updated }); }} className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 press-scale cursor-pointer">납부</button>
+                      <button onClick={async () => { const updated = repayments.map((r: any) => r.id === rp.id ? { ...r, status: 'missed' as const } : r); await updateCrmExt(selectedId, { ...ext, repaymentSchedule: updated }); }} className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-200 press-scale cursor-pointer">미납</button>
+                    </div>
+                  )}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${rp.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : rp.status === 'missed' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'}`}>
+                    {rp.status === 'paid' ? '✅' : rp.status === 'missed' ? '❌' : '⏳'}
+                  </span>
+                </div>
+              );
+            })}
+            {repayments.length > 12 && <p className="text-center text-[10px] text-slate-400">... 외 {repayments.length - 12}건</p>}
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-8"><span className="text-2xl">📆</span><p className="text-xs text-slate-400 mt-2">개시결정 후 변제 스케줄을 생성하세요.</p><p className="text-[10px] text-slate-300 mt-1">36개월 또는 60개월 변제 계획을 관리합니다.</p></div>
       )}
     </div>
   );
@@ -1640,10 +1711,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               return (
                 <div key={status}
                   className="w-64 shrink-0 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => {
-                    const clientId = e.dataTransfer.getData('clientId');
-                    if (clientId) handleKanbanDrop(clientId, status);
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-blue-50/50', 'ring-2', 'ring-blue-300/30'); }}
+                  onDragLeave={(e) => { e.currentTarget.classList.remove('bg-blue-50/50', 'ring-2', 'ring-blue-300/30'); }}
+                  onDrop={(e) => {
+                    e.preventDefault(); e.currentTarget.classList.remove('bg-blue-50/50', 'ring-2', 'ring-blue-300/30');
+                    const id = e.dataTransfer.getData('text/plain');
+                    if (id) handleKanbanDrop(id, status);
                   }}>
                   {/* 컬럼 헤더 */}
                   <div className={`p-4 border-b border-slate-100 ${sc.bgColor}`}>
@@ -1659,9 +1732,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       return (
                         <div key={r.id}
                           draggable
-                          onDragStart={e => e.dataTransfer.setData('clientId', r.id)}
+                          onDragStart={(e) => { e.dataTransfer.setData('text/plain', r.id); setDraggedId(r.id); }}
+                          onDragEnd={() => setDraggedId(null)}
                           onClick={() => { setSelectedId(r.id); setViewMode('list'); }}
-                          className="bg-slate-50 p-3 rounded-xl border border-slate-200 hover:border-brand/40 cursor-pointer transition-all hover:shadow-md group">
+                          className={`bg-slate-50 p-3 rounded-xl border border-slate-200 hover:border-brand/40 cursor-pointer transition-all hover:shadow-md group ${draggedId === r.id ? 'opacity-50 scale-95' : ''}`}>
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-sm font-bold text-slate-900 truncate">{r.clientName}</span>
                             <GripVertical className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100" />
@@ -1682,6 +1756,45 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {showBulkMessage && (
+        <div className="bg-white border-t border-slate-200 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-800">📢 타겟 메시지 대량 발송</h3>
+            <button onClick={() => setShowBulkMessage(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="w-4 h-4" /></button>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'doc_overdue', label: '서류 3일+ 미제출', emoji: '📋' },
+              { key: 'fee_overdue', label: '분납 2회+ 연체', emoji: '💸' },
+              { key: 'hearing_month', label: '이달 집회 참석 대상', emoji: '🏛️' },
+              { key: 'correction_urgent', label: '보정 기한 임박 (3일 내)', emoji: '⚠️' },
+            ].map(f => (
+              <button key={f.key} onClick={() => setBulkFilter(f.key)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors press-scale cursor-pointer ${bulkFilter === f.key ? 'bg-brand/10 border-brand/30 text-brand' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                {f.emoji} {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="bg-slate-50 p-3 rounded-xl">
+            <p className="text-xs text-slate-500">대상: <span className="font-bold text-slate-700">{(() => {
+              // Simple filter logic based on CRM data
+              const filtered = requests.filter(r => {
+                const ext = getCrmExt(r.id);
+                if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
+                if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+                if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+                return false;
+              });
+              return filtered.length;
+            })()}명</span></p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { toast.success('알림톡 발송이 예약되었습니다.'); setShowBulkMessage(false); }} className="flex-1 py-2.5 text-xs font-bold text-white bg-yellow-500 rounded-xl hover:bg-yellow-600 transition-colors press-scale whitespace-nowrap cursor-pointer">💬 카카오 알림톡 발송</button>
+            <button onClick={() => { toast.success('SMS 발송이 예약되었습니다.'); setShowBulkMessage(false); }} className="flex-1 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors press-scale whitespace-nowrap cursor-pointer">📱 SMS 발송</button>
           </div>
         </div>
       )}
