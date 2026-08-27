@@ -2033,18 +2033,28 @@ export default function LawyerRole({
             {/* ═══ 섹션 1: 상단 요약 카드 6열 (모노크롬 고대비 리디자인) ═══ */}
             {(
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {/* 1. 신규 상담 */}
-              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              {/* 1. 신규 상담 (신규 건수 있을 때 단독 펄스 애니메이션 적용) */}
+              <button
+                onClick={() => setActiveTab('open-requests')}
+                className={`p-4.5 rounded-2xl border flex items-center justify-between transition-all press-scale cursor-pointer active:scale-[0.98] group text-left ${
+                  totalOpenRequestsCount > 0
+                    ? 'bg-gradient-to-br from-rose-50/60 via-white to-rose-50/20 new-consult-pulse-card hover:shadow-lg'
+                    : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md'
+                }`}
+              >
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-500 font-bold tracking-tight">신규 상담</span>
+                    <span className={`text-xs font-bold tracking-tight ${totalOpenRequestsCount > 0 ? 'text-rose-700' : 'text-slate-500'}`}>신규 상담</span>
                     {totalOpenRequestsCount > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                      </span>
                     )}
                   </div>
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums block">{totalOpenRequestsCount}</span>
+                  <span className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums block ${totalOpenRequestsCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{totalOpenRequestsCount}</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white transition-all shrink-0">
+                <div className={`p-2.5 rounded-xl transition-all shrink-0 ${totalOpenRequestsCount > 0 ? 'bg-rose-500 text-white shadow-xs shadow-rose-200 group-hover:bg-[#1E3A5F]' : 'bg-slate-100 text-slate-600 group-hover:bg-[#1E3A5F] group-hover:text-white'}`}>
                   <Briefcase className="w-5 h-5" />
                 </div>
               </button>
