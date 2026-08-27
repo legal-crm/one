@@ -27,7 +27,7 @@ import {
   initialLawyerInquiries
 } from './data';
 import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, ClientInquiry, LawyerInquiry, PlatformConfig, PopupConfig } from './types';
-import ClientRole from './components/ClientRole';
+const ClientRole = React.lazy(() => import('./components/ClientRole'));
 const LawyerRole = React.lazy(() => import('./components/LawyerRole'));
 const AdminRole = React.lazy(() => import('./components/AdminRole'));
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
@@ -36,16 +36,44 @@ import SharedReportViewer from './components/client/SharedReportViewer';
 
 export default function App() {
   // Triple role state: 'client' | 'lawyer' | 'admin'
-  const [currentRole, setCurrentRole] = useState<'client' | 'lawyer' | 'admin'>('client');
+  // 1순위: URL 쿼리 파라미터, 2순위: 활성 세션 감지 (새로고침 시 홈페이지 플래시 방지)
+  const [currentRole, setCurrentRole] = useState<'client' | 'lawyer' | 'admin'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roleParam = params.get('role');
+    if (roleParam === 'admin') return 'admin';
+    if (roleParam === 'lawyer') return 'lawyer';
+    if (roleParam) return 'client';
 
-  // Share report viewer states
-  const [sharePayload, setSharePayload] = useState<string | null>(null);
+    // URL에 role 파라미터가 없을 때 → 활성 세션으로 역할 복원
+    try {
+      if (sessionStorage.getItem('legal_crm_lawyer_session')) return 'lawyer';
+      const adminSession = localStorage.getItem('legal_crm_admin_session');
+      if (adminSession) {
+        const { timestamp, signature } = JSON.parse(adminSession);
+        if (timestamp && signature && Date.now() - timestamp <= 30 * 60 * 1000) return 'admin';
+      }
+    } catch {}
+
+    return 'client';
+  });
+
+  // Share report viewer states (URL에서 즉시 읽어 플래시 방지)
+  const [sharePayload, setSharePayload] = useState<string | null>(() => {
+    return new URLSearchParams(window.location.search).get('share');
+  });
   const [unlockedData, setUnlockedData] = useState<{ result: any; userInput: any } | null>(null);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
 
   useEffect(() => {
+    // [FLASH 방지] index.html의 전체 화면 로더를 페이드아웃 후 제거
+    const appLoader = document.getElementById('app-loader');
+    if (appLoader) {
+      appLoader.style.opacity = '0';
+      setTimeout(() => appLoader.remove(), 200);
+    }
+
     // [보안 마이그레이션] localStorage에 남아있는 기존 Supabase 세션 토큰 정리
     // sessionStorage로 전환했으므로 localStorage의 세션 데이터는 더 이상 불필요
     try {
@@ -75,21 +103,7 @@ export default function App() {
       }
     }
 
-    const params = new URLSearchParams(window.location.search);
-    
-    // 1. Share parameter detection
-    const shareParam = params.get('share');
-    if (shareParam) {
-      setSharePayload(shareParam);
-    }
-
-    // 2. Role parameter detection
-    const roleParam = params.get('role');
-    if (roleParam === 'admin') {
-      setCurrentRole('admin');
-    } else if (roleParam === 'lawyer') {
-      setCurrentRole('lawyer');
-    }
+    // Share/Role parameter detection은 useState 초기화에서 동기적으로 처리됨 (플래시 방지)
   }, []);
 
   const handleUnlock = () => {

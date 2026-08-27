@@ -172,6 +172,11 @@
     </script>
   </head>
   <body>
+    <!-- [FLASH 방지] React 로딩 전 전체 화면 로더 — App.tsx에서 마운트 후 제거 -->
+    <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:#0f172a;display:flex;align-items:center;justify-content:center;transition:opacity 0.2s ease-out;">
+      <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.08);border-top-color:#7264FF;border-radius:50%;animation:_al 0.7s linear infinite;"></div>
+    </div>
+    <style>@keyframes _al{to{transform:rotate(360deg)}}</style>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
