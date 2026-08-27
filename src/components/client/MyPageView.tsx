@@ -196,11 +196,11 @@ export default function MyPageView({
             </form>
           ) : (
             <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-              <span>👤 <span className="text-brand dark:text-brand-light">{userAlias || '새출발'}</span> 님의 안심 마이페이지</span>
+              <span>👤 <span className="text-brand dark:text-brand-light">{userAlias || '회원'}</span> 님의 안심 마이페이지</span>
               <button 
                 type="button"
                 onClick={() => {
-                  setTempAlias(userAlias || '새출발');
+                  setTempAlias(userAlias || '회원');
                   setIsEditingAlias(true);
                 }}
                 className="text-slate-500 hover:text-brand dark:hover:text-brand-light p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-880 transition-all shrink-0 cursor-pointer"

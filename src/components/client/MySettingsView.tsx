@@ -132,11 +132,11 @@ export default function MySettingsView({
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-base font-black text-slate-800 dark:text-slate-200">
-                          {userAlias || '새출발'}
+                          {userAlias || '회원'}
                         </span>
                         <button
                           onClick={() => {
-                            setTempAlias(userAlias || '새출발');
+                            setTempAlias(userAlias || '회원');
                             setIsEditingAlias(true);
                           }}
                           className="text-slate-400 hover:text-brand p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"

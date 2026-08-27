@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import { generateAlias } from '../../utils/generateAlias';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -52,7 +53,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
 
     try {
       if (isRegisterMode) {
-        const finalAlias = userAlias.trim() || ("새출발_" + Math.floor(100 + Math.random() * 900));
+        const finalAlias = userAlias.trim() || generateAlias();
         const { error } = await supabase.auth.signUp({
           email: emailInput,
           password: passwordInput,
@@ -65,7 +66,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
         const { data, error } = await supabase.auth.signInWithPassword({ email: emailInput, password: passwordInput });
         if (error) throw error;
         if (data.user) {
-          const finalAlias = data.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
+          const finalAlias = data.user.user_metadata?.alias || generateAlias();
           alert(`[로그인 성공] 이메일로 안전 로그인 되었습니다.\n가명: ${finalAlias}`);
           onLoginSuccess(finalAlias, emailInput, 'email');
         }
@@ -119,7 +120,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
           {isRegisterMode && (
             <div className="animate-slideDown">
               <label className="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">의뢰인 가명 지정 (생략 시 자동 부여)</label>
-              <input type="text" placeholder="예: 새출발_777" value={userAlias} onChange={(e) => setUserAlias(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-base focus:ring-1 focus:ring-brand focus:outline-none font-medium" />
+              <input type="text" placeholder="예: 파란고래_42" value={userAlias} onChange={(e) => setUserAlias(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-base focus:ring-1 focus:ring-brand focus:outline-none font-medium" />
             </div>
           )}
           <button type="submit" className="w-full text-center py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm sm:text-base font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">

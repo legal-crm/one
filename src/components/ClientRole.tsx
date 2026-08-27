@@ -10,6 +10,7 @@ import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMe
 import { CustomerIntake } from './CustomerIntake';
 import { migrateAnonymousRequests } from '../services/consultService';
 import { calculateRehabPlan } from '../rehabEngine';
+import { generateAlias } from '../utils/generateAlias';
 const AIRehabChatbotV2 = React.lazy(() => import('../rehab-chatbot-package/components/rehab/AIRehabChatbotV2'));
 import { RehabUserInput, RehabCalculationResult, calculateRepayment } from '../rehab-chatbot-package/services/calculationService';
 import { IncomeSource, AssetDetail, DebtItem, PrevHistory, SpecialCircumstances, ExtraLivingCost, ConsultationLog } from '../types';
@@ -972,7 +973,7 @@ export default function ClientRole({
         localStorage.setItem('legal_crm_client_id', session.user.id);
       }
       setIsLoggedIn(true);
-      const metaAlias = session.user.user_metadata?.alias || ("새출발_" + Math.floor(100 + Math.random() * 900));
+      const metaAlias = session.user.user_metadata?.alias || generateAlias();
       setUserAlias(metaAlias);
       recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
       
@@ -1912,7 +1913,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
   // Real Supabase and Fallback Auth Handlers
 
   const handleRegenAlias = () => {
-    const generatedAlias = "새출발_" + Math.floor(100 + Math.random() * 900);
+    const generatedAlias = generateAlias();
     setUserAlias(generatedAlias);
   };
 
