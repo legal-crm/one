@@ -304,7 +304,7 @@ export default function LawyerRole({
   const [signupFields, setSignupFields] = useState<string[]>(['개인회생']);
   const [signupRegion, setSignupRegion] = useState<string>('서울');
   const [signupBio, setSignupBio] = useState<string>('');
-  const [signupAvatar, setSignupAvatar] = useState<string>('https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=256');
+  const [signupAvatar, setSignupAvatar] = useState<string>('https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=256');
   const [signupError, setSignupError] = useState<string>('');
   const [signupLicenseNumber, setSignupLicenseNumber] = useState<string>('');
   const [licensePreview, setLicensePreview] = useState<string>('');

@@ -220,7 +220,7 @@ export default function MyPageView({
             <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block">전담 지정 변호인</span>
             <div className="flex items-center gap-2">
               <img 
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256" 
+                src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=256" 
                 alt="이소민 변호사" 
                 className="w-8 h-8 rounded-lg object-cover" 
               />
