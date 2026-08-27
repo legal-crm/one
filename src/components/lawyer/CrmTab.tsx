@@ -1417,54 +1417,121 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0);
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-bold text-sm text-slate-800">수임료 분납 관리</h4>
-        <button onClick={async () => {
-          const amt = prompt('분납 금액 (만원)');
-          const due = prompt('납부 예정일 (YYYY-MM-DD)');
-          if (!amt || !due) return;
-          const newInst: FeeInstallment = {
-            id: `fee-${Date.now()}`, round: schedule.length + 1,
-            amount: Number(amt), dueDate: due, status: 'pending',
-          };
-          const updated = { ...ext, feeSchedule: [...schedule, newInst], totalFee: totalFee || Number(amt) };
-          await updateCrmExt(selectedId, updated);
-        }} className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap">+ 분납 추가</button>
-      </div>
-      {totalFee > 0 && (
-        <div className="bg-slate-50 p-3 rounded-xl space-y-2">
-          <div className="flex justify-between text-xs"><span className="text-slate-500">총 수임료</span><span className="font-bold">{totalFee.toLocaleString()}만원</span></div>
-          <div className="flex justify-between text-xs"><span className="text-slate-500">납부 완료</span><span className="font-bold text-emerald-600">{totalPaid.toLocaleString()}만원</span></div>
-          <div className="h-2 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${totalFee > 0 ? (totalPaid / totalFee) * 100 : 0}%` }} /></div>
-          <div className="flex justify-between text-xs"><span className="text-slate-500">잔여</span><span className="font-bold text-red-500">{(totalFee - totalPaid).toLocaleString()}만원</span></div>
-        </div>
-      )}
-      {schedule.length > 0 ? schedule.map(inst => (
-        <div key={inst.id} className={`flex items-center gap-3 p-3 rounded-xl border ${inst.status === 'overdue' ? 'border-red-300 bg-red-50' : inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
-          <span className="text-sm font-black text-slate-400 w-8">{inst.round}차</span>
-          <div className="flex-1">
-            <p className="text-xs font-bold text-slate-700">{inst.amount.toLocaleString()}만원</p>
-            <p className="text-[10px] text-slate-400">{inst.dueDate}{inst.paidDate ? ` → ${inst.paidDate} 납부` : ''}</p>
-          </div>
-          {inst.status === 'pending' && (
-            <button onClick={async () => {
-              const updated = { ...ext, feeSchedule: schedule.map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
-              await updateCrmExt(selectedId, updated);
-            }} className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-100 press-scale whitespace-nowrap">납부 확인</button>
-          )}
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : inst.status === 'overdue' ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
-            {inst.status === 'paid' ? '✅ 완료' : inst.status === 'overdue' ? '⚠️ 연체' : '⏳ 대기'}
-          </span>
-        </div>
-      )) : (
-        <div className="text-center py-8"><span className="text-2xl">💰</span><p className="text-xs text-slate-400 mt-2">분납 스케줄을 추가하세요</p></div>
-      )}
       {/* 총 수임료 설정 */}
-      {!totalFee && (
+      <div className="bg-slate-50 p-4 rounded-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-600">💰 총 수임료</span>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              defaultValue={totalFee || ''}
+              placeholder="금액"
+              onBlur={async (e) => {
+                const val = Number(e.target.value);
+                if (val > 0 && val !== totalFee) await updateCrmExt(selectedId, { ...getCrmExt(selectedId), totalFee: val });
+              }}
+              className="w-24 text-right bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"
+            />
+            <span className="text-xs text-slate-500 font-medium">만원</span>
+          </div>
+        </div>
+        {totalFee > 0 && (
+          <>
+            <div className="flex justify-between text-xs"><span className="text-slate-500">납부 완료</span><span className="font-bold text-emerald-600">{totalPaid.toLocaleString()}만원</span></div>
+            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(totalPaid / totalFee) * 100}%` }} /></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-500">잔여 미수금</span><span className={`font-bold ${totalFee - totalPaid > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{(totalFee - totalPaid).toLocaleString()}만원</span></div>
+          </>
+        )}
+      </div>
+
+      {/* 분납 스케줄 추가 폼 */}
+      <div className="bg-blue-50/50 border border-blue-200/50 p-4 rounded-xl space-y-3">
+        <p className="text-xs font-bold text-slate-700">➕ 분납 스케줄 추가</p>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[10px] text-slate-500 mb-0.5 block">명칭</label>
+            <select id="fee-label-select" className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+              <option value="계약금(착수금)">계약금(착수금)</option>
+              <option value="1차 분납">1차 분납</option>
+              <option value="2차 분납">2차 분납</option>
+              <option value="3차 분납">3차 분납</option>
+              <option value="4차 분납">4차 분납</option>
+              <option value="5차 분납">5차 분납</option>
+              <option value="잔금">잔금</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500 mb-0.5 block">금액 (만원)</label>
+            <input id="fee-amount-input" type="number" placeholder="예: 50" className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500 mb-0.5 block">납부 예정일</label>
+            <input id="fee-date-input" type="date" className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+          </div>
+        </div>
         <button onClick={async () => {
-          const fee = prompt('총 수임료를 입력하세요 (만원)');
-          if (fee) await updateCrmExt(selectedId, { ...ext, totalFee: Number(fee) });
-        }} className="w-full py-2.5 text-xs font-bold text-slate-600 border border-dashed border-slate-300 rounded-xl hover:bg-slate-50 press-scale">총 수임료 설정</button>
+          const labelEl = document.getElementById('fee-label-select') as HTMLSelectElement;
+          const amtEl = document.getElementById('fee-amount-input') as HTMLInputElement;
+          const dateEl = document.getElementById('fee-date-input') as HTMLInputElement;
+          if (!amtEl?.value || !dateEl?.value) { toast.error('금액과 납부일을 입력해주세요.'); return; }
+          const latestExt = getCrmExt(selectedId);
+          const latestSchedule = latestExt.feeSchedule || [];
+          const newInst: FeeInstallment = {
+            id: `fee-${Date.now()}`, round: latestSchedule.length + 1,
+            amount: Number(amtEl.value), dueDate: dateEl.value, status: 'pending',
+            memo: labelEl.value,
+          };
+          await updateCrmExt(selectedId, { ...latestExt, feeSchedule: [...latestSchedule, newInst] });
+          amtEl.value = ''; dateEl.value = '';
+          toast.success(`${labelEl.value} ${Number(amtEl.value || newInst.amount).toLocaleString()}만원 추가`);
+        }} className="w-full py-2 text-xs font-bold text-white bg-brand rounded-xl hover:bg-brand/90 transition-colors press-scale whitespace-nowrap">스케줄 추가</button>
+      </div>
+
+      {/* 분납 리스트 */}
+      {schedule.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-600">📋 분납 스케줄 ({schedule.length}건)</p>
+          {schedule.map(inst => {
+            const isPast = new Date(inst.dueDate) < new Date() && inst.status === 'pending';
+            return (
+              <div key={inst.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : isPast ? 'border-red-300 bg-red-50' : inst.status === 'overdue' ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-slate-500">{inst.memo || `${inst.round}차`}</span>
+                    <span className="text-sm font-bold text-slate-800">{inst.amount.toLocaleString()}만원</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    📅 {inst.dueDate}
+                    {inst.paidDate && <span className="text-emerald-600 font-medium"> → {inst.paidDate} 납부완료</span>}
+                    {isPast && inst.status === 'pending' && <span className="text-red-500 font-bold"> (기한 경과)</span>}
+                  </p>
+                </div>
+                {inst.status === 'pending' && (
+                  <button onClick={async () => {
+                    const latestExt = getCrmExt(selectedId);
+                    const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
+                    await updateCrmExt(selectedId, updated);
+                    toast.success(`${inst.memo || inst.round + '차'} 납부 확인`);
+                  }} className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 press-scale whitespace-nowrap">💳 납부 확인</button>
+                )}
+                <button onClick={async () => {
+                  const latestExt = getCrmExt(selectedId);
+                  const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).filter(f => f.id !== inst.id) };
+                  await updateCrmExt(selectedId, updated);
+                }} className="text-slate-300 hover:text-red-400 transition-colors" title="삭제"><Trash2 className="w-3.5 h-3.5" /></button>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : isPast ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                  {inst.status === 'paid' ? '✅ 완료' : isPast ? '⚠️ 연체' : '⏳ 대기'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <span className="text-3xl">💰</span>
+          <p className="text-sm font-bold text-slate-600 mt-2">분납 스케줄이 없습니다</p>
+          <p className="text-[11px] text-slate-400 mt-1">위 폼에서 계약금, 1차~N차 분납을 추가하세요</p>
+        </div>
       )}
     </div>
   );
