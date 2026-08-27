@@ -914,15 +914,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       {label}
                     </button>
                   ))}
-                  {['contracted','document','filed','commenced','repaying','discharged'].includes(selectedExt.crmStatus) && (
-                    <>
+                  {/* 추가 관리 탭 — 모든 상태에서 표시 */}
                       <button onClick={() => setDetailTab('fees')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'fees' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>💰 수임료</button>
                       <button onClick={() => setDetailTab('documents')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'documents' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📁 문서</button>
                       <button onClick={() => setDetailTab('corrections')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'corrections' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📮 보정</button>
                       <button onClick={() => setDetailTab('court')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
                       <button onClick={() => setDetailTab('repayment')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'repayment' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📆 변제금</button>
-                    </>
-                  )}
                 </div>
 
                 <div className="p-5 space-y-5 max-h-[650px] overflow-y-auto">
