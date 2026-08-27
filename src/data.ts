@@ -39,6 +39,9 @@ export const mockLawyers: User[] = [
     totalCases: 842,
     avgRepaymentRate: 31,
     courtJurisdiction: '서울회생법원',
+    aiCaseAnalysisEnabled: true,
+    aiCaseAnalysisActivatedAt: '2026-07-01T09:00:00Z',
+    aiCaseAnalysisNote: '프리미엄 플랜 가입 (월 30만원, 2026.07~)',
   },
   {
     id: 'lawyer-2',

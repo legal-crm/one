@@ -5,7 +5,7 @@ import {
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server, Settings,
-  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale
+  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
@@ -882,6 +882,41 @@ export default function AdminRole({
                   </div>
                 </div>
               </div>
+
+              {/* AI 사건 분석 구독 현황 */}
+              {(() => {
+                const aiEnabledLawyers = lawyers.filter(l => l.role === 'LAWYER' && l.aiCaseAnalysisEnabled);
+                const totalLawyerOnly = lawyers.filter(l => l.role === 'LAWYER').length;
+                return (
+                  <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 flex items-start gap-4">
+                    <div className="p-2.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/10 shrink-0 mt-0.5">
+                      <Microscope className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-slate-500 font-bold uppercase">AI 사건 분석 구독</span>
+                        <span className="text-lg font-black text-violet-400">
+                          {aiEnabledLawyers.length}<span className="text-sm text-slate-500 font-bold">/{totalLawyerOnly}명</span>
+                        </span>
+                      </div>
+                      {aiEnabledLawyers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {aiEnabledLawyers.slice(0, 5).map(l => (
+                            <span key={l.id} className="bg-violet-500/10 text-violet-300 border border-violet-500/20 text-xs font-bold px-2 py-0.5 rounded-lg">
+                              {l.name}
+                            </span>
+                          ))}
+                          {aiEnabledLawyers.length > 5 && (
+                            <span className="text-xs text-slate-500 font-bold self-center">외 {aiEnabledLawyers.length - 5}명</span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-600">아직 AI 사건 분석을 활성화한 변호사가 없습니다.</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Graphical Analysis grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1975,6 +2010,86 @@ export default function AdminRole({
                             >
                               Enterprise
                             </button>
+                          </div>
+                        </div>
+
+                        {/* AI 유료 기능 관리 */}
+                        <div className="p-4 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-3">
+                          <span className="text-[13px] font-bold text-violet-400 block flex items-center gap-1.5">
+                            <Microscope className="w-3.5 h-3.5" />
+                            <span>🤖 AI 유료 기능 관리</span>
+                          </span>
+
+                          {/* AI 사건 분석 토글 */}
+                          <div className="flex items-center justify-between p-3 bg-[#111622] rounded-xl border border-[#1E293B]/60">
+                            <div className="space-y-0.5">
+                              <div className="text-sm font-bold text-slate-200">AI 사건 분석</div>
+                              <div className="text-xs text-slate-500">
+                                {selectedLawyer.aiCaseAnalysisEnabled
+                                  ? `활성화: ${selectedLawyer.aiCaseAnalysisActivatedAt ? new Date(selectedLawyer.aiCaseAnalysisActivatedAt).toLocaleDateString('ko-KR') : '-'}`
+                                  : selectedLawyer.aiCaseAnalysisDeactivatedAt
+                                    ? `비활성화: ${new Date(selectedLawyer.aiCaseAnalysisDeactivatedAt).toLocaleDateString('ko-KR')}`
+                                    : '미가입 상태'}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const isEnabled = selectedLawyer.aiCaseAnalysisEnabled;
+                                const action = isEnabled ? '비활성화' : '활성화';
+                                if (confirm(`${selectedLawyer.name}의 AI 사건 분석 기능을 ${action}하시겠습니까?`)) {
+                                  setLawyers(prev => prev.map(l => {
+                                    if (l.id === selectedLawyer.id) {
+                                      return {
+                                        ...l,
+                                        aiCaseAnalysisEnabled: !isEnabled,
+                                        ...(isEnabled
+                                          ? { aiCaseAnalysisDeactivatedAt: new Date().toISOString() }
+                                          : { aiCaseAnalysisActivatedAt: new Date().toISOString(), aiCaseAnalysisDeactivatedAt: undefined }
+                                        ),
+                                      };
+                                    }
+                                    return l;
+                                  }));
+                                  onLogActivity(
+                                    'admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION',
+                                    `AI 사건 분석 ${action}: ${selectedLawyer.name} (${selectedLawyer.id})`
+                                  );
+                                }
+                              }}
+                              className={`relative w-12 h-6 rounded-full transition-colors shrink-0 cursor-pointer ${selectedLawyer.aiCaseAnalysisEnabled ? 'bg-violet-500' : 'bg-slate-600'}`}
+                            >
+                              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${selectedLawyer.aiCaseAnalysisEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                            </button>
+                          </div>
+
+                          {/* 관리자 메모 */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs text-slate-500 font-bold block">관리자 메모 (계약 조건, 기간 등)</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                defaultValue={selectedLawyer.aiCaseAnalysisNote || ''}
+                                placeholder="예: 월 30만원, 2026.07~12 계약"
+                                className="flex-1 bg-[#07090E] border border-[#1E293B]/80 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                onBlur={(e) => {
+                                  const note = e.target.value.trim();
+                                  setLawyers(prev => prev.map(l =>
+                                    l.id === selectedLawyer.id ? { ...l, aiCaseAnalysisNote: note } : l
+                                  ));
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION',
+                                    `AI 기능 메모 업데이트: ${selectedLawyer.name}`
+                                  );
+                                  alert('메모가 저장되었습니다.');
+                                }}
+                                className="bg-violet-600/20 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/20 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                              >
+                                저장
+                              </button>
+                            </div>
                           </div>
                         </div>
 

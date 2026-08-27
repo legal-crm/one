@@ -523,6 +523,11 @@ export interface User {
   websiteUrl?: string; // 공식 홈페이지 URL
   youtubeUrl?: string; // 유튜브 채널 URL
   blogUrl?: string; // 네이버 블로그 URL
+  // ── AI 유료 기능 (어드민 활성화) ──
+  aiCaseAnalysisEnabled?: boolean;       // AI 사건 분석 활성화 여부 (어드민 제어)
+  aiCaseAnalysisActivatedAt?: string;    // 활성화 일시
+  aiCaseAnalysisDeactivatedAt?: string;  // 비활성화 일시
+  aiCaseAnalysisNote?: string;           // 어드민 메모 (계약 조건, 기간 등)
 }
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';

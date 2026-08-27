@@ -15,6 +15,7 @@ import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
 import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
+import AICaseAnalysisLocked from './lawyer/AICaseAnalysisLocked';
 import ClientOriginalInfo from './lawyer/ClientOriginalInfo';
 import RequestWorkflowPanel from './lawyer/RequestWorkflowPanel';
 import RequestTimeline from './lawyer/RequestTimeline';
@@ -1906,9 +1907,18 @@ export default function LawyerRole({
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">AI 도구</p>
               {permissionCtx.canAccessTab('case-copilot') && (
-                <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
-                  <Microscope className="w-5 h-5 shrink-0" /><span>AI 사건 분석</span>
-                {(() => { const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; return n > 0 ? (<span className="ml-auto bg-slate-700 text-slate-200 rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{n}</span>) : null; })()}
+                <button onClick={() => setActiveTab('case-copilot')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'case-copilot' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'} ${!activeLawyer.aiCaseAnalysisEnabled ? 'opacity-60' : ''}`}>
+                  {activeLawyer.aiCaseAnalysisEnabled ? (
+                    <Microscope className="w-5 h-5 shrink-0" />
+                  ) : (
+                    <Lock className="w-5 h-5 shrink-0 text-slate-500" />
+                  )}
+                  <span>AI 사건 분석</span>
+                  {!activeLawyer.aiCaseAnalysisEnabled ? (
+                    <span className="ml-auto bg-amber-500/15 text-amber-400 border border-amber-500/20 rounded-md px-1.5 py-0.5 text-[10px] font-bold">유료</span>
+                  ) : (
+                    (() => { const n = requests.filter(r => r.status === 'requested' || r.status === 'responding').length; return n > 0 ? (<span className="ml-auto bg-slate-700 text-slate-200 rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{n}</span>) : null; })()
+                  )}
                 </button>
               )}
               <button onClick={() => setActiveTab('qna-answer')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all relative cursor-pointer ${activeTab === 'qna-answer' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
@@ -3660,17 +3670,23 @@ export default function LawyerRole({
 
         {/* TAB: CASE REVIEW COPILOT (사건검토 코파일럿) */}
         {activeTab === 'case-copilot' && (
-          <CaseReviewCopilot
-            consultRequests={requests}
-            tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-            actorId={activeStaffMember?.id || activeLawyer.id}
-            actorRole={activeStaffMember?.role || 'OWNER'}
-            actorName={activeStaffMember?.name || activeLawyer.name}
-            preselectedRequestId={copilotPreselectedReqId}
-            onProposalSent={(reqId: string, proposalData: any) => {
-              handleSubmitProposalFromDraft(reqId, proposalData);
-            }}
-          />
+          activeLawyer.aiCaseAnalysisEnabled ? (
+            <CaseReviewCopilot
+              consultRequests={requests}
+              tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+              actorId={activeStaffMember?.id || activeLawyer.id}
+              actorRole={activeStaffMember?.role || 'OWNER'}
+              actorName={activeStaffMember?.name || activeLawyer.name}
+              preselectedRequestId={copilotPreselectedReqId}
+              onProposalSent={(reqId: string, proposalData: any) => {
+                handleSubmitProposalFromDraft(reqId, proposalData);
+              }}
+            />
+          ) : (
+            <AICaseAnalysisLocked
+              onContactAdmin={() => setActiveTab('inquiry-to-admin')}
+            />
+          )
         )}
 
         {/* TAB: STAFF MANAGEMENT */}
