@@ -22,6 +22,10 @@ import {
   type CrmDataStore 
 } from '../../services/crmService';
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
+import type { FeeInstallment, IntakeChannel, CorrectionOrder, DocumentFile, AlimtokLog, AlimtokMilestone } from '../../types';
+import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
+import { triggerAlimtokOnStatusChange } from '../../services/alimtokService';
+import { loadNotificationSettings } from '../../services/notificationService';
 
 interface CrmTabProps {
   requests: ConsultRequest[];
@@ -49,6 +53,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [hideCompleted, setHideCompleted] = useState(true);
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   
@@ -91,7 +96,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline' | 'fees' | 'documents' | 'corrections' | 'court'>('info');
 
   // ── 초기 로드 ──
   useEffect(() => {
@@ -200,6 +205,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       
       // 완료 건 숨기기 (전체 보기에서만 적용)
       if (hideCompleted && statusFilter === 'all' && ['discharged','cancelled'].includes(ext.crmStatus)) return false;
+      
+      if (channelFilter !== 'all') {
+        if ((ext.intakeChannel || 'mykim') !== channelFilter) return false;
+      }
       
       let matchAssignee = true;
       if (assigneeFilter === 'unassigned') {
@@ -471,6 +480,20 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       `파이프라인 이동: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[newStatus].label}`
     )];
     await updateCrmExt(clientId, { crmStatus: newStatus, activities });
+    
+    // 알림톡 자동 트리거
+    try {
+      const notiSettings = loadNotificationSettings();
+      if (notiSettings.kakao.autoTrigger) {
+        const clientReq = requests.find(r => r.id === clientId);
+        if (clientReq) {
+          triggerAlimtokOnStatusChange(ext.crmStatus, newStatus, {
+            clientName: clientReq.clientName, phone: clientReq.phone,
+            firmName: notiSettings.kakao.firmName, lawyerName: notiSettings.kakao.lawyerName,
+          }, notiSettings.kakao);
+        }
+      }
+    } catch {}
   };
 
   // ── 통계 ──
@@ -674,6 +697,13 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             {staffMembers.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
 
+          <select value={channelFilter} onChange={e => { setChannelFilter(e.target.value); setPage(1); }} className="text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/20">
+            <option value="all">전체 채널</option>
+            {Object.entries(INTAKE_CHANNEL_CONFIG).map(([key, cfg]) => (
+              <option key={key} value={key}>{cfg.emoji} {cfg.label}</option>
+            ))}
+          </select>
+
           <select value={`${sortField}_${sortDir}`} onChange={e => {
             const [f, d] = e.target.value.split('_') as [SortField, SortDir];
             setSortField(f); setSortDir(d); setPage(1);
@@ -767,6 +797,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     <th className="p-3.5 w-[14%] cursor-pointer hover:text-slate-900 text-center" onClick={() => handleSort('crmStatus')}>
                       상태 {sortField === 'crmStatus' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
+                    <th className="p-3.5 w-[10%] text-center">채널</th>
                     <th className="p-3.5 w-[14%] text-center">담당자</th>
                     <th className="p-3.5 w-[18%] cursor-pointer hover:text-slate-900 text-right" onClick={() => handleSort('debtTotal')}>
                       총 채무 {sortField === 'debtTotal' && (sortDir === 'asc' ? '↑' : '↓')}
@@ -795,6 +826,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         <td className="p-3.5 text-center">
                           <span className={`text-xs px-2.5 py-1 rounded-md border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold whitespace-nowrap`}>
                             {sc.emoji} {sc.label}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <span className="text-xs" title={INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.label}>
+                            {INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.emoji || '🏠'}
                           </span>
                         </td>
                         <td className="p-3.5 text-center">
@@ -863,13 +899,21 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                 </div>
 
                 {/* 서브탭 */}
-                <div className="flex border-b border-slate-200">
+                <div className="flex border-b border-slate-200 overflow-x-auto no-scrollbar">
                   {([['info','\uD83D\uDC64 \uC815\uBCF4'],['notes','\uD83D\uDCDD \uBA54\uBAA8'],['teamwork','\uD83D\uDCAC \uD300\uC6CC\uD06C'],['timeline','\uD83D\uDCC5 \uD0C0\uC784\uB77C\uC778']] as [typeof detailTab, string][]).map(([key, label]) => (
                     <button key={key} onClick={() => setDetailTab(key)}
-                      className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>
+                      className={`flex-1 py-3 px-2 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>
                       {label}
                     </button>
                   ))}
+                  {['contracted','document','filed','commenced','repaying','discharged'].includes(selectedExt.crmStatus) && (
+                    <>
+                      <button onClick={() => setDetailTab('fees')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'fees' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>💰 수임료</button>
+                      <button onClick={() => setDetailTab('documents')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'documents' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📁 문서</button>
+                      <button onClick={() => setDetailTab('corrections')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'corrections' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📮 보정</button>
+                      <button onClick={() => setDetailTab('court')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
+                    </>
+                  )}
                 </div>
 
                 <div className="p-5 space-y-5 max-h-[650px] overflow-y-auto">
@@ -1358,6 +1402,222 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       </div>
                     </div>
                   )}
+
+{/* 수임료 분납 관리 탭 */}
+{detailTab === 'fees' && (() => {
+  const ext = getCrmExt(selectedId);
+  const schedule = ext.feeSchedule || [];
+  const totalFee = ext.totalFee || 0;
+  const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0);
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-sm text-slate-800">수임료 분납 관리</h4>
+        <button onClick={async () => {
+          const amt = prompt('분납 금액 (만원)');
+          const due = prompt('납부 예정일 (YYYY-MM-DD)');
+          if (!amt || !due) return;
+          const newInst: FeeInstallment = {
+            id: `fee-${Date.now()}`, round: schedule.length + 1,
+            amount: Number(amt), dueDate: due, status: 'pending',
+          };
+          const updated = { ...ext, feeSchedule: [...schedule, newInst], totalFee: totalFee || Number(amt) };
+          await updateCrmExt(selectedId, updated);
+        }} className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap">+ 분납 추가</button>
+      </div>
+      {totalFee > 0 && (
+        <div className="bg-slate-50 p-3 rounded-xl space-y-2">
+          <div className="flex justify-between text-xs"><span className="text-slate-500">총 수임료</span><span className="font-bold">{totalFee.toLocaleString()}만원</span></div>
+          <div className="flex justify-between text-xs"><span className="text-slate-500">납부 완료</span><span className="font-bold text-emerald-600">{totalPaid.toLocaleString()}만원</span></div>
+          <div className="h-2 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${totalFee > 0 ? (totalPaid / totalFee) * 100 : 0}%` }} /></div>
+          <div className="flex justify-between text-xs"><span className="text-slate-500">잔여</span><span className="font-bold text-red-500">{(totalFee - totalPaid).toLocaleString()}만원</span></div>
+        </div>
+      )}
+      {schedule.length > 0 ? schedule.map(inst => (
+        <div key={inst.id} className={`flex items-center gap-3 p-3 rounded-xl border ${inst.status === 'overdue' ? 'border-red-300 bg-red-50' : inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
+          <span className="text-sm font-black text-slate-400 w-8">{inst.round}차</span>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-slate-700">{inst.amount.toLocaleString()}만원</p>
+            <p className="text-[10px] text-slate-400">{inst.dueDate}{inst.paidDate ? ` → ${inst.paidDate} 납부` : ''}</p>
+          </div>
+          {inst.status === 'pending' && (
+            <button onClick={async () => {
+              const updated = { ...ext, feeSchedule: schedule.map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
+              await updateCrmExt(selectedId, updated);
+            }} className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-100 press-scale whitespace-nowrap">납부 확인</button>
+          )}
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : inst.status === 'overdue' ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+            {inst.status === 'paid' ? '✅ 완료' : inst.status === 'overdue' ? '⚠️ 연체' : '⏳ 대기'}
+          </span>
+        </div>
+      )) : (
+        <div className="text-center py-8"><span className="text-2xl">💰</span><p className="text-xs text-slate-400 mt-2">분납 스케줄을 추가하세요</p></div>
+      )}
+      {/* 총 수임료 설정 */}
+      {!totalFee && (
+        <button onClick={async () => {
+          const fee = prompt('총 수임료를 입력하세요 (만원)');
+          if (fee) await updateCrmExt(selectedId, { ...ext, totalFee: Number(fee) });
+        }} className="w-full py-2.5 text-xs font-bold text-slate-600 border border-dashed border-slate-300 rounded-xl hover:bg-slate-50 press-scale">총 수임료 설정</button>
+      )}
+    </div>
+  );
+})()}
+
+{/* 문서 관리 탭 */}
+{detailTab === 'documents' && (() => {
+  const ext = getCrmExt(selectedId);
+  const files = ext.uploadedFiles || [];
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-sm text-slate-800">문서 관리</h4>
+        <label className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale cursor-pointer whitespace-nowrap">
+          📎 파일 업로드
+          <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const newDoc: DocumentFile = {
+                id: `doc-${Date.now()}`, name: file.name,
+                category: 'other', uploadedAt: new Date().toISOString(),
+                uploadedBy: activeLawyer.name, fileSize: file.size,
+                mimeType: file.type, dataUrl: reader.result as string,
+              };
+              await updateCrmExt(selectedId, { ...ext, uploadedFiles: [...files, newDoc] });
+            };
+            reader.readAsDataURL(file);
+          }} />
+        </label>
+      </div>
+      {/* 카테고리별 그룹 */}
+      {files.length > 0 ? (
+        <div className="space-y-2">
+          {files.map(doc => (
+            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
+              <span className="text-lg">{DOC_CATEGORY_CONFIG[doc.category]?.emoji || '📎'}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-700 truncate">{doc.name}</p>
+                <p className="text-[10px] text-slate-400">{DOC_CATEGORY_CONFIG[doc.category]?.label} · {new Date(doc.uploadedAt).toLocaleDateString('ko-KR')}</p>
+              </div>
+              <select value={doc.category} onChange={async (e) => {
+                const updated = files.map(f => f.id === doc.id ? { ...f, category: e.target.value as DocumentFile['category'] } : f);
+                await updateCrmExt(selectedId, { ...ext, uploadedFiles: updated });
+              }} className="text-[10px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                {Object.entries(DOC_CATEGORY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
+              </select>
+              <button onClick={async () => {
+                await updateCrmExt(selectedId, { ...ext, uploadedFiles: files.filter(f => f.id !== doc.id) });
+              }} className="text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8"><span className="text-2xl">📁</span><p className="text-xs text-slate-400 mt-2">파일을 업로드하여 서류를 관리하세요</p></div>
+      )}
+    </div>
+  );
+})()}
+
+{/* 보정명령 관리 탭 */}
+{detailTab === 'corrections' && (() => {
+  const ext = getCrmExt(selectedId);
+  const orders = ext.correctionOrders || [];
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-sm text-slate-800">보정명령 관리</h4>
+        <button onClick={async () => {
+          const title = prompt('보정 내용');
+          const deadline = prompt('제출 기한 (YYYY-MM-DD)');
+          if (!title || !deadline) return;
+          const newOrder: CorrectionOrder = {
+            id: `co-${Date.now()}`, title, issuedDate: new Date().toISOString().split('T')[0],
+            deadline, status: 'pending',
+          };
+          await updateCrmExt(selectedId, { ...ext, correctionOrders: [...orders, newOrder] });
+        }} className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap">+ 보정명령 추가</button>
+      </div>
+      {orders.length > 0 ? orders.map(co => {
+        const deadlineDate = new Date(co.deadline);
+        const today = new Date();
+        const dDay = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return (
+          <div key={co.id} className={`p-3.5 rounded-xl border ${co.status === 'pending' && dDay <= 3 ? 'border-red-300 bg-red-50' : co.status === 'submitted' ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-slate-700">{co.title}</p>
+              {co.status === 'pending' && (
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${dDay <= 1 ? 'bg-red-100 text-red-600 animate-pulse' : dDay <= 3 ? 'bg-orange-100 text-orange-600' : 'bg-amber-50 text-amber-600'}`}>
+                  {dDay <= 0 ? '기한 도과!' : `D-${dDay}`}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4 text-[10px] text-slate-400">
+              <span>송달일: {co.issuedDate}</span>
+              <span>기한: {co.deadline}</span>
+              {co.submittedDate && <span className="text-emerald-600 font-bold">제출: {co.submittedDate}</span>}
+            </div>
+            {co.status === 'pending' && (
+              <button onClick={async () => {
+                const updated = orders.map(o => o.id === co.id ? { ...o, status: 'submitted' as const, submittedDate: new Date().toISOString().split('T')[0] } : o);
+                await updateCrmExt(selectedId, { ...ext, correctionOrders: updated });
+              }} className="mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 press-scale whitespace-nowrap">✅ 제출 완료 처리</button>
+            )}
+          </div>
+        );
+      }) : (
+        <div className="text-center py-8"><span className="text-2xl">📮</span><p className="text-xs text-slate-400 mt-2">보정명령이 없습니다</p></div>
+      )}
+    </div>
+  );
+})()}
+
+{/* 법원 사건 연동 탭 */}
+{detailTab === 'court' && (() => {
+  const ext = getCrmExt(selectedId);
+  const courtCase = ext.courtCase;
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-sm text-slate-800">대법원 전자소송 연동</h4>
+      </div>
+      {courtCase ? (
+        <div className="space-y-3">
+          <div className="bg-slate-50 p-3 rounded-xl space-y-2">
+            <div className="flex justify-between text-xs"><span className="text-slate-500">사건번호</span><span className="font-bold font-mono">{courtCase.caseNumber}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-500">법원</span><span className="font-bold">{courtCase.courtName}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-500">사건 유형</span><span className="font-bold">{courtCase.caseType}</span></div>
+          </div>
+          {courtCase.events.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-600">사건 이력</p>
+              {courtCase.events.map(ev => (
+                <div key={ev.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
+                  <span className="text-[10px] text-slate-400 w-20">{ev.date}</span>
+                  <p className="text-xs text-slate-700 flex-1">{ev.title}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <span className="text-2xl">⚖️</span>
+          <p className="text-xs text-slate-400 mt-2">사건번호를 등록하면 법원 정보가 연동됩니다.</p>
+          <button onClick={async () => {
+            const caseNum = prompt('사건번호를 입력하세요 (예: 2026개회12345)');
+            const courtName = prompt('관할 법원 (예: 서울회생법원)');
+            if (!caseNum || !courtName) return;
+            await updateCrmExt(selectedId, { ...ext, courtCase: {
+              caseNumber: caseNum, courtName, caseType: '개인회생', events: [],
+            }});
+          }} className="mt-3 text-xs font-bold text-brand px-4 py-2 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap">+ 사건번호 등록</button>
+        </div>
+      )}
+    </div>
+  );
+})()}
                 </div>
               </div>
             ) : (

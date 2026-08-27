@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice 
@@ -20,14 +20,14 @@ import ClientOriginalInfo from './lawyer/ClientOriginalInfo';
 import RequestWorkflowPanel from './lawyer/RequestWorkflowPanel';
 import RequestTimeline from './lawyer/RequestTimeline';
 import NotificationBell from './lawyer/NotificationBell';
-import MyTasksWidget from './lawyer/MyTasksWidget';
+import ConsultStyleProfile from './lawyer/ConsultStyleProfile';
 import TasksScheduleTab from './lawyer/TasksScheduleTab';
 import StaffManagementTab from './lawyer/StaffManagementTab';
 import LawyerQnAAnswerSection from './lawyer/LawyerQnAAnswerSection';
 import RehabSettingsPanel from './RehabSettingsPanel';
 import { usePermissions } from '../hooks/usePermissions';
-import type { StaffMember, StaffRole as StaffRoleType } from '../types';
-import { DEFAULT_PERMISSIONS } from '../types';
+import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
+import { DEFAULT_PERMISSIONS, INTAKE_CHANNEL_CONFIG, ALIMTOK_MILESTONE_CONFIG } from '../types';
 import { validateInviteToken, consumeInviteToken } from '../services/inviteService';
 import { loadStaffMembers } from '../services/crmService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
@@ -42,6 +42,8 @@ import type { NotificationSettings, NotificationLog } from '../types';
 import PopupContainer from './popup/PopupContainer';
 import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
+const ExternalClientModal = React.lazy(() => import('./lawyer/ExternalClientModal'));
+const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalette'));
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   return req.phone || (req as any).clientPhone || (req as any).userPhone || "-";
@@ -133,6 +135,10 @@ export default function LawyerRole({
   const [bizSaving, setBizSaving] = useState(false);
   const [tempFirmName, setTempFirmName] = useState('');
 
+  // ── 전역 검색 & 외부 고객 등록 ──
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isExternalClientModalOpen, setIsExternalClientModalOpen] = useState(false);
+
   
   // Mobile UI navigation controls
   const [mobilePane, setMobilePane] = useState<'threads' | 'chat' | 'crm'>('threads');
@@ -170,6 +176,56 @@ export default function LawyerRole({
       setTempFirmName(activeLawyer.firmName || '');
     }
   }, [activeLawyer]);
+
+  // ── Cmd+K 전역 검색 단축키 ──
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // ── 외부 고객 등록 핸들러 ──
+  const handleExternalClientRegister = useCallback((data: {
+    clientName: string; phone: string; debtTotal: number; income: number;
+    intakeChannel: IntakeChannel; channelDetail?: string; initialStatus: CrmStatus;
+  }) => {
+    const newId = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newRequest: ConsultRequest = {
+      id: newId, clientId: newId, clientName: data.clientName, phone: data.phone,
+      requestType: 'direct', maxParticipants: 1, status: 'counseling',
+      createdAt: new Date().toISOString(), title: `[외부] ${data.clientName} 상담`,
+      content: data.channelDetail || '',
+      financialProfile: {
+        clientName: data.clientName, age: 0, gender: 'male', maritalStatus: 'SINGLE',
+        dependents: 0, minorChildren: 0, income: data.income, debtTotal: data.debtTotal,
+        priorityDebt: 0, assetsTotal: 0, creditorCount: 0, jobType: 'SALARIED',
+        companyName: '', companyNameMasked: '', employmentDate: '', residenceRegion: '',
+        workLocation: '', housingType: 'rent', housingContractHolder: 'self',
+        debtCause: 'LIVING', harassmentLevel: 'NONE',
+        debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 },
+        legalActions: [], myAssets: 0, spouseAsset: 0, spouseIncome: 0,
+        rentalDeposit: 0, depositLoan: 0, rentCost: 0, medicalCost: 0,
+        educationCost: 0, monthlyFixedExpenses: 0, retirementPay: 0,
+        retirementPensionType: 'none', specialCondition: 'none', riskFlags: [],
+        clientNotes: [], debts: [], assets: [],
+      },
+    };
+    setRequests(prev => [newRequest, ...prev]);
+    import('../services/crmService').then(({ saveCrmClient, createDefaultCrmExtension }) => {
+      const ext = createDefaultCrmExtension(newId);
+      ext.crmStatus = data.initialStatus;
+      ext.intakeChannel = data.intakeChannel;
+      ext.intakeChannelDetail = data.channelDetail;
+      ext.isExternalClient = true;
+      saveCrmClient(newId, ext);
+    });
+    setIsExternalClientModalOpen(false);
+  }, [setRequests]);
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
@@ -1838,6 +1894,13 @@ export default function LawyerRole({
               </div>
             </div>
 
+            {/* 전역 검색 (Cmd+K) */}
+            <button onClick={() => setIsSearchOpen(true)} className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-300 hover:text-white transition-all cursor-pointer text-xs" title="전역 검색 (Ctrl+K)">
+              <Search className="w-3.5 h-3.5" />
+              <span className="font-medium">검색</span>
+              <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+            </button>
+
             <NotificationBell
               tenantId={activeLawyer.lawFirmId || activeLawyer.id}
               userId={activeStaffMember?.id || activeLawyer.id}
@@ -2510,7 +2573,56 @@ export default function LawyerRole({
             })()}
 
 
-
+            {/* ═══ Row 6: 유입 채널 + 수임료 + 보정명령 ═══ */}
+            {(() => {
+              const crmStore = (() => { try { const raw = localStorage.getItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
+              const allExts = Object.values(crmStore) as any[];
+              const channelCounts: Record<string, number> = {};
+              allExts.forEach((ext: any) => { const ch = ext.intakeChannel || 'mykim'; channelCounts[ch] = (channelCounts[ch] || 0) + 1; });
+              const totalClients = allExts.length || 1;
+              const channelEntries = Object.entries(INTAKE_CHANNEL_CONFIG).map(([key, cfg]) => ({ key, ...cfg, count: channelCounts[key] || 0 })).filter(c => c.count > 0).sort((a, b) => b.count - a.count);
+              let totalFeeAmount = 0; let totalPaidAmount = 0; let overdueCount = 0;
+              allExts.forEach((ext: any) => { if (ext.feeSchedule) { ext.feeSchedule.forEach((f: any) => { totalFeeAmount += f.amount || 0; if (f.status === 'paid') totalPaidAmount += f.amount || 0; if (f.status === 'overdue') overdueCount++; }); } });
+              const receivable = totalFeeAmount - totalPaidAmount;
+              const urgentCorrections: { title: string; dDay: number; deadline: string }[] = [];
+              allExts.forEach((ext: any) => { if (ext.correctionOrders) { ext.correctionOrders.forEach((co: any) => { if (co.status === 'pending') { const diff = Math.ceil((new Date(co.deadline).getTime() - Date.now()) / 86400000); if (diff <= 7) urgentCorrections.push({ title: co.title, dDay: diff, deadline: co.deadline }); } }); } });
+              urgentCorrections.sort((a, b) => a.dDay - b.dDay);
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4"><span className="text-lg">📊</span><span className="font-bold text-slate-800 text-sm">유입 채널 분석</span></div>
+                    {channelEntries.length > 0 ? channelEntries.slice(0, 5).map(ch => (
+                      <div key={ch.key} className="flex items-center gap-2 mb-2.5">
+                        <span className="text-sm w-5">{ch.emoji}</span><span className="text-xs text-slate-600 w-20 truncate">{ch.label}</span>
+                        <div className="flex-1 h-5 bg-slate-100 rounded-lg overflow-hidden"><div className={`h-full rounded-lg ${ch.bgColor.replace('/10', '/40')}`} style={{ width: `${Math.max(8, (ch.count / totalClients) * 100)}%` }}><span className="text-[10px] font-bold text-slate-700 px-1.5 leading-5">{ch.count}</span></div></div>
+                        <span className="text-[10px] text-slate-400 w-8 text-right">{Math.round((ch.count / totalClients) * 100)}%</span>
+                      </div>
+                    )) : <p className="text-xs text-slate-400 text-center py-4">고객 데이터가 쌓이면 채널별 분석이 표시됩니다.</p>}
+                    <button onClick={() => setIsExternalClientModalOpen(true)} className="w-full mt-3 py-2 text-xs font-bold text-brand border border-brand/20 rounded-xl hover:bg-brand/5 transition-colors press-scale whitespace-nowrap">+ 외부 고객 등록</button>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4"><span className="text-lg">💰</span><span className="font-bold text-slate-800 text-sm">수임료 현황</span></div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center"><span className="text-xs text-slate-500">총 약정액</span><span className="font-bold text-slate-800 text-sm">{totalFeeAmount.toLocaleString()}만원</span></div>
+                      <div className="flex justify-between items-center"><span className="text-xs text-slate-500">수금 완료</span><span className="font-bold text-emerald-600 text-sm">{totalPaidAmount.toLocaleString()}만원</span></div>
+                      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: totalFeeAmount > 0 ? `${(totalPaidAmount / totalFeeAmount) * 100}%` : '0%' }} /></div>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100"><span className="text-xs text-slate-500">미수금</span><span className={`font-bold text-sm ${receivable > 0 ? 'text-red-500' : 'text-slate-400'}`}>{receivable.toLocaleString()}만원</span></div>
+                      {overdueCount > 0 && <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-medium">⚠️ 연체 {overdueCount}건</div>}
+                      {totalFeeAmount === 0 && <p className="text-xs text-slate-400 text-center py-2">수임료를 등록하면 현황이 표시됩니다.</p>}
+                    </div>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4"><span className="text-lg">📮</span><span className="font-bold text-slate-800 text-sm">보정명령 D-Day</span></div>
+                    {urgentCorrections.length > 0 ? urgentCorrections.slice(0, 4).map((co, i) => (
+                      <div key={i} className={`flex items-center justify-between py-2 ${i > 0 ? 'border-t border-slate-100' : ''}`}>
+                        <div className="flex-1 min-w-0"><p className="text-xs font-medium text-slate-700 truncate">{co.title}</p><p className="text-[10px] text-slate-400">{co.deadline}</p></div>
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-black whitespace-nowrap ${co.dDay <= 1 ? 'bg-red-100 text-red-600 animate-pulse' : co.dDay <= 3 ? 'bg-orange-100 text-orange-600' : 'bg-amber-50 text-amber-600'}`}>{co.dDay <= 0 ? '기한 도과!' : `D-${co.dDay}`}</span>
+                      </div>
+                    )) : <div className="text-center py-6"><span className="text-2xl">✅</span><p className="text-xs text-slate-400 mt-2">긴급 보정명령 없음</p></div>}
+                  </div>
+                </div>
+              );
+            })()}
 
           </div>
         )}
@@ -3723,6 +3835,9 @@ export default function LawyerRole({
           </div>
         )}
 
+        {/* TAB: cases → CRM으로 통합 리다이렉트 */}
+        {activeTab === 'cases' && (() => { setActiveTab('client-crm'); return null; })()}
+
         {/* TAB: 마이김변 문의 */}
         {activeTab === 'inquiry-to-admin' && lawyerInquiries && setLawyerInquiries && (
           <div className="">
@@ -3772,6 +3887,17 @@ export default function LawyerRole({
                   }}
                   onClose={() => setSettingsSub('notices')}
                   inline={true}
+                />
+              </div>
+            )}
+
+            {/* AI 상담 스타일 프로필 */}
+            {settingsSub === 'profile' && (
+              <div className="mt-6">
+                <ConsultStyleProfile
+                  tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                  actorId={activeLawyer.id}
+                  actorName={activeLawyer.name}
                 />
               </div>
             )}
@@ -4111,19 +4237,78 @@ export default function LawyerRole({
                   </button>
                 </div>
 
-                {/* SMS/카카오톡 채널 카드 (준비중) */}
-                <div className="p-5 rounded-2xl border-2 border-slate-200 bg-slate-50/50 opacity-60">
-                  <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-base font-black text-slate-900">📲 SMS / 카카오톡</span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-                      🔒 준비중
-                    </span>
+                {/* 카카오 알림톡 채널 카드 */}
+                <div className={`p-5 rounded-2xl border-2 transition-all ${notifSettings.kakao.enabled ? 'border-yellow-300 bg-yellow-50/30' : 'border-slate-200 bg-white'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-base font-black text-slate-900">💬 카카오 알림톡</span>
+                    <button onClick={() => {
+                      const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, enabled: !notifSettings.kakao.enabled, status: !notifSettings.kakao.enabled ? 'connected' as const : 'disconnected' as const } };
+                      setNotifSettings(updated); saveNotificationSettings(updated);
+                    }} className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${notifSettings.kakao.enabled ? 'bg-yellow-500' : 'bg-slate-300'}`}>
+                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${notifSettings.kakao.enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                    </button>
                   </div>
-                  <p className="text-xs text-slate-500 mb-4">SMS 및 카카오톡 알림 (추후 업데이트)</p>
-                  <button disabled
-                    className="w-full py-2 text-xs font-bold rounded-xl border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed">
-                    Coming Soon
-                  </button>
+                  <p className="text-xs text-slate-500 mb-4">의뢰인에게 사건 진행 마일스톤별 카카오 알림톡을 자동 발송합니다.</p>
+                  {notifSettings.kakao.enabled && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 block mb-1">발송 표시 법무법인명</label>
+                          <input value={notifSettings.kakao.firmName || ''} onChange={e => {
+                            const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, firmName: e.target.value } };
+                            setNotifSettings(updated); saveNotificationSettings(updated);
+                          }} placeholder="예: 김우진 법률사무소" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300/50" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 block mb-1">담당 변호사명</label>
+                          <input value={notifSettings.kakao.lawyerName || ''} onChange={e => {
+                            const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, lawyerName: e.target.value } };
+                            setNotifSettings(updated); saveNotificationSettings(updated);
+                          }} placeholder="예: 김우진" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300/50" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100">
+                        <div><p className="text-sm font-bold text-slate-700">CRM 상태 변경 시 자동 발송</p><p className="text-[11px] text-slate-400">파이프라인 단계 이동 시 해당 마일스톤 알림톡을 자동 전송합니다.</p></div>
+                        <button onClick={() => {
+                          const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, autoTrigger: !notifSettings.kakao.autoTrigger } };
+                          setNotifSettings(updated); saveNotificationSettings(updated);
+                        }} className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${notifSettings.kakao.autoTrigger ? 'bg-yellow-500' : 'bg-slate-300'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${notifSettings.kakao.autoTrigger ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-600 mb-2">활성화할 마일스톤</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(Object.entries(ALIMTOK_MILESTONE_CONFIG) as [AlimtokMilestone, { label: string; emoji: string }][]).map(([key, cfg]) => {
+                            const isEnabled = (notifSettings.kakao.enabledMilestones || []).includes(key);
+                            return (
+                              <button key={key} onClick={() => {
+                                const milestones = notifSettings.kakao.enabledMilestones || [];
+                                const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, enabledMilestones: isEnabled ? milestones.filter((m: AlimtokMilestone) => m !== key) : [...milestones, key] as AlimtokMilestone[] } };
+                                setNotifSettings(updated); saveNotificationSettings(updated);
+                              }} className={`text-left p-2.5 rounded-xl border text-xs transition-all cursor-pointer press-scale ${isEnabled ? 'bg-yellow-50 border-yellow-300 text-yellow-800 font-bold' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                                <span className="mr-1">{cfg.emoji}</span> {cfg.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 외부 캘린더 연동 */}
+                <div className="p-5 rounded-2xl border-2 border-slate-200 bg-white">
+                  <div className="flex items-center justify-between mb-2.5"><span className="text-base font-black text-slate-900">📅 외부 캘린더 연동</span></div>
+                  <p className="text-xs text-slate-500 mb-4">Google/Outlook 캘린더와 기일을 동기화합니다.</p>
+                  <div className="space-y-2">
+                    <a href="https://calendar.google.com/calendar/r" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+                      <span className="text-lg">📆</span><div className="flex-1"><p className="text-sm font-bold text-slate-700">Google Calendar</p><p className="text-[11px] text-slate-400">구글 캘린더에서 기일/일정 확인</p></div><span className="text-xs text-brand font-bold">연결 →</span>
+                    </a>
+                    <a href="https://outlook.live.com/calendar" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+                      <span className="text-lg">📧</span><div className="flex-1"><p className="text-sm font-bold text-slate-700">Outlook Calendar</p><p className="text-[11px] text-slate-400">아웃룩 캘린더와 연동</p></div><span className="text-xs text-brand font-bold">연결 →</span>
+                    </a>
+                  </div>
                 </div>
               </div>
 
@@ -4704,6 +4889,20 @@ export default function LawyerRole({
           viewerRole="lawyer"
         />
       )}
+
+      {/* ── 전역 검색 팔레트 (Cmd+K) ── */}
+      <React.Suspense fallback={null}>
+        {isSearchOpen && (
+          <GlobalSearchPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} requests={requests} lawyers={lawyers} onNavigate={(tab) => { setActiveTab(tab as any); setIsSearchOpen(false); }} />
+        )}
+      </React.Suspense>
+
+      {/* ── 외부 고객 등록 모달 ── */}
+      <React.Suspense fallback={null}>
+        {isExternalClientModalOpen && (
+          <ExternalClientModal isOpen={isExternalClientModalOpen} onClose={() => setIsExternalClientModalOpen(false)} onRegister={handleExternalClientRegister} lawyers={lawyers} />
+        )}
+      </React.Suspense>
 
     </div>
     </div>

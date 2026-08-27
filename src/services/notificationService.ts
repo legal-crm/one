@@ -32,7 +32,7 @@ export function getDefaultSettings(): NotificationSettings {
     email: { senderGmail: '', senderAppPassword: '', recipientEmails: [], enabled: false },
     browserPush: { enabled: false, permission: 'default' },
     sms: { enabled: false as const, status: 'coming_soon' as const },
-    kakao: { enabled: false as const, status: 'coming_soon' as const },
+    kakao: { enabled: false, status: 'disconnected' as const, firmName: '', lawyerName: '', autoTrigger: false, enabledMilestones: [] },
   };
 }
 

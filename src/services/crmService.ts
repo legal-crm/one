@@ -50,6 +50,16 @@ export async function loadCrmData(): Promise<CrmDataStore> {
             contractDate: row.contract_date,
             contractAmount: row.contract_amount,
             lastActivityAt: row.last_activity_at || new Date().toISOString(),
+            intakeChannel: row.intake_channel || 'mykim',
+            intakeChannelDetail: row.intake_channel_detail,
+            isExternalClient: row.is_external_client || false,
+            totalFee: row.total_fee,
+            totalPaid: row.total_paid,
+            feeSchedule: row.fee_schedule || [],
+            uploadedFiles: row.uploaded_files || [],
+            correctionOrders: row.correction_orders || [],
+            courtCase: row.court_case,
+            alimtokLogs: row.alimtok_logs || [],
           };
         });
         return store;
@@ -82,6 +92,16 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
         contract_date: ext.contractDate,
         contract_amount: ext.contractAmount,
         last_activity_at: ext.lastActivityAt,
+        intake_channel: ext.intakeChannel,
+        intake_channel_detail: ext.intakeChannelDetail,
+        is_external_client: ext.isExternalClient,
+        total_fee: ext.totalFee,
+        total_paid: ext.totalPaid,
+        fee_schedule: ext.feeSchedule,
+        uploaded_files: ext.uploadedFiles,
+        correction_orders: ext.correctionOrders,
+        court_case: ext.courtCase,
+        alimtok_logs: ext.alimtokLogs,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'client_id' });
     } catch (e) {
@@ -244,6 +264,13 @@ export function createDefaultCrmExtension(clientId: string): CrmClientExtension 
       createdAt: new Date().toISOString(),
     }],
     lastActivityAt: new Date().toISOString(),
+    // ── 다채널 CRM 기본값 ──
+    intakeChannel: 'mykim',
+    isExternalClient: false,
+    feeSchedule: [],
+    uploadedFiles: [],
+    correctionOrders: [],
+    alimtokLogs: [],
   };
 }
 

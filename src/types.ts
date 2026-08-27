@@ -96,7 +96,157 @@ export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; emoji: string
   cancelled:   { label: '의뢰인 취소', emoji: '🚫', color: 'text-red-500',    bgColor: 'bg-red-500/10',     borderColor: 'border-red-500/20' },
 };
 
-// 직원 역할 체계
+// ── 유입 채널 (Intake Channel) ──
+
+export type IntakeChannel =
+  | 'mykim'       // 마이김변 플랫폼
+  | 'naver_ad'    // 네이버 검색광고
+  | 'blog'        // 블로그/콘텐츠
+  | 'youtube'     // 유튜브
+  | 'lawtalk'     // 로톡
+  | 'referral'    // 지인 소개
+  | 'phone'       // 전화 문의
+  | 'visit'       // 방문 상담
+  | 'repeat'      // 기존 의뢰인 재의뢰
+  | 'other';      // 기타
+
+export const INTAKE_CHANNEL_CONFIG: Record<IntakeChannel, { label: string; emoji: string; color: string; bgColor: string }> = {
+  mykim:     { label: '마이김변',     emoji: '🏠', color: 'text-brand',       bgColor: 'bg-brand/10' },
+  naver_ad:  { label: '네이버 광고',  emoji: '🔍', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+  blog:      { label: '블로그',       emoji: '📝', color: 'text-sky-500',     bgColor: 'bg-sky-500/10' },
+  youtube:   { label: '유튜브',       emoji: '▶️', color: 'text-red-500',     bgColor: 'bg-red-500/10' },
+  lawtalk:   { label: '로톡',         emoji: '⚖️', color: 'text-indigo-500',  bgColor: 'bg-indigo-500/10' },
+  referral:  { label: '지인 소개',    emoji: '🤝', color: 'text-amber-500',   bgColor: 'bg-amber-500/10' },
+  phone:     { label: '전화 문의',    emoji: '📞', color: 'text-teal-500',    bgColor: 'bg-teal-500/10' },
+  visit:     { label: '방문 상담',    emoji: '🚶', color: 'text-purple-500',  bgColor: 'bg-purple-500/10' },
+  repeat:    { label: '재의뢰',       emoji: '🔄', color: 'text-orange-500',  bgColor: 'bg-orange-500/10' },
+  other:     { label: '기타',         emoji: '📌', color: 'text-slate-500',   bgColor: 'bg-slate-500/10' },
+};
+
+// ── 수임료 분납 관리 ──
+
+export interface FeeInstallment {
+  id: string;
+  round: number;
+  amount: number;
+  dueDate: string;
+  paidDate?: string;
+  status: 'pending' | 'paid' | 'overdue';
+  memo?: string;
+}
+
+// ── 카카오 알림톡 마일스톤 ──
+
+export type AlimtokMilestone =
+  | 'consult_booked'      // 상담 접수
+  | 'contract_signed'     // 수임계약 체결
+  | 'document_request'    // 서류 제출 요청
+  | 'court_filed'         // 법원 접수 완료
+  | 'injunction_granted'  // 금지명령 결정
+  | 'correction_order'    // 보정명령 안내
+  | 'commenced'           // 개시결정
+  | 'hearing_notice'      // 채권자집회 안내
+  | 'discharged';         // 면책 완료
+
+export const ALIMTOK_MILESTONE_CONFIG: Record<AlimtokMilestone, { label: string; emoji: string; template: string }> = {
+  consult_booked:     { label: '상담 접수',     emoji: '📋', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 상담 요청이 접수되었습니다.\n\n📌 접수 일시: {{date}}\n📌 다음 단계: 담당 변호사가 확인 후 연락드리겠습니다.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  contract_signed:    { label: '수임계약 체결', emoji: '📝', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 수임계약이 체결되었습니다.\n\n📌 다음 단계: 필요 서류를 안내해 드리겠습니다.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  document_request:   { label: '서류 요청',     emoji: '📂', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 아래 서류 제출을 부탁드립니다.\n\n{{documentList}}\n\n📌 제출 기한: {{deadline}}\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  court_filed:        { label: '법원 접수',     emoji: '⚖️', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 {{caseType}} 사건이 법원에 접수되었습니다.\n\n📌 사건번호: {{caseNumber}}\n📌 다음 단계: 금지명령 결정 대기 (약 1~2주)\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  injunction_granted: { label: '금지명령 결정', emoji: '🛡️', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 금지명령이 결정되었습니다.\n\n📌 효력: 채권자의 추심행위가 중단됩니다.\n📌 주의: 독촉 연락이 오면 즉시 알려주세요.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  correction_order:   { label: '보정명령',     emoji: '📮', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 사건에 보정명령이 내려졌습니다.\n\n📌 보정 내용: {{correctionDetail}}\n📌 제출 기한: {{deadline}}\n📌 담당 변호사가 보정서 작성 중입니다.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  commenced:          { label: '개시결정',     emoji: '✨', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 개인회생이 개시 결정되었습니다.\n\n📌 월 변제금: {{monthlyPayment}}원\n📌 변제 기간: {{duration}}개월\n📌 다음 단계: 채권자집회 참석 안내 예정\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  hearing_notice:     { label: '채권자집회',   emoji: '🏛️', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 채권자집회가 예정되어 있습니다.\n\n📌 일시: {{hearingDate}}\n📌 장소: {{courtName}}\n📌 참석 필수 여부: {{attendanceRequired}}\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  discharged:         { label: '면책 완료',    emoji: '🎉', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 축하합니다!\n\n📌 {{caseType}} 면책이 확정되었습니다.\n📌 면책된 채무: 약 {{dischargedAmount}}\n\n그동안 수고 많으셨습니다. 궁금하신 점은 언제든 연락 주세요.' },
+};
+
+export const STATUS_TO_MILESTONE: Partial<Record<CrmStatus, AlimtokMilestone>> = {
+  consulting:  'consult_booked',
+  contracted:  'contract_signed',
+  document:    'document_request',
+  filed:       'court_filed',
+  commenced:   'commenced',
+  discharged:  'discharged',
+};
+
+// ── 보정명령 D-Day 관리 ──
+
+export interface CorrectionOrder {
+  id: string;
+  title: string;
+  issuedDate: string;
+  deadline: string;
+  submittedDate?: string;
+  status: 'pending' | 'submitted' | 'extended' | 'overdue';
+  detail?: string;
+  templateType?: string;
+}
+
+// ── 문서 관리 시스템 (DMS) ──
+
+export interface DocumentFile {
+  id: string;
+  name: string;
+  category: 'debt_cert' | 'income' | 'asset' | 'bank_statement' | 'id_doc' | 'court_filing' | 'correction' | 'other';
+  uploadedAt: string;
+  uploadedBy: string;
+  fileSize?: number;
+  mimeType?: string;
+  dataUrl?: string;
+  notes?: string;
+}
+
+export const DOC_CATEGORY_CONFIG: Record<DocumentFile['category'], { label: string; emoji: string }> = {
+  debt_cert:      { label: '부채증명서',     emoji: '📄' },
+  income:         { label: '소득증빙',       emoji: '💰' },
+  asset:          { label: '재산증빙',       emoji: '🏠' },
+  bank_statement: { label: '통장거래내역',   emoji: '🏦' },
+  id_doc:         { label: '신분증/등본',    emoji: '🪪' },
+  court_filing:   { label: '법원제출서류',   emoji: '⚖️' },
+  correction:     { label: '보정서류',       emoji: '📮' },
+  other:          { label: '기타',           emoji: '📎' },
+};
+
+// ── 대법원 전자소송 연동 ──
+
+export interface CourtCaseLink {
+  caseNumber: string;
+  courtName: string;
+  caseType: '개인회생' | '개인파산' | '면책' | '기타';
+  filedDate?: string;
+  lastSyncedAt?: string;
+  events: CourtEvent[];
+}
+
+export interface CourtEvent {
+  id: string;
+  date: string;
+  type: 'filing' | 'injunction' | 'correction' | 'hearing' | 'decision' | 'discharge' | 'other';
+  title: string;
+  detail?: string;
+  dDay?: number;
+}
+
+// ── 외부 캘린더 연동 ──
+
+export interface CalendarSyncConfig {
+  googleCalendar?: { enabled: boolean; calendarId: string; syncToken?: string };
+  outlookCalendar?: { enabled: boolean; calendarId: string };
+  appleCalendar?: { enabled: boolean; icsUrl: string };
+}
+
+// ── 알림톡 발송 이력 ──
+
+export interface AlimtokLog {
+  id: string;
+  milestone: AlimtokMilestone;
+  clientName: string;
+  phone: string;
+  sentAt: string;
+  status: 'sent' | 'failed' | 'pending';
+  errorMessage?: string;
+}
+
 export type StaffRole = 'OWNER' | 'LAWYER' | 'CONSULTANT' | 'STAFF' | 'ACCOUNTING' | string;
 
 // 커스텀 역할 인터페이스
@@ -371,6 +521,22 @@ export interface CrmClientExtension {
   contractDate?: string;
   contractAmount?: number;
   lastActivityAt: string;
+  // ── 다채널 CRM 확장 ──
+  intakeChannel?: IntakeChannel;
+  intakeChannelDetail?: string;
+  isExternalClient?: boolean;
+  // ── 수임료 분납 ──
+  totalFee?: number;
+  totalPaid?: number;
+  feeSchedule?: FeeInstallment[];
+  // ── 문서 관리 ──
+  uploadedFiles?: DocumentFile[];
+  // ── 보정명령 ──
+  correctionOrders?: CorrectionOrder[];
+  // ── 대법원 연동 ──
+  courtCase?: CourtCaseLink;
+  // ── 알림톡 이력 ──
+  alimtokLogs?: AlimtokLog[];
 }
 
 // ── 전담 변호사 선임 ──
@@ -1408,7 +1574,11 @@ export interface NotificationSettings {
     status: 'coming_soon';
   };
   kakao: {
-    enabled: false;
-    status: 'coming_soon';
+    enabled: boolean;
+    status: 'connected' | 'disconnected' | 'coming_soon';
+    firmName: string;
+    lawyerName: string;
+    autoTrigger: boolean;
+    enabledMilestones: AlimtokMilestone[];
   };
 }
