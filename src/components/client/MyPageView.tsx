@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2 } from 'lucide-react';
-import type { ConsultRequest } from '../../types';
+import React, { useState, useMemo } from 'react';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import type { ConsultRequest, CrmStatus, FeeInstallment } from '../../types';
+import { CRM_STATUS_CONFIG } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
@@ -244,6 +245,268 @@ export default function MyPageView({
         </div>
       </div>
       )}
+
+      {/* ═══ 고객 기능 3종: 사건 진행 트래커 + 서류 제출 + 수임료 현황 ═══ */}
+      {!isCompact && (() => {
+        // CRM 데이터 읽기 (변호사 CRM과 동일 localStorage 공유)
+        const getCrmData = () => {
+          try { return JSON.parse(localStorage.getItem('legal_crm_data') || '{}'); } catch { return {}; }
+        };
+        const reqId = activeRequest?.id || requests[0]?.id;
+        const crmExt = reqId ? (getCrmData()[reqId] || null) : null;
+        const currentStatus: CrmStatus = crmExt?.crmStatus || 'requested';
+        const feeSchedule: FeeInstallment[] = crmExt?.feeSchedule || [];
+        const totalFee: number = crmExt?.totalFee || 0;
+        const documents: Array<{id: string; name: string; category: string; uploadedAt: string}> = crmExt?.documents || [];
+        const totalPaid = feeSchedule.filter((f: FeeInstallment) => f.status === 'paid').reduce((s: number, f: FeeInstallment) => s + f.amount, 0);
+
+        // 진행 단계 정의 (cancelled 제외)
+        const PROGRESS_STEPS: CrmStatus[] = ['requested', 'consulting', 'contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
+        const currentIdx = PROGRESS_STEPS.indexOf(currentStatus);
+
+        return (
+          <>
+            {/* ── 1. 사건 진행상황 트래커 ── */}
+            <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-xl space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-brand/10 text-brand"><CheckCircle className="w-5 h-5" /></div>
+                  내 사건 진행상황
+                </h3>
+                <span className="text-[11px] bg-brand/10 text-brand px-2.5 py-1 rounded-full font-bold">
+                  {CRM_STATUS_CONFIG[currentStatus]?.emoji} {CRM_STATUS_CONFIG[currentStatus]?.label}
+                </span>
+              </div>
+
+              {/* 프로그레스 바 */}
+              <div className="relative">
+                {/* 연결선 */}
+                <div className="absolute top-5 left-6 right-6 h-0.5 bg-slate-200 z-0" />
+                <div className="absolute top-5 left-6 h-0.5 bg-brand z-0 transition-all duration-700" style={{ width: `${currentIdx >= 0 ? (currentIdx / (PROGRESS_STEPS.length - 1)) * (100 - 10) : 0}%` }} />
+
+                {/* 단계 노드 */}
+                <div className="relative z-10 flex justify-between">
+                  {PROGRESS_STEPS.map((step, i) => {
+                    const cfg = CRM_STATUS_CONFIG[step];
+                    const isDone = i <= currentIdx;
+                    const isCurrent = i === currentIdx;
+                    return (
+                      <div key={step} className="flex flex-col items-center" style={{ width: `${100 / PROGRESS_STEPS.length}%` }}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 transition-all duration-500 ${
+                          isCurrent ? 'bg-brand border-brand text-white shadow-md shadow-brand/30 scale-110 animate-pulse' :
+                          isDone ? 'bg-brand/10 border-brand text-brand' :
+                          'bg-slate-100 border-slate-200 text-slate-400'
+                        }`}>
+                          {isDone && !isCurrent ? <Check className="w-4 h-4" /> : <span className="text-sm">{cfg.emoji}</span>}
+                        </div>
+                        <span className={`text-[9px] md:text-[10px] font-bold mt-1.5 text-center leading-tight ${isCurrent ? 'text-brand' : isDone ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {cfg.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 현재 단계 안내 메시지 */}
+              <div className="bg-brand/5 border border-brand/10 rounded-2xl p-4 flex items-start gap-3">
+                <span className="text-2xl">{CRM_STATUS_CONFIG[currentStatus]?.emoji}</span>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">현재 단계: {CRM_STATUS_CONFIG[currentStatus]?.label}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {currentStatus === 'requested' && '상담 신청이 접수되었습니다. 변호사 배정을 기다리고 있습니다.'}
+                    {currentStatus === 'consulting' && '담당 변호사와 초기 상담이 진행 중입니다. 채팅방에서 문의하세요.'}
+                    {currentStatus === 'contracted' && '수임 계약이 완료되었습니다. 필요 서류를 준비해 주세요.'}
+                    {currentStatus === 'document' && '서류 수집 중입니다. 아래에서 서류를 업로드하실 수 있습니다.'}
+                    {currentStatus === 'filed' && '법원에 신청서가 접수되었습니다. 보정 요청이 있을 수 있습니다.'}
+                    {currentStatus === 'commenced' && '법원의 개시결정이 내려졌습니다. 변제 계획에 따라 진행됩니다.'}
+                    {currentStatus === 'repaying' && '변제금을 매월 법원에 납부하는 단계입니다.'}
+                    {currentStatus === 'discharged' && '🎉 면책 결정이 확정되었습니다! 잔여 채무가 면제됩니다.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 2. 서류 제출 ── */}
+            <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-xl space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-purple-50 text-purple-500"><FileText className="w-5 h-5" /></div>
+                  서류 제출
+                </h3>
+                <span className="text-xs text-slate-500 font-medium">{documents.length}건 제출 완료</span>
+              </div>
+
+              {/* 업로드 버튼 영역 */}
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-brand hover:bg-brand/5 transition-all cursor-pointer group">
+                  <Upload className="w-5 h-5 text-slate-400 group-hover:text-brand transition-colors" />
+                  <span className="text-xs font-bold text-slate-600 group-hover:text-brand">파일 업로드</span>
+                  <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx" multiple onChange={(e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+                    const store = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
+                    const ext = store[reqId!] || {};
+                    const existingDocs = ext.documents || [];
+                    const newDocs = Array.from(files).map(f => ({
+                      id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      name: f.name,
+                      category: 'client_upload',
+                      uploadedAt: new Date().toISOString(),
+                      fileSize: f.size,
+                    }));
+                    ext.documents = [...existingDocs, ...newDocs];
+                    store[reqId!] = ext;
+                    localStorage.setItem('legal_crm_data', JSON.stringify(store));
+                    toast.success(`${files.length}개 파일이 제출되었습니다`);
+                  }} />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 카메라 촬영 (간단한 input capture)
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.capture = 'environment';
+                    input.onchange = (e: any) => {
+                      const file = e.target?.files?.[0];
+                      if (!file) return;
+                      const store = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
+                      const ext = store[reqId!] || {};
+                      const existingDocs = ext.documents || [];
+                      existingDocs.push({
+                        id: `doc-${Date.now()}`,
+                        name: `촬영_${new Date().toLocaleDateString('ko')}.jpg`,
+                        category: 'client_upload',
+                        uploadedAt: new Date().toISOString(),
+                        fileSize: file.size,
+                      });
+                      ext.documents = existingDocs;
+                      store[reqId!] = ext;
+                      localStorage.setItem('legal_crm_data', JSON.stringify(store));
+                      toast.success('서류 촬영이 제출되었습니다');
+                    };
+                    input.click();
+                  }}
+                  className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer group"
+                >
+                  <Camera className="w-5 h-5 text-slate-400 group-hover:text-purple-500 transition-colors" />
+                  <span className="text-xs font-bold text-slate-600 group-hover:text-purple-600">카메라 촬영</span>
+                </button>
+              </div>
+
+              {/* 제출된 서류 목록 */}
+              {documents.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {documents.map((doc: any) => (
+                    <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                      <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-700 truncate">{doc.name}</p>
+                        <p className="text-[10px] text-slate-400">{new Date(doc.uploadedAt).toLocaleDateString('ko')}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">제출 완료</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs text-slate-500 mt-2 font-medium">아직 제출된 서류가 없습니다</p>
+                  <p className="text-[11px] text-slate-400 mt-1">부채증명서, 소득자료 등을 촬영하거나 업로드하세요</p>
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>제출된 서류는 담당 변호사가 확인합니다. 민감한 개인정보가 포함된 서류도 암호화되어 안전하게 보호됩니다.</span>
+              </p>
+            </div>
+
+            {/* ── 3. 수임료 납부 현황 (읽기 전용) ── */}
+            {totalFee > 0 && (
+              <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-xl space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-500"><DollarSign className="w-5 h-5" /></div>
+                    수임료 납부 현황
+                  </h3>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                    totalPaid >= totalFee ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                  }`}>
+                    {totalPaid >= totalFee ? '✅ 완납' : `${Math.round((totalPaid / totalFee) * 100)}% 납부`}
+                  </span>
+                </div>
+
+                {/* 총액 및 프로그레스 */}
+                <div className="bg-slate-50 p-4 rounded-2xl space-y-3">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">총 수임료</span>
+                    <span className="font-bold text-slate-800">{totalFee.toLocaleString()}만원</span>
+                  </div>
+                  <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${(totalPaid / totalFee) * 100}%` }} />
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-emerald-600 font-bold">납부 완료 {totalPaid.toLocaleString()}만원</span>
+                    <span className={`font-bold ${totalFee - totalPaid > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                      잔여 {(totalFee - totalPaid).toLocaleString()}만원
+                    </span>
+                  </div>
+                </div>
+
+                {/* 분납 스케줄 목록 */}
+                {feeSchedule.length > 0 && (
+                  <div className="space-y-2">
+                    {feeSchedule.map((inst: FeeInstallment) => {
+                      const isPast = new Date(inst.dueDate) < new Date() && inst.status === 'pending';
+                      return (
+                        <div key={inst.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+                          inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' :
+                          isPast ? 'border-red-200 bg-red-50/50' :
+                          'border-slate-200'
+                        }`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            inst.status === 'paid' ? 'bg-emerald-100 text-emerald-600' :
+                            isPast ? 'bg-red-100 text-red-500' :
+                            'bg-slate-100 text-slate-400'
+                          }`}>
+                            {inst.status === 'paid' ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-slate-600">{(inst as any).memo || `${inst.round}차`}</span>
+                              <span className="text-sm font-bold text-slate-800">{inst.amount.toLocaleString()}만원</span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              📅 {inst.dueDate}
+                              {inst.paidDate && <span className="text-emerald-600 font-medium"> → {inst.paidDate} 납부완료</span>}
+                              {isPast && <span className="text-red-500 font-bold"> (납부일 경과)</span>}
+                            </p>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
+                            inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                            isPast ? 'bg-red-100 text-red-700' :
+                            'bg-slate-100 text-slate-500'
+                          }`}>
+                            {inst.status === 'paid' ? '✅ 완료' : isPast ? '⚠️ 미납' : '⏳ 예정'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-slate-400 flex items-start gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <span>수임료 납부에 관한 문의는 담당 변호사에게 채팅으로 연락해 주세요.</span>
+                </p>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* LIVE DIAGNOSTICS DASHBOARD - 마이페이지에서는 숨김, 내관리방 슬라이드 패널에서는 리포트가 대체 */}
       <div className="flex flex-col gap-5">
