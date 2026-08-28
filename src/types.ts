@@ -1593,3 +1593,67 @@ export interface NotificationSettings {
     enabledMilestones: AlimtokMilestone[];
   };
 }
+
+// ═══════════════════════════════════════════════
+// 전자 계약 (E-Contract) 시스템
+// ═══════════════════════════════════════════════
+
+export type ContractStatus = 'drafting' | 'pending_sign' | 'client_review' | 'signing' | 'completed' | 'cancelled';
+
+export const CONTRACT_STATUS_CONFIG: Record<ContractStatus, { label: string; emoji: string; color: string; bgColor: string }> = {
+  drafting: { label: '작성중', emoji: '✏️', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  pending_sign: { label: '서명대기', emoji: '⏳', color: 'text-amber-600', bgColor: 'bg-amber-100' },
+  client_review: { label: '고객확인', emoji: '👁️', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  signing: { label: '서명진행', emoji: '✍️', color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
+  completed: { label: '서명완료', emoji: '✅', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
+  cancelled: { label: '취소', emoji: '❌', color: 'text-slate-500', bgColor: 'bg-slate-100' },
+};
+
+export type ContractDocType = 'main_contract' | 'privacy_consent' | 'third_party_consent' | 'power_of_attorney' | 'installment_agreement' | 'procedure_consent' | 'id_confirmation' | 'spouse_consent' | 'custom';
+
+export const CONTRACT_DOC_TYPES: Record<ContractDocType, { label: string; emoji: string; signatureRequired: 'client' | 'lawyer' | 'both'; description: string; required: boolean }> = {
+  main_contract: { label: '위임 계약서', emoji: '📄', signatureRequired: 'both', description: '개인회생/파산 사건 수임 계약 본문', required: true },
+  privacy_consent: { label: '개인정보 수집·이용 동의서', emoji: '🔒', signatureRequired: 'client', description: '개인정보보호법 필수 동의', required: true },
+  third_party_consent: { label: '제3자 정보제공 동의서', emoji: '📋', signatureRequired: 'client', description: '법원/채권자 등 제3자 제공 동의', required: true },
+  power_of_attorney: { label: '위임장', emoji: '📜', signatureRequired: 'client', description: '법원 제출용 대리인 위임장', required: true },
+  installment_agreement: { label: '수임료 분할납부 약정서', emoji: '💰', signatureRequired: 'both', description: '분납 조건/연체 시 조항', required: false },
+  procedure_consent: { label: '사건 진행 동의서', emoji: '📝', signatureRequired: 'client', description: '절차/기간/결과에 대한 이해 확인', required: true },
+  id_confirmation: { label: '신분증 사본 제출 확인서', emoji: '🪪', signatureRequired: 'client', description: '본인확인 서류 수령 증빙', required: false },
+  spouse_consent: { label: '배우자 동의서', emoji: '👫', signatureRequired: 'client', description: '기혼 의뢰인, 재산 관련 동의', required: false },
+  custom: { label: '기타 문서', emoji: '📎', signatureRequired: 'both', description: '사무소별 자체 약정', required: false },
+};
+
+export interface ContractDocument {
+  id: string;
+  type: ContractDocType;
+  title: string;
+  content: string;
+  signatureRequired: 'client' | 'lawyer' | 'both';
+  clientSignature?: string;
+  lawyerSignature?: string;
+  clientSignedAt?: string;
+  lawyerSignedAt?: string;
+  order: number;
+  included: boolean;
+}
+
+export interface ElectronicContract {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientPhone: string;
+  clientAddress?: string;
+  lawyerName: string;
+  lawFirmName: string;
+  assignedLawyerId?: string;
+  totalFee: number;
+  courtCosts: { creditorCount: number; deliveryFee: number; stampFee: number; miscFee: number };
+  feeSchedule: FeeInstallment[];
+  documents: ContractDocument[];
+  status: ContractStatus;
+  contractDate: string;
+  identityVerification?: { method: string; verifiedAt: string; ci?: string; deviceInfo: string; ipAddress: string };
+  auditTrail: Array<{ action: string; timestamp: string; actor: 'lawyer' | 'client' | 'system'; ip?: string; userAgent?: string; documentHash?: string }>;
+  createdAt: string;
+  updatedAt: string;
+}

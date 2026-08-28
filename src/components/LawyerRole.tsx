@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice 
@@ -14,6 +14,7 @@ import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from 
 import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
 import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
+const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import AICaseAnalysisLocked from './lawyer/AICaseAnalysisLocked';
 import ClientOriginalInfo from './lawyer/ClientOriginalInfo';
@@ -93,7 +94,7 @@ export default function LawyerRole({
   notices = initialNotices
 }: LawyerRoleProps) {
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [casesSub, setCasesSub] = useState<'kanban' | 'active' | 'closed'>('kanban');
   const [settingsSub, setSettingsSub] = useState<'profile' | 'notices' | 'channels' | 'logs' | 'calc-rules'>('profile');
@@ -1969,6 +1970,9 @@ export default function LawyerRole({
               )}
               <button onClick={() => setActiveTab('tasks-schedule')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'tasks-schedule' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                 <CalendarCheck className="w-5 h-5 shrink-0" /><span>일정 / 할일</span>
+              </button>
+              <button onClick={() => setActiveTab('contracts')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'contracts' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
+                <FileSignature className="w-5 h-5 shrink-0" /><span>전자 계약</span>
               </button>
 
               {/* 그룹 2: AI 도구 */}
@@ -3856,6 +3860,13 @@ export default function LawyerRole({
               activeLawyerId={activeLawyer.id}
             />
           </div>
+        )}
+
+        {/* TAB: 전자 계약 */}
+        {activeTab === 'contracts' && (
+          <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand/20 border-t-brand rounded-full" /></div>}>
+            <ContractManagementTab lawyerName={activeLawyer.name} lawFirmName={activeLawyer.lawFirmName || '법무법인'} />
+          </React.Suspense>
         )}
 
         {/* TAB: cases → CRM으로 통합 리다이렉트 */}
