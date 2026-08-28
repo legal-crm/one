@@ -340,15 +340,6 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-black text-slate-800">📄 계약서 미리보기</h3>
-          <button onClick={() => {
-            const final = updateContractStatus(c, 'completed');
-            saveContract(final);
-            onSave(final);
-            toast.success('계약이 완료되었습니다!');
-            onClose();
-          }} className="flex items-center gap-2 px-5 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-brand/90 cursor-pointer whitespace-nowrap min-h-[44px]">
-            <Download className="w-4 h-4" /> 저장 및 완료
-          </button>
         </div>
 
         {/* 계약서 본문 */}
@@ -412,39 +403,60 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const canProceed = step !== 3 || (agreePrivacy && agreeThirdParty && agreeProcedure);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/50 flex">
-      <div className="flex flex-1 bg-white">
-        {/* 좌측 사이드바 */}
-        <div className="w-60 bg-slate-50 border-r border-slate-200 p-4 flex flex-col shrink-0">
-          <button onClick={onClose} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 mb-6 cursor-pointer font-bold"><ArrowLeft className="w-4 h-4" /> 전자 계약서 작성</button>
-          <nav className="space-y-1 flex-1">
-            {STEPS.map((s, i) => {
-              const Icon = s.icon;
-              return (
-                <button key={s.key} onClick={() => setStep(i)} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm transition-all cursor-pointer ${step === i ? 'bg-brand text-white font-bold shadow-sm' : 'text-slate-600 hover:bg-slate-100 font-medium'}`}>
-                  <Icon className="w-4.5 h-4.5 shrink-0" /><span>{s.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* 메인 콘텐츠 */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10">
-          <div className="max-w-3xl mx-auto">
-            {stepContent[step]()}
-
-            {/* 하단 네비게이션 */}
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">
-              <button onClick={() => step > 0 && setStep(step - 1)} disabled={step === 0} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"><ArrowLeft className="w-4 h-4" /> 이전</button>
-              <button onClick={handleSave} className="text-xs font-bold text-slate-500 hover:text-brand cursor-pointer">💾 임시 저장</button>
-              {step < 5 ? (
-                <button onClick={() => canProceed && setStep(step + 1)} disabled={!canProceed} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-brand hover:bg-brand/90 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap">다음 <ArrowRight className="w-4 h-4" /></button>
-              ) : null}
-            </div>
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"><ArrowLeft className="w-5 h-5" /></button>
+          <div>
+            <h2 className="text-xl font-black text-slate-900">✏️ 전자 계약서 작성</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{c.id} · {c.clientName || '신규 계약'}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <button onClick={handleSave} className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer whitespace-nowrap">💾 임시 저장</button>
+          {step === 5 && (
+            <button onClick={() => {
+              const final = updateContractStatus(c, 'completed');
+              saveContract(final);
+              onSave(final);
+              toast.success('계약이 완료되었습니다!');
+              onClose();
+            }} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-brand hover:bg-brand/90 rounded-xl cursor-pointer whitespace-nowrap min-h-[44px]">
+              <Download className="w-3.5 h-3.5" /> 저장 및 완료
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 스텝 탭 (가로 - CRM 디테일 탭과 동일 스타일) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        {STEPS.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <button key={s.key} onClick={() => setStep(i)} className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap ${step === i ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>
+              <Icon className="w-3.5 h-3.5" /> {s.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 컨텐츠 영역 */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
+        {stepContent[step]()}
+      </div>
+
+      {/* 하단 네비게이션 */}
+      <div className="flex items-center justify-between">
+        <button onClick={() => step > 0 && setStep(step - 1)} disabled={step === 0} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"><ArrowLeft className="w-4 h-4" /> 이전</button>
+        <div className="flex items-center gap-1">
+          {STEPS.map((_, i) => <span key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-brand' : i < step ? 'bg-emerald-400' : 'bg-slate-200'}`} />)}
+        </div>
+        {step < 5 ? (
+          <button onClick={() => canProceed && setStep(step + 1)} disabled={!canProceed} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-brand hover:bg-brand/90 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shadow-sm">다음 <ArrowRight className="w-4 h-4" /></button>
+        ) : <div className="w-20" />}
       </div>
     </div>
   );
 }
+
