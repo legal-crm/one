@@ -1964,12 +1964,6 @@ export default function LawyerRole({
                   <BarChart2 className="w-5 h-5 shrink-0" /><span>종합 대시보드</span>
                 </button>
               )}
-              {permissionCtx.canAccessTab('open-requests') && (
-                <button onClick={() => setActiveTab('open-requests')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'open-requests' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
-                  <Briefcase className="w-5 h-5 shrink-0" /><span>신규 상담 요청</span>
-                  {totalOpenRequestsCount > 0 && (<span className="ml-auto bg-rose-500 text-white rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{totalOpenRequestsCount}</span>)}
-                </button>
-              )}
               <button onClick={() => setActiveTab('chat')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'chat' ? 'bg-white/10 text-white font-bold border-l-4 border-blue-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-4 border-transparent font-medium'}`}>
                 <MessageSquare className="w-5 h-5 shrink-0" /><span>상담 채팅</span>
                 {(() => { const c = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id)).length; return c > 0 ? (<span className="ml-auto bg-slate-700 text-slate-200 rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-xs font-bold shadow-sm">{c}</span>) : null; })()}
@@ -2053,10 +2047,6 @@ export default function LawyerRole({
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around shadow-lg">
             <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'dashboard' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
               <BarChart2 className="w-5 h-5" /><span className="text-xs font-bold">대시보드</span>
-            </button>
-            <button onClick={() => setActiveTab('open-requests')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors relative cursor-pointer ${activeTab === 'open-requests' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
-              <Briefcase className="w-5 h-5" /><span className="text-xs font-bold">신규요청</span>
-              {totalOpenRequestsCount > 0 && (<span className="absolute -top-0.5 right-1 bg-red-500 text-white rounded-full w-4.5 h-4.5 flex items-center justify-center text-xs font-bold">{totalOpenRequestsCount}</span>)}
             </button>
             <button onClick={() => setActiveTab('chat')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'chat' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
               <MessageSquare className="w-5 h-5" /><span className="text-xs font-bold">채팅</span>
