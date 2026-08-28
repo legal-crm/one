@@ -41,20 +41,24 @@ interface CrmTabProps {
   activeLawyer: User;
   setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
   getDisplayPhoneNumber: (r: ConsultRequest) => string;
+  handleOpenProposalDraft?: (requestId: string) => void;
+  setActiveTab?: (tab: string) => void;
+  setCopilotPreselectedReqId?: (id: string) => void;
+  initialView?: 'leads';
 }
 
 type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
 type SortDir = 'asc' | 'desc';
-type ViewMode = 'list' | 'kanban';
+type ViewMode = 'list' | 'kanban' | 'leads';
 
 const CRM_STATUSES: CrmStatus[] = ['requested','consulting','contracted','document','filed','commenced','repaying','discharged','cancelled'];
 
-export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, getDisplayPhoneNumber }: CrmTabProps) {
+export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, getDisplayPhoneNumber, handleOpenProposalDraft, setActiveTab, setCopilotPreselectedReqId, initialView }: CrmTabProps) {
   // ── 기본 State ──
   const [crmData, setCrmData] = useState<CrmDataStore>({});
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [activeStaff, setActiveStaff] = useState<StaffMember | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView || 'list');
   
   // ── 검색/필터/정렬 ──
   const [search, setSearch] = useState('');
@@ -753,7 +757,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   return (
     <div className="space-y-5 animate-fadeIn">
 
-      {/* ── 헤더 통계 ── */}
+      {/* ── 헤더 통계 ── (리스트에서만 표시) */}
+      {!selectedId && (<>
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
           <div>
@@ -977,6 +982,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           </button>
 
           <div className="flex border border-slate-200 rounded-xl overflow-hidden">
+            {handleOpenProposalDraft && (
+              <button onClick={() => setViewMode('leads')} className={`px-3 py-2 cursor-pointer text-xs font-bold flex items-center gap-1 ${viewMode === 'leads' ? 'bg-rose-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                📋 신규 리드
+                {(() => { const cnt = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id)).length; return cnt > 0 ? <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full font-black ${viewMode === 'leads' ? 'bg-white text-rose-600' : 'bg-rose-100 text-rose-600'}`}>{cnt}</span> : null; })()}
+              </button>
+            )}
             <button onClick={() => setViewMode('list')} className={`p-2.5 cursor-pointer ${viewMode === 'list' ? 'bg-brand text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
               <List className="w-4 h-4" />
             </button>
@@ -1052,12 +1063,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           <button onClick={() => setSelectedIds(new Set())} className="text-slate-500 hover:text-slate-700 ml-auto text-sm font-medium cursor-pointer">선택 해제</button>
         </div>
       )}
+      </>)}
 
       {/* ══════════ 리스트 뷰 ══════════ */}
-      {viewMode === 'list' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* 좌측: 테이블 */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      {viewMode === 'list' && !selectedId && (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse table-fixed">
                 <thead>
@@ -1066,7 +1076,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       <input type="checkbox" checked={selectedIds.size === pagedRequests.length && pagedRequests.length > 0} onChange={handleSelectAll}
                         className="rounded border-slate-300" />
                     </th>
-                    <th className="p-3.5 w-[30%] cursor-pointer hover:text-slate-900" onClick={() => handleSort('clientName')}>
+                    <th className="p-1 w-[28px]"></th>
+                    <th className="p-3.5 w-[28%] cursor-pointer hover:text-slate-900" onClick={() => handleSort('clientName')}>
                       고객명 {sortField === 'clientName' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
                     <th className="p-3.5 w-[14%] cursor-pointer hover:text-slate-900 text-center" onClick={() => handleSort('crmStatus')}>
@@ -1143,7 +1154,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     );
                   })}
                   {pagedRequests.length === 0 && (
-                    <tr><td colSpan={6} className="p-12 text-center text-slate-500 text-sm font-medium">검색 조건에 부합하는 고객이 없습니다.</td></tr>
+                    <tr><td colSpan={8} className="p-12 text-center text-slate-500 text-sm font-medium">검색 조건에 부합하는 고객이 없습니다.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1174,40 +1185,133 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               );
             })()}
           </div>
+      )}
 
-          {/* ── 우측: 상세 패널 ── */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            {selectedClient && selectedExt ? (
+      {/* ══════════ 상세 뷰 (풀사이즈) ══════════ */}
+      {viewMode === 'list' && selectedId && selectedClient && selectedExt && (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="space-y-0">
                 {/* 헤더 */}
-                <div className="p-5 border-b border-slate-100 flex justify-between items-start">
-                  <div>
-                    <span className="text-xs text-brand font-black block uppercase tracking-wider">CLIENT DETAIL</span>
-                    <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">{selectedClient.clientName}</h3>
+                <div className="p-5 border-b border-slate-100 flex items-center gap-4">
+                  <button onClick={() => setSelectedId('')} className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer active:scale-[0.98] shrink-0 whitespace-nowrap">
+                    <ChevronLeft className="w-5 h-5" />
+                    <span>목록</span>
+                  </button>
+                  <div className="h-8 w-px bg-slate-200" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-extrabold text-slate-900 truncate">{selectedClient.clientName}</h3>
                     <span className="text-sm text-slate-500 font-medium">{getDisplayPhoneNumber(selectedClient)}</span>
                   </div>
-                  <span className={`text-xs px-3 py-1.5 rounded-lg border font-bold ${CRM_STATUS_CONFIG[selectedExt.crmStatus].bgColor} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].color} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].borderColor}`}>
+                  <span className={`text-xs px-3 py-1.5 rounded-lg border font-bold shrink-0 ${CRM_STATUS_CONFIG[selectedExt.crmStatus].bgColor} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].color} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].borderColor}`}>
                     {CRM_STATUS_CONFIG[selectedExt.crmStatus].emoji} {CRM_STATUS_CONFIG[selectedExt.crmStatus].label}
                   </span>
                 </div>
 
+                {/* ── 2단 레이아웃: 사이드바 + 메인 ── */}
+                <div className="flex">
+                  {/* Left sidebar */}
+                  <div className="w-[300px] shrink-0 border-r border-slate-100 bg-slate-50/30 hidden lg:block">
+                    <div className="p-4 space-y-4">
+                      {/* 핵심 지표 */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">핵심 지표</span>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div className="bg-red-50/80 p-2.5 rounded-xl border border-red-100">
+                            <span className="text-red-400 block text-[10px] font-bold">총 채무</span>
+                            <span className="font-extrabold text-red-600 text-base">{selectedClient.financialProfile.debtTotal.toLocaleString()}<span className="text-[10px] ml-0.5 font-bold">만</span></span>
+                          </div>
+                          <div className="bg-blue-50/80 p-2.5 rounded-xl border border-blue-100">
+                            <span className="text-blue-400 block text-[10px] font-bold">월 소득</span>
+                            <span className="font-extrabold text-blue-600 text-base">{selectedClient.financialProfile.income}<span className="text-[10px] ml-0.5 font-bold">만</span></span>
+                          </div>
+                          <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                            <span className="text-slate-400 block text-[10px] font-bold">자산 합산</span>
+                            <span className="font-bold text-slate-700 text-sm">{selectedClient.financialProfile.assetsTotal.toLocaleString()}만</span>
+                          </div>
+                          <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                            <span className="text-slate-400 block text-[10px] font-bold">소득 대비</span>
+                            <span className="font-bold text-amber-600 text-sm">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}배</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 기본 정보 */}
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">기본 정보</span>
+                        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 text-xs">
+                          {selectedClient.financialProfile.age && (
+                            <div className="flex justify-between px-3 py-2"><span className="text-slate-500">나이/성별</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.age}세 / {selectedClient.financialProfile.gender === 'male' ? '남' : selectedClient.financialProfile.gender === 'female' ? '여' : '-'}</span></div>
+                          )}
+                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">부양가족</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.dependents}명 ({selectedClient.financialProfile.dependents + 1}인 가구)</span></div>
+                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">거주 지역</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.residenceRegion}</span></div>
+                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">채권자 수</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.creditorCount}곳</span></div>
+                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">혼인 상태</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : selectedClient.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
+                        </div>
+                      </div>
+
+                      {/* 배정 및 상태 */}
+                      {currentPermissions.changeStatus && (
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">배정 및 상태</span>
+                          <div className="space-y-2">
+                            <div className="space-y-0.5">
+                              <label className="text-[10px] text-slate-500 font-bold">진행 상태</label>
+                              <select value={editStatus} onChange={e => setEditStatus(e.target.value as CrmStatus)}
+                                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-700">
+                                {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>)}
+                              </select>
+                            </div>
+                            <div className="space-y-0.5">
+                              <label className="text-[10px] text-slate-500 font-bold">담당 변호사</label>
+                              <select value={editLawyerId} onChange={e => setEditLawyerId(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-700">
+                                <option value="">미배정</option>
+                                {[...lawyers, ...staffMembers.filter(m => m.role === 'LAWYER')].map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="space-y-0.5">
+                              <label className="text-[10px] text-slate-500 font-bold">상담 직원</label>
+                              <select value={editConsultantId} onChange={e => setEditConsultantId(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-700">
+                                <option value="">미배정</option>
+                                {staffMembers.filter(m => m.role === 'CONSULTANT' && m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                              </select>
+                            </div>
+                            <button onClick={handleSaveAssignment}
+                              className="w-full bg-brand hover:bg-brand-hover text-white py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors press-scale whitespace-nowrap">
+                              배정 및 상태 저장
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 채널 & 등록일 */}
+                      <div className="text-[10px] text-slate-400 space-y-1 pt-2 border-t border-slate-200">
+                        <div className="flex justify-between"><span>유입 채널</span><span className="font-bold text-slate-600">{INTAKE_CHANNEL_CONFIG[selectedExt.intakeChannel || 'mykim']?.label || '마이킴'}</span></div>
+                        <div className="flex justify-between"><span>등록일</span><span className="font-bold text-slate-600">{new Date(selectedClient.createdAt).toLocaleDateString()}</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: tabs + content */}
+                  <div className="flex-1 min-w-0">
                 {/* 서브탭 */}
-                <div className="flex border-b border-slate-200 overflow-x-auto no-scrollbar">
+                <div className="flex border-b border-slate-200 overflow-x-auto no-scrollbar px-3">
                   {([['info','\uD83D\uDC64 \uC815\uBCF4'],['notes','\uD83D\uDCDD \uBA54\uBAA8'],['teamwork','\uD83D\uDCAC \uD300\uC6CC\uD06C'],['timeline','\uD83D\uDCC5 \uD0C0\uC784\uB77C\uC778']] as [typeof detailTab, string][]).map(([key, label]) => (
                     <button key={key} onClick={() => setDetailTab(key)}
-                      className={`flex-1 py-3 px-2 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>
+                      className={`py-3 px-4 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>
                       {label}
                     </button>
                   ))}
                   {/* 추가 관리 탭 — 모든 상태에서 표시 */}
-                      <button onClick={() => setDetailTab('fees')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'fees' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>💰 수임료</button>
-                      <button onClick={() => setDetailTab('documents')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'documents' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📁 문서</button>
-                      <button onClick={() => setDetailTab('corrections')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'corrections' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📮 보정</button>
-                      <button onClick={() => setDetailTab('court')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
-                      <button onClick={() => setDetailTab('repayment')} className={`px-3 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'repayment' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📆 변제금</button>
+                      <button onClick={() => setDetailTab('fees')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'fees' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>💰 수임료</button>
+                      <button onClick={() => setDetailTab('documents')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'documents' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📁 문서</button>
+                      <button onClick={() => setDetailTab('corrections')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'corrections' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📮 보정</button>
+                      <button onClick={() => setDetailTab('court')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
+                      <button onClick={() => setDetailTab('repayment')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'repayment' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📆 변제금</button>
                 </div>
 
-                <div className="p-5 space-y-5 max-h-[650px] overflow-y-auto">
+                <div className="p-5 space-y-4">
                   {/* ── 정보 탭 ── */}
                   {detailTab === 'info' && (
                     <>
@@ -1250,46 +1354,34 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </div>
                         );
                       })()}
-                      {/* 인적 정보 */}
-                      {currentPermissions.editClientInfo && (
-                        <div className="space-y-3">
-                          <span className="text-sm font-bold text-slate-800 block">인적 정보</span>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            <div className="space-y-1">
-                              <label className="text-xs text-slate-500 font-bold">의뢰인 이름</label>
-                              <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm text-slate-900" />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs text-slate-500 font-bold">연락처</label>
-                              <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm text-slate-900" />
+                      {/* ── 전체 카드 3단 그리드 ── */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+
+                        {/* 기본 정보 편집 */}
+                        {currentPermissions.editClientInfo && (
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-sm">
+                            <span className="text-xs font-black text-slate-500 tracking-wide uppercase block mb-2">✏️ 기본 정보 편집</span>
+                            <div className="space-y-2">
+                              <div className="space-y-0.5">
+                                <label className="text-[10px] text-slate-400 font-bold">의뢰인 이름</label>
+                                <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900" />
+                              </div>
+                              <div className="space-y-0.5">
+                                <label className="text-[10px] text-slate-400 font-bold">연락처</label>
+                                <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900" />
+                              </div>
+                              <button onClick={handleSaveClientInfo}
+                                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors press-scale">
+                                업데이트
+                              </button>
                             </div>
                           </div>
-                          <button onClick={handleSaveClientInfo}
-                            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-colors">
-                            기본 정보 업데이트
-                          </button>
-                        </div>
-                      )}
-
-                      {/* 채무 현황 + 전체 프로필 — 2칸 그리드 */}
-                      <div className="space-y-3">
-                        <span className="text-sm font-bold text-slate-800 block">{'\uD83D\uDCCA \uCC44\uBB34 \uD604\uD669 \uBC0F \uC758\uB8B0\uC778 \uD504\uB85C\uD544'}</span>
-                        
-                        {/* 핵심 4대 지표 */}
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="bg-red-50/60 p-3 rounded-xl border border-red-100"><span className="text-red-400 block text-xs font-bold">{'\uCD1D \uCC44\uBB34'}</span><span className="font-extrabold text-red-600 text-base">{selectedClient.financialProfile.debtTotal.toLocaleString()}{'\uB9CC'}</span></div>
-                          <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-100"><span className="text-blue-400 block text-xs font-bold">{'\uC6D4 \uC18C\uB4DD'}</span><span className="font-extrabold text-blue-600 text-base">{selectedClient.financialProfile.income}{'\uB9CC'}</span></div>
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200"><span className="text-slate-500 block text-xs font-bold">{'\uC790\uC0B0 \uD569\uC0B0'}</span><span className="font-bold text-slate-800 text-base">{selectedClient.financialProfile.assetsTotal.toLocaleString()}{'\uB9CC'}</span></div>
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200"><span className="text-slate-500 block text-xs font-bold">{'\uC18C\uB4DD \uB300\uBE44 \uBD80\uCC44'}</span><span className="font-bold text-amber-600 text-base">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}{'\uBC30'}</span></div>
-                        </div>
-
-                        {/* 2칸 그리드: 인적사항 + 직업/주거 */}
-                        <div className="grid grid-cols-2 gap-2.5">
+                        )}
 
                         {/* 인적사항 */}
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-sm text-slate-700 font-medium">
+                        <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
                           <span className="text-xs font-black text-indigo-500 tracking-wide uppercase block">👤 인적사항</span>
                           {selectedClient.financialProfile.age && (
                             <div className="flex justify-between"><span>나이/성별</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.age}세 / {selectedClient.financialProfile.gender === 'male' ? '남성' : selectedClient.financialProfile.gender === 'female' ? '여성' : '미기재'}</span></div>
@@ -1308,7 +1400,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                         {/* 직업·주거 정보 */}
                         {selectedClient.financialProfile.jobType && (
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-sm text-slate-700 font-medium">
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
                             <span className="text-xs font-black text-cyan-600 tracking-wide uppercase block">💼 직업 · 주거</span>
                             <div className="flex justify-between"><span>직업 유형</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.jobType === 'SALARIED' ? '급여소득' : selectedClient.financialProfile.jobType === 'BUSINESS' ? '영업소득' : selectedClient.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}{selectedClient.financialProfile.companyName ? ` (${selectedClient.financialProfile.companyName})` : ''}</span></div>
                             {selectedClient.financialProfile.employmentDate && (
@@ -1340,10 +1432,9 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             )}
                           </div>
                         )}
-                        </div> {/* end 2-col grid */}
 
                         {/* 채무 상세 */}
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-sm text-slate-700 font-medium">
+                        <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
                           <span className="text-xs font-black text-red-500 tracking-wide uppercase block">⚠️ 채무 상세</span>
                           <div className="flex justify-between"><span>채무 원인</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : selectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : selectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : selectedClient.financialProfile.debtCause === 'GAMBLING' ? '도박/사행성' : selectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
                           {selectedClient.financialProfile.speculativeLoss !== undefined && selectedClient.financialProfile.speculativeLoss > 0 && (
@@ -1385,7 +1476,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                         {/* 생계비 구성 */}
                         {(selectedClient.financialProfile.rentCost || selectedClient.financialProfile.medicalCost || selectedClient.financialProfile.educationCost || selectedClient.financialProfile.monthlyFixedExpenses) && (
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-sm text-slate-700 font-medium">
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
                             <span className="text-xs font-black text-teal-600 tracking-wide uppercase block">🏠 월 생계비 구성</span>
                             {selectedClient.financialProfile.rentCost !== undefined && selectedClient.financialProfile.rentCost > 0 && (
                               <div className="flex justify-between"><span>월세</span><span className="text-slate-800">{selectedClient.financialProfile.rentCost}만</span></div>
@@ -1407,7 +1498,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
                         {/* 퇴직금 */}
                         {selectedClient.financialProfile.retirementPay !== undefined && selectedClient.financialProfile.retirementPay > 0 && (
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-sm text-slate-700 font-medium">
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
                             <span className="text-xs font-black text-amber-600 tracking-wide uppercase block">💼 퇴직금</span>
                             <div className="flex justify-between"><span>예상 퇴직금</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.retirementPay.toLocaleString()}만</span></div>
                             <div className="flex justify-between"><span>퇴직연금 형태</span><span className={selectedClient.financialProfile.retirementPensionType === 'unknown' ? 'font-bold text-amber-600' : 'text-slate-800'}>{selectedClient.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' : selectedClient.financialProfile.retirementPensionType === 'none' ? '미가입 (50% 반영)' : '모름 (50% 반영)'}</span></div>
@@ -1416,6 +1507,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             )}
                           </div>
                         )}
+                        </div>{/* end 3-col grid */}
 
                         {/* 리스크 플래그 */}
                         {selectedClient.financialProfile.riskFlags && selectedClient.financialProfile.riskFlags.length > 0 && (
@@ -1425,79 +1517,27 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                             ))}
                           </div>
                         )}
-                      </div>
 
-                      {/* 배정 + 상태 */}
-                      {currentPermissions.changeStatus && (
-                        <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                          <span className="text-sm font-black text-brand block">⚙️ 담당자 배정 및 상태</span>
-                          <div className="space-y-2.5 text-sm">
-                            <div className="flex items-center gap-3">
-                              <span className="text-slate-600 font-bold w-24 shrink-0 text-right">진행 상태:</span>
-                              <select value={editStatus} onChange={e => setEditStatus(e.target.value as CrmStatus)}
-                                className="bg-white border border-slate-200 rounded-xl p-2 text-sm text-slate-700 font-medium flex-1">
-                                {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>)}
-                              </select>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-slate-600 font-bold w-24 shrink-0 text-right">담당 변호사:</span>
-                              <select value={editLawyerId} onChange={e => setEditLawyerId(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl p-2 text-sm text-slate-700 font-medium flex-1">
-                                <option value="">미배정</option>
-                                {[...lawyers, ...staffMembers.filter(m => m.role === 'LAWYER')].map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                              </select>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-slate-600 font-bold w-24 shrink-0 text-right">상담 직원:</span>
-                              <select value={editConsultantId} onChange={e => setEditConsultantId(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl p-2 text-sm text-slate-700 font-medium flex-1">
-                                <option value="">미배정</option>
-                                {staffMembers.filter(m => m.role === 'CONSULTANT' && m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                              </select>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-slate-600 font-bold w-24 shrink-0 text-right">사무 직원:</span>
-                              <select value={editStaffId} onChange={e => setEditStaffId(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl p-2 text-sm text-slate-700 font-medium flex-1">
-                                <option value="">미배정</option>
-                                {staffMembers.filter(m => m.role === 'STAFF' && m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                              </select>
-                            </div>
-
-                          </div>
-                          <button onClick={handleSaveAssignment}
-                            className="w-full bg-brand hover:bg-brand-hover text-white py-3 rounded-xl text-sm font-extrabold mt-2 cursor-pointer shadow-sm">
-                            배정 및 상태 저장
-                          </button>
-                        </div>
-                      )}
-
-                      {/* 이관 */}
-                      {currentPermissions.assignCases && (
-                        <div className="space-y-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
-                          <span className="text-sm font-bold text-amber-700 block">↔️ 사건 이관</span>
-                          <div className="flex gap-2">
+                      {/* 이관 + 아카이브 (인라인) */}
+                      <div className="flex flex-wrap gap-3 items-end pt-2 border-t border-slate-100">
+                        {currentPermissions.assignCases && (
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-xs font-bold text-amber-700 shrink-0 whitespace-nowrap">↔️ 이관</span>
                             <select value={transferTargetId} onChange={e => setTransferTargetId(e.target.value)}
-                              className="bg-white border border-slate-200 rounded-xl p-2.5 text-sm text-slate-700 font-medium flex-1">
-                              <option value="">이관 대상 선택</option>
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 font-medium min-w-[100px]">
+                              <option value="">대상 선택</option>
                               {[...lawyers, ...staffMembers.filter(m => m.role === 'LAWYER')].filter(l => l.id !== editLawyerId).map(l => (
                                 <option key={l.id} value={l.id}>{l.name}</option>
                               ))}
                             </select>
+                            <input type="text" placeholder="사유 (선택)" value={transferReason} onChange={e => setTransferReason(e.target.value)}
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 w-28" />
+                            <button onClick={handleTransfer} disabled={!transferTargetId}
+                              className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 press-scale">
+                              <ArrowRightLeft className="w-3 h-3 inline mr-1" />이관
+                            </button>
                           </div>
-                          <input type="text" placeholder="이관 사유 (선택)" value={transferReason} onChange={e => setTransferReason(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm text-slate-900" />
-                          <button onClick={handleTransfer} disabled={!transferTargetId}
-                            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer">
-                            <ArrowRightLeft className="w-4 h-4" /> 사건 이관 실행
-                          </button>
-                        </div>
-                      )}
-
-                      {/* 아카이브 */}
-                      <div className="space-y-2 bg-red-50/50 p-4 rounded-2xl border border-red-100">
-                        <span className="text-sm font-bold text-red-600 block">🗑️ 고객 아카이브</span>
-                        <p className="text-xs text-slate-500">이 고객의 CRM 확장 데이터(서류, 메모, 활동 로그)를 삭제합니다. 상담 요청 원본은 유지됩니다.</p>
+                        )}
                         <button onClick={async () => {
                           if (!confirm(`${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브하시겠습니까?`)) return;
                           await deleteCrmClient(selectedId);
@@ -1508,9 +1548,9 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           });
                           setSelectedId('');
                         }}
-                          className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] transition-all"
+                          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 press-scale"
                         >
-                          <Trash2 className="w-4 h-4" /> CRM 데이터 아카이브
+                          <Trash2 className="w-3 h-3 inline mr-1" />아카이브
                         </button>
                       </div>
                     </>
@@ -2039,11 +2079,158 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   );
 })()}
                 </div>
+                  </div>{/* end right column */}
+                </div>{/* end flex wrapper */}
               </div>
-            ) : (
-              <div className="text-center py-20 text-slate-500 text-sm">
-                <Users className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                고객 리스트에서 상세 조회할 고객을 선택해 주십시오.
+          </div>
+      )}
+
+      {/* ══════════ 신규 리드 뷰 ══════════ */}
+      {viewMode === 'leads' && handleOpenProposalDraft && (
+        <div className="space-y-4">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                📋 신규 상담 요청
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">채무 구조와 소득 진단을 검토한 후 제안서를 작성하세요.</p>
+            </div>
+            <span className="text-xs bg-brand/10 text-brand px-3 py-1.5 rounded-lg font-bold whitespace-nowrap">
+              회생파산 전담팀
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {requests
+              .filter(r => {
+                const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+                const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+                  const targetLawyer = lawyers.find(l => l.id === id);
+                  return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+                });
+                const openMatch = r.requestType === 'open';
+                return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
+              })
+              .filter(r => !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id))
+              .map((r, idx) => {
+                const fp = r.financialProfile;
+                const debtRatio = (fp.debtTotal / (fp.income * 12)).toFixed(1);
+                return (
+                  <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col">
+                    {/* 카드 헤더 */}
+                    <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                          r.requestType === 'direct' ? 'bg-[#1E3A5F] text-white' :
+                          r.requestType === 'direct_multi' ? 'bg-slate-800 text-white' :
+                          'bg-slate-200 text-slate-700'
+                        }`}>
+                          {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
+                        </span>
+                        <span className="text-sm font-bold text-slate-900">{r.clientName}</span>
+                      </div>
+                      <span className="bg-rose-50 text-rose-600 font-bold text-[10px] px-2 py-0.5 rounded-md border border-rose-200">제안서 대기</span>
+                    </div>
+
+                    {/* 카드 본문 */}
+                    <div className="p-4 space-y-3 flex-1 flex flex-col">
+                      <div>
+                        <h3 className="font-extrabold text-sm text-slate-900 line-clamp-1">{r.title}</h3>
+                        <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mt-0.5">{r.content}</p>
+                      </div>
+
+                      {/* 핵심 재무 요약 */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-slate-50 rounded-lg p-2 text-center">
+                          <div className="text-[10px] text-slate-500">총채무</div>
+                          <div className="text-sm font-black text-slate-900">{fp.debtTotal.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
+                        </div>
+                        <div className="bg-slate-50 rounded-lg p-2 text-center">
+                          <div className="text-[10px] text-slate-500">월소득</div>
+                          <div className="text-sm font-black text-slate-900">{fp.income}<span className="text-[10px] font-medium">만</span></div>
+                        </div>
+                        <div className="bg-slate-50 rounded-lg p-2 text-center">
+                          <div className="text-[10px] text-slate-500">DTI</div>
+                          <div className={`text-sm font-black ${Number(debtRatio) > 20 ? 'text-rose-600' : 'text-slate-900'}`}>{debtRatio}<span className="text-[10px] font-medium">배</span></div>
+                        </div>
+                      </div>
+
+                      {/* 의뢰인 메모 */}
+                      {((fp.clientNotes && fp.clientNotes.length > 0) || fp.clientNote) && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs">
+                          <span className="text-[10px] font-bold text-slate-500 block mb-0.5">📝 의뢰인 메모</span>
+                          {fp.clientNotes && fp.clientNotes.length > 0 ? (
+                            <div className="text-xs text-slate-700 line-clamp-2">{fp.clientNotes.join(' / ')}</div>
+                          ) : (
+                            <div className="text-xs text-slate-700 line-clamp-2">{fp.clientNote}</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 위험 플래그 */}
+                      <div className="flex flex-wrap gap-1 mt-auto pt-1">
+                        {fp.specialCondition && fp.specialCondition !== 'none' && (
+                          <span className="bg-slate-100 text-slate-700 text-[10px] px-2 py-0.5 rounded-md font-bold border border-slate-200">
+                            ⚡ 특례: {fp.specialCondition === 'basic_recipient' ? '기초수급' : fp.specialCondition === 'severe_disability' ? '중증장애' : fp.specialCondition === 'single_parent' ? '한부모' : fp.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
+                          </span>
+                        )}
+                        {fp.riskFlags.map(rf => (
+                          <span key={rf} className="bg-rose-50 text-rose-600 text-[10px] px-2 py-0.5 rounded-md font-bold border border-rose-200">⚠️ {rf}</span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 카드 푸터: 액션 버튼 */}
+                    <div className="px-4 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => { setSelectedId(r.id); setViewMode('list'); }}
+                        className="text-slate-500 hover:text-slate-700 font-bold py-1.5 px-2.5 rounded-lg text-xs transition-all cursor-pointer hover:bg-slate-100 press-scale"
+                      >
+                        상세 보기
+                      </button>
+                      <div className="flex gap-2">
+                        {setCopilotPreselectedReqId && setActiveTab && (
+                          <button
+                            onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
+                            className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center gap-1 border border-slate-200 whitespace-nowrap press-scale cursor-pointer"
+                          >
+                            🔬 AI 분석
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenProposalDraft(r.id)}
+                          className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2 px-4 rounded-xl text-xs tracking-wide transition-all shadow-xs flex items-center gap-1 whitespace-nowrap press-scale cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          제안서 작성
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+            {/* 빈 상태 */}
+            {requests
+              .filter(r => {
+                const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+                const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
+                  const targetLawyer = lawyers.find(l => l.id === id);
+                  return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
+                });
+                const openMatch = r.requestType === 'open';
+                return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
+              })
+              .filter(r => !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id))
+              .length === 0 && (
+              <div className="col-span-full bg-white p-10 text-center rounded-2xl border border-slate-200 space-y-2">
+                <Users className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="text-sm text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>
+                <p className="text-xs text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
+                <button onClick={() => setViewMode('list')} className="text-xs text-brand font-bold hover:underline cursor-pointer mt-2">
+                  전체 고객 목록 보기 →
+                </button>
               </div>
             )}
           </div>

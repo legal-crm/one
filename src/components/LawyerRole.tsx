@@ -3823,6 +3823,9 @@ export default function LawyerRole({
             activeLawyer={activeLawyer}
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}
+            handleOpenProposalDraft={handleOpenProposalDraft}
+            setActiveTab={setActiveTab}
+            setCopilotPreselectedReqId={setCopilotPreselectedReqId}
           />
         )}
 
@@ -3883,6 +3886,9 @@ export default function LawyerRole({
 
         {/* TAB: cases → CRM으로 통합 리다이렉트 */}
         {activeTab === 'cases' && (() => { setActiveTab('client-crm'); return null; })()}
+
+        {/* TAB: open-requests → CRM 신규 리드 뷰로 통합 리다이렉트 */}
+        {activeTab === 'open-requests' && (() => { setActiveTab('client-crm'); return null; })()}
 
         {/* TAB: 마이김변 문의 */}
         {activeTab === 'inquiry-to-admin' && lawyerInquiries && setLawyerInquiries && (
