@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell } from 'lucide-react';
 import type { ConsultRequest, CrmStatus, FeeInstallment } from '../../types';
 import { CRM_STATUS_CONFIG } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
+import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount } from '../../services/clientNotificationService';
+import type { ClientNotification } from '../../services/clientNotificationService';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -245,6 +247,87 @@ export default function MyPageView({
         </div>
       </div>
       )}
+
+      {/* ═══ 알림 수신함 ═══ */}
+      {!isCompact && (() => {
+        const notifications = loadClientNotifications();
+        const unread = notifications.filter(n => !n.isRead).length;
+        return (
+          <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-50 text-amber-500"><Bell className="w-5 h-5" /></div>
+                알림
+                {unread > 0 && (
+                  <span className="text-[11px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">{unread}개 새 알림</span>
+                )}
+              </h3>
+              {unread > 0 && (
+                <button
+                  onClick={() => { markAllAsRead(); toast.success('모든 알림을 읽음 처리했습니다'); }}
+                  className="text-[11px] text-brand font-bold hover:underline cursor-pointer"
+                >
+                  모두 읽음
+                </button>
+              )}
+            </div>
+
+            {notifications.length === 0 ? (
+              <div className="text-center py-6">
+                <Bell className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-xs text-slate-500 mt-2 font-medium">아직 알림이 없습니다</p>
+                <p className="text-[11px] text-slate-400 mt-1">사건 진행 변경, 메시지, 서류 요청 등의 알림이 여기에 표시됩니다</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {notifications.map((n: ClientNotification) => (
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      if (!n.isRead) markAsRead(n.id);
+                    }}
+                    className={`flex gap-3 p-3.5 rounded-xl border transition-all cursor-pointer hover:shadow-sm ${
+                      !n.isRead ? 'border-brand/20 bg-brand/5' : 'border-slate-100 bg-slate-50/50'
+                    }`}
+                  >
+                    <span className="text-lg shrink-0 mt-0.5">{n.emoji || '🔔'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className={`text-xs font-bold truncate ${!n.isRead ? 'text-slate-900' : 'text-slate-600'}`}>{n.title}</p>
+                        {!n.isRead && <span className="w-2 h-2 rounded-full bg-brand shrink-0 animate-pulse" />}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{n.body}</p>
+                      <p className="text-[10px] text-slate-300 mt-1">
+                        {(() => {
+                          const diff = Date.now() - new Date(n.createdAt).getTime();
+                          if (diff < 60000) return '방금 전';
+                          if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+                          if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+                          return `${Math.floor(diff / 86400000)}일 전`;
+                        })()}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg self-start shrink-0 ${
+                      n.type === 'new_message' ? 'bg-blue-50 text-blue-600' :
+                      n.type === 'status_change' ? 'bg-emerald-50 text-emerald-600' :
+                      n.type === 'document_request' ? 'bg-purple-50 text-purple-600' :
+                      n.type === 'fee_reminder' ? 'bg-amber-50 text-amber-600' :
+                      n.type === 'notice' ? 'bg-slate-100 text-slate-500' :
+                      'bg-slate-100 text-slate-500'
+                    }`}>
+                      {n.type === 'new_message' ? '💬 메시지' :
+                       n.type === 'status_change' ? '📊 진행' :
+                       n.type === 'document_request' ? '📁 서류' :
+                       n.type === 'fee_reminder' ? '💰 수임료' :
+                       n.type === 'notice' ? '📢 공지' : '🔔 알림'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ═══ 고객 기능 3종: 사건 진행 트래커 + 서류 제출 + 수임료 현황 ═══ */}
       {!isCompact && (() => {

@@ -4,7 +4,7 @@ import {
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
   Search, ArrowRight, DollarSign, TrendingDown, HelpCircle, Activity, HeartHandshake,
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2,
-  Star, Sparkles, BarChart3, Shield, ShieldAlert, Calculator, ClipboardCheck, Compass, Zap, Heart
+  Star, Sparkles, BarChart3, Shield, ShieldAlert, Calculator, ClipboardCheck, Compass, Zap, Heart, Bell
 } from 'lucide-react';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
@@ -21,6 +21,8 @@ import { mockLawyers, initialConsultRequests, initialConsultMessages, adBanners 
 import { RequestDisclaimer, ChatDisclaimer } from './Disclaimers';
 import { supabase } from '../supabaseClient';
 import PopupContainer from './popup/PopupContainer';
+import { loadClientNotifications, markAsRead, markAllAsRead, seedInitialNotifications, getUnreadCount } from '../services/clientNotificationService';
+import type { ClientNotification } from '../services/clientNotificationService';
 
 const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
 const CalculatorView = React.lazy(() => import('./client/CalculatorView'));
@@ -432,6 +434,10 @@ export default function ClientRole({
     return 'landing';
   });
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [clientNotifications, setClientNotifications] = useState<ClientNotification[]>(() => { seedInitialNotifications(); return loadClientNotifications(); });
+  const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
+  const notifRef = useRef<HTMLDivElement>(null);
   const [activeReviewIdx, setActiveReviewIdx] = useState(0);
   const [faqOpenId, setFaqOpenId] = useState<number | null>(null);
   const [faqExpanded, setFaqExpanded] = useState(false);
@@ -475,6 +481,15 @@ export default function ClientRole({
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 알림 드롭다운 외부 클릭 닫기
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   useEffect(() => {
@@ -2027,6 +2042,90 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md font-bold leading-none">
                     스텔스 보호중
                   </span>
+                </div>
+                {/* 🔔 알림 벨 */}
+                <div className="relative" ref={notifRef}>
+                  <button
+                    onClick={() => {
+                      setShowNotifDropdown(!showNotifDropdown);
+                      if (!showNotifDropdown) {
+                        setClientNotifications(loadClientNotifications());
+                      }
+                    }}
+                    className="relative p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="알림"
+                  >
+                    <Bell className="w-5 h-5 text-slate-600" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  {showNotifDropdown && (
+                    <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-[999] overflow-hidden animate-fadeIn">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                        <span className="text-sm font-black text-slate-800">🔔 알림</span>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={() => { markAllAsRead(); setClientNotifications(loadClientNotifications()); setUnreadCount(0); }}
+                            className="text-[11px] text-brand font-bold hover:underline cursor-pointer"
+                          >
+                            모두 읽음 처리
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                        {clientNotifications.length === 0 ? (
+                          <div className="py-8 text-center">
+                            <Bell className="w-6 h-6 text-slate-300 mx-auto" />
+                            <p className="text-xs text-slate-400 mt-2">새로운 알림이 없습니다</p>
+                          </div>
+                        ) : clientNotifications.slice(0, 10).map(n => (
+                          <button
+                            key={n.id}
+                            onClick={() => {
+                              if (!n.isRead) {
+                                markAsRead(n.id);
+                                setUnreadCount(prev => Math.max(0, prev - 1));
+                              }
+                              if (n.linkTab) setActiveTab(n.linkTab as any);
+                              setShowNotifDropdown(false);
+                              setClientNotifications(loadClientNotifications());
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className={`w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-brand/5' : ''}`}
+                          >
+                            <span className="text-lg shrink-0 mt-0.5">{n.emoji || '🔔'}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className={`text-xs font-bold truncate ${!n.isRead ? 'text-slate-900' : 'text-slate-600'}`}>{n.title}</p>
+                                {!n.isRead && <span className="w-2 h-2 rounded-full bg-brand shrink-0" />}
+                              </div>
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{n.body}</p>
+                              <p className="text-[10px] text-slate-300 mt-1">
+                                {(() => {
+                                  const diff = Date.now() - new Date(n.createdAt).getTime();
+                                  if (diff < 60000) return '방금 전';
+                                  if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+                                  if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+                                  return `${Math.floor(diff / 86400000)}일 전`;
+                                })()}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="border-t border-slate-100 px-4 py-2.5">
+                        <button
+                          onClick={() => { setActiveTab('mypage'); setShowNotifDropdown(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          className="text-xs text-brand font-bold hover:underline cursor-pointer w-full text-center"
+                        >
+                          마이페이지에서 전체 알림 보기 →
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <button 
                   onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}

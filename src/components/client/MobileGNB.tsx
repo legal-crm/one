@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, ClipboardCheck, MessageSquare, Search, HelpCircle } from 'lucide-react';
+import { getUnreadCount } from '../../services/clientNotificationService';
 
 interface MobileGNBProps {
   activeTab: string;
@@ -12,6 +13,8 @@ interface MobileGNBProps {
 }
 
 export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult, onStartDiagnosis, onNavigateToLawyers, onNavigateToQna, isHidden = false }: MobileGNBProps) {
+  const unreadCount = getUnreadCount();
+
   const navItems = [
     {
       key: 'landing',
@@ -33,7 +36,7 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult,
       icon: MessageSquare,
       onClick: () => onSetActiveTab('chat'),
       isActive: activeTab === 'chat',
-      hasBadge: true,
+      badgeCount: unreadCount,
     },
     {
       key: 'lawyers',
@@ -66,10 +69,9 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult,
             {item.isActive && <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-9 h-9 bg-brand/10 rounded-full" />}
             <Icon className="w-5 h-5 relative z-10" />
             <span className="text-xs font-bold tracking-tight relative z-10 leading-tight mt-0.5">{item.label}</span>
-            {item.hasBadge && (
-              <span className="absolute top-0.5 right-2 flex h-2 w-2 z-20">
-                <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+            {(item as any).badgeCount > 0 && (
+              <span className="absolute top-0 right-1 min-w-[16px] h-[16px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 z-20">
+                {(item as any).badgeCount > 9 ? '9+' : (item as any).badgeCount}
               </span>
             )}
           </button>
