@@ -50,38 +50,38 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
   // ─── Step 1: 위임인 인적사항 ───
   const renderClientInfo = () => (
-    <div className="space-y-6">
-      <h3 className="text-lg font-black text-slate-800">👤 위임인 인적사항</h3>
+    <div className="space-y-5">
+      <h3 className="text-base font-black text-slate-800">👤 위임인 인적사항</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-xs font-bold text-slate-500 mb-1 block">의뢰인 성명</label>
-          <input value={c.clientName} onChange={e => update({ clientName: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none" />
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block">의뢰인 성명</label>
+          <input value={c.clientName} onChange={e => update({ clientName: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900" />
         </div>
         <div>
-          <label className="text-xs font-bold text-slate-500 mb-1 block">연락처</label>
-          <input value={c.clientPhone} onChange={e => update({ clientPhone: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none" placeholder="010-0000-0000" />
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block">연락처</label>
+          <input value={c.clientPhone} onChange={e => update({ clientPhone: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400" placeholder="010-0000-0000" />
         </div>
         <div className="md:col-span-2">
-          <label className="text-xs font-bold text-slate-500 mb-1 block">주소 (선택)</label>
-          <input value={c.clientAddress || ''} onChange={e => update({ clientAddress: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none" placeholder="서울시 강남구..." />
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block">주소 (선택)</label>
+          <input value={c.clientAddress || ''} onChange={e => update({ clientAddress: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400" placeholder="서울시 강남구..." />
         </div>
       </div>
       <div className="border-t border-slate-100 pt-4">
         <h4 className="text-sm font-bold text-slate-700 mb-3">수임인 정보</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-bold text-slate-500 mb-1 block">법무법인명</label>
-            <input value={c.lawFirmName} onChange={e => update({ lawFirmName: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none" />
+            <label className="text-xs font-bold text-slate-500 mb-1.5 block">법무법인명</label>
+            <input value={c.lawFirmName} onChange={e => update({ lawFirmName: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900" />
           </div>
           <div>
-            <label className="text-xs font-bold text-slate-500 mb-1 block">담당 변호사</label>
-            <input value={c.lawyerName} onChange={e => update({ lawyerName: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none" />
+            <label className="text-xs font-bold text-slate-500 mb-1.5 block">담당 변호사</label>
+            <input value={c.lawyerName} onChange={e => update({ lawyerName: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900" />
           </div>
         </div>
       </div>
       <div>
-        <label className="text-xs font-bold text-slate-500 mb-1 block">계약일자</label>
-        <input type="date" value={c.contractDate} onChange={e => update({ contractDate: e.target.value })} className="px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none" />
+        <label className="text-xs font-bold text-slate-500 mb-1.5 block">계약일자</label>
+        <input type="date" value={c.contractDate} onChange={e => update({ contractDate: e.target.value })} className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900" />
       </div>
     </div>
   );
@@ -95,7 +95,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-black text-slate-800">💰 수임료 및 스케줄</h3>
+        <h3 className="text-base font-black text-slate-800">💰 수임료 및 스케줄</h3>
 
         {/* 법원 비용 */}
         <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
@@ -206,7 +206,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const renderDocuments = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-black text-slate-800">📋 계약 문서 관리</h3>
+        <h3 className="text-base font-black text-slate-800">📋 계약 문서 관리</h3>
         <button onClick={() => {
           const newDoc: ContractDocument = { id: `doc-${Date.now()}`, type: 'custom', title: '새 문서', content: '문서 내용을 입력하세요.', signatureRequired: 'both', order: c.documents.length, included: true };
           update({ documents: [...c.documents, newDoc] });
@@ -240,7 +240,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   // ─── Step 4: 약관 동의 ───
   const renderTerms = () => (
     <div className="space-y-6">
-      <h3 className="text-lg font-black text-slate-800">📜 약관·동의 안내</h3>
+      <h3 className="text-base font-black text-slate-800">📜 약관·동의 안내</h3>
       <p className="text-xs text-slate-500">아래 항목은 법률 서비스 제공을 위해 필수적으로 동의를 받아야 하는 사항입니다.</p>
 
       <div className="space-y-3">
@@ -274,7 +274,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-black text-slate-800">✍️ 전자 서명</h3>
+        <h3 className="text-base font-black text-slate-800">✍️ 전자 서명</h3>
 
         {/* 본인인증 */}
         <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
@@ -403,60 +403,75 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const canProceed = step !== 3 || (agreePrivacy && agreeThirdParty && agreeProcedure);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"><ArrowLeft className="w-5 h-5" /></button>
-          <div>
-            <h2 className="text-xl font-black text-slate-900">✏️ 전자 계약서 작성</h2>
-            <p className="text-xs text-slate-500 mt-0.5">{c.id} · {c.clientName || '신규 계약'}</p>
+    <div className="space-y-5 animate-fadeIn">
+
+      {/* ── 헤더 (CRM 헤더 카드와 동일) ── */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"><ArrowLeft className="w-5 h-5" /></button>
+            <div>
+              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
+                <PenTool className="w-6 h-6 text-brand" />
+                <span>전자 계약서 작성</span>
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">{c.id} · {c.clientName || '신규 계약'}</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handleSave} className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer whitespace-nowrap">💾 임시 저장</button>
-          {step === 5 && (
-            <button onClick={() => {
-              const final = updateContractStatus(c, 'completed');
-              saveContract(final);
-              onSave(final);
-              toast.success('계약이 완료되었습니다!');
-              onClose();
-            }} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-brand hover:bg-brand/90 rounded-xl cursor-pointer whitespace-nowrap min-h-[44px]">
-              <Download className="w-3.5 h-3.5" /> 저장 및 완료
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <button onClick={handleSave} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl cursor-pointer whitespace-nowrap transition-colors">💾 임시 저장</button>
+            {step === 5 && (
+              <button onClick={() => {
+                const final = updateContractStatus(c, 'completed');
+                saveContract(final);
+                onSave(final);
+                toast.success('계약이 완료되었습니다!');
+                onClose();
+              }} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer whitespace-nowrap min-h-[44px] shadow-xs transition-colors">
+                <Download className="w-4 h-4" /> 저장 및 완료
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 스텝 탭 (가로 - CRM 디테일 탭과 동일 스타일) */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+      {/* ── 스텝 탭 (CRM 빠른 필터와 동일 스타일) ── */}
+      <div className="flex gap-2 flex-wrap">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           return (
-            <button key={s.key} onClick={() => setStep(i)} className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap ${step === i ? 'bg-brand text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>
-              <Icon className="w-3.5 h-3.5" /> {s.label}
+            <button key={s.key} onClick={() => setStep(i)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer border whitespace-nowrap ${
+                step === i
+                  ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+              }`}>
+              <Icon className="w-4 h-4" />
+              <span>{s.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* 컨텐츠 영역 */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
+      {/* ── 컨텐츠 영역 (CRM 테이블 카드와 동일) ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-xs">
         {stepContent[step]()}
       </div>
 
-      {/* 하단 네비게이션 */}
+      {/* ── 하단 네비게이션 ── */}
       <div className="flex items-center justify-between">
-        <button onClick={() => step > 0 && setStep(step - 1)} disabled={step === 0} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"><ArrowLeft className="w-4 h-4" /> 이전</button>
-        <div className="flex items-center gap-1">
-          {STEPS.map((_, i) => <span key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-brand' : i < step ? 'bg-emerald-400' : 'bg-slate-200'}`} />)}
+        <button onClick={() => step > 0 && setStep(step - 1)} disabled={step === 0}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-xs transition-colors"><ArrowLeft className="w-4 h-4" /> 이전</button>
+        <div className="flex items-center gap-1.5">
+          {STEPS.map((_, i) => <span key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-[#1E3A5F]' : i < step ? 'bg-emerald-400' : 'bg-slate-200'}`} />)}
         </div>
         {step < 5 ? (
-          <button onClick={() => canProceed && setStep(step + 1)} disabled={!canProceed} className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-brand hover:bg-brand/90 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shadow-sm">다음 <ArrowRight className="w-4 h-4" /></button>
+          <button onClick={() => canProceed && setStep(step + 1)} disabled={!canProceed}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap shadow-xs transition-colors">다음 <ArrowRight className="w-4 h-4" /></button>
         ) : <div className="w-20" />}
       </div>
     </div>
   );
 }
+
 
