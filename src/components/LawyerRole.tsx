@@ -43,7 +43,7 @@ import type { NotificationSettings, NotificationLog } from '../types';
 import PopupContainer from './popup/PopupContainer';
 import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
-const ExternalClientModal = React.lazy(() => import('./lawyer/ExternalClientModal'));
+const NewCaseModal = React.lazy(() => import('./lawyer/NewCaseModal'));
 const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalette'));
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
@@ -195,6 +195,10 @@ export default function LawyerRole({
   const handleExternalClientRegister = useCallback((data: {
     clientName: string; phone: string; debtTotal: number; income: number;
     intakeChannel: IntakeChannel; channelDetail?: string; initialStatus: CrmStatus;
+    caseType?: string; gender?: string; region?: string; birth?: string;
+    jobTypes?: string[]; maritalStatus?: string; childrenCount?: number;
+    housingType?: string; deposit?: number; rent?: number; ownHousePrice?: number; ownHouseLoan?: number;
+    loanMonthlyPay?: number; specialMemo?: string;
   }) => {
     const newId = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newRequest: ConsultRequest = {
@@ -203,16 +207,21 @@ export default function LawyerRole({
       createdAt: new Date().toISOString(), title: `[외부] ${data.clientName} 상담`,
       content: data.channelDetail || '',
       financialProfile: {
-        clientName: data.clientName, age: 0, gender: 'male', maritalStatus: 'SINGLE',
-        dependents: 0, minorChildren: 0, income: data.income, debtTotal: data.debtTotal,
-        priorityDebt: 0, assetsTotal: 0, creditorCount: 0, jobType: 'SALARIED',
-        companyName: '', companyNameMasked: '', employmentDate: '', residenceRegion: '',
-        workLocation: '', housingType: 'rent', housingContractHolder: 'self',
+        clientName: data.clientName, age: 0,
+        gender: data.gender === '여' ? 'female' : 'male',
+        maritalStatus: data.maritalStatus === '기혼' ? 'MARRIED' : data.maritalStatus === '이혼' ? 'DIVORCED' : 'SINGLE',
+        dependents: data.childrenCount || 0, minorChildren: data.childrenCount || 0,
+        income: data.income, debtTotal: data.debtTotal,
+        priorityDebt: 0, assetsTotal: 0, creditorCount: 0,
+        jobType: (data.jobTypes?.[0] === '직장인' ? 'SALARIED' : data.jobTypes?.[0] === '개인사업자' ? 'SELF_EMPLOYED' : 'SALARIED') as any,
+        companyName: '', companyNameMasked: '', employmentDate: '', residenceRegion: data.region || '',
+        workLocation: '', housingType: (data.housingType === '전세' ? 'jeonse' : data.housingType === '자가' ? 'owned' : 'rent') as any,
+        housingContractHolder: 'self',
         debtCause: 'LIVING', harassmentLevel: 'NONE',
         debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 },
         legalActions: [], myAssets: 0, spouseAsset: 0, spouseIncome: 0,
-        rentalDeposit: 0, depositLoan: 0, rentCost: 0, medicalCost: 0,
-        educationCost: 0, monthlyFixedExpenses: 0, retirementPay: 0,
+        rentalDeposit: data.deposit || 0, depositLoan: 0, rentCost: data.rent || 0, medicalCost: 0,
+        educationCost: 0, monthlyFixedExpenses: data.loanMonthlyPay || 0, retirementPay: 0,
         retirementPensionType: 'none', specialCondition: 'none', riskFlags: [],
         clientNotes: [], debts: [], assets: [],
       },
@@ -224,6 +233,9 @@ export default function LawyerRole({
       ext.intakeChannel = data.intakeChannel;
       ext.intakeChannelDetail = data.channelDetail;
       ext.isExternalClient = true;
+      ext.caseType = data.caseType as any;
+      ext.region = data.region;
+      if (data.specialMemo) ext.preInfo = data.specialMemo;
       saveCrmClient(newId, ext);
     });
     setIsExternalClientModalOpen(false);
@@ -4931,10 +4943,10 @@ export default function LawyerRole({
         )}
       </React.Suspense>
 
-      {/* ── 외부 고객 등록 모달 ── */}
+      {/* ── 신규 케이스 등록 모달 ── */}
       <React.Suspense fallback={null}>
         {isExternalClientModalOpen && (
-          <ExternalClientModal isOpen={isExternalClientModalOpen} onClose={() => setIsExternalClientModalOpen(false)} onRegister={handleExternalClientRegister} lawyers={lawyers} />
+          <NewCaseModal isOpen={isExternalClientModalOpen} onClose={() => setIsExternalClientModalOpen(false)} onRegister={handleExternalClientRegister} existingRequests={requests} />
         )}
       </React.Suspense>
 

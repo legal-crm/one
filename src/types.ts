@@ -96,6 +96,39 @@ export const CRM_STATUS_CONFIG: Record<CrmStatus, { label: string; emoji: string
   cancelled:   { label: '의뢰인 취소', emoji: '🚫', color: 'text-red-500',    bgColor: 'bg-red-500/10',     borderColor: 'border-red-500/20' },
 };
 
+// ── 이탈 사유 (Drop-off Reason) ──
+
+export const DROP_OFF_REASONS = [
+  '비용 부담',
+  '타 사무소 선택',
+  '연락 두절',
+  '자격 미달 (면책불허가 사유)',
+  '본인 의사 취소',
+  '시기 미정',
+  '기타',
+] as const;
+
+export type DropOffReason = typeof DROP_OFF_REASONS[number];
+
+// ── 사건 유형 (Case Type) ──
+
+export const CASE_TYPES = ['개인회생', '파산', '새출발기금', '신용회복'] as const;
+export type CaseType = typeof CASE_TYPES[number];
+
+// ── 직업 유형 ──
+
+export const JOB_TYPES = ['직장인', '개인사업자', '법인사업자', '프리랜서', '무직'] as const;
+
+// ── 주거 형태 ──
+
+export const HOUSING_TYPES = ['자가', '전세', '월세', '무상거주'] as const;
+export const HOUSING_DETAILS = ['아파트', '빌라', '단독주택', '오피스텔', '기타'] as const;
+
+// ── 자산 유형 ──
+
+export const ASSET_TYPES = ['자동차', '부동산', '토지', '예금/적금', '주식/가상화폐', '보험', '기타'] as const;
+export const ASSET_OWNERS = ['본인', '배우자', '배우자 공동명의'] as const;
+
 // ── 유입 채널 (Intake Channel) ──
 
 export type IntakeChannel =
@@ -539,6 +572,14 @@ export interface CrmClientExtension {
   alimtokLogs?: AlimtokLog[];
   // ── 변제금 납부 모니터링 ──
   repaymentSchedule?: RepaymentEntry[];
+  // ── 케이스 관리 확장 (LeadMaster 이식) ──
+  isStarred?: boolean;           // 즐겨찾기
+  deletedAt?: string;            // 소프트 삭제 일시 (ISO)
+  dropOffReason?: DropOffReason; // 이탈 사유 카테고리
+  dropOffDetail?: string;        // 이탈 사유 상세
+  caseType?: CaseType;           // 사건 유형
+  region?: string;               // 거주 지역
+  preInfo?: string;              // 사전 수집 정보
 }
 
 export interface RepaymentEntry {

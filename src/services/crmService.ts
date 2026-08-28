@@ -275,6 +275,113 @@ export function createDefaultCrmExtension(clientId: string): CrmClientExtension 
 }
 
 // ============================================================
+// 케이스 관리 유틸리티 (LeadMaster 이식)
+// ============================================================
+
+/** 전화번호 포맷팅 (010-XXXX-XXXX) */
+export function formatPhone(value: string): string {
+  const digits = value.replace(/[^\d]/g, '').replace(/^\+82/, '0');
+  if (digits.startsWith('02')) {
+    if (digits.length <= 9) return digits.replace(/(\d{2})(\d{3,4})(\d{4})/, '$1-$2-$3');
+    return digits.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
+  }
+  if (digits.length <= 10) return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+  return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+}
+
+/** 전화번호 중복 검사 — 기존 requests 중 동일 전화번호 건 반환 */
+export function checkDuplicatePhone(
+  phone: string,
+  requests: Array<{ id: string; clientName?: string; phone?: string; status?: string }>,
+  excludeId?: string
+): { id: string; clientName?: string; status?: string } | null {
+  const normalized = phone.replace(/[^\d]/g, '');
+  if (normalized.length < 8) return null;
+  for (const r of requests) {
+    if (excludeId && r.id === excludeId) continue;
+    const rPhone = (r.phone || '').replace(/[^\d]/g, '');
+    if (rPhone === normalized) return { id: r.id, clientName: r.clientName, status: r.status };
+  }
+  return null;
+}
+
+/** 출생년도 2자리→4자리 자동변환 (기준점 30) */
+export function normalizeBirthYear(input: string): string {
+  const trimmed = input.trim();
+  if (/^\d{4}$/.test(trimmed)) return trimmed;
+  if (/^\d{2}$/.test(trimmed)) {
+    const num = parseInt(trimmed, 10);
+    return num <= 30 ? `20${trimmed}` : `19${trimmed}`;
+  }
+  return trimmed;
+}
+
+/** 금액 포맷팅 (만원 단위, 3자리 콤마) */
+export function formatMoney(amount: number | undefined): string {
+  if (amount == null || isNaN(amount)) return '-';
+  return `${amount.toLocaleString()}만원`;
+}
+
+/** 소프트 삭제 (deletedAt 설정) */
+export async function softDeleteCrmClient(clientId: string): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const ext = store[clientId];
+  if (!ext) return;
+  ext.deletedAt = new Date().toISOString();
+  store[clientId] = ext;
+  setLocalData(CRM_STORAGE_KEY, store);
+
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('crm_clients').update({
+        deleted_at: ext.deletedAt,
+        updated_at: new Date().toISOString(),
+      }).eq('client_id', clientId);
+    } catch (e) {
+      console.warn('[CRM] Supabase soft delete failed', e);
+    }
+  }
+}
+
+/** 소프트 삭제 복원 */
+export async function restoreCrmClient(clientId: string): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const ext = store[clientId];
+  if (!ext) return;
+  delete ext.deletedAt;
+  ext.crmStatus = 'requested';
+  store[clientId] = ext;
+  setLocalData(CRM_STORAGE_KEY, store);
+
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('crm_clients').update({
+        deleted_at: null,
+        crm_status: 'requested',
+        updated_at: new Date().toISOString(),
+      }).eq('client_id', clientId);
+    } catch (e) {
+      console.warn('[CRM] Supabase restore failed', e);
+    }
+  }
+}
+
+/** 휴지통 자동 정리 — 30일 경과 건 영구 삭제, 삭제 건수 반환 */
+export function cleanupRecycleBin(): number {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  let deletedCount = 0;
+  for (const [id, ext] of Object.entries(store)) {
+    if (ext.deletedAt && new Date(ext.deletedAt).getTime() < cutoff) {
+      delete store[id];
+      deletedCount++;
+    }
+  }
+  if (deletedCount > 0) setLocalData(CRM_STORAGE_KEY, store);
+  return deletedCount;
+}
+
+// ============================================================
 // 직원 관리 확장 서비스 (Staff Management Extended)
 // ============================================================
 

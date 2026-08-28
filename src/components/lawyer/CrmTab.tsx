@@ -3,14 +3,20 @@ import {
   Users, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, 
   Plus, Trash2, Search, LayoutGrid, List, GripVertical,
   CheckCircle2, ArrowRightLeft, UserPlus, Settings, Filter,
-  FileText, Clock, AlertTriangle, X
+  FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TeamworkTab from './TeamworkTab';
+import NewCaseModal from './NewCaseModal';
+import type { NewCaseData } from './NewCaseModal';
+import ImportCasesModal from './ImportCasesModal';
+import type { ImportedCase } from './ImportCasesModal';
+import ExportCasesModal from './ExportCasesModal';
+import DropOffReasonModal from './DropOffReasonModal';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog,
-  ConsultOutcome, NoteReminder
+  ConsultOutcome, NoteReminder, DropOffReason
 } from '../../types';
 import { 
   CRM_STATUS_CONFIG, STAFF_ROLE_CONFIG, CRM_NOTE_CATEGORIES, 
@@ -19,7 +25,8 @@ import {
 import { 
   loadCrmData, saveCrmClient, loadStaffMembers, saveStaffMember, 
   deleteStaffMember, createActivityLog, createCrmNote, createDefaultCrmExtension,
-  deleteCrmClient,
+  deleteCrmClient, softDeleteCrmClient, restoreCrmClient, cleanupRecycleBin,
+  formatPhone, checkDuplicatePhone,
   type CrmDataStore 
 } from '../../services/crmService';
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
@@ -104,9 +111,25 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkSelected, setBulkSelected] = useState<string[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
+  // ── 케이스 관리 확장 (LeadMaster 이식) ──
+  const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isDropOffModalOpen, setIsDropOffModalOpen] = useState(false);
+  const [dropOffTargetId, setDropOffTargetId] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showTrash, setShowTrash] = useState(false);
+  const [starFilter, setStarFilter] = useState(false);
+
   // ── 초기 로드 ──
   useEffect(() => {
-    loadCrmData().then(setCrmData);
+    loadCrmData().then(data => {
+      setCrmData(data);
+      // 30일 경과 휴지통 자동 정리
+      const cleaned = cleanupRecycleBin();
+      if (cleaned > 0) toast.info(`휴지통 ${cleaned}건 자동 정리됨`);
+    });
     loadStaffMembers().then(members => {
       setStaffMembers(members);
       // 대표 변호사(현재 로그인) 기반으로 activeStaff 설정
@@ -198,11 +221,19 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       const openMatch = r.requestType === 'open';
       if (!directMatch && !sameFirmMatch && !openMatch) return false;
 
+      const ext = getCrmExt(r.id);
+
+      // ── 휴지통 뷰 분리 ──
+      if (showTrash) {
+        return !!ext.deletedAt; // 휴지통에서는 삭제된 건만 표시
+      } else {
+        if (ext.deletedAt) return false; // 일반 뷰에서는 삭제된 건 숨김
+      }
+
       const matchSearch = 
         r.clientName.toLowerCase().includes(search.toLowerCase()) ||
         r.phone.includes(search);
       
-      const ext = getCrmExt(r.id);
       const matchStatus = statusFilter === 'all' ||
         (statusFilter === 'consulting' ? ['requested','consulting'].includes(ext.crmStatus) :
          statusFilter === 'contracted' ? ['contracted','document','filed','commenced','repaying'].includes(ext.crmStatus) :
@@ -232,6 +263,19 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           ext.assignedStaffId === activeStaff.id;
         if (!isAssigned) return false;
       }
+
+      // ── 기간 필터 ──
+      if (dateFrom) {
+        const from = new Date(dateFrom + 'T00:00:00');
+        if (new Date(r.createdAt) < from) return false;
+      }
+      if (dateTo) {
+        const to = new Date(dateTo + 'T23:59:59');
+        if (new Date(r.createdAt) > to) return false;
+      }
+
+      // ── 즐겨찾기 필터 ──
+      if (starFilter && !ext.isStarred) return false;
       
       return matchSearch && matchStatus && matchAssignee;
     });
@@ -264,7 +308,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     });
 
     return result;
-  }, [requests, search, statusFilter, hideCompleted, assigneeFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff, activeLawyer, lawyers]);
+  }, [requests, search, statusFilter, hideCompleted, assigneeFilter, channelFilter, sortField, sortDir, getCrmExt, currentPermissions, activeStaff, activeLawyer, lawyers, showTrash, dateFrom, dateTo, starFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / perPage));
   const pagedRequests = filteredRequests.slice((page - 1) * perPage, page * perPage);
@@ -550,6 +594,158 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     return `${days}일 전`;
   };
 
+  // ── 케이스 관리 핸들러 (LeadMaster 이식) ──
+
+  /** 신규 케이스 등록 핸들러 */
+  const handleNewCaseRegister = useCallback((data: NewCaseData) => {
+    const newId = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newRequest: ConsultRequest = {
+      id: newId, clientId: newId, clientName: data.clientName, phone: data.phone,
+      requestType: 'direct', maxParticipants: 1, status: 'counseling',
+      createdAt: new Date().toISOString(), title: `[외부] ${data.clientName} 상담`,
+      content: data.channelDetail || '',
+      financialProfile: {
+        clientName: data.clientName, age: 0, gender: data.gender === '여' ? 'female' : 'male',
+        maritalStatus: data.maritalStatus === '기혼' ? 'MARRIED' : data.maritalStatus === '이혼' ? 'DIVORCED' : 'SINGLE',
+        dependents: data.childrenCount || 0, minorChildren: data.childrenCount || 0,
+        income: data.income || 0, debtTotal: data.debtTotal || 0,
+        priorityDebt: 0, assetsTotal: 0, creditorCount: 0,
+        jobType: (data.jobTypes?.[0] === '직장인' ? 'SALARIED' : data.jobTypes?.[0] === '개인사업자' ? 'SELF_EMPLOYED' : data.jobTypes?.[0] === '프리랜서' ? 'FREELANCE' : 'UNEMPLOYED') as any,
+        companyName: '', companyNameMasked: '', employmentDate: '', residenceRegion: data.region || '',
+        workLocation: '', housingType: (data.housingType === '전세' ? 'jeonse' : data.housingType === '월세' ? 'rent' : data.housingType === '자가' ? 'owned' : 'rent') as any,
+        housingContractHolder: 'self',
+        debtCause: 'LIVING', harassmentLevel: 'NONE',
+        debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 },
+        legalActions: [], myAssets: 0, spouseAsset: 0, spouseIncome: 0,
+        rentalDeposit: data.deposit || 0, depositLoan: 0, rentCost: data.rent || 0,
+        medicalCost: 0, educationCost: 0, monthlyFixedExpenses: data.loanMonthlyPay || 0,
+        retirementPay: 0, retirementPensionType: 'none', specialCondition: 'none',
+        riskFlags: [], clientNotes: [], debts: [], assets: [],
+      },
+    };
+    setRequests(prev => [newRequest, ...prev]);
+    const ext = createDefaultCrmExtension(newId);
+    ext.crmStatus = data.initialStatus;
+    ext.intakeChannel = data.intakeChannel;
+    ext.intakeChannelDetail = data.channelDetail;
+    ext.isExternalClient = true;
+    ext.caseType = data.caseType;
+    ext.region = data.region;
+    if (data.specialMemo) {
+      ext.preInfo = data.specialMemo;
+    }
+    setCrmData(prev => ({ ...prev, [newId]: ext }));
+    saveCrmClient(newId, ext);
+    setIsNewCaseModalOpen(false);
+    toast.success(`${data.clientName} 건이 등록되었습니다.`);
+  }, [setRequests]);
+
+  /** 대량 업로드 핸들러 */
+  const handleBulkImport = useCallback((cases: ImportedCase[]) => {
+    let successCount = 0;
+    cases.forEach(c => {
+      const newId = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const newRequest: ConsultRequest = {
+        id: newId, clientId: newId, clientName: c.clientName, phone: c.phone,
+        requestType: 'direct', maxParticipants: 1, status: 'counseling',
+        createdAt: new Date().toISOString(), title: `[일괄] ${c.clientName} 상담`,
+        content: c.specialMemo || '',
+        financialProfile: {
+          clientName: c.clientName, age: 0, gender: c.gender === '여' ? 'female' : 'male',
+          maritalStatus: 'SINGLE', dependents: 0, minorChildren: 0,
+          income: c.income || 0, debtTotal: c.debtTotal || 0,
+          priorityDebt: 0, assetsTotal: 0, creditorCount: 0, jobType: 'SALARIED' as any,
+          companyName: '', companyNameMasked: '', employmentDate: '', residenceRegion: c.region || '',
+          workLocation: '', housingType: 'rent', housingContractHolder: 'self',
+          debtCause: 'LIVING', harassmentLevel: 'NONE',
+          debtTypes: { banks: 0, cards: 0, personals: 0, recentLoans: 0, coinCrypto: 0 },
+          legalActions: [], myAssets: 0, spouseAsset: 0, spouseIncome: 0,
+          rentalDeposit: 0, depositLoan: 0, rentCost: 0, medicalCost: 0,
+          educationCost: 0, monthlyFixedExpenses: 0, retirementPay: 0,
+          retirementPensionType: 'none', specialCondition: 'none',
+          riskFlags: [], clientNotes: [], debts: [], assets: [],
+        },
+      };
+      setRequests(prev => [newRequest, ...prev]);
+      const ext = createDefaultCrmExtension(newId);
+      ext.crmStatus = 'requested';
+      ext.intakeChannel = c.intakeChannel;
+      ext.isExternalClient = true;
+      ext.caseType = c.caseType as any;
+      ext.region = c.region;
+      setCrmData(prev => ({ ...prev, [newId]: ext }));
+      saveCrmClient(newId, ext);
+      successCount++;
+    });
+    setIsImportModalOpen(false);
+    toast.success(`${successCount}건 일괄 등록 완료`);
+  }, [setRequests]);
+
+  /** 이탈 사유 확정 핸들러 */
+  const handleDropOffConfirm = useCallback((reason: DropOffReason, detail: string) => {
+    if (!dropOffTargetId) return;
+    const ext = getCrmExt(dropOffTargetId);
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const note = createCrmNote('consult', `[이탈 사유] ${reason}${detail ? ` — ${detail}` : ''}`, actor.id, actor.name, 'cancelled');
+    const activities = [...ext.activities, createActivityLog(
+      dropOffTargetId, actor.id, actor.name, actor.role, 'status_change',
+      `상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → 의뢰인 취소 (사유: ${reason})`
+    )];
+    updateCrmExt(dropOffTargetId, {
+      crmStatus: 'cancelled', notes: [...ext.notes, note], activities,
+      dropOffReason: reason, dropOffDetail: detail,
+    });
+    setIsDropOffModalOpen(false);
+    setDropOffTargetId('');
+    toast.success('이탈 사유가 기록되었습니다.');
+  }, [dropOffTargetId, getCrmExt, activeStaff, activeLawyer, updateCrmExt]);
+
+  /** 즐겨찾기 토글 */
+  const handleToggleStar = useCallback(async (clientId: string) => {
+    const ext = getCrmExt(clientId);
+    await updateCrmExt(clientId, { isStarred: !ext.isStarred });
+  }, [getCrmExt, updateCrmExt]);
+
+  /** 휴지통 이동 (소프트 삭제) */
+  const handleSoftDelete = useCallback(async (clientId: string) => {
+    await softDeleteCrmClient(clientId);
+    const store = { ...crmData };
+    if (store[clientId]) {
+      store[clientId] = { ...store[clientId], deletedAt: new Date().toISOString() };
+      setCrmData(store);
+    }
+    toast.success('휴지통으로 이동되었습니다.');
+  }, [crmData]);
+
+  /** 휴지통 복원 */
+  const handleRestore = useCallback(async (clientId: string) => {
+    await restoreCrmClient(clientId);
+    const store = { ...crmData };
+    if (store[clientId]) {
+      delete store[clientId].deletedAt;
+      store[clientId].crmStatus = 'requested';
+      setCrmData(store);
+    }
+    toast.success('복원되었습니다.');
+  }, [crmData]);
+
+  /** 상태 변경 시 cancelled이면 이탈 사유 모달 표시 */
+  const handleStatusChangeWithDropOff = useCallback((clientId: string, newStatus: CrmStatus) => {
+    if (newStatus === 'cancelled') {
+      setDropOffTargetId(clientId);
+      setIsDropOffModalOpen(true);
+      return;
+    }
+    // 일반 상태 변경
+    const ext = getCrmExt(clientId);
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const activities = [...ext.activities, createActivityLog(
+      clientId, actor.id, actor.name, actor.role, 'status_change',
+      `상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[newStatus].label}`
+    )];
+    updateCrmExt(clientId, { crmStatus: newStatus, activities });
+  }, [getCrmExt, activeStaff, activeLawyer, updateCrmExt]);
+
   // ══════════════════════════════════════
   //  RENDER
   // ══════════════════════════════════════
@@ -747,6 +943,39 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
           <button onClick={() => setShowBulkMessage(!showBulkMessage)} className="text-xs font-bold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors press-scale whitespace-nowrap">📢 대량 발송</button>
 
+          {/* ── 케이스 관리 확장 버튼 ── */}
+          <button
+            onClick={() => setStarFilter(f => !f)}
+            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] border whitespace-nowrap ${
+              starFilter ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Star className={`w-3.5 h-3.5 ${starFilter ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+            즐겨찾기
+          </button>
+
+          <button
+            onClick={() => setShowTrash(t => !t)}
+            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] border whitespace-nowrap ${
+              showTrash ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            휴지통
+          </button>
+
+          <button onClick={() => setIsExportModalOpen(true)} className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors press-scale whitespace-nowrap">
+            <Download className="w-3.5 h-3.5" /> 내보내기
+          </button>
+
+          <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors press-scale whitespace-nowrap">
+            <Upload className="w-3.5 h-3.5" /> 대량 업로드
+          </button>
+
+          <button onClick={() => setIsNewCaseModalOpen(true)} className="flex items-center gap-1.5 min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-sm hover:from-blue-700 hover:to-blue-600 transition-colors press-scale whitespace-nowrap">
+            <Plus className="w-4 h-4" /> 신규 등록
+          </button>
+
           <div className="flex border border-slate-200 rounded-xl overflow-hidden">
             <button onClick={() => setViewMode('list')} className={`p-2.5 cursor-pointer ${viewMode === 'list' ? 'bg-brand text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
               <List className="w-4 h-4" />
@@ -757,6 +986,44 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           </div>
         </div>
       </div>
+
+      {/* ── 기간 필터 (접이식) ── */}
+      {(dateFrom || dateTo) && (
+        <div className="bg-blue-50/50 border border-blue-200/50 rounded-xl px-4 py-2.5 flex items-center gap-3 text-sm animate-fadeIn">
+          <span className="text-blue-600 font-bold text-xs">📅 기간 필터</span>
+          <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+            className="rounded-lg border border-blue-200 px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-400 focus:outline-none" />
+          <span className="text-slate-400">~</span>
+          <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
+            className="rounded-lg border border-blue-200 px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-400 focus:outline-none" />
+          <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+            className="text-xs text-blue-500 hover:text-blue-700 font-bold ml-auto">초기화</button>
+        </div>
+      )}
+
+      {/* ── 기간 빠른 선택 ── */}
+      <div className="flex gap-1.5 flex-wrap">
+        {[
+          { label: '오늘', fn: () => { const t = new Date().toISOString().slice(0,10); setDateFrom(t); setDateTo(t); } },
+          { label: '이번 주', fn: () => { const now = new Date(); const d = now.getDay(); const mon = new Date(now); mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1)); setDateFrom(mon.toISOString().slice(0,10)); setDateTo(now.toISOString().slice(0,10)); } },
+          { label: '이번 달', fn: () => { const now = new Date(); setDateFrom(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`); setDateTo(now.toISOString().slice(0,10)); } },
+          { label: '최근 3개월', fn: () => { const now = new Date(); const ago = new Date(now); ago.setMonth(ago.getMonth()-3); setDateFrom(ago.toISOString().slice(0,10)); setDateTo(now.toISOString().slice(0,10)); } },
+          { label: '전체', fn: () => { setDateFrom(''); setDateTo(''); } },
+        ].map(p => (
+          <button key={p.label} onClick={() => { p.fn(); setPage(1); }}
+            className="text-[11px] px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 active:scale-[0.97] font-medium whitespace-nowrap">{p.label}</button>
+        ))}
+      </div>
+
+      {/* ── 휴지통 모드 배너 ── */}
+      {showTrash && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 text-sm animate-fadeIn">
+          <Trash2 className="w-5 h-5 text-red-500" />
+          <span className="font-bold text-red-700">🗑️ 휴지통 보기</span>
+          <span className="text-red-500 text-xs">삭제된 건이 표시됩니다. 30일 후 자동 영구 삭제됩니다.</span>
+          <button onClick={() => setShowTrash(false)} className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 whitespace-nowrap">닫기</button>
+        </div>
+      )}
 
       {/* ── 일괄 선택 액션 바 ── */}
       {selectedIds.size > 0 && currentPermissions.assignCases && (
@@ -827,6 +1094,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         <td className="p-3.5 w-[38px]" onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => handleToggleSelect(r.id)} className="rounded border-slate-300" />
                         </td>
+                        <td className="p-1 w-[28px]" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => handleToggleStar(r.id)} className="p-1 hover:bg-yellow-50 rounded-lg transition-colors">
+                            <Star className={`w-4 h-4 ${ext.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300 hover:text-yellow-400'}`} />
+                          </button>
+                        </td>
                         <td className="p-3.5">
                           <div className="font-bold text-slate-900 text-base truncate">{r.clientName}</div>
                           <div className="text-xs text-slate-400 font-medium truncate">{getDisplayPhoneNumber(r)}</div>
@@ -854,6 +1126,19 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           <div>{new Date(r.createdAt).toLocaleDateString()}</div>
                           <div className="text-slate-400">{timeAgo(ext.lastActivityAt)}</div>
                         </td>
+                        {showTrash && (
+                          <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5 justify-center">
+                              <button onClick={() => handleRestore(r.id)} className="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 font-bold hover:bg-emerald-100 active:scale-[0.97]" title="복원">
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => { deleteCrmClient(r.id); setRequests(prev => prev.filter(p => p.id !== r.id)); toast.success('영구 삭제됨'); }}
+                                className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-500 font-bold hover:bg-red-100 active:scale-[0.97]" title="영구 삭제">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -1862,6 +2147,32 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           </div>
         </div>
       )}
+
+      {/* ── 케이스 관리 모달 ── */}
+      <NewCaseModal
+        isOpen={isNewCaseModalOpen}
+        onClose={() => setIsNewCaseModalOpen(false)}
+        onRegister={handleNewCaseRegister}
+        existingRequests={requests}
+      />
+      <ImportCasesModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleBulkImport}
+        existingRequests={requests}
+      />
+      <ExportCasesModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        requests={filteredRequests}
+        getCrmExt={getCrmExt}
+      />
+      <DropOffReasonModal
+        isOpen={isDropOffModalOpen}
+        onClose={() => { setIsDropOffModalOpen(false); setDropOffTargetId(''); }}
+        clientName={requests.find(r => r.id === dropOffTargetId)?.clientName || ''}
+        onConfirm={handleDropOffConfirm}
+      />
     </div>
   );
 }
