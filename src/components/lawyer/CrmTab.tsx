@@ -3,7 +3,7 @@ import {
   Users, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, 
   Plus, Trash2, Search, LayoutGrid, List, GripVertical,
   CheckCircle2, ArrowRightLeft, UserPlus, Settings, Filter,
-  FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw
+  FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TeamworkTab from './TeamworkTab';
@@ -13,14 +13,17 @@ import ImportCasesModal from './ImportCasesModal';
 import type { ImportedCase } from './ImportCasesModal';
 import ExportCasesModal from './ExportCasesModal';
 import DropOffReasonModal from './DropOffReasonModal';
+import AssignmentDirectiveModal from './AssignmentDirectiveModal';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog,
-  ConsultOutcome, NoteReminder, DropOffReason
+  ConsultOutcome, NoteReminder, DropOffReason,
+  DirectivePriority, AssignmentDirective
 } from '../../types';
 import { 
   CRM_STATUS_CONFIG, STAFF_ROLE_CONFIG, CRM_NOTE_CATEGORIES, 
-  DEFAULT_REHAB_DOCUMENTS, DEFAULT_PERMISSIONS, OUTCOME_CONFIG
+  DEFAULT_REHAB_DOCUMENTS, DEFAULT_PERMISSIONS, OUTCOME_CONFIG,
+  DIRECTIVE_PRIORITY_CONFIG
 } from '../../types';
 import { 
   loadCrmData, saveCrmClient, loadStaffMembers, saveStaffMember, 
@@ -139,6 +142,16 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [dateTo, setDateTo] = useState('');
   const [showTrash, setShowTrash] = useState(false);
   const [starFilter, setStarFilter] = useState(false);
+
+  // ── 배정 지시 모달 ──
+  const [showDirectiveModal, setShowDirectiveModal] = useState(false);
+  const [pendingAssignment, setPendingAssignment] = useState<{
+    clientId: string;
+    lawyerId: string;
+    consultantId: string;
+    staffId: string;
+    status: CrmStatus;
+  } | null>(null);
 
   // ── 초기 로드 ──
   useEffect(() => {
@@ -376,28 +389,113 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
   const handleSaveAssignment = async () => {
     if (!selectedId) return;
-    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     const ext = getCrmExt(selectedId);
+    
+    // 담당자가 변경되었는지 확인
+    const assigneeChanged = 
+      editLawyerId !== (ext.assignedLawyerId || '') ||
+      editConsultantId !== (ext.assignedConsultantId || '');
+    
+    if (assigneeChanged) {
+      // 담당자 변경 → 배정 지시 모달 팝업
+      setPendingAssignment({
+        clientId: selectedId,
+        lawyerId: editLawyerId,
+        consultantId: editConsultantId,
+        staffId: editStaffId,
+        status: editStatus,
+      });
+      setShowDirectiveModal(true);
+    } else {
+      // 담당자 변경 없음 (상태만 변경) → 즉시 저장
+      await executeAssignment(selectedId, editStatus, editLawyerId, editConsultantId, editStaffId);
+    }
+  };
+
+  /** 실제 배정 저장 실행 (모달 결과와 무관하게 호출) */
+  const executeAssignment = async (
+    clientId: string, status: CrmStatus,
+    lawyerId: string, consultantId: string, staffId: string,
+    directive?: { memo: string; priority: DirectivePriority; deadline?: string }
+  ) => {
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const ext = getCrmExt(clientId);
     const activities = [...ext.activities];
     
-    if (editStatus !== ext.crmStatus) {
-      activities.push(createActivityLog(selectedId, actor.id, actor.name, actor.role, 'status_change',
-        `상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[editStatus].label}`));
-    }
-    if (editLawyerId !== (ext.assignedLawyerId || '')) {
-      const newLawyer = [...lawyers, ...staffMembers].find(l => l.id === editLawyerId);
-      activities.push(createActivityLog(selectedId, actor.id, actor.name, actor.role, 'assigned',
-        `담당 변호사 배정: ${newLawyer?.name || '미배정'}`));
+    if (status !== ext.crmStatus) {
+      activities.push(createActivityLog(clientId, actor.id, actor.name, actor.role, 'status_change',
+        `상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[status].label}`));
     }
 
-    await updateCrmExt(selectedId, {
-      crmStatus: editStatus,
-      assignedLawyerId: editLawyerId || undefined,
-      assignedConsultantId: editConsultantId || undefined,
-      assignedStaffId: editStaffId || undefined,
+    // 배정 대상 정보 파악
+    const newAssignee = [...lawyers, ...staffMembers].find(l => l.id === (lawyerId || consultantId));
+    
+    if (lawyerId !== (ext.assignedLawyerId || '')) {
+      const desc = directive?.memo
+        ? `담당 변호사 배정: ${newAssignee?.name || '미배정'} (지시: ${directive.memo.slice(0, 40)}${directive.memo.length > 40 ? '...' : ''})`
+        : `담당 변호사 배정: ${newAssignee?.name || '미배정'}`;
+      activities.push(createActivityLog(clientId, actor.id, actor.name, actor.role, 'assigned', desc));
+    }
+
+    // 배정 지시(Directive) 생성
+    let directives = [...(ext.assignmentDirectives || [])];
+    if (directive && newAssignee) {
+      const newDirective: AssignmentDirective = {
+        id: `dir-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        clientId,
+        assigneeId: newAssignee.id,
+        assigneeName: newAssignee.name,
+        assigneeRole: ('role' in newAssignee ? newAssignee.role : 'LAWYER') as StaffRole,
+        assignedById: actor.id,
+        assignedByName: actor.name,
+        assignedByRole: actor.role,
+        memo: directive.memo || undefined,
+        priority: directive.priority,
+        deadline: directive.deadline,
+        createdAt: new Date().toISOString(),
+      };
+      directives.push(newDirective);
+    }
+
+    await updateCrmExt(clientId, {
+      crmStatus: status,
+      assignedLawyerId: lawyerId || undefined,
+      assignedConsultantId: consultantId || undefined,
+      assignedStaffId: staffId || undefined,
       activities,
+      assignmentDirectives: directives.length > 0 ? directives : undefined,
     });
-    alert('저장되었습니다.');
+    toast.success('배정이 저장되었습니다.');
+  };
+
+  /** 배정 지시 모달: 지시사항과 함께 배정 */
+  const handleDirectiveSubmit = async (data: { memo: string; priority: DirectivePriority; deadline?: string }) => {
+    if (!pendingAssignment) return;
+    const { clientId, lawyerId, consultantId, staffId, status } = pendingAssignment;
+    await executeAssignment(clientId, status, lawyerId, consultantId, staffId, data);
+    setShowDirectiveModal(false);
+    setPendingAssignment(null);
+  };
+
+  /** 배정 지시 모달: 메모 없이 배정 */
+  const handleDirectiveSkip = async () => {
+    if (!pendingAssignment) return;
+    const { clientId, lawyerId, consultantId, staffId, status } = pendingAssignment;
+    await executeAssignment(clientId, status, lawyerId, consultantId, staffId);
+    setShowDirectiveModal(false);
+    setPendingAssignment(null);
+  };
+
+  /** 배정 지시 확인 완료 핸들러 */
+  const handleAcknowledgeDirective = async (directiveId: string) => {
+    if (!selectedId) return;
+    const ext = getCrmExt(selectedId);
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const directives = (ext.assignmentDirectives || []).map(d =>
+      d.id === directiveId ? { ...d, acknowledgedAt: new Date().toISOString(), acknowledgedById: actor.id } : d
+    );
+    await updateCrmExt(selectedId, { assignmentDirectives: directives });
+    toast.success('배정 지시를 확인했습니다.');
   };
 
   const handleTransfer = async () => {
@@ -1327,6 +1425,55 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       <button onClick={() => setDetailTab('court')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
                       <button onClick={() => setDetailTab('repayment')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'repayment' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📆 변제금</button>
                 </div>
+
+                {/* ── 배정 지시 배너 ── */}
+                {selectedExt && (() => {
+                  const latestDirective = (selectedExt.assignmentDirectives || [])
+                    .filter(d => !d.acknowledgedAt)
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+                  if (!latestDirective) return null;
+                  const pc = DIRECTIVE_PRIORITY_CONFIG[latestDirective.priority];
+                  const isOverdue = latestDirective.deadline && new Date(latestDirective.deadline) < new Date();
+                  return (
+                    <div className={`mx-4 mt-3 p-3.5 rounded-xl border-l-4 ${isOverdue ? 'bg-rose-50 border-rose-400' : `${pc.bgColor} ${pc.borderColor}`} animate-fadeIn`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-black text-slate-900">⚡ 배정 지시사항</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${pc.bgColor} ${pc.color} border ${pc.borderColor}`}>
+                              {pc.emoji} {pc.label}
+                            </span>
+                            {isOverdue && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 border border-rose-300 animate-pulse">
+                                ⏰ 기한 초과
+                              </span>
+                            )}
+                            {latestDirective.deadline && !isOverdue && (
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                📅 회신 기한: {new Date(latestDirective.deadline).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          {latestDirective.memo && (
+                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                              "{latestDirective.memo}"
+                            </p>
+                          )}
+                          <p className="text-[11px] text-slate-400 font-medium">
+                            — {latestDirective.assignedByName} · {new Date(latestDirective.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleAcknowledgeDirective(latestDirective.id)}
+                          className="shrink-0 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer press-scale transition-colors flex items-center gap-1 whitespace-nowrap"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          확인 완료
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="p-5 space-y-4">
                   {/* ── 정보 탭 ── */}
@@ -2380,6 +2527,26 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         onClose={() => { setIsDropOffModalOpen(false); setDropOffTargetId(''); }}
         clientName={requests.find(r => r.id === dropOffTargetId)?.clientName || ''}
         onConfirm={handleDropOffConfirm}
+      />
+
+      {/* ── 배정 지시 모달 ── */}
+      <AssignmentDirectiveModal
+        isOpen={showDirectiveModal}
+        onClose={() => { setShowDirectiveModal(false); setPendingAssignment(null); }}
+        onSkip={handleDirectiveSkip}
+        onSubmit={handleDirectiveSubmit}
+        assigneeName={(() => {
+          if (!pendingAssignment) return '';
+          const id = pendingAssignment.lawyerId || pendingAssignment.consultantId;
+          return [...lawyers, ...staffMembers].find(l => l.id === id)?.name || '';
+        })()}
+        assigneeRole={(() => {
+          if (!pendingAssignment) return 'STAFF';
+          const id = pendingAssignment.lawyerId || pendingAssignment.consultantId;
+          const found = staffMembers.find(m => m.id === id);
+          return found?.role || 'LAWYER';
+        })()}
+        clientName={requests.find(r => r.id === pendingAssignment?.clientId)?.clientName || ''}
       />
     </div>
   );

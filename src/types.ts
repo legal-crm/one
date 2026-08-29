@@ -473,15 +473,16 @@ export interface StaffActivityLog {
 }
 
 // CRM 메모 카테고리
-export type CrmNoteCategory = 'call' | 'consult' | 'document' | 'court' | 'billing' | 'urgent';
+export type CrmNoteCategory = 'call' | 'consult' | 'document' | 'court' | 'billing' | 'urgent' | 'assignment';
 
 export const CRM_NOTE_CATEGORIES: Record<CrmNoteCategory, { label: string; emoji: string; color: string }> = {
-  call:     { label: '통화',   emoji: '📞', color: 'text-blue-400' },
-  consult:  { label: '상담',   emoji: '📝', color: 'text-emerald-400' },
-  document: { label: '서류',   emoji: '📂', color: 'text-purple-400' },
-  court:    { label: '법원',   emoji: '⚖️', color: 'text-amber-400' },
-  billing:  { label: '수임료', emoji: '💰', color: 'text-pink-400' },
-  urgent:   { label: '긴급',   emoji: '⚠️', color: 'text-red-400' },
+  call:       { label: '통화',     emoji: '📞', color: 'text-blue-400' },
+  consult:    { label: '상담',     emoji: '📝', color: 'text-emerald-400' },
+  document:   { label: '서류',     emoji: '📂', color: 'text-purple-400' },
+  court:      { label: '법원',     emoji: '⚖️', color: 'text-amber-400' },
+  billing:    { label: '수임료',   emoji: '💰', color: 'text-pink-400' },
+  urgent:     { label: '긴급',     emoji: '⚠️', color: 'text-red-400' },
+  assignment: { label: '배정 지시', emoji: '📋', color: 'text-indigo-400' },
 };
 
 export interface CrmNote {
@@ -542,6 +543,33 @@ export const DEFAULT_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'che
   { id: 'doc-15', label: '퇴직금산정서류', checked: false },
 ];
 
+// ── 배정 지시 (Assignment Directive) ──
+export type DirectivePriority = 'urgent' | 'high' | 'normal' | 'low';
+
+export const DIRECTIVE_PRIORITY_CONFIG: Record<DirectivePriority, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
+  urgent: { label: '긴급',  emoji: '🔴', color: 'text-rose-700',   bgColor: 'bg-rose-50',   borderColor: 'border-rose-300' },
+  high:   { label: '높음',  emoji: '🟡', color: 'text-amber-700',  bgColor: 'bg-amber-50',  borderColor: 'border-amber-300' },
+  normal: { label: '보통',  emoji: '🔵', color: 'text-blue-700',   bgColor: 'bg-blue-50',   borderColor: 'border-blue-200' },
+  low:    { label: '낮음',  emoji: '⚪', color: 'text-slate-600',  bgColor: 'bg-slate-50',  borderColor: 'border-slate-200' },
+};
+
+export interface AssignmentDirective {
+  id: string;
+  clientId: string;                    // 고객 ID
+  assigneeId: string;                  // 배정받은 사람 ID
+  assigneeName: string;                // 배정받은 사람 이름
+  assigneeRole: StaffRole;             // 배정받은 사람 역할
+  assignedById: string;                // 배정한 사람 ID
+  assignedByName: string;              // 배정한 사람 이름
+  assignedByRole: StaffRole;           // 배정한 사람 역할
+  memo?: string;                       // 지시사항 텍스트
+  priority: DirectivePriority;         // 우선순위
+  deadline?: string;                   // 회신 기한 (ISO)
+  createdAt: string;                   // 생성 시각
+  acknowledgedAt?: string;             // 배정받은 사람이 확인한 시각
+  acknowledgedById?: string;           // 확인한 사람 ID
+}
+
 // CRM 확장된 고객 데이터 (ConsultRequest에 추가)
 export interface CrmClientExtension {
   crmStatus: CrmStatus;
@@ -580,6 +608,8 @@ export interface CrmClientExtension {
   caseType?: CaseType;           // 사건 유형
   region?: string;               // 거주 지역
   preInfo?: string;              // 사전 수집 정보
+  // ── 배정 지시 이력 ──
+  assignmentDirectives?: AssignmentDirective[];
 }
 
 export interface RepaymentEntry {
