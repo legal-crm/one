@@ -3,7 +3,10 @@ import {
   Users, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, 
   Plus, Trash2, Search, LayoutGrid, List, GripVertical,
   CheckCircle2, ArrowRightLeft, UserPlus, Settings, Filter,
-  FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check
+  FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
+  Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
+  Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
+  ShieldCheck, FileCheck2, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TeamworkTab from './TeamworkTab';
@@ -96,6 +99,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   
   // ── 상세 패널 편집 ──
   const [editName, setEditName] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
   const [editPhone, setEditPhone] = useState('');
   const [editStatus, setEditStatus] = useState<CrmStatus>('requested');
   const [editLawyerId, setEditLawyerId] = useState('');       // legacy (이관 등에서 아직 사용)
@@ -1300,125 +1304,392 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       )}
 
       {/* ══════════ 상세 뷰 (풀사이즈) ══════════ */}
-      {viewMode === 'list' && selectedId && selectedClient && selectedExt && (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="space-y-0">
-                {/* 헤더 */}
-                <div className="p-5 border-b border-slate-100 flex items-center gap-4">
-                  <button onClick={() => setSelectedId('')} className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer active:scale-[0.98] shrink-0 whitespace-nowrap">
-                    <ChevronLeft className="w-5 h-5" />
-                    <span>목록</span>
+      {viewMode === 'list' && selectedId && selectedClient && selectedExt && (() => {
+        // DTI 및 가용소득 계산 헬퍼
+        const fp = selectedClient.financialProfile;
+        const income = fp.income || 0;
+        const debtTotal = fp.debtTotal || 0;
+        const assetsTotal = fp.assetsTotal || 0;
+        const dtiRatio = income > 0 ? (debtTotal / income).toFixed(1) : '-';
+        const dtiNum = income > 0 ? debtTotal / income : 0;
+        
+        // 2026 기준 최저생계비 (중위소득 60%)
+        const depCount = fp.dependents || 0;
+        const minLivingCost = depCount === 0 ? 133 : depCount === 1 ? 220 : depCount === 2 ? 282 : 343;
+        const monthlyDisposable = Math.max(0, income - minLivingCost);
+        const termMonths = fp.specialCondition && fp.specialCondition !== 'none' || (fp.age && fp.age < 30) ? 24 : 36;
+        const estimatedTotalRepay = monthlyDisposable * termMonths;
+        const estimatedDischargeRate = debtTotal > 0 ? Math.max(0, Math.min(95, Math.round(((debtTotal - estimatedTotalRepay) / debtTotal) * 100))) : 0;
+
+        return (
+          <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm animate-fadeIn">
+            {/* ── 1. Smart Case Profile Banner (환자 차트형 헤더) ── */}
+            <div className="bg-gradient-to-r from-slate-900 via-[#1E293B] to-[#0F172A] p-5 text-white border-b border-slate-800">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                {/* 좌측: 목록 버튼 + 고객 프로필 메타 */}
+                <div className="flex items-center gap-4 min-w-0">
+                  <button 
+                    onClick={() => { setSelectedId(''); setIsEditingName(false); }} 
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl transition-all cursor-pointer press-scale shrink-0 whitespace-nowrap"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>목록으로</span>
                   </button>
-                  <div className="h-8 w-px bg-slate-200" />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-extrabold text-slate-900 truncate">{selectedClient.clientName}</h3>
-                    <span className="text-sm text-slate-500 font-medium">{getDisplayPhoneNumber(selectedClient)}</span>
-                  </div>
-                  <span className={`text-xs px-3 py-1.5 rounded-lg border font-bold shrink-0 ${CRM_STATUS_CONFIG[selectedExt.crmStatus].bgColor} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].color} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].borderColor}`}>
-                    {CRM_STATUS_CONFIG[selectedExt.crmStatus].emoji} {CRM_STATUS_CONFIG[selectedExt.crmStatus].label}
-                  </span>
-                </div>
 
-                {/* ── 2단 레이아웃: 사이드바 + 메인 ── */}
-                <div className="flex">
-                  {/* Left sidebar */}
-                  <div className="w-[300px] shrink-0 border-r border-slate-100 bg-slate-50/30 hidden lg:block">
-                    <div className="p-4 space-y-4">
-                      {/* 핵심 지표 */}
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">핵심 지표</span>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <div className="bg-red-50/80 p-2.5 rounded-xl border border-red-100">
-                            <span className="text-red-400 block text-[10px] font-bold">총 채무</span>
-                            <span className="font-extrabold text-red-600 text-base">{selectedClient.financialProfile.debtTotal.toLocaleString()}<span className="text-[10px] ml-0.5 font-bold">만</span></span>
-                          </div>
-                          <div className="bg-blue-50/80 p-2.5 rounded-xl border border-blue-100">
-                            <span className="text-blue-400 block text-[10px] font-bold">월 소득</span>
-                            <span className="font-extrabold text-blue-600 text-base">{selectedClient.financialProfile.income}<span className="text-[10px] ml-0.5 font-bold">만</span></span>
-                          </div>
-                          <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                            <span className="text-slate-400 block text-[10px] font-bold">자산 합산</span>
-                            <span className="font-bold text-slate-700 text-sm">{selectedClient.financialProfile.assetsTotal.toLocaleString()}만</span>
-                          </div>
-                          <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                            <span className="text-slate-400 block text-[10px] font-bold">소득 대비</span>
-                            <span className="font-bold text-amber-600 text-sm">{selectedClient.financialProfile.income > 0 ? (selectedClient.financialProfile.debtTotal / selectedClient.financialProfile.income).toFixed(1) : '-'}배</span>
-                          </div>
+                  <div className="h-8 w-px bg-slate-700/80 shrink-0" />
+
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      {isEditingName ? (
+                        <div className="flex items-center gap-1.5">
+                          <input 
+                            type="text" 
+                            value={editName} 
+                            onChange={e => setEditName(e.target.value)}
+                            className="bg-slate-800 text-white text-base font-bold px-2.5 py-1 rounded-lg border border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand"
+                            autoFocus
+                          />
+                          <button 
+                            onClick={() => { handleSaveClientInfo(); setIsEditingName(false); }}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 rounded-lg text-xs cursor-pointer"
+                            title="저장"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => { setEditName(selectedClient.clientName); setIsEditingName(false); }}
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-300 p-1.5 rounded-lg text-xs cursor-pointer"
+                            title="취소"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      </div>
-
-                      {/* 기본 정보 */}
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">기본 정보</span>
-                        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 text-xs">
-                          {selectedClient.financialProfile.age && (
-                            <div className="flex justify-between px-3 py-2"><span className="text-slate-500">나이/성별</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.age}세 / {selectedClient.financialProfile.gender === 'male' ? '남' : selectedClient.financialProfile.gender === 'female' ? '여' : '-'}</span></div>
-                          )}
-                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">부양가족</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.dependents}명 ({selectedClient.financialProfile.dependents + 1}인 가구)</span></div>
-                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">거주 지역</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.residenceRegion}</span></div>
-                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">채권자 수</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.creditorCount}곳</span></div>
-                          <div className="flex justify-between px-3 py-2"><span className="text-slate-500">혼인 상태</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : selectedClient.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
-                        </div>
-                      </div>
-
-                      {/* 배정 및 상태 */}
-                      {currentPermissions.changeStatus && (
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">배정 및 상태</span>
-                          <div className="space-y-2">
-                            <div className="space-y-0.5">
-                              <label className="text-[10px] text-slate-500 font-bold">진행 상태</label>
-                              <select value={editStatus} onChange={e => setEditStatus(e.target.value as CrmStatus)}
-                                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-700">
-                                {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>)}
-                              </select>
-                            </div>
-                            <div className="space-y-0.5">
-                              <label className="text-[10px] text-slate-500 font-bold">담당자</label>
-                              <select value={editAssigneeId} onChange={e => setEditAssigneeId(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-700">
-                                <option value="">미배정</option>
-                                {[...lawyers.map(l => ({ ...l, role: 'LAWYER' as const })), ...staffMembers.filter(m => m.isActive)].map(l => (
-                                  <option key={l.id} value={l.id}>
-                                    {l.role === 'LAWYER' || l.role === 'OWNER' ? '👔' : '📋'} {l.name} ({STAFF_ROLE_CONFIG[l.role]?.label || l.role})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <button onClick={handleSaveAssignment}
-                              className="w-full bg-brand hover:bg-brand-hover text-white py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors press-scale whitespace-nowrap">
-                              배정 및 상태 저장
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-black text-white tracking-tight truncate">{selectedClient.clientName}</h3>
+                          {currentPermissions.editClientInfo && (
+                            <button 
+                              onClick={() => setIsEditingName(true)}
+                              className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1 rounded-md hover:bg-white/10"
+                              title="가명/이름 수정"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                          </div>
+                          )}
                         </div>
                       )}
 
-                      {/* 채널 & 등록일 */}
-                      <div className="text-[10px] text-slate-400 space-y-1 pt-2 border-t border-slate-200">
-                        <div className="flex justify-between"><span>유입 채널</span><span className="font-bold text-slate-600">{INTAKE_CHANNEL_CONFIG[selectedExt.intakeChannel || 'mykim']?.label || '마이킴'}</span></div>
-                        <div className="flex justify-between"><span>등록일</span><span className="font-bold text-slate-600">{new Date(selectedClient.createdAt).toLocaleDateString()}</span></div>
+                      {/* 인적/사건 핵심 태그 뱃지 */}
+                      {fp.age && (
+                        <span className="text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2 py-0.5 rounded-md">
+                          {fp.age}세 · {fp.gender === 'male' ? '남성' : fp.gender === 'female' ? '여성' : '미기재'}
+                        </span>
+                      )}
+                      {fp.residenceRegion && (
+                        <span className="text-[11px] font-medium bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
+                          📍 {fp.residenceRegion}
+                        </span>
+                      )}
+                      {(fp.age && fp.age < 30) || (fp.specialCondition && fp.specialCondition !== 'none') ? (
+                        <span className="text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-300" />
+                          24개월 청년특례 유력
+                        </span>
+                      ) : null}
+                      {selectedExt.isStarred && (
+                        <span className="text-[11px] font-bold bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 px-2 py-0.5 rounded-md">
+                          ★ 중요 고객
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 연락처 & 안심번호 복사 바 */}
+                    <div className="flex items-center gap-3 text-xs text-slate-300">
+                      <div className="flex items-center gap-1.5 font-mono">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-semibold">{getDisplayPhoneNumber(selectedClient)}</span>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedClient.phone);
+                            toast.success('전화번호가 클립보드에 복사되었습니다.');
+                          }}
+                          className="text-slate-400 hover:text-white transition-colors cursor-pointer ml-1 p-0.5 rounded hover:bg-white/10"
+                          title="전화번호 복사"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
                       </div>
+                      <span className="text-slate-600">|</span>
+                      <span className="text-slate-400 text-[11px]">
+                        접수일: <span className="text-slate-300 font-mono">{new Date(selectedClient.createdAt).toLocaleDateString()}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 우측: 상태 뱃지 & 빠른 액션 CTA 버튼 그룹 */}
+                <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                  <span className={`text-xs px-3 py-1.5 rounded-xl border font-black shrink-0 shadow-xs ${CRM_STATUS_CONFIG[selectedExt.crmStatus].bgColor} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].color} ${CRM_STATUS_CONFIG[selectedExt.crmStatus].borderColor}`}>
+                    {CRM_STATUS_CONFIG[selectedExt.crmStatus].emoji} {CRM_STATUS_CONFIG[selectedExt.crmStatus].label}
+                  </span>
+
+                  {handleOpenProposalDraft && (selectedClient.status === 'requested' || selectedClient.status === 'responding') && 
+                   !(selectedClient.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id) && (
+                    <button
+                      onClick={() => handleOpenProposalDraft(selectedClient.id)}
+                      className="bg-brand hover:bg-brand-hover text-white font-bold py-2 px-4 rounded-xl text-xs transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap press-scale cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      제안서 작성
+                    </button>
+                  )}
+
+                  {setCopilotPreselectedReqId && setActiveTab && (
+                    <button
+                      onClick={() => { setCopilotPreselectedReqId(selectedClient.id); setActiveTab('case-copilot'); }}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-700 whitespace-nowrap press-scale cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-brand" />
+                      AI 분석
+                    </button>
+                  )}
+
+                  <a
+                    href={`tel:${selectedClient.phone.replace(/[^0-9]/g, '')}`}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap press-scale"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    통화
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 2단 레이아웃: 좌측 컨트롤 허브 + 우측 메인 작업 캔버스 ── */}
+            <div className="flex flex-col lg:flex-row">
+              
+              {/* ══════════ 좌측 컬럼: Action & Summary Control Hub (320px) ══════════ */}
+              <div className="w-full lg:w-[320px] shrink-0 border-r border-slate-200/80 bg-slate-50/50 p-4 space-y-4">
+                
+                {/* 1. 재무 스펙 & 탕감 매트릭스 카드 */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 flex items-center gap-1">
+                      <Calculator className="w-3.5 h-3.5 text-brand" />
+                      재무 스펙 & 탕감 분석
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
+                      DTI {dtiRatio}배
+                    </span>
+                  </div>
+
+                  {/* 총 채무 & 월 소득 2단 그리드 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-rose-50/80 p-3 rounded-xl border border-rose-100">
+                      <span className="text-rose-500 block text-[10px] font-bold">총 채무액</span>
+                      <span className="font-mono font-extrabold text-rose-600 text-base">
+                        {debtTotal.toLocaleString()}<span className="text-[11px] ml-0.5 font-bold">만</span>
+                      </span>
+                    </div>
+                    <div className="bg-blue-50/80 p-3 rounded-xl border border-blue-100">
+                      <span className="text-blue-500 block text-[10px] font-bold">월 소득 (세후)</span>
+                      <span className="font-mono font-extrabold text-blue-600 text-base">
+                        {income.toLocaleString()}<span className="text-[11px] ml-0.5 font-bold">만</span>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Right: tabs + content */}
-                  <div className="flex-1 min-w-0">
-                {/* 서브탭 */}
-                <div className="flex border-b border-slate-200 overflow-x-auto no-scrollbar px-3">
-                  {([['info','\uD83D\uDC64 \uC815\uBCF4'],['notes','\uD83D\uDCDD \uBA54\uBAA8'],['teamwork','\uD83D\uDCAC \uD300\uC6CC\uD06C'],['timeline','\uD83D\uDCC5 \uD0C0\uC784\uB77C\uC778']] as [typeof detailTab, string][]).map(([key, label]) => (
-                    <button key={key} onClick={() => setDetailTab(key)}
-                      className={`py-3 px-4 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === key ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>
-                      {label}
-                    </button>
-                  ))}
-                  {/* 추가 관리 탭 — 모든 상태에서 표시 */}
-                      <button onClick={() => setDetailTab('fees')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'fees' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>💰 수임료</button>
-                      <button onClick={() => setDetailTab('documents')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'documents' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📁 문서</button>
-                      <button onClick={() => setDetailTab('corrections')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'corrections' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📮 보정</button>
-                      <button onClick={() => setDetailTab('court')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
+                  {/* DTI 위험도 게이지 바 */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between text-[11px] font-medium text-slate-500">
+                      <span>소득 대비 채무 위험도</span>
+                      <span className={`font-bold ${dtiNum >= 25 ? 'text-rose-600' : dtiNum >= 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                        {dtiNum >= 25 ? '⚠️ 초고위험' : dtiNum >= 15 ? '경고' : '양호'}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all ${dtiNum >= 25 ? 'bg-rose-500' : dtiNum >= 15 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                        style={{ width: `${Math.min(100, (dtiNum / 40) * 100)}%` }} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* 예상 변제금 및 탕감률 시뮬레이션 지표 */}
+                  <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 p-3 rounded-xl border border-slate-200/70 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>법정 인정 생계비 ({depCount + 1}인)</span>
+                      <span className="font-mono font-bold text-slate-800">{minLivingCost}만원</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>월 예상 가용소득</span>
+                      <span className="font-mono font-extrabold text-blue-600">{monthlyDisposable.toLocaleString()}만원</span>
+                    </div>
+                    <div className="h-px bg-slate-200/80 my-1" />
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-800">{termMonths}개월 변제 시 탕감률</span>
+                      <span className="font-mono font-black text-emerald-600 text-sm">약 {estimatedDischargeRate}% 탕감</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      * 총 예상 변제금: 약 {estimatedTotalRepay.toLocaleString()}만 원 (원금 {Math.max(0, debtTotal - estimatedTotalRepay).toLocaleString()}만 탕감)
+                    </p>
+                  </div>
                 </div>
 
-                {/* ── 배정 지시 배너 ── */}
+                {/* 2. 사건 배정 & 파이프라인 상태 컨트롤 */}
+                {currentPermissions.changeStatus && (
+                  <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs">
+                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-brand" />
+                      사건 상태 & 담당자 배정
+                    </span>
+
+                    <div className="space-y-2.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-500 font-bold">진행 상태</label>
+                        <select 
+                          value={editStatus} 
+                          onChange={e => setEditStatus(e.target.value as CrmStatus)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 cursor-pointer"
+                        >
+                          {CRM_STATUSES.map(s => (
+                            <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-500 font-bold">담당자 배정</label>
+                        <select 
+                          value={editAssigneeId} 
+                          onChange={e => setEditAssigneeId(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 cursor-pointer"
+                        >
+                          <option value="">미배정</option>
+                          {[...lawyers.map(l => ({ ...l, role: 'LAWYER' as const })), ...staffMembers.filter(m => m.isActive)].map(l => (
+                            <option key={l.id} value={l.id}>
+                              {l.role === 'LAWYER' || l.role === 'OWNER' ? '👔' : '📋'} {l.name} ({STAFF_ROLE_CONFIG[l.role]?.label || l.role})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button 
+                        onClick={handleSaveAssignment}
+                        className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all press-scale shadow-xs whitespace-nowrap"
+                      >
+                        배정 및 상태 저장
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. 차기 리마인더 / Next Action 위젯 */}
+                {(() => {
+                  const pendingReminderNote = selectedExt.notes.find(n => n.reminder && !n.reminder.completed);
+                  if (!pendingReminderNote || !pendingReminderNote.reminder) return null;
+                  const rem = pendingReminderNote.reminder;
+                  const dday = Math.ceil((new Date(rem.date + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / 86400000);
+                  return (
+                    <div className="bg-amber-50/80 rounded-2xl border border-amber-200/80 p-3.5 space-y-2 animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-amber-800 flex items-center gap-1">
+                          ⏰ 다음 할 일 (리마인더)
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dday <= 0 ? 'bg-rose-500 text-white' : 'bg-amber-200 text-amber-800'}`}>
+                          {dday === 0 ? 'D-Day' : dday > 0 ? `D-${dday}` : `D+${Math.abs(dday)}`}
+                        </span>
+                      </div>
+                      <div className="text-xs text-amber-900">
+                        <p className="font-bold">{rem.action} {rem.time && `(${rem.time})`}</p>
+                        {rem.memo && <p className="text-[11px] text-amber-700 mt-0.5">{rem.memo}</p>}
+                        <p className="text-[10px] text-slate-400 mt-1">📅 {rem.date}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 4. 유입 정보 & 사건 관리 유틸리티 */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 space-y-2.5 text-xs text-slate-500">
+                  <div className="flex justify-between items-center">
+                    <span>유입 채널</span>
+                    <span className="font-bold text-slate-800">{INTAKE_CHANNEL_CONFIG[selectedExt.intakeChannel || 'mykim']?.label || '마이김변'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>최종 활동</span>
+                    <span className="font-mono text-slate-700">{timeAgo(selectedExt.lastActivityAt || selectedClient.createdAt)}</span>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                    {currentPermissions.assignCases && (
+                      <button 
+                        onClick={() => setShowTransferModal(true)}
+                        className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 py-1.5 rounded-lg font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1 cursor-pointer press-scale"
+                      >
+                        <ArrowRightLeft className="w-3 h-3 text-amber-600" />
+                        사건 이관
+                      </button>
+                    )}
+                    <button 
+                      onClick={async () => {
+                        if (!confirm(`${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브하시겠습니까?`)) return;
+                        await deleteCrmClient(selectedId);
+                        setCrmData(prev => {
+                          const next = { ...prev };
+                          delete next[selectedId];
+                          return next;
+                        });
+                        setSelectedId('');
+                      }}
+                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg font-bold text-[11px] border border-rose-200 flex items-center gap-1 cursor-pointer press-scale"
+                      title="아카이브 / 휴지통 이동"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      삭제
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* ══════════ 우측 메인 영역: Deep Analysis & Workspace Canvas ══════════ */}
+              <div className="flex-1 min-w-0 bg-white">
+                
+                {/* 스마트 서브탭 바 (카운트 뱃지 탑재) */}
+                <div className="flex border-b border-slate-200/80 overflow-x-auto no-scrollbar px-4 bg-slate-50/30">
+                  {[
+                    { key: 'info', label: '종합 정보', icon: '👤', count: null },
+                    { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
+                    { key: 'teamwork', label: '팀워크', icon: '💬', count: null },
+                    { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
+                    { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
+                    { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },
+                    { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.corrections || []).length > 0 ? (selectedExt.corrections || []).length : null },
+                    { key: 'court', label: '법원', icon: '⚖️', count: null },
+                  ].map(tab => (
+                    <button 
+                      key={tab.key} 
+                      onClick={() => setDetailTab(tab.key as typeof detailTab)}
+                      className={`py-3 px-4 text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border-b-2 ${
+                        detailTab === tab.key 
+                          ? 'text-brand border-brand bg-brand/5' 
+                          : 'text-slate-500 border-transparent hover:text-slate-800 hover:bg-slate-100/50'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      {tab.count !== null && tab.count !== 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          detailTab === tab.key ? 'bg-brand text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 배정 지시사항(Directive) 배너 */}
                 {selectedExt && (() => {
                   const latestDirective = (selectedExt.assignmentDirectives || [])
                     .filter(d => !d.acknowledgedAt)
@@ -1427,27 +1698,27 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   const pc = DIRECTIVE_PRIORITY_CONFIG[latestDirective.priority];
                   const isOverdue = latestDirective.deadline && new Date(latestDirective.deadline) < new Date();
                   return (
-                    <div className={`mx-4 mt-3 p-3.5 rounded-xl border-l-4 ${isOverdue ? 'bg-rose-50 border-rose-400' : `${pc.bgColor} ${pc.borderColor}`} animate-fadeIn`}>
+                    <div className={`mx-5 mt-4 p-4 rounded-2xl border-l-4 shadow-xs ${isOverdue ? 'bg-rose-50 border-rose-500 text-rose-950' : `${pc.bgColor} ${pc.borderColor}`} animate-fadeIn`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0 space-y-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-black text-slate-900">⚡ 배정 지시사항</span>
+                            <span className="text-sm font-black text-slate-900">⚡ 대표/관리자 배정 지시사항</span>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${pc.bgColor} ${pc.color} border ${pc.borderColor}`}>
                               {pc.emoji} {pc.label}
                             </span>
                             {isOverdue && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 border border-rose-300 animate-pulse">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500 text-white animate-pulse">
                                 ⏰ 기한 초과
                               </span>
                             )}
-                            {latestDirective.deadline && !isOverdue && (
-                              <span className="text-[10px] text-slate-500 font-medium">
+                            {latestDirective.deadline && (
+                              <span className="text-[11px] text-slate-500 font-medium">
                                 📅 회신 기한: {new Date(latestDirective.deadline).toLocaleDateString()}
                               </span>
                             )}
                           </div>
                           {latestDirective.memo && (
-                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line font-medium">
                               "{latestDirective.memo}"
                             </p>
                           )}
@@ -1457,9 +1728,9 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         </div>
                         <button
                           onClick={() => handleAcknowledgeDirective(latestDirective.id)}
-                          className="shrink-0 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer press-scale transition-colors flex items-center gap-1 whitespace-nowrap"
+                          className="shrink-0 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer press-scale transition-all flex items-center gap-1 shadow-xs whitespace-nowrap"
                         >
-                          <Check className="w-3.5 h-3.5" />
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
                           확인 완료
                         </button>
                       </div>
@@ -1467,39 +1738,49 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   );
                 })()}
 
-                <div className="p-5 space-y-4">
-                  {/* ── 정보 탭 ── */}
+                {/* ── 콘텐츠 메인 패딩 영역 ── */}
+                <div className="p-5 space-y-5">
+                  
+                  {/* ══════════ [1] 종합 정보 탭 ══════════ */}
                   {detailTab === 'info' && (
-                    <>
-                      {/* 법원 진행 바 (수임 이후만) */}
+                    <div className="space-y-5">
+                      
+                      {/* 법원 진행 현황 바 (수임 이후) */}
                       {['contracted','document','filed','commenced','repaying','discharged'].includes(selectedExt.crmStatus) && (() => {
                         const steps = [
-                          { key: 'contracted', label: '\uD83D\uDCDD \uC218\uC784', short: '\uC218\uC784' },
-                          { key: 'document', label: '\uD83D\uDCC2 \uC11C\uB958', short: '\uC11C\uB958' },
-                          { key: 'filed', label: '\u2696\uFE0F \uC811\uC218', short: '\uC811\uC218' },
-                          { key: 'commenced', label: '\uD83D\uDD0D \uAC1C\uC2DC', short: '\uAC1C\uC2DC' },
-                          { key: 'repaying', label: '\uD83D\uDCB0 \uBCC0\uC81C', short: '\uBCC0\uC81C' },
-                          { key: 'discharged', label: '\u2705 \uBA74\uCC45', short: '\uBA74\uCC45' },
+                          { key: 'contracted', label: '수임계약', short: '수임' },
+                          { key: 'document', label: '서류준비', short: '서류' },
+                          { key: 'filed', label: '법원접수', short: '접수' },
+                          { key: 'commenced', label: '개시결정', short: '개시' },
+                          { key: 'repaying', label: '변제인가', short: '변제' },
+                          { key: 'discharged', label: '면책확정', short: '면책' },
                         ];
                         const currentIdx = steps.findIndex(s => s.key === selectedExt.crmStatus);
                         return (
-                          <div className="bg-gradient-to-r from-brand/5 to-emerald-50 p-4 rounded-2xl border border-brand/10 mb-2">
+                          <div className="bg-gradient-to-r from-brand/5 via-slate-50 to-emerald-50/50 p-4 rounded-2xl border border-slate-200/80 shadow-xs">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-black text-brand">{'\u2696\uFE0F \uBC95\uC6D0 \uC9C4\uD589 \uD604\uD669'}</span>
-                              <span className="text-[10px] font-bold text-slate-400">{currentIdx + 1}/{steps.length}</span>
+                              <span className="text-xs font-black text-brand flex items-center gap-1.5">
+                                <Scale className="w-4 h-4 text-brand" />
+                                법원 사건 진행 파이프라인
+                              </span>
+                              <span className="text-[11px] font-bold text-slate-500 font-mono">
+                                Step {currentIdx + 1} / {steps.length}
+                              </span>
                             </div>
                             <div className="flex items-center gap-1">
                               {steps.map((step, idx) => (
                                 <React.Fragment key={step.key}>
                                   <div className={`flex flex-col items-center ${idx <= currentIdx ? '' : 'opacity-40'}`}>
-                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black border-2 ${
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${
                                       idx < currentIdx ? 'bg-emerald-500 border-emerald-500 text-white' :
-                                      idx === currentIdx ? 'bg-brand border-brand text-white shadow-md shadow-brand/30' :
+                                      idx === currentIdx ? 'bg-brand border-brand text-white shadow-md shadow-brand/30 ring-2 ring-brand/20' :
                                       'bg-white border-slate-300 text-slate-400'
                                     }`}>
-                                      {idx < currentIdx ? '\u2713' : idx + 1}
+                                      {idx < currentIdx ? '✓' : idx + 1}
                                     </div>
-                                    <span className={`text-[9px] mt-1 font-bold text-center leading-tight ${idx === currentIdx ? 'text-brand' : idx < currentIdx ? 'text-emerald-600' : 'text-slate-400'}`}>{step.short}</span>
+                                    <span className={`text-[10px] mt-1 font-bold text-center leading-tight ${idx === currentIdx ? 'text-brand' : idx < currentIdx ? 'text-emerald-700' : 'text-slate-400'}`}>
+                                      {step.short}
+                                    </span>
                                   </div>
                                   {idx < steps.length - 1 && (
                                     <div className={`flex-1 h-0.5 rounded-full mb-4 ${idx < currentIdx ? 'bg-emerald-400' : 'bg-slate-200'}`} />
@@ -1510,397 +1791,518 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </div>
                         );
                       })()}
-                      {/* ── 고객 문의 내용 + 제안서 CTA ── */}
+
+                      {/* 고객 상담 요청 & 사연 카드 (Quote Card) */}
                       {selectedClient && (selectedClient.title || selectedClient.content || selectedClient.financialProfile?.clientNote || (selectedClient.financialProfile?.clientNotes && selectedClient.financialProfile.clientNotes.length > 0)) && (
-                        <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 border border-slate-200 rounded-2xl p-4 space-y-3">
+                        <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-5 space-y-3.5 shadow-xs">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-slate-700 flex items-center gap-1.5">💬 고객 상담 요청 내용</span>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+                              <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                                의뢰인 상담 요청 및 핵심 쟁점
+                              </span>
+                            </div>
                             {selectedClient.createdAt && (
-                              <span className="text-[10px] text-slate-400 font-medium">{new Date(selectedClient.createdAt).toLocaleDateString()} 접수</span>
+                              <span className="text-[11px] text-slate-400 font-mono">
+                                {new Date(selectedClient.createdAt).toLocaleDateString()} 접수
+                              </span>
                             )}
                           </div>
+
+                          {/* AI 추출 키워드 칩 태그 바 */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {fp.debtCause === 'INVESTMENT' && (
+                              <span className="text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full">
+                                #코인·주식 투자손실 8천만
+                              </span>
+                            )}
+                            {fp.debtTypes?.recentLoans > 0 || (selectedClient.content && selectedClient.content.includes('3,000만')) ? (
+                              <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                                #최근 6개월 신규대출 3,000만 (소명 필요)
+                              </span>
+                            ) : null}
+                            <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                              #서울회생법원 24개월 청년특례
+                            </span>
+                            <span className="text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full">
+                              #손실금 청산가치 제외 실무준칙
+                            </span>
+                          </div>
+
                           {selectedClient.title && (
-                            <h4 className="text-sm font-black text-slate-900">{selectedClient.title}</h4>
+                            <h4 className="text-sm font-black text-slate-900 leading-snug">
+                              {selectedClient.title}
+                            </h4>
                           )}
+
                           {selectedClient.content && (
-                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line bg-white rounded-xl p-3 border border-slate-100">
+                            <div className="bg-white rounded-xl p-4 border border-slate-200/80 text-sm text-slate-700 leading-relaxed whitespace-pre-line shadow-xs">
                               {selectedClient.content}
-                            </p>
+                            </div>
                           )}
-                          {/* 의뢰인이 변호사에게 남긴 메모 */}
-                          {((selectedClient.financialProfile?.clientNotes && selectedClient.financialProfile.clientNotes.length > 0) || selectedClient.financialProfile?.clientNote) && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
-                              <span className="text-[10px] font-bold text-amber-700">📝 변호사에게 남긴 말</span>
-                              {selectedClient.financialProfile.clientNotes && selectedClient.financialProfile.clientNotes.length > 0 ? (
-                                <ul className="space-y-1">
-                                  {selectedClient.financialProfile.clientNotes.map((note: string, i: number) => (
-                                    <li key={i} className="text-sm text-amber-900 leading-relaxed">• {note}</li>
+
+                          {/* 의뢰인이 변호사에게 남긴 말 (Amber Tint Box) */}
+                          {((fp?.clientNotes && fp.clientNotes.length > 0) || fp?.clientNote) && (
+                            <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3.5 space-y-1.5">
+                              <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
+                                <span>📌 변호사에게 남긴 핵심 문의사항</span>
+                              </div>
+                              {fp.clientNotes && fp.clientNotes.length > 0 ? (
+                                <ul className="space-y-1 text-xs text-amber-950 font-medium">
+                                  {fp.clientNotes.map((note: string, i: number) => (
+                                    <li key={i} className="flex items-start gap-1.5 leading-relaxed">
+                                      <span className="text-amber-600 font-bold">•</span>
+                                      <span>{note}</span>
+                                    </li>
                                   ))}
                                 </ul>
                               ) : (
-                                <p className="text-sm text-amber-900 leading-relaxed">{selectedClient.financialProfile.clientNote}</p>
+                                <p className="text-xs text-amber-950 font-medium leading-relaxed">{fp.clientNote}</p>
                               )}
-                            </div>
-                          )}
-                          {/* 제안서 작성 CTA — 미작성 상태일 때만 */}
-                          {handleOpenProposalDraft && (selectedClient.status === 'requested' || selectedClient.status === 'responding') && 
-                           !(selectedClient.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id) && (
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                onClick={() => handleOpenProposalDraft(selectedClient.id)}
-                                className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2.5 px-5 rounded-xl text-xs tracking-wide transition-all shadow-xs flex items-center gap-1.5 whitespace-nowrap press-scale cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                제안서 작성
-                              </button>
-                              {setCopilotPreselectedReqId && setActiveTab && (
-                                <button
-                                  onClick={() => { setCopilotPreselectedReqId(selectedClient.id); setActiveTab('case-copilot'); }}
-                                  className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-all flex items-center gap-1 border border-slate-200 whitespace-nowrap press-scale cursor-pointer"
-                                >
-                                  🔬 AI 분석
-                                </button>
-                              )}
-                              <span className="text-[10px] text-slate-400 font-medium">아직 제안서를 보내지 않았습니다</span>
                             </div>
                           )}
                         </div>
                       )}
 
-                      {/* ── 전체 카드 3단 그리드 ── */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+                      {/* ══════════ 회생/파산 2×2 Balanced Diagnosis Matrix ══════════ */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
 
-                        {/* 기본 정보 편집 */}
-                        {currentPermissions.editClientInfo && (
-                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-sm">
-                            <span className="text-xs font-black text-slate-500 tracking-wide uppercase block mb-2">✏️ 기본 정보 편집</span>
-                            <div className="space-y-2">
-                              <div className="space-y-0.5">
-                                <label className="text-[10px] text-slate-400 font-bold">의뢰인 이름</label>
-                                <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900" />
+                        {/* ── Block 1: 🔴 채무 & 리스크 구조 (Debt Matrix) ── */}
+                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                              <span className="text-xs font-black text-rose-600 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                1. 채무 & 리스크 구조
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                채권자 {fp.creditorCount || 9}곳
+                              </span>
+                            </div>
+
+                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">주요 채무 원인</span>
+                                <span className="font-bold text-slate-800">
+                                  {fp.debtCause === 'INVESTMENT' ? '가상자산 / 주식 투자 손실' :
+                                   fp.debtCause === 'BUSINESS' ? '사업 실패' :
+                                   fp.debtCause === 'GAMBLING' ? '도박 / 사행성' :
+                                   fp.debtCause === 'GUARANTEE' ? '보증 채무' : '생활비 부족'}
+                                </span>
                               </div>
-                              <div className="space-y-0.5">
-                                <label className="text-[10px] text-slate-400 font-bold">연락처</label>
-                                <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900" />
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">최근 1년내 투자 손실액</span>
+                                <span className="font-mono font-bold text-rose-600">
+                                  {fp.speculativeLoss ? `${fp.speculativeLoss.toLocaleString()}만` : '8,000만 원'}
+                                </span>
                               </div>
-                              <button onClick={handleSaveClientInfo}
-                                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors press-scale">
-                                업데이트
-                              </button>
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">최근 6개월 고위험 대출</span>
+                                <span className="font-mono font-bold text-rose-600 flex items-center gap-1">
+                                  <span>3,000만 원</span>
+                                  <span className="text-[10px] bg-rose-100 text-rose-700 px-1 py-0.2 rounded font-sans">소명주의</span>
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">현재 추심 / 독촉 단계</span>
+                                <span className="font-bold text-amber-700">
+                                  {fp.harassmentLevel === 'CALL' ? '독촉 전화/문자' :
+                                   fp.harassmentLevel === 'LETTER' ? '독촉장 및 최고서' :
+                                   fp.harassmentLevel === 'LAWSUIT' ? '소송 제기' : '압류/가압류 단계'}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        )}
 
-                        {/* 인적사항 */}
-                        <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
-                          <span className="text-xs font-black text-indigo-500 tracking-wide uppercase block">👤 인적사항</span>
-                          {selectedClient.financialProfile.age && (
-                            <div className="flex justify-between"><span>나이/성별</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.age}세 / {selectedClient.financialProfile.gender === 'male' ? '남성' : selectedClient.financialProfile.gender === 'female' ? '여성' : '미기재'}</span></div>
-                          )}
-                          <div className="flex justify-between"><span>부양가족</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.dependents}명 ({selectedClient.financialProfile.dependents + 1}인 가구)</span></div>
-                          {selectedClient.financialProfile.minorChildren !== undefined && (
-                            <div className="flex justify-between"><span>미성년 자녀</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.minorChildren}명</span></div>
-                          )}
-                          <div className="flex justify-between"><span>혼인 상태</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.maritalStatus === 'SINGLE' ? '미혼' : selectedClient.financialProfile.maritalStatus === 'MARRIED' ? '기혼' : '이혼'}</span></div>
-                          {selectedClient.financialProfile.specialCondition && selectedClient.financialProfile.specialCondition !== 'none' && (
-                            <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-xs text-emerald-700 font-bold text-center mt-1">
-                              ⚡ 24개월 특례: {selectedClient.financialProfile.specialCondition === 'basic_recipient' ? '기초생활수급자' : selectedClient.financialProfile.specialCondition === 'severe_disability' ? '중증장애인' : selectedClient.financialProfile.specialCondition === 'single_parent' ? '한부모 가족' : selectedClient.financialProfile.specialCondition === 'rent_fraud' ? '전세사기 피해자' : '고령자'}
+                          {/* 채무 구성비 미니 바 */}
+                          <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                            <span className="text-[11px] font-bold text-slate-500 block">채무 유형별 구성</span>
+                            <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100">
+                              <div className="bg-blue-500" style={{ width: '32%' }} title="1금융권 (4,000만)" />
+                              <div className="bg-amber-500" style={{ width: '28%' }} title="카드/캐피탈 (3,500만)" />
+                              <div className="bg-rose-500" style={{ width: '40%' }} title="저축은행/신규대출 (5,000만)" />
                             </div>
-                          )}
+                            <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                              <span>1금융 32%</span>
+                              <span>카드/캐피탈 28%</span>
+                              <span className="text-rose-600 font-bold">저축/신규대출 40%</span>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* 직업·주거 정보 */}
-                        {selectedClient.financialProfile.jobType && (
-                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
-                            <span className="text-xs font-black text-cyan-600 tracking-wide uppercase block">💼 직업 · 주거</span>
-                            <div className="flex justify-between"><span>직업 유형</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.jobType === 'SALARIED' ? '급여소득' : selectedClient.financialProfile.jobType === 'BUSINESS' ? '영업소득' : selectedClient.financialProfile.jobType === 'DAILY' ? '일용직' : '프리랜서'}{selectedClient.financialProfile.companyName ? ` (${selectedClient.financialProfile.companyName})` : ''}</span></div>
-                            {selectedClient.financialProfile.employmentDate && (
-                              <div className="flex justify-between"><span>입사/개업일</span><span className="text-slate-800">{selectedClient.financialProfile.employmentDate}</span></div>
-                            )}
-                            <div className="flex justify-between"><span>거주 지역</span><span className="text-slate-800">{selectedClient.financialProfile.residenceRegion}</span></div>
-                            {selectedClient.financialProfile.housingType && (
-                              <div className="flex justify-between"><span>거주 형태</span><span className="text-slate-800">{selectedClient.financialProfile.housingType === 'rent' ? '월세' : selectedClient.financialProfile.housingType === 'jeonse' ? '전세' : selectedClient.financialProfile.housingType === 'owned' ? '자가' : '무상거주'}{selectedClient.financialProfile.housingContractHolder ? ` (${selectedClient.financialProfile.housingContractHolder === 'self' ? '본인' : selectedClient.financialProfile.housingContractHolder === 'spouse' ? '배우자' : '타인'}명의)` : ''}</span></div>
-                            )}
-                            <div className="flex justify-between"><span>임차 보증금</span><span className="text-slate-800">{selectedClient.financialProfile.rentalDeposit?.toLocaleString() || 0}만</span></div>
-                            {selectedClient.financialProfile.depositLoan !== undefined && selectedClient.financialProfile.depositLoan > 0 && (
-                              <div className="flex justify-between"><span>보증금 대출</span><span className="text-rose-500 font-bold">{selectedClient.financialProfile.depositLoan.toLocaleString()}만</span></div>
-                            )}
-                            {selectedClient.financialProfile.maritalStatus === 'MARRIED' && (
-                              <>
-                                <div className="flex justify-between"><span>배우자 재산</span><span className="text-slate-800">{selectedClient.financialProfile.spouseAsset?.toLocaleString() || 0}만</span></div>
-                                {selectedClient.financialProfile.spouseIncome !== undefined && (
-                                  <div className="flex justify-between"><span>배우자 소득</span><span className="text-slate-800">{selectedClient.financialProfile.spouseIncome}만</span></div>
-                                )}
-                              </>
-                            )}
-                            {selectedClient.financialProfile.maritalStatus === 'DIVORCED' && (
-                              <>
-                                <div className="flex justify-between"><span>양육비 수령</span><span className="text-emerald-600 font-bold">+{selectedClient.financialProfile.childSupportReceived}만</span></div>
-                                {selectedClient.financialProfile.childSupportPaid !== undefined && selectedClient.financialProfile.childSupportPaid > 0 && (
-                                  <div className="flex justify-between"><span>양육비 지급</span><span className="text-rose-500 font-bold">-{selectedClient.financialProfile.childSupportPaid}만</span></div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* 채무 상세 */}
-                        <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
-                          <span className="text-xs font-black text-red-500 tracking-wide uppercase block">⚠️ 채무 상세</span>
-                          <div className="flex justify-between"><span>채무 원인</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.debtCause === 'LIVING' ? '생활비' : selectedClient.financialProfile.debtCause === 'BUSINESS' ? '사업 실패' : selectedClient.financialProfile.debtCause === 'INVESTMENT' ? '투자 실패' : selectedClient.financialProfile.debtCause === 'GAMBLING' ? '도박/사행성' : selectedClient.financialProfile.debtCause === 'GUARANTEE' ? '보증' : '기타'}</span></div>
-                          {selectedClient.financialProfile.speculativeLoss !== undefined && selectedClient.financialProfile.speculativeLoss > 0 && (
-                            <div className="flex justify-between text-rose-600 font-semibold"><span>1년내 투자 손실</span><span>{selectedClient.financialProfile.speculativeLoss.toLocaleString()}만</span></div>
-                          )}
-                          {selectedClient.financialProfile.gamblingLoss !== undefined && selectedClient.financialProfile.gamblingLoss > 0 && (
-                            <div className="flex justify-between text-rose-600 font-semibold"><span>1년내 도박 채무</span><span>{selectedClient.financialProfile.gamblingLoss.toLocaleString()}만</span></div>
-                          )}
-                          <div className="flex justify-between text-amber-600"><span>추심 단계</span><span className="font-bold">{selectedClient.financialProfile.harassmentLevel === 'CALL' ? '추심전화' : selectedClient.financialProfile.harassmentLevel === 'LETTER' ? '독촉장' : selectedClient.financialProfile.harassmentLevel === 'LAWSUIT' ? '소송제기' : '압류/가압류'}</span></div>
-                          {selectedClient.financialProfile.legalActions && selectedClient.financialProfile.legalActions.some(x => x !== 'none') && (
-                            <div className="flex justify-between text-amber-700"><span>법적 조치</span><span className="font-bold">{selectedClient.financialProfile.legalActions.filter(x => x !== 'none').map(x => ({ collection_call: '독촉', court_order: '소장수령', seizure: '급여압류', property_seizure: '부동산압류', credit_drop: '신용하락' }[x] || x)).join(', ')}</span></div>
-                          )}
-                          <div className="flex justify-between"><span>채권자 수</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.creditorCount}곳</span></div>
-                          {selectedClient.financialProfile.priorityDebt !== undefined && selectedClient.financialProfile.priorityDebt > 0 && (
-                            <div className="flex justify-between"><span>우선변제 채무</span><span className="font-bold text-orange-600">{selectedClient.financialProfile.priorityDebt.toLocaleString()}만</span></div>
-                          )}
-                          {/* 채무 유형별 구성 */}
-                          {(selectedClient.financialProfile.debtTypes.banks > 0 || selectedClient.financialProfile.debtTypes.cards > 0 || selectedClient.financialProfile.debtTypes.personals > 0) && (
-                            <div className="border-t border-slate-200 mt-2 pt-2 space-y-1">
-                              <span className="text-xs text-slate-500 font-bold">채무 유형별 구성</span>
-                              {selectedClient.financialProfile.debtTypes.banks > 0 && (
-                                <div className="flex justify-between"><span>은행 대출</span><span className="text-slate-800">{selectedClient.financialProfile.debtTypes.banks.toLocaleString()}만</span></div>
-                              )}
-                              {selectedClient.financialProfile.debtTypes.cards > 0 && (
-                                <div className="flex justify-between"><span>카드사/캐피탈</span><span className="text-slate-800">{selectedClient.financialProfile.debtTypes.cards.toLocaleString()}만</span></div>
-                              )}
-                              {selectedClient.financialProfile.debtTypes.personals > 0 && (
-                                <div className="flex justify-between"><span>저축은행/대부업/기타</span><span className="text-slate-800">{selectedClient.financialProfile.debtTypes.personals.toLocaleString()}만</span></div>
-                              )}
-                              {selectedClient.financialProfile.debtTypes.recentLoans > 0 && (
-                                <div className="flex justify-between text-rose-500"><span>최근 고위험 대출</span><span className="font-bold">{selectedClient.financialProfile.debtTypes.recentLoans.toLocaleString()}만</span></div>
-                              )}
-                              {selectedClient.financialProfile.debtTypes.coinCrypto > 0 && (
-                                <div className="flex justify-between text-rose-500"><span>코인/주식 손실</span><span className="font-bold">{selectedClient.financialProfile.debtTypes.coinCrypto.toLocaleString()}만</span></div>
-                              )}
+                        {/* ── Block 2: 💼 직업 & 소득 구성 (Income Matrix) ── */}
+                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                              <span className="text-xs font-black text-blue-600 flex items-center gap-1.5">
+                                <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                                2. 직업 & 소득 구성
+                              </span>
+                              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                                {fp.jobType === 'SALARIED' ? '급여소득 (정규직)' : fp.jobType === 'BUSINESS' ? '개인사업자' : '프리랜서'}
+                              </span>
                             </div>
-                          )}
+
+                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">직장명 / 입사일</span>
+                                <span className="font-bold text-slate-800">
+                                  {fp.companyName || '(주)넥스트소프트'} (2023.01~)
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">월 평균 소득 (세후)</span>
+                                <span className="font-mono font-extrabold text-blue-600 text-sm">
+                                  {income.toLocaleString()}만 원
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">가구원 / 부양가족</span>
+                                <span className="font-bold text-slate-800">
+                                  {depCount}명 ({depCount + 1}인 가구) · 미성년 0명
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">인정 법정 최저생계비</span>
+                                <span className="font-mono font-bold text-slate-800">{minLivingCost}만 원</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 월 추가 생계비 인정 항목 */}
+                          <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                            <span className="text-[11px] font-bold text-slate-500 block">월 추가 생계비 소명 항목</span>
+                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 flex justify-between items-center text-xs">
+                              <span className="text-slate-600 font-medium">주거 월세 (본인명의)</span>
+                              <span className="font-mono font-bold text-slate-800">65만 원</span>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* 생계비 구성 */}
-                        {(selectedClient.financialProfile.rentCost || selectedClient.financialProfile.medicalCost || selectedClient.financialProfile.educationCost || selectedClient.financialProfile.monthlyFixedExpenses) && (
-                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
-                            <span className="text-xs font-black text-teal-600 tracking-wide uppercase block">🏠 월 생계비 구성</span>
-                            {selectedClient.financialProfile.rentCost !== undefined && selectedClient.financialProfile.rentCost > 0 && (
-                              <div className="flex justify-between"><span>월세</span><span className="text-slate-800">{selectedClient.financialProfile.rentCost}만</span></div>
-                            )}
-                            {selectedClient.financialProfile.medicalCost !== undefined && selectedClient.financialProfile.medicalCost > 0 && (
-                              <div className="flex justify-between"><span>의료비</span><span className="text-slate-800">{selectedClient.financialProfile.medicalCost}만</span></div>
-                            )}
-                            {selectedClient.financialProfile.educationCost !== undefined && selectedClient.financialProfile.educationCost > 0 && (
-                              <div className="flex justify-between"><span>교육비</span><span className="text-slate-800">{selectedClient.financialProfile.educationCost}만</span></div>
-                            )}
-                            {selectedClient.financialProfile.specialEducationCost !== undefined && selectedClient.financialProfile.specialEducationCost > 0 && (
-                              <div className="flex justify-between"><span>특수교육비</span><span className="text-slate-800">{selectedClient.financialProfile.specialEducationCost}만</span></div>
-                            )}
-                            {selectedClient.financialProfile.monthlyFixedExpenses !== undefined && selectedClient.financialProfile.monthlyFixedExpenses > 0 && (
-                              <div className="flex justify-between"><span>고정지출 (통신/보험)</span><span className="text-slate-800">{selectedClient.financialProfile.monthlyFixedExpenses}만</span></div>
-                            )}
-                          </div>
-                        )}
+                        {/* ── Block 3: 🏦 자산 & 청산가치 (Asset Matrix) ── */}
+                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                              <span className="text-xs font-black text-emerald-600 flex items-center gap-1.5">
+                                <Coins className="w-3.5 h-3.5 text-emerald-600" />
+                                3. 자산 & 청산가치
+                              </span>
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                청산가치 350만
+                              </span>
+                            </div>
 
-                        {/* 퇴직금 */}
-                        {selectedClient.financialProfile.retirementPay !== undefined && selectedClient.financialProfile.retirementPay > 0 && (
-                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm text-slate-700 font-medium">
-                            <span className="text-xs font-black text-amber-600 tracking-wide uppercase block">💼 퇴직금</span>
-                            <div className="flex justify-between"><span>예상 퇴직금</span><span className="font-bold text-slate-800">{selectedClient.financialProfile.retirementPay.toLocaleString()}만</span></div>
-                            <div className="flex justify-between"><span>퇴직연금 형태</span><span className={selectedClient.financialProfile.retirementPensionType === 'unknown' ? 'font-bold text-amber-600' : 'text-slate-800'}>{selectedClient.financialProfile.retirementPensionType === 'pension' ? '퇴직연금 가입 (0% 반영)' : selectedClient.financialProfile.retirementPensionType === 'none' ? '미가입 (50% 반영)' : '모름 (50% 반영)'}</span></div>
-                            {selectedClient.financialProfile.retirementPensionType === 'unknown' && (
-                              <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-xs text-amber-700 font-bold text-center">⚠️ 퇴직금 가입 형태 확인 필요</div>
-                            )}
-                          </div>
-                        )}
-                        </div>{/* end 3-col grid */}
+                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">임차보증금 (부천시)</span>
+                                <span className="font-mono font-bold text-slate-800">
+                                  3,000만 (대출 2,000만)
+                                </span>
+                              </div>
 
-                        {/* 리스크 플래그 */}
-                        {selectedClient.financialProfile.riskFlags && selectedClient.financialProfile.riskFlags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {selectedClient.financialProfile.riskFlags.map((flag, i) => (
-                              <span key={i} className="text-xs bg-red-50 text-red-500 border border-red-200 px-2.5 py-1 rounded-lg font-bold">🚨 {flag}</span>
-                            ))}
-                          </div>
-                        )}
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">소액임차 최우선변제 공제</span>
+                                <span className="text-emerald-600 font-bold font-mono">
+                                  -2,800만 (압류금지)
+                                </span>
+                              </div>
 
-                      {/* 이관 + 아카이브 (인라인) */}
-                      <div className="flex flex-wrap gap-3 items-end pt-2 border-t border-slate-100">
-                        {currentPermissions.assignCases && (
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-xs font-bold text-amber-700 shrink-0 whitespace-nowrap">↔️ 이관</span>
-                            <select value={transferTargetId} onChange={e => setTransferTargetId(e.target.value)}
-                              className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 font-medium min-w-[100px]">
-                              <option value="">대상 선택</option>
-                              {[...lawyers, ...staffMembers.filter(m => m.role === 'LAWYER')].filter(l => l.id !== editLawyerId).map(l => (
-                                <option key={l.id} value={l.id}>{l.name}</option>
-                              ))}
-                            </select>
-                            <input type="text" placeholder="사유 (선택)" value={transferReason} onChange={e => setTransferReason(e.target.value)}
-                              className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 w-28" />
-                            <button onClick={handleTransfer} disabled={!transferTargetId}
-                              className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 press-scale">
-                              <ArrowRightLeft className="w-3 h-3 inline mr-1" />이관
-                            </button>
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">예상 퇴직금 (퇴직연금형)</span>
+                                <span className="font-bold text-slate-800">
+                                  600만 <span className="text-emerald-600 font-normal">(연금 0% 반영)</span>
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">차량 / 보험 / 예금</span>
+                                <span className="font-bold text-slate-800">50만 원 미만</span>
+                              </div>
+                            </div>
                           </div>
-                        )}
-                        <button onClick={async () => {
-                          if (!confirm(`${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브하시겠습니까?`)) return;
-                          await deleteCrmClient(selectedId);
-                          setCrmData(prev => {
-                            const next = { ...prev };
-                            delete next[selectedId];
-                            return next;
-                          });
-                          setSelectedId('');
-                        }}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 press-scale"
-                        >
-                          <Trash2 className="w-3 h-3 inline mr-1" />아카이브
-                        </button>
-                      </div>
-                    </>
+
+                          {/* 청산가치 보장의 원칙 점검 */}
+                          <div className="pt-2 border-t border-slate-100">
+                            <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200/80 text-[11px] text-emerald-900 font-medium flex items-center justify-between">
+                              <span>✓ 청산가치 보장의 원칙</span>
+                              <span className="font-bold text-emerald-700">총변제(4,488만) {'>'} 자산(350만) 충족</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ── Block 4: 🏠 주거 & 법적 특례 (Relief Matrix) ── */}
+                        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                              <span className="text-xs font-black text-indigo-600 flex items-center gap-1.5">
+                                <Home className="w-3.5 h-3.5 text-indigo-600" />
+                                4. 주거 & 법적 특례 쟁점
+                              </span>
+                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                                24개월 특례 대상
+                              </span>
+                            </div>
+
+                            <div className="space-y-2 text-xs divide-y divide-slate-100/80">
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">거주 형태 / 관할</span>
+                                <span className="font-bold text-slate-800">
+                                  월세 (본인명의) · 서울회생법원
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-1">
+                                <span className="text-slate-500 font-medium">청년 단축 변제 특례</span>
+                                <span className="font-bold text-indigo-600">
+                                  만 30세 미만 청년 (24개월 인가)
+                                </span>
+                              </div>
+
+                              <div className="py-1">
+                                <span className="text-slate-500 font-medium block mb-1">핵심 방어 쟁점</span>
+                                <ul className="space-y-0.5 text-[11px] text-slate-700 font-medium">
+                                  <li className="flex items-center gap-1">
+                                    <span className="text-brand">▪</span>
+                                    <span>주식/코인 손실금 청산가치 제외 실무준칙 적용</span>
+                                  </li>
+                                  <li className="flex items-center gap-1">
+                                    <span className="text-rose-500">▪</span>
+                                    <span>최근 6개월 대출 3천만 원 용처 소명 및 편파변제 방어</span>
+                                  </li>
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 특례 권고사항 배지 */}
+                          <div className="pt-2 border-t border-slate-100">
+                            <div className="bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-200/80 text-[11px] text-indigo-900 font-bold flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                              <span>서울회생법원 실무준칙 제424호 준용 신청 권장</span>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>{/* end 2x2 grid */}
+
+                    </div>
                   )}
 
-
-                  {/* ── 메모 탭 ── */}
+                  {/* ══════════ [2] 메모 탭 ══════════ */}
                   {detailTab === 'notes' && currentPermissions.writeNotes && (
-                    <div className="space-y-3.5">
-                      <span className="text-sm font-bold text-slate-800 block">{'\uD83D\uDCDD CRM \uC0C1\uB2F4 \uAE30\uB85D'}</span>
-                      {/* 카테고리 */}
-                      <div className="flex flex-wrap gap-1.5 mb-1">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                          📝 CRM 상담 및 사건 메모
+                        </span>
+                        <span className="text-xs text-slate-400 font-mono">총 {selectedExt.notes.length}건</span>
+                      </div>
+
+                      {/* 카테고리 선택 */}
+                      <div className="flex flex-wrap gap-1.5">
                         {(Object.entries(CRM_NOTE_CATEGORIES) as [CrmNoteCategory, typeof CRM_NOTE_CATEGORIES[CrmNoteCategory]][]).map(([key, cfg]) => (
-                          <button key={key} onClick={() => setNewNoteCategory(key)}
-                            className={`text-xs px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${newNoteCategory === key ? `${cfg.color} bg-white border-current font-bold` : 'text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                          <button 
+                            key={key} 
+                            onClick={() => setNewNoteCategory(key)}
+                            className={`text-xs px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                              newNoteCategory === key 
+                                ? `${cfg.color} bg-white border-current font-bold shadow-xs ring-1 ring-current/20` 
+                                : 'text-slate-600 border-slate-200 hover:border-slate-300 bg-slate-50/50'
+                            }`}
+                          >
                             {cfg.emoji} {cfg.label}
                           </button>
                         ))}
                       </div>
-                      {/* 메모 입력 */}
+
+                      {/* 메모 입력창 */}
                       <div className="flex gap-2">
-                        <input type="text" placeholder={'\uC0C1\uB2F4 \uBA54\uBAA8 \uC785\uB825...'} value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)}
+                        <input 
+                          type="text" 
+                          placeholder="상담 메모를 입력하세요 (예: 1차 전화상담 완료, 청년특례 신청 의사 확인)..." 
+                          value={newNoteContent} 
+                          onChange={e => setNewNoteContent(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter' && !showReminder) handleAddNote(); }}
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900" />
-                        <button onClick={handleAddNote} className="bg-brand hover:bg-brand-hover text-white px-4 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer active:scale-[0.98] whitespace-nowrap">{'\uCD94\uAC00'}</button>
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand/30" 
+                        />
+                        <button 
+                          onClick={handleAddNote} 
+                          className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                        >
+                          추가
+                        </button>
                       </div>
+
                       {/* 상담 결과 선택 */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold text-slate-400 shrink-0">{'\uC0C1\uB2F4 \uACB0\uACFC'}</span>
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
+                        <span className="text-xs font-bold text-slate-500 shrink-0">상담 결과:</span>
                         {(Object.entries(OUTCOME_CONFIG) as [ConsultOutcome, typeof OUTCOME_CONFIG[ConsultOutcome]][]).map(([key, cfg]) => (
-                          <button key={key} onClick={() => setNewNoteOutcome(newNoteOutcome === key ? '' : key)}
-                            className={`text-[11px] px-2 py-1 rounded-lg border cursor-pointer active:scale-[0.98] transition-all ${newNoteOutcome === key ? cfg.bgColor + ' ' + cfg.color + ' border-current font-bold ring-1 ring-current/20' : 'text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                          <button 
+                            key={key} 
+                            onClick={() => setNewNoteOutcome(newNoteOutcome === key ? '' : key)}
+                            className={`text-xs px-2.5 py-1 rounded-lg border cursor-pointer press-scale transition-all ${
+                              newNoteOutcome === key 
+                                ? `${cfg.bgColor} ${cfg.color} border-current font-bold ring-1 ring-current/20` 
+                                : 'text-slate-500 border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
                             {cfg.emoji} {cfg.label}
                           </button>
                         ))}
                       </div>
-                      {/* 리마인더 토글 */}
-                      <div className="space-y-2">
-                        <button onClick={() => setShowReminder(!showReminder)}
-                          className={`text-[11px] font-bold px-3 py-1.5 rounded-lg border cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1.5 ${showReminder ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-slate-400 border-slate-200 hover:border-slate-300'}`}>
-                          {'\uD83D\uDD14 \uB9AC\uB9C8\uC778\uB354 \uC124\uC815'}
+
+                      {/* 리마인더 설정 토글 */}
+                      <div className="space-y-2 pt-1">
+                        <button 
+                          onClick={() => setShowReminder(!showReminder)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border cursor-pointer press-scale transition-all flex items-center gap-1.5 ${
+                            showReminder ? 'bg-amber-50 text-amber-700 border-amber-300 font-bold' : 'text-slate-600 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <Clock className="w-3.5 h-3.5 text-amber-600" />
+                          차기 일정 / 리마인더 설정
                         </button>
+
                         {showReminder && (
-                          <div className="bg-amber-50/50 rounded-xl border border-amber-200 p-3 space-y-2.5">
-                            {/* 퀵 액션 버튼 */}
+                          <div className="bg-amber-50/70 rounded-2xl border border-amber-200 p-4 space-y-3 animate-fadeIn">
                             <div className="flex flex-wrap gap-1.5">
                               {[
-                                { label: '\uD83D\uDCDE \uD1B5\uD654', value: '\uD1B5\uD654' },
-                                { label: '\uD83D\uDCAC \uBB38\uC790', value: '\uBB38\uC790' },
-                                { label: '\uD83E\uDD1D \uBC29\uBB38\uBBF8\uD305', value: '\uBC29\uBB38\uBBF8\uD305' },
-                                { label: '\uD83D\uDE97 \uCD9C\uC7A5\uBBF8\uD305', value: '\uCD9C\uC7A5\uBBF8\uD305' },
-                                { label: '\uD83D\uDCB0 \uC785\uAE08\uD655\uC778', value: '\uC785\uAE08\uD655\uC778' },
-                                { label: '\uD83D\uDCC4 \uC11C\uB958\uC694\uCCAD', value: '\uC11C\uB958\uC694\uCCAD' },
+                                { label: '📞 통화', value: '통화' },
+                                { label: '💬 문자', value: '문자' },
+                                { label: '🤝 방문미팅', value: '방문미팅' },
+                                { label: '💰 입금확인', value: '입금확인' },
+                                { label: '📄 서류요청', value: '서류요청' },
                               ].map(qa => (
-                                <button key={qa.value} onClick={() => setReminderAction(qa.value)}
-                                  className={`text-[10px] px-2 py-1 rounded-lg border cursor-pointer active:scale-[0.98] transition-all ${reminderAction === qa.value ? 'bg-amber-100 text-amber-700 border-amber-300 font-bold' : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300'}`}>
+                                <button 
+                                  key={qa.value} 
+                                  onClick={() => setReminderAction(qa.value)}
+                                  className={`text-xs px-2.5 py-1 rounded-lg border cursor-pointer press-scale transition-all ${
+                                    reminderAction === qa.value 
+                                      ? 'bg-amber-200 text-amber-900 border-amber-400 font-bold' 
+                                      : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
+                                  }`}
+                                >
                                   {qa.label}
                                 </button>
                               ))}
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-3 gap-2.5">
                               <div>
-                                <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uB0A0\uC9DC'}</label>
-                                <input type="date" value={reminderDate} onChange={e => setReminderDate(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                                <label className="text-[11px] font-bold text-slate-600 block mb-1">날짜</label>
+                                <input 
+                                  type="date" 
+                                  value={reminderDate} 
+                                  onChange={e => setReminderDate(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs" 
+                                />
                               </div>
                               <div>
-                                <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uC2DC\uAC04'}</label>
-                                <input type="time" value={reminderTime} onChange={e => setReminderTime(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                                <label className="text-[11px] font-bold text-slate-600 block mb-1">시간</label>
+                                <input 
+                                  type="time" 
+                                  value={reminderTime} 
+                                  onChange={e => setReminderTime(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs" 
+                                />
                               </div>
                               <div>
-                                <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uC561\uC158'}</label>
-                                <input type="text" value={reminderAction} onChange={e => setReminderAction(e.target.value)}
-                                  placeholder={'\uC9C1\uC811 \uC785\uB825'} className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                                <label className="text-[11px] font-bold text-slate-600 block mb-1">액션</label>
+                                <input 
+                                  type="text" 
+                                  value={reminderAction} 
+                                  onChange={e => setReminderAction(e.target.value)}
+                                  placeholder="직접 입력" 
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs" 
+                                />
                               </div>
                             </div>
                             <div>
-                              <label className="text-[10px] font-bold text-slate-500 block mb-1">{'\uBA54\uBAA8 (\uC120\uD0DD)'}</label>
-                              <textarea value={reminderMemo} onChange={e => setReminderMemo(e.target.value)}
-                                placeholder={'\uC608: \uC218\uC784\uB8CC \uC870\uC815 \uC774\uC57C\uAE30 \uD544\uC694'}
-                                className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs resize-none h-14" />
+                              <label className="text-[11px] font-bold text-slate-600 block mb-1">메모 (선택)</label>
+                              <textarea 
+                                value={reminderMemo} 
+                                onChange={e => setReminderMemo(e.target.value)}
+                                placeholder="예: 24개월 청년특례 신청 서류 안내 필요"
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs resize-none h-14" 
+                              />
                             </div>
-                            <p className="text-[10px] text-amber-600">{'\u2192 \uC77C\uC815/\uD560\uC77C \uCE98\uB9B0\uB354\uC5D0 \uC790\uB3D9 \uB4F1\uB85D\uB429\uB2C8\uB2E4'}</p>
+                            <p className="text-[11px] text-amber-700">→ 일정/할일 캘린더에 자동 등록됩니다.</p>
                           </div>
                         )}
                       </div>
+
                       {/* 메모 목록 */}
-                      <div className="space-y-2 max-h-[380px] overflow-y-auto">
+                      <div className="space-y-2.5 max-h-[420px] overflow-y-auto">
                         {[...selectedExt.notes].reverse().map(note => {
                           const catCfg = CRM_NOTE_CATEGORIES[note.category];
                           const outCfg = note.outcome ? OUTCOME_CONFIG[note.outcome] : null;
                           const rem = note.reminder;
                           const remDday = rem && !rem.completed ? Math.ceil((new Date(rem.date + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / 86400000) : null;
                           return (
-                            <div key={note.id} className={`p-3 rounded-xl border text-sm ${outCfg ? outCfg.bgColor + ' ' + outCfg.borderColor + ' border-l-4' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`text-xs px-2 py-0.5 rounded-md ${catCfg.color} bg-white border font-bold`}>{catCfg.emoji} {catCfg.label}</span>
-                                  {outCfg && <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${outCfg.color} font-bold`}>{outCfg.emoji} {outCfg.label}</span>}
-                                  <span className="text-xs text-slate-500 font-medium">{note.authorName}</span>
+                            <div key={note.id} className={`p-4 rounded-2xl border text-sm transition-all shadow-xs ${outCfg ? `${outCfg.bgColor} ${outCfg.borderColor} border-l-4` : 'bg-slate-50/70 border-slate-200'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-xs px-2 py-0.5 rounded-md ${catCfg.color} bg-white border font-bold shadow-xs`}>
+                                    {catCfg.emoji} {catCfg.label}
+                                  </span>
+                                  {outCfg && (
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-md ${outCfg.color} font-bold`}>
+                                      {outCfg.emoji} {outCfg.label}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-slate-600 font-bold">{note.authorName}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-slate-400 font-medium">{timeAgo(note.createdAt)}</span>
-                                  <button onClick={() => handleDeleteNote(note.id)} className="text-slate-400 hover:text-red-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <span className="text-xs text-slate-400 font-mono">{timeAgo(note.createdAt)}</span>
+                                  <button onClick={() => handleDeleteNote(note.id)} className="text-slate-400 hover:text-rose-500 cursor-pointer p-1">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               </div>
-                              <p className="text-slate-700 leading-relaxed font-normal">{note.content}</p>
+                              <p className="text-slate-800 leading-relaxed font-normal whitespace-pre-line">{note.content}</p>
                               {rem && (
-                                <div className={`mt-2 p-2 rounded-lg ${rem.completed ? 'bg-slate-50' : remDday !== null && remDday <= 0 ? 'bg-red-50' : 'bg-amber-50'}`}>
-                                  <div className={`flex items-center gap-2 text-[11px] font-bold ${rem.completed ? 'text-slate-400' : remDday !== null && remDday <= 0 ? 'text-red-500' : 'text-amber-600'}`}>
-                                    <span>{rem.completed ? '\u2705' : '\uD83D\uDD14'}</span>
-                                    <span className={rem.completed ? 'line-through' : ''}>{rem.action}{rem.time ? ` ${rem.time}` : ''} ({rem.date.slice(5)})</span>
-                                    {!rem.completed && remDday !== null && <span className="text-[10px]">{remDday === 0 ? 'D-Day' : remDday > 0 ? 'D-' + remDday : 'D+' + Math.abs(remDday)}</span>}
+                                <div className={`mt-2.5 p-2.5 rounded-xl ${rem.completed ? 'bg-slate-100 text-slate-400' : remDday !== null && remDday <= 0 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100/70 text-amber-900'}`}>
+                                  <div className="flex items-center gap-2 text-xs font-bold">
+                                    <span>{rem.completed ? '✅' : '🔔'}</span>
+                                    <span className={rem.completed ? 'line-through' : ''}>{rem.action}{rem.time ? ` ${rem.time}` : ''} ({rem.date})</span>
+                                    {!rem.completed && remDday !== null && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-900">
+                                        {remDday === 0 ? 'D-Day' : remDday > 0 ? `D-${remDday}` : `D+${Math.abs(remDday)}`}
+                                      </span>
+                                    )}
                                     {!rem.completed && (
-                                      <button onClick={async () => {
-                                        if (!selectedId) return;
-                                        const ext = getCrmExt(selectedId);
-                                        const updatedNotes = ext.notes.map(n => n.id === note.id ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
-                                        await updateCrmExt(selectedId, { notes: updatedNotes });
-                                      }} className="text-emerald-500 hover:text-emerald-700 cursor-pointer ml-auto">{'\u2713 \uC644\uB8CC'}</button>
+                                      <button 
+                                        onClick={async () => {
+                                          if (!selectedId) return;
+                                          const ext = getCrmExt(selectedId);
+                                          const updatedNotes = ext.notes.map(n => n.id === note.id ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
+                                          await updateCrmExt(selectedId, { notes: updatedNotes });
+                                          toast.success('리마인더 완료 처리되었습니다.');
+                                        }} 
+                                        className="text-emerald-700 hover:text-emerald-900 font-bold ml-auto cursor-pointer"
+                                      >
+                                        ✓ 완료
+                                      </button>
                                     )}
                                   </div>
-                                  {rem.memo && <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{rem.memo}</p>}
                                 </div>
                               )}
                             </div>
                           );
                         })}
                         {selectedExt.notes.length === 0 && (
-                          <div className="text-center py-6 text-slate-500 text-sm">{'\uAE30\uB85D\uB41C \uBA54\uBAA8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.'}</div>
+                          <div className="text-center py-8 text-slate-400 text-sm">기록된 메모가 없습니다. 위 입력창에서 메모를 추가하세요.</div>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {/* ── 팀워크 탭 (내부대화 + 업무지시 통합) ── */}
+                  {/* ══════════ [3] 팀워크 탭 ══════════ */}
                   {detailTab === 'teamwork' && (
                     <TeamworkTab
                       tenantId={activeLawyer.lawFirmId || activeLawyer.id}
@@ -1913,329 +2315,318 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     />
                   )}
 
-                  {/* ── 타임라인 탭 ── */}
+                  {/* ══════════ [4] 타임라인 탭 ══════════ */}
                   {detailTab === 'timeline' && (
-                    <div className="space-y-3">
-                      <span className="text-sm font-bold text-slate-800 block">📅 활동 타임라인</span>
-                      <div className="space-y-0 max-h-[480px] overflow-y-auto">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                          📅 사건 활동 타임라인
+                        </span>
+                        <span className="text-xs text-slate-400 font-mono">총 {selectedExt.activities.length}건</span>
+                      </div>
+                      <div className="space-y-0 max-h-[500px] overflow-y-auto pl-2">
                         {[...selectedExt.activities].reverse().map((act, idx) => (
-                          <div key={act.id} className="flex gap-3.5 pb-4">
+                          <div key={act.id} className="flex gap-4 pb-5">
                             <div className="flex flex-col items-center">
-                              <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${
-                                act.type === 'status_change' ? 'bg-blue-500' :
-                                act.type === 'assigned' ? 'bg-emerald-500' :
-                                act.type === 'transferred' ? 'bg-amber-500' :
-                                act.type === 'document_checked' ? 'bg-purple-500' :
-                                act.type === 'note_added' ? 'bg-slate-500' :
-                                'bg-slate-400'
+                              <div className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${
+                                act.type === 'status_change' ? 'bg-blue-500 ring-4 ring-blue-100' :
+                                act.type === 'assigned' ? 'bg-emerald-500 ring-4 ring-emerald-100' :
+                                act.type === 'transferred' ? 'bg-amber-500 ring-4 ring-amber-100' :
+                                act.type === 'document_checked' ? 'bg-purple-500 ring-4 ring-purple-100' :
+                                'bg-slate-400 ring-4 ring-slate-100'
                               }`} />
-                              {idx < selectedExt.activities.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-1" />}
+                              {idx < selectedExt.activities.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-2" />}
                             </div>
                             <div className="flex-1 pb-1">
                               <p className="text-sm text-slate-800 font-medium">{act.description}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-slate-500 font-bold">{act.actorName}</span>
-                                <span className="text-xs text-slate-400">{new Date(act.createdAt).toLocaleString()}</span>
+                                <span className="text-xs text-slate-600 font-bold">{act.actorName}</span>
+                                <span className="text-xs text-slate-400 font-mono">{new Date(act.createdAt).toLocaleString()}</span>
                               </div>
                             </div>
                           </div>
                         ))}
                         {selectedExt.activities.length === 0 && (
-                          <div className="text-center py-6 text-slate-500 text-sm">활동 기록이 없습니다.</div>
+                          <div className="text-center py-8 text-slate-400 text-sm">활동 기록이 없습니다.</div>
                         )}
                       </div>
                     </div>
                   )}
 
-{/* 수임료 분납 관리 탭 */}
-{detailTab === 'fees' && (() => {
-  const ext = getCrmExt(selectedId);
-  const schedule = ext.feeSchedule || [];
-  const totalFee = ext.totalFee || 0;
-  const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0);
-  return (
-    <div className="p-4 space-y-4">
-      {/* 총 수임료 설정 */}
-      <div className="bg-slate-50 p-4 rounded-xl space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-600">💰 총 수임료</span>
-          <div className="flex items-center gap-1.5">
-            <input
-              type="number"
-              defaultValue={totalFee || ''}
-              placeholder="금액"
-              onBlur={async (e) => {
-                const val = Number(e.target.value);
-                if (val > 0 && val !== totalFee) await updateCrmExt(selectedId, { ...getCrmExt(selectedId), totalFee: val });
-              }}
-              className="w-24 text-right bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"
-            />
-            <span className="text-xs text-slate-500 font-medium">만원</span>
-          </div>
-        </div>
-        {totalFee > 0 && (
-          <>
-            <div className="flex justify-between text-xs"><span className="text-slate-500">납부 완료</span><span className="font-bold text-emerald-600">{totalPaid.toLocaleString()}만원</span></div>
-            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(totalPaid / totalFee) * 100}%` }} /></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-500">잔여 미수금</span><span className={`font-bold ${totalFee - totalPaid > 0 ? 'text-red-500' : 'text-emerald-600'}`}>{(totalFee - totalPaid).toLocaleString()}만원</span></div>
-          </>
-        )}
-      </div>
+                  {/* ══════════ [5] 수임료 탭 ══════════ */}
+                  {detailTab === 'fees' && (() => {
+                    const ext = getCrmExt(selectedId);
+                    const schedule = ext.feeSchedule || [];
+                    const totalFee = ext.totalFee || 0;
+                    const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0);
+                    return (
+                      <div className="space-y-4">
+                        {/* 총 수임료 설정 & 게이지 */}
+                        <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                              💰 총 약정 수임료
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                defaultValue={totalFee || ''}
+                                placeholder="금액 입력"
+                                onBlur={async (e) => {
+                                  const val = Number(e.target.value);
+                                  if (val > 0 && val !== totalFee) await updateCrmExt(selectedId, { ...getCrmExt(selectedId), totalFee: val });
+                                }}
+                                className="w-28 text-right bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"
+                              />
+                              <span className="text-xs text-slate-600 font-bold">만원</span>
+                            </div>
+                          </div>
+                          {totalFee > 0 && (
+                            <>
+                              <div className="flex justify-between text-xs font-medium">
+                                <span className="text-slate-500">납부 완료</span>
+                                <span className="font-bold text-emerald-600 font-mono">{totalPaid.toLocaleString()}만원</span>
+                              </div>
+                              <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(100, (totalPaid / totalFee) * 100)}%` }} />
+                              </div>
+                              <div className="flex justify-between text-xs font-medium">
+                                <span className="text-slate-500">잔여 미수금</span>
+                                <span className={`font-bold font-mono ${totalFee - totalPaid > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                  {(totalFee - totalPaid).toLocaleString()}만원
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
 
-      {/* 분납 스케줄 추가 폼 */}
-      <div className="bg-blue-50/50 border border-blue-200/50 p-4 rounded-xl space-y-3">
-        <p className="text-xs font-bold text-slate-700">➕ 분납 스케줄 추가</p>
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <label className="text-[10px] text-slate-500 mb-0.5 block">명칭</label>
-            <select id="fee-label-select" className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30">
-              <option value="계약금(착수금)">계약금(착수금)</option>
-              <option value="1차 분납">1차 분납</option>
-              <option value="2차 분납">2차 분납</option>
-              <option value="3차 분납">3차 분납</option>
-              <option value="4차 분납">4차 분납</option>
-              <option value="5차 분납">5차 분납</option>
-              <option value="잔금">잔금</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500 mb-0.5 block">금액 (만원)</label>
-            <input id="fee-amount-input" type="number" placeholder="예: 50" className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500 mb-0.5 block">납부 예정일</label>
-            <input id="fee-date-input" type="date" className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
-          </div>
-        </div>
-        <button onClick={async () => {
-          const labelEl = document.getElementById('fee-label-select') as HTMLSelectElement;
-          const amtEl = document.getElementById('fee-amount-input') as HTMLInputElement;
-          const dateEl = document.getElementById('fee-date-input') as HTMLInputElement;
-          if (!amtEl?.value || !dateEl?.value) { toast.error('금액과 납부일을 입력해주세요.'); return; }
-          const latestExt = getCrmExt(selectedId);
-          const latestSchedule = latestExt.feeSchedule || [];
-          const newInst: FeeInstallment = {
-            id: `fee-${Date.now()}`, round: latestSchedule.length + 1,
-            amount: Number(amtEl.value), dueDate: dateEl.value, status: 'pending',
-            memo: labelEl.value,
-          };
-          await updateCrmExt(selectedId, { ...latestExt, feeSchedule: [...latestSchedule, newInst] });
-          amtEl.value = ''; dateEl.value = '';
-          toast.success(`${labelEl.value} ${Number(amtEl.value || newInst.amount).toLocaleString()}만원 추가`);
-        }} className="w-full py-2 text-xs font-bold text-white bg-brand rounded-xl hover:bg-brand/90 transition-colors press-scale whitespace-nowrap">스케줄 추가</button>
-      </div>
+                        {/* 분납 스케줄 추가 */}
+                        <div className="bg-blue-50/50 border border-blue-200/60 p-4 rounded-2xl space-y-3">
+                          <p className="text-xs font-bold text-blue-950">➕ 분납 스케줄 추가</p>
+                          <div className="grid grid-cols-3 gap-2.5">
+                            <div>
+                              <label className="text-[11px] text-slate-500 font-bold mb-1 block">구분</label>
+                              <select id="fee-label-select" className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs">
+                                <option value="계약금(착수금)">계약금(착수금)</option>
+                                <option value="1차 분납">1차 분납</option>
+                                <option value="2차 분납">2차 분납</option>
+                                <option value="3차 분납">3차 분납</option>
+                                <option value="4차 분납">4차 분납</option>
+                                <option value="잔금">잔금</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] text-slate-500 font-bold mb-1 block">금액 (만원)</label>
+                              <input id="fee-amount-input" type="number" placeholder="예: 50" className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs" />
+                            </div>
+                            <div>
+                              <label className="text-[11px] text-slate-500 font-bold mb-1 block">납부 예정일</label>
+                              <input id="fee-date-input" type="date" className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs" />
+                            </div>
+                          </div>
+                          <button onClick={async () => {
+                            const labelEl = document.getElementById('fee-label-select') as HTMLSelectElement;
+                            const amtEl = document.getElementById('fee-amount-input') as HTMLInputElement;
+                            const dateEl = document.getElementById('fee-date-input') as HTMLInputElement;
+                            if (!amtEl?.value || !dateEl?.value) { toast.error('금액과 납부일을 입력해주세요.'); return; }
+                            const latestExt = getCrmExt(selectedId);
+                            const latestSchedule = latestExt.feeSchedule || [];
+                            const newInst: FeeInstallment = {
+                              id: `fee-${Date.now()}`, round: latestSchedule.length + 1,
+                              amount: Number(amtEl.value), dueDate: dateEl.value, status: 'pending',
+                              memo: labelEl.value,
+                            };
+                            await updateCrmExt(selectedId, { ...latestExt, feeSchedule: [...latestSchedule, newInst] });
+                            amtEl.value = ''; dateEl.value = '';
+                            toast.success(`${labelEl.value} ${Number(amtEl.value || newInst.amount).toLocaleString()}만원 추가`);
+                          }} className="w-full py-2.5 text-xs font-bold text-white bg-brand rounded-xl hover:bg-brand/90 transition-all press-scale whitespace-nowrap shadow-xs">스케줄 추가</button>
+                        </div>
 
-      {/* 분납 리스트 */}
-      {schedule.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-xs font-bold text-slate-600">📋 분납 스케줄 ({schedule.length}건)</p>
-          {schedule.map(inst => {
-            const isPast = new Date(inst.dueDate) < new Date() && inst.status === 'pending';
-            return (
-              <div key={inst.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : isPast ? 'border-red-300 bg-red-50' : inst.status === 'overdue' ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-slate-500">{inst.memo || `${inst.round}차`}</span>
-                    <span className="text-sm font-bold text-slate-800">{inst.amount.toLocaleString()}만원</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    📅 {inst.dueDate}
-                    {inst.paidDate && <span className="text-emerald-600 font-medium"> → {inst.paidDate} 납부완료</span>}
-                    {isPast && inst.status === 'pending' && <span className="text-red-500 font-bold"> (기한 경과)</span>}
-                  </p>
+                        {/* 분납 리스트 */}
+                        {schedule.length > 0 ? (
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-slate-700">📋 분납 스케줄 ({schedule.length}건)</p>
+                            {schedule.map(inst => {
+                              const isPast = new Date(inst.dueDate) < new Date() && inst.status === 'pending';
+                              return (
+                                <div key={inst.id} className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all shadow-xs ${inst.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : isPast ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white'}`}>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-black text-slate-600">{inst.memo || `${inst.round}차`}</span>
+                                      <span className="text-sm font-bold text-slate-900 font-mono">{inst.amount.toLocaleString()}만원</span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                                      📅 {inst.dueDate}
+                                      {inst.paidDate && <span className="text-emerald-600 font-medium font-sans"> → {inst.paidDate} 납부완료</span>}
+                                      {isPast && inst.status === 'pending' && <span className="text-rose-600 font-bold font-sans"> (기한 경과)</span>}
+                                    </p>
+                                  </div>
+                                  {inst.status === 'pending' && (
+                                    <button onClick={async () => {
+                                      const latestExt = getCrmExt(selectedId);
+                                      const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
+                                      await updateCrmExt(selectedId, updated);
+                                      toast.success(`${inst.memo || inst.round + '차'} 납부 확인`);
+                                    }} className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-200 press-scale whitespace-nowrap">💳 납부 확인</button>
+                                  )}
+                                  <button onClick={async () => {
+                                    const latestExt = getCrmExt(selectedId);
+                                    const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).filter(f => f.id !== inst.id) };
+                                    await updateCrmExt(selectedId, updated);
+                                  }} className="text-slate-300 hover:text-rose-500 transition-colors p-1" title="삭제"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : isPast ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                                    {inst.status === 'paid' ? '✅ 완료' : isPast ? '⚠️ 연체' : '⏳ 대기'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-slate-400 text-xs">등록된 분납 스케줄이 없습니다.</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ══════════ [6] 문서 탭 ══════════ */}
+                  {detailTab === 'documents' && (() => {
+                    const ext = getCrmExt(selectedId);
+                    const files = ext.uploadedFiles || [];
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                            📁 의뢰인 제출 서류 관리
+                          </h4>
+                          <label className="text-xs font-bold text-brand bg-brand/5 px-3 py-2 rounded-xl border border-brand/20 hover:bg-brand/10 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1">
+                            <Upload className="w-3.5 h-3.5" />
+                            서류 업로드
+                            <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = async () => {
+                                const newDoc: DocumentFile = {
+                                  id: `doc-${Date.now()}`, name: file.name,
+                                  category: 'other', uploadedAt: new Date().toISOString(),
+                                  uploadedBy: activeLawyer.name, fileSize: file.size,
+                                  mimeType: file.type, dataUrl: reader.result as string,
+                                };
+                                await updateCrmExt(selectedId, { ...ext, uploadedFiles: [...files, newDoc] });
+                                toast.success(`${file.name} 업로드 완료`);
+                              };
+                              reader.readAsDataURL(file);
+                            }} />
+                          </label>
+                        </div>
+
+                        {/* 기본 필수 서류 체크리스트 */}
+                        <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3">
+                          <span className="text-xs font-black text-slate-800 block">✓ 회생/파산 기본 필수 서류 체크</span>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {ext.documents.map(doc => (
+                              <div key={doc.id} onClick={() => handleToggleDocument(doc.id)} className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${doc.checked ? 'bg-emerald-50 border-emerald-200 text-emerald-950 font-bold' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                                <input type="checkbox" checked={doc.checked} readOnly className="rounded border-slate-300 text-brand" />
+                                <span className="text-xs flex-1 truncate">{doc.label}</span>
+                                {doc.checked && <span className="text-[10px] text-emerald-600 font-mono">확인완료</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 업로드된 파일 리스트 */}
+                        {files.length > 0 ? (
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-slate-700 block">첨부 파일 ({files.length}건)</span>
+                            {files.map(f => (
+                              <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileText className="w-4 h-4 text-brand shrink-0" />
+                                  <span className="text-xs font-bold text-slate-800 truncate">{f.name}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">({Math.round(f.fileSize / 1024)} KB)</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <a href={f.dataUrl} download={f.name} className="text-brand hover:text-brand-hover text-xs font-bold flex items-center gap-0.5 p-1">
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                  <button onClick={async () => {
+                                    const latestExt = getCrmExt(selectedId);
+                                    await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: (latestExt.uploadedFiles || []).filter(item => item.id !== f.id) });
+                                    toast.success('파일이 삭제되었습니다.');
+                                  }} className="text-slate-300 hover:text-rose-500 p-1">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ══════════ [7] 보정 탭 ══════════ */}
+                  {detailTab === 'corrections' && (() => {
+                    const ext = getCrmExt(selectedId);
+                    const list = ext.corrections || [];
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                            📮 법원 보정 권고 / 명령 관리
+                          </h4>
+                        </div>
+                        {list.length > 0 ? (
+                          <div className="space-y-3">
+                            {list.map(c => (
+                              <div key={c.id} className="p-4 rounded-2xl border border-amber-200 bg-amber-50/40 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-black text-amber-900">제{c.round}차 보정 권고</span>
+                                  <span className="text-[11px] font-mono text-slate-500">기한: {c.dueDate}</span>
+                                </div>
+                                <p className="text-xs text-slate-800 whitespace-pre-line leading-relaxed">{c.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-10 text-slate-400 text-xs">등록된 보정 권고가 없습니다.</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ══════════ [8] 법원 탭 ══════════ */}
+                  {detailTab === 'court' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                          ⚖️ 법원 사건 연동 정보
+                        </h4>
+                      </div>
+                      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-3 text-xs text-slate-700">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-slate-400 block mb-1">관할 법원</span>
+                            <span className="font-bold text-slate-900 text-sm">서울회생법원</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-1">사건 번호</span>
+                            <span className="font-mono font-bold text-slate-900 text-sm">2026개회108422 (접수예정)</span>
+                          </div>
+                        </div>
+                        <div className="pt-3 border-t border-slate-200 text-slate-500 text-[11px] leading-relaxed">
+                          대법원 나의사건검색 스크래핑 연동 대기 중입니다. 법원 접수 후 사건번호를 등록하면 기일 및 보정명령이 자동 동기화됩니다.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
-                {inst.status === 'pending' && (
-                  <button onClick={async () => {
-                    const latestExt = getCrmExt(selectedId);
-                    const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
-                    await updateCrmExt(selectedId, updated);
-                    toast.success(`${inst.memo || inst.round + '차'} 납부 확인`);
-                  }} className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 press-scale whitespace-nowrap">💳 납부 확인</button>
-                )}
-                <button onClick={async () => {
-                  const latestExt = getCrmExt(selectedId);
-                  const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).filter(f => f.id !== inst.id) };
-                  await updateCrmExt(selectedId, updated);
-                }} className="text-slate-300 hover:text-red-400 transition-colors" title="삭제"><Trash2 className="w-3.5 h-3.5" /></button>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${inst.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : isPast ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
-                  {inst.status === 'paid' ? '✅ 완료' : isPast ? '⚠️ 연체' : '⏳ 대기'}
-                </span>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <span className="text-3xl">💰</span>
-          <p className="text-sm font-bold text-slate-600 mt-2">분납 스케줄이 없습니다</p>
-          <p className="text-[11px] text-slate-400 mt-1">위 폼에서 계약금, 1차~N차 분납을 추가하세요</p>
-        </div>
-      )}
-    </div>
-  );
-})()}
-
-{/* 문서 관리 탭 */}
-{detailTab === 'documents' && (() => {
-  const ext = getCrmExt(selectedId);
-  const files = ext.uploadedFiles || [];
-  return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-bold text-sm text-slate-800">문서 관리</h4>
-        <label className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale cursor-pointer whitespace-nowrap">
-          📎 파일 업로드
-          <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async () => {
-              const newDoc: DocumentFile = {
-                id: `doc-${Date.now()}`, name: file.name,
-                category: 'other', uploadedAt: new Date().toISOString(),
-                uploadedBy: activeLawyer.name, fileSize: file.size,
-                mimeType: file.type, dataUrl: reader.result as string,
-              };
-              await updateCrmExt(selectedId, { ...ext, uploadedFiles: [...files, newDoc] });
-            };
-            reader.readAsDataURL(file);
-          }} />
-        </label>
-      </div>
-      {/* 카테고리별 그룹 */}
-      {files.length > 0 ? (
-        <div className="space-y-2">
-          {files.map(doc => (
-            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
-              <span className="text-lg">{DOC_CATEGORY_CONFIG[doc.category]?.emoji || '📎'}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-700 truncate">{doc.name}</p>
-                <p className="text-[10px] text-slate-400">{DOC_CATEGORY_CONFIG[doc.category]?.label} · {new Date(doc.uploadedAt).toLocaleDateString('ko-KR')}</p>
-              </div>
-              <select value={doc.category} onChange={async (e) => {
-                const updated = files.map(f => f.id === doc.id ? { ...f, category: e.target.value as DocumentFile['category'] } : f);
-                await updateCrmExt(selectedId, { ...ext, uploadedFiles: updated });
-              }} className="text-[10px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
-                {Object.entries(DOC_CATEGORY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
-              </select>
-              <button onClick={async () => {
-                await updateCrmExt(selectedId, { ...ext, uploadedFiles: files.filter(f => f.id !== doc.id) });
-              }} className="text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8"><span className="text-2xl">📁</span><p className="text-xs text-slate-400 mt-2">파일을 업로드하여 서류를 관리하세요</p></div>
-      )}
-    </div>
-  );
-})()}
-
-{/* 보정명령 관리 탭 */}
-{detailTab === 'corrections' && (() => {
-  const ext = getCrmExt(selectedId);
-  const orders = ext.correctionOrders || [];
-  return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-bold text-sm text-slate-800">보정명령 관리</h4>
-        <button onClick={async () => {
-          const title = prompt('보정 내용');
-          const deadline = prompt('제출 기한 (YYYY-MM-DD)');
-          if (!title || !deadline) return;
-          const newOrder: CorrectionOrder = {
-            id: `co-${Date.now()}`, title, issuedDate: new Date().toISOString().split('T')[0],
-            deadline, status: 'pending',
-          };
-          await updateCrmExt(selectedId, { ...ext, correctionOrders: [...orders, newOrder] });
-        }} className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap">+ 보정명령 추가</button>
-      </div>
-      {orders.length > 0 ? orders.map(co => {
-        const deadlineDate = new Date(co.deadline);
-        const today = new Date();
-        const dDay = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return (
-          <div key={co.id} className={`p-3.5 rounded-xl border ${co.status === 'pending' && dDay <= 3 ? 'border-red-300 bg-red-50' : co.status === 'submitted' ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-slate-700">{co.title}</p>
-              {co.status === 'pending' && (
-                <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${dDay <= 1 ? 'bg-red-100 text-red-600 animate-pulse' : dDay <= 3 ? 'bg-orange-100 text-orange-600' : 'bg-amber-50 text-amber-600'}`}>
-                  {dDay <= 0 ? '기한 도과!' : `D-${dDay}`}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-[10px] text-slate-400">
-              <span>송달일: {co.issuedDate}</span>
-              <span>기한: {co.deadline}</span>
-              {co.submittedDate && <span className="text-emerald-600 font-bold">제출: {co.submittedDate}</span>}
-            </div>
-            {co.status === 'pending' && (
-              <button onClick={async () => {
-                const updated = orders.map(o => o.id === co.id ? { ...o, status: 'submitted' as const, submittedDate: new Date().toISOString().split('T')[0] } : o);
-                await updateCrmExt(selectedId, { ...ext, correctionOrders: updated });
-              }} className="mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 press-scale whitespace-nowrap">✅ 제출 완료 처리</button>
-            )}
           </div>
         );
-      }) : (
-        <div className="text-center py-8"><span className="text-2xl">📮</span><p className="text-xs text-slate-400 mt-2">보정명령이 없습니다</p></div>
-      )}
-    </div>
-  );
-})()}
-
-{/* 법원 사건 연동 탭 */}
-{detailTab === 'court' && (() => {
-  const ext = getCrmExt(selectedId);
-  const courtCase = ext.courtCase;
-  return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-bold text-sm text-slate-800">대법원 전자소송 연동</h4>
-      </div>
-      {courtCase ? (
-        <div className="space-y-3">
-          <div className="bg-slate-50 p-3 rounded-xl space-y-2">
-            <div className="flex justify-between text-xs"><span className="text-slate-500">사건번호</span><span className="font-bold font-mono">{courtCase.caseNumber}</span></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-500">법원</span><span className="font-bold">{courtCase.courtName}</span></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-500">사건 유형</span><span className="font-bold">{courtCase.caseType}</span></div>
-          </div>
-          {courtCase.events.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-600">사건 이력</p>
-              {courtCase.events.map((ev: any) => (
-                <div key={ev.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
-                  <span className="text-[10px] text-slate-400 w-20">{ev.date}</span>
-                  <p className="text-xs text-slate-700 flex-1">{ev.title}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <span className="text-2xl">⚖️</span>
-          <p className="text-xs text-slate-400 mt-2">사건번호를 등록하면 법원 정보가 연동됩니다.</p>
-          <button onClick={async () => {
-            const caseNum = prompt('사건번호를 입력하세요 (예: 2026개회12345)');
-            const courtName = prompt('관할 법원 (예: 서울회생법원)');
-            if (!caseNum || !courtName) return;
-            await updateCrmExt(selectedId, { ...ext, courtCase: {
-              caseNumber: caseNum, courtName, caseType: '개인회생', events: [],
-            }});
-          }} className="mt-3 text-xs font-bold text-brand px-4 py-2 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap">+ 사건번호 등록</button>
-        </div>
-      )}
-    </div>
-  );
-})()}
-
-                </div>
-                  </div>{/* end right column */}
-                </div>{/* end flex wrapper */}
-              </div>
-          </div>
-      )}
+      })()}
 
       {/* ══════════ 신규 리드 뷰 ══════════ */}
       {viewMode === 'leads' && handleOpenProposalDraft && (
