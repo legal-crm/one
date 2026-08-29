@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { 
   StaffMember, StaffRole, CrmActivityLog, CrmActivityType,
   CrmNote, CrmNoteCategory, CrmClientExtension, StaffActivityLog, StaffActivityType, StaffMemberStatus,
-  DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus
+  DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus, ElectronicContract
 } from '../types';
 import { DEFAULT_REHAB_DOCUMENTS } from '../types';
 
@@ -419,6 +419,59 @@ export async function submitClientDocument(
       );
     }
   }
+
+  ext.lastActivityAt = new Date().toISOString();
+  await saveCrmClient(clientId, ext);
+}
+
+/** 전자계약 체결 시 CRM 동기화 (수임료, 분납스케줄, 진행상태, 활동로그 일괄 업데이트) */
+export async function syncContractToCrm(
+  clientId: string,
+  contract: ElectronicContract,
+  actor?: { id: string; name: string; role: StaffRole }
+): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const ext = store[clientId] || createDefaultCrmExtension(clientId);
+
+  const actorInfo = actor || { id: 'system', name: contract.lawyerName || '담당 변호사', role: 'LAWYER' as StaffRole };
+
+  // 수임료 및 분납 스케줄 동기화 (만원 단위 변환)
+  ext.totalFee = contract.totalFee;
+  ext.contractDate = contract.contractDate;
+  ext.contractAmount = contract.totalFee;
+  
+  if (contract.feeSchedule && contract.feeSchedule.length > 0) {
+    ext.feeSchedule = contract.feeSchedule.map(f => ({
+      ...f,
+      // 분납 금액이 원 단위인 경우 만원 단위로 정규화 (10000 이상이면 / 10000)
+      amount: f.amount >= 10000 ? Math.round(f.amount / 10000) : f.amount,
+    }));
+  }
+
+  // 계약이 완료/서명진행 상태일 때 CRM 상태를 'contracted' (수임 계약)로 자동 승격
+  if (['completed', 'signing', 'pending_sign'].includes(contract.status)) {
+    if (contract.status === 'completed') {
+      ext.crmStatus = 'contracted';
+    }
+  }
+
+  // 활동 로그(타임라인) 추가
+  const logDesc = contract.status === 'completed'
+    ? `전자계약 체결 완료 (계약번호: ${contract.id}, 약정 수임료: ${contract.totalFee}만원)`
+    : `전자계약서 발송 및 서명 요청 (계약번호: ${contract.id})`;
+
+  ext.activities = [
+    ...(ext.activities || []),
+    createActivityLog(
+      clientId,
+      actorInfo.id,
+      actorInfo.name,
+      actorInfo.role,
+      'contract_signed' as CrmActivityType,
+      logDesc,
+      { contractId: contract.id, status: contract.status }
+    )
+  ];
 
   ext.lastActivityAt = new Date().toISOString();
   await saveCrmClient(clientId, ext);

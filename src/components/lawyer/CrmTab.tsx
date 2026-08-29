@@ -19,6 +19,8 @@ import ExportCasesModal from './ExportCasesModal';
 import DropOffReasonModal from './DropOffReasonModal';
 import AssignmentDirectiveModal from './AssignmentDirectiveModal';
 import MobileScanner from './MobileScanner';
+import ClientContractSubTab from './ClientContractSubTab';
+import { getContractsByClientId } from '../../services/contractService';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog,
@@ -135,7 +137,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline' | 'fees' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
 
   const [showBulkMessage, setShowBulkMessage] = useState(false);
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
@@ -1695,6 +1697,16 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     { key: 'teamwork', label: '팀워크', icon: '💬', count: null },
                     { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
                     { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
+                    { 
+                      key: 'contracts', 
+                      label: '전자계약', 
+                      icon: '📝', 
+                      count: (() => {
+                        const cList = getContractsByClientId(selectedId);
+                        if (!cList.length) return null;
+                        return cList[0].status === 'completed' ? '체결' : '진행중';
+                      })() 
+                    },
                     { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },
                     { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.corrections || []).length > 0 ? (selectedExt.corrections || []).length : null },
                     { key: 'court', label: '법원', icon: '⚖️', count: null },
@@ -2519,6 +2531,19 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       </div>
                     );
                   })()}
+
+                  {/* ══════════ [5-2] 전자계약 탭 ══════════ */}
+                  {detailTab === 'contracts' && selectedClient && (
+                    <ClientContractSubTab
+                      client={selectedClient}
+                      crmExt={selectedExt}
+                      activeLawyer={activeLawyer}
+                      activeStaff={activeStaff}
+                      onUpdateCrmExt={async (patch) => {
+                        await updateCrmExt(selectedId, patch);
+                      }}
+                    />
+                  )}
 
                   {/* ══════════ [6] 문서 탭 ══════════ */}
                   {detailTab === 'documents' && (() => {

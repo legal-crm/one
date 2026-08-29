@@ -23,6 +23,10 @@ export function getContract(id: string): ElectronicContract | undefined {
   return loadContracts().find(c => c.id === id);
 }
 
+export function getContractsByClientId(clientId: string): ElectronicContract[] {
+  return loadContracts().filter(c => c.clientId === clientId);
+}
+
 export function saveContract(contract: ElectronicContract): void {
   const contracts = loadContracts();
   const idx = contracts.findIndex(c => c.id === contract.id);
@@ -45,6 +49,9 @@ export function createContract(data: {
   lawyerName: string;
   lawFirmName: string;
   assignedLawyerId?: string;
+  totalFee?: number;
+  courtCosts?: { creditorCount: number; deliveryFee: number; stampFee: number; miscFee: number };
+  feeSchedule?: FeeInstallment[];
 }): ElectronicContract {
   const now = new Date().toISOString();
   const id = `EC-${new Date().getFullYear()}-${String(loadContracts().length + 1).padStart(4, '0')}`;
@@ -54,10 +61,16 @@ export function createContract(data: {
 
   const contract: ElectronicContract = {
     id,
-    ...data,
-    totalFee: 0,
-    courtCosts: { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0 },
-    feeSchedule: [],
+    clientId: data.clientId,
+    clientName: data.clientName,
+    clientPhone: data.clientPhone,
+    clientAddress: data.clientAddress,
+    lawyerName: data.lawyerName,
+    lawFirmName: data.lawFirmName,
+    assignedLawyerId: data.assignedLawyerId,
+    totalFee: data.totalFee ?? 0,
+    courtCosts: data.courtCosts ?? { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0 },
+    feeSchedule: data.feeSchedule ?? [],
     documents,
     status: 'drafting',
     contractDate: new Date().toISOString().split('T')[0],
