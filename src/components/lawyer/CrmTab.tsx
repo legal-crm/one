@@ -1511,6 +1511,63 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </div>
                         );
                       })()}
+                      {/* ── 고객 문의 내용 + 제안서 CTA ── */}
+                      {selectedClient && (selectedClient.title || selectedClient.content || selectedClient.financialProfile?.clientNote || (selectedClient.financialProfile?.clientNotes && selectedClient.financialProfile.clientNotes.length > 0)) && (
+                        <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 border border-slate-200 rounded-2xl p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-700 flex items-center gap-1.5">💬 고객 상담 요청 내용</span>
+                            {selectedClient.createdAt && (
+                              <span className="text-[10px] text-slate-400 font-medium">{new Date(selectedClient.createdAt).toLocaleDateString()} 접수</span>
+                            )}
+                          </div>
+                          {selectedClient.title && (
+                            <h4 className="text-sm font-black text-slate-900">{selectedClient.title}</h4>
+                          )}
+                          {selectedClient.content && (
+                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line bg-white rounded-xl p-3 border border-slate-100">
+                              {selectedClient.content}
+                            </p>
+                          )}
+                          {/* 의뢰인이 변호사에게 남긴 메모 */}
+                          {((selectedClient.financialProfile?.clientNotes && selectedClient.financialProfile.clientNotes.length > 0) || selectedClient.financialProfile?.clientNote) && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
+                              <span className="text-[10px] font-bold text-amber-700">📝 변호사에게 남긴 말</span>
+                              {selectedClient.financialProfile.clientNotes && selectedClient.financialProfile.clientNotes.length > 0 ? (
+                                <ul className="space-y-1">
+                                  {selectedClient.financialProfile.clientNotes.map((note: string, i: number) => (
+                                    <li key={i} className="text-sm text-amber-900 leading-relaxed">• {note}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-sm text-amber-900 leading-relaxed">{selectedClient.financialProfile.clientNote}</p>
+                              )}
+                            </div>
+                          )}
+                          {/* 제안서 작성 CTA — 미작성 상태일 때만 */}
+                          {handleOpenProposalDraft && (selectedClient.status === 'requested' || selectedClient.status === 'responding') && 
+                           !(selectedClient.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id) && (
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                onClick={() => handleOpenProposalDraft(selectedClient.id)}
+                                className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2.5 px-5 rounded-xl text-xs tracking-wide transition-all shadow-xs flex items-center gap-1.5 whitespace-nowrap press-scale cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                제안서 작성
+                              </button>
+                              {setCopilotPreselectedReqId && setActiveTab && (
+                                <button
+                                  onClick={() => { setCopilotPreselectedReqId(selectedClient.id); setActiveTab('case-copilot'); }}
+                                  className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-all flex items-center gap-1 border border-slate-200 whitespace-nowrap press-scale cursor-pointer"
+                                >
+                                  🔬 AI 분석
+                                </button>
+                              )}
+                              <span className="text-[10px] text-slate-400 font-medium">아직 제안서를 보내지 않았습니다</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* ── 전체 카드 3단 그리드 ── */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
 
