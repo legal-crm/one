@@ -1464,14 +1464,6 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       AI 분석
                     </button>
                   )}
-
-                  <a
-                    href={`tel:${selectedClient.phone.replace(/[^0-9]/g, '')}`}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap press-scale"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    통화
-                  </a>
                 </div>
               </div>
             </div>
