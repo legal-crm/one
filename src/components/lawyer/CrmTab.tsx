@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
-import TeamworkTab from './TeamworkTab';
 import NewCaseModal from './NewCaseModal';
 import type { NewCaseData } from './NewCaseModal';
 import ImportCasesModal from './ImportCasesModal';
@@ -139,7 +138,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'teamwork' | 'timeline' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
 
   const [showBulkMessage, setShowBulkMessage] = useState(false);
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
@@ -1704,7 +1703,6 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                   {[
                     { key: 'info', label: '종합 정보', icon: '👤', count: null },
                     { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
-                    { key: 'teamwork', label: '팀워크', icon: '💬', count: null },
                     { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
                     { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
                     { 
@@ -2356,20 +2354,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     </div>
                   )}
 
-                  {/* ══════════ [3] 팀워크 탭 ══════════ */}
-                  {detailTab === 'teamwork' && (
-                    <TeamworkTab
-                      tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-                      targetType="consult_request"
-                      targetId={selectedId}
-                      currentUserId={activeStaff?.id || activeLawyer.id}
-                      currentUserName={activeStaff?.name || activeLawyer.name}
-                      currentUserRole={activeStaff?.role || 'OWNER'}
-                      staffMembers={staffMembers}
-                    />
-                  )}
-
-                  {/* ══════════ [4] 타임라인 탭 ══════════ */}
+                  {/* ══════════ [3] 타임라인 탭 ══════════ */}
                   {detailTab === 'timeline' && (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
