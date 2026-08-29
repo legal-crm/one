@@ -1058,8 +1058,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             {staffMembers.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
 
-          <select value={channelFilter} onChange={e => { setChannelFilter(e.target.value); setPage(1); }} className="text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/20">
-            <option value="all">전체 채널</option>
+          <select 
+            value={channelFilter} 
+            onChange={e => { setChannelFilter(e.target.value); setPage(1); }} 
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand/20"
+          >
+            <option value="all">유입 채널: 전체</option>
             {Object.entries(INTAKE_CHANNEL_CONFIG).map(([key, cfg]) => (
               <option key={key} value={key}>{cfg.emoji} {cfg.label}</option>
             ))}
