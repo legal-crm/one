@@ -540,7 +540,20 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   };
 
   const handleAddNote = async () => {
-    if (!selectedId || !newNoteContent.trim()) return;
+    if (!selectedId) return;
+
+    const hasNoteContent = Boolean(newNoteContent.trim());
+    const hasReminder = Boolean(showReminder && reminderDate && reminderAction.trim());
+
+    if (!hasNoteContent && !hasReminder) {
+      if (showReminder && (!reminderDate || !reminderAction.trim())) {
+        toast.error('리마인더 날짜와 액션을 입력해주세요.');
+      } else {
+        toast.error('메모 내용 또는 리마인더 일정을 입력해주세요.');
+      }
+      return;
+    }
+
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     const ext = getCrmExt(selectedId);
     const selectedReq = requests.find(r => r.id === selectedId);
@@ -548,10 +561,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
     // Build reminder
     let reminder: NoteReminder | undefined;
-    if (showReminder && reminderDate && reminderAction.trim()) {
+    if (hasReminder) {
       const tenantId = activeLawyer.lawFirmId || activeLawyer.id;
       const calEvt = await createCalendarEvent(tenantId, {
-        title: `[\u{1F514}] ${clientName} - ${reminderAction.trim()}`,
+        title: `[🔔] ${clientName} - ${reminderAction.trim()}`,
         date: reminderDate,
         type: 'deadline',
         visibility: 'personal',
@@ -560,18 +573,39 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         createdByRole: actor.role as string,
         description: reminderMemo.trim() || undefined,
       });
-      reminder = { date: reminderDate, time: reminderTime || undefined, action: reminderAction.trim(), memo: reminderMemo.trim() || undefined, completed: false, calendarEventId: calEvt.id };
+      reminder = { 
+        date: reminderDate, 
+        time: reminderTime || undefined, 
+        action: reminderAction.trim(), 
+        memo: reminderMemo.trim() || undefined, 
+        completed: false, 
+        calendarEventId: calEvt.id 
+      };
     }
 
+    // 메모 내용이 없을 경우 리마인더 액션으로 메모 자동 생성
+    const finalContent = hasNoteContent 
+      ? newNoteContent.trim() 
+      : `[일정/리마인더] ${reminderAction.trim()} (${reminderDate}${reminderTime ? ' ' + reminderTime : ''})${reminderMemo.trim() ? ' - ' + reminderMemo.trim() : ''}`;
+
     const note = createCrmNote(
-      newNoteCategory, newNoteContent.trim(), actor.id, actor.name,
+      newNoteCategory, finalContent, actor.id, actor.name,
       newNoteOutcome || undefined, reminder
     );
     const activities = [...ext.activities, createActivityLog(
       selectedId, actor.id, actor.name, actor.role, 'note_added',
-      `\uBA54\uBAA8 \uCD94\uAC00 [${CRM_NOTE_CATEGORIES[newNoteCategory].label}]: ${newNoteContent.trim().slice(0, 30)}...`
+      `메모 추가 [${CRM_NOTE_CATEGORIES[newNoteCategory].label}]: ${finalContent.slice(0, 30)}...`
     )];
     await updateCrmExt(selectedId, { notes: [...ext.notes, note], activities });
+    
+    if (hasReminder && hasNoteContent) {
+      toast.success('상담 메모 및 리마인더 일정이 저장되었습니다.');
+    } else if (hasReminder) {
+      toast.success('리마인더 일정이 캘린더에 저장되었습니다.');
+    } else {
+      toast.success('상담 메모가 추가되었습니다.');
+    }
+
     setNewNoteContent('');
     setNewNoteOutcome('');
     setShowReminder(false);
@@ -2185,9 +2219,9 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         />
                         <button 
                           onClick={handleAddNote} 
-                          className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                          className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-xl text-sm font-bold shrink-0 cursor-pointer press-scale whitespace-nowrap shadow-xs flex items-center gap-1.5"
                         >
-                          추가
+                          <span>{showReminder ? '메모 & 일정 저장' : '추가'}</span>
                         </button>
                       </div>
 
@@ -2214,15 +2248,22 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         <button 
                           onClick={() => setShowReminder(!showReminder)}
                           className={`text-xs font-bold px-3 py-1.5 rounded-xl border cursor-pointer press-scale transition-all flex items-center gap-1.5 ${
-                            showReminder ? 'bg-amber-50 text-amber-700 border-amber-300 font-bold' : 'text-slate-600 border-slate-200 hover:border-slate-300'
+                            showReminder ? 'bg-amber-50 text-amber-800 border-amber-300 font-bold shadow-xs' : 'text-slate-600 border-slate-200 hover:border-slate-300'
                           }`}
                         >
                           <Clock className="w-3.5 h-3.5 text-amber-600" />
-                          차기 일정 / 리마인더 설정
+                          <span>{showReminder ? '차기 일정 / 리마인더 설정 중' : '차기 일정 / 리마인더 설정'}</span>
                         </button>
 
                         {showReminder && (
-                          <div className="bg-amber-50/70 rounded-2xl border border-amber-200 p-4 space-y-3 animate-fadeIn">
+                          <div className="bg-amber-50/80 rounded-2xl border border-amber-200 p-4 space-y-3.5 animate-fadeIn shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                <span>⏰ 차기 리마인더 등록</span>
+                              </span>
+                              <span className="text-[11px] text-amber-800 font-medium">일정/할일 캘린더에 자동 동기화</span>
+                            </div>
+
                             <div className="flex flex-wrap gap-1.5">
                               {[
                                 { label: '📞 통화', value: '통화' },
@@ -2236,7 +2277,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                   onClick={() => setReminderAction(qa.value)}
                                   className={`text-xs px-2.5 py-1 rounded-lg border cursor-pointer press-scale transition-all ${
                                     reminderAction === qa.value 
-                                      ? 'bg-amber-200 text-amber-900 border-amber-400 font-bold' 
+                                      ? 'bg-amber-200 text-amber-950 border-amber-400 font-bold shadow-xs' 
                                       : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
                                   }`}
                                 >
@@ -2244,46 +2285,75 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                 </button>
                               ))}
                             </div>
-                            <div className="grid grid-cols-3 gap-2.5">
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                               <div>
-                                <label className="text-[11px] font-bold text-slate-600 block mb-1">날짜</label>
+                                <label className="text-[11px] font-bold text-slate-700 block mb-1">날짜 <span className="text-rose-500">*</span></label>
                                 <input 
                                   type="date" 
                                   value={reminderDate} 
                                   onChange={e => setReminderDate(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs" 
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
                                 />
                               </div>
                               <div>
-                                <label className="text-[11px] font-bold text-slate-600 block mb-1">시간</label>
+                                <label className="text-[11px] font-bold text-slate-700 block mb-1">시간 (선택)</label>
                                 <input 
                                   type="time" 
                                   value={reminderTime} 
                                   onChange={e => setReminderTime(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs" 
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
                                 />
                               </div>
                               <div>
-                                <label className="text-[11px] font-bold text-slate-600 block mb-1">액션</label>
+                                <label className="text-[11px] font-bold text-slate-700 block mb-1">액션 <span className="text-rose-500">*</span></label>
                                 <input 
                                   type="text" 
                                   value={reminderAction} 
                                   onChange={e => setReminderAction(e.target.value)}
-                                  placeholder="직접 입력" 
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs" 
+                                  placeholder="예: 2차 유선상담" 
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
                                 />
                               </div>
                             </div>
+
                             <div>
-                              <label className="text-[11px] font-bold text-slate-600 block mb-1">메모 (선택)</label>
+                              <label className="text-[11px] font-bold text-slate-700 block mb-1">메모 (선택)</label>
                               <textarea 
                                 value={reminderMemo} 
                                 onChange={e => setReminderMemo(e.target.value)}
                                 placeholder="예: 24개월 청년특례 신청 서류 안내 필요"
-                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs resize-none h-14" 
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs resize-none h-14 focus:ring-2 focus:ring-amber-400/50 focus:outline-none" 
                               />
                             </div>
-                            <p className="text-[11px] text-amber-700">→ 일정/할일 캘린더에 자동 등록됩니다.</p>
+
+                            {/* 리마인더 전용 저장 / 닫기 버튼 바 */}
+                            <div className="flex items-center justify-between pt-1 border-t border-amber-200/60">
+                              <p className="text-[11px] text-amber-800">
+                                💡 날짜와 액션을 지정한 후 저장 버튼을 누르세요.
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setShowReminder(false);
+                                    setReminderDate('');
+                                    setReminderAction('');
+                                    setReminderTime('');
+                                    setReminderMemo('');
+                                  }}
+                                  className="px-3 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer press-scale whitespace-nowrap"
+                                >
+                                  취소
+                                </button>
+                                <button
+                                  onClick={handleAddNote}
+                                  className="px-4 py-2 text-xs font-bold text-amber-950 bg-amber-300 hover:bg-amber-400 border border-amber-400 rounded-xl transition-all cursor-pointer press-scale shadow-xs flex items-center gap-1.5 whitespace-nowrap"
+                                >
+                                  <Clock className="w-3.5 h-3.5 text-amber-900" />
+                                  <span>리마인더 일정 저장</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
