@@ -1416,7 +1416,6 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       <button onClick={() => setDetailTab('documents')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'documents' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📁 문서</button>
                       <button onClick={() => setDetailTab('corrections')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'corrections' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📮 보정</button>
                       <button onClick={() => setDetailTab('court')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'court' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>⚖️ 법원</button>
-                      <button onClick={() => setDetailTab('repayment')} className={`px-4 py-3 text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${detailTab === 'repayment' ? 'text-brand border-b-2 border-brand bg-brand/5' : 'text-slate-500 hover:text-slate-800'}`}>📆 변제금</button>
                 </div>
 
                 {/* ── 배정 지시 배너 ── */}
@@ -2231,67 +2230,6 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   );
 })()}
 
-{/* 변제금 납부 모니터링 탭 */}
-{detailTab === 'repayment' && (() => {
-  const ext = getCrmExt(selectedId);
-  const repayments = ext.repaymentSchedule || [];
-  const totalMonths = repayments.length;
-  const paidCount = repayments.filter((r: any) => r.status === 'paid').length;
-  const missedCount = repayments.filter((r: any) => r.status === 'missed').length;
-  return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-bold text-sm text-slate-800">변제금 납부 모니터링</h4>
-        <button onClick={async () => {
-          const months = prompt('변제 기간 (개월, 36 또는 60)');
-          const amount = prompt('월 변제금 (만원)');
-          if (!months || !amount) return;
-          const schedule = Array.from({ length: Number(months) }, (_, i) => ({
-            id: `rp-${Date.now()}-${i}`,
-            round: i + 1,
-            amount: Number(amount),
-            dueDate: new Date(Date.now() + (i + 1) * 30 * 86400000).toISOString().split('T')[0],
-            status: 'pending' as const,
-          }));
-          await updateCrmExt(selectedId, { ...ext, repaymentSchedule: schedule });
-        }} className="text-xs font-bold text-brand px-3 py-1.5 rounded-xl border border-brand/20 hover:bg-brand/5 press-scale whitespace-nowrap cursor-pointer">+ 변제 스케줄 생성</button>
-      </div>
-      {totalMonths > 0 ? (
-        <>
-          <div className="bg-slate-50 p-3 rounded-xl space-y-2">
-            <div className="flex justify-between text-xs"><span className="text-slate-500">총 변제기간</span><span className="font-bold">{totalMonths}개월</span></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-500">납부 완료</span><span className="font-bold text-emerald-600">{paidCount}회</span></div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(paidCount / totalMonths) * 100}%` }} /></div>
-            {missedCount > 0 && <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-medium">⚠️ 미납 {missedCount}회 — 면책불허가 위험이 있습니다.</div>}
-          </div>
-          <div className="max-h-60 overflow-y-auto space-y-1.5">
-            {repayments.slice(0, 12).map((rp: any) => {
-              const isPast = new Date(rp.dueDate) < new Date() && rp.status === 'pending';
-              return (
-                <div key={rp.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${rp.status === 'missed' ? 'border-red-300 bg-red-50' : rp.status === 'paid' ? 'border-emerald-200 bg-emerald-50/50' : isPast ? 'border-orange-300 bg-orange-50' : 'border-slate-200'}`}>
-                  <span className="text-[10px] font-black text-slate-400 w-8">{rp.round}회</span>
-                  <div className="flex-1"><p className="text-xs font-bold text-slate-700">{rp.amount.toLocaleString()}만원</p><p className="text-[10px] text-slate-400">{rp.dueDate}</p></div>
-                  {rp.status === 'pending' && (
-                    <div className="flex gap-1">
-                      <button onClick={async () => { const updated = repayments.map((r: any) => r.id === rp.id ? { ...r, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : r); await updateCrmExt(selectedId, { ...ext, repaymentSchedule: updated }); }} className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 press-scale cursor-pointer">납부</button>
-                      <button onClick={async () => { const updated = repayments.map((r: any) => r.id === rp.id ? { ...r, status: 'missed' as const } : r); await updateCrmExt(selectedId, { ...ext, repaymentSchedule: updated }); }} className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-200 press-scale cursor-pointer">미납</button>
-                    </div>
-                  )}
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${rp.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : rp.status === 'missed' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'}`}>
-                    {rp.status === 'paid' ? '✅' : rp.status === 'missed' ? '❌' : '⏳'}
-                  </span>
-                </div>
-              );
-            })}
-            {repayments.length > 12 && <p className="text-center text-[10px] text-slate-400">... 외 {repayments.length - 12}건</p>}
-          </div>
-        </>
-      ) : (
-        <div className="text-center py-8"><span className="text-2xl">📆</span><p className="text-xs text-slate-400 mt-2">개시결정 후 변제 스케줄을 생성하세요.</p><p className="text-[10px] text-slate-300 mt-1">36개월 또는 60개월 변제 계획을 관리합니다.</p></div>
-      )}
-    </div>
-  );
-})()}
                 </div>
                   </div>{/* end right column */}
                 </div>{/* end flex wrapper */}
