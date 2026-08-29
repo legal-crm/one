@@ -53,6 +53,20 @@ type ViewMode = 'list' | 'kanban' | 'leads';
 
 const CRM_STATUSES: CrmStatus[] = ['requested','consulting','contracted','document','filed','commenced','repaying','discharged','cancelled'];
 
+/** 등록 후 48시간 이내 → NEW 뱃지 표시 */
+const NEW_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+function isNewCase(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < NEW_THRESHOLD_MS;
+}
+/** 재사용 가능한 NEW 뱃지 */
+function NewBadge({ className = '' }: { className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-black tracking-wider text-white bg-rose-500 px-1.5 py-[1px] rounded-md shadow-sm animate-pulse whitespace-nowrap ${className}`}>
+      NEW
+    </span>
+  );
+}
+
 export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, getDisplayPhoneNumber, handleOpenProposalDraft, setActiveTab, setCopilotPreselectedReqId, initialView }: CrmTabProps) {
   // ── 기본 State ──
   const [crmData, setCrmData] = useState<CrmDataStore>({});
@@ -1111,7 +1125,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </button>
                         </td>
                         <td className="p-3.5">
-                          <div className="font-bold text-slate-900 text-base truncate">{r.clientName}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-900 text-base truncate">{r.clientName}</span>
+                            {isNewCase(r.createdAt) && <NewBadge />}
+                          </div>
                           <div className="text-xs text-slate-400 font-medium truncate">{getDisplayPhoneNumber(r)}</div>
                         </td>
                         <td className="p-3.5 text-center">
@@ -1134,8 +1151,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           {r.financialProfile.debtTotal.toLocaleString()}만
                         </td>
                         <td className="p-3.5 text-right text-xs text-slate-500 font-medium">
-                          <div>{new Date(r.createdAt).toLocaleDateString()}</div>
-                          <div className="text-slate-400">{timeAgo(ext.lastActivityAt)}</div>
+                          <div className={isNewCase(r.createdAt) ? 'text-rose-500 font-bold' : ''}>{new Date(r.createdAt).toLocaleDateString()}</div>
+                          <div className={isNewCase(r.createdAt) ? 'text-rose-400' : 'text-slate-400'}>{timeAgo(ext.lastActivityAt)}</div>
                         </td>
                         {showTrash && (
                           <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
@@ -2129,6 +2146,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
                         </span>
                         <span className="text-sm font-bold text-slate-900">{r.clientName}</span>
+                        {isNewCase(r.createdAt) && <NewBadge />}
                       </div>
                       <span className="bg-rose-50 text-rose-600 font-bold text-[10px] px-2 py-0.5 rounded-md border border-rose-200">제안서 대기</span>
                     </div>
@@ -2273,8 +2291,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           onClick={() => { setSelectedId(r.id); setViewMode('list'); }}
                           className={`bg-slate-50 p-3 rounded-xl border border-slate-200 hover:border-brand/40 cursor-pointer transition-all hover:shadow-md group ${draggedId === r.id ? 'opacity-50 scale-95' : ''}`}>
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm font-bold text-slate-900 truncate">{r.clientName}</span>
-                            <GripVertical className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100" />
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-sm font-bold text-slate-900 truncate">{r.clientName}</span>
+                              {isNewCase(r.createdAt) && <NewBadge />}
+                            </div>
+                            <GripVertical className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 shrink-0" />
                           </div>
                           <div className="text-sm text-red-500 font-bold">{r.financialProfile.debtTotal.toLocaleString()}만</div>
                           <div className="flex items-center gap-1.5 mt-2">

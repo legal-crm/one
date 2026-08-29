@@ -2263,8 +2263,11 @@ export default function LawyerRole({
                             </span>
                           )}
                           <span className="text-sm font-bold text-slate-900 truncate">{r.clientName}</span>
+                          {Date.now() - new Date(r.createdAt).getTime() < 48 * 60 * 60 * 1000 && (
+                            <span className="inline-flex items-center text-[10px] font-black tracking-wider text-white bg-rose-500 px-1.5 py-[1px] rounded-md shadow-sm animate-pulse whitespace-nowrap shrink-0">NEW</span>
+                          )}
                         </div>
-                        <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">{new Date(r.createdAt).toLocaleDateString()}</span>
+                        <span className={`text-[10px] whitespace-nowrap shrink-0 ${Date.now() - new Date(r.createdAt).getTime() < 48 * 60 * 60 * 1000 ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>{new Date(r.createdAt).toLocaleDateString()}</span>
                       </div>
 
                       {/* 핵심 지표 3열 (고대비 모던 박스) */}
@@ -2721,7 +2724,10 @@ export default function LawyerRole({
                             </span>
                           )}
                           <span className="text-sm font-bold text-slate-900">{r.clientName}</span>
-                          <span className="text-[11px] text-slate-400">등록 {new Date(r.createdAt).toLocaleString()}</span>
+                          {Date.now() - new Date(r.createdAt).getTime() < 48 * 60 * 60 * 1000 && (
+                            <span className="inline-flex items-center text-[10px] font-black tracking-wider text-white bg-rose-500 px-1.5 py-[1px] rounded-md shadow-sm animate-pulse whitespace-nowrap">NEW</span>
+                          )}
+                          <span className={`text-[11px] ${Date.now() - new Date(r.createdAt).getTime() < 48 * 60 * 60 * 1000 ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>등록 {new Date(r.createdAt).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
                           <span className="text-slate-500 text-[11px]">지정 변호사: <strong className="text-slate-800">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
