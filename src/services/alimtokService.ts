@@ -21,13 +21,21 @@ export const renderTemplate = (milestone: AlimtokMilestone, vars: Record<string,
 
 // ── 2. 알림톡 발송 (실제 API 또는 모의 발송) ──
 
-export const sendAlimtok = async (phone: string, milestone: AlimtokMilestone, vars: Record<string, string>) => {
-  const rendered = renderTemplate(milestone, vars);
+export const sendAlimtok = async (
+  phone: string, 
+  milestone: AlimtokMilestone, 
+  vars: Record<string, string>,
+  customText?: string
+) => {
+  const rendered = customText !== undefined && customText.trim() !== '' 
+    ? customText 
+    : renderTemplate(milestone, vars);
+
   try {
     const response = await fetch('/api/alimtok', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, template: rendered, milestone, vars }),
+      body: JSON.stringify({ phone, template: rendered, milestone, vars, customText }),
     });
     // API 엔드포인트가 없을 경우에도 클라이언트 Mock 발송 성공 처리
     if (response.status === 404) {
@@ -145,6 +153,7 @@ export interface SendFeeAlimtokParams {
   remainingFeeManwon?: number;
   bankInfo?: { bankName: string; accountNumber: string; accountHolder: string };
   trackingUrl?: string;
+  customMessage?: string;
 }
 
 export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok: boolean; rendered: string; error?: string }> => {
@@ -181,7 +190,7 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
     trackingUrl: params.trackingUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/my`,
   };
 
-  const res = await sendAlimtok(params.phone, params.milestone, vars);
+  const res = await sendAlimtok(params.phone, params.milestone, vars, params.customMessage);
 
   // 알림 로그 저장
   const log: AlimtokLog = {
