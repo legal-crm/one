@@ -98,9 +98,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editStatus, setEditStatus] = useState<CrmStatus>('requested');
-  const [editLawyerId, setEditLawyerId] = useState('');
-  const [editConsultantId, setEditConsultantId] = useState('');
-  const [editStaffId, setEditStaffId] = useState('');
+  const [editLawyerId, setEditLawyerId] = useState('');       // legacy (이관 등에서 아직 사용)
+  const [editConsultantId, setEditConsultantId] = useState(''); // legacy
+  const [editStaffId, setEditStaffId] = useState('');           // legacy
+  const [editAssigneeId, setEditAssigneeId] = useState('');     // 통합 담당자
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteCategory, setNewNoteCategory] = useState<CrmNoteCategory>('consult');
   const [newNoteOutcome, setNewNoteOutcome] = useState<import('../../types').ConsultOutcome | ''>('');
@@ -279,20 +280,16 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       }
       
       let matchAssignee = true;
+      const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
       if (assigneeFilter === 'unassigned') {
-        matchAssignee = !ext.assignedLawyerId && !ext.assignedConsultantId;
+        matchAssignee = !effectiveAssignee;
       } else if (assigneeFilter !== 'all') {
-        matchAssignee = ext.assignedLawyerId === assigneeFilter || 
-                        ext.assignedConsultantId === assigneeFilter ||
-                        ext.assignedStaffId === assigneeFilter;
+        matchAssignee = effectiveAssignee === assigneeFilter;
       }
 
       // 권한에 따른 필터 (본인 배정 건만)
       if (!currentPermissions.viewAllClients && activeStaff) {
-        const isAssigned = ext.assignedLawyerId === activeStaff.id || 
-                          ext.assignedConsultantId === activeStaff.id ||
-                          ext.assignedStaffId === activeStaff.id;
-        if (!isAssigned) return false;
+        if (effectiveAssignee !== activeStaff.id) return false;
       }
 
       // ── 기간 필터 ──
@@ -356,6 +353,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       setEditName(selectedClient.clientName);
       setEditPhone(selectedClient.phone);
       setEditStatus(selectedExt.crmStatus);
+      setEditAssigneeId(selectedExt.assigneeId || selectedExt.assignedLawyerId || selectedExt.assignedConsultantId || '');
       setEditLawyerId(selectedExt.assignedLawyerId || '');
       setEditConsultantId(selectedExt.assignedConsultantId || '');
       setEditStaffId(selectedExt.assignedStaffId || '');
@@ -390,32 +388,30 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const handleSaveAssignment = async () => {
     if (!selectedId) return;
     const ext = getCrmExt(selectedId);
+    const currentAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || '';
     
     // 담당자가 변경되었는지 확인
-    const assigneeChanged = 
-      editLawyerId !== (ext.assignedLawyerId || '') ||
-      editConsultantId !== (ext.assignedConsultantId || '');
+    const assigneeChanged = editAssigneeId !== currentAssignee;
     
-    if (assigneeChanged) {
+    if (assigneeChanged && editAssigneeId) {
       // 담당자 변경 → 배정 지시 모달 팝업
       setPendingAssignment({
         clientId: selectedId,
-        lawyerId: editLawyerId,
-        consultantId: editConsultantId,
-        staffId: editStaffId,
+        lawyerId: editAssigneeId,
+        consultantId: '',
+        staffId: '',
         status: editStatus,
       });
       setShowDirectiveModal(true);
     } else {
-      // 담당자 변경 없음 (상태만 변경) → 즉시 저장
-      await executeAssignment(selectedId, editStatus, editLawyerId, editConsultantId, editStaffId);
+      // 담당자 변경 없음 또는 미배정으로 변경 → 즉시 저장
+      await executeAssignment(selectedId, editStatus, editAssigneeId);
     }
   };
 
   /** 실제 배정 저장 실행 (모달 결과와 무관하게 호출) */
   const executeAssignment = async (
-    clientId: string, status: CrmStatus,
-    lawyerId: string, consultantId: string, staffId: string,
+    clientId: string, status: CrmStatus, assigneeId: string,
     directive?: { memo: string; priority: DirectivePriority; deadline?: string }
   ) => {
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
@@ -428,12 +424,13 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     }
 
     // 배정 대상 정보 파악
-    const newAssignee = [...lawyers, ...staffMembers].find(l => l.id === (lawyerId || consultantId));
+    const currentAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || '';
+    const newAssignee = [...lawyers, ...staffMembers].find(l => l.id === assigneeId);
     
-    if (lawyerId !== (ext.assignedLawyerId || '')) {
+    if (assigneeId !== currentAssignee) {
       const desc = directive?.memo
-        ? `담당 변호사 배정: ${newAssignee?.name || '미배정'} (지시: ${directive.memo.slice(0, 40)}${directive.memo.length > 40 ? '...' : ''})`
-        : `담당 변호사 배정: ${newAssignee?.name || '미배정'}`;
+        ? `담당자 배정: ${newAssignee?.name || '미배정'} (지시: ${directive.memo.slice(0, 40)}${directive.memo.length > 40 ? '...' : ''})`
+        : `담당자 배정: ${newAssignee?.name || '미배정'}`;
       activities.push(createActivityLog(clientId, actor.id, actor.name, actor.role, 'assigned', desc));
     }
 
@@ -459,9 +456,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
     await updateCrmExt(clientId, {
       crmStatus: status,
-      assignedLawyerId: lawyerId || undefined,
-      assignedConsultantId: consultantId || undefined,
-      assignedStaffId: staffId || undefined,
+      assigneeId: assigneeId || undefined,
+      assignedLawyerId: assigneeId || undefined,  // 하위 호환
       activities,
       assignmentDirectives: directives.length > 0 ? directives : undefined,
     });
@@ -471,8 +467,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   /** 배정 지시 모달: 지시사항과 함께 배정 */
   const handleDirectiveSubmit = async (data: { memo: string; priority: DirectivePriority; deadline?: string }) => {
     if (!pendingAssignment) return;
-    const { clientId, lawyerId, consultantId, staffId, status } = pendingAssignment;
-    await executeAssignment(clientId, status, lawyerId, consultantId, staffId, data);
+    await executeAssignment(pendingAssignment.clientId, pendingAssignment.status, pendingAssignment.lawyerId, data);
     setShowDirectiveModal(false);
     setPendingAssignment(null);
   };
@@ -480,8 +475,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   /** 배정 지시 모달: 메모 없이 배정 */
   const handleDirectiveSkip = async () => {
     if (!pendingAssignment) return;
-    const { clientId, lawyerId, consultantId, staffId, status } = pendingAssignment;
-    await executeAssignment(clientId, status, lawyerId, consultantId, staffId);
+    await executeAssignment(pendingAssignment.clientId, pendingAssignment.status, pendingAssignment.lawyerId);
     setShowDirectiveModal(false);
     setPendingAssignment(null);
   };
@@ -510,14 +504,16 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     )];
 
     await updateCrmExt(selectedId, {
-      assignedLawyerId: transferTargetId,
+      assigneeId: transferTargetId,
+      assignedLawyerId: transferTargetId,  // 하위 호환
       activities,
     });
+    setEditAssigneeId(transferTargetId);
     setEditLawyerId(transferTargetId);
     setShowTransferModal(false);
     setTransferTargetId('');
     setTransferReason('');
-    alert('사건이 이관되었습니다.');
+    toast.success('사건이 이관되었습니다.');
   };
 
   const handleAddNote = async () => {
@@ -630,7 +626,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         id, actor.id, actor.name, actor.role, 'assigned',
         `일괄 배정: ${target?.name || '알 수 없음'}`
       )];
-      await updateCrmExt(id, { assignedLawyerId: bulkAssignee, activities });
+      await updateCrmExt(id, { assigneeId: bulkAssignee, assignedLawyerId: bulkAssignee, activities });
     }
     setSelectedIds(new Set());
     alert(`${selectedIds.size}건 배정 완료`);
@@ -944,7 +940,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
           {staffMembers.filter(m => m.isActive).map(m => {
             const count = requests.filter(r => {
               const ext = getCrmExt(r.id);
-              return ext.assignedLawyerId === m.id || ext.assignedConsultantId === m.id || ext.assignedStaffId === m.id;
+              const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
+              return effectiveAssignee === m.id;
             }).length;
             return (
               <span key={m.id} className="bg-slate-100 px-3 py-1 rounded-lg border border-slate-200 text-slate-700 font-semibold">
@@ -953,7 +950,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             );
           })}
           <span className="bg-rose-50 px-3 py-1 rounded-lg border border-rose-200 text-rose-600 font-bold">
-            미배정({requests.filter(r => { const ext = getCrmExt(r.id); return !ext.assignedLawyerId && !ext.assignedConsultantId; }).length})
+            미배정({requests.filter(r => { const ext = getCrmExt(r.id); const a = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId; return !a; }).length})
           </span>
         </div>
       </div>
@@ -1241,8 +1238,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         </td>
                         <td className="p-3.5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {getStaffRoleBadge(ext.assignedLawyerId)}
-                            <span className="text-xs text-slate-700 font-medium truncate">{getStaffName(ext.assignedLawyerId)}</span>
+                            {getStaffRoleBadge(ext.assigneeId || ext.assignedLawyerId)}
+                            <span className="text-xs text-slate-700 font-medium truncate">{getStaffName(ext.assigneeId || ext.assignedLawyerId)}</span>
                           </div>
                         </td>
                         <td className="p-3.5 text-right font-bold text-red-600 text-base whitespace-nowrap">
@@ -1377,19 +1374,15 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                               </select>
                             </div>
                             <div className="space-y-0.5">
-                              <label className="text-[10px] text-slate-500 font-bold">담당 변호사</label>
-                              <select value={editLawyerId} onChange={e => setEditLawyerId(e.target.value)}
+                              <label className="text-[10px] text-slate-500 font-bold">담당자</label>
+                              <select value={editAssigneeId} onChange={e => setEditAssigneeId(e.target.value)}
                                 className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-700">
                                 <option value="">미배정</option>
-                                {[...lawyers, ...staffMembers.filter(m => m.role === 'LAWYER')].map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                              </select>
-                            </div>
-                            <div className="space-y-0.5">
-                              <label className="text-[10px] text-slate-500 font-bold">상담 직원</label>
-                              <select value={editConsultantId} onChange={e => setEditConsultantId(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-700">
-                                <option value="">미배정</option>
-                                {staffMembers.filter(m => m.role === 'CONSULTANT' && m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                {[...lawyers.map(l => ({ ...l, role: 'LAWYER' as const })), ...staffMembers.filter(m => m.isActive)].map(l => (
+                                  <option key={l.id} value={l.id}>
+                                    {l.role === 'LAWYER' || l.role === 'OWNER' ? '👔' : '📋'} {l.name} ({STAFF_ROLE_CONFIG[l.role]?.label || l.role})
+                                  </option>
+                                ))}
                               </select>
                             </div>
                             <button onClick={handleSaveAssignment}
@@ -2446,8 +2439,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </div>
                           <div className="text-sm text-red-500 font-bold">{r.financialProfile.debtTotal.toLocaleString()}만</div>
                           <div className="flex items-center gap-1.5 mt-2">
-                            {getStaffRoleBadge(ext.assignedLawyerId)}
-                            <span className="text-xs text-slate-600 font-medium truncate">{getStaffName(ext.assignedLawyerId)}</span>
+                            {getStaffRoleBadge(ext.assigneeId || ext.assignedLawyerId)}
+                            <span className="text-xs text-slate-600 font-medium truncate">{getStaffName(ext.assigneeId || ext.assignedLawyerId)}</span>
                           </div>
                           <div className="text-xs text-slate-400 font-medium mt-1">{timeAgo(ext.lastActivityAt)}</div>
                         </div>
@@ -2537,13 +2530,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         onSubmit={handleDirectiveSubmit}
         assigneeName={(() => {
           if (!pendingAssignment) return '';
-          const id = pendingAssignment.lawyerId || pendingAssignment.consultantId;
-          return [...lawyers, ...staffMembers].find(l => l.id === id)?.name || '';
+          return [...lawyers, ...staffMembers].find(l => l.id === pendingAssignment.lawyerId)?.name || '';
         })()}
         assigneeRole={(() => {
           if (!pendingAssignment) return 'STAFF';
-          const id = pendingAssignment.lawyerId || pendingAssignment.consultantId;
-          const found = staffMembers.find(m => m.id === id);
+          const found = staffMembers.find(m => m.id === pendingAssignment.lawyerId);
           return found?.role || 'LAWYER';
         })()}
         clientName={requests.find(r => r.id === pendingAssignment?.clientId)?.clientName || ''}

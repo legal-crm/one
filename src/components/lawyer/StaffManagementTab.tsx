@@ -128,9 +128,8 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     requests.forEach(r => {
       const ext = crmData[r.id];
       if (ext) {
-        if (ext.assignedLawyerId && counts[ext.assignedLawyerId] !== undefined) counts[ext.assignedLawyerId]++;
-        if (ext.assignedConsultantId && counts[ext.assignedConsultantId] !== undefined) counts[ext.assignedConsultantId]++;
-        if (ext.assignedStaffId && counts[ext.assignedStaffId] !== undefined) counts[ext.assignedStaffId]++;
+        const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
+        if (effectiveAssignee && counts[effectiveAssignee] !== undefined) counts[effectiveAssignee]++;
       }
     });
     return counts;
@@ -139,7 +138,8 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const unassignedCount = useMemo(() => {
     return requests.filter(r => {
       const ext = crmData[r.id];
-      return !ext || (!ext.assignedLawyerId && !ext.assignedConsultantId && !ext.assignedStaffId);
+      const effectiveAssignee = ext?.assigneeId || ext?.assignedLawyerId || ext?.assignedConsultantId || ext?.assignedStaffId;
+      return !ext || !effectiveAssignee;
     }).length;
   }, [requests, crmData]);
 
@@ -256,9 +256,12 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       if (ext) {
         let changed = false;
         const updatedExt = { ...ext };
-        if (ext.assignedLawyerId === bulkFromId) { updatedExt.assignedLawyerId = bulkToId; changed = true; }
-        if (ext.assignedConsultantId === bulkFromId) { updatedExt.assignedConsultantId = bulkToId; changed = true; }
-        if (ext.assignedStaffId === bulkFromId) { updatedExt.assignedStaffId = bulkToId; changed = true; }
+        const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
+        if (effectiveAssignee === bulkFromId) {
+          updatedExt.assigneeId = bulkToId;
+          updatedExt.assignedLawyerId = bulkToId;  // 하위 호환
+          changed = true;
+        }
         if (changed) {
           updatedCrmData[r.id] = updatedExt;
           saveCrmClient(r.id, updatedExt);

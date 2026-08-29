@@ -41,6 +41,7 @@ export async function loadCrmData(): Promise<CrmDataStore> {
         data.forEach((row: any) => {
           store[row.client_id] = {
             crmStatus: row.crm_status || 'requested',
+            assigneeId: row.assignee_id || row.assigned_lawyer_id || row.assigned_consultant_id || row.assigned_staff_id,
             assignedLawyerId: row.assigned_lawyer_id,
             assignedConsultantId: row.assigned_consultant_id,
             assignedStaffId: row.assigned_staff_id,
@@ -68,7 +69,15 @@ export async function loadCrmData(): Promise<CrmDataStore> {
       console.warn('[CRM] Supabase load failed, falling back to localStorage', e);
     }
   }
-  return getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  // 마이그레이션: 기존 3개 필드 → assigneeId 통합
+  for (const id of Object.keys(store)) {
+    const ext = store[id];
+    if (!ext.assigneeId && (ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId)) {
+      ext.assigneeId = ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
+    }
+  }
+  return store;
 }
 
 export async function saveCrmClient(clientId: string, ext: CrmClientExtension): Promise<void> {
@@ -83,7 +92,8 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
       await supabase.from('crm_clients').upsert({
         client_id: clientId,
         crm_status: ext.crmStatus,
-        assigned_lawyer_id: ext.assignedLawyerId,
+        assignee_id: ext.assigneeId,
+        assigned_lawyer_id: ext.assignedLawyerId || ext.assigneeId,
         assigned_consultant_id: ext.assignedConsultantId,
         assigned_staff_id: ext.assignedStaffId,
         documents: ext.documents,

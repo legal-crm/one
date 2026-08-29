@@ -97,7 +97,7 @@ export default function ExportCasesModal({ isOpen, onClose, requests, getCrmExt 
           case 'debtTotal': row.push(fp?.debtTotal?.toString() || ''); break;
           case 'income': row.push(fp?.income?.toString() || ''); break;
           case 'region': row.push(ext.region || fp?.residenceRegion || ''); break;
-          case 'assignee': row.push(ext.assignedLawyerId || ''); break;
+          case 'assignee': row.push(ext.assigneeId || ext.assignedLawyerId || ''); break;
           case 'memo': {
             const lastNote = ext.notes?.[ext.notes.length - 1];
             row.push(lastNote?.content || '');

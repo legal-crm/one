@@ -573,6 +573,8 @@ export interface AssignmentDirective {
 // CRM 확장된 고객 데이터 (ConsultRequest에 추가)
 export interface CrmClientExtension {
   crmStatus: CrmStatus;
+  assigneeId?: string;               // 통합 담당자 ID (변호사/사무장/직원 무관)
+  // ── 하위 호환 (마이그레이션 후 제거 예정) ──
   assignedLawyerId?: string;
   assignedConsultantId?: string;
   assignedStaffId?: string;
