@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { FileSignature, Clock, CheckCircle2, Plus, Search, Eye, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import type { ElectronicContract, ContractStatus } from '../../types';
 import { CONTRACT_STATUS_CONFIG } from '../../types';
 import { loadContracts, saveContract, deleteContract, createContract, seedMockContracts } from '../../services/contractService';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ContractManagementTab({ lawyerName, lawFirmName }: Props) {
+  const dialog = useDialog();
   const [contracts, setContracts] = useState<ElectronicContract[]>(() => { seedMockContracts(); return loadContracts(); });
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,8 +45,14 @@ export default function ContractManagementTab({ lawyerName, lawFirmName }: Props
     refreshContracts();
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('이 계약서를 삭제하시겠습니까?')) return;
+  const handleDelete = async (id: string) => {
+    const confirmed = await dialog.confirm({
+      title: '계약서 삭제',
+      message: '이 계약서를 삭제하시겠습니까?',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
     deleteContract(id);
     refreshContracts();
     toast.success('계약서가 삭제되었습니다');

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import {
   Users, Shield, UserPlus, UserMinus, Clock, CheckCircle2, XCircle,
   AlertTriangle, ArrowRightLeft, Search, Filter, ChevronDown, ChevronUp,
@@ -47,6 +49,7 @@ interface StaffManagementTabProps {
 type SubSection = 'pending' | 'active' | 'cases' | 'logs' | 'invite-links';
 
 export default function StaffManagementTab({ requests, lawyers, activeLawyer, setRequests }: StaffManagementTabProps) {
+  const dialog = useDialog();
   // ── Core State ──
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [activityLogs, setActivityLogs] = useState<StaffActivityLog[]>([]);
@@ -202,7 +205,13 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
 
   // ── 핸들러: 거부 ──
   const handleReject = async (member: StaffMember) => {
-    if (!confirm(`${member.name}님의 가입 요청을 거부하시겠습니까?`)) return;
+    const confirmed = await dialog.confirm({
+      title: '가입 요청 거부',
+      message: `${member.name}님의 가입 요청을 거부하시겠습니까?`,
+      confirmText: '거부',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
     await rejectStaffMember(member.id);
     setStaffMembers(prev => prev.filter(m => m.id !== member.id));
     recordActivity(member.id, member.name, 'staff_rejected', `${member.name}님의 가입을 거부했습니다.`);
@@ -210,7 +219,13 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
 
   // ── 핸들러: 정지 ──
   const handleSuspend = async (member: StaffMember) => {
-    if (!confirm(`${member.name}님의 활동을 정지하시겠습니까? 해당 직원의 CRM 접근이 즉시 차단됩니다.`)) return;
+    const confirmed = await dialog.confirm({
+      title: '활동 정지 확인',
+      message: `${member.name}님의 활동을 정지하시겠습니까?\n해당 직원의 CRM 접근이 즉시 차단됩니다.`,
+      confirmText: '활동 정지',
+      variant: 'warning'
+    });
+    if (!confirmed) return;
     await suspendStaffMember(member.id);
     setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: 'suspended' as StaffMemberStatus, isActive: false } : m));
     recordActivity(member.id, member.name, 'staff_suspended', `${member.name}님의 활동을 정지했습니다.`);
@@ -277,19 +292,26 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     
     setShowBulkTransferModal(false);
     setBulkFromId(''); setBulkToId('');
-    alert(`${transferredCount}건의 사건이 ${toStaff.name}에게 성공적으로 이관되었습니다.`);
+    toast.success(`${transferredCount}건의 사건이 ${toStaff.name}에게 성공적으로 이관되었습니다.`);
   };
 
   // ── 핸들러: 역할 변경 ──
   const handleRoleChange = async (member: StaffMember, newRole: StaffRole) => {
     if (member.role === newRole) return;
-    if (!confirm(`${member.name}님의 역할을 ${STAFF_ROLE_CONFIG[member.role].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경하시겠습니까?\n권한이 새 역할의 기본값으로 초기화됩니다.`)) return;
+    const confirmed = await dialog.confirm({
+      title: '역할 변경 확인',
+      message: `${member.name}님의 역할을 ${STAFF_ROLE_CONFIG[member.role].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경하시겠습니까?\n권한이 새 역할의 기본값으로 초기화됩니다.`,
+      confirmText: '역할 변경',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
     
     const oldRole = member.role;
     const updatedMember = { ...member, role: newRole, permissions: DEFAULT_PERMISSIONS[newRole] };
     await saveStaffMember(updatedMember);
     setStaffMembers(prev => prev.map(m => m.id === member.id ? updatedMember : m));
     recordActivity(member.id, member.name, 'role_changed', `${member.name}님의 역할이 ${STAFF_ROLE_CONFIG[oldRole].label}에서 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경되었습니다.`);
+    toast.success(`${member.name}님의 역할이 ${STAFF_ROLE_CONFIG[newRole].label}(으)로 변경되었습니다.`);
   };
 
   // ── 필터된 직원 목록 ──
@@ -1088,7 +1110,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                                   <button
                                     onClick={() => {
                                       navigator.clipboard.writeText(buildInviteUrl(token.token));
-                                      alert('초대 링크가 복사되었습니다.');
+                                      toast.success('초대 링크가 복사되었습니다.');
                                     }}
                                     className="bg-[#1E3A5F] hover:bg-[#163152] text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                                   >
@@ -1096,10 +1118,17 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                                   </button>
                                   <button
                                     onClick={async () => {
-                                      if (confirm('이 초대 링크를 만료 처리하시겠습니까?')) {
+                                      const confirmed = await dialog.confirm({
+                                        title: '초대 링크 만료',
+                                        message: '이 초대 링크를 만료 처리하시겠습니까?\n만료 후에는 해당 링크를 통해 가입할 수 없습니다.',
+                                        confirmText: '만료 처리',
+                                        variant: 'warning'
+                                      });
+                                      if (confirmed) {
                                         await expireInviteToken(token.token);
                                         const updated = loadInviteTokens();
                                         setInviteTokens(updated);
+                                        toast.success('초대 링크가 만료되었습니다.');
                                       }
                                     }}
                                     className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
@@ -1176,15 +1205,15 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                 </div>
                 <button
                   onClick={() => {
-                    if (!newRoleId || !newRoleLabel) { alert('역할 ID와 이름을 입력해주세요.'); return; }
-                    if (['OWNER','LAWYER','CONSULTANT','STAFF','ACCOUNTING'].includes(newRoleId)) { alert('기본 역할과 동일한 ID는 사용할 수 없습니다.'); return; }
+                    if (!newRoleId || !newRoleLabel) { toast.error('역할 ID와 이름을 입력해주세요.'); return; }
+                    if (['OWNER','LAWYER','CONSULTANT','STAFF','ACCOUNTING'].includes(newRoleId)) { toast.error('기본 역할과 동일한 ID는 사용할 수 없습니다.'); return; }
                     const newRole: CustomStaffRole = {
                       id: newRoleId,
                       label: newRoleLabel,
                       color: newRoleColor,
                       bgColor: newRoleBg,
                       borderColor: newRoleBorder,
-                      basePermissions: { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true, manageBilling: false, deleteClients: false },
+                      basePermissions: { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true, manageBilling: false, deleteClients: false, manageCalendar: false },
                       createdAt: new Date().toISOString(),
                     };
                     registerCustomRole(newRole);
@@ -1192,6 +1221,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                     setNewRoleId(''); setNewRoleLabel('');
                     setShowCustomRoleForm(false);
                     recordActivity('system', '시스템', 'role_changed', `커스텀 역할 "${newRoleLabel}" (${newRoleId})이 생성되었습니다.`);
+                    toast.success(`커스텀 역할 "${newRoleLabel}"이(가) 생성되었습니다.`);
                   }}
                   className="w-full bg-[#1E3A5F] hover:bg-[#163152] text-white py-3 rounded-xl text-sm font-bold transition-all shadow-xs cursor-pointer"
                 >
@@ -1216,10 +1246,17 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                   <span className={`text-sm font-black ${role.color} block tracking-tight`}>{role.label}</span>
                   <div className="text-xs text-slate-500 font-medium mt-1">{role.id}</div>
                   <button
-                    onClick={() => {
-                      if (confirm(`"${role.label}" 역할을 삭제하시겠습니까?`)) {
+                    onClick={async () => {
+                      const confirmed = await dialog.confirm({
+                        title: '커스텀 역할 삭제',
+                        message: `"${role.label}" 역할을 삭제하시겠습니까?`,
+                        confirmText: '삭제',
+                        variant: 'danger'
+                      });
+                      if (confirmed) {
                         deleteCustomRole(role.id);
                         setCustomRoles(loadCustomRoles());
+                        toast.success(`"${role.label}" 역할이 삭제되었습니다.`);
                       }
                     }}
                     className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-black opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-xs cursor-pointer"
@@ -1335,7 +1372,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                       await updateStaffPermissions(selectedStaffDetail.id, editPermissions);
                       setStaffMembers(prev => prev.map(m => m.id === selectedStaffDetail.id ? { ...m, permissions: editPermissions } : m));
                       recordActivity(selectedStaffDetail.id, selectedStaffDetail.name, 'permission_changed', `${selectedStaffDetail.name}님의 개별 권한이 변경되었습니다.`);
-                      alert('권한이 저장되었습니다.');
+                      toast.success('권한이 저장되었습니다.');
                     }}
                     className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
                   >

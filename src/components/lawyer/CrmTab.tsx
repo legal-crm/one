@@ -9,6 +9,7 @@ import {
   ShieldCheck, FileCheck2, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import TeamworkTab from './TeamworkTab';
 import NewCaseModal from './NewCaseModal';
 import type { NewCaseData } from './NewCaseModal';
@@ -74,6 +75,7 @@ function NewBadge({ className = '' }: { className?: string }) {
 }
 
 export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, getDisplayPhoneNumber, handleOpenProposalDraft, setActiveTab, setCopilotPreselectedReqId, initialView }: CrmTabProps) {
+  const dialog = useDialog();
   // ── 기본 State ──
   const [crmData, setCrmData] = useState<CrmDataStore>({});
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -599,14 +601,22 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   };
 
   const handleRemoveStaff = async (id: string) => {
-    if (!confirm('이 직원을 삭제하시겠습니까?')) return;
+    const confirmed = await dialog.confirm({
+      title: '직원 삭제',
+      message: '이 직원을 삭제하시겠습니까?',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
     setStaffMembers(prev => prev.filter(m => m.id !== id));
     await deleteStaffMember(id);
+    toast.success('직원이 삭제되었습니다.');
   };
 
   // ── 일괄 작업 핸들러 ──
   const handleBulkStatusChange = async () => {
     if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     for (const id of selectedIds) {
       const ext = getCrmExt(id);
@@ -617,11 +627,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       await updateCrmExt(id, { crmStatus: bulkStatus, activities });
     }
     setSelectedIds(new Set());
-    alert(`${selectedIds.size}건 상태 변경 완료`);
+    toast.success(`${count}건 상태 변경 완료`);
   };
 
   const handleBulkAssign = async () => {
     if (selectedIds.size === 0 || !bulkAssignee) return;
+    const count = selectedIds.size;
     const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
     const target = [...lawyers, ...staffMembers].find(l => l.id === bulkAssignee);
     for (const id of selectedIds) {
@@ -633,7 +644,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       await updateCrmExt(id, { assigneeId: bulkAssignee, assignedLawyerId: bulkAssignee, activities });
     }
     setSelectedIds(new Set());
-    alert(`${selectedIds.size}건 배정 완료`);
+    toast.success(`${count}건 배정 완료`);
   };
 
   // ── 칸반 드래그 ──
@@ -1632,7 +1643,13 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     )}
                     <button 
                       onClick={async () => {
-                        if (!confirm(`${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브하시겠습니까?`)) return;
+                        const confirmed = await dialog.confirm({
+                          title: '고객 데이터 아카이브',
+                          message: `${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브(휴지통 이동)하시겠습니까?`,
+                          confirmText: '아카이브',
+                          variant: 'warning'
+                        });
+                        if (!confirmed) return;
                         await deleteCrmClient(selectedId);
                         setCrmData(prev => {
                           const next = { ...prev };
@@ -1640,6 +1657,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           return next;
                         });
                         setSelectedId('');
+                        toast.success(`${selectedClient?.clientName} 고객 데이터가 아카이브되었습니다.`);
                       }}
                       className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg font-bold text-[11px] border border-rose-200 flex items-center gap-1 cursor-pointer press-scale"
                       title="아카이브 / 휴지통 이동"

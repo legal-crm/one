@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useDialog } from './common/DialogProvider';
 import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout } from '../services/auditService';
 import { createSecureSession, verifySecureSession, refreshSecureSession } from '../utils/secureSession';
 import { 
@@ -79,6 +81,7 @@ export default function AdminRole({
   lawyerInquiries,
   setLawyerInquiries
 }: AdminRoleProps) {
+  const dialog = useDialog();
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
   const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice'>('overview');
@@ -230,7 +233,7 @@ export default function AdminRole({
       if (!isValid) {
         localStorage.removeItem(SESSION_KEY);
         setIsLoggedIn(false);
-        alert('보안을 위해 30분 미활동으로 자동 로그아웃되었습니다.');
+        dialog.alert({ title: '보안 로그아웃', message: '보안을 위해 30분 미활동으로 자동 로그아웃되었습니다.', variant: 'info' });
       }
     };
 
@@ -245,7 +248,7 @@ export default function AdminRole({
       events.forEach(e => window.removeEventListener(e, handleRefreshSession));
       clearInterval(interval);
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, dialog]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,8 +299,14 @@ export default function AdminRole({
     }
   };
 
-  const handleLogout = () => {
-    if (confirm('어드민 세션을 로그아웃 하시겠습니까?')) {
+  const handleLogout = async () => {
+    const confirmed = await dialog.confirm({
+      title: '어드민 로그아웃',
+      message: '어드민 세션을 로그아웃 하시겠습니까?',
+      confirmText: '로그아웃',
+      variant: 'warning'
+    });
+    if (confirmed) {
       // [AUDIT] 로그아웃 기록
       auditAdminLogout('admin');
       localStorage.removeItem(SESSION_KEY);

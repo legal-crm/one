@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
+import { DialogProvider } from './components/common/DialogProvider';
 import { 
   loadConsultRequests, 
   saveConsultRequest, 
@@ -557,103 +558,107 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
-      
-      {/* Role View Render */}
-      <div className="flex-1">
-        <React.Suspense fallback={
-          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-            <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
-            <p className="text-xs text-slate-500 font-bold">권한 페이지를 불러오고 있습니다...</p>
-          </div>
-        }>
-          {currentRole === 'client' ? (
-            <ClientRole 
-              requests={requests}
-              setRequests={setRequests}
-              messages={messages}
-              setMessages={setMessages}
-              lawyers={lawyers}
-              onAddMessage={handleAddMessage}
-              newsArticles={newsArticles}
-              setNewsArticles={setNewsArticles}
-              qas={qas}
-              setQas={setQas}
-              reviews={reviews}
-              setReviews={setReviews}
-              banners={banners}
-              setBanners={setBanners}
-              notices={notices}
-              setNotices={setNotices}
-              matchingCooldownHours={matchingCooldownHours}
-              members={members}
-              setMembers={setMembers}
-              onLogActivity={handleLogActivity}
-              platformConfig={platformConfig}
-              inquiries={inquiries}
-              setInquiries={setInquiries}
-              popupConfig={popupConfig}
-            />
-          ) : currentRole === 'lawyer' ? (
-            <LawyerRole 
-              requests={requests}
-              setRequests={setRequests}
-              messages={messages}
-              setMessages={setMessages}
-              lawyers={lawyers}
-              setLawyers={setLawyers}
-              onAddMessage={handleAddMessage}
-              cases={cases}
-              setCases={setCases}
-              members={members}
-              setMembers={setMembers}
-              onLogActivity={handleLogActivity}
-              platformConfig={platformConfig}
-              qas={qas}
-              setQas={setQas}
-              popupConfig={popupConfig}
-              lawyerInquiries={lawyerInquiries}
-              setLawyerInquiries={setLawyerInquiries}
-              notices={notices}
-            />
-          ) : (
-            <AdminRole 
-              requests={requests}
-              setRequests={setRequests}
-              lawyers={lawyers}
-              setLawyers={setLawyers}
-              newsArticles={newsArticles}
-              setNewsArticles={setNewsArticles}
-              qas={qas}
-              setQas={setQas}
-              reviews={reviews}
-              setReviews={setReviews}
-              banners={banners}
-              setBanners={setBanners}
-              notices={notices}
-              setNotices={setNotices}
-              matchingCooldownHours={matchingCooldownHours}
-              setMatchingCooldownHours={setMatchingCooldownHours}
-              members={members}
-              setMembers={setMembers}
-              activityLogs={activityLogs}
-              setActivityLogs={setActivityLogs}
-              onLogActivity={handleLogActivity}
-              platformConfig={platformConfig}
-              setPlatformConfig={setPlatformConfig}
-              inquiries={inquiries}
-              setInquiries={setInquiries}
-              popupConfig={popupConfig}
-              setPopupConfig={setPopupConfig}
-              lawyerInquiries={lawyerInquiries}
-              setLawyerInquiries={setLawyerInquiries}
-            />
-          )}
-        </React.Suspense>
-      </div>
+    <DialogProvider>
+      <div className="flex flex-col min-h-screen text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
+        
+        {/* Role View Render */}
+        <div className="flex-1">
+          <React.Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+              <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
+              <p className="text-xs text-slate-500 font-bold">권한 페이지를 불러오고 있습니다...</p>
+            </div>
+          }>
+            {currentRole === 'client' ? (
+              <ClientRole 
+                requests={requests}
+                setRequests={setRequests}
+                messages={messages}
+                setMessages={setMessages}
+                lawyers={lawyers}
+                onAddMessage={handleAddMessage}
+                newsArticles={newsArticles}
+                setNewsArticles={setNewsArticles}
+                qas={qas}
+                setQas={setQas}
+                reviews={reviews}
+                setReviews={setReviews}
+                banners={banners}
+                setBanners={setBanners}
+                notices={notices}
+                setNotices={setNotices}
+                matchingCooldownHours={matchingCooldownHours}
+                members={members}
+                setMembers={setMembers}
+                onLogActivity={handleLogActivity}
+                platformConfig={platformConfig}
+                inquiries={inquiries}
+                setInquiries={setInquiries}
+                popupConfig={popupConfig}
+                lawyerInquiries={lawyerInquiries}
+                setLawyerInquiries={setLawyerInquiries}
+              />
+            ) : currentRole === 'lawyer' ? (
+              <LawyerRole 
+                requests={requests}
+                setRequests={setRequests}
+                messages={messages}
+                setMessages={setMessages}
+                lawyers={lawyers}
+                setLawyers={setLawyers}
+                onAddMessage={handleAddMessage}
+                cases={cases}
+                setCases={setCases}
+                members={members}
+                setMembers={setMembers}
+                onLogActivity={handleLogActivity}
+                platformConfig={platformConfig}
+                qas={qas}
+                setQas={setQas}
+                popupConfig={popupConfig}
+                lawyerInquiries={lawyerInquiries}
+                setLawyerInquiries={setLawyerInquiries}
+                notices={notices}
+              />
+            ) : (
+              <AdminRole 
+                requests={requests}
+                setRequests={setRequests}
+                lawyers={lawyers}
+                setLawyers={setLawyers}
+                newsArticles={newsArticles}
+                setNewsArticles={setNewsArticles}
+                qas={qas}
+                setQas={setQas}
+                reviews={reviews}
+                setReviews={setReviews}
+                banners={banners}
+                setBanners={setBanners}
+                notices={notices}
+                setNotices={setNotices}
+                matchingCooldownHours={matchingCooldownHours}
+                setMatchingCooldownHours={setMatchingCooldownHours}
+                members={members}
+                setMembers={setMembers}
+                activityLogs={activityLogs}
+                setActivityLogs={setActivityLogs}
+                onLogActivity={handleLogActivity}
+                platformConfig={platformConfig}
+                setPlatformConfig={setPlatformConfig}
+                inquiries={inquiries}
+                setInquiries={setInquiries}
+                popupConfig={popupConfig}
+                setPopupConfig={setPopupConfig}
+                lawyerInquiries={lawyerInquiries}
+                setLawyerInquiries={setLawyerInquiries}
+              />
+            )}
+          </React.Suspense>
+        </div>
 
-      <Toaster position="top-center" richColors closeButton />
-    </div>
+        <Toaster position="top-center" richColors closeButton />
+      </div>
+    </DialogProvider>
   );
 }
 

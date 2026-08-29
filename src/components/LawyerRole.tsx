@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
@@ -93,6 +94,7 @@ export default function LawyerRole({
   setLawyerInquiries,
   notices = initialNotices
 }: LawyerRoleProps) {
+  const dialog = useDialog();
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
@@ -304,27 +306,34 @@ export default function LawyerRole({
           const msg = currentMember.status === 'withdrawn'
             ? '탈퇴 처리 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
             : '이 대리인 계정은 운영정책 위반으로 인해 임시 정지 처리되었습니다. 관리자에게 문의하십시오.';
-          alert(msg);
+          dialog.alert({ title: '계정 상태 안내', message: msg, variant: 'danger' });
           sessionStorage.removeItem('legal_crm_lawyer_session');
           setIsLoggedIn(false);
         } else if (currentMember.status === 'dormant') {
-          if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
-            setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
-            onLogActivity(
-              currentMember.id,
-              currentMember.alias,
-              'LAWYER',
-              'LOGIN',
-              `변호사 휴면 계정 수동 휴면 해제 성공`
-            );
-          } else {
-            sessionStorage.removeItem('legal_crm_lawyer_session');
-            setIsLoggedIn(false);
-          }
+          dialog.confirm({
+            title: '휴면 해제 안내',
+            message: '휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?',
+            confirmText: '휴면 해제',
+            variant: 'warning'
+          }).then(confirmed => {
+            if (confirmed) {
+              setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
+              onLogActivity(
+                currentMember.id,
+                currentMember.alias,
+                'LAWYER',
+                'LOGIN',
+                `변호사 휴면 계정 수동 휴면 해제 성공`
+              );
+            } else {
+              sessionStorage.removeItem('legal_crm_lawyer_session');
+              setIsLoggedIn(false);
+            }
+          });
         }
       }
     }
-  }, [isLoggedIn, activeLawyer, members]);
+  }, [isLoggedIn, activeLawyer, members, dialog, onLogActivity, setMembers]);
 
   // Detect invite token from URL
   useEffect(() => {
@@ -339,7 +348,7 @@ export default function LawyerRole({
           setInviteTokenRole(result.token.role);
           setSignupRole(result.token.role === 'OWNER' ? 'LAWYER' : result.token.role as any);
         } else {
-          alert(result.error || '유효하지 않은 초대 링크입니다.');
+          toast.error(result.error || '유효하지 않은 초대 링크입니다.');
           setInviteTokenValid(false);
         }
       });
@@ -387,7 +396,7 @@ export default function LawyerRole({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert('파일 크기가 5MB를 초과합니다. 더 작은 파일을 선택해주세요.');
+      toast.error('파일 크기가 5MB를 초과합니다. 더 작은 파일을 선택해주세요.');
       return;
     }
     const reader = new FileReader();
@@ -403,7 +412,7 @@ export default function LawyerRole({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert('프로필 사진은 2MB 이하로 올려주세요.');
+      toast.error('프로필 사진은 2MB 이하로 올려주세요.');
       return;
     }
     const reader = new FileReader();
@@ -509,7 +518,7 @@ export default function LawyerRole({
 
   const handleTgTestNotification = () => {
     if (!tgConnected) {
-      alert('텔레그램 봇이 활성화되어 있지 않습니다.');
+      toast.warning('텔레그램 봇이 활성화되어 있지 않습니다.');
       return;
     }
     const testCard = {
@@ -527,7 +536,7 @@ export default function LawyerRole({
       }
     };
     setTgMessages(prev => [...prev, testCard]);
-    alert('텔레그램 보안 테스트 알림이 발송되었습니다! 우측 텔레그램 시뮬레이터 창을 확인하세요.');
+    toast.success('텔레그램 보안 테스트 알림이 발송되었습니다! 우측 텔레그램 시뮬레이터 창을 확인하세요.');
   };
 
   const handleTgAssign = (msgId: string, reqId: string) => {
@@ -555,11 +564,11 @@ export default function LawyerRole({
       return req;
     }));
 
-    alert(`[다시시작 CRM 연동] ${activeLawyer.name} 님이 담당 변호사로 지정되었습니다. 의뢰인 CRM 탭에서 소명 분석을 개시할 수 있습니다.`);
+    toast.success(`[다시시작 CRM 연동] ${activeLawyer.name} 님이 담당 변호사로 지정되었습니다. 의뢰인 CRM 탭에서 소명 분석을 개시할 수 있습니다.`);
   };
 
   // Auth logic
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginId.trim() || !loginPassword.trim()) {
       setLoginError('이메일(ID)과 비밀번호를 입력해주세요.');
@@ -620,7 +629,13 @@ export default function LawyerRole({
         setLoginError(errorMsg);
         return;
       } else if (currentMember.status === 'dormant') {
-        if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
+        const confirmed = await dialog.confirm({
+          title: '휴면 해제 확인',
+          message: '휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?',
+          confirmText: '휴면 해제',
+          variant: 'warning'
+        });
+        if (confirmed) {
           setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
           onLogActivity(currentMember.id, currentMember.alias, 'LAWYER', 'LOGIN', `변호사 휴면 계정 수동 휴면 해제 성공`);
         } else {
@@ -726,7 +741,11 @@ export default function LawyerRole({
       }
     }
 
-    alert('회원가입이 완료되었습니다!\n\n관리자가 변호사 등록증을 확인한 후 승인 처리됩니다.\n승인 완료 후 로그인이 가능합니다.');
+    dialog.alert({
+      title: '회원가입 접수 완료',
+      message: '회원가입이 완료되었습니다!\n\n관리자가 변호사 등록증을 확인한 후 승인 처리됩니다.\n승인 완료 후 로그인이 가능합니다.',
+      variant: 'success'
+    });
     setAuthMode('login');
     setLoginId(newLawyer.id);
     setSignupId('');
@@ -785,12 +804,16 @@ export default function LawyerRole({
           } catch (err) {
             console.warn('[OAuth] StaffMember 생성 실패:', err);
           }
-          alert('Google 계정으로 가입되었습니다.\n관리자 승인 후 로그인이 가능합니다.');
+          dialog.alert({
+            title: 'Google 계정 가입 완료',
+            message: 'Google 계정으로 가입되었습니다.\n관리자 승인 후 로그인이 가능합니다.',
+            variant: 'info'
+          });
         }
       }
     });
     return () => { listener?.subscription?.unsubscribe(); };
-  }, [lawyers]);
+  }, [lawyers, dialog]);
 
   // 비밀번호 변경 상태
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -801,21 +824,21 @@ export default function LawyerRole({
   // 비밀번호 변경 핸들러
   const handlePasswordChange = async () => {
     if (!newPassword.trim() || !confirmPassword.trim()) {
-      alert('새 비밀번호를 입력해주세요.');
+      toast.error('새 비밀번호를 입력해주세요.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      alert('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
+      toast.error('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
       return;
     }
     if (newPassword.length < 4) {
-      alert('비밀번호는 4자리 이상으로 설정해주세요.');
+      toast.error('비밀번호는 4자리 이상으로 설정해주세요.');
       return;
     }
     
     // 현재 비밀번호 확인
     if (activeLawyer.password && activeLawyer.password !== currentPassword) {
-      alert('현재 비밀번호가 일치하지 않습니다.');
+      toast.error('현재 비밀번호가 일치하지 않습니다.');
       return;
     }
 
@@ -834,7 +857,7 @@ export default function LawyerRole({
       }
     }
 
-    alert('비밀번호가 성공적으로 변경되었습니다.');
+    toast.success('비밀번호가 성공적으로 변경되었습니다.');
     setShowPasswordChange(false);
     setCurrentPassword('');
     setNewPassword('');
@@ -846,7 +869,7 @@ export default function LawyerRole({
   const handleSaveFirmName = () => {
     const trimmed = tempFirmName.trim();
     if (!trimmed) {
-      alert('소속 명칭을 입력해주세요.');
+      toast.error('소속 명칭을 입력해주세요.');
       return;
     }
 
@@ -855,14 +878,18 @@ export default function LawyerRole({
     ));
     setActiveLawyer(prev => ({ ...prev, firmName: trimmed }));
 
-    alert('소속 법률사무소/법인 명칭이 저장되었습니다.');
+    toast.success('소속 법률사무소/법인 명칭이 저장되었습니다.');
     onLogActivity(activeLawyer.id, activeLawyer.name, activeLawyer.role as MemberRole, 'SETTINGS', `소속 명칭 설정 변경: ${trimmed}`);
   };
 
   // Google OAuth 로그인
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
-      alert('Google 로그인을 사용하려면 Supabase 설정이 필요합니다.\n.env 파일에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해주세요.');
+      dialog.alert({
+        title: 'Google 로그인 설정 필요',
+        message: 'Google 로그인을 사용하려면 Supabase 설정이 필요합니다.\n.env 파일에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해주세요.',
+        variant: 'warning'
+      });
       return;
     }
     try {
@@ -874,18 +901,18 @@ export default function LawyerRole({
       });
       if (error) throw error;
     } catch (err: any) {
-      alert(`Google 로그인 실패: ${err.message || err}`);
+      toast.error(`Google 로그인 실패: ${err.message || err}`);
     }
   };
 
   // 비밀번호 찾기
   const handlePasswordReset = async () => {
     if (!resetEmail.trim()) {
-      alert('비밀번호를 재설정할 이메일 주소를 입력해주세요.');
+      toast.error('비밀번호를 재설정할 이메일 주소를 입력해주세요.');
       return;
     }
     if (!isSupabaseConfigured) {
-      alert('비밀번호 재설정은 Supabase 설정이 필요합니다.');
+      toast.error('비밀번호 재설정은 Supabase 설정이 필요합니다.');
       return;
     }
     try {
@@ -893,16 +920,26 @@ export default function LawyerRole({
         redirectTo: window.location.origin + '?role=lawyer'
       });
       if (error) throw error;
-      alert('비밀번호 재설정 링크가 이메일로 발송되었습니다.\n이메일을 확인해주세요.');
+      dialog.alert({
+        title: '비밀번호 재설정 링크 발송',
+        message: '비밀번호 재설정 링크가 이메일로 발송되었습니다.\n이메일을 확인해주세요.',
+        variant: 'success'
+      });
       setShowPasswordReset(false);
       setResetEmail('');
     } catch (err: any) {
-      alert(`비밀번호 재설정 실패: ${err.message || err}`);
+      toast.error(`비밀번호 재설정 실패: ${err.message || err}`);
     }
   };
 
-  const handleLogout = () => {
-    if (confirm('로그아웃 하시겠습니까?')) {
+  const handleLogout = async () => {
+    const confirmed = await dialog.confirm({
+      title: '로그아웃 확인',
+      message: '변호사 포털에서 로그아웃 하시겠습니까?',
+      confirmText: '로그아웃',
+      variant: 'warning'
+    });
+    if (confirmed) {
       sessionStorage.removeItem('legal_crm_lawyer_session');
       setIsLoggedIn(false);
       setActiveStaffMember(null);
@@ -937,7 +974,7 @@ export default function LawyerRole({
       }
       return r;
     }));
-    alert('의뢰인 기본 인적 정보가 성공적으로 업데이트되었습니다.');
+    toast.success('의뢰인 기본 인적 정보가 성공적으로 업데이트되었습니다.');
   };
 
   const handleSaveCrmSession = () => {
@@ -952,7 +989,7 @@ export default function LawyerRole({
       }
       return r;
     }));
-    alert('상담 세션 배정 및 상태가 성공적으로 저장되었습니다.');
+    toast.success('상담 세션 배정 및 상태가 성공적으로 저장되었습니다.');
   };
 
   const handleAddCrmNote = () => {
@@ -4208,7 +4245,7 @@ export default function LawyerRole({
                       {showBotTokenGuide ? '가이드 닫기' : '📖 봇 생성 가이드'}
                     </button>
                     <button onClick={async () => {
-                      if (!tgBotToken || !tgChatId) { alert('Bot Token과 Chat ID를 입력하세요.'); return; }
+                      if (!tgBotToken || !tgChatId) { toast.error('Bot Token과 Chat ID를 입력하세요.'); return; }
                       setNotifTestLoading('telegram');
                       const res = await testTelegramConnection(tgBotToken, tgChatId);
                       setNotifTestLoading(null);
@@ -4218,9 +4255,9 @@ export default function LawyerRole({
                         const updated = { ...notifSettings, telegram: { botToken: tgBotToken, chatId: tgChatId, connected: true } };
                         setNotifSettings(updated);
                         saveNotificationSettings(updated);
-                        alert('✅ 텔레그램 테스트 메시지가 발송되었습니다!');
+                        toast.success('텔레그램 테스트 메시지가 발송되었습니다!');
                       } else {
-                        alert(`❌ 발송 실패: ${res.error}`);
+                        toast.error(`발송 실패: ${res.error}`);
                       }
                     }}
                       className="flex-1 py-2 text-xs font-bold rounded-xl bg-brand/10 text-brand border border-brand/20 hover:bg-brand/20 transition-colors cursor-pointer">
@@ -4250,7 +4287,11 @@ export default function LawyerRole({
                         const res = await sendEmailNotification(notifSettings.email.senderGmail, notifSettings.email.senderAppPassword, notifSettings.email.recipientEmails, subject, html);
                         setNotifTestLoading(null);
                         setNotifLogs(loadNotificationLogs());
-                        alert(res.ok ? '✅ 테스트 이메일이 발송되었습니다!' : `❌ 발송 실패: ${res.error}`);
+                        if (res.ok) {
+                          toast.success('테스트 이메일이 발송되었습니다!');
+                        } else {
+                          toast.error(`발송 실패: ${res.error}`);
+                        }
                       }}
                         className="flex-1 py-2 text-xs font-bold rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer">
                         {notifTestLoading === 'email' ? '⏳ 발송 중...' : '📧 테스트'}
@@ -4277,7 +4318,7 @@ export default function LawyerRole({
                       sendBrowserPushNotification('🔔 알림 테스트', '브라우저 Push 알림이 활성화되었습니다!');
                       setNotifLogs(loadNotificationLogs());
                     } else {
-                      alert('브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
+                      toast.error('브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
                     }
                   }}
                     className="w-full py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
@@ -4417,7 +4458,7 @@ export default function LawyerRole({
                       const updated = { ...notifSettings, telegram: { botToken: tgBotToken, chatId: tgChatId, connected: tgConnected } };
                       setNotifSettings(updated);
                       saveNotificationSettings(updated);
-                      alert('✅ 텔레그램 설정이 저장되었습니다.');
+                      toast.success('텔레그램 설정이 저장되었습니다.');
                     }}
                       className="w-full py-3 text-sm font-bold rounded-xl bg-brand hover:bg-brand-hover text-white transition-all cursor-pointer shadow-sm active:scale-[0.98]">
                       💾 텔레그램 설정 저장
@@ -4459,13 +4500,13 @@ export default function LawyerRole({
                     <button onClick={() => {
                       const recipients = emailRecipients.split(',').map(e => e.trim()).filter(Boolean);
                       if (!emailSender || !emailAppPassword || recipients.length === 0) {
-                        alert('발신 Gmail, 앱 비밀번호, 수신 이메일을 모두 입력해주세요.');
+                        toast.error('발신 Gmail, 앱 비밀번호, 수신 이메일을 모두 입력해주세요.');
                         return;
                       }
                       const updated = { ...notifSettings, email: { senderGmail: emailSender, senderAppPassword: emailAppPassword, recipientEmails: recipients, enabled: true } };
                       setNotifSettings(updated);
                       saveNotificationSettings(updated);
-                      alert('✅ 이메일 알림 설정이 저장되었습니다.');
+                      toast.success('이메일 알림 설정이 저장되었습니다.');
                     }}
                       className="w-full py-3 text-sm font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer shadow-sm active:scale-[0.98]">
                       💾 이메일 설정 저장
@@ -4806,7 +4847,7 @@ export default function LawyerRole({
                                               onClick={() => {
                                                 setActiveChatReqId(m.card!.reqId);
                                                 setActiveTab('open-requests');
-                                                alert('플랫폼의 신규 상담 탭으로 즉시 안전하게 스위칭하여 의뢰인 상세 명세를 조회합니다.');
+                                                toast.info('플랫폼의 신규 상담 탭으로 이동하여 의뢰인 상세 명세를 조회합니다.');
                                               }}
                                               className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[10px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
                                             >
@@ -4814,7 +4855,7 @@ export default function LawyerRole({
                                             </button>
                                             <button 
                                               type="button"
-                                              onClick={() => alert('30분 후 해당 채무자의 상담 응답 미결 상태를 텔레그램 그룹방에 다시 리마인드 호출합니다.')}
+                                              onClick={() => toast.info('30분 후 해당 채무자의 상담 응답 미결 상태를 텔레그램 그룹방에 다시 리마인드합니다.')}
                                               className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[10px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
                                             >
                                               ⏰ 30분 후 리마인드

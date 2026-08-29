@@ -13,6 +13,8 @@
  * - 실시간 프리뷰 패널
  */
 import React, { useState, useRef } from 'react';
+import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import { PopupConfig, PopupItem, PopupTargetAudience } from '../../types';
 import { X, Upload, Monitor, Smartphone, ArrowUp, ArrowDown, Play, Pause, Eye, Image as ImageIcon, Link, Type, Users } from 'lucide-react';
 import PopupContainer from './PopupContainer';
@@ -23,6 +25,7 @@ interface PopupEditorProps {
 }
 
 const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
+    const dialog = useDialog();
     const [previewDevice, setPreviewDevice] = useState<'pc' | 'mobile'>('pc');
     const [showPreview, setShowPreview] = useState(false);
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -157,13 +160,20 @@ const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
                                             <ArrowDown className="w-3.5 h-3.5" />
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                if (confirm('이 팝업을 삭제하시겠습니까?')) {
+                                            onClick={async () => {
+                                                const confirmed = await dialog.confirm({
+                                                    title: '팝업 삭제',
+                                                    message: '이 팝업을 삭제하시겠습니까?',
+                                                    confirmText: '삭제',
+                                                    variant: 'danger'
+                                                });
+                                                if (confirmed) {
                                                     const newItems = popupConfig.items.filter((_, i) => i !== idx);
                                                     updateConfig({ items: newItems });
+                                                    toast.success('팝업이 삭제되었습니다.');
                                                 }
                                             }}
-                                            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                                            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                                             title="삭제"
                                         >
                                             <X className="w-3.5 h-3.5" />

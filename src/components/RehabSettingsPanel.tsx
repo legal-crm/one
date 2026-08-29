@@ -9,6 +9,7 @@ import {
   Home, Gavel, Trash2, CheckCircle2, AlertTriangle, Info, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from './common/DialogProvider';
 
 // ─── 아이콘 래퍼 (lucide에 Table 아이콘이 없을 경우 대비) ───
 const TableIcon: React.FC<{ className?: string; size?: number }> = ({ className, size = 20 }) => (
@@ -35,6 +36,7 @@ const parseCommaToNumber = (str: string): number => {
 };
 
 const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' }) => {
+  const dialog = useDialog();
   const isReadOnly = mode === 'lawyer';
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,8 +140,12 @@ const RehabSettingsPanel: React.FC<RehabSettingsPanelProps> = ({ mode = 'admin' 
     setSettings({ ...settings, courtRegionMap: newMap });
   };
 
-  const handleAddCourt = () => {
-    const courtName = prompt('추가할 법원명을 입력하세요 (예: 춘천지방법원 강릉지원):');
+  const handleAddCourt = async () => {
+    const courtName = await dialog.prompt({
+      title: '새 법원 추가',
+      message: '추가할 법원명을 입력하세요 (예: 춘천지방법원 강릉지원):',
+      confirmText: '추가'
+    });
     if (!courtName || !courtName.trim() || !settings) return;
     
     const trimmed = courtName.trim();
