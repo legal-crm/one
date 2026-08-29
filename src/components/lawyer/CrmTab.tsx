@@ -19,6 +19,8 @@ import ExportCasesModal from './ExportCasesModal';
 import DropOffReasonModal from './DropOffReasonModal';
 import AssignmentDirectiveModal from './AssignmentDirectiveModal';
 import MobileScanner from './MobileScanner';
+import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
+import FeeAlimtokModal from './FeeAlimtokModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import { getContractsByClientId } from '../../services/contractService';
 import type { 
@@ -44,7 +46,7 @@ import {
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
 import type { FeeInstallment, IntakeChannel, CorrectionOrder, DocumentFile, AlimtokLog, AlimtokMilestone } from '../../types';
 import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
-import { triggerAlimtokOnStatusChange } from '../../services/alimtokService';
+import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings } from '../../services/alimtokService';
 import { loadNotificationSettings } from '../../services/notificationService';
 
 interface CrmTabProps {
@@ -149,6 +151,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDropOffModalOpen, setIsDropOffModalOpen] = useState(false);
+  
+  // ── 수임료 자동 발송 및 모달 상태 ──
+  const [isFeeSettingsModalOpen, setIsFeeSettingsModalOpen] = useState(false);
+  const [feeAlimtokModalConfig, setFeeAlimtokModalConfig] = useState<{ isOpen: boolean; installment?: FeeInstallment; initialMilestone?: AlimtokMilestone }>({ isOpen: false });
   const [dropOffTargetId, setDropOffTargetId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -2402,9 +2408,40 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     const ext = getCrmExt(selectedId);
                     const schedule = ext.feeSchedule || [];
                     const totalFee = ext.totalFee || 0;
+                    const feeSettings = loadFeeNotificationSettings();
                     const totalPaid = schedule.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0);
                     return (
                       <div className="space-y-4">
+                        {/* 🌟 수임료 안내 스마트 배너 */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md">🏦 입금 계좌</span>
+                              <span className="text-xs text-slate-700 font-medium">
+                                {feeSettings.bankInfo.bankName} {feeSettings.bankInfo.accountNumber} ({feeSettings.bankInfo.accountHolder})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                              <span className="font-bold text-slate-600">🤖 자동 발송:</span>
+                              {feeSettings.autoTriggerEnabled ? (
+                                <span>
+                                  {feeSettings.rules.filter(r => r.enabled).map(r => 
+                                    `${r.daysOffset === 0 ? '당일' : r.daysOffset < 0 ? `D${r.daysOffset}` : `D+${r.daysOffset}`}(${r.sendTime})`
+                                  ).join(' · ')}
+                                </span>
+                              ) : (
+                                <span className="text-rose-500">꺼짐</span>
+                              )}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => setIsFeeSettingsModalOpen(true)}
+                            className="shrink-0 bg-white border border-blue-200 text-blue-700 text-[11px] font-bold px-3 py-1.5 rounded-xl hover:bg-blue-50 transition-colors shadow-xs"
+                          >
+                            ⚙️ 발송 규칙 설정
+                          </button>
+                        </div>
+
                         {/* 총 수임료 설정 & 게이지 */}
                         <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
                           <div className="flex items-center justify-between">
@@ -2499,19 +2536,37 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                       <span className="text-xs font-black text-slate-600">{inst.memo || `${inst.round}차`}</span>
                                       <span className="text-sm font-bold text-slate-900 font-mono">{inst.amount.toLocaleString()}만원</span>
                                     </div>
-                                    <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                                      📅 {inst.dueDate}
+                                    <p className="text-[11px] text-slate-400 mt-0.5 font-mono flex items-center gap-1.5 flex-wrap">
+                                      <span>📅 {inst.dueDate}</span>
                                       {inst.paidDate && <span className="text-emerald-600 font-medium font-sans"> → {inst.paidDate} 납부완료</span>}
                                       {isPast && inst.status === 'pending' && <span className="text-rose-600 font-bold font-sans"> (기한 경과)</span>}
+                                      
+                                      {inst.lastNotifiedAt && (
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-yellow-50 text-yellow-800 rounded text-[10px] border border-yellow-200">
+                                          💬 {ALIMTOK_MILESTONE_CONFIG[inst.lastNotifiedType as AlimtokMilestone]?.label || '안내'} 발송됨 ({new Date(inst.lastNotifiedAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })})
+                                        </span>
+                                      )}
                                     </p>
                                   </div>
+                                  
                                   {inst.status === 'pending' && (
-                                    <button onClick={async () => {
-                                      const latestExt = getCrmExt(selectedId);
-                                      const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
-                                      await updateCrmExt(selectedId, updated);
-                                      toast.success(`${inst.memo || inst.round + '차'} 납부 확인`);
-                                    }} className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-200 press-scale whitespace-nowrap">💳 납부 확인</button>
+                                    <>
+                                      <button 
+                                        onClick={() => setFeeAlimtokModalConfig({ isOpen: true, installment: inst, initialMilestone: isPast ? 'fee_overdue' : (new Date(inst.dueDate).getTime() - new Date().getTime() <= 24 * 60 * 60 * 1000 ? 'fee_due' : 'fee_upcoming') })} 
+                                        className="text-[11px] font-bold text-yellow-800 bg-yellow-100 px-2.5 py-1.5 rounded-xl border border-yellow-200 hover:bg-yellow-200 press-scale whitespace-nowrap"
+                                      >
+                                        💬 안내 발송
+                                      </button>
+                                      <button onClick={async () => {
+                                        const latestExt = getCrmExt(selectedId);
+                                        const updated = { ...latestExt, feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === inst.id ? { ...f, status: 'paid' as const, paidDate: new Date().toISOString().split('T')[0] } : f) };
+                                        await updateCrmExt(selectedId, updated);
+                                        toast.success(`${inst.memo || inst.round + '차'} 납부 확인`);
+                                        if (feeSettings.sendReceiptOnPaid) {
+                                          setFeeAlimtokModalConfig({ isOpen: true, installment: { ...inst, status: 'paid', paidDate: new Date().toISOString().split('T')[0] }, initialMilestone: 'fee_receipt' });
+                                        }
+                                      }} className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-200 press-scale whitespace-nowrap">💳 납부 확인</button>
+                                    </>
                                   )}
                                   <button onClick={async () => {
                                     const latestExt = getCrmExt(selectedId);
@@ -3159,6 +3214,39 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         })()}
         clientName={requests.find(r => r.id === pendingAssignment?.clientId)?.clientName || ''}
       />
+
+      {/* ── 수임료 관리 모달 ── */}
+      <FeeNotificationSettingsModal
+        isOpen={isFeeSettingsModalOpen}
+        onClose={() => setIsFeeSettingsModalOpen(false)}
+      />
+      
+      {feeAlimtokModalConfig.isOpen && selectedClient && selectedExt && feeAlimtokModalConfig.installment && (
+        <FeeAlimtokModal
+          isOpen={true}
+          onClose={() => setFeeAlimtokModalConfig({ isOpen: false })}
+          client={selectedClient}
+          installment={feeAlimtokModalConfig.installment}
+          totalFeeManwon={selectedExt.totalFee || 0}
+          totalPaidManwon={(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0)}
+          firmName="법무법인 로앤"
+          lawyerName={activeLawyer.name}
+          initialMilestone={feeAlimtokModalConfig.initialMilestone}
+          onSent={(milestone) => {
+             // 알림 기록 업데이트
+             const latestExt = getCrmExt(selectedClient.id);
+             const updated = {
+               ...latestExt,
+               feeSchedule: (latestExt.feeSchedule || []).map(f => f.id === feeAlimtokModalConfig.installment?.id ? {
+                 ...f,
+                 lastNotifiedAt: new Date().toISOString(),
+                 lastNotifiedType: milestone
+               } : f)
+             };
+             updateCrmExt(selectedClient.id, updated);
+          }}
+        />
+      )}
     </div>
   );
 }

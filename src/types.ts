@@ -166,6 +166,38 @@ export interface FeeInstallment {
   paidDate?: string;
   status: 'pending' | 'paid' | 'overdue';
   memo?: string;
+  // ── 알림 발송 이력 추적 ──
+  lastNotifiedAt?: string;
+  lastNotifiedType?: AlimtokMilestone;
+  autoNotifiedHistory?: Array<{
+    milestone: AlimtokMilestone;
+    sentAt: string;
+    channel: 'kakao' | 'sms';
+    status: 'sent' | 'failed';
+  }>;
+}
+
+// ── 수임료 스마트 자동 알림 규칙 및 설정 ──
+
+export interface FeeAutoNotificationRule {
+  id: string;
+  enabled: boolean;
+  type: 'upcoming' | 'due' | 'overdue' | 'final_warning';
+  milestone: AlimtokMilestone;
+  daysOffset: number;         // -3 (D-3), 0 (D-Day), 1 (D+1), 3 (D+3)
+  sendTime: string;           // "10:00", "09:30", "11:00"
+  label: string;              // "D-3 사전 안내", "납부 당일 안내", "1차 연체 안내"
+}
+
+export interface FeeNotificationSettings {
+  autoTriggerEnabled: boolean;
+  rules: FeeAutoNotificationRule[];
+  bankInfo: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+  };
+  sendReceiptOnPaid: boolean;
 }
 
 // ── 카카오 알림톡 마일스톤 ──
@@ -179,7 +211,12 @@ export type AlimtokMilestone =
   | 'correction_order'    // 보정명령 안내
   | 'commenced'           // 개시결정
   | 'hearing_notice'      // 채권자집회 안내
-  | 'discharged';         // 면책 완료
+  | 'discharged'          // 면책 완료
+  // ── 수임료 전용 마일스톤 ──
+  | 'fee_upcoming'        // 수임료 분납 예정 안내 (D-3)
+  | 'fee_due'             // 수임료 납부 당일 안내 (D-Day)
+  | 'fee_overdue'         // 수임료 연체/미납 안내 (D+)
+  | 'fee_receipt';        // 수임료 입금 확인 영수증
 
 export const ALIMTOK_MILESTONE_CONFIG: Record<AlimtokMilestone, { label: string; emoji: string; template: string }> = {
   consult_booked:     { label: '상담 접수',     emoji: '📋', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 상담 요청이 접수되었습니다.\n\n📌 접수 일시: {{date}}\n📌 다음 단계: 담당 변호사가 확인 후 연락드리겠습니다.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
@@ -191,6 +228,11 @@ export const ALIMTOK_MILESTONE_CONFIG: Record<AlimtokMilestone, { label: string;
   commenced:          { label: '개시결정',     emoji: '✨', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 개인회생이 개시 결정되었습니다.\n\n📌 월 변제금: {{monthlyPayment}}원\n📌 변제 기간: {{duration}}개월\n📌 다음 단계: 채권자집회 참석 안내 예정\n\n▶ 진행상황 확인: {{trackingUrl}}' },
   hearing_notice:     { label: '채권자집회',   emoji: '🏛️', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 채권자집회가 예정되어 있습니다.\n\n📌 일시: {{hearingDate}}\n📌 장소: {{courtName}}\n📌 참석 필수 여부: {{attendanceRequired}}\n\n▶ 진행상황 확인: {{trackingUrl}}' },
   discharged:         { label: '면책 완료',    emoji: '🎉', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 축하합니다!\n\n📌 {{caseType}} 면책이 확정되었습니다.\n📌 면책된 채무: 약 {{dischargedAmount}}\n\n그동안 수고 많으셨습니다. 궁금하신 점은 언제든 연락 주세요.' },
+  // ── 수임료 전용 템플릿 ──
+  fee_upcoming:       { label: '수임료 납부예정(D-3)', emoji: '💰', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 약정된 수임료 분납일이 {{daysLeft}}일 남았습니다.\n\n📌 납부 회차: {{feeRound}}\n📌 납부 금액: {{feeAmount}}원\n📌 납부 기한: {{dueDate}}\n📌 입금 계좌: {{bankAccount}}\n\n원활한 사건 진행을 위해 기한 내 입금 부탁드립니다.\n▶ 납부 현황 확인: {{trackingUrl}}' },
+  fee_due:            { label: '수임료 납부당일(D-Day)', emoji: '🔔', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 오늘은 수임료({{feeRound}}) 납부일입니다.\n\n📌 입금 금액: {{feeAmount}}원\n📌 입금 계좌: {{bankAccount}}\n\n입금 후 마이페이지에서 납부 확인증을 조회하실 수 있습니다.\n▶ 납부 현황 확인: {{trackingUrl}}' },
+  fee_overdue:        { label: '수임료 연체 안내', emoji: '⚠️', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 약정된 수임료 납부기한({{dueDate}})이 경과되어 안내드립니다.\n\n📌 미납 회차: {{feeRound}}\n📌 미납 금액: {{feeAmount}}원\n📌 입금 계좌: {{bankAccount}}\n\n납부 일정 조율이나 상담이 필요하신 경우 사무소로 연락 부탁드립니다.\n▶ 문의 및 납부: {{trackingUrl}}' },
+  fee_receipt:        { label: '수임료 입금확인(영수)', emoji: '🧾', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 수임료가 정상 입금 확인되었습니다.\n\n📌 입금 회차: {{feeRound}}\n📌 입금 금액: {{feeAmount}}원\n📌 입금 일시: {{paidDate}}\n📌 잔여 미수금: {{remainingFee}}원\n\n감사합니다. 신속하고 성실하게 사건을 진행하겠습니다.\n▶ 사건 진행상황 확인: {{trackingUrl}}' },
 };
 
 export const STATUS_TO_MILESTONE: Partial<Record<CrmStatus, AlimtokMilestone>> = {

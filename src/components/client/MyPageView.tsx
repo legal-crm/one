@@ -9,6 +9,7 @@ import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount } fr
 import type { ClientNotification } from '../../services/clientNotificationService';
 import { submitClientDocument } from '../../services/crmService';
 import MobileScanner from '../lawyer/MobileScanner';
+import { loadFeeNotificationSettings } from '../../services/alimtokService';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -50,6 +51,8 @@ export default function MyPageView({
   // UI 갱신을 위한 강제 렌더링 트리거
   const [refreshTick, setRefreshTick] = useState(0);
   const [showScanner, setShowScanner] = useState(false);
+  
+  const feeSettings = useMemo(() => loadFeeNotificationSettings(), []);
 
   const handleAddMypageNote = () => {
     if (!newNoteInput.trim()) return;
@@ -620,6 +623,33 @@ export default function MyPageView({
                     </span>
                   </div>
                 </div>
+
+                {/* 로펌 입금 계좌 안내 및 원클릭 복사 */}
+                {(() => {
+                  const feeSettings = loadFeeNotificationSettings();
+                  const { bankName, accountNumber, accountHolder } = feeSettings.bankInfo;
+                  const fullAccount = `${bankName} ${accountNumber} (${accountHolder})`;
+                  return (
+                    <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold text-emerald-800 tracking-wide uppercase">입금 지정 계좌</span>
+                        <p className="text-sm font-bold text-slate-900 font-mono">
+                          {bankName} <span className="text-emerald-900">{accountNumber}</span> <span className="text-xs font-sans text-slate-600 font-normal">({accountHolder})</span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(fullAccount);
+                          toast.success('계좌번호가 클립보드에 복사되었습니다.');
+                        }}
+                        className="self-start sm:self-center px-3.5 py-2 bg-white text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 hover:bg-emerald-100/50 active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>계좌번호 복사</span>
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* 분납 스케줄 목록 */}
                 {feeSchedule.length > 0 && (
