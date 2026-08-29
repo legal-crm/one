@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell } from 'lucide-react';
-import type { ConsultRequest, CrmStatus, FeeInstallment } from '../../types';
-import { CRM_STATUS_CONFIG } from '../../types';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell, CheckCircle2, XCircle, RotateCcw, Send } from 'lucide-react';
+import type { ConsultRequest, CrmStatus, FeeInstallment, DocumentReviewStatus, DocumentCheckItem, DocumentRequest, DocumentFile } from '../../types';
+import { CRM_STATUS_CONFIG, DOC_REVIEW_STATUS_CONFIG } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount } from '../../services/clientNotificationService';
 import type { ClientNotification } from '../../services/clientNotificationService';
+import { submitClientDocument } from '../../services/crmService';
+import MobileScanner from '../lawyer/MobileScanner';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -44,6 +46,10 @@ export default function MyPageView({
   const [newNoteInput, setNewNoteInput] = useState('');
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState('');
+  
+  // UI 갱신을 위한 강제 렌더링 트리거
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [showScanner, setShowScanner] = useState(false);
 
   const handleAddMypageNote = () => {
     if (!newNoteInput.trim()) return;
@@ -340,8 +346,37 @@ export default function MyPageView({
         const currentStatus: CrmStatus = crmExt?.crmStatus || 'requested';
         const feeSchedule: FeeInstallment[] = crmExt?.feeSchedule || [];
         const totalFee: number = crmExt?.totalFee || 0;
-        const documents: Array<{id: string; name: string; category: string; uploadedAt: string}> = crmExt?.documents || [];
+        const checklist: DocumentCheckItem[] = crmExt?.documents || [];
+        const uploadedFiles: DocumentFile[] = crmExt?.uploadedFiles || [];
+        const docRequests: DocumentRequest[] = crmExt?.documentRequests || [];
         const totalPaid = feeSchedule.filter((f: FeeInstallment) => f.status === 'paid').reduce((s: number, f: FeeInstallment) => s + f.amount, 0);
+
+        const handleFileUpload = async (files: FileList | null, linkedDocId?: string) => {
+          if (!files || files.length === 0 || !reqId) return;
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              const dataUrl = e.target?.result as string;
+              const fileObj = {
+                name: file.name,
+                category: 'other',
+                uploadedAt: new Date().toISOString(),
+                fileSize: file.size,
+                mimeType: file.type,
+                dataUrl,
+                uploadSource: 'client',
+                linkedDocId
+              };
+              await submitClientDocument(reqId, fileObj as any, linkedDocId);
+              setRefreshTick(c => c + 1);
+            };
+            reader.readAsDataURL(file);
+          }
+          toast.success(`${files.length}개 파일이 제출되었습니다`);
+        };
+
+        const submittedCount = checklist.filter(d => ['submitted', 'approved', 'under_review', 'resubmitted'].includes(d.reviewStatus || '')).length;
 
         // 진행 단계 정의 (cancelled 제외)
         const PROGRESS_STEPS: CrmStatus[] = ['requested', 'consulting', 'contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
@@ -411,100 +446,147 @@ export default function MyPageView({
             </div>
 
             {/* ── 2. 서류 제출 ── */}
-            <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-xl space-y-5">
+            <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-purple-50 text-purple-500"><FileText className="w-5 h-5" /></div>
-                  서류 제출
+                  필수 서류 제출
                 </h3>
-                <span className="text-xs text-slate-500 font-medium">{documents.length}건 제출 완료</span>
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">{submittedCount} / 15 제출 완료</span>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${(submittedCount / 15) * 100}%` }} />
               </div>
 
-              {/* 업로드 버튼 영역 */}
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-brand hover:bg-brand/5 transition-all cursor-pointer group">
-                  <Upload className="w-5 h-5 text-slate-400 group-hover:text-brand transition-colors" />
-                  <span className="text-xs font-bold text-slate-600 group-hover:text-brand">파일 업로드</span>
-                  <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx" multiple onChange={(e) => {
-                    const files = e.target.files;
-                    if (!files || files.length === 0) return;
-                    const store = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
-                    const ext = store[reqId!] || {};
-                    const existingDocs = ext.documents || [];
-                    const newDocs = Array.from(files).map(f => ({
-                      id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                      name: f.name,
-                      category: 'client_upload',
-                      uploadedAt: new Date().toISOString(),
-                      fileSize: f.size,
-                    }));
-                    ext.documents = [...existingDocs, ...newDocs];
-                    store[reqId!] = ext;
-                    localStorage.setItem('legal_crm_data', JSON.stringify(store));
-                    toast.success(`${files.length}개 파일이 제출되었습니다`);
-                  }} />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // 카메라 촬영 (간단한 input capture)
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.capture = 'environment';
-                    input.onchange = (e: any) => {
-                      const file = e.target?.files?.[0];
-                      if (!file) return;
-                      const store = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
-                      const ext = store[reqId!] || {};
-                      const existingDocs = ext.documents || [];
-                      existingDocs.push({
-                        id: `doc-${Date.now()}`,
-                        name: `촬영_${new Date().toLocaleDateString('ko')}.jpg`,
-                        category: 'client_upload',
-                        uploadedAt: new Date().toISOString(),
-                        fileSize: file.size,
-                      });
-                      ext.documents = existingDocs;
-                      store[reqId!] = ext;
-                      localStorage.setItem('legal_crm_data', JSON.stringify(store));
-                      toast.success('서류 촬영이 제출되었습니다');
-                    };
-                    input.click();
-                  }}
-                  className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer group"
-                >
-                  <Camera className="w-5 h-5 text-slate-400 group-hover:text-purple-500 transition-colors" />
-                  <span className="text-xs font-bold text-slate-600 group-hover:text-purple-600">카메라 촬영</span>
-                </button>
-              </div>
-
-              {/* 제출된 서류 목록 */}
-              {documents.length > 0 ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {documents.map((doc: any) => (
-                    <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
-                      <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+              {/* 필수 서류 목록 */}
+              <div className="space-y-3">
+                {checklist.map(item => {
+                  const status = item.reviewStatus || 'not_submitted';
+                  const config = DOC_REVIEW_STATUS_CONFIG[status];
+                  return (
+                    <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl border border-slate-150 bg-slate-50/30">
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-700 truncate">{doc.name}</p>
-                        <p className="text-[10px] text-slate-400">{new Date(doc.uploadedAt).toLocaleDateString('ko')}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-slate-800">{item.label}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${config.bgColor} ${config.color} ${config.borderColor}`}>
+                            {config.emoji} {config.label}
+                          </span>
+                        </div>
+                        {status === 'rejected' && item.rejectionReason && (
+                          <p className="text-xs text-red-500 mt-1.5 bg-red-50 p-2 rounded-lg border border-red-100">
+                            반려 사유: {item.rejectionReason}
+                          </p>
+                        )}
                       </div>
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">제출 완료</span>
+                      
+                      {['not_submitted', 'rejected'].includes(status) && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:border-brand rounded-xl text-xs font-bold text-slate-600 hover:text-brand transition-all cursor-pointer active:scale-[0.98]">
+                            <Upload className="w-3.5 h-3.5" />
+                            업로드
+                            <input type="file" className="hidden" accept="image/*,.pdf" multiple onChange={(e) => handleFileUpload(e.target.files, item.id)} />
+                          </label>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <FileText className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="text-xs text-slate-500 mt-2 font-medium">아직 제출된 서류가 없습니다</p>
-                  <p className="text-[11px] text-slate-400 mt-1">부채증명서, 소득자료 등을 촬영하거나 업로드하세요</p>
+                  );
+                })}
+              </div>
+
+              {/* 추가 요청 서류 */}
+              {docRequests.length > 0 && (
+                <div className="mt-8 space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    변호사 추가 요청 서류
+                  </h4>
+                  <div className="space-y-3">
+                    {docRequests.map(req => (
+                      <div key={req.id} className="p-4 rounded-2xl border border-amber-100 bg-amber-50/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800">{req.documentLabel}</p>
+                          {req.description && <p className="text-xs text-slate-500 mt-0.5">{req.description}</p>}
+                        </div>
+                        {!req.fulfilled ? (
+                          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-xl text-xs font-bold hover:bg-brand-hover transition-all cursor-pointer active:scale-[0.98] shrink-0 whitespace-nowrap">
+                            <Upload className="w-3.5 h-3.5" />
+                            제출하기
+                            <input type="file" className="hidden" accept="image/*,.pdf" multiple onChange={(e) => handleFileUpload(e.target.files, req.linkedDocId || req.id)} />
+                          </label>
+                        ) : (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg shrink-0">
+                            ✅ 제출완료
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <p className="text-[11px] text-slate-400 flex items-start gap-1.5">
+              {/* 자율 업로드 영역 */}
+              <div className="mt-6 pt-6 border-t border-slate-100">
+                <h4 className="text-sm font-bold text-slate-800 mb-3">기타 서류 제출</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-brand hover:bg-brand/5 transition-all cursor-pointer group active:scale-[0.98]">
+                    <Upload className="w-5 h-5 text-slate-400 group-hover:text-brand transition-colors" />
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-brand">파일 선택</span>
+                    <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx" multiple onChange={(e) => handleFileUpload(e.target.files)} />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer group active:scale-[0.98]"
+                  >
+                    <Camera className="w-5 h-5 text-slate-400 group-hover:text-purple-500 transition-colors" />
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-purple-600">서류 스캔</span>
+                  </button>
+                </div>
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-4 space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {uploadedFiles.filter(f => !f.linkedDocId).map((f) => (
+                      <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                        <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-700 truncate">{f.name}</p>
+                          <p className="text-[10px] text-slate-400">{new Date(f.uploadedAt).toLocaleDateString('ko')}</p>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 shrink-0">제출됨</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[11px] text-slate-400 flex items-start gap-1.5 mt-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                 <span>제출된 서류는 담당 변호사가 확인합니다. 민감한 개인정보가 포함된 서류도 암호화되어 안전하게 보호됩니다.</span>
               </p>
+
+              {/* MobileScanner 모달 */}
+              <MobileScanner
+                isOpen={showScanner}
+                onClose={() => setShowScanner(false)}
+                onCapture={async (scanned) => {
+                  const docFile: DocumentFile = {
+                    id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    name: scanned.name,
+                    category: 'other',
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: '의뢰인',
+                    fileSize: scanned.fileSize,
+                    mimeType: scanned.mimeType,
+                    dataUrl: scanned.dataUrl,
+                    uploadSource: 'client',
+                    reviewStatus: 'submitted',
+                  };
+                  await submitClientDocument(reqId!, docFile);
+                  setRefreshTick(t => t + 1);
+                  toast.success(`${scanned.name} 스캔 제출 완료`);
+                }}
+              />
             </div>
 
             {/* ── 3. 수임료 납부 현황 (읽기 전용) ── */}

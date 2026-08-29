@@ -1,7 +1,8 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { 
   StaffMember, StaffRole, CrmActivityLog, CrmActivityType,
-  CrmNote, CrmNoteCategory, CrmClientExtension, StaffActivityLog, StaffActivityType, StaffMemberStatus
+  CrmNote, CrmNoteCategory, CrmClientExtension, StaffActivityLog, StaffActivityType, StaffMemberStatus,
+  DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus
 } from '../types';
 import { DEFAULT_REHAB_DOCUMENTS } from '../types';
 
@@ -261,7 +262,7 @@ export function createDefaultCrmExtension(clientId: string): CrmClientExtension 
   const docs = DEFAULT_REHAB_DOCUMENTS;
   return {
     crmStatus: 'requested',
-    documents: (docs || []).map((d: any) => ({ ...d })),
+    documents: (docs || []).map((d: any) => ({ ...d, reviewStatus: d.reviewStatus || 'not_submitted' })),
     notes: [],
     activities: [{
       id: `act-init-${Date.now()}`,
@@ -281,7 +282,146 @@ export function createDefaultCrmExtension(clientId: string): CrmClientExtension 
     uploadedFiles: [],
     correctionOrders: [],
     alimtokLogs: [],
+    documentRequests: [],
   };
+}
+
+// ── 문서 양방향 동기화 헬퍼 함수 ──
+
+/** 서류 승인 처리 */
+export async function approveDocument(
+  clientId: string,
+  docId: string,
+  reviewerName: string
+): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const ext = store[clientId];
+  if (!ext) return;
+
+  ext.documents = ext.documents.map(d =>
+    d.id === docId ? {
+      ...d,
+      checked: true,
+      checkedBy: reviewerName,
+      checkedAt: new Date().toISOString(),
+      reviewStatus: 'approved' as DocumentReviewStatus,
+      rejectionReason: undefined,
+      rejectedAt: undefined,
+    } : d
+  );
+
+  // 연결된 파일도 상태 업데이트
+  const doc = ext.documents.find(d => d.id === docId);
+  if (doc?.linkedFileId && ext.uploadedFiles) {
+    ext.uploadedFiles = ext.uploadedFiles.map(f =>
+      f.id === doc.linkedFileId ? { ...f, reviewStatus: 'approved' as DocumentReviewStatus } : f
+    );
+  }
+
+  ext.lastActivityAt = new Date().toISOString();
+  await saveCrmClient(clientId, ext);
+}
+
+/** 서류 반려 처리 */
+export async function rejectDocument(
+  clientId: string,
+  docId: string,
+  reviewerName: string,
+  reason: string
+): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const ext = store[clientId];
+  if (!ext) return;
+
+  ext.documents = ext.documents.map(d =>
+    d.id === docId ? {
+      ...d,
+      checked: false,
+      reviewStatus: 'rejected' as DocumentReviewStatus,
+      rejectionReason: reason,
+      rejectedAt: new Date().toISOString(),
+      checkedBy: reviewerName,
+    } : d
+  );
+
+  // 연결된 파일도 상태 업데이트
+  const doc = ext.documents.find(d => d.id === docId);
+  if (doc?.linkedFileId && ext.uploadedFiles) {
+    ext.uploadedFiles = ext.uploadedFiles.map(f =>
+      f.id === doc.linkedFileId ? { ...f, reviewStatus: 'rejected' as DocumentReviewStatus } : f
+    );
+  }
+
+  ext.lastActivityAt = new Date().toISOString();
+  await saveCrmClient(clientId, ext);
+}
+
+/** 변호사 → 고객 추가 서류 요청 */
+export async function requestDocument(
+  clientId: string,
+  request: Omit<DocumentRequest, 'id' | 'requestedAt' | 'fulfilled'>
+): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const ext = store[clientId];
+  if (!ext) return;
+
+  const newRequest: DocumentRequest = {
+    ...request,
+    id: `dreq-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    requestedAt: new Date().toISOString(),
+    fulfilled: false,
+  };
+
+  ext.documentRequests = [...(ext.documentRequests || []), newRequest];
+  ext.lastActivityAt = new Date().toISOString();
+  await saveCrmClient(clientId, ext);
+}
+
+/** 고객 서류 제출 (uploadedFiles에 저장 + 체크리스트 자동 매핑) */
+export async function submitClientDocument(
+  clientId: string,
+  file: DocumentFile,
+  linkedDocId?: string
+): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const ext = store[clientId];
+  if (!ext) return;
+
+  // uploadedFiles에 추가
+  const newFile: DocumentFile = {
+    ...file,
+    uploadSource: 'client',
+    linkedDocId: linkedDocId,
+    reviewStatus: 'submitted',
+  };
+  ext.uploadedFiles = [...(ext.uploadedFiles || []), newFile];
+
+  // 체크리스트 항목과 매핑
+  if (linkedDocId) {
+    ext.documents = ext.documents.map(d =>
+      d.id === linkedDocId ? {
+        ...d,
+        reviewStatus: 'submitted' as DocumentReviewStatus,
+        linkedFileId: newFile.id,
+        submittedAt: new Date().toISOString(),
+      } : d
+    );
+
+    // documentRequests에서 해당 요청 fulfilled 처리
+    if (ext.documentRequests) {
+      ext.documentRequests = ext.documentRequests.map(req =>
+        req.linkedDocId === linkedDocId && !req.fulfilled ? {
+          ...req,
+          fulfilled: true,
+          fulfilledAt: new Date().toISOString(),
+          fulfilledFileId: newFile.id,
+        } : req
+      );
+    }
+  }
+
+  ext.lastActivityAt = new Date().toISOString();
+  await saveCrmClient(clientId, ext);
 }
 
 // ============================================================

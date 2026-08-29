@@ -217,6 +217,24 @@ export interface CorrectionOrder {
 
 // ── 문서 관리 시스템 (DMS) ──
 
+// 서류 검토 상태 워크플로우
+export type DocumentReviewStatus =
+  | 'not_submitted'  // 미제출
+  | 'submitted'      // 고객 제출 완료 (변호사 확인 대기)
+  | 'under_review'   // 검토 중
+  | 'approved'       // 승인 완료
+  | 'rejected'       // 반려 (재제출 필요)
+  | 'resubmitted';   // 재제출됨
+
+export const DOC_REVIEW_STATUS_CONFIG: Record<DocumentReviewStatus, { label: string; emoji: string; color: string; bgColor: string; borderColor: string }> = {
+  not_submitted: { label: '미제출',     emoji: '⬜', color: 'text-slate-500',  bgColor: 'bg-slate-50',   borderColor: 'border-slate-200' },
+  submitted:     { label: '제출완료',   emoji: '📤', color: 'text-blue-600',   bgColor: 'bg-blue-50',    borderColor: 'border-blue-200' },
+  under_review:  { label: '검토중',     emoji: '⏳', color: 'text-amber-600',  bgColor: 'bg-amber-50',   borderColor: 'border-amber-200' },
+  approved:      { label: '승인',       emoji: '✅', color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200' },
+  rejected:      { label: '반려',       emoji: '❌', color: 'text-rose-600',   bgColor: 'bg-rose-50',    borderColor: 'border-rose-200' },
+  resubmitted:   { label: '재제출',     emoji: '🔄', color: 'text-violet-600', bgColor: 'bg-violet-50',  borderColor: 'border-violet-200' },
+};
+
 export interface DocumentFile {
   id: string;
   name: string;
@@ -227,6 +245,10 @@ export interface DocumentFile {
   mimeType?: string;
   dataUrl?: string;
   notes?: string;
+  // ── 양방향 동기화 ──
+  uploadSource?: 'lawyer' | 'client';    // 업로드 출처
+  linkedDocId?: string;                  // 연결된 체크리스트 항목 ID (doc-01 ~ doc-15)
+  reviewStatus?: DocumentReviewStatus;   // 파일 단위 검토 상태
 }
 
 export const DOC_CATEGORY_CONFIG: Record<DocumentFile['category'], { label: string; emoji: string }> = {
@@ -523,25 +545,47 @@ export interface DocumentCheckItem {
   checked: boolean;
   checkedBy?: string;
   checkedAt?: string;
+  // ── 양방향 동기화 ──
+  reviewStatus?: DocumentReviewStatus;  // 검토 상태
+  linkedFileId?: string;                // 연결된 uploadedFile의 ID
+  rejectionReason?: string;             // 반려 사유
+  rejectedAt?: string;                  // 반려 일시
+  submittedAt?: string;                 // 고객 제출 일시
+  reviewerNote?: string;                // 변호사 검토 메모
 }
 
 export const DEFAULT_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
-  { id: 'doc-01', label: '주민등록등본', checked: false },
-  { id: 'doc-02', label: '주민등록초본', checked: false },
-  { id: 'doc-03', label: '가족관계증명서', checked: false },
-  { id: 'doc-04', label: '재산세 과세증명', checked: false },
-  { id: 'doc-05', label: '소득금액증명원', checked: false },
-  { id: 'doc-06', label: '건강보험자격확인서', checked: false },
-  { id: 'doc-07', label: '급여명세서 (3개월)', checked: false },
-  { id: 'doc-08', label: '재직증명서', checked: false },
-  { id: 'doc-09', label: '채무증명원 (전 금융기관)', checked: false },
-  { id: 'doc-10', label: '통장사본 (전 계좌)', checked: false },
-  { id: 'doc-11', label: '보험가입내역조회서', checked: false },
-  { id: 'doc-12', label: '국민연금가입증명', checked: false },
-  { id: 'doc-13', label: '임대차계약서', checked: false },
-  { id: 'doc-14', label: '자동차등록원부', checked: false },
-  { id: 'doc-15', label: '퇴직금산정서류', checked: false },
+  { id: 'doc-01', label: '주민등록등본', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-02', label: '주민등록초본', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-03', label: '가족관계증명서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-04', label: '재산세 과세증명', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-05', label: '소득금액증명원', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-06', label: '건강보험자격확인서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-07', label: '급여명세서 (3개월)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-08', label: '재직증명서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-09', label: '채무증명원 (전 금융기관)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-10', label: '통장사본 (전 계좌)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-11', label: '보험가입내역조회서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-12', label: '국민연금가입증명', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-13', label: '임대차계약서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-14', label: '자동차등록원부', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'doc-15', label: '퇴직금산정서류', checked: false, reviewStatus: 'not_submitted' },
 ];
+
+// ── 변호사 → 고객 서류 요청 ──
+
+export interface DocumentRequest {
+  id: string;
+  requestedBy: string;       // 변호사/직원 이름
+  requestedAt: string;       // 요청 일시
+  documentLabel: string;     // 요청 서류명
+  description?: string;      // 상세 설명
+  linkedDocId?: string;      // 기존 15종 체크리스트 항목이면 해당 ID
+  isCustom?: boolean;        // 15종 외 추가 요청 서류 여부
+  fulfilled?: boolean;       // 고객 제출 완료 여부
+  fulfilledAt?: string;      // 제출 완료 일시
+  fulfilledFileId?: string;  // 제출된 파일 ID
+}
 
 // ── 배정 지시 (Assignment Directive) ──
 export type DirectivePriority = 'urgent' | 'high' | 'normal' | 'low';
@@ -594,6 +638,7 @@ export interface CrmClientExtension {
   feeSchedule?: FeeInstallment[];
   // ── 문서 관리 ──
   uploadedFiles?: DocumentFile[];
+  documentRequests?: DocumentRequest[];  // 변호사 추가 서류 요청 목록
   // ── 보정명령 ──
   correctionOrders?: CorrectionOrder[];
   // ── 대법원 연동 ──
