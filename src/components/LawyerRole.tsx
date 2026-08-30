@@ -3906,6 +3906,8 @@ export default function LawyerRole({
               cases={cases}
               qas={qas}
               activeLawyerId={activeLawyer.id}
+              staffMembers={staffMembers}
+              lawyers={lawyers}
             />
           </div>
         )}

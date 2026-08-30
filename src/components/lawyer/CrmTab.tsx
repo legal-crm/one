@@ -21,6 +21,7 @@ import MobileScanner from './MobileScanner';
 import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeAlimtokModal from './FeeAlimtokModal';
 import ClientContractSubTab from './ClientContractSubTab';
+import TaskTicketTab from './TaskTicketTab';
 import { getContractsByClientId } from '../../services/contractService';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
@@ -138,7 +139,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
 
   const [showBulkMessage, setShowBulkMessage] = useState(false);
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
@@ -1738,6 +1739,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     { key: 'info', label: '종합 정보', icon: '👤', count: null },
                     { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
                     { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
+                    { key: 'tasks', label: '업무 지시', icon: '📋', count: null },
                     { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
                     { 
                       key: 'contracts', 

@@ -1,5 +1,6 @@
-// ============================================================
-// ?�무 ?�당 ?�켓 ?�비??// Supabase DB + localStorage ?�백
+﻿// ============================================================
+// 업무 할당 티켓 서비스
+// Supabase DB + localStorage 폴백
 // ============================================================
 
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
@@ -23,7 +24,7 @@ function generateId(): string {
   return `task-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
 }
 
-/** ?�무 ?�성 */
+/** 업무 생성 */
 export async function createTask(
   tenantId: string,
   data: {
@@ -76,7 +77,7 @@ export async function createTask(
       });
       if (error) throw error;
     } catch (err) {
-      console.warn('Supabase ?�무 ?�???�패, localStorage ?�백:', err);
+      console.warn('Supabase 업무 저장 실패, localStorage 폴백:', err);
       const all = loadFromStorage(tenantId);
       all.unshift(ticket);
       saveToStorage(tenantId, all);
@@ -87,11 +88,11 @@ export async function createTask(
     saveToStorage(tenantId, all);
   }
 
-  // ?�행?�에�??�림
+  // 수행자에게 알림
   await createNotification(tenantId, data.assigneeId, {
     type: 'TASK_ASSIGNED',
-    title: `???�무: ${data.title}`,
-    body: `${data.assignerName}?�이 ?�무�??�당?�습?�다.${data.dueDate ? ` 기한: ${data.dueDate}` : ''}`,
+    title: `새 업무: ${data.title}`,
+    body: `${data.assignerName}님이 업무를 할당했습니다.${data.dueDate ? ` 기한: ${data.dueDate}` : ''}`,
     senderId: data.assignerId,
     senderName: data.assignerName,
     linkType: data.targetType,
@@ -101,7 +102,7 @@ export async function createTask(
   return ticket;
 }
 
-/** ?�무 목록 조회 (?�건�? */
+/** 업무 목록 조회 (사건/상담별) */
 export async function getTasksByTarget(
   tenantId: string, targetType: MessageTargetType, targetId: string
 ): Promise<TaskTicket[]> {
@@ -122,7 +123,7 @@ export async function getTasksByTarget(
     .filter(t => t.targetType === targetType && t.targetId === targetId);
 }
 
-/** ???�무 조회 */
+/** 내 업무 조회 (나에게 할당된 업무) */
 export async function getMyTasks(
   tenantId: string, userId: string, statusFilter?: TaskStatus
 ): Promise<TaskTicket[]> {
@@ -145,7 +146,73 @@ export async function getMyTasks(
   return tasks;
 }
 
-/** ?�무 ?�태 변�?*/
+/** 내가 지시한 업무 조회 */
+export async function getMyAssignedTasks(
+  tenantId: string, assignerId: string, statusFilter?: TaskStatus
+): Promise<TaskTicket[]> {
+  if (isSupabaseConfigured) {
+    try {
+      let query = supabase
+        .from('task_tickets')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('assigner_id', assignerId)
+        .order('created_at', { ascending: false });
+      if (statusFilter) query = query.eq('status', statusFilter);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []).map(mapDbRow);
+    } catch { /* fallthrough */ }
+  }
+  let tasks = loadFromStorage(tenantId).filter(t => t.assignerId === assignerId);
+  if (statusFilter) tasks = tasks.filter(t => t.status === statusFilter);
+  return tasks;
+}
+
+/** 테넌트 전체 업무 조회 (변호사/관리자용) */
+export async function getAllTenantTasks(
+  tenantId: string, statusFilter?: TaskStatus
+): Promise<TaskTicket[]> {
+  if (isSupabaseConfigured) {
+    try {
+      let query = supabase
+        .from('task_tickets')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+      if (statusFilter) query = query.eq('status', statusFilter);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []).map(mapDbRow);
+    } catch { /* fallthrough */ }
+  }
+  let tasks = loadFromStorage(tenantId);
+  if (statusFilter) tasks = tasks.filter(t => t.status === statusFilter);
+  return tasks;
+}
+
+/** 업무 삭제 */
+export async function deleteTask(tenantId: string, taskId: string): Promise<boolean> {
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase
+        .from('task_tickets')
+        .delete()
+        .eq('tenant_id', tenantId)
+        .eq('id', taskId);
+      if (error) throw error;
+    } catch {
+      const all = loadFromStorage(tenantId);
+      saveToStorage(tenantId, all.filter(t => t.id !== taskId));
+    }
+  } else {
+    const all = loadFromStorage(tenantId);
+    saveToStorage(tenantId, all.filter(t => t.id !== taskId));
+  }
+  return true;
+}
+
+/** 업무 상태 변경 */
 export async function updateTaskStatus(
   tenantId: string, taskId: string, newStatus: TaskStatus, completionNote?: string
 ): Promise<boolean> {
@@ -171,14 +238,14 @@ export async function updateTaskStatus(
     updateInStorage(tenantId, taskId, updates);
   }
 
-  // ?�료 ??지?�자?�게 ?�림
+  // 완료 시 지시자에게 알림
   if (newStatus === 'COMPLETED') {
     const task = await getTask(tenantId, taskId);
     if (task) {
       await createNotification(tenantId, task.assignerId, {
         type: 'TASK_COMPLETED',
-        title: `?�무 ?�료: ${task.title}`,
-        body: `${task.assigneeName}?�이 ?�무�??�료?�습?�다.${completionNote ? ` "${completionNote}"` : ''}`,
+        title: `업무 완료: ${task.title}`,
+        body: `${task.assigneeName}님이 업무를 완료했습니다.${completionNote ? ` "${completionNote}"` : ''}`,
         senderId: task.assigneeId,
         senderName: task.assigneeName,
         linkType: task.targetType,
@@ -190,7 +257,7 @@ export async function updateTaskStatus(
   return true;
 }
 
-/** ?�무 조회 (?�건) */
+/** 업무 단건 조회 */
 export async function getTask(tenantId: string, taskId: string): Promise<TaskTicket | null> {
   if (isSupabaseConfigured) {
     try {

@@ -24,7 +24,7 @@ export type MessageVisibility =
   | 'designated';   // 지정인만
 
 /** 메시지 대상 유형 */
-export type MessageTargetType = 'consult_request' | 'case' | 'copilot_review';
+export type MessageTargetType = 'consult_request' | 'case' | 'copilot_review' | 'general';
 
 /** 내부 메시지 */
 export interface InternalMessage {
