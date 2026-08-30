@@ -1203,6 +1203,14 @@ export default function CaseReviewCopilot({
           consultRequest={consultRequest}
           onClose={() => setShowRehabReport(false)}
           viewerRole={permissions.canSendToClient ? 'lawyer' : 'staff'}
+          aiAnalysis={factOutput && ruleOutput ? {
+            factSummary: factOutput.factSummary,
+            riskFlags: ruleOutput.flags,
+            missingFields: factOutput.missingFields,
+            conflicts: factOutput.conflicts,
+            reviewGrade: ruleOutput.reviewGrade,
+            courtPracticeNotes: ruleOutput.courtPracticeNotes,
+          } : undefined}
           onSendProposal={(proposalData) => {
             // 채팅 연동: 부모(LawyerRole)의 handleSubmitProposalFromDraft 호출
             if (onProposalSent && consultRequest?.id) {

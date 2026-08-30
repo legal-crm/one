@@ -1053,6 +1053,8 @@ export default function LawyerRole({
     const req = requests.find(r => r.id === reqId);
     if (!req) return;
 
+    const isAIPremium = !!proposalData.aiInsights;
+
     const newProposal = {
       id: `prop-${Date.now()}`,
       lawyerId: activeLawyer.id,
@@ -1069,7 +1071,8 @@ export default function LawyerRole({
       remark: proposalData.lawyerOpinion || '제안서 발송',
       specialNotes: proposalData.specialNotes,
       clientQnA: proposalData.clientQnA,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      proposalData: isAIPremium ? proposalData : undefined,
     };
 
     // 1) 상태를 'comparing'으로 변경 + acceptedLawyerIds에 변호사 추가 → 채팅탭에 노출
@@ -1100,7 +1103,13 @@ export default function LawyerRole({
     const feeText = `${Math.round(proposalData.fees.totalFee / 10000)}만원`;
     const reductionText = `${proposalData.diagnosis.debtReductionRate}%`;
     const monthlyText = `${Math.round(proposalData.diagnosis.monthlyPayment / 10000)}만원/월`;
-    const proposalMsg = `안녕하세요, ${req.clientName}님. ${activeLawyer.name} 변호사입니다.\n\n📋 제안 내용을 안내드립니다:\n• 예상 탕감률: ${reductionText}\n• 월 변제금: ${monthlyText}\n• 수임료: ${feeText}\n\n${proposalData.lawyerOpinion ? `💬 소견: ${proposalData.lawyerOpinion}` : ''}자세한 사항은 편하게 문의해 주세요.`;
+
+    // AI 프리미엄일 때 확장 메시지
+    const aiSuffix = isAIPremium && proposalData.aiInsights
+      ? `\n\n📊 정밀 분석 기반 진단입니다.\n• 채무 구조: 무담보 ${Math.round(proposalData.aiInsights.debtBreakdown.unsecured / 10000)}만원 / 담보 ${Math.round(proposalData.aiInsights.debtBreakdown.secured / 10000)}만원${proposalData.aiInsights.debtBreakdown.tax > 0 ? ` / 조세 ${Math.round(proposalData.aiInsights.debtBreakdown.tax / 10000)}만원` : ''}\n• 검토 등급: ${proposalData.aiInsights.reviewGrade === 'NORMAL_REVIEW' ? '일반 검토' : proposalData.aiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 검토' : '정밀 검토'}`
+      : '';
+
+    const proposalMsg = `안녕하세요, ${req.clientName}님. ${activeLawyer.name} 변호사입니다.\n\n📋 제안 내용을 안내드립니다:\n• 예상 탕감률: ${reductionText}\n• 월 변제금: ${monthlyText}\n• 수임료: ${feeText}\n\n${proposalData.lawyerOpinion ? `💬 소견: ${proposalData.lawyerOpinion}` : ''}${aiSuffix}\n\n자세한 사항은 편하게 문의해 주세요.`;
 
     onAddMessage(
       reqId,
@@ -1115,7 +1124,7 @@ export default function LawyerRole({
       activeLawyer.name,
       activeLawyer.role as MemberRole,
       'CONSULT_REQUEST',
-      `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 예상 탕감률: ${proposalData.diagnosis.debtReductionRate}%)`
+      `의뢰인에게 제안서 발송 (수임료: ${Math.round(proposalData.fees.totalFee / 10000)}만원, 예상 탕감률: ${proposalData.diagnosis.debtReductionRate}%${isAIPremium ? ', AI 정밀 분석' : ''})`
     );
 
     // 3) 채팅탭으로 자동 전환 + 해당 스레드 활성화
