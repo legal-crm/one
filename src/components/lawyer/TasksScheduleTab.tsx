@@ -3,7 +3,8 @@ import {
   CalendarCheck, CheckCircle2, Clock, AlertTriangle,
   Calendar, ChevronLeft, ChevronRight, Activity,
   ListCheck, Briefcase, MessageSquare, FolderHeart,
-  Plus, Trash2, X, Repeat, Bell, ChevronDown, User, Check
+  Plus, Trash2, X, Repeat, Bell, ChevronDown, User, Check,
+  Search, ExternalLink, ChevronFirst, ChevronLast, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -38,6 +39,8 @@ type SubTab = 'tasks' | 'calendar' | 'activity';
 type TaskScope = 'my' | 'assigned' | 'all';
 type TaskFilter = 'all' | 'pending' | 'in_progress' | 'completed';
 type CalView = 'month' | 'week';
+type ActivityFilterType = 'all' | 'request' | 'counseling' | 'case' | 'task' | 'qna';
+type ActivityPeriodType = 'all' | 'today' | '7days' | '30days';
 
 const KOREAN_HOLIDAYS: Record<string, string> = {
   '01-01': '신정', '03-01': '삼일절', '05-05': '어린이날',
@@ -53,16 +56,35 @@ function getHoliday(_y: number, month: number, day: number): string | null {
   return KOREAN_HOLIDAYS[key] || null;
 }
 
+function parseSafeDate(d: any): Date {
+  if (!d) return new Date();
+  if (d instanceof Date) return isNaN(d.getTime()) ? new Date() : d;
+  const parsed = new Date(d);
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 function timeAgo(d: Date): string {
+  if (isNaN(d.getTime())) return '방금 전';
   const diff = Date.now() - d.getTime();
+  if (diff < 0) return '방금 전';
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return '방금 전';
-  if (mins < 60) return mins + '분 전';
+  if (mins < 60) return `${mins}분 전`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return hrs + '시간 전';
+  if (hrs < 24) return `${hrs}시간 전`;
   const days = Math.floor(hrs / 24);
-  if (days < 7) return days + '일 전';
-  return (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+  if (days < 7) return `${days}일 전`;
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+function formatSafeFullDate(d: Date): string {
+  if (isNaN(d.getTime())) return '-';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hrs = String(d.getHours()).padStart(2, '0');
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  return `${y}.${m}.${day} ${hrs}:${mins}`;
 }
 
 function toDateKey(y: number, m: number, d: number): string {
@@ -89,7 +111,15 @@ export default function TasksScheduleTab({
   const [completionNote, setCompletionNote] = useState('');
   const [calMonth, setCalMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [activityFilter, setActivityFilter] = useState<string>('all');
+  
+  // 활동 기록 상태
+  const [activityFilter, setActivityFilter] = useState<ActivityFilterType>('all');
+  const [activitySearchTerm, setActivitySearchTerm] = useState('');
+  const [activityPeriod, setActivityPeriod] = useState<ActivityPeriodType>('all');
+  const [activityPage, setActivityPage] = useState(1);
+  const [selectedActivityItem, setSelectedActivityItem] = useState<any | null>(null);
+  const ACTIVITY_PER_PAGE = 10;
+
   const [calView, setCalView] = useState<CalView>('month');
   const [weekStart, setWeekStart] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0, 0, 0, 0); return d;
@@ -130,13 +160,10 @@ export default function TasksScheduleTab({
   // 모든 멤버 목록 (변호사 + 활성 스태프)
   const assignableMembers = useMemo(() => {
     const list: { id: string; name: string; roleLabel: string }[] = [];
-    // 본인 우선
     list.push({ id: userId, name: `${userName} (본인)`, roleLabel: userRole });
-    // 다른 변호사들
     lawyers.forEach(l => {
       if (l.id !== userId) list.push({ id: l.id, name: l.name, roleLabel: '변호사' });
     });
-    // 스태프들
     staffMembers.filter(s => s.status === 'active' && s.id !== userId).forEach(s => {
       list.push({ id: s.id, name: s.name, roleLabel: s.role || '스태프' });
     });
@@ -350,32 +377,196 @@ export default function TasksScheduleTab({
     return tasks.filter(t => t.status === 'COMPLETED').slice(0, 20);
   }, [tasks, filter]);
 
-  // Activity
+  // ══════════════════════════════════════════════════════════════════
+  // ── Activity 데이터 수집 및 안전한 파싱
+  // ══════════════════════════════════════════════════════════════════
   const activityItems = useMemo(() => {
-    const items: { id: string; type: string; icon: any; title: string; desc: string; date: Date; color: string; bg: string }[] = [];
-    (requests || []).forEach(r => {
-      if (r.status === 'requested' || r.selectedLawyerId === userId || (r.acceptedLawyerIds || []).includes(userId))
-        items.push({ id: 'r-' + r.id, type: 'request', icon: Briefcase, title: '상담 요청 접수', desc: r.clientName, date: new Date(r.createdAt), color: 'text-brand', bg: 'bg-brand/10' });
-      if (r.status === 'counseling' && r.selectedLawyerId === userId)
-        items.push({ id: 'rc-' + r.id, type: 'counseling', icon: MessageSquare, title: '상담 진행 중', desc: r.clientName, date: new Date(r.createdAt), color: 'text-indigo-600', bg: 'bg-indigo-50' });
-    });
-    (cases || []).forEach(c => {
-      if (c.assignedLawyerId === userId)
-        items.push({ id: 'c-' + c.id, type: 'case', icon: FolderHeart, title: '수임 전환 성공', desc: c.clientName, date: new Date(c.createdAt), color: 'text-purple-600', bg: 'bg-purple-50' });
-    });
-    if (qas) qas.filter(q => q.answer).forEach(q => {
-      items.push({ id: 'q-' + q.id, type: 'qna', icon: ListCheck, title: 'Q&A 답변 작성', desc: (q.question || '').slice(0, 30), date: new Date(q.createdAt), color: 'text-orange-600', bg: 'bg-orange-50' });
-    });
-    tasks.filter(t => t.status === 'COMPLETED').forEach(t => {
-      items.push({ id: 't-' + t.id, type: 'task', icon: CheckCircle2, title: '태스크 완료', desc: t.title, date: new Date(t.completedAt || t.updatedAt), color: 'text-green-600', bg: 'bg-green-50' });
-    });
-    return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 30);
-  }, [requests, cases, qas, tasks, userId]);
+    const items: {
+      id: string;
+      type: ActivityFilterType;
+      icon: any;
+      title: string;
+      desc: string;
+      fullContent?: string;
+      clientName?: string;
+      date: Date;
+      color: string;
+      bg: string;
+      badgeLabel: string;
+      raw: any;
+    }[] = [];
 
-  const filteredActivity = activityFilter === 'all' ? activityItems : activityItems.filter(a => a.type === activityFilter);
+    // 1. 상담 요청
+    (requests || []).forEach(r => {
+      if (r.status === 'requested' || r.selectedLawyerId === userId || (r.acceptedLawyerIds || []).includes(userId)) {
+        items.push({
+          id: 'r-' + r.id,
+          type: 'request',
+          icon: Briefcase,
+          title: '상담 요청 접수',
+          desc: r.clientName ? `${r.clientName} (${r.category || '회생/파산'})` : '신규 의뢰인 상담 요청',
+          clientName: r.clientName,
+          fullContent: r.summary || r.financialProfile ? `총 채무: ${(r.financialProfile?.debtTotal || 0).toLocaleString()}원 / 월 소득: ${(r.financialProfile?.income || 0).toLocaleString()}원` : undefined,
+          date: parseSafeDate(r.createdAt),
+          color: 'text-brand',
+          bg: 'bg-brand/10',
+          badgeLabel: '상담요청',
+          raw: r
+        });
+      }
+      if (r.status === 'counseling' && r.selectedLawyerId === userId) {
+        items.push({
+          id: 'rc-' + r.id,
+          type: 'counseling',
+          icon: MessageSquare,
+          title: '상담 진행 중',
+          desc: r.clientName ? `${r.clientName} 의뢰인과 상담이 활성화되었습니다.` : '상담 진행 중',
+          clientName: r.clientName,
+          date: parseSafeDate(r.updatedAt || r.createdAt),
+          color: 'text-indigo-600',
+          bg: 'bg-indigo-50',
+          badgeLabel: '상담진행',
+          raw: r
+        });
+      }
+    });
+
+    // 2. 수임 전환
+    (cases || []).forEach(c => {
+      if (c.assignedLawyerId === userId || isLawyerOrOwner) {
+        items.push({
+          id: 'c-' + c.id,
+          type: 'case',
+          icon: FolderHeart,
+          title: '수임 전환 성공',
+          desc: c.clientName ? `${c.clientName} 의뢰인 사건 수임 계약 완료 (${c.caseNumber || '사건번호 미부여'})` : '수임 전환 완료',
+          clientName: c.clientName,
+          fullContent: c.notes || `관할법원: ${c.court || '서울회생법원'} / 진행단계: ${c.stage || '접수준비'}`,
+          date: parseSafeDate(c.createdAt || c.updatedAt),
+          color: 'text-purple-600',
+          bg: 'bg-purple-50',
+          badgeLabel: '수임전환',
+          raw: c
+        });
+      }
+    });
+
+    // 3. Q&A 답변
+    if (qas) {
+      qas.filter(q => q.answer).forEach(q => {
+        items.push({
+          id: 'q-' + q.id,
+          type: 'qna',
+          icon: ListCheck,
+          title: 'Q&A 답변 작성',
+          desc: (q.question || '').slice(0, 50) + ((q.question || '').length > 50 ? '...' : ''),
+          clientName: q.authorName || '상담자',
+          fullContent: `질문: ${q.question}
+
+답변: ${q.answer}`,
+          date: parseSafeDate(q.answeredAt || q.createdAt),
+          color: 'text-orange-600',
+          bg: 'bg-orange-50',
+          badgeLabel: 'Q&A',
+          raw: q
+        });
+      });
+    }
+
+    // 4. 완료된 업무(태스크)
+    tasks.filter(t => t.status === 'COMPLETED').forEach(t => {
+      items.push({
+        id: 't-' + t.id,
+        type: 'task',
+        icon: CheckCircle2,
+        title: '업무 완료',
+        desc: `${t.title} (${t.assignerName} → ${t.assigneeName})`,
+        clientName: t.assigneeName,
+        fullContent: t.completionNote ? `완료 메모: ${t.completionNote}` : t.description,
+        date: parseSafeDate(t.completedAt || t.updatedAt || t.createdAt),
+        color: 'text-green-600',
+        bg: 'bg-green-50',
+        badgeLabel: '업무완료',
+        raw: t
+      });
+    });
+
+    // 최신순 정렬
+    return items.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [requests, cases, qas, tasks, userId, isLawyerOrOwner]);
+
+  // 카테고리별 건수 카운트
+  const activityCounts = useMemo(() => {
+    const counts = { all: activityItems.length, request: 0, counseling: 0, case: 0, task: 0, qna: 0 };
+    activityItems.forEach(item => {
+      if (item.type in counts) {
+        counts[item.type as keyof typeof counts]++;
+      }
+    });
+    return counts;
+  }, [activityItems]);
+
+  // 검색 및 기간 필터링 적용된 목록
+  const filteredActivity = useMemo(() => {
+    const now = new Date();
+    return activityItems.filter(item => {
+      // 1. 카테고리 필터
+      if (activityFilter !== 'all' && item.type !== activityFilter) return false;
+
+      // 2. 검색어 필터
+      if (activitySearchTerm.trim()) {
+        const term = activitySearchTerm.toLowerCase();
+        const matchTitle = item.title.toLowerCase().includes(term);
+        const matchDesc = item.desc.toLowerCase().includes(term);
+        const matchClient = (item.clientName || '').toLowerCase().includes(term);
+        const matchContent = (item.fullContent || '').toLowerCase().includes(term);
+        if (!matchTitle && !matchDesc && !matchClient && !matchContent) return false;
+      }
+
+      // 3. 기간 필터
+      if (activityPeriod !== 'all') {
+        const itemTime = item.date.getTime();
+        if (activityPeriod === 'today') {
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+          if (itemTime < startOfToday) return false;
+        } else if (activityPeriod === '7days') {
+          const sevenDaysAgo = now.getTime() - 7 * 86400000;
+          if (itemTime < sevenDaysAgo) return false;
+        } else if (activityPeriod === '30days') {
+          const thirtyDaysAgo = now.getTime() - 30 * 86400000;
+          if (itemTime < thirtyDaysAgo) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [activityItems, activityFilter, activitySearchTerm, activityPeriod]);
+
+  // 페이징 계산
+  const totalActivityPages = Math.ceil(filteredActivity.length / ACTIVITY_PER_PAGE) || 1;
+  const paginatedActivity = useMemo(() => {
+    const startIndex = (activityPage - 1) * ACTIVITY_PER_PAGE;
+    return filteredActivity.slice(startIndex, startIndex + ACTIVITY_PER_PAGE);
+  }, [filteredActivity, activityPage]);
+
+  // 필터 변경 시 1페이지로 자동 리셋
+  const handleCategoryChange = (key: ActivityFilterType) => {
+    setActivityFilter(key);
+    setActivityPage(1);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setActivitySearchTerm(e.target.value);
+    setActivityPage(1);
+  };
+
+  const handlePeriodChange = (p: ActivityPeriodType) => {
+    setActivityPeriod(p);
+    setActivityPage(1);
+  };
+
   const DAY_HEADERS = ['일','월','화','수','목','금','토'];
   const upcomingCourt = events.filter(e => e.type === 'court' && dDay(e.date) >= 0).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
-
   const visEmoji = (v: EventVisibility) => VISIBILITY_CONFIG[v].emoji;
 
   return (
@@ -407,7 +598,6 @@ export default function TasksScheduleTab({
           {/* 상단 컨트롤 바 */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
-              {/* 지시/담당 범위 필터 (변호사/관리자에게 지시 업무 및 전체 노출) */}
               {isLawyerOrOwner && (
                 <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
                   {([
@@ -508,7 +698,6 @@ export default function TasksScheduleTab({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        {/* 뱃지 행 */}
                         <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${pri.bgColor} ${pri.color}`}>
                             {pri.emoji} {pri.label}
@@ -528,7 +717,6 @@ export default function TasksScheduleTab({
                           )}
                         </div>
 
-                        {/* 제목 및 설명 */}
                         <p className={`text-sm font-bold ${task.status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
                           {task.title}
                         </p>
@@ -538,7 +726,6 @@ export default function TasksScheduleTab({
                           </p>
                         )}
 
-                        {/* 메타 정보 */}
                         <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400 flex-wrap">
                           <span className="flex items-center gap-1">
                             <User className="w-3 h-3 text-slate-400" />
@@ -550,10 +737,9 @@ export default function TasksScheduleTab({
                               마감: <span className={overdue ? 'text-red-500 font-bold' : 'text-slate-600 font-medium'}>{task.dueDate}</span>
                             </span>
                           )}
-                          <span>등록: {timeAgo(new Date(task.createdAt))}</span>
+                          <span>등록: {timeAgo(parseSafeDate(task.createdAt))}</span>
                         </div>
 
-                        {/* 완료 메모가 있는 경우 */}
                         {task.completionNote && (
                           <div className="mt-2 bg-green-50/80 border border-green-200/50 rounded-xl px-3 py-1.5 text-xs text-green-700 flex items-center gap-1.5">
                             <Check className="w-3.5 h-3.5 shrink-0" />
@@ -562,7 +748,6 @@ export default function TasksScheduleTab({
                         )}
                       </div>
 
-                      {/* 액션 버튼 */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         {task.status !== 'COMPLETED' && (
                           <>
@@ -594,7 +779,6 @@ export default function TasksScheduleTab({
                       </div>
                     </div>
 
-                    {/* 완료 메모 입력 폼 */}
                     {completingId === task.id && (
                       <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
                         <input
@@ -631,7 +815,6 @@ export default function TasksScheduleTab({
          ══════════════════════════════════════════════════════════════════ */}
       {sub === 'calendar' && (
         <div className="space-y-4">
-          {/* 오늘의 일정 배너 */}
           {(todayEvents.length > 0 || todayTasks.length > 0) && (
             <div className="bg-brand/5 border border-brand/15 rounded-2xl p-4 flex items-start gap-3">
               <div className="p-2 rounded-xl bg-brand/10 shrink-0">
@@ -661,7 +844,6 @@ export default function TasksScheduleTab({
             </div>
           )}
 
-          {/* 법원 기일 알림 */}
           {upcomingCourt.length > 0 && (
             <div className="bg-red-50/60 border border-red-200 rounded-2xl p-4">
               <p className="text-xs font-black text-red-700 mb-2">🏛️ 다가오는 법원 기일</p>
@@ -682,11 +864,9 @@ export default function TasksScheduleTab({
             </div>
           )}
 
-          {/* 필터 바 */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-wrap">
-                {/* 유형 필터 */}
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider shrink-0">유형</span>
                   <div className="flex gap-1 flex-wrap">
@@ -711,7 +891,6 @@ export default function TasksScheduleTab({
 
                 <span className="hidden sm:block w-px h-8 bg-slate-200" />
 
-                {/* 공개 범위 필터 */}
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider shrink-0">공개</span>
                   <div className="flex bg-slate-100 rounded-lg p-0.5 gap-0.5">
@@ -747,7 +926,6 @@ export default function TasksScheduleTab({
                 </div>
               </div>
 
-              {/* 일정 추가 버튼 */}
               <button
                 onClick={() => {
                   const dk = selectedDay ? toDateKey(calYear, calMon, selectedDay) : todayKey;
@@ -760,9 +938,7 @@ export default function TasksScheduleTab({
             </div>
           </div>
 
-          {/* 캘린더 카드 */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            {/* 캘린더 상단 네비게이션 */}
             <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -847,7 +1023,6 @@ export default function TasksScheduleTab({
               </div>
             </div>
 
-            {/* 요일 헤더 */}
             <div className="grid grid-cols-7 border-b border-slate-200">
               {DAY_HEADERS.map((d, i) => (
                 <div
@@ -861,7 +1036,6 @@ export default function TasksScheduleTab({
               ))}
             </div>
 
-            {/* 월간 뷰 */}
             {calView === 'month' && (
               <div className="grid grid-cols-7">
                 {Array.from({ length: firstDow }).map((_, i) => (
@@ -903,7 +1077,6 @@ export default function TasksScheduleTab({
                         {holiday && <span className="text-[9px] font-bold text-red-400 truncate max-w-[60px]">{holiday}</span>}
                       </div>
 
-                      {/* 이벤트 및 태스크 배지 */}
                       {allItems.length > 0 && (
                         <div className="space-y-0.5">
                           {allItems.slice(0, 2).map((item, idx) => {
@@ -947,7 +1120,6 @@ export default function TasksScheduleTab({
               </div>
             )}
 
-            {/* 주간 뷰 */}
             {calView === 'week' && (
               <div className="grid grid-cols-7">
                 {weekDays.map((wd, i) => {
@@ -1003,54 +1175,242 @@ export default function TasksScheduleTab({
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
-          ══ 3. Activity (활동 기록)
+          ══ 3. Activity (활동 기록 - 업그레이드 & 10건 단위 페이지네이션)
          ══════════════════════════════════════════════════════════════════ */}
       {sub === 'activity' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-            <div className="flex gap-2 flex-wrap">
+          {/* 활동 필터 & 검색 툴바 */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+            {/* 1. 카테고리 탭 (실시간 카운트 뱃지 탑재) */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
               {([
-                { key: 'all', label: '전체 활동' },
-                { key: 'request', label: '상담 요청' },
-                { key: 'counseling', label: '상담 진행' },
-                { key: 'case', label: '수임 전환' },
-                { key: 'task', label: '업무 완료' },
-                { key: 'qna', label: 'Q&A' },
+                { key: 'all' as const, label: '전체 활동', count: activityCounts.all },
+                { key: 'request' as const, label: '상담 요청', count: activityCounts.request },
+                { key: 'counseling' as const, label: '상담 진행', count: activityCounts.counseling },
+                { key: 'case' as const, label: '수임 전환', count: activityCounts.case },
+                { key: 'task' as const, label: '업무 완료', count: activityCounts.task },
+                { key: 'qna' as const, label: 'Q&A', count: activityCounts.qna },
               ]).map(f => (
                 <button
                   key={f.key}
-                  onClick={() => setActivityFilter(f.key)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-[0.98] ${
+                  onClick={() => handleCategoryChange(f.key)}
+                  className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] flex items-center gap-1.5 ${
                     activityFilter === f.key
                       ? 'bg-[#1E3A5F] text-white shadow-xs'
-                      : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+                      : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  {f.label}
+                  <span>{f.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    activityFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {f.count}
+                  </span>
                 </button>
               ))}
             </div>
+
+            {/* 2. 검색창 & 기간 필터 */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
+              {/* 검색창 */}
+              <div className="relative w-full sm:max-w-md">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={activitySearchTerm}
+                  onChange={handleSearchChange}
+                  placeholder="의뢰인명, 제목, 활동 내용 검색..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
+                />
+                {activitySearchTerm && (
+                  <button
+                    onClick={() => { setActivitySearchTerm(''); setActivityPage(1); }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* 기간 필터 */}
+              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
+                <span className="text-[11px] font-bold text-slate-400 shrink-0">기간:</span>
+                <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
+                  {([
+                    { key: 'all' as const, label: '전체' },
+                    { key: 'today' as const, label: '오늘' },
+                    { key: '7days' as const, label: '최근 7일' },
+                    { key: '30days' as const, label: '이번 달' },
+                  ]).map(p => (
+                    <button
+                      key={p.key}
+                      onClick={() => handlePeriodChange(p.key)}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer active:scale-[0.98] ${
+                        activityPeriod === p.key
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          {/* 활동 목록 리스트 카드 */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             {filteredActivity.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">기록된 활동이 없습니다</p>
+              <div className="text-center py-16 space-y-3">
+                <Activity className="w-10 h-10 text-slate-200 mx-auto" />
+                <p className="text-sm text-slate-600 font-bold">조건에 맞는 활동 기록이 없습니다</p>
+                {(activitySearchTerm || activityFilter !== 'all' || activityPeriod !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setActivityFilter('all');
+                      setActivitySearchTerm('');
+                      setActivityPeriod('all');
+                      setActivityPage(1);
+                    }}
+                    className="text-xs text-brand font-bold hover:underline"
+                  >
+                    필터 초기화
+                  </button>
+                )}
+              </div>
             ) : (
-              <div className="space-y-4">
-                {filteredActivity.map((item, idx) => (
-                  <div key={item.id || idx} className="flex items-start gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
-                    <div className={`p-2.5 rounded-xl ${item.bg} ${item.color} shrink-0`}>
+              <div className="divide-y divide-slate-100">
+                {paginatedActivity.map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    onClick={() => setSelectedActivityItem(item)}
+                    className="flex items-start gap-4 p-4 hover:bg-slate-50/70 transition-all cursor-pointer group active:scale-[0.99]"
+                  >
+                    {/* 아이콘 */}
+                    <div className={`p-3 rounded-2xl ${item.bg} ${item.color} shrink-0 group-hover:scale-105 transition-transform`}>
                       <item.icon className="w-5 h-5" />
                     </div>
+
+                    {/* 본문 */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-slate-800">{item.title}</p>
-                        <span className="text-xs text-slate-400 whitespace-nowrap">{timeAgo(item.date)}</span>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${item.bg} ${item.color}`}>
+                            {item.badgeLabel}
+                          </span>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-brand transition-colors">
+                            {item.title}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-slate-500">{timeAgo(item.date)}</span>
+                          <span className="text-[10px] text-slate-400 ml-1.5 hidden sm:inline">({formatSafeFullDate(item.date)})</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">{item.desc}</p>
+
+                      <p className="text-xs text-slate-600 mt-1 line-clamp-1 leading-relaxed">
+                        {item.desc}
+                      </p>
+
+                      {item.fullContent && (
+                        <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 bg-slate-50 rounded-lg px-2.5 py-1">
+                          {item.fullContent}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                ── 10건 단위 스마트 페이지네이션 컨트롤 바 ──
+               ══════════════════════════════════════════════════════════════ */}
+            {filteredActivity.length > 0 && (
+              <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                {/* 건수 안내 */}
+                <div className="text-xs text-slate-500 font-medium">
+                  총 <strong className="text-slate-800 font-bold">{filteredActivity.length}</strong>건 중{' '}
+                  <strong className="text-slate-800 font-bold">
+                    {(activityPage - 1) * ACTIVITY_PER_PAGE + 1}-
+                    {Math.min(activityPage * ACTIVITY_PER_PAGE, filteredActivity.length)}
+                  </strong>건 표시 (페이지 {activityPage}/{totalActivityPages})
+                </div>
+
+                {/* 페이지 버튼 */}
+                <div className="flex items-center gap-1">
+                  {/* 맨 처음 */}
+                  <button
+                    onClick={() => setActivityPage(1)}
+                    disabled={activityPage === 1}
+                    className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-all border border-transparent hover:border-slate-200"
+                    title="첫 페이지"
+                  >
+                    <ChevronFirst className="w-4 h-4" />
+                  </button>
+
+                  {/* 이전 */}
+                  <button
+                    onClick={() => setActivityPage(p => Math.max(1, p - 1))}
+                    disabled={activityPage === 1}
+                    className="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1 shadow-xs"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> 이전
+                  </button>
+
+                  {/* 페이지 번호들 */}
+                  <div className="flex gap-1 mx-1">
+                    {Array.from({ length: totalActivityPages }).map((_, i) => {
+                      const pNum = i + 1;
+                      // 너무 많은 페이지 번호 생략 로직 (현재 페이지 주변 5개만 노출)
+                      if (
+                        totalActivityPages > 7 &&
+                        Math.abs(activityPage - pNum) > 2 &&
+                        pNum !== 1 &&
+                        pNum !== totalActivityPages
+                      ) {
+                        if (pNum === 2 || pNum === totalActivityPages - 1) {
+                          return <span key={pNum} className="px-1 text-xs text-slate-300">...</span>;
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pNum}
+                          onClick={() => setActivityPage(pNum)}
+                          className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
+                            activityPage === pNum
+                              ? 'bg-[#1E3A5F] text-white shadow-xs'
+                              : 'text-slate-600 hover:bg-white hover:text-slate-900 border border-transparent hover:border-slate-200'
+                          }`}
+                        >
+                          {pNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 다음 */}
+                  <button
+                    onClick={() => setActivityPage(p => Math.min(totalActivityPages, p + 1))}
+                    disabled={activityPage === totalActivityPages}
+                    className="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1 shadow-xs"
+                  >
+                    다음 <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* 맨 끝 */}
+                  <button
+                    onClick={() => setActivityPage(totalActivityPages)}
+                    disabled={activityPage === totalActivityPages}
+                    className="p-2 rounded-xl text-slate-500 hover:bg-white hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-all border border-transparent hover:border-slate-200"
+                    title="마지막 페이지"
+                  >
+                    <ChevronLast className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1069,7 +1429,6 @@ export default function TasksScheduleTab({
             className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-5 animate-fadeIn"
             onClick={e => e.stopPropagation()}
           >
-            {/* 모달 헤더 */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <CalendarCheck className="w-5 h-5 text-brand" />
@@ -1083,9 +1442,7 @@ export default function TasksScheduleTab({
               </button>
             </div>
 
-            {/* 입력 폼 */}
             <div className="space-y-4">
-              {/* 제목 */}
               <div>
                 <label className="text-xs font-bold text-slate-600 mb-1 block">
                   업무 제목 <span className="text-red-500">*</span>
@@ -1099,7 +1456,6 @@ export default function TasksScheduleTab({
                 />
               </div>
 
-              {/* 담당자 및 우선순위 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-600 mb-1 block">
@@ -1142,7 +1498,6 @@ export default function TasksScheduleTab({
                 </div>
               </div>
 
-              {/* 기한 및 연동 대상 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-600 mb-1 block">
@@ -1184,7 +1539,6 @@ export default function TasksScheduleTab({
                 </div>
               </div>
 
-              {/* 상세 설명 */}
               <div>
                 <label className="text-xs font-bold text-slate-600 mb-1 block">
                   상세 요청사항 (선택)
@@ -1199,7 +1553,6 @@ export default function TasksScheduleTab({
               </div>
             </div>
 
-            {/* 모달 액션 */}
             <div className="flex gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setShowAddTaskModal(false)}
@@ -1243,7 +1596,6 @@ export default function TasksScheduleTab({
               </button>
             </div>
 
-            {/* Type */}
             <div>
               <label className="text-xs font-bold text-slate-500 mb-1.5 block">일정 유형</label>
               <div className="flex gap-1.5 flex-wrap">
@@ -1266,7 +1618,6 @@ export default function TasksScheduleTab({
               </div>
             </div>
 
-            {/* Visibility */}
             {availableVis.length > 1 && (
               <div>
                 <label className="text-xs font-bold text-slate-500 mb-1.5 block">공개 범위</label>
@@ -1291,7 +1642,6 @@ export default function TasksScheduleTab({
               </div>
             )}
 
-            {/* Title */}
             <div>
               <label className="text-xs font-bold text-slate-500 mb-1.5 block">제목 *</label>
               <input
@@ -1303,7 +1653,6 @@ export default function TasksScheduleTab({
               />
             </div>
 
-            {/* Date + Time */}
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-bold text-slate-500 mb-1.5 block">날짜 *</label>
@@ -1334,7 +1683,6 @@ export default function TasksScheduleTab({
               </div>
             </div>
 
-            {/* Recurrence + Reminder */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1">
@@ -1376,7 +1724,6 @@ export default function TasksScheduleTab({
               </div>
             </div>
 
-            {/* Client + Desc */}
             <div>
               <label className="text-xs font-bold text-slate-500 mb-1.5 block">관련 의뢰인</label>
               <input
@@ -1397,7 +1744,6 @@ export default function TasksScheduleTab({
               />
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setShowAddEventModal(false)}
@@ -1410,6 +1756,86 @@ export default function TasksScheduleTab({
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-brand text-white hover:bg-brand/90 cursor-pointer active:scale-[0.98] transition-all shadow-sm"
               >
                 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          ══ Modal 3: 활동 상세 퀵뷰 모달 (Activity Quick View Modal)
+         ══════════════════════════════════════════════════════════════════ */}
+      {selectedActivityItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setSelectedActivityItem(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4 animate-fadeIn"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className={`p-2 rounded-xl ${selectedActivityItem.bg} ${selectedActivityItem.color}`}>
+                  <selectedActivityItem.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${selectedActivityItem.bg} ${selectedActivityItem.color}`}>
+                    {selectedActivityItem.badgeLabel}
+                  </span>
+                  <h4 className="text-base font-bold text-slate-900 mt-0.5">
+                    {selectedActivityItem.title}
+                  </h4>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedActivityItem(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 본문 정보 */}
+            <div className="space-y-3 text-xs">
+              <div>
+                <span className="text-slate-400 block mb-0.5">활동 요약</span>
+                <p className="text-slate-800 font-bold bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed">
+                  {selectedActivityItem.desc}
+                </p>
+              </div>
+
+              {selectedActivityItem.fullContent && (
+                <div>
+                  <span className="text-slate-400 block mb-0.5">상세 내용</span>
+                  <p className="text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed whitespace-pre-wrap">
+                    {selectedActivityItem.fullContent}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] text-slate-500">
+                <div>
+                  <span className="text-slate-400 block">발생 일시</span>
+                  <span className="font-bold text-slate-700">
+                    {formatSafeFullDate(selectedActivityItem.date)} ({timeAgo(selectedActivityItem.date)})
+                  </span>
+                </div>
+                {selectedActivityItem.clientName && (
+                  <div>
+                    <span className="text-slate-400 block">관련자</span>
+                    <span className="font-bold text-slate-700">{selectedActivityItem.clientName}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setSelectedActivityItem(null)}
+                className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                닫기
               </button>
             </div>
           </div>
