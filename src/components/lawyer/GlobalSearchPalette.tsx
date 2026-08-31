@@ -143,7 +143,7 @@ export default function GlobalSearchPalette({ isOpen, onClose, requests, lawyers
                           <Scale className="mr-3 h-5 w-5 text-gray-400" />
                           <div>
                             <div className="font-medium text-gray-900">{lawyer.name}</div>
-                            <div className="text-sm text-gray-500">{lawyer.email || '소속 변호사'}</div>
+                            <div className="text-sm text-gray-500">{(lawyer as any).email || '소속 변호사'}</div>
                           </div>
                         </div>
                       </div>

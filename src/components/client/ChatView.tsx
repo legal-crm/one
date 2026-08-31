@@ -191,7 +191,7 @@ export default function ChatView({
       maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
       minorChildren: profile.dependents || 0,
       legalActions: profile.legalActions || [],
-      name: profile.name || userAlias || '의뢰인',
+      name: (profile as any).name || profile.clientName || userAlias || '의뢰인',
     };
   }, [activeRequest]);
 

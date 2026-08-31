@@ -1172,7 +1172,7 @@ export default function LawyerRole({
     const pending = {
       id: `pending-${Date.now()}`,
       reqId,
-      clientName: req.clientName || req.client_name || '고객',
+      clientName: req.clientName || (req as any).client_name || '고객',
       staffId: activeStaffMember?.id || '',
       staffName: activeStaffMember?.name || '직원',
       proposalData,
@@ -2599,7 +2599,7 @@ export default function LawyerRole({
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-slate-900 truncate">{q.question}</p>
-                            <p className="text-[11px] text-slate-400">{q.userName} · {new Date(q.createdAt).toLocaleDateString()}</p>
+                            <p className="text-[11px] text-slate-400">{(q as any).userName || q.author || '의뢰인'} · {new Date(q.createdAt).toLocaleDateString()}</p>
                           </div>
                           {q.category && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap shrink-0">{q.category}</span>
@@ -2628,7 +2628,7 @@ export default function LawyerRole({
                 {(() => {
                   const activeAds = adOrders.filter(o => o.status === 'active');
                   const monthlyAdTotal = activeAds.reduce((s, o) => s + o.monthlyPrice, 0);
-                  const currentPlan = platformPlans.find(p => p.current);
+                  const currentPlan = platformPlans[1] || platformPlans[0];
                   return (
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
@@ -2641,11 +2641,11 @@ export default function LawyerRole({
                       </div>
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
                         <div className="text-[11px] text-slate-500 font-bold mb-1">구독 요금제</div>
-                        <div className="text-sm font-black text-slate-900">{currentPlan ? currentPlan.name : '-'}</div>
+                        <div className="text-sm font-black text-slate-900">{currentPlan ? currentPlan.name : 'Pro'}</div>
                       </div>
                       <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100 text-center">
                         <div className="text-[11px] text-slate-500 font-bold mb-1">월 구독료</div>
-                        <div className="text-xl font-black text-slate-900 tabular-nums">{currentPlan ? `${(currentPlan.price / 10000).toFixed(0)}만` : '-'}</div>
+                        <div className="text-xl font-black text-slate-900 tabular-nums">{currentPlan ? currentPlan.price : '월 80만원'}</div>
                       </div>
                     </div>
                   );
@@ -3020,7 +3020,7 @@ export default function LawyerRole({
                           fp={r.financialProfile}
                           clientName={r.clientName}
                           phone={r.phone}
-                          consultType={r.consultType || r.request_type || r.requestType}
+                          consultType={(r as any).consultType || (r as any).request_type || r.requestType}
                           createdAt={r.createdAt}
                           compact
                         />
@@ -3065,7 +3065,7 @@ export default function LawyerRole({
                       <div className="px-5">
                         <RequestWorkflowPanel
                           requestId={r.id}
-                          clientName={r.clientName || r.client_name || '고객'}
+                          clientName={r.clientName || (r as any).client_name || '고객'}
                           isLawyerOrOwner={isLawyerOrOwner}
                           workflow={{
                             staffMemo: (r as any).staffMemo,
@@ -3259,7 +3259,7 @@ export default function LawyerRole({
 
                     {currentChatMessages.map(m => {
                       const isMe = m.senderId === activeLawyer.id;
-                      const isSystem = m.senderType === 'admin' || m.senderName === 'System' || m.message.startsWith('[System]');
+                      const isSystem = (m as any).senderType === 'admin' || m.senderName === 'System' || m.message.startsWith('[System]');
                       
                       if (isSystem) {
                         return (
@@ -4161,11 +4161,7 @@ export default function LawyerRole({
           </React.Suspense>
         )}
 
-        {/* TAB: cases → CRM으로 통합 리다이렉트 */}
-        {activeTab === 'cases' && (() => { setActiveTab('client-crm'); return null; })()}
 
-        {/* TAB: open-requests → CRM 신규 리드 뷰로 통합 리다이렉트 */}
-        {activeTab === 'open-requests' && (() => { setActiveTab('client-crm'); return null; })()}
 
         {/* TAB: 마이김변 문의 */}
         {activeTab === 'inquiry-to-admin' && lawyerInquiries && setLawyerInquiries && (

@@ -128,7 +128,7 @@ const SAMPLE_CLIENTS: any[] = [
 ];
 
 type CopilotTab =
-  | 'client-info' | 'court-notes';
+  | 'client-info' | 'court-notes' | 'staff-memo' | 'lawyer-opinion' | 'review-flags' | 'missing-info';
 
 const COPILOT_TABS: { key: CopilotTab; label: string; icon: React.ReactNode; requiresLawyer?: boolean; requiresOwner?: boolean }[] = [
   { key: 'client-info', label: '의뢰인 정보', icon: <FileText className="w-3.5 h-3.5" /> },
@@ -183,7 +183,7 @@ function mapToIntakeData(req: any): IntakeData | null {
     birthDate: fp.birthDate || '1985-1-1',
     consultDate: new Date().toISOString().split('T')[0],
     dbVendor: '코파일럿',
-    caseType: 'individual_rehab',
+    caseType: '개인회생',
     residence: fp.residence || fp.address || '서울특별시',
     workplace: '',
     selectedCourt: fp.selectedCourt || '서울회생법원',

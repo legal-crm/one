@@ -25,7 +25,7 @@ import TaskTicketTab from './TaskTicketTab';
 import { getContractsByClientId } from '../../services/contractService';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
-  CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog,
+  CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog, CrmActivityType,
   ConsultOutcome, NoteReminder, DropOffReason,
   DirectivePriority, AssignmentDirective,
   DocumentReviewStatus, DocumentRequest
@@ -569,6 +569,8 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
         date: reminderDate,
         type: 'deadline',
         visibility: 'personal',
+        recurrence: 'none',
+        reminder: 'at_time',
         createdBy: actor.id,
         createdByName: actor.name,
         createdByRole: actor.role as string,

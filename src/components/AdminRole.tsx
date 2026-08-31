@@ -319,6 +319,9 @@ export default function AdminRole({
   const [clientStatusFilter, setClientStatusFilter] = useState<string>('all');
   const [lawyerSearch, setLawyerSearch] = useState<string>('');
   const [lawyerApprovalFilter, setLawyerApprovalFilter] = useState<string>('all');
+  const [diagQuestions, setDiagQuestions] = useState<DiagnosisQuestion[]>(DEFAULT_DIAGNOSIS_QUESTIONS);
+  const [editingDiagIdx, setEditingDiagIdx] = useState<number | null>(null);
+  const [diagSaving, setDiagSaving] = useState<boolean>(false);
 
   // Selected entities for detail panels
   const [selectedClientId, setSelectedClientId] = useState<string>('');

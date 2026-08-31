@@ -91,6 +91,7 @@ type ChatStep =
     | 'intro'
     | 'address'
     | 'age'
+    | 'gender'
     | 'employment'
     | 'unemployed_reason'     // 무직 사유 질문 단계 (NEW)
     | 'work_location'           // NEW: 근무지역/사업지역 (관할 법원용)
@@ -3934,7 +3935,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     // 진행률 계산
     const getProgress = useCallback(() => {
         const stepOrder: Record<ChatStep, number> = {
-            'intro': 0, 'address': 5, 'age': 10, 'employment': 15,
+            'intro': 0, 'address': 5, 'age': 10, 'gender': 12, 'employment': 15,
             'unemployed_reason': 16, 'work_location': 17,
             'income_salary': 20, 'income_business': 22, 'income_confirm': 25,
             'marital_status': 30, 'spouse_income': 35, 'spouse_assets_select': 38,
@@ -3942,7 +3943,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'spouse_asset_business_deposit': 42.1, 'spouse_asset_business_premium': 42.2, 'spouse_asset_business_machinery': 42.3, 'spouse_asset_business_etc': 42.4,
             'spouse_asset_savings_loan_check': 42.5, 'spouse_asset_savings_loan_amount': 42.6, 'spouse_asset_insurance_loan_check': 42.7, 'spouse_asset_insurance_loan_amount': 42.8,
             'custody': 35, 'child_support_receive': 38,
-            'child_support_pay': 38, 'minor_children': 42, 'housing_type': 48,
+            'child_support_pay': 38, 'minor_children': 42, 'minor_children_custom': 42.5, 'client_note': 88, 'housing_type': 48,
             'rent_cost': 50, 'deposit_amount': 52, 'deposit_loan': 54,
             'deposit_loan_amount': 54.5, 'deposit_contract_holder': 55.5,
             'owned_value': 53, 'owned_mortgage': 55, 'owned_owner_type': 56,

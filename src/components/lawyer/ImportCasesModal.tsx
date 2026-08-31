@@ -175,13 +175,14 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
       Object.entries(columnMapping).forEach(([colIdxStr, fieldKey]) => {
         const colIdx = parseInt(colIdxStr, 10);
         const cellValue = row[colIdx];
+        const key = String(fieldKey);
         if (cellValue !== undefined && cellValue !== null && cellValue !== '') {
-          if (fieldKey === 'phone') {
-            caseData[fieldKey] = formatPhone(String(cellValue));
-          } else if (fieldKey === 'debtTotal' || fieldKey === 'income') {
-            caseData[fieldKey] = Number(String(cellValue).replace(/[^0-9.-]+/g,""));
+          if (key === 'phone') {
+            caseData[key] = formatPhone(String(cellValue));
+          } else if (key === 'debtTotal' || key === 'income') {
+            caseData[key] = Number(String(cellValue).replace(/[^0-9.-]+/g,""));
           } else {
-            caseData[fieldKey] = String(cellValue);
+            caseData[key] = String(cellValue);
           }
         }
       });

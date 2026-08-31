@@ -184,13 +184,13 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
               <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px', fontWeight: 'bold' }}>인가 가능성</div>
               <div style={{
                 padding: '8px 16px',
-                backgroundColor: result.status === '가능' ? '#dcfce7' : result.status === '위험' ? '#fee2e2' : '#fef9c3',
-                color: result.status === '가능' ? '#166534' : result.status === '위험' ? '#991b1b' : '#854d0e',
+                backgroundColor: result.status === 'POSSIBLE' || (result.status as any) === '가능' ? '#dcfce7' : result.status === 'IMPOSSIBLE' || (result.status as any) === '위험' ? '#fee2e2' : '#fef9c3',
+                color: result.status === 'POSSIBLE' || (result.status as any) === '가능' ? '#166534' : result.status === 'IMPOSSIBLE' || (result.status as any) === '위험' ? '#991b1b' : '#854d0e',
                 borderRadius: '20px',
                 fontWeight: 'bold',
                 fontSize: '18px'
               }}>
-                {result.status}
+                {result.status === 'POSSIBLE' ? '가능' : result.status === 'IMPOSSIBLE' ? '불가' : result.status === 'DIFFICULT' ? '보완 필요' : result.status}
               </div>
             </div>
           </div>
@@ -543,15 +543,15 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
         <SectionHeader icon="🏛️" title="V. 관할법원 분석 및 대응 가이드" />
         
         <div style={{ 
-          backgroundColor: result.status === '위험' ? '#fef2f2' : '#f8fafc', 
-          border: `1px solid ${result.status === '위험' ? '#fca5a5' : '#e2e8f0'}`,
+          backgroundColor: result.status === 'IMPOSSIBLE' || (result.status as any) === '위험' ? '#fef2f2' : '#f8fafc', 
+          border: `1px solid ${result.status === 'IMPOSSIBLE' || (result.status as any) === '위험' ? '#fca5a5' : '#e2e8f0'}`,
           borderRadius: '10px', 
           padding: '24px',
           marginBottom: '32px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <Landmark size={24} color={result.status === '위험' ? '#ef4444' : '#1e1b4b'} />
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: result.status === '위험' ? '#b91c1c' : '#1e1b4b' }}>
+            <Landmark size={24} color={result.status === 'IMPOSSIBLE' || (result.status as any) === '위험' ? '#ef4444' : '#1e1b4b'} />
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: result.status === 'IMPOSSIBLE' || (result.status as any) === '위험' ? '#b91c1c' : '#1e1b4b' }}>
               관할법원: {result.courtName}
             </div>
           </div>

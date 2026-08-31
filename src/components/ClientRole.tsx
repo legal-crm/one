@@ -1867,7 +1867,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         riskFlags,
         jobType: intakeData.incomeSources[0]?.type === 'worker' ? 'SALARIED' : 
                  intakeData.incomeSources[0]?.type === 'business' ? 'BUSINESS' : 
-                 intakeData.incomeSources[0]?.type === 'daily' || intakeData.incomeSources[0]?.type === 'worker_no_ins' ? 'DAILY' : 'FREELANCER',
+                 (intakeData.incomeSources[0]?.type as any) === 'daily' || intakeData.incomeSources[0]?.type === 'worker_no_ins' ? 'DAILY' : 'FREELANCER',
         companyName: intakeData.workplace || '',
         companyNameMasked: intakeData.workplace ? intakeData.workplace.replace(/./g, (c, i) => i > 0 && i < intakeData.workplace.length - 1 ? '*' : c) : '미기재',
         employmentDate: intakeData.consultDate,

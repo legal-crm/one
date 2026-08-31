@@ -78,7 +78,7 @@ export interface RehabUserInput {
     riskFactor?: 'none' | 'recent_loan' | 'investment' | 'gambling'; // 채무 유형
 
     // 24개월 특례 조건
-    specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly';
+    specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud';
 
     // 연락처
     name?: string;             // 고객명
@@ -505,6 +505,7 @@ export function calculateRepayment(
                         status: 'IMPOSSIBLE',
                         statusReason: '생계비를 최대 20%까지 줄여도 월 소득이 너무 적어 개인회생 진행이 불가능합니다.',
                         monthlyPayment: 0,
+                        currentMonthlyBurden: 0,
                         repaymentMonths: 0,
                         totalRepayment: 0,
                         totalDebtReduction: 0,
@@ -650,6 +651,7 @@ export function calculateRepayment(
                         status: 'IMPOSSIBLE',
                         statusReason: '60개월 최대 변제기간으로도 청산가치를 충족할 수 없어 개인회생 진행이 어렵습니다.',
                         monthlyPayment: requiredMonthly60,
+                        currentMonthlyBurden: 0,
                         repaymentMonths: 60,
                         totalRepayment: liquidationValue,
                         totalDebtReduction: input.totalDebt - liquidationValue,

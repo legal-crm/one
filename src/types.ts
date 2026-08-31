@@ -7,7 +7,11 @@ export interface Client {
 }
 
 export interface FinancialProfile {
-  clientId: string;
+  clientId?: string;
+  name?: string;
+  selectedCourt?: string;
+  workplaceCourt?: string;
+  otherDependents?: number;
   income: number;      // Monthly income in ten thousand KRW (만 원)
   debtTotal: number;   // Total debt in ten thousand KRW (만 원)
   assetsTotal: number; // Total assets in ten thousand KRW (만 원)
@@ -33,7 +37,7 @@ export interface FinancialProfile {
   hasRecentJobChange?: boolean;
   rentalDeposit?: number;
   debtCause?: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'GAMBLING' | 'OTHER';
-  harassmentLevel?: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE';
+  harassmentLevel?: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE' | 'NONE';
   creditorCount?: number;
   speculativeLoss?: number; // 1년 이내 투자 손실 (만 원 단위)
   gamblingLoss?: number;    // 1년 이내 도박 채무 (만 원 단위)
@@ -55,7 +59,7 @@ export interface FinancialProfile {
   educationCost?: number;   // 월 교육비 (만 원)
   specialEducationCost?: number; // 월 특수교육비 (만 원)
   myAssets?: number;        // 본인 재산 총액 (만 원)
-  specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly'; // 24개월 특례
+  specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud'; // 24개월 특례
   monthlyFixedExpenses?: number; // 월 고정지출 (통신비, 보험료 등)
   address?: string;         // 거주지 주소
   workLocation?: string;    // 근무지/사업장 주소
@@ -65,6 +69,9 @@ export interface FinancialProfile {
   housingType?: 'rent' | 'jeonse' | 'owned' | 'free' | 'dormitory'; // 거주 형태
   clientNote?: string;     // 의뢰인 추가 메모/특이사항 (변호사에게만 표시)
   clientNotes?: string[];   // 의뢰인 전달 사항 다중 메모 리스트
+  debts?: Array<{ creditor: string; amount: number; type: string }>; // 개별 채무 내역 리스트
+  assets?: Array<any>; // 개별 자산 목록
+  childSupportCost?: number; // 양육비 비용 (만 원 단위)
 }
 
 export type RequestType = 'direct' | 'open' | 'direct_multi';
@@ -113,7 +120,7 @@ export type DropOffReason = typeof DROP_OFF_REASONS[number];
 // ── 사건 유형 (Case Type) ──
 
 export const CASE_TYPES = ['개인회생', '파산', '새출발기금', '신용회복'] as const;
-export type CaseType = typeof CASE_TYPES[number];
+export type CaseType = typeof CASE_TYPES[number] | 'individual_rehab' | 'rehab' | 'bankruptcy' | 'workout' | 'reset';
 
 // ── 직업 유형 ──
 
@@ -745,6 +752,8 @@ export interface ConsultRequest {
   requestType: RequestType;
   maxParticipants: number;
   status: ConsultStatus;
+  assignedLawyerId?: string; // 배정된 변호사 ID
+  assigneeId?: string;       // 담당 직원/변호사 ID
   selectedLawyerId?: string; // If 'direct' — 채팅이 개시된 변호사 ID
   selectedLawyerIds?: string[]; // 의뢰인이 지정한 변호사 ID 목록 (최대 3명)
   proposals?: ConsultProposal[]; // 변호사들이 제출한 솔루션/비용 제안서 목록
@@ -1058,7 +1067,6 @@ export interface CallLog {
   Status: 'READY' | 'TO_SUMMARIZE' | 'DONE';
 }
 
-export type CaseType = string;
 export type AssetOwner = 'self' | 'spouse';
 export type AssetType = 
   | 'deposit' 
@@ -1434,6 +1442,7 @@ export interface SuccessReview {
   lawyerAvatar: string;
   content: string;
   tags: string[];
+  rating?: number;
 }
 
 export interface MainBanner {
@@ -1583,6 +1592,7 @@ export interface LawyerInquiry {
 
 export interface PlatformConfig {
   siteTitle: string;
+  companyName?: string;
   siteLogoText: string;
   siteLogoUrl?: string;
   companyAddress: string;
