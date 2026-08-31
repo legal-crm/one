@@ -1959,11 +1959,17 @@ export default function LawyerRole({
               </div>
             </div>
 
-            {/* 전역 검색 (Cmd+K) */}
-            <button onClick={() => setIsSearchOpen(true)} className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-300 hover:text-white transition-all cursor-pointer text-xs" title="전역 검색 (Ctrl+K)">
-              <Search className="w-3.5 h-3.5" />
-              <span className="font-medium">검색</span>
-              <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+            {/* 전역 검색 버튼 (자간 겹침 해결 & OS 자동 분기) */}
+            <button 
+              onClick={() => setIsSearchOpen(true)} 
+              className="hidden md:flex items-center gap-2.5 px-3.5 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-slate-200 hover:text-white transition-all cursor-pointer text-xs active:scale-95 shadow-xs" 
+              title="전역 검색 (사건, 고객, 메모)"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-300" />
+              <span className="font-semibold text-slate-200">검색</span>
+              <kbd className="ml-1 text-[11px] bg-black/30 border border-white/15 px-1.5 py-0.5 rounded-md font-mono text-slate-300 font-bold tracking-tight">
+                {typeof navigator !== 'undefined' && navigator.platform?.toLowerCase().includes('mac') ? '⌘ K' : 'Ctrl K'}
+              </kbd>
             </button>
 
             <NotificationBell
