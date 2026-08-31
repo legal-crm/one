@@ -1035,6 +1035,18 @@ export default function LawyerRole({
   const [proposalRehabInput, setProposalRehabInput] = useState<RehabUserInput | null>(null);
   const [proposalConsultRequest, setProposalConsultRequest] = useState<any>(null);
 
+  // 탭 전환 시 제안서 모달 자동 닫기 (모달이 다른 탭 위에 잔류하는 문제 방지)
+  useEffect(() => {
+    if (activeTab !== 'client-crm' && activeTab !== ('proposal-workspace' as any)) {
+      if (proposalModalReqId) {
+        setProposalModalReqId(null);
+        setProposalRehabResult(null);
+        setProposalRehabInput(null);
+        setProposalConsultRequest(null);
+      }
+    }
+  }, [activeTab]);
+
   // 솔루션 및 비용 제안 버튼 클릭 시 자동 계산 후 워크스페이스 열기
   const [previousTab, setPreviousTab] = useState<string>('client-crm');
   const handleOpenProposalDraft = (reqId: string) => {
