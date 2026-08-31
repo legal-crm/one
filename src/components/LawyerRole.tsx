@@ -27,6 +27,7 @@ import ConsultStyleProfile from './lawyer/ConsultStyleProfile';
 import TasksScheduleTab from './lawyer/TasksScheduleTab';
 import StaffManagementTab from './lawyer/StaffManagementTab';
 import LawyerQnAAnswerSection from './lawyer/LawyerQnAAnswerSection';
+import DataBackupSection from './lawyer/DataBackupSection';
 import RehabSettingsPanel from './RehabSettingsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import type { StaffMember, StaffRole as StaffRoleType, IntakeChannel, CrmStatus, AlimtokMilestone } from '../types';
@@ -4207,6 +4208,7 @@ export default function LawyerRole({
                 { key: 'channels' as const, label: '알림 채널 설정' },
                 { key: 'logs' as const, label: '알림 로그' },
                 { key: 'calc-rules' as const, label: '회생/파산 계산 기준 확인' },
+                ...(isLawyerOrOwner && staffRole === 'OWNER' ? [{ key: 'data-backup' as const, label: '🔒 데이터 백업' }] : []),
               ]).map(t => (
                 <button key={t.key} onClick={() => setSettingsSub(t.key)} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${settingsSub === t.key ? 'bg-[#1E3A5F] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                   {t.label}
@@ -5168,6 +5170,13 @@ export default function LawyerRole({
               <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-sm">
                 <RehabSettingsPanel mode="lawyer" />
               </div>
+            )}
+
+            {settingsSub === ('data-backup' as any) && (
+              <DataBackupSection
+                isOwner={staffRole === 'OWNER'}
+                lawyerName={activeLawyer.name}
+              />
             )}
 
           </div>
