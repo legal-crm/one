@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, FileText, Send, Clock, Edit3, CheckCircle2, Microscope } from 'lucide-react';
+import { 
+  ArrowLeft, FileText, Send, Clock, Edit3, CheckCircle2, 
+  Microscope, Eye, Sparkles, Settings 
+} from 'lucide-react';
 import { toast } from 'sonner';
 import type { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 import type { AIAnalysisData, ProposalData } from './LawyerProposalDraft';
 import { ClientReferencePanel } from './ClientReferencePanel';
 import LawyerProposalDraft from './LawyerProposalDraft';
-import { useProposalDraft } from '../../hooks/useProposalDraft';
-import type { ProposalDraftState } from '../../hooks/useProposalDraft';
+import { useProposalDraft, ProposalDraftState } from '../../hooks/useProposalDraft';
+import { TemplateManageModal } from './TemplateManageModal';
 
 interface ProposalWorkspaceProps {
   rehabCalcResult: RehabCalculationResult;
@@ -21,6 +24,12 @@ interface ProposalWorkspaceProps {
   pendingStaffName?: string;
   aiAnalysis?: AIAnalysisData;
   crmNotes?: Array<{ id: string; content: string; category: string; createdAt: string; authorName: string }>;
+  isAIPremiumEnabled?: boolean;
+  lawyerInfo?: {
+    name: string;
+    firmName?: string;
+    avatar?: string;
+  };
 }
 
 export default function ProposalWorkspace({
@@ -35,9 +44,13 @@ export default function ProposalWorkspace({
   onRejectProposal,
   pendingStaffName,
   aiAnalysis,
-  crmNotes
+  crmNotes,
+  isAIPremiumEnabled = false,
+  lawyerInfo
 }: ProposalWorkspaceProps) {
   const [mobileTab, setMobileTab] = useState<'info' | 'editor'>('editor');
+  const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   
   const clientId = consultRequest?.id || 'unknown';
   const clientName = rehabUserInput.name || consultRequest?.clientName || consultRequest?.financialProfile?.clientName || '고객';
@@ -88,46 +101,81 @@ export default function ProposalWorkspace({
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  const isAIPremium = !!aiAnalysis;
+  const isAIPremium = !!aiAnalysis || isAIPremiumEnabled;
 
   return (
-    <div className="h-full flex flex-col bg-white overflow-hidden">
+    <div className="h-full flex flex-col bg-white overflow-hidden font-sans">
       {/* ── Sticky Header ── */}
-      <header className="shrink-0 h-14 bg-slate-900 text-white flex items-center justify-between px-4 shadow-sm z-10">
+      <header className="shrink-0 h-14 bg-slate-900 text-white flex items-center justify-between px-4 shadow-sm z-20">
         <div className="flex items-center gap-3">
           <button 
             onClick={onClose}
-            className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-800 transition-colors active:scale-[0.98] min-h-[44px]"
+            className="flex items-center gap-1.5 p-2 rounded-xl hover:bg-slate-800 transition-colors active:scale-[0.98] min-h-[44px]"
+            title="고객 CRM 상세로 돌아가기"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="hidden lg:inline font-medium whitespace-nowrap text-sm">고객 CRM으로 돌아가기</span>
+            <ArrowLeft className="w-5 h-5 text-slate-300" />
+            <span className="hidden lg:inline font-bold whitespace-nowrap text-xs text-slate-200">고객 CRM으로 돌아가기</span>
           </button>
           
           <div className="hidden lg:block w-px h-5 bg-slate-700" />
           
           <div className="flex items-center gap-2">
-            <h1 className="font-semibold text-[15px] truncate">
-              {clientName}님 · 제안서 작성
+            <h1 className="font-extrabold text-sm sm:text-[15px] text-white truncate">
+              {clientName}님 맞춤 제안서 작성
             </h1>
             {isAIPremium && (
-              <span className="inline-flex items-center gap-1 bg-[#1E3A5F]/30 text-blue-200 text-[11px] font-bold px-2 py-0.5 rounded-lg border border-[#1E3A5F]/40">
-                <Microscope className="w-3 h-3" />
-                AI 정밀 분석
+              <span className="inline-flex items-center gap-1 bg-brand/20 text-brand-light text-[11px] font-extrabold px-2 py-0.5 rounded-lg border border-brand/30">
+                <Microscope className="w-3 h-3 text-brand" />
+                AI 사건 분석 활성
               </span>
             )}
           </div>
         </div>
 
+        {/* 중앙: 에디터 ↔ 고객 미리보기 탭 스위처 */}
+        <div className="hidden md:flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
+          <button
+            onClick={() => setViewMode('editor')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'editor' 
+                ? 'bg-brand text-white shadow-xs' 
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            제안서 작성
+          </button>
+          <button
+            onClick={() => setViewMode('preview')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'preview' 
+                ? 'bg-brand text-white shadow-xs' 
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            고객 시점 미리보기
+          </button>
+        </div>
+
         <div className="flex items-center gap-2">
           {isDirty && (
-            <span className="text-xs text-amber-300 font-medium">저장 중...</span>
+            <span className="text-[11px] text-amber-300 font-bold animate-pulse">저장 중...</span>
           )}
           {lastSavedAt && !isDirty && (
-            <div className="flex items-center gap-1.5 text-slate-400 text-xs bg-slate-800 px-2.5 py-1.5 rounded-lg">
-              <Clock className="w-3.5 h-3.5" />
-              <span>임시저장됨 {formatTime(lastSavedAt)}</span>
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700/60 font-mono">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>임시저장 {formatTime(lastSavedAt)}</span>
             </div>
           )}
+
+          <button
+            onClick={() => setIsTemplateModalOpen(true)}
+            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            title="템플릿 & 패키지 설정"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -135,20 +183,20 @@ export default function ProposalWorkspace({
       <div className="lg:hidden flex border-b border-slate-200 bg-white shrink-0">
         <button
           onClick={() => setMobileTab('info')}
-          className={`flex-1 flex justify-center items-center py-3 text-sm font-semibold border-b-2 transition-colors min-h-[44px] ${
+          className={`flex-1 flex justify-center items-center py-3 text-xs font-bold border-b-2 transition-colors min-h-[44px] ${
             mobileTab === 'info' 
-              ? 'border-[#7264FF] text-[#7264FF]' 
+              ? 'border-brand text-brand bg-brand/5' 
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileText className="w-4 h-4 mr-1.5" />
-          채무 정보
+          고객 채무 분석
         </button>
         <button
           onClick={() => setMobileTab('editor')}
-          className={`flex-1 flex justify-center items-center py-3 text-sm font-semibold border-b-2 transition-colors min-h-[44px] ${
+          className={`flex-1 flex justify-center items-center py-3 text-xs font-bold border-b-2 transition-colors min-h-[44px] ${
             mobileTab === 'editor' 
-              ? 'border-[#7264FF] text-[#7264FF]' 
+              ? 'border-brand text-brand bg-brand/5' 
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -159,7 +207,7 @@ export default function ProposalWorkspace({
 
       {/* ── Main Split-Pane Content ── */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-        {/* 좌측: 고객 참조 패널 (38%) */}
+        {/* 좌측: 고객 상황 360° 인텔리전스 패널 (38%) */}
         <div className={`
           lg:w-[38%] h-full lg:border-r border-slate-200 overflow-y-auto
           ${mobileTab === 'info' ? 'block' : 'hidden lg:block'}
@@ -170,10 +218,11 @@ export default function ProposalWorkspace({
             consultRequest={consultRequest}
             aiAnalysis={aiAnalysis}
             crmNotes={crmNotes}
+            isAIPremiumEnabled={isAIPremium}
           />
         </div>
 
-        {/* 우측: 제안서 편집 폼 (62%) */}
+        {/* 우측: 스마트 제안서 빌더 & Live Preview (62%) */}
         <div className={`
           lg:w-[62%] h-full overflow-y-auto bg-white
           ${mobileTab === 'editor' ? 'block' : 'hidden lg:block'}
@@ -193,56 +242,88 @@ export default function ProposalWorkspace({
             aiAnalysis={aiAnalysis}
             initialDraft={useDraft ? savedDraft : null}
             onDraftChange={handleDraftChange}
+            activeViewMode={viewMode}
+            onToggleViewMode={setViewMode}
+            lawyerInfo={lawyerInfo}
           />
         </div>
       </div>
 
       {/* ── Sticky Footer ── */}
-      <footer className="shrink-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.06)]">
+      <footer className="shrink-0 bg-white border-t border-slate-200 px-5 py-3 flex items-center justify-between shadow-md z-10">
         <button
           onClick={onClose}
-          className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors active:scale-[0.98] min-h-[44px] whitespace-nowrap"
+          className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors active:scale-[0.98] min-h-[44px] whitespace-nowrap"
         >
           닫기
         </button>
         
-        {viewerRole === 'lawyer' ? (
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => {
-              // LawyerProposalDraft 내부의 handleSubmit을 트리거
-              document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
-            }}
-            className="px-6 py-2.5 rounded-xl bg-[#7264FF] hover:bg-[#5f51e5] text-white font-semibold shadow-lg shadow-[#7264FF]/20 flex items-center gap-2 transition-all active:scale-[0.98] min-h-[44px] whitespace-nowrap"
+            onClick={() => setViewMode(prev => prev === 'editor' ? 'preview' : 'editor')}
+            className="hidden sm:flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors"
           >
-            <Send className="w-4.5 h-4.5" />
-            고객에게 제안서 발송
+            {viewMode === 'editor' ? (
+              <>
+                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                고객 시점 미리보기
+              </>
+            ) : (
+              <>
+                <Edit3 className="w-3.5 h-3.5 text-brand" />
+                에디터로 돌아가기
+              </>
+            )}
           </button>
-        ) : viewerRole === 'reviewer' ? (
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => {}}
-              className="px-5 py-2.5 rounded-xl font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+
+          {viewerRole === 'lawyer' ? (
+            <button
+              onClick={() => {
+                document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
+              }}
+              className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white font-extrabold text-xs shadow-md shadow-brand/20 flex items-center gap-2 transition-all active:scale-[0.98] min-h-[44px] whitespace-nowrap"
             >
-              반려
+              <Send className="w-4 h-4" />
+              고객에게 제안서 발송하기
             </button>
+          ) : viewerRole === 'reviewer' ? (
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => onRejectProposal && onRejectProposal('보완 필요')}
+                className="px-4 py-2.5 rounded-xl font-bold text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+              >
+                반려
+              </button>
+              <button 
+                onClick={() => {
+                  document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
+                }}
+                className="px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                승인 및 고객 발송
+              </button>
+            </div>
+          ) : (
             <button 
-              onClick={() => {}}
-              className="px-6 py-2.5 rounded-xl font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+              onClick={() => {
+                document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
+              }}
+              className="px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-amber-500 hover:bg-amber-600 shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
             >
-              <CheckCircle2 className="w-4.5 h-4.5" />
-              승인 및 발송
+              <FileText className="w-4 h-4" />
+              변호사 컨펌 요청
             </button>
-          </div>
-        ) : (
-          <button 
-            onClick={() => {}}
-            className="px-6 py-2.5 rounded-xl font-semibold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-          >
-            <FileText className="w-4.5 h-4.5" />
-            변호사 컨펌 요청
-          </button>
-        )}
+          )}
+        </div>
       </footer>
+
+      {/* 템플릿 관리 모달 */}
+      <TemplateManageModal
+        lawyerId={consultRequest?.selectedLawyerId || 'default'}
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+      />
     </div>
   );
 }

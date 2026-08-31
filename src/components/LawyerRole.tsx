@@ -3897,6 +3897,12 @@ export default function LawyerRole({
               handleRequestProposalConfirm(proposalModalReqId, proposalData, memo);
             }}
             aiAnalysis={undefined}
+            isAIPremiumEnabled={!!activeLawyer.aiCaseAnalysisEnabled}
+            lawyerInfo={{
+              name: activeLawyer.name,
+              firmName: activeLawyer.firmName,
+              avatar: activeLawyer.avatarData || activeLawyer.avatar
+            }}
           />
         )}
 

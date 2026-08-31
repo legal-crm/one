@@ -1,62 +1,53 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { 
-  X, 
-  Send, 
-  AlertTriangle, 
-  Calculator, 
-  MessageSquare, 
-  FileText, 
-  Plus, 
-  Trash2, 
-  CheckCircle2, 
-  Scale, 
-  Clock,
-  Microscope,
-  TrendingUp,
-  Shield,
-  Building2,
-  Eye,
-  EyeOff
+  Calculator, TrendingDown, Scale, AlertTriangle, 
+  MessageSquare, FileText, CheckCircle2, Building2, 
+  Eye, EyeOff, Plus, Trash2, Microscope, TrendingUp, 
+  Shield, Check, Clock, X, Settings, Sparkles, User,
+  Share2, ArrowRight
 } from 'lucide-react';
-import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
-import type { ReviewFlag, CourtPracticeNote } from '../../types/copilot';
-import type { MissingField, InputConflict } from '../../engines/factEngine';
+import { createPortal } from 'react-dom';
+import type { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
+import { formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
+import { useProposalTemplates, OpinionTemplate, FeePreset, QASnippet } from '../../hooks/useProposalTemplates';
+import { TemplateManageModal } from './TemplateManageModal';
 
-// ── AI 분석 데이터 타입 ──
 export interface AIAnalysisData {
   factSummary: {
+    monthlyIncome: number;
+    monthlyExpense: number;
+    disposableIncome: number;
     totalDebt: number;
     securedDebt: number;
     unsecuredDebt: number;
     taxDebt: number;
-    monthlyIncome: number;
-    monthlyExpense: number;
-    disposableIncome: number;
-    dependents: number;
-    creditorCount: number;
     assets: {
-      totalMarketValue: number;
-      totalLoanBalance: number;
+      realEstate: number;
+      vehicles: number;
+      deposit: number;
+      insurance: number;
+      other: number;
       netAssetValue: number;
-      hasRealEstate: boolean;
-      hasVehicle: boolean;
-      hasInsurance: boolean;
-      hasSeverance: boolean;
-      hasStock: boolean;
-      spouseAssetCount: number;
     };
-    recentDebts: { creditor: string; principal: number; isRecent: boolean }[];
-    delinquencyStatus: string;
-    seizureStatus: string;
-    previousHistory: boolean;
-    delinquencyMonths: number;
   };
-  riskFlags: ReviewFlag[];
-  missingFields: MissingField[];
-  conflicts: InputConflict[];
-  reviewGrade: 'NORMAL_REVIEW' | 'ENHANCED_REVIEW' | 'SECOND_REVIEW';
-  courtPracticeNotes: CourtPracticeNote[];
+  riskFlags: Array<{
+    flagType: string;
+    field: string;
+    message: string;
+    severity: 'HIGH_RISK' | 'CAUTION' | 'INFO';
+    legalBasis?: string;
+  }>;
+  missingFields: Array<{
+    field: string;
+    label: string;
+    importance: string;
+  }>;
+  conflicts: Array<{
+    description: string;
+    resolutionGuide: string;
+  }>;
+  reviewGrade?: string;
+  courtPracticeNotes?: string;
 }
 
 interface LawyerProposalDraftProps {
@@ -70,9 +61,8 @@ interface LawyerProposalDraftProps {
   onApproveProposal?: (proposalData: ProposalData) => void;
   onRejectProposal?: (reason: string) => void;
   pendingStaffName?: string;
-  aiAnalysis?: AIAnalysisData;  // AI 프리미엄 분석 데이터 (optional)
-  // ── Split-Pane 워크스페이스 지원 ──
-  mode?: 'modal' | 'embedded';  // 'modal'(기본, 기존 팝업) | 'embedded'(ProposalWorkspace 내 인라인)
+  aiAnalysis?: AIAnalysisData;
+  mode?: 'modal' | 'embedded';
   initialDraft?: {
     totalFeeStr: string;
     downPaymentStr: string;
@@ -86,19 +76,14 @@ interface LawyerProposalDraftProps {
     includeRiskReport: boolean;
     includeCourtNotes: boolean;
   } | null;
-  onDraftChange?: (draft: {
-    totalFeeStr: string;
-    downPaymentStr: string;
-    installments: number;
-    courtDepositStr: string;
-    feeMemo: string;
-    lawyerOpinion: string;
-    specialNotes: string[];
-    clientAnswers: Record<number, string>;
-    includeFinancialAnalysis: boolean;
-    includeRiskReport: boolean;
-    includeCourtNotes: boolean;
-  }) => void;
+  onDraftChange?: (draft: any) => void;
+  activeViewMode?: 'editor' | 'preview';
+  onToggleViewMode?: (mode: 'editor' | 'preview') => void;
+  lawyerInfo?: {
+    name: string;
+    firmName?: string;
+    avatar?: string;
+  };
 }
 
 export interface ProposalData {
@@ -153,47 +138,6 @@ export interface ProposalData {
 
 const fmtNum = (n: number) => n.toLocaleString('ko-KR');
 
-// ── AI 초안 의견 자동 생성 (룰 기반 템플릿) ──
-function generateAIOpinionDraft(
-  rehabResult: RehabCalculationResult,
-  aiData: AIAnalysisData
-): string {
-  const parts: string[] = [];
-
-  if (rehabResult.status === 'POSSIBLE' || rehabResult.status === '가능') {
-    parts.push('개인회생 진행이 가능한 것으로 분석됩니다.');
-  } else if (rehabResult.status === 'DIFFICULT' || rehabResult.status === '어려움') {
-    parts.push('현재 조건에서 개인회생 진행에 추가 검토가 필요합니다.');
-  } else {
-    parts.push('현재 조건으로는 개인회생 진행이 어려운 것으로 분석됩니다. 다른 채무 해결 방안을 함께 검토해 드리겠습니다.');
-  }
-
-  const disposable = aiData.factSummary.disposableIncome;
-  if (disposable > 0) {
-    parts.push(`월 가용소득은 약 ${formatCurrency(disposable)}원으로 산출되며, 변제 기간은 ${rehabResult.repaymentMonths}개월, 예상 탕감률은 ${rehabResult.debtReductionRate}%입니다.`);
-  } else {
-    parts.push('현재 소득 대비 생계비를 고려하면 가용소득이 부족한 상황입니다. 소득 증빙 방법에 따라 결과가 달라질 수 있으므로 상담 시 구체적으로 안내드리겠습니다.');
-  }
-
-  const highRisks = aiData.riskFlags.filter(f => f.flagType === 'HIGH_RISK');
-  const cautions = aiData.riskFlags.filter(f => f.flagType === 'CAUTION');
-  if (highRisks.length > 0) {
-    parts.push(`주의가 필요한 사항이 ${highRisks.length}건 확인되었습니다. 상담 시 해당 부분에 대해 자세히 안내드리겠습니다.`);
-  }
-  if (cautions.length > 0) {
-    parts.push(`참고하실 사항이 ${cautions.length}건 있으며, 절차 진행 시 미리 준비하시면 도움이 됩니다.`);
-  }
-
-  const { taxDebt } = aiData.factSummary;
-  if (taxDebt > 0) {
-    parts.push(`채무 중 조세 채무(${formatCurrency(taxDebt)}원)가 포함되어 있어 우선변제 대상으로 별도 고려됩니다.`);
-  }
-
-  parts.push('구체적인 상담을 위해 최근 3개월 급여명세서, 채무 관련 서류, 재산 목록 등을 준비해 주시면 보다 정확한 안내가 가능합니다.');
-
-  return parts.join('\n\n');
-}
-
 const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   rehabCalcResult,
   rehabUserInput,
@@ -208,12 +152,26 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   aiAnalysis,
   mode = 'modal',
   initialDraft,
-  onDraftChange
+  onDraftChange,
+  activeViewMode = 'editor',
+  onToggleViewMode,
+  lawyerInfo
 }) => {
   const clientName = rehabUserInput.name || consultRequest?.clientName || consultRequest?.financialProfile?.clientName || '고객';
   const isAIPremium = !!aiAnalysis;
+  const isEmbedded = mode === 'embedded';
 
-  // ── AI 프리미엄 섹션 의뢰인 공개 토글 (복원 가능) ──
+  // 템플릿 관리 훅
+  const { 
+    opinionTemplates, 
+    feePresets, 
+    qaSnippets 
+  } = useProposalTemplates(consultRequest?.selectedLawyerId || 'default');
+
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [templateModalDefaultTab, setTemplateModalDefaultTab] = useState<'opinion' | 'fee' | 'qa'>('opinion');
+
+  // ── AI 프리미엄 섹션 의뢰인 공개 토글 ──
   const [includeFinancialAnalysis, setIncludeFinancialAnalysis] = useState(initialDraft?.includeFinancialAnalysis ?? true);
   const [includeRiskReport, setIncludeRiskReport] = useState(initialDraft?.includeRiskReport ?? true);
   const [includeCourtNotes, setIncludeCourtNotes] = useState(initialDraft?.includeCourtNotes ?? true);
@@ -237,12 +195,6 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       notes.push(`진행 중인 법적 조치: ${(rehabCalcResult as any).legalActions.join(', ')}`);
     }
     
-    // 청산가치 보장 주의 (if liquidation value is close to total repayment)
-    const totalRepayment = rehabCalcResult.monthlyPayment * rehabCalcResult.repaymentMonths;
-    if (rehabUserInput.totalAssets && rehabUserInput.totalAssets > totalRepayment * 0.8) {
-      notes.push('청산가치 보장 주의 (재산 가치가 총 변제금과 비슷하거나 높음)');
-    }
-
     // AI 프리미엄: 위험 플래그 자동 병합
     if (aiAnalysis) {
       aiAnalysis.riskFlags.forEach(flag => {
@@ -260,42 +212,32 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   const [newNote, setNewNote] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
 
-  // Section 3: Fees State (복원 가능)
-  const [totalFeeStr, setTotalFeeStr] = useState(initialDraft?.totalFeeStr ?? '');
-  const [downPaymentStr, setDownPaymentStr] = useState(initialDraft?.downPaymentStr ?? '');
+  // Section 3: Fees State
+  const [totalFeeStr, setTotalFeeStr] = useState(initialDraft?.totalFeeStr ?? '1500000');
+  const [downPaymentStr, setDownPaymentStr] = useState(initialDraft?.downPaymentStr ?? '300000');
   const [installments, setInstallments] = useState<number>(initialDraft?.installments ?? 5);
   const [courtDepositStr, setCourtDepositStr] = useState(initialDraft?.courtDepositStr ?? '300000');
-  const [feeMemo, setFeeMemo] = useState(initialDraft?.feeMemo ?? '');
+  const [feeMemo, setFeeMemo] = useState(initialDraft?.feeMemo ?? '착수금 결제 후 매월 분납 가능 (송달료 포함)');
 
   const totalFee = parseInt(totalFeeStr.replace(/,/g, ''), 10) || 0;
   const downPayment = parseInt(downPaymentStr.replace(/,/g, ''), 10) || 0;
   const courtDeposit = parseInt(courtDepositStr.replace(/,/g, ''), 10) || 0;
-  const monthlyInstallment = Math.max(0, Math.floor((totalFee - downPayment) / installments));
+  const monthlyInstallment = installments > 0 ? Math.max(0, Math.floor((totalFee - downPayment) / installments)) : 0;
 
   const handleCurrencyInput = (value: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
     const numOnly = value.replace(/[^0-9]/g, '');
-    if (numOnly) {
-      setter(fmtNum(parseInt(numOnly, 10)));
-    } else {
-      setter('');
-    }
+    setter(numOnly ? fmtNum(parseInt(numOnly, 10)) : '');
   };
 
-  // Section 4: Lawyer Opinion (AI 프리미엄: 초안 자동 생성)
-  const aiDraftOpinion = useMemo(() => {
+  // Section 4: Lawyer Opinion
+  const defaultOpinion = useMemo(() => {
     if (aiAnalysis) {
-      return generateAIOpinionDraft(rehabCalcResult, aiAnalysis);
+      return `개인회생 진행이 가능한 것으로 분석됩니다.\n\n월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}원으로 산출되며, 예상 변제 기간은 ${rehabCalcResult.repaymentMonths}개월, 총 감면율은 약 ${rehabCalcResult.debtReductionRate}%입니다.\n\n상세한 변제계획 수립 및 금지명령 신청을 신속히 진행해 드리겠습니다.`;
     }
-    return '';
+    return `개인회생 신청 적격 대상자로 분석됩니다.\n\n의뢰인님의 소득과 생계비를 종합 고려하여 월 최저 변제금(${formatCurrency(rehabCalcResult.monthlyPayment)}원)으로 인가받을 수 있도록 최적의 변제계획안을 수립하겠습니다.\n\n접수 즉시 금지명령을 통해 모든 채권 추심과 압류를 중단시켜 드리겠습니다.`;
   }, [aiAnalysis, rehabCalcResult]);
-  const [lawyerOpinion, setLawyerOpinion] = useState(initialDraft?.lawyerOpinion ?? aiDraftOpinion);
 
-  // AI 초안이 로드되면 의견이 비어있을 때만 자동 채우기
-  useEffect(() => {
-    if (aiDraftOpinion && !lawyerOpinion) {
-      setLawyerOpinion(aiDraftOpinion);
-    }
-  }, [aiDraftOpinion]);
+  const [lawyerOpinion, setLawyerOpinion] = useState(initialDraft?.lawyerOpinion ?? defaultOpinion);
 
   // Section 5: Client Q&A
   const clientQuestions = useMemo(() => {
@@ -306,34 +248,30 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
         if (typeof note === 'string' && note.trim()) questions.push(note);
       });
     }
-    const singleNote = consultRequest?.financialProfile?.clientNote;
-    if (typeof singleNote === 'string' && singleNote.trim()) {
+    const singleNote = consultRequest?.financialProfile?.clientNote || consultRequest?.content;
+    if (typeof singleNote === 'string' && singleNote.trim() && !questions.includes(singleNote)) {
       questions.push(singleNote);
     }
-    // Remove duplicates
     return Array.from(new Set(questions));
   }, [consultRequest]);
 
   const [clientAnswers, setClientAnswers] = useState<Record<number, string>>(initialDraft?.clientAnswers ?? {});
 
-  // Staff confirmation memo state
-  const [showStaffMemo, setShowStaffMemo] = useState(false);
-  const [staffMemo, setStaffMemo] = useState('');
-  // Reviewer rejection state
-  const [showRejectInput, setShowRejectInput] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  // Draft 변경 알림 (자동 임시저장)
+  useEffect(() => {
+    if (mode === 'embedded' && onDraftChange) {
+      onDraftChange({
+        totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo,
+        lawyerOpinion, specialNotes, clientAnswers,
+        includeFinancialAnalysis, includeRiskReport, includeCourtNotes,
+      });
+    }
+  }, [mode, totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo, lawyerOpinion, specialNotes, clientAnswers, includeFinancialAnalysis, includeRiskReport, includeCourtNotes, onDraftChange]);
 
   // Derived Summary Values
   const totalDebt = rehabUserInput.totalDebt || 0;
   const totalRepayment = rehabCalcResult.monthlyPayment * rehabCalcResult.repaymentMonths;
   const estimatedReduction = Math.max(0, totalDebt - totalRepayment);
-  
-  const getStatusInfo = (status: string) => {
-    if (status === 'POSSIBLE' || status === '가능') return { color: 'text-green-600 bg-green-50 border-green-200', label: '진행 가능' };
-    if (status === 'DIFFICULT' || status === '어려움') return { color: 'text-amber-600 bg-amber-50 border-amber-200', label: '진행 어려움' };
-    return { color: 'text-red-600 bg-red-50 border-red-200', label: '진행 불가' };
-  };
-  const statusInfo = getStatusInfo(rehabCalcResult.status);
 
   const getProposalData = (): ProposalData => ({
     diagnosis: {
@@ -345,7 +283,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       estimatedReduction: estimatedReduction,
       status: rehabCalcResult.status,
       statusReason: rehabCalcResult.statusReason,
-      court: (rehabCalcResult as any).court || '관할 법원 미정'
+      court: (rehabCalcResult as any).court || '서울회생법원'
     },
     specialNotes,
     fees: {
@@ -369,11 +307,8 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
           unsecured: aiAnalysis.factSummary.unsecuredDebt,
           tax: aiAnalysis.factSummary.taxDebt,
         },
-        riskFlags: aiAnalysis.riskFlags.map(f => ({
-          type: f.flagType,
-          message: f.message,
-        })),
-        reviewGrade: aiAnalysis.reviewGrade,
+        riskFlags: aiAnalysis.riskFlags.map(f => ({ type: f.flagType, message: f.message })),
+        reviewGrade: aiAnalysis.reviewGrade || 'NORMAL_REVIEW',
         financialSummary: {
           monthlyIncome: aiAnalysis.factSummary.monthlyIncome,
           monthlyExpense: aiAnalysis.factSummary.monthlyExpense,
@@ -387,8 +322,40 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
     } : {})
   });
 
-  const handleSubmit = () => {
-    onSendProposal(getProposalData());
+  // External Submit listener
+  useEffect(() => {
+    if (!isEmbedded) return;
+    const handleExternalSubmit = () => {
+      onSendProposal(getProposalData());
+    };
+    document.addEventListener('proposal-workspace-submit', handleExternalSubmit);
+    return () => document.removeEventListener('proposal-workspace-submit', handleExternalSubmit);
+  }, [isEmbedded, onSendProposal]);
+
+  // 템플릿 원클릭 적용 핸들러
+  const handleApplyTemplate = (tpl: OpinionTemplate) => {
+    setLawyerOpinion(tpl.content);
+    if (tpl.recommendedNotes && tpl.recommendedNotes.length > 0) {
+      const merged = Array.from(new Set([...specialNotes, ...tpl.recommendedNotes]));
+      setSpecialNotes(merged);
+    }
+  };
+
+  // 수임료 패키지 원클릭 적용 핸들러
+  const handleApplyFeePreset = (preset: FeePreset) => {
+    setTotalFeeStr(fmtNum(preset.totalFee));
+    setDownPaymentStr(fmtNum(preset.downPayment));
+    setInstallments(preset.installments);
+    setCourtDepositStr(fmtNum(preset.courtDeposit));
+    if (preset.memo) setFeeMemo(preset.memo);
+  };
+
+  // Q&A 빠른 답변 스니펫 적용 핸들러
+  const handleApplyQASnippet = (questionIdx: number, snippet: QASnippet) => {
+    setClientAnswers(prev => ({
+      ...prev,
+      [questionIdx]: snippet.answer
+    }));
   };
 
   const handleAddNote = () => {
@@ -399,653 +366,506 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
     }
   };
 
-  // ── Draft 변경 알림 (자동 임시저장용) ──
-  useEffect(() => {
-    if (mode === 'embedded' && onDraftChange) {
-      onDraftChange({
-        totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo,
-        lawyerOpinion, specialNotes, clientAnswers,
-        includeFinancialAnalysis, includeRiskReport, includeCourtNotes,
-      });
-    }
-  }, [mode, totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo, lawyerOpinion, specialNotes, clientAnswers, includeFinancialAnalysis, includeRiskReport, includeCourtNotes]);
-
-  // ── 공유 콘텐츠 섹션 (Embedded/Modal 양쪽에서 재사용) ──
-  const isEmbedded = mode === 'embedded';
-
-  // handleSubmit을 ProposalWorkspace footer에서 트리거할 수 있도록 이벤트 리스너 등록
-  useEffect(() => {
-    if (!isEmbedded) return;
-    const handleExternalSubmit = () => {
-      onSendProposal(getProposalData());
-    };
-    document.addEventListener('proposal-workspace-submit', handleExternalSubmit);
-    return () => document.removeEventListener('proposal-workspace-submit', handleExternalSubmit);
-  }, [isEmbedded, onSendProposal, getProposalData]);
-
-  const modalContent = (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
-          <div>
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <FileText className="w-6 h-6 text-[#7264FF]" />
-              {viewerRole === 'reviewer' ? '제안서 컨펌 요청' : '고객 제안서 초안'}
-              {isAIPremium && (
-                <span className="ml-1 inline-flex items-center gap-1 bg-[#1E3A5F]/10 text-[#1E3A5F] text-xs font-bold px-2.5 py-1 rounded-lg border border-[#1E3A5F]/20">
-                  <Microscope className="w-3.5 h-3.5" />
-                  AI 정밀 분석
-                </span>
-              )}
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {clientName}님 · 개인회생 진단 결과
-              {viewerRole === 'reviewer' && pendingStaffName && (
-                <span className="ml-2 inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-lg">📋 작성: {pendingStaffName}</span>
-              )}
-            </p>
-          </div>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors active:scale-[0.98]"
-          >
-            <X className="w-6 h-6 text-slate-500" />
-          </button>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+  // ═════════════════════════════════════════════════════════════════════
+  // VIEW: 1. 실시간 고객 시점 미리보기 렌더링 (Live Preview Card)
+  // ═════════════════════════════════════════════════════════════════════
+  if (activeViewMode === 'preview') {
+    return (
+      <div className="h-full bg-slate-100 p-6 overflow-y-auto flex flex-col items-center">
+        <div className="max-w-xl w-full space-y-4 animate-fadeIn">
           
-          {/* Section 1: Diagnosis Summary */}
-          <section className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100">
-            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <Calculator className="w-5 h-5 text-slate-600" />
-              진단 요약
-            </h3>
-            
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="bg-gradient-to-br from-[#7264FF]/5 to-[#7264FF]/10 rounded-xl p-4 border border-[#7264FF]/10">
-                <div className="text-xs text-[#7264FF] font-medium mb-1">예상 월 변제금</div>
-                <div className="text-lg font-bold text-slate-800">{formatCurrency(rehabCalcResult.monthlyPayment)}원</div>
-              </div>
-              <div className="bg-gradient-to-br from-[#7264FF]/5 to-[#7264FF]/10 rounded-xl p-4 border border-[#7264FF]/10">
-                <div className="text-xs text-[#7264FF] font-medium mb-1">변제 기간</div>
-                <div className="text-lg font-bold text-slate-800">{rehabCalcResult.repaymentMonths}개월</div>
-              </div>
-              <div className="bg-gradient-to-br from-[#7264FF]/5 to-[#7264FF]/10 rounded-xl p-4 border border-[#7264FF]/10">
-                <div className="text-xs text-[#7264FF] font-medium mb-1">예상 탕감률</div>
-                <div className="text-lg font-bold text-slate-800">{rehabCalcResult.debtReductionRate}%</div>
-              </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center justify-between text-xs text-blue-900 shadow-xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-brand shrink-0" />
+              <span className="font-bold">고객 수신 화면 실시간 미리보기</span>
             </div>
+            <span className="text-[11px] text-blue-600 bg-white px-2 py-0.5 rounded-md font-medium border border-blue-100">
+              고객용 제안서 비교 카드 템플릿
+            </span>
+          </div>
 
-            {/* AI 프리미엄: 채무 구조 분석 바 */}
-            {isAIPremium && aiAnalysis && (() => {
-              const { securedDebt, unsecuredDebt, taxDebt } = aiAnalysis.factSummary;
-              const debtTotal = securedDebt + unsecuredDebt + taxDebt;
-              if (debtTotal <= 0) return null;
-              const secPct = Math.round((securedDebt / debtTotal) * 100);
-              const unsecPct = Math.round((unsecuredDebt / debtTotal) * 100);
-              const taxPct = 100 - secPct - unsecPct;
-              return (
-                <div className="mb-5 bg-white rounded-xl border border-slate-200 p-4">
-                  <div className="text-xs font-semibold text-slate-600 mb-2.5 flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
-                    채무 구조 분석
-                  </div>
-                  <div className="flex rounded-lg overflow-hidden h-5 mb-2.5">
-                    {unsecPct > 0 && (
-                      <div className="bg-[#7264FF] flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${unsecPct}%` }}>
-                        {unsecPct > 10 ? `${unsecPct}%` : ''}
-                      </div>
-                    )}
-                    {secPct > 0 && (
-                      <div className="bg-sky-500 flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${secPct}%` }}>
-                        {secPct > 10 ? `${secPct}%` : ''}
-                      </div>
-                    )}
-                    {taxPct > 0 && (
-                      <div className="bg-amber-500 flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${taxPct}%` }}>
-                        {taxPct > 10 ? `${taxPct}%` : ''}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-4 text-xs">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#7264FF]" /> 무담보 {formatCurrency(unsecuredDebt)}원</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-sky-500" /> 담보 {formatCurrency(securedDebt)}원</span>
-                    {taxDebt > 0 && <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" /> 조세 {formatCurrency(taxDebt)}원</span>}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-sm">
-              <div className="flex border-b border-slate-100">
-                <div className="w-1/3 bg-slate-50 p-3 text-slate-500 font-medium border-r border-slate-100">총 채무액</div>
-                <div className="w-2/3 p-3 text-slate-800 font-semibold">{formatCurrency(totalDebt)}원</div>
-              </div>
-              <div className="flex border-b border-slate-100">
-                <div className="w-1/3 bg-slate-50 p-3 text-slate-500 font-medium border-r border-slate-100">예상 총 변제금</div>
-                <div className="w-2/3 p-3 text-slate-800">{formatCurrency(totalRepayment)}원</div>
-              </div>
-              <div className="flex border-b border-slate-100">
-                <div className="w-1/3 bg-slate-50 p-3 text-slate-500 font-medium border-r border-slate-100">예상 탕감액</div>
-                <div className="w-2/3 p-3 text-[#7264FF] font-bold">{formatCurrency(estimatedReduction)}원</div>
-              </div>
-              <div className="flex border-b border-slate-100">
-                <div className="w-1/3 bg-slate-50 p-3 text-slate-500 font-medium border-r border-slate-100">진행 가능성</div>
-                <div className="w-2/3 p-3">
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${statusInfo.color}`}>
-                    {statusInfo.label}
-                  </span>
-                  {rehabCalcResult.statusReason && (
-                    <p className="mt-1.5 text-xs text-slate-500">{rehabCalcResult.statusReason}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex">
-                <div className="w-1/3 bg-slate-50 p-3 text-slate-500 font-medium border-r border-slate-100">적용 관할 법원</div>
-                <div className="w-2/3 p-3 text-slate-700">{(rehabCalcResult as any).court || '관할 법원 미정'}</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 2: Special Notes */}
-          <section className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-slate-600" />
-                진행 특이사항
-              </h3>
-            </div>
-            
-            <div className="space-y-2">
-              {specialNotes.map((note, idx) => (
-                <div key={idx} className="flex items-start gap-2 bg-amber-50/50 border border-amber-200 rounded-xl p-3">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                  <span className="text-sm text-slate-700 flex-1 leading-relaxed">{note}</span>
-                  <button 
-                    onClick={() => setSpecialNotes(specialNotes.filter((_, i) => i !== idx))}
-                    className="p-1 hover:bg-amber-100 rounded-lg transition-colors shrink-0 text-amber-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              
-              {isAddingNote ? (
-                <div className="flex items-center gap-2 mt-2">
-                  <input
-                    type="text"
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                    placeholder="특이사항을 입력하세요..."
-                    className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none"
-                    autoFocus
-                  />
-                  <button 
-                    onClick={handleAddNote}
-                    className="px-4 py-2 bg-[#7264FF] text-white rounded-xl text-sm font-medium hover:bg-[#5f51e5] active:scale-[0.98] whitespace-nowrap"
-                  >
-                    추가
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setIsAddingNote(false);
-                      setNewNote('');
-                    }}
-                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 active:scale-[0.98] whitespace-nowrap"
-                  >
-                    취소
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setIsAddingNote(true)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-[#7264FF] p-2 rounded-lg transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  특이사항 추가
-                </button>
-              )}
-            </div>
-          </section>
-
-          {/* Section 3: Fees Structure */}
-          <section className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100">
-            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <Scale className="w-5 h-5 text-slate-600" />
-              예상 수임료 및 분납 조건
-            </h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">총 수임료</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    value={totalFeeStr}
-                    onChange={(e) => handleCurrencyInput(e.target.value, setTotalFeeStr)}
-                    placeholder="수임료 입력"
-                    className="w-full rounded-xl border border-slate-200 pl-3 pr-8 py-2.5 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">원</span>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">법원 예납금</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    value={courtDepositStr}
-                    onChange={(e) => handleCurrencyInput(e.target.value, setCourtDepositStr)}
-                    className="w-full rounded-xl border border-slate-200 pl-3 pr-8 py-2.5 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">원</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">착수금</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    value={downPaymentStr}
-                    onChange={(e) => handleCurrencyInput(e.target.value, setDownPaymentStr)}
-                    placeholder="착수금 입력"
-                    className="w-full rounded-xl border border-slate-200 pl-3 pr-8 py-2.5 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">원</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">분납 횟수</label>
-                <select 
-                  value={installments}
-                  onChange={(e) => setInstallments(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none bg-white"
-                >
-                  <option value={3}>3회 분납</option>
-                  <option value={5}>5회 분납</option>
-                  <option value={8}>8회 분납</option>
-                  <option value={10}>10회 분납</option>
-                  <option value={12}>12회 분납</option>
-                </select>
-              </div>
-
-              <div className="col-span-2 bg-slate-100/50 rounded-xl p-4 border border-slate-200 flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-500" />
-                  월 분납금 (예상)
-                </span>
-                <span className="text-lg font-bold text-[#7264FF]">
-                  {totalFee > 0 ? formatCurrency(monthlyInstallment) : '0'}원
-                </span>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">수임료 안내 메모 (선택)</label>
-                <textarea 
-                  value={feeMemo}
-                  onChange={(e) => setFeeMemo(e.target.value)}
-                  placeholder="추가 비용 발생 가능성 등 고객에게 안내할 내용을 메모하세요."
-                  className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none resize-none min-h-[80px]"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Section 4: Lawyer Opinion */}
-          <section className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100">
-            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-slate-600" />
-              변호사 의견
-              {isAIPremium && lawyerOpinion === aiDraftOpinion && (
-                <span className="text-xs font-medium text-[#1E3A5F]/70 bg-[#1E3A5F]/8 px-2 py-0.5 rounded-lg border border-[#1E3A5F]/15">
-                  AI 초안 · 수정 가능
-                </span>
-              )}
-            </h3>
-            
-            <div className="relative">
-              <textarea 
-                value={lawyerOpinion}
-                onChange={(e) => setLawyerOpinion(e.target.value)}
-                placeholder="고객에게 전달할 종합 의견을 작성해주세요. (예: 회생 진행 시 예상 소요 기간, 주의사항, 필요 서류 등)"
-                className="w-full rounded-xl border border-slate-200 p-4 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none resize-y min-h-[120px] pb-8"
-              />
-              <div className="absolute bottom-3 right-3 text-xs text-slate-400 font-medium">
-                {lawyerOpinion.length}자
-              </div>
-            </div>
-            {isAIPremium && lawyerOpinion !== aiDraftOpinion && aiDraftOpinion && (
-              <button
-                onClick={() => setLawyerOpinion(aiDraftOpinion)}
-                className="mt-2 text-xs text-[#1E3A5F] hover:text-[#1E3A5F]/80 font-medium flex items-center gap-1 transition-colors"
-              >
-                <Microscope className="w-3 h-3" />
-                AI 초안으로 되돌리기
-              </button>
-            )}
-          </section>
-
-          {/* Section 5: Client Q&A */}
-          <section className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100">
-            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-slate-600" />
-              고객 질문 및 답변
-            </h3>
-            
-            {clientQuestions.length === 0 ? (
-              <div className="text-center py-8 bg-white rounded-xl border border-dashed border-slate-200">
-                <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-slate-700">고객이 남긴 추가 질문이 없습니다</p>
-                <p className="text-xs text-slate-500 mt-1">상담 요청 시 고객이 메모를 남기지 않았습니다</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {clientQuestions.map((question, idx) => (
-                  <div key={idx} className="space-y-3">
-                    {/* Question Bubble */}
-                    <div className="flex flex-col items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5 ml-1">
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        고객 메모
-                      </span>
-                      <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-700 shadow-sm max-w-[90%]">
-                        {question}
-                      </div>
-                    </div>
-                    
-                    {/* Answer Input */}
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-xs font-bold text-[#7264FF] flex items-center gap-1.5 mr-1">
-                        <FileText className="w-3.5 h-3.5" />
-                        변호사 답변
-                      </span>
-                      <textarea
-                        value={clientAnswers[idx] || ''}
-                        onChange={(e) => setClientAnswers({...clientAnswers, [idx]: e.target.value})}
-                        placeholder="이 질문에 대한 답변을 작성해주세요..."
-                        className="w-full bg-[#7264FF]/5 border border-[#7264FF]/20 rounded-2xl rounded-tr-sm p-4 text-sm focus:ring-2 focus:ring-[#7264FF]/30 focus:border-[#7264FF] outline-none min-h-[100px] resize-y"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* ══════════════════════════════════════════════════ */}
-          {/* AI 프리미엄 전용 섹션 (토글 가능) */}
-          {/* ══════════════════════════════════════════════════ */}
-          {isAIPremium && aiAnalysis && (
-            <>
-              {/* Section 6: AI 재무 분석 카드 */}
-              <section className="bg-[#1E3A5F]/[0.03] rounded-2xl p-5 border border-[#1E3A5F]/10">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-[#1E3A5F]" />
-                    AI 재무 분석
-                  </h3>
-                  <button
-                    onClick={() => setIncludeFinancialAnalysis(!includeFinancialAnalysis)}
-                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all active:scale-[0.98] ${
-                      includeFinancialAnalysis
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-slate-100 text-slate-500 border-slate-200'
-                    }`}
-                  >
-                    {includeFinancialAnalysis ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                    {includeFinancialAnalysis ? '의뢰인 공개' : '내부 전용'}
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-white rounded-xl p-3.5 border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium mb-1">월 소득</div>
-                    <div className="text-base font-bold text-slate-800">{formatCurrency(aiAnalysis.factSummary.monthlyIncome)}원</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-3.5 border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium mb-1">월 생계비</div>
-                    <div className="text-base font-bold text-slate-800">{formatCurrency(aiAnalysis.factSummary.monthlyExpense)}원</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-3.5 border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium mb-1">월 가용소득</div>
-                    <div className={`text-base font-bold ${aiAnalysis.factSummary.disposableIncome > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {formatCurrency(aiAnalysis.factSummary.disposableIncome)}원
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-xl p-3.5 border border-slate-200">
-                    <div className="text-xs text-slate-500 font-medium mb-1">순자산 가치</div>
-                    <div className="text-base font-bold text-slate-800">{formatCurrency(aiAnalysis.factSummary.assets.netAssetValue)}원</div>
-                  </div>
-                </div>
-
-                {aiAnalysis.factSummary.disposableIncome > 0 ? (
-                  <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 font-medium">
-                    ✅ 가용소득이 양호하여 변제 계획 수립이 가능합니다.
-                  </div>
+          {/* 실제 고객이 보게 될 제안서 카드 규격 */}
+          <div className="bg-white border-2 border-brand rounded-3xl p-6 shadow-lg space-y-5">
+            {/* 상단 변호사 정보 */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                {lawyerInfo?.avatar ? (
+                  <img src={lawyerInfo.avatar} alt="변호사" className="w-12 h-12 rounded-full object-cover border border-slate-200" />
                 ) : (
-                  <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">
-                    ⚠️ 가용소득이 부족합니다. 소득 증빙 방법 또는 생계비 조정을 검토해 주세요.
+                  <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center font-black text-lg">
+                    {lawyerInfo?.name?.charAt(0) || '변'}
                   </div>
                 )}
-              </section>
-
-              {/* Section 7: AI 위험 요인 보고 */}
-              {aiAnalysis.riskFlags.length > 0 && (
-                <section className="bg-[#1E3A5F]/[0.03] rounded-2xl p-5 border border-[#1E3A5F]/10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-[#1E3A5F]" />
-                      AI 위험 요인 분석
-                      <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
-                        {aiAnalysis.riskFlags.length}건
-                      </span>
-                    </h3>
-                    <button
-                      onClick={() => setIncludeRiskReport(!includeRiskReport)}
-                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all active:scale-[0.98] ${
-                        includeRiskReport
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-100 text-slate-500 border-slate-200'
-                      }`}
-                    >
-                      {includeRiskReport ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                      {includeRiskReport ? '의뢰인 공개' : '내부 전용'}
-                    </button>
+                <div>
+                  <div className="text-xs font-bold text-slate-400">{lawyerInfo?.firmName || '도산전문 법률사무소'}</div>
+                  <div className="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
+                    {lawyerInfo?.name || '담당 변호사'}
+                    <span className="text-[10px] bg-brand text-white px-2 py-0.5 rounded-full font-bold">인증 변호사</span>
                   </div>
+                </div>
+              </div>
 
-                  {/* 검토 등급 */}
-                  <div className="mb-3">
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
-                      aiAnalysis.reviewGrade === 'SECOND_REVIEW' ? 'bg-red-50 text-red-700 border-red-200' :
-                      aiAnalysis.reviewGrade === 'ENHANCED_REVIEW' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                      'bg-green-50 text-green-700 border-green-200'
-                    }`}>
-                      {aiAnalysis.reviewGrade === 'SECOND_REVIEW' ? '🔴 정밀 검토 필요' :
-                       aiAnalysis.reviewGrade === 'ENHANCED_REVIEW' ? '🟡 강화 검토' :
-                       '🟢 일반 검토'}
+              {isAIPremium && (
+                <div className="bg-[#1E3A5F] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs">
+                  <Microscope className="w-3 h-3 text-blue-300" />
+                  AI 정밀 분석 인증
+                </div>
+              )}
+            </div>
+
+            {/* 핵심 수치 매트릭스 2x2 */}
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <div>
+                <span className="text-xs text-slate-500 font-medium">예상 월 변제금</span>
+                <div className="text-lg font-black text-slate-900 font-mono mt-0.5">
+                  {formatCurrency(rehabCalcResult.monthlyPayment)}원
+                </div>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 font-medium">예상 탕감률</span>
+                <div className="text-lg font-black text-brand font-mono mt-0.5">
+                  약 {rehabCalcResult.debtReductionRate}% 탕감
+                </div>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60">
+                <span className="text-xs text-slate-500 font-medium">변제 기간</span>
+                <div className="text-sm font-bold text-slate-800 font-mono mt-0.5">
+                  {rehabCalcResult.repaymentMonths}개월 (24M~36M)
+                </div>
+              </div>
+              <div className="pt-2 border-t border-slate-200/60">
+                <span className="text-xs text-slate-500 font-medium">총 탕감 예상액</span>
+                <div className="text-sm font-bold text-emerald-600 font-mono mt-0.5">
+                  약 {formatCurrency(estimatedReduction)}원
+                </div>
+              </div>
+            </div>
+
+            {/* 수임료 및 분납 조건 박스 */}
+            <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-indigo-950">총 수임료</span>
+                <span className="text-base font-extrabold text-indigo-900 font-mono">{formatCurrency(totalFee)}원</span>
+              </div>
+              <div className="flex justify-between items-center text-xs text-slate-600">
+                <span>착수금 / 분납 조건</span>
+                <span className="font-bold text-brand font-mono">
+                  착수금 {formatCurrency(downPayment)}원 + 월 {formatCurrency(monthlyInstallment)}원 ({installments}회 분납)
+                </span>
+              </div>
+              {feeMemo && (
+                <div className="text-[11px] text-slate-500 bg-white/80 p-2 rounded-lg border border-indigo-100">
+                  💬 {feeMemo}
+                </div>
+              )}
+            </div>
+
+            {/* 변호사 의견 */}
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-brand" />
+                변호사 솔루션 및 의견
+              </span>
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                {lawyerOpinion || '작성된 소견이 없습니다.'}
+              </div>
+            </div>
+
+            {/* 진행 특이사항 칩 */}
+            {specialNotes.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-xs font-bold text-slate-700">핵심 진행 특이사항</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {specialNotes.map((note, i) => (
+                    <span key={i} className="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg font-medium">
+                      • {note}
                     </span>
-                  </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                  <div className="space-y-2">
-                    {aiAnalysis.riskFlags.map((flag, idx) => {
-                      const colorClass = flag.flagType === 'HIGH_RISK'
-                        ? 'bg-red-50 border-red-200 text-red-800'
-                        : flag.flagType === 'CAUTION'
-                        ? 'bg-amber-50 border-amber-200 text-amber-800'
-                        : 'bg-blue-50 border-blue-200 text-blue-800';
-                      const label = flag.flagType === 'HIGH_RISK' ? '고위험'
-                        : flag.flagType === 'CAUTION' ? '주의'
-                        : '확인';
-                      return (
-                        <div key={idx} className={`flex items-start gap-2 rounded-xl p-3 border ${colorClass}`}>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 mt-0.5 ${colorClass}`}>
-                            {label}
-                          </span>
-                          <span className="text-sm leading-relaxed">{flag.message}</span>
-                        </div>
-                      );
-                    })}
+            {/* Q&A 답변 */}
+            {clientQuestions.length > 0 && Object.keys(clientAnswers).length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <span className="text-xs font-bold text-slate-700">의뢰인 질문에 대한 1:1 답변</span>
+                {clientQuestions.map((q, idx) => clientAnswers[idx] ? (
+                  <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 text-xs space-y-1">
+                    <div className="font-bold text-slate-600">Q. {q}</div>
+                    <div className="text-brand font-medium">A. {clientAnswers[idx]}</div>
                   </div>
-                </section>
-              )}
+                ) : null)}
+              </div>
+            )}
 
-              {/* Section 8: 관할법원 참고사항 */}
-              {aiAnalysis.courtPracticeNotes.length > 0 && (
-                <section className="bg-[#1E3A5F]/[0.03] rounded-2xl p-5 border border-[#1E3A5F]/10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-[#1E3A5F]" />
-                      관할법원 참고사항
-                    </h3>
-                    <button
-                      onClick={() => setIncludeCourtNotes(!includeCourtNotes)}
-                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all active:scale-[0.98] ${
-                        includeCourtNotes
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-100 text-slate-500 border-slate-200'
-                      }`}
-                    >
-                      {includeCourtNotes ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                      {includeCourtNotes ? '의뢰인 공개' : '내부 전용'}
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {aiAnalysis.courtPracticeNotes.map((note, idx) => (
-                      <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
-                        <div className="font-semibold text-sm text-slate-800">{note.courtName}</div>
-                        {note.generalCorrectionRequirements && (
-                          <p className="text-xs text-slate-600"><span className="font-bold text-slate-700">보정 요구:</span> {note.generalCorrectionRequirements}</p>
-                        )}
-                        {note.documentNotes && (
-                          <p className="text-xs text-slate-600"><span className="font-bold text-slate-700">서류 참고:</span> {note.documentNotes}</p>
-                        )}
-                        {note.recentChanges && (
-                          <p className="text-xs text-slate-600"><span className="font-bold text-slate-700">최근 변경:</span> {note.recentChanges}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </>
-          )}
-
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 bg-white shrink-0 flex items-center justify-between">
-          <button 
-            onClick={onClose}
-            className="px-6 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-          >
-            닫기
-          </button>
-          
-          {viewerRole === 'lawyer' ? (
-            <button 
-              onClick={handleSubmit}
-              className="px-8 py-3 rounded-xl font-semibold text-white bg-[#7264FF] hover:bg-[#5f51e5] shadow-lg shadow-[#7264FF]/20 flex items-center gap-2 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-            >
-              <Send className="w-5 h-5" />
-              고객에게 제안서 발송
+            {/* 하단 고객 수락 버튼 모의 */}
+            <button disabled className="w-full py-3.5 bg-brand text-white font-extrabold text-sm rounded-xl shadow-md cursor-not-allowed opacity-90">
+              💬 이 제안서로 1:1 상담 시작하기 (고객 선택 버튼)
             </button>
-          ) : viewerRole === 'reviewer' ? (
-            <div className="flex items-center gap-2">
-              {showRejectInput ? (
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="text"
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder="반려 사유 입력..."
-                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-red-500/30 focus:border-red-500 outline-none w-52"
-                    autoFocus
-                  />
-                  <button 
-                    onClick={() => { onRejectProposal && onRejectProposal(rejectReason); }}
-                    disabled={!rejectReason.trim()}
-                    className="px-5 py-3 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-                  >
-                    반려
-                  </button>
-                  <button onClick={() => setShowRejectInput(false)} className="px-3 py-3 rounded-xl text-slate-400 hover:text-slate-600">
-                    취소
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button 
-                    onClick={() => setShowRejectInput(true)}
-                    className="px-5 py-3 rounded-xl font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-                  >
-                    반려
-                  </button>
-                  <button 
-                    onClick={() => onApproveProposal && onApproveProposal(getProposalData())}
-                    className="px-6 py-3 rounded-xl font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-                  >
-                    <CheckCircle2 className="w-5 h-5" />
-                    승인 및 발송
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              {showStaffMemo ? (
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="text"
-                    value={staffMemo}
-                    onChange={(e) => setStaffMemo(e.target.value)}
-                    placeholder="컨펌 요청 메모..."
-                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none w-48"
-                  />
-                  <button 
-                    onClick={() => onRequestConfirm && onRequestConfirm(getProposalData(), staffMemo)}
-                    className="px-6 py-3 rounded-xl font-semibold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-                  >
-                    요청하기
-                  </button>
-                </div>
-              ) : (
-                <button 
-                  onClick={() => setShowStaffMemo(true)}
-                  className="px-8 py-3 rounded-xl font-semibold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
-                >
-                  📋 변호사 컨펌 요청
-                </button>
-              )}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
-    </div>
-  );
-
-  // ── Embedded 모드: Portal 없이 Content Area만 인라인 렌더링 ──
-  if (isEmbedded) {
-    // modalContent 구조: <div overlay><div card>[Header, ContentArea, Footer]</div></div>
-    const cardElement = modalContent.props.children as React.ReactElement;
-    const cardChildren = React.Children.toArray(cardElement.props.children);
-    // cardChildren[0]=Header, [1]=ContentArea, [2]=Footer
-    return (
-      <div className="flex flex-col h-full">
-        {cardChildren[1]}
       </div>
     );
   }
 
-  return createPortal(modalContent, document.body);
+  // ═════════════════════════════════════════════════════════════════════
+  // VIEW: 2. 고속 제안서 빌더 & 스마트 템플릿 에디터 렌더링
+  // ═════════════════════════════════════════════════════════════════════
+  return (
+    <div className="h-full bg-white flex flex-col overflow-y-auto">
+      
+      {/* ── 1. 스마트 템플릿 툴바 (최상단 고정/원클릭 바) ── */}
+      <div className="sticky top-0 z-10 bg-slate-900 text-white p-3.5 shadow-md flex items-center justify-between gap-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+          <span className="text-xs font-bold text-brand flex items-center gap-1 shrink-0">
+            <Sparkles className="w-3.5 h-3.5" />
+            1초 템플릿:
+          </span>
+          {opinionTemplates.map(tpl => (
+            <button
+              key={tpl.id}
+              onClick={() => handleApplyTemplate(tpl)}
+              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-brand hover:text-white border border-slate-700 text-slate-200 transition-all active:scale-[0.98] whitespace-nowrap"
+              title={tpl.title}
+            >
+              💡 {tpl.title}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => {
+            setTemplateModalDefaultTab('opinion');
+            setIsTemplateModalOpen(true);
+          }}
+          className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors shrink-0"
+        >
+          <Settings className="w-3 h-3" />
+          템플릿 관리
+        </button>
+      </div>
+
+      <div className="p-6 space-y-6 flex-1">
+        
+        {/* ── 2. 슬림형 진단 요약 스트립 (중복 제거) ── */}
+        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-4 text-xs">
+            <div>
+              <span className="text-slate-400 block text-[10px]">진단 월 변제금</span>
+              <span className="font-mono font-extrabold text-slate-800 text-sm">{formatCurrency(rehabCalcResult.monthlyPayment)}원</span>
+            </div>
+            <div className="w-px h-6 bg-slate-200" />
+            <div>
+              <span className="text-slate-400 block text-[10px]">변제 기간</span>
+              <span className="font-mono font-bold text-slate-800 text-sm">{rehabCalcResult.repaymentMonths}개월</span>
+            </div>
+            <div className="w-px h-6 bg-slate-200" />
+            <div>
+              <span className="text-slate-400 block text-[10px]">예상 탕감률</span>
+              <span className="font-mono font-extrabold text-brand text-sm">약 {rehabCalcResult.debtReductionRate}%</span>
+            </div>
+          </div>
+
+          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+            rehabCalcResult.status === 'POSSIBLE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+          }`}>
+            {rehabCalcResult.status === 'POSSIBLE' ? '✓ 개인회생 신청 적격' : '⚠️ 보완 필요 대상'}
+          </span>
+        </div>
+
+        {/* ── 3. 수임료 및 분납 조건 (원클릭 패키지 지원) ── */}
+        <section className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Scale className="w-4 h-4 text-brand" />
+              예상 수임료 및 분납 패키지
+            </h3>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-400">퀵 프리셋:</span>
+              {feePresets.map(preset => (
+                <button
+                  key={preset.id}
+                  onClick={() => handleApplyFeePreset(preset)}
+                  className="text-[11px] font-bold px-2 py-1 rounded-lg bg-indigo-50 hover:bg-brand hover:text-white text-indigo-700 border border-indigo-100 transition-all active:scale-[0.98]"
+                >
+                  ⚡ {preset.label.split('(')[0].trim()}
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  setTemplateModalDefaultTab('fee');
+                  setIsTemplateModalOpen(true);
+                }}
+                className="text-slate-400 hover:text-slate-700 p-1"
+                title="수임료 패키지 설정"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">총 수임료 (원)</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={totalFeeStr}
+                  onChange={(e) => handleCurrencyInput(e.target.value, setTotalFeeStr)}
+                  placeholder="1,500,000"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand/30 outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">착수금 (원)</label>
+              <input 
+                type="text" 
+                value={downPaymentStr}
+                onChange={(e) => handleCurrencyInput(e.target.value, setDownPaymentStr)}
+                placeholder="300,000"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand/30 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">분납 횟수</label>
+              <select 
+                value={installments}
+                onChange={(e) => setInstallments(Number(e.target.value))}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-brand/30 outline-none bg-white"
+              >
+                {[1, 2, 3, 4, 5, 6, 8, 10, 12].map(n => (
+                  <option key={n} value={n}>{n === 1 ? '일시납' : `${n}회 분납`}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">법원 예납금 (원)</label>
+              <input 
+                type="text" 
+                value={courtDepositStr}
+                onChange={(e) => handleCurrencyInput(e.target.value, setCourtDepositStr)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono text-slate-700 focus:ring-2 focus:ring-brand/30 outline-none"
+              />
+            </div>
+          </div>
+
+          {/* 계산 결과 안내 바 */}
+          <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100 flex items-center justify-between text-xs">
+            <span className="font-bold text-indigo-950 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-brand" />
+              예상 월 분납액: <span className="text-brand font-mono text-sm ml-1 font-extrabold">{formatCurrency(monthlyInstallment)}원 / 월</span>
+            </span>
+            <span className="text-[11px] text-indigo-800">
+              (총 {formatCurrency(totalFee)}원 - 착수금 {formatCurrency(downPayment)}원 ÷ {installments}회)
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-600 mb-1">수임료 안내 메모 (고객 전달)</label>
+            <input 
+              type="text"
+              value={feeMemo}
+              onChange={(e) => setFeeMemo(e.target.value)}
+              placeholder="예: 착수금 30만원 결제 후 매월 분납 가능 (송달료/인지대 포함 패키지)"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:ring-2 focus:ring-brand/30 outline-none"
+            />
+          </div>
+        </section>
+
+        {/* ── 4. 변호사 종합 소견 (템플릿 삽입 / AI 연동) ── */}
+        <section className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-brand" />
+              변호사 종합 소견
+              {isAIPremium && (
+                <span className="text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                  AI 어시스턴트 지원
+                </span>
+              )}
+            </h3>
+
+            <span className="text-[11px] text-slate-400 font-mono">{lawyerOpinion.length}자</span>
+          </div>
+
+          <textarea 
+            value={lawyerOpinion}
+            onChange={(e) => setLawyerOpinion(e.target.value)}
+            placeholder="고객에게 전달할 솔루션과 소견을 작성하세요."
+            rows={5}
+            className="w-full rounded-xl border border-slate-200 p-3.5 text-xs text-slate-800 focus:ring-2 focus:ring-brand/30 outline-none resize-y leading-relaxed font-sans"
+          />
+        </section>
+
+        {/* ── 5. 진행 특이사항 ── */}
+        <section className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              진행 특이사항 (주의점 및 소명 포인트)
+            </h3>
+          </div>
+
+          <div className="space-y-2">
+            {specialNotes.map((note, idx) => (
+              <div key={idx} className="flex items-center justify-between bg-amber-50/70 border border-amber-200/80 rounded-xl px-3 py-2 text-xs text-amber-950">
+                <span className="font-medium">• {note}</span>
+                <button 
+                  onClick={() => setSpecialNotes(specialNotes.filter((_, i) => i !== idx))}
+                  className="text-amber-600 hover:text-rose-600 p-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+
+            {isAddingNote ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="특이사항 입력"
+                  className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-brand/30"
+                  autoFocus
+                />
+                <button onClick={handleAddNote} className="px-3 py-1.5 bg-brand text-white rounded-xl text-xs font-bold">추가</button>
+                <button onClick={() => setIsAddingNote(false)} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-xs">취소</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAddingNote(true)}
+                className="text-xs font-bold text-brand hover:text-brand-hover flex items-center gap-1 py-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                특이사항 항목 직접 추가
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* ── 6. 의뢰인 질문 & 1:1 맞춤 답변 (스마트 스니펫 연동) ── */}
+        <section className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-brand" />
+              의뢰인 질문에 대한 1:1 답변
+            </h3>
+
+            <button
+              onClick={() => {
+                setTemplateModalDefaultTab('qa');
+                setIsTemplateModalOpen(true);
+              }}
+              className="text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1"
+            >
+              <Settings className="w-3 h-3" />
+              Q&A 스니펫 설정
+            </button>
+          </div>
+
+          {clientQuestions.length === 0 ? (
+            <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-400">
+              고객이 남긴 추가 질문이 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {clientQuestions.map((q, idx) => (
+                <div key={idx} className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5">
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-xs text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                      고객 사연/질문
+                    </span>
+                    <p className="text-xs text-slate-800 font-medium leading-relaxed">{q}</p>
+                  </div>
+
+                  {/* 빠른 답변 스니펫 추천 바 */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[10px] font-bold text-slate-400">빠른 답변 삽입:</span>
+                    {qaSnippets.map(snip => (
+                      <button
+                        key={snip.id}
+                        onClick={() => handleApplyQASnippet(idx, snip)}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded bg-white hover:bg-brand hover:text-white text-slate-700 border border-slate-200 transition-all"
+                      >
+                        💬 {snip.keyword}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    value={clientAnswers[idx] || ''}
+                    onChange={(e) => setClientAnswers({ ...clientAnswers, [idx]: e.target.value })}
+                    placeholder="이 사연/질문에 대한 변호사 답변을 입력하세요."
+                    rows={3}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand/30 resize-none leading-relaxed"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── 7. AI 프리미엄 전용 리포트 동봉 설정 ── */}
+        {isAIPremium && aiAnalysis && (
+          <section className="bg-gradient-to-br from-[#1E3A5F]/5 to-transparent rounded-2xl p-5 border border-[#1E3A5F]/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[#1E3A5F] flex items-center gap-2">
+                <Microscope className="w-4 h-4" />
+                AI 정밀 분석 리포트 동봉 설정
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <label className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:bg-slate-50">
+                <span className="text-xs font-bold text-slate-800">재무 수지 분석표</span>
+                <input 
+                  type="checkbox" 
+                  checked={includeFinancialAnalysis} 
+                  onChange={e => setIncludeFinancialAnalysis(e.target.checked)}
+                  className="rounded text-brand focus:ring-brand"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:bg-slate-50">
+                <span className="text-xs font-bold text-slate-800">위험 요인 진단서</span>
+                <input 
+                  type="checkbox" 
+                  checked={includeRiskReport} 
+                  onChange={e => setIncludeRiskReport(e.target.checked)}
+                  className="rounded text-brand focus:ring-brand"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:bg-slate-50">
+                <span className="text-xs font-bold text-slate-800">관할 법원 실무 팁</span>
+                <input 
+                  type="checkbox" 
+                  checked={includeCourtNotes} 
+                  onChange={e => setIncludeCourtNotes(e.target.checked)}
+                  className="rounded text-brand focus:ring-brand"
+                />
+              </label>
+            </div>
+          </section>
+        )}
+
+      </div>
+
+      {/* 템플릿 & 수임료 관리 모달 */}
+      <TemplateManageModal
+        lawyerId={consultRequest?.selectedLawyerId || 'default'}
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        defaultTab={templateModalDefaultTab}
+      />
+    </div>
+  );
 };
 
 export default LawyerProposalDraft;
