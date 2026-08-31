@@ -109,6 +109,7 @@ BEGIN
     'client_inquiries','lawyer_inquiries','platform_config','popup_config',
     'matching_config','rehab_policy_settings','client_memos','notification_channel_settings'
   ]) LOOP
-    EXECUTE format('CREATE POLICY IF NOT EXISTS "allow_anon_all_%s" ON %I FOR ALL TO anon USING (true) WITH CHECK (true)', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "allow_anon_all_%s" ON %I', tbl, tbl);
+    EXECUTE format('CREATE POLICY "allow_anon_all_%s" ON %I FOR ALL TO anon USING (true) WITH CHECK (true)', tbl, tbl);
   END LOOP;
 END $$;

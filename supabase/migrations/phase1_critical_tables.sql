@@ -203,6 +203,7 @@ BEGIN
     'activity_logs','staff_activities','custom_roles','copilot_cases',
     'copilot_rulesets','alimtok_logs','fee_notification_settings'
   ]) LOOP
-    EXECUTE format('CREATE POLICY IF NOT EXISTS "allow_anon_all_%s" ON %I FOR ALL TO anon USING (true) WITH CHECK (true)', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "allow_anon_all_%s" ON %I', tbl, tbl);
+    EXECUTE format('CREATE POLICY "allow_anon_all_%s" ON %I FOR ALL TO anon USING (true) WITH CHECK (true)', tbl, tbl);
   END LOOP;
 END $$;
