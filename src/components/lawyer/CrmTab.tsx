@@ -3009,7 +3009,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               .filter(r => !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id))
               .map((r, idx) => {
                 const fp = r.financialProfile;
-                const debtRatio = (fp.debtTotal / (fp.income * 12)).toFixed(1);
+                const assets = fp.assetsTotal ?? fp.myAssets ?? 0;
                 return (
                   <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col">
                     {/* 카드 헤더 */}
@@ -3036,7 +3036,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mt-0.5">{r.content}</p>
                       </div>
 
-                      {/* 핵심 재무 요약 */}
+                      {/* 핵심 재무 요약 (총채무 / 월소득 / 자산) */}
                       <div className="grid grid-cols-3 gap-2">
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
                           <div className="text-[10px] text-slate-500">총채무</div>
@@ -3044,11 +3044,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         </div>
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
                           <div className="text-[10px] text-slate-500">월소득</div>
-                          <div className="text-sm font-black text-slate-900">{fp.income}<span className="text-[10px] font-medium">만</span></div>
+                          <div className="text-sm font-black text-slate-900">{fp.income.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
                         </div>
                         <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <div className="text-[10px] text-slate-500">DTI</div>
-                          <div className={`text-sm font-black ${Number(debtRatio) > 20 ? 'text-rose-600' : 'text-slate-900'}`}>{debtRatio}<span className="text-[10px] font-medium">배</span></div>
+                          <div className="text-[10px] text-slate-500">자산</div>
+                          <div className="text-sm font-black text-slate-900">{assets.toLocaleString()}<span className="text-[10px] font-medium">만</span></div>
                         </div>
                       </div>
 

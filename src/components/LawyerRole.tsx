@@ -2488,7 +2488,7 @@ export default function LawyerRole({
                   .filter(r => r.status === 'requested' && isRelevantRequest(r))
                   .slice(0, 3)
                   .map((r, idx) => {
-                    const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12 || 1)).toFixed(1);
+                    const assets = r.financialProfile.assetsTotal ?? r.financialProfile.myAssets ?? 0;
                     return (
                     <button
                       key={r.id}
@@ -2519,7 +2519,7 @@ export default function LawyerRole({
                         <span className={`text-[10px] whitespace-nowrap shrink-0 ${Date.now() - new Date(r.createdAt).getTime() < 48 * 60 * 60 * 1000 ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>{new Date(r.createdAt).toLocaleDateString()}</span>
                       </div>
 
-                      {/* 핵심 지표 3열 (고대비 모던 박스) */}
+                      {/* 핵심 지표 3열 (채무 / 월소득 / 자산) */}
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="bg-white rounded-lg py-2 px-1 border border-slate-200/60 shadow-xs">
                           <div className="text-[10px] text-slate-400 font-medium">채무</div>
@@ -2527,11 +2527,11 @@ export default function LawyerRole({
                         </div>
                         <div className="bg-white rounded-lg py-2 px-1 border border-slate-200/60 shadow-xs">
                           <div className="text-[10px] text-slate-400 font-medium">월소득</div>
-                          <div className="text-xs font-bold text-slate-700">{r.financialProfile.income}만</div>
+                          <div className="text-xs font-bold text-slate-700">{r.financialProfile.income.toLocaleString()}만</div>
                         </div>
                         <div className="bg-white rounded-lg py-2 px-1 border border-slate-200/60 shadow-xs">
-                          <div className="text-[10px] text-slate-400 font-medium">부채비율</div>
-                          <div className={`text-xs font-black ${parseFloat(debtRatio) > 3 ? 'text-rose-600' : 'text-slate-900'}`}>{debtRatio}배</div>
+                          <div className="text-[10px] text-slate-400 font-medium">자산</div>
+                          <div className="text-xs font-bold text-slate-700">{assets.toLocaleString()}만</div>
                         </div>
                       </div>
 
@@ -2952,7 +2952,6 @@ export default function LawyerRole({
                 .filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id))
                 .filter(r => !dismissedReqIds.has(r.id))
                 .map((r, idx) => {
-                  const debtRatio = (r.financialProfile.debtTotal / (r.financialProfile.income * 12)).toFixed(1);
                   return (
                     <div key={r.id} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between">
 
