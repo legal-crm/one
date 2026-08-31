@@ -2280,7 +2280,11 @@ export default function LawyerRole({
           </aside>
 
           {/* ── Main Content Area ── */}
-          <main className={`flex-1 overflow-y-auto bg-[#F8FAFC] px-4 lg:px-8 py-6 ${sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'} pb-20 lg:pb-8 transition-all duration-200`}>
+          <main className={`flex-1 ${
+            (activeTab as string) === 'proposal-workspace' 
+              ? 'h-[calc(100vh-4rem)] overflow-hidden p-0' 
+              : 'overflow-y-auto bg-[#F8FAFC] px-4 lg:px-8 py-6 pb-20 lg:pb-8'
+          } ${sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'} transition-all duration-200`}>
 
           {/* ── Mobile Bottom Tab Bar ── */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around shadow-lg">

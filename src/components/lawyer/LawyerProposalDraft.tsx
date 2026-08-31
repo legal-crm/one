@@ -512,7 +512,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // VIEW: 2. 고속 제안서 빌더 & 스마트 템플릿 에디터 렌더링
   // ═════════════════════════════════════════════════════════════════════
   return (
-    <div className="h-full bg-white flex flex-col overflow-y-auto">
+    <div className="w-full h-full bg-white flex flex-col overflow-y-auto pb-24 scroll-smooth">
       
       {/* ── 1. 스마트 템플릿 툴바 (최상단 고정/원클릭 바) ── */}
       <div className="sticky top-0 z-10 bg-slate-900 text-white p-3.5 shadow-md flex items-center justify-between gap-3 shrink-0 flex-wrap">

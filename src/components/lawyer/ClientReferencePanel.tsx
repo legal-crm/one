@@ -230,7 +230,7 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
   const recentPct = Math.round((recentLoans / totalDebtMan) * 100);
 
   return (
-    <div className="w-full h-full bg-slate-50/60 overflow-y-auto pb-16 flex flex-col font-sans text-left">
+    <div className="w-full h-full bg-slate-50/60 overflow-y-auto pb-24 flex flex-col font-sans text-left scroll-smooth">
       
       {/* ── 1. 고객 프로필 & 3대 핵심 KPI 헤더 (Sticky Top) ── */}
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md p-4 border-b border-slate-200 shadow-xs space-y-3">

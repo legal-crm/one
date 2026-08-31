@@ -205,11 +205,11 @@ export default function ProposalWorkspace({
         </button>
       </div>
 
-      {/* ── Main Split-Pane Content ── */}
-      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-        {/* 좌측: 고객 상황 360° 인텔리전스 패널 (38%) */}
+      {/* ── Main Split-Pane Content (독립 듀얼 스크롤) ── */}
+      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0 bg-slate-100">
+        {/* 좌측: 고객 상황 360° 인텔리전스 패널 (40% 폭, 독립 스크롤) */}
         <div className={`
-          lg:w-[38%] h-full lg:border-r border-slate-200 overflow-y-auto
+          lg:w-[40%] h-full min-h-0 lg:border-r border-slate-200 overflow-hidden flex flex-col bg-slate-50
           ${mobileTab === 'info' ? 'block' : 'hidden lg:block'}
         `}>
           <ClientReferencePanel 
@@ -222,9 +222,9 @@ export default function ProposalWorkspace({
           />
         </div>
 
-        {/* 우측: 스마트 제안서 빌더 & Live Preview (62%) */}
+        {/* 우측: 스마트 제안서 빌더 & Live Preview (60% 폭, 독립 스크롤) */}
         <div className={`
-          lg:w-[62%] h-full overflow-y-auto bg-white
+          lg:w-[60%] h-full min-h-0 overflow-hidden flex flex-col bg-white
           ${mobileTab === 'editor' ? 'block' : 'hidden lg:block'}
         `}>
           <LawyerProposalDraft 
