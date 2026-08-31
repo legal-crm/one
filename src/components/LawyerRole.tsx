@@ -1155,8 +1155,18 @@ export default function LawyerRole({
     supervisingLawyerId: string;
     memo: string;
     createdAt: string;
-  }>>([]);
+  }>>(() => {
+    try {
+      const stored = localStorage.getItem('legal_crm_pending_proposals');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
   const [reviewModalProposal, setReviewModalProposal] = useState<typeof pendingProposals[0] | null>(null);
+
+  // pendingProposals를 localStorage에 영속화 (브라우저 새로고침 시 유지)
+  useEffect(() => {
+    localStorage.setItem('legal_crm_pending_proposals', JSON.stringify(pendingProposals));
+  }, [pendingProposals]);
 
   const staffRole = activeStaffMember?.role || 'OWNER';
   const isLawyerOrOwner = staffRole === 'OWNER' || staffRole === 'LAWYER';

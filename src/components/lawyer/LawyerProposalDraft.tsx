@@ -4,7 +4,7 @@ import {
   MessageSquare, FileText, CheckCircle2, Building2, 
   Eye, EyeOff, Plus, Trash2, Microscope, TrendingUp, 
   Shield, Check, Clock, X, Settings, Sparkles, User,
-  Share2, ArrowRight
+  Share2, ArrowRight, Send
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
@@ -885,6 +885,53 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
         )}
 
       </div>
+
+      {/* ── 모달 모드 전용 액션 푸터 (워크스페이스 미사용 시) ── */}
+      {!isEmbedded && (
+        <footer className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 flex items-center justify-between gap-3">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors active:scale-[0.98] min-h-[44px] whitespace-nowrap"
+          >
+            닫기
+          </button>
+          <div className="flex items-center gap-2">
+            {viewerRole === 'lawyer' ? (
+              <button
+                onClick={() => onSendProposal(getProposalData())}
+                className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white font-extrabold text-xs shadow-md shadow-brand/20 flex items-center gap-2 transition-all active:scale-[0.98] min-h-[44px] whitespace-nowrap"
+              >
+                <Send className="w-4 h-4" />
+                고객에게 제안서 발송하기
+              </button>
+            ) : viewerRole === 'reviewer' ? (
+              <>
+                <button
+                  onClick={() => onRejectProposal && onRejectProposal('보완 필요')}
+                  className="px-4 py-2.5 rounded-xl font-bold text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+                >
+                  반려
+                </button>
+                <button
+                  onClick={() => onApproveProposal && onApproveProposal(getProposalData())}
+                  className="px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  승인 및 고객 발송
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => onRequestConfirm && onRequestConfirm(getProposalData(), '')}
+                className="px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-amber-500 hover:bg-amber-600 shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all active:scale-[0.98] whitespace-nowrap min-h-[44px]"
+              >
+                <FileText className="w-4 h-4" />
+                변호사 컨펌 요청
+              </button>
+            )}
+          </div>
+        </footer>
+      )}
 
       {/* 템플릿 & 수임료 관리 모달 */}
       <TemplateManageModal
