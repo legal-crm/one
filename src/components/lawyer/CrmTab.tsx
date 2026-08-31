@@ -1748,9 +1748,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       label: '전자계약', 
                       icon: '📝', 
                       count: (() => {
-                        const cList = getContractsByClientId(selectedId);
-                        if (!cList.length) return null;
-                        return cList[0].status === 'completed' ? '체결' : '진행중';
+                        try {
+                          const cList = JSON.parse(localStorage.getItem('electronic_contracts') || '[]').filter((c: any) => c.clientId === selectedId);
+                          if (!cList.length) return null;
+                          return cList[0].status === 'completed' ? '체결' : '진행중';
+                        } catch { return null; }
                       })() 
                     },
                     { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },

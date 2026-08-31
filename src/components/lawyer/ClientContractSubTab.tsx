@@ -39,8 +39,8 @@ export default function ClientContractSubTab({
   const [previewDoc, setPreviewDoc] = useState<ContractDocument | null>(null);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
 
-  const loadClientContracts = () => {
-    const list = getContractsByClientId(client.id);
+  const loadClientContracts = async () => {
+    const list = await getContractsByClientId(client.id);
     setContracts(list);
     if (list.length > 0 && !activeContractId) {
       setActiveContractId(list[0].id);

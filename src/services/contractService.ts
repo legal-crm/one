@@ -1,42 +1,123 @@
 // ============================================================
 // 전자 계약 서비스
-// localStorage 기반 CRUD + 법원비용 자동산출 + 분납 생성
+// Supabase 우선 + localStorage 폴백 하이브리드 동기화
 // ============================================================
 
 import type { ElectronicContract, ContractDocument, ContractDocType, ContractStatus, FeeInstallment } from '../types';
 import { CONTRACT_DOC_TYPES } from '../types';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
 
 const STORAGE_KEY = 'electronic_contracts';
 
+function logSupabaseError(op: string, error: any) {
+  console.error(`[Contract] ${op} 실패:`, error?.message || error);
+}
+
+function contractToRow(c: ElectronicContract) {
+  return {
+    id: c.id,
+    client_id: c.clientId || '',
+    client_name: c.clientName || '',
+    client_phone: c.clientPhone || '',
+    client_address: c.clientAddress || '',
+    lawyer_name: c.lawyerName || '',
+    law_firm_name: c.lawFirmName || '',
+    assigned_lawyer_id: c.assignedLawyerId || null,
+    total_fee: c.totalFee || 0,
+    court_costs: c.courtCosts || 0,
+    fee_schedule: c.feeSchedule || [],
+    status: c.status || 'draft',
+    contract_date: c.contractDate || null,
+    documents: c.documents || [],
+    audit_trail: c.auditTrail || [],
+    created_at: c.createdAt || new Date().toISOString(),
+    updated_at: c.updatedAt || new Date().toISOString(),
+  };
+}
+
+function rowToContract(row: any): ElectronicContract {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    clientName: row.client_name,
+    clientPhone: row.client_phone,
+    clientAddress: row.client_address,
+    lawyerName: row.lawyer_name,
+    lawFirmName: row.law_firm_name,
+    assignedLawyerId: row.assigned_lawyer_id,
+    totalFee: row.total_fee,
+    courtCosts: row.court_costs,
+    feeSchedule: row.fee_schedule || [],
+    status: row.status,
+    contractDate: row.contract_date,
+    documents: row.documents || [],
+    auditTrail: row.audit_trail || [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 // ── CRUD ──
 
-export function loadContracts(): ElectronicContract[] {
+export async function loadContracts(): Promise<ElectronicContract[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('electronic_contracts').select('*').order('created_at', { ascending: false });
+      if (error) logSupabaseError('loadContracts', error);
+      else if (data) return data.map(rowToContract);
+    } catch (e) { logSupabaseError('loadContracts (exception)', e); }
+  }
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
   catch { return []; }
 }
 
-export function saveContracts(contracts: ElectronicContract[]): void {
+export async function saveContracts(contracts: ElectronicContract[]): Promise<void> {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+  if (isSupabaseConfigured && contracts.length > 0) {
+    try {
+      const { error } = await supabase.from('electronic_contracts').upsert(contracts.map(contractToRow), { onConflict: 'id' });
+      if (error) logSupabaseError('saveContracts', error);
+    } catch (e) { logSupabaseError('saveContracts (exception)', e); }
+  }
 }
 
-export function getContract(id: string): ElectronicContract | undefined {
-  return loadContracts().find(c => c.id === id);
+export async function getContract(id: string): Promise<ElectronicContract | undefined> {
+  const contracts = await loadContracts();
+  return contracts.find(c => c.id === id);
 }
 
-export function getContractsByClientId(clientId: string): ElectronicContract[] {
-  return loadContracts().filter(c => c.clientId === clientId);
+export async function getContractsByClientId(clientId: string): Promise<ElectronicContract[]> {
+  const contracts = await loadContracts();
+  return contracts.filter(c => c.clientId === clientId);
 }
 
-export function saveContract(contract: ElectronicContract): void {
-  const contracts = loadContracts();
-  const idx = contracts.findIndex(c => c.id === contract.id);
-  if (idx >= 0) contracts[idx] = contract;
-  else contracts.unshift(contract);
-  saveContracts(contracts);
+export async function saveContract(contract: ElectronicContract): Promise<void> {
+  // localStorage
+  const localContracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const idx = localContracts.findIndex((c: any) => c.id === contract.id);
+  if (idx >= 0) localContracts[idx] = contract;
+  else localContracts.unshift(contract);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(localContracts));
+  
+  // Supabase
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('electronic_contracts').upsert(contractToRow(contract), { onConflict: 'id' });
+      if (error) logSupabaseError('saveContract', error);
+    } catch (e) { logSupabaseError('saveContract (exception)', e); }
+  }
 }
 
-export function deleteContract(id: string): void {
-  saveContracts(loadContracts().filter(c => c.id !== id));
+export async function deleteContract(id: string): Promise<void> {
+  const contracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts.filter((c: any) => c.id !== id)));
+  
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('electronic_contracts').delete().eq('id', id);
+      if (error) logSupabaseError('deleteContract', error);
+    } catch (e) { logSupabaseError('deleteContract (exception)', e); }
+  }
 }
 
 // ── 새 계약 생성 ──
@@ -54,7 +135,8 @@ export function createContract(data: {
   feeSchedule?: FeeInstallment[];
 }): ElectronicContract {
   const now = new Date().toISOString();
-  const id = `EC-${new Date().getFullYear()}-${String(loadContracts().length + 1).padStart(4, '0')}`;
+  const localContracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const id = `EC-${new Date().getFullYear()}-${String(localContracts.length + 1).padStart(4, '0')}`;
 
   // 기본 문서 세트 생성
   const documents = createDefaultDocuments(data.clientName, data.clientPhone, data.lawyerName, data.lawFirmName);
@@ -276,7 +358,8 @@ export function updateContractStatus(contract: ElectronicContract, status: Contr
 // ── Mock 데이터 ──
 
 export function seedMockContracts(): void {
-  if (loadContracts().length > 0) return;
+  const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  if (existing.length > 0) return;
   const mockData = [
     { id: 'EC-2026-0001', clientName: '김철수', clientPhone: '010-1234-5678', status: 'completed' as ContractStatus, totalFee: 220, date: '2026-08-25' },
     { id: 'EC-2026-0002', clientName: '이영희', clientPhone: '010-9876-5432', status: 'pending_sign' as ContractStatus, totalFee: 300, date: '2026-08-21' },

@@ -4,6 +4,11 @@ import {
   FeeAutoNotificationRule, FeeInstallment 
 } from '../types';
 import { addClientNotification } from './clientNotificationService';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
+
+function logSupabaseError(op: string, error: any) {
+  console.error(`[Alimtok] ${op} 실패:`, error?.message || error);
+}
 
 const FEE_SETTINGS_KEY = 'fee_notification_settings';
 
@@ -51,23 +56,41 @@ export const sendAlimtok = async (
 
 // ── 3. 알림 로그 관리 ──
 
-export const loadAlimtokLogs = (clientId: string): AlimtokLog[] => {
-  try {
-    const data = localStorage.getItem(`alimtok_logs_${clientId}`);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
+export const loadAlimtokLogs = async (clientId: string): Promise<AlimtokLog[]> => {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('alimtok_logs').select('*').eq('client_id', clientId).order('sent_at', { ascending: false });
+      if (error) logSupabaseError('loadAlimtokLogs', error);
+      else if (data) return data.map((r: any) => ({
+        id: r.id, milestone: r.milestone, clientName: r.client_name, phone: r.phone,
+        sentAt: r.sent_at, status: r.status, errorMessage: r.error_message,
+      }));
+    } catch (e) { logSupabaseError('loadAlimtokLogs (exception)', e); }
   }
+  try {
+    const raw = localStorage.getItem(`alimtok_logs_${clientId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
 };
 
-export const saveAlimtokLog = (clientId: string, log: AlimtokLog) => {
+export const saveAlimtokLog = async (clientId: string, log: AlimtokLog) => {
   try {
-    const logs = loadAlimtokLogs(clientId);
+    const logs = await loadAlimtokLogs(clientId);
     logs.unshift(log);
     if (logs.length > 50) logs.splice(50);
     localStorage.setItem(`alimtok_logs_${clientId}`, JSON.stringify(logs));
   } catch (e) {
     console.error('Failed to save alimtok log', e);
+  }
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('alimtok_logs').upsert({
+        id: log.id, client_id: clientId, client_name: log.clientName || '',
+        phone: log.phone || '', milestone: log.milestone, status: log.status || 'sent',
+        error_message: log.errorMessage || '', sent_at: log.sentAt || new Date().toISOString(),
+      }, { onConflict: 'id' });
+      if (error) logSupabaseError('saveAlimtokLog', error);
+    } catch (e) { logSupabaseError('saveAlimtokLog (exception)', e); }
   }
 };
 

@@ -1,6 +1,6 @@
 // ============================================================
 // 캘린더 일정 서비스
-// localStorage 기반 (사무실별 분리) + 가시성(visibility) 권한
+// Supabase 우선 + localStorage 폴백 하이브리드 동기화
 // ============================================================
 
 export type EventType = 'court' | 'consult' | 'meeting' | 'deadline' | 'other';
@@ -45,20 +45,42 @@ export interface CalendarEvent {
 }
 
 export const EVENT_TYPE_CONFIG: Record<EventType, { label: string; emoji: string; color: string; bgColor: string; dotColor: string }> = {
-  court:    { label: '\uBC95\uC6D0 \uAE30\uC77C', emoji: '\uD83C\uDFDB\uFE0F', color: 'text-red-600',    bgColor: 'bg-red-50',    dotColor: 'bg-red-500' },
-  consult:  { label: '\uC0C1\uB2F4 \uC77C\uC815', emoji: '\uD83D\uDCAC', color: 'text-blue-600',   bgColor: 'bg-blue-50',   dotColor: 'bg-blue-500' },
-  meeting:  { label: '\uB0B4\uBD80 \uD68C\uC758', emoji: '\uD83D\uDC65', color: 'text-purple-600', bgColor: 'bg-purple-50', dotColor: 'bg-purple-500' },
-  deadline: { label: '\uB9C8\uAC10\uC77C',     emoji: '\u23F0', color: 'text-orange-600', bgColor: 'bg-orange-50', dotColor: 'bg-orange-500' },
-  other:    { label: '\uAE30\uD0C0',         emoji: '\uD83D\uDCCC', color: 'text-slate-600',  bgColor: 'bg-slate-100', dotColor: 'bg-slate-400' },
+  court:    { label: '법원 기일', emoji: '🏛️', color: 'text-red-600',    bgColor: 'bg-red-50',    dotColor: 'bg-red-500' },
+  consult:  { label: '상담 일정', emoji: '💬', color: 'text-blue-600',   bgColor: 'bg-blue-50',   dotColor: 'bg-blue-500' },
+  meeting:  { label: '내부 회의', emoji: '👥', color: 'text-purple-600', bgColor: 'bg-purple-50', dotColor: 'bg-purple-500' },
+  deadline: { label: '마감일',     emoji: '⏰', color: 'text-orange-600', bgColor: 'bg-orange-50', dotColor: 'bg-orange-500' },
+  other:    { label: '기타',         emoji: '📌', color: 'text-slate-600',  bgColor: 'bg-slate-100', dotColor: 'bg-slate-400' },
 };
 
 export const VISIBILITY_CONFIG: Record<EventVisibility, { label: string; emoji: string; color: string; bgColor: string }> = {
-  firm:     { label: '\uC804\uCCB4 \uACF5\uC720', emoji: '\uD83C\uDFE2', color: 'text-brand',      bgColor: 'bg-brand/10' },
-  lawyers:  { label: '\uBCC0\uD638\uC0AC\uB9CC', emoji: '\u2696\uFE0F', color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-  personal: { label: '\uB098\uB9CC \uBCF4\uAE30', emoji: '\uD83D\uDD12', color: 'text-slate-500',  bgColor: 'bg-slate-50' },
+  firm:     { label: '전체 공유', emoji: '🏢', color: 'text-brand',      bgColor: 'bg-brand/10' },
+  lawyers:  { label: '변호사만', emoji: '⚖️', color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+  personal: { label: '나만 보기', emoji: '🔒', color: 'text-slate-500',  bgColor: 'bg-slate-50' },
 };
 
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
+
 const STORAGE_KEY = 'cal-events';
+
+function logSupabaseError(op: string, error: any) {
+  console.error(`[Calendar] ${op} 실패:`, error?.message || error);
+}
+
+function eventToRow(e: CalendarEvent) {
+  return {
+    id: e.id,
+    tenant_id: e.tenantId || 'default',
+    title: e.title || '',
+    date: e.date,
+    time: e.startTime || '',
+    category: e.type || 'other',
+    client_name: e.clientName || '',
+    memo: e.description || '',
+    assigned_staff_id: e.createdBy || '',
+    created_at: e.createdAt || new Date().toISOString(),
+    data: e,
+  };
+}
 
 function loadFromStorage(tenantId: string): CalendarEvent[] {
   try {
@@ -75,8 +97,19 @@ function generateId(): string {
   return `evt-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
 }
 
-/** 모든 일정 조회 (필터 없음) */
+/** 모든 일정 조회 (Supabase 우선, localStorage 폴백) */
 export async function getEvents(tenantId: string): Promise<CalendarEvent[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('calendar_events').select('*').eq('tenant_id', tenantId).order('date', { ascending: true });
+      if (error) logSupabaseError('getEvents', error);
+      else if (data) {
+        const events = data.map((row: any) => row.data || row);
+        saveToStorage(tenantId, events);
+        return events;
+      }
+    } catch (e) { logSupabaseError('getEvents (exception)', e); }
+  }
   return loadFromStorage(tenantId);
 }
 
@@ -86,7 +119,7 @@ export async function getVisibleEvents(
   userId: string,
   userRole: string
 ): Promise<CalendarEvent[]> {
-  const all = loadFromStorage(tenantId);
+  const all = await getEvents(tenantId);
   return all.filter(e => {
     if (e.visibility === 'firm') return true;
     if (e.visibility === 'lawyers') return userRole === 'OWNER' || userRole === 'LAWYER';
@@ -142,6 +175,14 @@ export async function createEvent(
   };
   events.push(newEvent);
   saveToStorage(tenantId, events);
+
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('calendar_events').upsert(eventToRow(newEvent), { onConflict: 'id' });
+      if (error) logSupabaseError('createEvent', error);
+    } catch (e) { logSupabaseError('createEvent (exception)', e); }
+  }
+
   return newEvent;
 }
 
@@ -149,4 +190,11 @@ export async function createEvent(
 export async function deleteEvent(tenantId: string, eventId: string): Promise<void> {
   const events = loadFromStorage(tenantId);
   saveToStorage(tenantId, events.filter(e => e.id !== eventId));
+
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
+      if (error) logSupabaseError('deleteEvent', error);
+    } catch (e) { logSupabaseError('deleteEvent (exception)', e); }
+  }
 }
