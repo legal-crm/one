@@ -1934,8 +1934,8 @@ export default function LawyerRole({
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white">
-      <div className="w-full min-h-screen flex flex-col relative">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white">
+      <div className="w-full h-full flex flex-col relative">
       
         {/* ── Top Header Bar (다크 네이비) ── */}
         <header className="sticky top-0 z-40 bg-[#1E293B] h-16 px-4 lg:px-6 flex items-center justify-between shrink-0 shadow-sm border-b border-slate-700/50">
