@@ -13,6 +13,7 @@ import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO
 import { ChatDisclaimer } from './Disclaimers';
 import { calculateRepayment, RehabUserInput, type RehabCalculationResult } from '../rehab-chatbot-package/services/calculationService';
 import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
+import ProposalWorkspace from './lawyer/ProposalWorkspace';
 import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
 const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
@@ -1034,7 +1035,8 @@ export default function LawyerRole({
   const [proposalRehabInput, setProposalRehabInput] = useState<RehabUserInput | null>(null);
   const [proposalConsultRequest, setProposalConsultRequest] = useState<any>(null);
 
-  // 솔루션 및 비용 제안 버튼 클릭 시 자동 계산 후 팝업 열기
+  // 솔루션 및 비용 제안 버튼 클릭 시 자동 계산 후 워크스페이스 열기
+  const [previousTab, setPreviousTab] = useState<string>('client-crm');
   const handleOpenProposalDraft = (reqId: string) => {
     const req = requests.find(r => r.id === reqId);
     if (!req) return;
@@ -1046,6 +1048,9 @@ export default function LawyerRole({
     setProposalRehabInput(rehabInput);
     setProposalConsultRequest(req);
     setProposalModalReqId(reqId);
+    // 워크스페이스 뷰로 전환 (이전 탭 저장)
+    setPreviousTab(activeTab);
+    setActiveTab('proposal-workspace' as any);
   };
 
   // LawyerProposalDraft에서 제안서 발송 시 기존 데이터 플로우 유지 + 채팅 연동
@@ -3871,6 +3876,30 @@ export default function LawyerRole({
           />
         )}
 
+        {/* TAB: PROPOSAL WORKSPACE (제안서 작성 워크스페이스) */}
+        {(activeTab as string) === 'proposal-workspace' && proposalModalReqId && proposalRehabResult && proposalRehabInput && (
+          <ProposalWorkspace
+            rehabCalcResult={proposalRehabResult}
+            rehabUserInput={proposalRehabInput}
+            consultRequest={proposalConsultRequest}
+            onClose={() => {
+              setProposalModalReqId(null);
+              setProposalRehabResult(null);
+              setProposalRehabInput(null);
+              setProposalConsultRequest(null);
+              setActiveTab(previousTab as any);
+            }}
+            viewerRole={isLawyerOrOwner ? 'lawyer' : 'staff'}
+            onSendProposal={(proposalData) => {
+              handleSubmitProposalFromDraft(proposalModalReqId, proposalData);
+            }}
+            onRequestConfirm={(proposalData, memo) => {
+              handleRequestProposalConfirm(proposalModalReqId, proposalData, memo);
+            }}
+            aiAnalysis={undefined}
+          />
+        )}
+
         {/* TAB: CASE REVIEW COPILOT (사건검토 코파일럿) */}
         {activeTab === 'case-copilot' && (
           activeLawyer.aiCaseAnalysisEnabled ? (
@@ -4935,8 +4964,9 @@ export default function LawyerRole({
       </main>
       </div>{/* close flex body */}
 
-      {/* ── 고객 제안서 초안 모달 (통합: LawyerProposalDraft) ── */}
-      {proposalModalReqId && proposalRehabResult && proposalRehabInput && (
+      {/* ── 고객 제안서 초안 모달 (레거시 — 워크스페이스 모드에서는 비활성) ── */}
+      {/* 워크스페이스 탭이 아닌 경우에만 기존 모달 렌더링 (하위호환) */}
+      {proposalModalReqId && proposalRehabResult && proposalRehabInput && (activeTab as string) !== 'proposal-workspace' && (
         <LawyerProposalDraft
           rehabCalcResult={proposalRehabResult}
           rehabUserInput={proposalRehabInput}

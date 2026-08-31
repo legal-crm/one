@@ -71,6 +71,34 @@ interface LawyerProposalDraftProps {
   onRejectProposal?: (reason: string) => void;
   pendingStaffName?: string;
   aiAnalysis?: AIAnalysisData;  // AI 프리미엄 분석 데이터 (optional)
+  // ── Split-Pane 워크스페이스 지원 ──
+  mode?: 'modal' | 'embedded';  // 'modal'(기본, 기존 팝업) | 'embedded'(ProposalWorkspace 내 인라인)
+  initialDraft?: {
+    totalFeeStr: string;
+    downPaymentStr: string;
+    installments: number;
+    courtDepositStr: string;
+    feeMemo: string;
+    lawyerOpinion: string;
+    specialNotes: string[];
+    clientAnswers: Record<number, string>;
+    includeFinancialAnalysis: boolean;
+    includeRiskReport: boolean;
+    includeCourtNotes: boolean;
+  } | null;
+  onDraftChange?: (draft: {
+    totalFeeStr: string;
+    downPaymentStr: string;
+    installments: number;
+    courtDepositStr: string;
+    feeMemo: string;
+    lawyerOpinion: string;
+    specialNotes: string[];
+    clientAnswers: Record<number, string>;
+    includeFinancialAnalysis: boolean;
+    includeRiskReport: boolean;
+    includeCourtNotes: boolean;
+  }) => void;
 }
 
 export interface ProposalData {
@@ -177,15 +205,18 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   onApproveProposal,
   onRejectProposal,
   pendingStaffName,
-  aiAnalysis
+  aiAnalysis,
+  mode = 'modal',
+  initialDraft,
+  onDraftChange
 }) => {
   const clientName = rehabUserInput.name || consultRequest?.clientName || consultRequest?.financialProfile?.clientName || '고객';
   const isAIPremium = !!aiAnalysis;
 
-  // ── AI 프리미엄 섹션 의뢰인 공개 토글 ──
-  const [includeFinancialAnalysis, setIncludeFinancialAnalysis] = useState(true);
-  const [includeRiskReport, setIncludeRiskReport] = useState(true);
-  const [includeCourtNotes, setIncludeCourtNotes] = useState(true);
+  // ── AI 프리미엄 섹션 의뢰인 공개 토글 (복원 가능) ──
+  const [includeFinancialAnalysis, setIncludeFinancialAnalysis] = useState(initialDraft?.includeFinancialAnalysis ?? true);
+  const [includeRiskReport, setIncludeRiskReport] = useState(initialDraft?.includeRiskReport ?? true);
+  const [includeCourtNotes, setIncludeCourtNotes] = useState(initialDraft?.includeCourtNotes ?? true);
 
   // Section 2: Special Notes State
   const initialNotes = useMemo(() => {
@@ -225,16 +256,16 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
     return notes;
   }, [rehabUserInput, rehabCalcResult, aiAnalysis]);
 
-  const [specialNotes, setSpecialNotes] = useState<string[]>(initialNotes);
+  const [specialNotes, setSpecialNotes] = useState<string[]>(initialDraft?.specialNotes ?? initialNotes);
   const [newNote, setNewNote] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
 
-  // Section 3: Fees State
-  const [totalFeeStr, setTotalFeeStr] = useState('');
-  const [downPaymentStr, setDownPaymentStr] = useState('');
-  const [installments, setInstallments] = useState<number>(5);
-  const [courtDepositStr, setCourtDepositStr] = useState('300000');
-  const [feeMemo, setFeeMemo] = useState('');
+  // Section 3: Fees State (복원 가능)
+  const [totalFeeStr, setTotalFeeStr] = useState(initialDraft?.totalFeeStr ?? '');
+  const [downPaymentStr, setDownPaymentStr] = useState(initialDraft?.downPaymentStr ?? '');
+  const [installments, setInstallments] = useState<number>(initialDraft?.installments ?? 5);
+  const [courtDepositStr, setCourtDepositStr] = useState(initialDraft?.courtDepositStr ?? '300000');
+  const [feeMemo, setFeeMemo] = useState(initialDraft?.feeMemo ?? '');
 
   const totalFee = parseInt(totalFeeStr.replace(/,/g, ''), 10) || 0;
   const downPayment = parseInt(downPaymentStr.replace(/,/g, ''), 10) || 0;
@@ -257,7 +288,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
     }
     return '';
   }, [aiAnalysis, rehabCalcResult]);
-  const [lawyerOpinion, setLawyerOpinion] = useState(aiDraftOpinion);
+  const [lawyerOpinion, setLawyerOpinion] = useState(initialDraft?.lawyerOpinion ?? aiDraftOpinion);
 
   // AI 초안이 로드되면 의견이 비어있을 때만 자동 채우기
   useEffect(() => {
@@ -283,7 +314,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
     return Array.from(new Set(questions));
   }, [consultRequest]);
 
-  const [clientAnswers, setClientAnswers] = useState<Record<number, string>>({});
+  const [clientAnswers, setClientAnswers] = useState<Record<number, string>>(initialDraft?.clientAnswers ?? {});
 
   // Staff confirmation memo state
   const [showStaffMemo, setShowStaffMemo] = useState(false);
@@ -367,6 +398,30 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       setIsAddingNote(false);
     }
   };
+
+  // ── Draft 변경 알림 (자동 임시저장용) ──
+  useEffect(() => {
+    if (mode === 'embedded' && onDraftChange) {
+      onDraftChange({
+        totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo,
+        lawyerOpinion, specialNotes, clientAnswers,
+        includeFinancialAnalysis, includeRiskReport, includeCourtNotes,
+      });
+    }
+  }, [mode, totalFeeStr, downPaymentStr, installments, courtDepositStr, feeMemo, lawyerOpinion, specialNotes, clientAnswers, includeFinancialAnalysis, includeRiskReport, includeCourtNotes]);
+
+  // ── 공유 콘텐츠 섹션 (Embedded/Modal 양쪽에서 재사용) ──
+  const isEmbedded = mode === 'embedded';
+
+  // handleSubmit을 ProposalWorkspace footer에서 트리거할 수 있도록 이벤트 리스너 등록
+  useEffect(() => {
+    if (!isEmbedded) return;
+    const handleExternalSubmit = () => {
+      onSendProposal(getProposalData());
+    };
+    document.addEventListener('proposal-workspace-submit', handleExternalSubmit);
+    return () => document.removeEventListener('proposal-workspace-submit', handleExternalSubmit);
+  }, [isEmbedded, onSendProposal, getProposalData]);
 
   const modalContent = (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -976,6 +1031,19 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       </div>
     </div>
   );
+
+  // ── Embedded 모드: Portal 없이 Content Area만 인라인 렌더링 ──
+  if (isEmbedded) {
+    // modalContent 구조: <div overlay><div card>[Header, ContentArea, Footer]</div></div>
+    const cardElement = modalContent.props.children as React.ReactElement;
+    const cardChildren = React.Children.toArray(cardElement.props.children);
+    // cardChildren[0]=Header, [1]=ContentArea, [2]=Footer
+    return (
+      <div className="flex flex-col h-full">
+        {cardChildren[1]}
+      </div>
+    );
+  }
 
   return createPortal(modalContent, document.body);
 };
