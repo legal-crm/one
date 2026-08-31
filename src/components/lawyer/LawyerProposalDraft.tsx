@@ -514,35 +514,45 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   return (
     <div className="w-full h-full bg-white flex flex-col overflow-y-auto pb-24 scroll-smooth">
       
-      {/* ── 1. 스마트 템플릿 툴바 (최상단 고정/원클릭 바) ── */}
-      <div className="sticky top-0 z-10 bg-slate-900 text-white p-3.5 shadow-md flex items-center justify-between gap-3 shrink-0 flex-wrap">
+      {/* ── 1. 스마트 템플릿 툴바 (최상단 고정/정렬된 프리미엄 바) ── */}
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 border-b border-slate-800 shadow-sm shrink-0 space-y-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-brand-light flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-brand" />
+              맞춤 소견 1초 템플릿
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand/20 text-brand-light border border-brand/30">
+              원클릭 자동완성
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              setTemplateModalDefaultTab('opinion');
+              setIsTemplateModalOpen(true);
+            }}
+            className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-all active:scale-95 cursor-pointer"
+          >
+            <Settings className="w-3 h-3" />
+            템플릿 설정
+          </button>
+        </div>
+
+        {/* 가로 스크롤 템플릿 칩 리스트 */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-          <span className="text-xs font-bold text-brand flex items-center gap-1 shrink-0">
-            <Sparkles className="w-3.5 h-3.5" />
-            1초 템플릿:
-          </span>
           {opinionTemplates.map(tpl => (
             <button
               key={tpl.id}
               onClick={() => handleApplyTemplate(tpl)}
-              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-brand hover:text-white border border-slate-700 text-slate-200 transition-all active:scale-[0.98] whitespace-nowrap"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-brand hover:text-white border border-slate-700 text-slate-200 transition-all active:scale-95 whitespace-nowrap shadow-2xs flex items-center gap-1.5 cursor-pointer"
               title={tpl.title}
             >
-              💡 {tpl.title}
+              <span>💡</span>
+              <span>{tpl.title}</span>
             </button>
           ))}
         </div>
-
-        <button
-          onClick={() => {
-            setTemplateModalDefaultTab('opinion');
-            setIsTemplateModalOpen(true);
-          }}
-          className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors shrink-0"
-        >
-          <Settings className="w-3 h-3" />
-          템플릿 관리
-        </button>
       </div>
 
       <div className="p-6 space-y-6 flex-1">
