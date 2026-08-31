@@ -514,15 +514,15 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   return (
     <div className="w-full h-full bg-white flex flex-col overflow-y-auto pb-24 scroll-smooth">
       
-      {/* ── 1. 스마트 템플릿 툴바 (최상단 고정/정렬된 프리미엄 바) ── */}
-      <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 border-b border-slate-800 shadow-sm shrink-0 space-y-2.5">
+      {/* ── 1. 스마트 템플릿 툴바 (상단 헤더와 분리된 밝고 깔끔한 카드 바) ── */}
+      <div className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md p-4 border-b border-slate-200 shadow-2xs shrink-0 space-y-2.5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-brand-light flex items-center gap-1.5">
+            <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-brand" />
               맞춤 소견 1초 템플릿
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand/20 text-brand-light border border-brand/30">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-brand/10 text-brand border border-brand/20">
               원클릭 자동완성
             </span>
           </div>
@@ -532,9 +532,9 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               setTemplateModalDefaultTab('opinion');
               setIsTemplateModalOpen(true);
             }}
-            className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-all active:scale-95 cursor-pointer"
+            className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
           >
-            <Settings className="w-3 h-3" />
+            <Settings className="w-3 h-3 text-slate-500" />
             템플릿 설정
           </button>
         </div>
@@ -545,7 +545,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             <button
               key={tpl.id}
               onClick={() => handleApplyTemplate(tpl)}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-brand hover:text-white border border-slate-700 text-slate-200 transition-all active:scale-95 whitespace-nowrap shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white hover:bg-brand hover:text-white border border-slate-200 hover:border-brand text-slate-700 transition-all active:scale-95 whitespace-nowrap shadow-2xs flex items-center gap-1.5 cursor-pointer hover:shadow-xs"
               title={tpl.title}
             >
               <span>💡</span>
