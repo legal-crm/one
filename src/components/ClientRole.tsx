@@ -374,7 +374,7 @@ interface ClientRoleProps {
   messages: ConsultMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: LawyerType[];
-  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string) => void;
+  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string, targetLawyerId?: string) => void;
   newsArticles: NewsArticle[];
   setNewsArticles: React.Dispatch<React.SetStateAction<NewsArticle[]>>;
   qas: ClientQA[];
@@ -1793,13 +1793,17 @@ export default function ClientRole({
     }
 
     // Construct the new ConsultRequest (pending - not yet saved)
+    // 변호사 지명 상태(requestType, selectedLawyerId)를 기존 state에서 반영
+    const effectiveRequestType = requestType || 'open';
+    const effectiveMaxParticipants = effectiveRequestType === 'direct' ? 1 : 3;
     const newRequest = {
       id: `req-${Date.now()}`,
       clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
       clientName: isLoggedIn ? userAlias : '익명 의뢰인',
       phone: intakeData.phoneNumber || '010-4567-8901',
-      requestType: 'open' as const,
-      maxParticipants: 3,
+      requestType: effectiveRequestType as 'open' | 'direct' | 'direct_multi',
+      maxParticipants: effectiveMaxParticipants,
+      ...(effectiveRequestType === 'direct' && selectedLawyerId ? { selectedLawyerId } : {}),
       status: 'requested' as const,
       createdAt: new Date().toISOString(),
       title: `${intakeData.clientName}님의 정밀 개인회생 상담 분석 신청`,
@@ -1907,22 +1911,36 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     // 자동 변호사 탭 이동 및 선택 모드 활성화를 하지 않음
   };
 
-  const handleSendChat = () => {
+  const handleSendChat = (targetLawyerId?: string) => {
     if (!chatInput.trim()) return;
-    onAddMessage(activeChatReqId, chatInput.trim(), 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)');
+    onAddMessage(activeChatReqId, chatInput.trim(), 'client', 'client-temp', isLoggedIn ? `${userAlias} (본인)` : '의뢰인 (본인)', targetLawyerId);
     
     setChatInput('');
 
-    // Simulate lawyer responding back
-    setTimeout(() => {
-      onAddMessage(
-        activeChatReqId,
-        '상세 채무 계산 내역을 검토 중입니다. 월 평균 납부 가능한 가용 변제액을 약 40만 원 수준으로 맞춰 법관 보정 대비가 가능한 구조입니다. 법인 통장 거래 내역 및 신분증 사본 준비가 가능하신가요?',
-        'lawyer',
-        'lawyer-2',
-        '이소민 변호사'
-      );
-    }, 2500);
+    // Mock 시뮬레이션: Supabase 미연동 시에만 실제 매칭된 변호사 정보로 자동 응답
+    const isSupabaseConfigured = !!(import.meta as any).env?.VITE_SUPABASE_URL;
+    if (!isSupabaseConfigured) {
+      const activeRequest = requests.find(r => r.id === activeChatReqId);
+      if (activeRequest) {
+        // 실제 매칭된 변호사 정보 사용 (selectedLawyerId → acceptedLawyerIds → proposals 순 탐색)
+        const matchedLawyerId = activeRequest.selectedLawyerId 
+          || (activeRequest.acceptedLawyerIds && activeRequest.acceptedLawyerIds[0])
+          || (activeRequest.proposals && activeRequest.proposals[0]?.lawyerId)
+          || 'lawyer-1';
+        const matchedLawyer = lawyers.find(l => l.id === matchedLawyerId);
+        const matchedName = matchedLawyer?.name || '담당 변호사';
+
+        setTimeout(() => {
+          onAddMessage(
+            activeChatReqId,
+            '상세 채무 계산 내역을 검토 중입니다. 월 평균 납부 가능한 가용 변제액을 약 40만 원 수준으로 맞춰 법관 보정 대비가 가능한 구조입니다. 법인 통장 거래 내역 및 신분증 사본 준비가 가능하신가요?',
+            'lawyer',
+            matchedLawyerId,
+            matchedName
+          );
+        }, 2500);
+      }
+    }
   };
 
   // Real Supabase and Fallback Auth Handlers

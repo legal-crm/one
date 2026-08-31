@@ -92,8 +92,8 @@ interface ChatViewProps {
   onSetUseSafeNumber050: (val: boolean) => void;
   onSetActiveTab: (tab: string) => void;
   onSetRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
-  onSendChat: () => void;
-  onAddMessage: (requestId: string, message: string, senderType: 'client' | 'lawyer' | 'admin', senderId: string, senderName: string) => void;
+  onSendChat: (targetLawyerId?: string) => void;
+  onAddMessage: (requestId: string, message: string, senderType: 'client' | 'lawyer' | 'admin', senderId: string, senderName: string, targetLawyerId?: string) => void;
 
   activeRequest?: ConsultRequest;
   activeResult?: RehabCalculationResult;
@@ -241,7 +241,10 @@ export default function ChatView({
   const activeChatMessages = messages.filter(m => {
     if (m.consultRequestId !== (currentRequest?.id || activeChatReqId)) return false;
     if ((isComparing || currentRequest?.status === 'counseling') && hasMultipleAccepted && activeChatLawyerId) {
-      return m.senderType === 'client' || m.senderId === activeChatLawyerId || m.senderId === 'system';
+      // 변호사 메시지: 해당 변호사 또는 시스템 메시지만 표시
+      if (m.senderType === 'lawyer') return m.senderId === activeChatLawyerId || m.senderId === 'system';
+      // 의뢰인 메시지: targetLawyerId가 있으면 해당 변호사 탭에서만, 없으면 모든 탭에서 표시 (하위 호환)
+      if (m.senderType === 'client') return !m.targetLawyerId || m.targetLawyerId === activeChatLawyerId;
     }
     return true;
   });
@@ -810,12 +813,12 @@ export default function ChatView({
                     placeholder={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId ? '상담이 종료되었습니다.' : '담당 변호사에게 채무 고민 메시지 보내기...'} 
                     value={chatInput} 
                     onChange={(e) => onSetChatInput(e.target.value)} 
-                    onKeyDown={(e) => { if (e.key === 'Enter') onSendChat(); }} 
+                    onKeyDown={(e) => { if (e.key === 'Enter') onSendChat(activeChatLawyerId || undefined); }} 
                     disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
                     className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:ring-brand/20 rounded-xl px-4 py-3 text-base focus:outline-none font-medium transition-all disabled:bg-slate-100 disabled:cursor-not-allowed" 
                   />
                   <button 
-                    onClick={onSendChat} 
+                    onClick={() => onSendChat(activeChatLawyerId || undefined)} 
                     disabled={currentRequest?.status === 'counseling' && currentRequest?.selectedLawyerId !== activeChatLawyerId && activeChatLawyerId !== null}
                     className="bg-brand hover:bg-brand-hover disabled:bg-slate-300 text-white p-3.5 rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
                   >

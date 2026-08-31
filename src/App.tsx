@@ -406,7 +406,8 @@ export default function App() {
     text: string, 
     sender: 'client' | 'lawyer', 
     senderId: string, 
-    name: string
+    name: string,
+    targetLawyerId?: string
   ) => {
     const newMessage: ConsultMessage = {
       id: `msg-${Date.now()}`,
@@ -415,7 +416,8 @@ export default function App() {
       senderId,
       senderName: name,
       message: text,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      ...(targetLawyerId ? { targetLawyerId } : {})
     };
     setMessages(prev => [...prev, newMessage]);
     saveConsultMessage(newMessage).catch(() => {});

@@ -59,7 +59,7 @@ interface LawyerRoleProps {
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: User[];
   setLawyers: React.Dispatch<React.SetStateAction<User[]>>;
-  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string) => void;
+  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string, targetLawyerId?: string) => void;
   cases: Case[];
   setCases: React.Dispatch<React.SetStateAction<Case[]>>;
   members: Member[];

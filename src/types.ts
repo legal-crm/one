@@ -817,6 +817,7 @@ export interface ConsultMessage {
   senderName: string;
   message: string;
   createdAt: string;
+  targetLawyerId?: string; // 비교 상담 모드에서 의뢰인 메시지의 대상 변호사 식별용
 }
 
 export interface LawFirm {
