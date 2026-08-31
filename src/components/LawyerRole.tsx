@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
-  Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, CheckCircle2, Check, ExternalLink,
+  Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature
 } from 'lucide-react';
 import { 
@@ -2003,19 +2003,37 @@ export default function LawyerRole({
 
           {/* ── Sidebar (Desktop/Tablet) — 접기/펼치기 가능 ── */}
           <aside className={`hidden lg:flex ${sidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-[#111827] flex-col shrink-0 fixed top-16 left-0 bottom-0 z-30 border-r border-slate-800 transition-all duration-200 select-none`}>
-            {/* 세련된 플로팅 접기/펼치기 토글 버튼 (스크롤 영역 밖 z-50 배치) */}
-            <button 
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)} 
-              className="absolute -right-3 top-5 z-50 w-6 h-6 bg-slate-800 hover:bg-brand border border-slate-700 hover:border-brand rounded-full flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
-              title={sidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
-            >
-              <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${sidebarCollapsed ? '' : 'rotate-180'}`} />
-            </button>
+            
+            {/* 접힌 상태: 최상단 펼치기 토글 버튼 */}
+            {sidebarCollapsed && (
+              <div className="pt-3 pb-1 px-2.5 flex flex-col items-center">
+                <button 
+                  onClick={() => setSidebarCollapsed(false)} 
+                  className="w-full flex items-center justify-center p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer group"
+                  title="사이드바 펼치기"
+                >
+                  <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-brand transition-colors" />
+                </button>
+                <div className="w-full border-t border-slate-800/80 my-2" />
+              </div>
+            )}
 
             {/* 스크롤 가능한 네비게이션 메뉴 영역 */}
-            <nav className={`flex-1 py-4 overflow-y-auto no-scrollbar ${sidebarCollapsed ? 'px-2.5' : 'px-3.5'} space-y-1.5`}>
-              {/* 그룹 1: 업무 */}
-              {!sidebarCollapsed && <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 pb-1 pt-1">업무</p>}
+            <nav className={`flex-1 py-3 overflow-y-auto no-scrollbar ${sidebarCollapsed ? 'px-2.5' : 'px-3.5'} space-y-1.5`}>
+              {/* 그룹 1: 업무 (펼쳐진 상태에서는 타이틀 옆에 인라인 접기 버튼 배치) */}
+              {!sidebarCollapsed && (
+                <div className="flex items-center justify-between px-3 pb-1.5 pt-1">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">업무</p>
+                  <button 
+                    onClick={() => setSidebarCollapsed(true)} 
+                    className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                    title="사이드바 접기"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>접기</span>
+                  </button>
+                </div>
+              )}
               {permissionCtx.canAccessTab('dashboard') && (
                 <button 
                   onClick={() => setActiveTab('dashboard')} 
