@@ -623,11 +623,11 @@ export const ClientReferencePanel: React.FC<ClientReferencePanelProps> = ({
               <div className="bg-white/90 p-3 rounded-xl border border-[#1E3A5F]/10 space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-slate-600">AI 가용소득 추정</span>
-                  <span className="font-bold text-emerald-600 font-mono">{formatCurrency(aiAnalysis.factSummary.disposableIncome)}원</span>
+                  <span className="font-bold text-emerald-600 font-mono">{formatCurrency(aiAnalysis.factSummary.disposableIncome)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">순자산 청산가치</span>
-                  <span className="font-bold text-slate-800 font-mono">{formatCurrency(aiAnalysis.factSummary.assets.netAssetValue)}원</span>
+                  <span className="font-bold text-slate-800 font-mono">{formatCurrency(aiAnalysis.factSummary.assets.netAssetValue)}</span>
                 </div>
               </div>
 

@@ -180,10 +180,10 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   const initialNotes = useMemo(() => {
     const notes: string[] = [];
     if (rehabUserInput.speculativeLoss && rehabUserInput.speculativeLoss > 0) {
-      notes.push(`투기성 손실 ${formatCurrency(rehabUserInput.speculativeLoss)}원 존재 (주식/코인)`);
+      notes.push(`투기성 손실 ${formatCurrency(rehabUserInput.speculativeLoss)} 존재 (주식/코인)`);
     }
     if ((rehabUserInput as any).gamblingLoss && (rehabUserInput as any).gamblingLoss > 0) {
-      notes.push(`도박/사행성 손실 ${formatCurrency((rehabUserInput as any).gamblingLoss)}원`);
+      notes.push(`도박/사행성 손실 ${formatCurrency((rehabUserInput as any).gamblingLoss)}`);
     }
     if (rehabUserInput.debtTypes && rehabUserInput.debtTypes.includes('priorityDebt')) {
       notes.push('세금 체납 (우선변제채권) 존재');
@@ -212,11 +212,29 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   const [newNote, setNewNote] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
 
-  // Section 3: Fees State
-  const [totalFeeStr, setTotalFeeStr] = useState(initialDraft?.totalFeeStr ?? '1500000');
-  const [downPaymentStr, setDownPaymentStr] = useState(initialDraft?.downPaymentStr ?? '300000');
+  // Section 3: Fees State (3자리 콤마 기본 적용)
+  const [totalFeeStr, setTotalFeeStr] = useState(() => {
+    if (initialDraft?.totalFeeStr) {
+      const num = parseInt(initialDraft.totalFeeStr.replace(/,/g, ''), 10);
+      return isNaN(num) ? '1,500,000' : fmtNum(num);
+    }
+    return '1,500,000';
+  });
+  const [downPaymentStr, setDownPaymentStr] = useState(() => {
+    if (initialDraft?.downPaymentStr) {
+      const num = parseInt(initialDraft.downPaymentStr.replace(/,/g, ''), 10);
+      return isNaN(num) ? '300,000' : fmtNum(num);
+    }
+    return '300,000';
+  });
   const [installments, setInstallments] = useState<number>(initialDraft?.installments ?? 5);
-  const [courtDepositStr, setCourtDepositStr] = useState(initialDraft?.courtDepositStr ?? '300000');
+  const [courtDepositStr, setCourtDepositStr] = useState(() => {
+    if (initialDraft?.courtDepositStr) {
+      const num = parseInt(initialDraft.courtDepositStr.replace(/,/g, ''), 10);
+      return isNaN(num) ? '300,000' : fmtNum(num);
+    }
+    return '300,000';
+  });
   const [feeMemo, setFeeMemo] = useState(initialDraft?.feeMemo ?? '착수금 결제 후 매월 분납 가능 (송달료 포함)');
 
   const totalFee = parseInt(totalFeeStr.replace(/,/g, ''), 10) || 0;
@@ -232,9 +250,9 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // Section 4: Lawyer Opinion
   const defaultOpinion = useMemo(() => {
     if (aiAnalysis) {
-      return `개인회생 진행이 가능한 것으로 분석됩니다.\n\n월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}원으로 산출되며, 예상 변제 기간은 ${rehabCalcResult.repaymentMonths}개월, 총 감면율은 약 ${rehabCalcResult.debtReductionRate}%입니다.\n\n상세한 변제계획 수립 및 금지명령 신청을 신속히 진행해 드리겠습니다.`;
+      return `개인회생 진행이 가능한 것으로 분석됩니다.\n\n월 가용소득은 약 ${formatCurrency(aiAnalysis.factSummary.disposableIncome)}으로 산출되며, 예상 변제 기간은 ${rehabCalcResult.repaymentMonths}개월, 총 감면율은 약 ${rehabCalcResult.debtReductionRate}%입니다.\n\n상세한 변제계획 수립 및 금지명령 신청을 신속히 진행해 드리겠습니다.`;
     }
-    return `개인회생 신청 적격 대상자로 분석됩니다.\n\n의뢰인님의 소득과 생계비를 종합 고려하여 월 최저 변제금(${formatCurrency(rehabCalcResult.monthlyPayment)}원)으로 인가받을 수 있도록 최적의 변제계획안을 수립하겠습니다.\n\n접수 즉시 금지명령을 통해 모든 채권 추심과 압류를 중단시켜 드리겠습니다.`;
+    return `개인회생 신청 적격 대상자로 분석됩니다.\n\n의뢰인님의 소득과 생계비를 종합 고려하여 월 최저 변제금(${formatCurrency(rehabCalcResult.monthlyPayment)})으로 인가받을 수 있도록 최적의 변제계획안을 수립하겠습니다.\n\n접수 즉시 금지명령을 통해 모든 채권 추심과 압류를 중단시켜 드리겠습니다.`;
   }, [aiAnalysis, rehabCalcResult]);
 
   const [lawyerOpinion, setLawyerOpinion] = useState(initialDraft?.lawyerOpinion ?? defaultOpinion);
@@ -418,7 +436,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               <div>
                 <span className="text-xs text-slate-500 font-medium">예상 월 변제금</span>
                 <div className="text-lg font-black text-slate-900 font-mono mt-0.5">
-                  {formatCurrency(rehabCalcResult.monthlyPayment)}원
+                  {formatCurrency(rehabCalcResult.monthlyPayment)}
                 </div>
               </div>
               <div>
@@ -436,7 +454,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               <div className="pt-2 border-t border-slate-200/60">
                 <span className="text-xs text-slate-500 font-medium">총 탕감 예상액</span>
                 <div className="text-sm font-bold text-emerald-600 font-mono mt-0.5">
-                  약 {formatCurrency(estimatedReduction)}원
+                  약 {formatCurrency(estimatedReduction)}
                 </div>
               </div>
             </div>
@@ -445,12 +463,12 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
             <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-bold text-indigo-950">총 수임료</span>
-                <span className="text-base font-extrabold text-indigo-900 font-mono">{formatCurrency(totalFee)}원</span>
+                <span className="text-base font-extrabold text-indigo-900 font-mono">{formatCurrency(totalFee)}</span>
               </div>
               <div className="flex justify-between items-center text-xs text-slate-600">
                 <span>착수금 / 분납 조건</span>
                 <span className="font-bold text-brand font-mono">
-                  착수금 {formatCurrency(downPayment)}원 + 월 {formatCurrency(monthlyInstallment)}원 ({installments}회 분납)
+                  착수금 {formatCurrency(downPayment)} + 월 {formatCurrency(monthlyInstallment)} ({installments}회 분납)
                 </span>
               </div>
               {feeMemo && (
@@ -562,7 +580,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
           <div className="flex items-center gap-4 text-xs">
             <div>
               <span className="text-slate-400 block text-[10px]">진단 월 변제금</span>
-              <span className="font-mono font-extrabold text-slate-800 text-sm">{formatCurrency(rehabCalcResult.monthlyPayment)}원</span>
+              <span className="font-mono font-extrabold text-slate-800 text-sm">{formatCurrency(rehabCalcResult.monthlyPayment)}</span>
             </div>
             <div className="w-px h-6 bg-slate-200" />
             <div>
@@ -659,6 +677,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
                 type="text" 
                 value={courtDepositStr}
                 onChange={(e) => handleCurrencyInput(e.target.value, setCourtDepositStr)}
+                placeholder="300,000"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono text-slate-700 focus:ring-2 focus:ring-brand/30 outline-none"
               />
             </div>
@@ -668,10 +687,10 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
           <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100 flex items-center justify-between text-xs">
             <span className="font-bold text-indigo-950 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-brand" />
-              예상 월 분납액: <span className="text-brand font-mono text-sm ml-1 font-extrabold">{formatCurrency(monthlyInstallment)}원 / 월</span>
+              예상 월 분납액: <span className="text-brand font-mono text-sm ml-1 font-extrabold">{formatCurrency(monthlyInstallment)} / 월</span>
             </span>
             <span className="text-[11px] text-indigo-800">
-              (총 {formatCurrency(totalFee)}원 - 착수금 {formatCurrency(downPayment)}원 ÷ {installments}회)
+              (총 {formatCurrency(totalFee)} - 착수금 {formatCurrency(downPayment)} ÷ {installments}회)
             </span>
           </div>
 
