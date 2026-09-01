@@ -435,7 +435,7 @@ export default function MyPageView({
                 <div>
                   <p className="text-sm font-bold text-slate-800">현재 단계: {CRM_STATUS_CONFIG[currentStatus]?.label}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {currentStatus === 'requested' && '상담 신청이 접수되었습니다. 변호사 배정을 기다리고 있습니다.'}
+                    {currentStatus === 'requested' && '상담 신청이 접수되었습니다. 변호사 상담 수락을 기다리고 있습니다.'}
                     {currentStatus === 'consulting' && '담당 변호사와 초기 상담이 진행 중입니다. 채팅방에서 문의하세요.'}
                     {currentStatus === 'contracted' && '수임 계약이 완료되었습니다. 필요 서류를 준비해 주세요.'}
                     {currentStatus === 'document' && '서류 수집 중입니다. 아래에서 서류를 업로드하실 수 있습니다.'}

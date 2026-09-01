@@ -53,7 +53,7 @@ export const DEFAULT_DIAGNOSIS_QUESTIONS: DiagnosisQuestion[] = [
     id: 'q4_urgentNeed',
     step: 4,
     title: '지금 가장 급한 문제는 무엇인가요?',
-    subtitle: '우선순위에 따라 최적의 전략이 달라집니다',
+    subtitle: '우선순위에 따라 확인할 내용이 달라집니다',
     options: [
       { id: 'harassment', label: '전화·문자 추심 스트레스', icon: '📱' },
       { id: 'seizure_wage', label: '급여·통장 압류', icon: '🔒' },
@@ -66,7 +66,7 @@ export const DEFAULT_DIAGNOSIS_QUESTIONS: DiagnosisQuestion[] = [
     id: 'q5_goal',
     step: 5,
     title: '원하는 방향은?',
-    subtitle: '목표에 맞춰 전략을 추천해드립니다',
+    subtitle: '목표에 맞춰 관련 정보를 안내해드립니다',
     options: [
       { id: 'fast_resolution', label: '최대한 빨리 정리하고 싶다', icon: '⚡' },
       { id: 'buy_time', label: '버티면서 시간을 확보하고 싶다', icon: '⏰' },
