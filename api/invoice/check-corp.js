@@ -1,9 +1,10 @@
 // Vercel Serverless Function: 사업자등록번호 유효성 확인
 // POST /api/invoice/check-corp
 import { taxinvoiceService, SUPPLIER_INFO, setCorsHeaders } from '../lib/popbill-service.js';
+import { withAuth } from '../lib/auth-middleware.js';
 
-export default async function handler(req, res) {
-  setCorsHeaders(res);
+async function handler(req, res) {
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
 
@@ -25,3 +26,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, error: err.message || '사업자 확인 실패', code: err.code });
   }
 }
+
+export default withAuth(handler);

@@ -1,9 +1,10 @@
 // Vercel Serverless Function: 세금계산서 PDF 뷰어 URL 조회
 // GET /api/invoice/pdf?itemKey=xxx
 import { taxinvoiceService, SUPPLIER_INFO, setCorsHeaders } from '../lib/popbill-service.js';
+import { withAuth } from '../lib/auth-middleware.js';
 
-export default async function handler(req, res) {
-  setCorsHeaders(res);
+async function handler(req, res) {
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' });
 
@@ -25,3 +26,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, error: err.message || 'PDF URL 조회 실패' });
   }
 }
+
+export default withAuth(handler);

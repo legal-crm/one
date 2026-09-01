@@ -579,23 +579,27 @@ export default function LawyerRole({
 
     const cleanedLoginId = loginId.trim().toLowerCase();
     
-    // Quick simple login bypass for testing
+    // [SECURITY] Quick simple login bypass for testing (DEV Only)
     let found = null;
-    if (cleanedLoginId === '1' && loginPassword === '1') {
-      found = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0];
-    } else if (cleanedLoginId === '2' && loginPassword === '2') {
-      found = lawyers.find(l => l.id === 'test-lawyer-1');
-    } else if (cleanedLoginId === '3' && loginPassword === '3') {
-      found = lawyers.find(l => l.id === 'test-lawyer-2');
-    } else if (cleanedLoginId === '4' && loginPassword === '4') {
-      found = lawyers.find(l => l.id === 'test-lawyer-3');
-    } else if (cleanedLoginId === '5' && loginPassword === '5') {
-      found = lawyers.find(l => l.id === 'test-lawyer-5');
-    } else if (cleanedLoginId === '6' && loginPassword === '6') {
-      found = lawyers.find(l => l.id === 'test-lawyer-6');
-    } else if (cleanedLoginId === '7' && loginPassword === '7') {
-      found = lawyers.find(l => l.id === 'test-lawyer-7');
-    } else {
+    if (import.meta.env.DEV) {
+      if (cleanedLoginId === '1' && loginPassword === '1') {
+        found = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0];
+      } else if (cleanedLoginId === '2' && loginPassword === '2') {
+        found = lawyers.find(l => l.id === 'test-lawyer-1');
+      } else if (cleanedLoginId === '3' && loginPassword === '3') {
+        found = lawyers.find(l => l.id === 'test-lawyer-2');
+      } else if (cleanedLoginId === '4' && loginPassword === '4') {
+        found = lawyers.find(l => l.id === 'test-lawyer-3');
+      } else if (cleanedLoginId === '5' && loginPassword === '5') {
+        found = lawyers.find(l => l.id === 'test-lawyer-5');
+      } else if (cleanedLoginId === '6' && loginPassword === '6') {
+        found = lawyers.find(l => l.id === 'test-lawyer-6');
+      } else if (cleanedLoginId === '7' && loginPassword === '7') {
+        found = lawyers.find(l => l.id === 'test-lawyer-7');
+      }
+    }
+    
+    if (!found) {
       found = lawyers.find(l => 
         l.id.toLowerCase() === cleanedLoginId || 
         l.name.toLowerCase() === cleanedLoginId ||
@@ -608,11 +612,16 @@ export default function LawyerRole({
       return;
     }
 
-    // Bypass password check for simple bypass accounts (1~7)
+    // [SECURITY] Bypass password check for simple bypass accounts ONLY in DEV
     const bypassIds = ['1', '2', '3', '4', '5', '6', '7'];
-    if (!bypassIds.includes(cleanedLoginId) && found.password && found.password !== loginPassword) {
-      setLoginError('비밀번호가 일치하지 않습니다.');
-      return;
+    if (import.meta.env.DEV && bypassIds.includes(cleanedLoginId)) {
+      // Dev bypass allowed
+    } else {
+      // [SECURITY] Fix bug: missing/empty password should fail validation
+      if (!found.password || found.password !== loginPassword) {
+        setLoginError('비밀번호가 일치하지 않습니다.');
+        return;
+      }
     }
 
     // Unapproved account check
@@ -1500,18 +1509,20 @@ export default function LawyerRole({
                   >
                     로그인
                   </button>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
-                      sessionStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
-                      setActiveLawyer(demoLawyer);
-                      setIsLoggedIn(true);
-                    }}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3.5 rounded-xl text-base border border-slate-200 transition-all cursor-pointer active:scale-[0.98]"
-                  >
-                    테스트 계정 1초 로그인
-                  </button>
+                  {import.meta.env.DEV && (
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
+                        sessionStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
+                        setActiveLawyer(demoLawyer);
+                        setIsLoggedIn(true);
+                      }}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3.5 rounded-xl text-base border border-slate-200 transition-all cursor-pointer active:scale-[0.98]"
+                    >
+                      테스트 계정 1초 로그인
+                    </button>
+                  )}
                 </div>
               </form>
 

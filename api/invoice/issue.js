@@ -3,9 +3,10 @@
 // 통합어드민에서 입금 확인 시 호출
 
 import { taxinvoiceService, SUPPLIER_INFO, getTodayStr, setCorsHeaders } from '../lib/popbill-service.js';
+import { withAuth } from '../lib/auth-middleware.js';
 
-export default async function handler(req, res) {
-  setCorsHeaders(res);
+async function handler(req, res) {
+  setCorsHeaders(req, res);
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -123,3 +124,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withAuth(handler, { requiredRole: 'admin' });

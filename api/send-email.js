@@ -2,7 +2,13 @@
 // POST /api/send-email
 // Uses nodemailer with Gmail SMTP (각 로펌이 자체 Gmail 계정 사용)
 
-export default async function handler(req, res) {
+import { withAuth } from './lib/auth-middleware.js';
+import { setCorsHeaders } from './lib/popbill-service.js';
+
+async function handler(req, res) {
+  setCorsHeaders(req, res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
@@ -43,3 +49,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withAuth(handler);

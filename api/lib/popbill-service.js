@@ -42,8 +42,24 @@ export function getTodayStr() {
 }
 
 // CORS 헤더 설정
-export function setCorsHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+export function setCorsHeaders(req, res) {
+  const allowedOrigins = [
+    'https://mykim.kr',
+    'https://www.mykim.kr'
+  ];
+  
+  if (process.env.NODE_ENV === 'development') {
+    allowedOrigins.push('http://localhost:5173');
+  }
+
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // 서버 간 호출 등 origin이 없는 경우 처리 방안 (필요시)
+    // res.setHeader('Access-Control-Allow-Origin', '*'); 
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }

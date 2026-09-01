@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
 import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout } from '../services/auditService';
 import { createSecureSession, verifySecureSession, refreshSecureSession } from '../utils/secureSession';
+import { supabase } from '../supabaseClient';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
@@ -250,7 +251,7 @@ export default function AdminRole({
     };
   }, [isLoggedIn, dialog]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // [SECURITY] 잠금 상태 확인
@@ -268,7 +269,13 @@ export default function AdminRole({
     const id = loginId.trim().toLowerCase();
     const pw = loginPassword.trim();
 
-    if ((id === 'admin' && pw === 'admin') || (id === '1' && pw === '1')) {
+    // [SECURITY] 하드코딩된 인증 우회 제거 및 Supabase Auth 연동 (점진적 전환)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: id,
+      password: pw
+    });
+
+    if (!error && data.user) {
       // [SECURITY] HMAC 서명된 세션 토큰 생성 (비동기)
       createSecureSession().then(token => {
         localStorage.setItem(SESSION_KEY, token);
@@ -626,7 +633,7 @@ export default function AdminRole({
               <label className="text-sm text-slate-600 block uppercase font-bold">어드민 ID</label>
               <input 
                 type="text" 
-                placeholder="어드민 아이디 입력 (기본: admin 또는 1)"
+                placeholder="어드민 아이디 입력"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
                 className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
@@ -637,7 +644,7 @@ export default function AdminRole({
               <label className="text-sm text-slate-600 block uppercase font-bold">비밀번호</label>
               <input 
                 type="password" 
-                placeholder="비밀번호 입력 (기본: admin 또는 1)"
+                placeholder="비밀번호 입력"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
