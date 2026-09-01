@@ -44,6 +44,7 @@ interface RehabResultReportProps {
     viewerRole?: 'client' | 'lawyer' | 'staff';
     onSendProposal?: () => void;
     onRequestConfirm?: (memo: string) => void;
+    lawyerReviewed?: boolean;
 }
 
 const RehabResultReport: React.FC<RehabResultReportProps> = ({
@@ -56,7 +57,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     embedded = false,
     viewerRole = 'client',
     onSendProposal,
-    onRequestConfirm
+    onRequestConfirm,
+    lawyerReviewed = false
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
     const [activeReportTab, setActiveReportTab] = useState<'overview' | 'assets' | 'debts' | 'statistics' | 'simulation' | 'checklist'>('overview');
@@ -70,6 +72,9 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
         if (!isLoggedIn) {
             setLoginPromptAction(action);
             setShowLoginPrompt(true);
+            return true;
+        }
+        if ((action === 'pdf' || action === 'share') && !lawyerReviewed) {
             return true;
         }
         return false;
@@ -359,17 +364,23 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 </motion.p>
                             </div>
                             <div className="flex items-center gap-2">
+                                {!lawyerReviewed && (
+                                    <span className="hidden sm:inline-block px-2 py-1 bg-amber-50 text-amber-700 text-[10px] rounded-lg border border-amber-200">
+                                        🔒 변호사 검토 후 이용 가능
+                                    </span>
+                                )}
                                 <motion.button
                                     onClick={() => { if (!requireLogin('pdf')) handleDownloadPDF(); }}
-                                    disabled={isGeneratingPdf}
-                                    className="p-1.5 text-slate-500 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+                                    disabled={isGeneratingPdf || !lawyerReviewed}
+                                    className="p-1.5 text-slate-500 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="PDF 저장"
                                 >
                                     <Download className="w-4 h-4" />
                                 </motion.button>
                                 <motion.button
                                     onClick={() => { if (!requireLogin('share')) setIsShareModalOpen(true); }}
-                                    className="p-1.5 text-slate-500 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors"
+                                    disabled={!lawyerReviewed}
+                                    className="p-1.5 text-slate-500 hover:text-[#7264FF] hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="보안 공유"
                                 >
                                     <Share2 className="w-4 h-4" />
@@ -1738,18 +1749,24 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                         </motion.button>
 
                         {/* Save & Share Buttons */}
+                        {!lawyerReviewed && (
+                            <div className="mt-3 text-center text-[11px] text-amber-700 bg-amber-50 py-1.5 rounded-lg border border-amber-200">
+                                🔒 변호사 검토 후 리포트 다운로드 및 공유가 가능합니다.
+                            </div>
+                        )}
                         <div className="flex gap-2 mt-3 text-xs font-semibold">
                             <button
                                 onClick={() => { if (!requireLogin('pdf')) handleDownloadPDF(); }}
-                                disabled={isGeneratingPdf}
-                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200 disabled:opacity-55"
+                                disabled={isGeneratingPdf || !lawyerReviewed}
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200 disabled:opacity-55 disabled:cursor-not-allowed"
                             >
                                 <Download className="w-3.5 h-3.5" />
                                 {isGeneratingPdf ? 'PDF 생성 중...' : '전문가 PDF 다운로드'}
                             </button>
                             <button
                                 onClick={() => { if (!requireLogin('share')) setIsShareModalOpen(true); }}
-                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
+                                disabled={!lawyerReviewed}
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-slate-200 disabled:opacity-55 disabled:cursor-not-allowed"
                             >
                                 <Share2 className="w-3.5 h-3.5" />
                                 보안 공유 (PIN 번호 설정)

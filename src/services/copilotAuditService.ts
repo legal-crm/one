@@ -35,8 +35,13 @@ export async function writeCopilotAuditLog(
     created_at: new Date().toISOString()
   };
 
+  // [SECURITY M-2] 개발 환경에서만 비민감 메타데이터 로그 출력 (상세 페이로드 제외)
   if (import.meta.env.DEV) {
-    console.log('[COPILOT_AUDIT]', action, logEntry);
+    console.log('[COPILOT_AUDIT]', action, {
+      actorRole,
+      targetType,
+      targetId,
+    });
   }
 
   // 1. LocalStorage 폴백 저장

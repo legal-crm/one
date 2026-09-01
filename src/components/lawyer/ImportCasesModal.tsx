@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { X, Upload, FileSpreadsheet, AlertTriangle, Check, Download, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style'; // [SECURITY Fix H-4] xlsx prototype pollution CVE-2023-30533 대응
 import { IntakeChannel, INTAKE_CHANNEL_CONFIG } from '../../types';
 import { formatPhone } from '../../services/crmService';
 
@@ -110,9 +110,9 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
         
         setColumnMapping(initialMapping);
         setStep(2);
-      } catch (error) {
+      } catch (error: any) {
         toast.error('파일을 읽는 중 오류가 발생했습니다.');
-        console.error(error);
+        console.error('[ImportCases] 엑셀 파일 파싱 오류:', error?.message || error);
       }
     };
     reader.readAsBinaryString(file);

@@ -86,47 +86,71 @@ export const generateDateOptions = () => {
 };
 
 /**
- * Encrypts data using character shifting with a 4-digit PIN code.
- * Safe for URL usage by substituting base64 characters.
+ * AES-256-GCM 암호화 (Web Crypto API)
+ * PIN에서 PBKDF2로 키를 파생하고 AES-GCM으로 암호화
  */
-export const encryptReport = (data: string, pin: string): string => {
-  const pinDigits = pin.split('').map(Number);
-  let result = '';
-  for (let i = 0; i < data.length; i++) {
-    const charCode = data.charCodeAt(i);
-    const shift = pinDigits[i % pinDigits.length] || 0;
-    result += String.fromCharCode(charCode + shift);
-  }
-  // Convert unicode string safely to base64 and make it URL-safe
-  const b64 = btoa(encodeURIComponent(result).replace(/%([0-9A-F]{2})/g, (_, p1) => {
-    return String.fromCharCode(parseInt(p1, 16));
-  }));
+export const encryptReport = async (data: string, pin: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  // PIN -> PBKDF2 key derivation
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(pin), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+  
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encoder.encode(data)
+  );
+  
+  // salt(16) + iv(12) + ciphertext -> Base64 URL-safe
+  const combined = new Uint8Array(salt.length + iv.length + new Uint8Array(encrypted).length);
+  combined.set(salt, 0);
+  combined.set(iv, salt.length);
+  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+  
+  const b64 = btoa(String.fromCharCode(...combined));
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 
 /**
- * Decrypts data using character shifting with a 4-digit PIN code.
+ * AES-256-GCM 복호화 (Web Crypto API)
  */
-export const decryptReport = (ciphertext: string, pin: string): string => {
-  // Restore standard base64 characters from URL-safe ones
+export const decryptReport = async (ciphertext: string, pin: string): Promise<string> => {
   let b64 = ciphertext.replace(/-/g, '+').replace(/_/g, '/');
-  while (b64.length % 4) {
-    b64 += '=';
-  }
+  while (b64.length % 4) b64 += '=';
   
-  const byteString = atob(b64);
-  const percentString = byteString.split('').map((c) => {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join('');
+  const combined = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const salt = combined.slice(0, 16);
+  const iv = combined.slice(16, 28);
+  const data = combined.slice(28);
   
-  const decryptedShuffled = decodeURIComponent(percentString);
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(pin), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
   
-  const pinDigits = pin.split('').map(Number);
-  let result = '';
-  for (let i = 0; i < decryptedShuffled.length; i++) {
-    const charCode = decryptedShuffled.charCodeAt(i);
-    const shift = pinDigits[i % pinDigits.length] || 0;
-    result += String.fromCharCode(charCode - shift);
-  }
-  return result;
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    data
+  );
+  
+  return new TextDecoder().decode(decrypted);
 };

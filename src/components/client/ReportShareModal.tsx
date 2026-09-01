@@ -18,9 +18,9 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
 
     if (!isOpen) return null;
 
-    const handleGenerateLink = () => {
-        if (pin.length !== 4 || isNaN(Number(pin))) {
-            alert('비밀번호 숫자 4자리를 정확히 입력해 주세요.');
+    const handleGenerateLink = async () => {
+        if (pin.length !== 6 || isNaN(Number(pin))) {
+            alert('비밀번호 숫자 6자리를 정확히 입력해 주세요.');
             return;
         }
         
@@ -57,7 +57,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
             }
         });
 
-        const encrypted = encryptReport(payload, pin);
+        const encrypted = await encryptReport(payload, pin);
         const origin = window.location.origin + window.location.pathname;
         const url = `${origin}?share=${encrypted}`;
         
@@ -72,7 +72,7 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
     };
 
     const handleSMS = () => {
-        const text = `[로이 법률 CRM] 안전하게 보호된 채무 진단 보고서가 도착했습니다.\n\n비밀번호(4자리)를 입력하고 확인해보세요!\n보고서 링크: ${shareUrl}`;
+        const text = `[로이 법률 CRM] 안전하게 보호된 채무 진단 보고서가 도착했습니다.\n\n비밀번호(6자리)를 입력하고 확인해보세요!\n보고서 링크: ${shareUrl}`;
         window.open(`sms:?body=${encodeURIComponent(text)}`);
     };
 
@@ -118,23 +118,23 @@ export default function ReportShareModal({ isOpen, onClose, result, userInput }:
                                 <h4 className="font-extrabold text-base">보안 비밀번호 설정</h4>
                                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                                     받는 사람이 안전하게 보고서를 열람할 수 있도록<br />
-                                    숫자 4자리 비밀번호(PIN)를 입력해 주세요.
+                                    숫자 6자리 비밀번호(PIN)를 입력해 주세요.
                                 </p>
                             </div>
 
                             <input 
                                 type="text"
-                                maxLength={4}
+                                maxLength={6}
                                 pattern="[0-9]*"
                                 value={pin}
                                 onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))}
-                                placeholder="숫자 4자리 입력"
+                                placeholder="숫자 6자리 입력"
                                 className="w-full text-center text-2xl tracking-[0.7em] font-bold py-3.5 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-[#7264FF] outline-none transition-colors placeholder:text-slate-350 placeholder:text-sm placeholder:tracking-normal"
                             />
 
                             <button
                                 onClick={handleGenerateLink}
-                                disabled={pin.length !== 4}
+                                disabled={pin.length !== 6}
                                 className="w-full py-3 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1"
                             >
                                 <span>안전 링크 생성하기</span>

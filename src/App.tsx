@@ -107,11 +107,11 @@ export default function App() {
     // Share/Role parameter detection은 useState 초기화에서 동기적으로 처리됨 (플래시 방지)
   }, []);
 
-  const handleUnlock = () => {
-    if (pin.length !== 4) return;
+  const handleUnlock = async () => {
+    if (pin.length !== 6) return;
     if (!sharePayload) return;
     try {
-      const decrypted = decryptReport(sharePayload, pin);
+      const decrypted = await decryptReport(sharePayload, pin);
       const parsed = JSON.parse(decrypted);
       if (parsed.result && parsed.userInput) {
         setUnlockedData(parsed);
@@ -518,21 +518,21 @@ export default function App() {
             <h3 className="font-extrabold text-lg text-white">보안 보호된 채무 리포트</h3>
             <p className="text-xs text-slate-500 leading-relaxed px-4">
               본 채무 리포트는 비밀번호로 보호되어 있습니다.<br />
-              공유자로부터 전달받은 <strong>숫자 4자리 비밀번호</strong>를 입력해 주세요.
+              공유자로부터 전달받은 <strong>숫자 6자리 비밀번호</strong>를 입력해 주세요.
             </p>
           </div>
 
           <div className="w-full space-y-3">
             <input 
               type="password"
-              maxLength={4}
+              maxLength={6}
               pattern="[0-9]*"
               value={pin}
               onChange={(e) => {
                 setPin(e.target.value.replace(/[^0-9]/g, ''));
                 if (pinError) setPinError(false);
               }}
-              placeholder="••••"
+              placeholder="••••••"
               className={`w-full text-center text-3xl tracking-[0.6em] font-bold py-3.5 border-2 ${
                 pinError ? 'border-red-500 bg-red-500/5 focus:border-red-500' : 'border-slate-800 bg-slate-950 focus:border-[#7264FF]'
               } rounded-xl outline-none transition-colors placeholder:text-slate-700`}
@@ -549,7 +549,7 @@ export default function App() {
 
           <button
             onClick={handleUnlock}
-            disabled={pin.length !== 4}
+            disabled={pin.length !== 6}
             className="w-full py-3.5 bg-[#7264FF] hover:bg-[#5b4cf5] disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-xl transition-colors"
           >
             보고서 잠금 해제하기

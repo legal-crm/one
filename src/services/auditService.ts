@@ -42,9 +42,13 @@ export interface AuditEntry {
  * Supabase 미설정 시 콘솔에만 출력합니다 (비차단).
  */
 export async function writeAuditLog(entry: AuditEntry): Promise<void> {
-  // 콘솔 로그는 항상 남김 (개발 환경 디버깅용)
+  // [SECURITY M-2] 개발 환경에서만 비민감 메타데이터 로그 출력 (개인정보/상세 페이로드 제외)
   if (import.meta.env.DEV) {
-    console.log('[AUDIT]', entry.action, entry);
+    console.log('[AUDIT]', entry.action, {
+      actor_role: entry.actor_role,
+      target_type: entry.target_type,
+      target_id: entry.target_id,
+    });
   }
 
   if (!isSupabaseConfigured) {

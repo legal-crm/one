@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style'; // [SECURITY Fix H-4] xlsx prototype pollution CVE-2023-30533 대응
 import { CRM_STATUS_CONFIG, INTAKE_CHANNEL_CONFIG } from '../../types';
 import type { ConsultRequest, CrmClientExtension, CrmStatus, IntakeChannel } from '../../types';
 
