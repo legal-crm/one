@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { 
   PlusCircle, Users, Scale, FileText, ChevronLeft, ChevronRight, ChevronDown, CheckCircle, 
   User, RefreshCw, Smartphone, ShieldCheck, Landmark, AlertTriangle, Send, Eye,
@@ -23,6 +23,7 @@ import { supabase } from '../supabaseClient';
 import PopupContainer from './popup/PopupContainer';
 import { loadClientNotifications, markAsRead, markAllAsRead, seedInitialNotifications, getUnreadCount } from '../services/clientNotificationService';
 import type { ClientNotification } from '../services/clientNotificationService';
+import { secureGetItem, secureSetItem, secureRemoveItem } from '../utils/secureStorage';
 
 const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
 const CalculatorView = React.lazy(() => import('./client/CalculatorView'));
@@ -700,7 +701,7 @@ export default function ClientRole({
     }));
 
     const clientName = isLoggedIn ? userAlias : '익명 의뢰인';
-    const clientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+    const clientId = secureGetItem('legal_crm_client_id') || 'client-temp';
   };
 
   // Terms and Privacy popup states
@@ -746,7 +747,7 @@ export default function ClientRole({
 
   // 의뢰인이 변호사 선택 완료 시 호출
   const handleConfirmLawyerSelection = (lawyerIds: string[]) => {
-    const finalClientId = localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp';
+    const finalClientId = secureGetItem('legal_crm_client_id') || currentClientId || 'client-temp';
     const targetReqId = pendingNewRequest?.id || activeChatReqId;
 
     // 기존 활성 상담 요청이 있는지 확인 (사용자 본인의 요청만 정확히 매칭)
@@ -888,20 +889,20 @@ export default function ClientRole({
   // Helper: Record client login/signup activity
   const recordClientLogin = async (alias: string, emailOrPhone: string, channel: 'email' | 'google' | 'kakao' | 'naver' | 'sms') => {
     // Supabase user ID를 우선 사용 (도메인 간 일관성 보장)
-    let targetId = localStorage.getItem('legal_crm_client_id');
+    let targetId = secureGetItem('legal_crm_client_id');
     
     // Try to get Supabase user ID
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session?.user?.id) {
         targetId = data.session.user.id;
-        localStorage.setItem('legal_crm_client_id', targetId);
+        secureSetItem('legal_crm_client_id', targetId);
       }
     } catch {}
     
     if (!targetId) {
       targetId = `client-${Date.now()}`;
-      localStorage.setItem('legal_crm_client_id', targetId);
+      secureSetItem('legal_crm_client_id', targetId);
     }
     
     // 익명(client-temp) 상태에서 진행했던 진단/상담 요청을 로그인한 계정으로 이전
@@ -945,14 +946,14 @@ export default function ClientRole({
           alert(msg);
           setIsLoggedIn(false);
           setUserAlias('');
-          localStorage.removeItem('legal_crm_client_alias');
+          secureRemoveItem('legal_crm_client_alias');
         } else if (currentMember.status === 'dormant') {
           if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
             setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
           } else {
             setIsLoggedIn(false);
             setUserAlias('');
-            localStorage.removeItem('legal_crm_client_alias');
+            secureRemoveItem('legal_crm_client_alias');
           }
         }
       }
@@ -977,7 +978,7 @@ export default function ClientRole({
 
   useEffect(() => {
     // OAuth 플래그 확인 (AuthModal에서 리다이렉트 전에 설정)
-    const pendingOAuth = localStorage.getItem('pending_oauth_login');
+    const pendingOAuth = secureGetItem('pending_oauth_login');
     const isPendingOAuth = !!pendingOAuth;
 
     // 세션 감지 시 처리 함수
@@ -985,7 +986,7 @@ export default function ClientRole({
       if (!session?.user) return;
       // Supabase user ID를 client ID로 사용
       if (session.user.id) {
-        localStorage.setItem('legal_crm_client_id', session.user.id);
+        secureSetItem('legal_crm_client_id', session.user.id);
       }
       setIsLoggedIn(true);
       const metaAlias = session.user.user_metadata?.alias || generateAlias();
@@ -994,7 +995,7 @@ export default function ClientRole({
       
       // OAuth 리다이렉트 직후이면 chat 탭으로 이동
       if (isPendingOAuth) {
-        localStorage.removeItem('pending_oauth_login');
+        secureRemoveItem('pending_oauth_login');
         setActiveTab('chat');
       }
     };
@@ -1015,7 +1016,7 @@ export default function ClientRole({
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) handleSession(session, '3초 재시도');
         else if (isPendingOAuth) {
-          localStorage.removeItem('pending_oauth_login');
+          secureRemoveItem('pending_oauth_login');
         }
       });
     }, 3000);
@@ -1098,7 +1099,7 @@ export default function ClientRole({
   const [reviewSearchQuery, setReviewSearchQuery] = useState<string>('');
   const [reviewPage, setReviewPage] = useState<number>(1);
 
-  const currentClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+  const currentClientId = secureGetItem('legal_crm_client_id') || 'client-temp';
   const clientRequests = React.useMemo(() => {
     return requests.filter(r => 
       r.clientId === currentClientId || 
@@ -1695,7 +1696,7 @@ export default function ClientRole({
     const effectiveMaxParticipants = effectiveRequestType === 'direct' ? 1 : 3;
     const newRequest = {
       id: `req-${Date.now()}`,
-      clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
+      clientId: isLoggedIn ? (secureGetItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
       clientName: isLoggedIn ? userAlias : '익명 의뢰인',
       phone: intakeData.phoneNumber || '010-4567-8901',
       requestType: effectiveRequestType as 'open' | 'direct' | 'direct_multi',
@@ -1748,7 +1749,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 - 자산 청산가치 충족 여부 사전 확인.
 ==================================`,
       financialProfile: {
-        clientId: isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
+        clientId: isLoggedIn ? (secureGetItem('legal_crm_client_id') || currentClientId || 'client-temp') : 'client-temp',
         clientName: isLoggedIn ? userAlias : (intakeData.clientName || '익명 의뢰인'),
         age: intakeData.age || (intakeData.birthDate ? (2026 - parseInt(intakeData.birthDate.split('-')[0])) : 35),
         gender: intakeData.gender || 'male',
@@ -2060,13 +2061,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setIsLoggedIn(false);
                     setUserAlias('');
                     
-                    localStorage.removeItem('legal_crm_client_id');
-                    localStorage.removeItem('legal_crm_inquiries');
-                    localStorage.removeItem('legal_crm_client_alias');
-                    localStorage.removeItem('lawyer_favorites');
-                    localStorage.removeItem('legal_crm_appointed_lawyer_id');
-                    localStorage.removeItem('legal_crm_requests');
-                    localStorage.removeItem('legal_crm_messages');
+                    secureRemoveItem('legal_crm_client_id');
+                    secureRemoveItem('legal_crm_inquiries');
+                    secureRemoveItem('legal_crm_client_alias');
+                    secureRemoveItem('lawyer_favorites');
+                    secureRemoveItem('legal_crm_appointed_lawyer_id');
+                    secureRemoveItem('legal_crm_requests');
+                    secureRemoveItem('legal_crm_messages');
                     
                     // 로컬 상태만 초기화
                     setRequests([]);
@@ -3090,13 +3091,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     setIsLoggedIn(false);
                     setUserAlias('');
                     
-                    localStorage.removeItem('legal_crm_client_id');
-                    localStorage.removeItem('legal_crm_inquiries');
-                    localStorage.removeItem('legal_crm_client_alias');
-                    localStorage.removeItem('lawyer_favorites');
-                    localStorage.removeItem('legal_crm_appointed_lawyer_id');
-                    localStorage.removeItem('legal_crm_requests');
-                    localStorage.removeItem('legal_crm_messages');
+                    secureRemoveItem('legal_crm_client_id');
+                    secureRemoveItem('legal_crm_inquiries');
+                    secureRemoveItem('legal_crm_client_alias');
+                    secureRemoveItem('lawyer_favorites');
+                    secureRemoveItem('legal_crm_appointed_lawyer_id');
+                    secureRemoveItem('legal_crm_requests');
+                    secureRemoveItem('legal_crm_messages');
                     
                     // 로컬 상태만 초기화 (Supabase 데이터는 보존 - 다시 로그인하면 복원됨)
                     setRequests([]);
@@ -3219,7 +3220,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     // 좋아요 변호사 확인 (무료 상담 변호사 수임하기 플로우)
                     const FAVORITES_KEY = 'lawyer_favorites';
                     let favIds: string[] = [];
-                    try { favIds = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
+                    try { favIds = JSON.parse(secureGetItem(FAVORITES_KEY) || '[]'); } catch { /* ignore */ }
                     if (favIds.length > 0) {
                       setChatModalTrigger('fav');
                     } else {

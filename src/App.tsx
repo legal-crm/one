@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { DialogProvider } from './components/common/DialogProvider';
 import { 
@@ -34,6 +34,7 @@ const AdminRole = React.lazy(() => import('./components/AdminRole'));
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
 import { decryptReport } from './utils';
 import SharedReportViewer from './components/client/SharedReportViewer';
+import { secureGetItem, secureSetItem } from './utils/secureStorage';
 
 export default function App() {
   // Triple role state: 'client' | 'lawyer' | 'admin'
@@ -48,7 +49,7 @@ export default function App() {
     // URL에 role 파라미터가 없을 때 → 활성 세션으로 역할 복원
     try {
       if (sessionStorage.getItem('legal_crm_lawyer_session')) return 'lawyer';
-      const adminSession = localStorage.getItem('legal_crm_admin_session');
+      const adminSession = secureGetItem('legal_crm_admin_session');
       if (adminSession) {
         const { timestamp, signature } = JSON.parse(adminSession);
         if (timestamp && signature && Date.now() - timestamp <= 30 * 60 * 1000) return 'admin';
@@ -140,7 +141,7 @@ export default function App() {
   // Initial load from localStorage (instant)
   const [requests, _setRequests] = useState<ConsultRequest[]>(() => {
     try {
-      const saved = localStorage.getItem('legal_crm_requests');
+      const saved = secureGetItem('legal_crm_requests');
       if (saved) {
         const parsed = JSON.parse(saved).filter((r: any) => 
           r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3'
@@ -155,7 +156,7 @@ export default function App() {
   const setRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>> = React.useCallback((action) => {
     _setRequests(prev => {
       const next = typeof action === 'function' ? action(prev) : action;
-      try { localStorage.setItem('legal_crm_requests', JSON.stringify(next)); } catch {}
+      try { secureSetItem('legal_crm_requests', JSON.stringify(next)); } catch {}
       saveAllConsultRequests(next).catch(() => {});
       return next;
     });
@@ -163,7 +164,7 @@ export default function App() {
 
   const [messages, _setMessages] = useState<ConsultMessage[]>(() => {
     try {
-      const saved = localStorage.getItem('legal_crm_messages');
+      const saved = secureGetItem('legal_crm_messages');
       if (saved) {
         return JSON.parse(saved).filter((m: any) => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3');
       }
@@ -187,11 +188,11 @@ export default function App() {
           const userRequests = dbRequests.filter((r: any) => !r.id.startsWith('req-mock-'));
           const merged = [...initialConsultRequests, ...userRequests];
           _setRequests(merged);
-          try { localStorage.setItem('legal_crm_requests', JSON.stringify(merged)); } catch {}
+          try { secureSetItem('legal_crm_requests', JSON.stringify(merged)); } catch {}
         }
         if (dbMessages.length > 0) {
           _setMessages(dbMessages);
-          try { localStorage.setItem('legal_crm_messages', JSON.stringify(dbMessages)); } catch {}
+          try { secureSetItem('legal_crm_messages', JSON.stringify(dbMessages)); } catch {}
         }
       } catch {}
     };
@@ -211,7 +212,7 @@ export default function App() {
   const setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>> = React.useCallback((action) => {
     _setMessages(prev => {
       const next = typeof action === 'function' ? action(prev) : action;
-      try { localStorage.setItem('legal_crm_messages', JSON.stringify(next)); } catch {}
+      try { secureSetItem('legal_crm_messages', JSON.stringify(next)); } catch {}
       saveAllConsultMessages(next).catch(() => {});
       return next;
     });
@@ -221,12 +222,12 @@ export default function App() {
   const [members, setMembers] = useState<Member[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(() => {
-    const savedNews = localStorage.getItem('legal_crm_news');
+    const savedNews = secureGetItem('legal_crm_news');
     return savedNews ? JSON.parse(savedNews) : mockNewsArticles;
   });
 
   const [qas, setQas] = useState<ClientQA[]>(() => {
-    const saved = localStorage.getItem('legal_crm_qas');
+    const saved = secureGetItem('legal_crm_qas');
     if (saved) {
       const parsed: ClientQA[] = JSON.parse(saved);
       const existingIds = new Set(parsed.map(q => q.id));
@@ -237,28 +238,28 @@ export default function App() {
   });
 
   const [reviews, setReviews] = useState<SuccessReview[]>(() => {
-    const saved = localStorage.getItem('legal_crm_reviews');
+    const saved = secureGetItem('legal_crm_reviews');
     return saved ? JSON.parse(saved) : initialReviews;
   });
 
   const [banners, setBanners] = useState<MainBanner[]>(() => {
-    const saved = localStorage.getItem('legal_crm_banners');
+    const saved = secureGetItem('legal_crm_banners');
     return saved ? JSON.parse(saved) : initialBanners;
   });
 
   const [notices, setNotices] = useState<Notice[]>(() => {
-    const saved = localStorage.getItem('legal_crm_notices');
+    const saved = secureGetItem('legal_crm_notices');
     return saved ? JSON.parse(saved) : initialNotices;
   });
 
   const [matchingCooldownHours, setMatchingCooldownHours] = useState<number>(() => {
-    const saved = localStorage.getItem('legal_crm_matching_cooldown_hours');
+    const saved = secureGetItem('legal_crm_matching_cooldown_hours');
     return saved ? Number(saved) : 24;
   });
 
   const [inquiries, setInquiries] = useState<ClientInquiry[]>([]);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(() => {
-    const saved = localStorage.getItem('legal_crm_platform_config');
+    const saved = secureGetItem('legal_crm_platform_config');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -278,64 +279,64 @@ export default function App() {
   });
 
   const [popupConfig, setPopupConfig] = useState<PopupConfig>(() => {
-    const saved = localStorage.getItem('legal_crm_popup_config');
+    const saved = secureGetItem('legal_crm_popup_config');
     return saved ? JSON.parse(saved) : initialPopupConfig;
   });
 
   const [lawyerInquiries, setLawyerInquiries] = useState<LawyerInquiry[]>(() => {
-    const saved = localStorage.getItem('legal_crm_lawyer_inquiries');
+    const saved = secureGetItem('legal_crm_lawyer_inquiries');
     return saved ? JSON.parse(saved) : initialLawyerInquiries;
   });
 
   // Sync states to localStorage
   useEffect(() => {
-    localStorage.setItem('legal_crm_news', JSON.stringify(newsArticles));
+    secureSetItem('legal_crm_news', JSON.stringify(newsArticles));
   }, [newsArticles]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_qas', JSON.stringify(qas));
+    secureSetItem('legal_crm_qas', JSON.stringify(qas));
   }, [qas]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_reviews', JSON.stringify(reviews));
+    secureSetItem('legal_crm_reviews', JSON.stringify(reviews));
   }, [reviews]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_banners', JSON.stringify(banners));
+    secureSetItem('legal_crm_banners', JSON.stringify(banners));
   }, [banners]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_notices', JSON.stringify(notices));
+    secureSetItem('legal_crm_notices', JSON.stringify(notices));
   }, [notices]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_matching_cooldown_hours', String(matchingCooldownHours));
+    secureSetItem('legal_crm_matching_cooldown_hours', String(matchingCooldownHours));
   }, [matchingCooldownHours]);
 
   useEffect(() => {
     if (inquiries.length > 0) {
-      localStorage.setItem('legal_crm_inquiries', JSON.stringify(inquiries));
+      secureSetItem('legal_crm_inquiries', JSON.stringify(inquiries));
     }
   }, [inquiries]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_platform_config', JSON.stringify(platformConfig));
+    secureSetItem('legal_crm_platform_config', JSON.stringify(platformConfig));
   }, [platformConfig]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_popup_config', JSON.stringify(popupConfig));
+    secureSetItem('legal_crm_popup_config', JSON.stringify(popupConfig));
   }, [popupConfig]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_lawyer_inquiries', JSON.stringify(lawyerInquiries));
+    secureSetItem('legal_crm_lawyer_inquiries', JSON.stringify(lawyerInquiries));
   }, [lawyerInquiries]);
 
   // Load state from localStorage on startup or fallback to initial mock data.
   useEffect(() => {
-    const savedCases = localStorage.getItem('legal_crm_cases');
-    const savedLawyers = localStorage.getItem('legal_crm_lawyers');
-    const savedMembers = localStorage.getItem('legal_crm_members');
-    const savedLogs = localStorage.getItem('legal_crm_activity_logs');
+    const savedCases = secureGetItem('legal_crm_cases');
+    const savedLawyers = secureGetItem('legal_crm_lawyers');
+    const savedMembers = secureGetItem('legal_crm_members');
+    const savedLogs = secureGetItem('legal_crm_activity_logs');
 
     // requests와 messages는 lazy initializer에서 이미 로드됨
 
@@ -365,7 +366,7 @@ export default function App() {
       setActivityLogs(initialActivityLogs);
     }
 
-    const savedInquiries = localStorage.getItem('legal_crm_inquiries');
+    const savedInquiries = secureGetItem('legal_crm_inquiries');
     if (savedInquiries) {
       setInquiries(JSON.parse(savedInquiries));
     } else {
@@ -378,25 +379,25 @@ export default function App() {
 
   useEffect(() => {
     if (cases.length > 0) {
-      localStorage.setItem('legal_crm_cases', JSON.stringify(cases));
+      secureSetItem('legal_crm_cases', JSON.stringify(cases));
     }
   }, [cases]);
 
   useEffect(() => {
     if (lawyers.length > 0) {
-      localStorage.setItem('legal_crm_lawyers', JSON.stringify(lawyers));
+      secureSetItem('legal_crm_lawyers', JSON.stringify(lawyers));
     }
   }, [lawyers]);
 
   useEffect(() => {
     if (members.length > 0) {
-      localStorage.setItem('legal_crm_members', JSON.stringify(members));
+      secureSetItem('legal_crm_members', JSON.stringify(members));
     }
   }, [members]);
 
   useEffect(() => {
     if (activityLogs.length > 0) {
-      localStorage.setItem('legal_crm_activity_logs', JSON.stringify(activityLogs));
+      secureSetItem('legal_crm_activity_logs', JSON.stringify(activityLogs));
     }
   }, [activityLogs]);
 

@@ -4,6 +4,7 @@ import { useDialog } from './common/DialogProvider';
 import { auditAdminLogin, auditAdminLoginFailed, auditLoginLocked, auditAdminLogout } from '../services/auditService';
 import { createSecureSession, verifySecureSession, refreshSecureSession } from '../utils/secureSession';
 import { supabase } from '../supabaseClient';
+import { secureGetItem, secureSetItem, secureRemoveItem } from '../utils/secureStorage';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
@@ -180,18 +181,18 @@ export default function AdminRole({
 
   // 초기 로드 시 동기적으로 타임스탬프만 확인 (HMAC은 비동기로 후속 검증)
   const quickCheckSession = (): boolean => {
-    const sessionData = localStorage.getItem(SESSION_KEY);
+    const sessionData = secureGetItem(SESSION_KEY);
     if (!sessionData) return false;
     try {
       const { timestamp, signature } = JSON.parse(sessionData);
       if (!timestamp || !signature) return false;
       if (Date.now() - timestamp > ADMIN_SESSION_TIMEOUT_MS) {
-        localStorage.removeItem(SESSION_KEY);
+        secureRemoveItem(SESSION_KEY);
         return false;
       }
       return true; // HMAC 검증은 useEffect에서 비동기로 수행
     } catch {
-      localStorage.removeItem(SESSION_KEY);
+      secureRemoveItem(SESSION_KEY);
       return false;
     }
   };
@@ -207,10 +208,10 @@ export default function AdminRole({
   useEffect(() => {
     if (!isLoggedIn) return;
     const verifyOnMount = async () => {
-      const sessionData = localStorage.getItem(SESSION_KEY);
+      const sessionData = secureGetItem(SESSION_KEY);
       const isValid = await verifySecureSession(sessionData, ADMIN_SESSION_TIMEOUT_MS);
       if (!isValid) {
-        localStorage.removeItem(SESSION_KEY);
+        secureRemoveItem(SESSION_KEY);
         setIsLoggedIn(false);
       }
     };
@@ -224,15 +225,15 @@ export default function AdminRole({
     const handleRefreshSession = async () => {
       if (isLoggedIn) {
         const token = await refreshSecureSession();
-        localStorage.setItem(SESSION_KEY, token);
+        secureSetItem(SESSION_KEY, token);
       }
     };
 
     const checkExpiry = async () => {
-      const sessionData = localStorage.getItem(SESSION_KEY);
+      const sessionData = secureGetItem(SESSION_KEY);
       const isValid = await verifySecureSession(sessionData, ADMIN_SESSION_TIMEOUT_MS);
       if (!isValid) {
-        localStorage.removeItem(SESSION_KEY);
+        secureRemoveItem(SESSION_KEY);
         setIsLoggedIn(false);
         dialog.alert({ title: '보안 로그아웃', message: '보안을 위해 30분 미활동으로 자동 로그아웃되었습니다.', variant: 'info' });
       }
@@ -278,7 +279,7 @@ export default function AdminRole({
     if (!error && data.user) {
       // [SECURITY] HMAC 서명된 세션 토큰 생성 (비동기)
       createSecureSession().then(token => {
-        localStorage.setItem(SESSION_KEY, token);
+        secureSetItem(SESSION_KEY, token);
       });
       setIsLoggedIn(true);
       setLoginError('');
@@ -316,7 +317,7 @@ export default function AdminRole({
     if (confirmed) {
       // [AUDIT] 로그아웃 기록
       auditAdminLogout('admin');
-      localStorage.removeItem(SESSION_KEY);
+      secureRemoveItem(SESSION_KEY);
       setIsLoggedIn(false);
     }
   };
@@ -343,7 +344,7 @@ export default function AdminRole({
 
   // Client memos (admin internal notes)
   const [clientMemos, setClientMemos] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem('legal_crm_client_memos');
+    const saved = secureGetItem('legal_crm_client_memos');
     return saved ? JSON.parse(saved) : {};
   });
 
@@ -376,7 +377,7 @@ export default function AdminRole({
   }, [clientSearch, clientStatusFilter]);
 
   useEffect(() => {
-    localStorage.setItem('legal_crm_client_memos', JSON.stringify(clientMemos));
+    secureSetItem('legal_crm_client_memos', JSON.stringify(clientMemos));
   }, [clientMemos]);
 
   useEffect(() => {
@@ -673,7 +674,7 @@ export default function AdminRole({
                 type="button"
                 onClick={async () => {
                   const token = await createSecureSession();
-                  localStorage.setItem(SESSION_KEY, token);
+                  secureSetItem(SESSION_KEY, token);
                   setIsLoggedIn(true);
                 }}
                 className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-sm border border-[#1E293B]/60 transition-colors cursor-pointer"
