@@ -48,6 +48,7 @@ import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
 const NewCaseModal = React.lazy(() => import('./lawyer/NewCaseModal'));
 const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalette'));
+import ContractConversionModal from './lawyer/ContractConversionModal';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   return req.phone || (req as any).clientPhone || (req as any).userPhone || "-";
@@ -441,6 +442,7 @@ export default function LawyerRole({
 
   const [selectedCaseId, setSelectedCaseId] = useState<string>('');
   const [activeChatReqId, setActiveChatReqId] = useState<string>('');
+  const [contractTargetRequest, setContractTargetRequest] = useState<ConsultRequest | null>(null);
   
   // Custom case creation / note creation states
   const [newNote, setNewNote] = useState<string>('');
@@ -1301,38 +1303,33 @@ export default function LawyerRole({
     toast.info('제안서를 반려했습니다.');
   };
 
-  // Turn active request into an formal Case (수임 완료)
+  // Open contract conversion modal for formal case intake
   const handleConvertToCase = (req: ConsultRequest) => {
     const isAlreadyCase = cases.some(c => c.clientId === req.clientId);
     if (isAlreadyCase) {
       toast.error('이미 정식 수임 사건으로 등록된 고객입니다.');
       return;
     }
+    setContractTargetRequest(req);
+  };
 
-    const newCase: Case = {
-      id: `case-${Date.now()}`,
-      clientId: req.clientId,
-      clientName: req.clientName,
-      phone: req.phone,
-      status: 'document',
-      assignedLawyerId: activeLawyer.id,
-      assignedLawyerName: activeLawyer.name,
-      debtTotal: req.financialProfile.debtTotal,
-      income: req.financialProfile.income,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      notes: [
-        '상담 완료 후 정식 변책 사건 선임 완료',
-        `가계 채무 분석서(${req.financialProfile.debtTotal.toLocaleString()}만 원) 및 신분 서류 보완 지시`,
-        '관할 법원 가압류 직무 중단 명령 청구 예정'
-      ]
-    };
-
+  const handleContractSuccess = (newCase: Case, newContract: any) => {
     setCases(prev => [newCase, ...prev]);
-    // Close consultation
-    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'closed' } : r));
-    toast.success(`${req.clientName} 의뢰인이 정식 사건으로 수임 등록되었습니다.`);
+    // Close active consultation request and promote to document intake
+    if (contractTargetRequest) {
+      setRequests(prev => prev.map(r => r.id === contractTargetRequest.id ? { ...r, status: 'closed' } : r));
+    }
     setActiveTab('client-crm');
+    setContractTargetRequest(null);
+
+    // Log activity
+    onLogActivity(
+      activeLawyer.id,
+      activeLawyer.name,
+      activeLawyer.role as MemberRole,
+      'STATUS_CHANGE',
+      `정식 수임 계약 체결: ${newCase.clientName} 의뢰인 (${newContract?.totalFee ? (newContract.totalFee / 10000) + '만 원' : '수임 완료'}) -> [서류 준비 착수]`
+    );
   };
 
   const handleUpdateCaseStatus = (caseId: string, nextStatus: CaseStatus) => {
@@ -5183,6 +5180,18 @@ export default function LawyerRole({
           <NewCaseModal isOpen={isExternalClientModalOpen} onClose={() => setIsExternalClientModalOpen(false)} onRegister={handleExternalClientRegister} existingRequests={requests} />
         )}
       </React.Suspense>
+
+      {/* ── 정식 수임 & 계약 체결 모달 (전자계약 / 대면계약 / 서류 패키지) ── */}
+      {contractTargetRequest && (
+        <ContractConversionModal
+          request={contractTargetRequest}
+          activeLawyer={activeLawyer}
+          isOpen={!!contractTargetRequest}
+          onClose={() => setContractTargetRequest(null)}
+          onSuccess={handleContractSuccess}
+          onAddMessage={onAddMessage}
+        />
+      )}
 
     </div>
     </div>
