@@ -10,6 +10,7 @@ import type { ClientNotification } from '../../services/clientNotificationServic
 import { submitClientDocument } from '../../services/crmService';
 import MobileScanner from '../lawyer/MobileScanner';
 import { loadFeeNotificationSettings } from '../../services/alimtokService';
+import RehabCompanionView from './companion/RehabCompanionView';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -43,6 +44,9 @@ export default function MyPageView({
   isCompact = false
 }: MyPageViewProps) {
 
+  // 마이페이지 3대 서브 탭 (기본값: 'companion' - 회생완주동행 메인)
+  const [mypageTab, setMypageTab] = useState<'companion' | 'diagnosis' | 'settings'>('companion');
+
   // 다중 전달사항 로컬 편집 상태
   const [newNoteInput, setNewNoteInput] = useState('');
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
@@ -54,15 +58,17 @@ export default function MyPageView({
   
   const feeSettings = useMemo(() => loadFeeNotificationSettings(), []);
 
+  const profile = activeRequest?.financialProfile;
+
   const handleAddMypageNote = () => {
-    if (!newNoteInput.trim()) return;
+    if (!newNoteInput.trim() || !profile) return;
     const currentNotes = profile?.clientNotes || (profile?.clientNote ? [profile.clientNote] : []);
     handleFieldChange('clientNotes', [...currentNotes, newNoteInput.trim()]);
     setNewNoteInput('');
   };
 
   const handleSaveMypageNote = (idx: number) => {
-    if (!editingNoteValue.trim()) return;
+    if (!editingNoteValue.trim() || !profile) return;
     const currentNotes = profile?.clientNotes || (profile?.clientNote ? [profile.clientNote] : []);
     const updated = currentNotes.map((note, i) => i === idx ? editingNoteValue.trim() : note);
     handleFieldChange('clientNotes', updated);
@@ -71,39 +77,11 @@ export default function MyPageView({
   };
 
   const handleDeleteMypageNote = (idx: number) => {
+    if (!profile) return;
     const currentNotes = profile?.clientNotes || (profile?.clientNote ? [profile.clientNote] : []);
     const updated = currentNotes.filter((_, i) => i !== idx);
     handleFieldChange('clientNotes', updated);
   };
-
-  // 자가진단 데이터가 아예 없는 경우
-  if (!activeRequest || !activeRequest.financialProfile || !activeResult) {
-    return (
-      <div className="max-w-3xl mx-auto py-12 px-4 animate-fadeIn text-center space-y-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-8 shadow-xl space-y-6">
-          <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto">
-            <Shield className="w-8 h-8" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white">아직 자가진단 기록이 없습니다</h2>
-            <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-              1분 만에 예상 조정 비율과 월 예상 변제금 범위를 시뮬레이션할 수 있는 채무 체크를 시작해 보세요.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onStartDiagnosis}
-            className="px-6 py-3.5 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>내 채무현황 정리하기</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const profile = activeRequest.financialProfile;
 
   // 세부 데이터 핸들러
   const handleFieldChange = (field: string, value: any) => {
@@ -151,11 +129,12 @@ export default function MyPageView({
     return `${res}원`.trim();
   };
 
-  const totalDebtValue = (profile.debtTypes?.banks || 0) + (profile.debtTypes?.cards || 0) + (profile.debtTypes?.personals || 0) + (profile.priorityDebt || 0);
+  const totalDebtValue = profile 
+    ? ((profile.debtTypes?.banks || 0) + (profile.debtTypes?.cards || 0) + (profile.debtTypes?.personals || 0) + (profile.priorityDebt || 0))
+    : 0;
 
   return (
     <div className={isCompact ? "space-y-6 animate-fadeIn text-left" : "max-w-5xl mx-auto space-y-6 animate-fadeIn text-left"}>
-
 
       {/* Header / Stealth Badge & Assigned Lawyer */}
       {!isCompact && (
@@ -257,8 +236,64 @@ export default function MyPageView({
       </div>
       )}
 
-      {/* ═══ 알림 수신함 ═══ */}
-      {!isCompact && (() => {
+      {/* ═══ 마이페이지 3대 서브 탭 바 ═══ */}
+      {!isCompact && (
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-750">
+          <button
+            type="button"
+            onClick={() => setMypageTab('companion')}
+            className={`flex-1 py-3 rounded-xl text-xs md:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              mypageTab === 'companion'
+                ? 'bg-white dark:bg-slate-900 text-brand shadow-sm border border-slate-200/60 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🌱</span>
+            <span>회생·파산 완주동행</span>
+            <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-full font-bold ml-0.5">
+              3~5년 관리
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMypageTab('diagnosis')}
+            className={`flex-1 py-3 rounded-xl text-xs md:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              mypageTab === 'diagnosis'
+                ? 'bg-white dark:bg-slate-900 text-brand shadow-sm border border-slate-200/60 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>📋</span>
+            <span>내 채무진단 & 서류</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMypageTab('settings')}
+            className={`flex-1 py-3 rounded-xl text-xs md:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              mypageTab === 'settings'
+                ? 'bg-white dark:bg-slate-900 text-brand shadow-sm border border-slate-200/60 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🔔</span>
+            <span>알림함 & 설정</span>
+          </button>
+        </div>
+      )}
+
+      {/* ═══ 탭 1: 회생·파산 완주동행 (메인 허브) ═══ */}
+      {mypageTab === 'companion' && (
+        <RehabCompanionView
+          userAlias={userAlias}
+          onNavigateToChat={onNavigateToChat}
+        />
+      )}
+
+      {/* ═══ 탭 3: 알림 수신함 & 설정 ═══ */}
+      {mypageTab === 'settings' && !isCompact && (() => {
+
         const notifications = loadClientNotifications();
         const unread = notifications.filter(n => !n.isRead).length;
         return (
@@ -338,6 +373,28 @@ export default function MyPageView({
         );
       })()}
 
+      {/* ═══ 탭 2: 채무 진단 & 법원 서류 제출 ═══ */}
+      {mypageTab === 'diagnosis' && (
+        !profile ? (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4 shadow-xl">
+            <div className="w-16 h-16 mx-auto bg-brand/10 rounded-full flex items-center justify-center text-brand">
+              <FileText className="w-8 h-8" />
+            </div>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 자가진단 분석 기록이 없습니다</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              1분 만에 나의 채무를 정리하고 탕감 가능성을 시뮬레이션해 보세요.
+            </p>
+            <button
+              type="button"
+              onClick={onStartDiagnosis}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>1분 채무상황 체크하기</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-fadeIn">
       {/* ═══ 고객 기능 3종: 사건 진행 트래커 + 서류 제출 + 수임료 현황 ═══ */}
       {!isCompact && (() => {
         // CRM 데이터 읽기 (변호사 CRM과 동일 localStorage 공유)
@@ -1612,11 +1669,18 @@ export default function MyPageView({
                 진단서 수정 저장 완료
               </button>
             </div>
-            
           </div>
         </div>
-        )}
-      </div>
+      )}
     </div>
+  </div>
+)
+)}
+</div>
   );
 }
+
+
+
+
+

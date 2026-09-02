@@ -1931,19 +1931,6 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </button>
 
               <button 
-                onClick={() => setActiveTab('companion')}
-                className={`relative whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
-                  activeTab === 'companion' 
-                    ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/25 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
-                    : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
-                }`}
-              >
-                회생동행
-                <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow-sm">
-                  NEW
-                </span>
-              </button>
-              <button 
                 onClick={() => setActiveTab('lawyers')}
                 className={`whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
                   activeTab === 'lawyers' 
@@ -1967,21 +1954,27 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </button>
             </div>
  
-            {/* Auth section */}
+            {/* Auth / MyPage section */}
             {isLoggedIn ? (
               <div className="flex items-center gap-2 lg:gap-2.5 ml-1 pl-2.5 border-l border-slate-200 dark:border-slate-800 shrink-0">
-                <div 
+                <button 
                   onClick={() => { setActiveTab('mypage'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="flex flex-col items-end hidden xl:flex whitespace-nowrap shrink-0 cursor-pointer hover:opacity-80 transition-all"
-                  title="마이페이지로 이동"
+                  className={`flex flex-col items-end hidden sm:flex whitespace-nowrap shrink-0 cursor-pointer p-1.5 px-3 rounded-xl border transition-all ${
+                    activeTab === 'mypage'
+                      ? 'bg-brand/10 border-brand/30 text-brand shadow-sm'
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                  title="마이페이지 (회생동행)으로 이동"
                 >
-                  <span className="text-sm lg:text-[15px] font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-                    👤 <span className="text-[#1E3A5F] whitespace-nowrap">{userAlias}</span>님
+                  <span className="text-xs lg:text-[13px] font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap flex items-center gap-1">
+                    <span>👤</span>
+                    <span className="text-brand font-black">{userAlias || '회원'}</span>님
                   </span>
-                  <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md font-bold leading-none">
-                    스텔스 보호중
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold leading-none mt-0.5">
+                    🌱 회생동행 관리중
                   </span>
-                </div>
+                </button>
+
                 {/* 🔔 알림 벨 */}
                 <div className="relative" ref={notifRef}>
                   <button

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ClipboardCheck, MessageSquare, Search, HelpCircle, TrendingUp } from 'lucide-react';
+import { Home, ClipboardCheck, MessageSquare, Search, HelpCircle, User, TrendingUp } from 'lucide-react';
 import { getUnreadCount } from '../../services/clientNotificationService';
 
 interface MobileGNBProps {
@@ -39,13 +39,6 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult,
       badgeCount: unreadCount,
     },
     {
-      key: 'companion',
-      label: '회생동행',
-      icon: TrendingUp,
-      onClick: () => onSetActiveTab('companion'),
-      isActive: activeTab === 'companion',
-    },
-    {
       key: 'lawyers',
       label: '변호사 찾기',
       icon: Search,
@@ -53,13 +46,14 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult,
       isActive: activeTab === 'lawyers',
     },
     {
-      key: 'qna',
-      label: '고민상담 Q&A',
-      icon: HelpCircle,
-      onClick: onNavigateToQna,
-      isActive: activeTab === 'qna',
+      key: 'mypage',
+      label: '마이(동행)',
+      icon: User,
+      onClick: () => onSetActiveTab('mypage'),
+      isActive: activeTab === 'mypage',
     },
   ];
+
 
   return (
     <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around py-2.5 pb-safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.06)] transition-transform duration-300 ease-in-out ${isHidden ? 'translate-y-full' : ''}`}>

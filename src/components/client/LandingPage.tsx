@@ -335,7 +335,7 @@ export default function LandingPage({
       <section className="relative py-4 px-6">
         <div className="max-w-5xl mx-auto">
           <div 
-            onClick={() => onNavigate('companion')}
+            onClick={() => onNavigate('mypage')}
             className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 cursor-pointer hover:border-indigo-400/60 transition-all group"
           >
             <div className="flex items-center gap-4 text-left">
