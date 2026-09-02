@@ -4177,7 +4177,6 @@ export default function LawyerRole({
               userId={activeStaffMember?.id || activeLawyer.id}
               userName={activeStaffMember?.name || activeLawyer.name}
               userRole={activeStaffMember?.role || 'OWNER'}
-              hasManageCalendar={activeStaffMember?.permissions?.manageCalendar ?? true}
               requests={requests}
               cases={cases}
               qas={qas}
@@ -4194,8 +4193,6 @@ export default function LawyerRole({
             <ContractManagementTab lawyerName={activeLawyer.name} lawFirmName={activeLawyer.lawFirmName || '법무법인'} />
           </React.Suspense>
         )}
-
-
 
         {/* TAB: 마이김변 문의 */}
         {activeTab === 'inquiry-to-admin' && lawyerInquiries && setLawyerInquiries && (
@@ -4456,16 +4453,17 @@ export default function LawyerRole({
                 </div>
               );
             })()}
+
             {settingsSub === 'channels' && (<>
-            {/* Header info */}
+            {/* ── 단일 통합 헤더 ── */}
             <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="space-y-0.5">
                 <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
                   <Bell className="w-4 h-4 text-brand" />
-                  <span>실시간 알림 및 외부 연동 설정 (Telegram / Email / Push)</span>
+                  <span>실시간 알림 및 보안 연동 센터</span>
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed text-left">
-                  신규 상담 접수 및 긴급 알림 발생 시 메신저·이메일·브라우저로 실시간 알림을 수신합니다.
+                  상담 접수 실시간 수신 알림, 의뢰인 자동 알림톡 발송 및 계정 보안 설정을 관리합니다.
                 </p>
               </div>
               <span className="bg-brand/10 border border-brand/20 text-brand text-[11px] font-extrabold px-3 py-1 rounded-full whitespace-nowrap self-start sm:self-center shadow-2xs">
@@ -4473,31 +4471,31 @@ export default function LawyerRole({
               </span>
             </div>
 
-            {/* 2열 그리드: 소속 법인 & 보안 설정 */}
+            {/* ── [섹션 1] 소속 법인 명칭 & 계정 보안 (2열 슬림 그리드) ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* ── 소속 법률사무소 / 법인 설정 ── */}
-              <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3 shadow-xs">
+              {/* 소속 법률사무소 / 법인 설정 */}
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-2.5 shadow-xs">
                 <div className="space-y-0.5">
                   <h3 className="font-extrabold text-xs md:text-sm text-slate-900 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-brand" />
+                    <FileText className="w-3.5 h-3.5 text-brand" />
                     <span>소속 법률사무소 / 법인 명칭</span>
                   </h3>
-                  <p className="text-xs text-slate-500 text-left">
-                    플랫폼 노출 및 헤더에 표시될 법무법인 또는 사무소 명칭입니다.
+                  <p className="text-[11px] text-slate-500 text-left">
+                    플랫폼 노출 및 어드민 헤더에 표시될 소속 명칭입니다.
                   </p>
                 </div>
-                <div className="flex gap-2 items-center pt-1">
+                <div className="flex gap-2 items-center pt-0.5">
                   <input
                     type="text"
                     value={tempFirmName}
                     onChange={e => setTempFirmName(e.target.value)}
                     placeholder="소속 명칭 입력 (예: 법무법인 한빛)"
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 font-bold text-slate-900"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30 font-bold text-slate-900"
                   />
                   <button
                     type="button"
                     onClick={handleSaveFirmName}
-                    className="bg-brand hover:bg-brand-hover text-white font-bold px-4 py-2 rounded-xl text-xs transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer active:scale-[0.98]"
+                    className="bg-brand hover:bg-brand-hover text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer active:scale-[0.98]"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>저장</span>
@@ -4505,62 +4503,57 @@ export default function LawyerRole({
                 </div>
               </div>
 
-              {/* ── 보안 설정: 비밀번호 변경 ── */}
-              <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3 shadow-xs">
+              {/* 보안 설정: 비밀번호 변경 */}
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-2.5 shadow-xs">
                 <div className="flex items-center justify-between">
                   <h3 className="font-extrabold text-xs md:text-sm text-slate-900 flex items-center gap-1.5">
-                    <Lock className="w-4 h-4 text-brand" />
-                    <span>비밀번호 및 보안 설정</span>
+                    <Lock className="w-3.5 h-3.5 text-brand" />
+                    <span>계정 비밀번호 보안</span>
                   </h3>
                   <button
                     type="button"
                     onClick={() => setShowPasswordChange(!showPasswordChange)}
-                    className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                    className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
                       showPasswordChange ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-brand/10 text-brand border-brand/20 hover:bg-brand/20'
                     }`}
                   >
                     {showPasswordChange ? '접기' : '비밀번호 변경'}
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 text-left">
+                <p className="text-[11px] text-slate-500 text-left">
                   변호사 계정의 로그인 비밀번호를 안전하게 변경합니다.
                 </p>
                 {showPasswordChange && (
-                  <div className="space-y-2.5 border-t border-slate-100 pt-3">
+                  <div className="space-y-2 border-t border-slate-100 pt-2.5">
                     <div>
-                      <label className="text-[11px] text-slate-600 font-bold block mb-1">현재 비밀번호</label>
                       <input
                         type="password"
                         value={currentPassword}
                         onChange={e => setCurrentPassword(e.target.value)}
-                        placeholder="현재 사용 중인 비밀번호"
+                        placeholder="현재 비밀번호"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
                       />
                     </div>
-                    <div>
-                      <label className="text-[11px] text-slate-600 font-bold block mb-1">새 비밀번호</label>
+                    <div className="grid grid-cols-2 gap-2">
                       <input
                         type="password"
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
-                        placeholder="새 비밀번호 (4자리 이상)"
+                        placeholder="새 비밀번호"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
                       />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-slate-600 font-bold block mb-1">새 비밀번호 확인</label>
                       <input
                         type="password"
                         value={confirmPassword}
                         onChange={e => setConfirmPassword(e.target.value)}
-                        placeholder="새 비밀번호를 다시 입력"
+                        placeholder="새 비밀번호 확인"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={handlePasswordChange}
-                      className="w-full bg-brand hover:bg-brand-hover text-white py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+                      className="w-full bg-brand hover:bg-brand-hover text-white py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-[0.98]"
                     >
                       비밀번호 변경 저장
                     </button>
@@ -4569,32 +4562,33 @@ export default function LawyerRole({
               </div>
             </div>
 
-            {/* ══════════════════════════════════════════ */}
-            {/* 알림 채널 관리 */}
-            {/* ══════════════════════════════════════════ */}
+
+            {/* ── [섹션 2] 상담 접수 실시간 수신 알림 (내부용 - 3열 균형 그리드) ── */}
             <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3 shadow-xs">
               <div className="space-y-0.5">
                 <h3 className="font-extrabold text-xs md:text-sm text-slate-900 flex items-center gap-1.5">
-                  <Bell className="w-4 h-4 text-brand" />
-                  <span>실시간 알림 채널 연동</span>
+                  <Bell className="w-3.5 h-3.5 text-brand" />
+                  <span>상담 접수 실시간 수신 채널 (변호사 / 스태프 내부 알림용)</span>
                 </h3>
-                <p className="text-xs text-slate-500">신규 상담 접수 시 아래 활성화된 채널로 즉시 알림이 발송됩니다.</p>
+                <p className="text-xs text-slate-500">신규 고객의 법률 상담이 접수될 때 즉시 알림을 수신할 채널을 설정합니다.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* Telegram 채널 카드 */}
-                <div className={`p-4 rounded-2xl border transition-all ${tgConnected ? 'border-emerald-500/40 bg-emerald-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">📱 Telegram 봇</span>
-                    <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${tgConnected ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                      {tgConnected ? '🟢 연결됨' : '⚪ 미연결'}
-                    </span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {/* 1. Telegram 채널 카드 */}
+                <div className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${tgConnected ? 'border-emerald-500/40 bg-emerald-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs md:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">📱 Telegram 봇</span>
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${tgConnected ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                        {tgConnected ? '🟢 연결됨' : '⚪ 미연결'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium">변호사/직원 단체방에 실시간 봇 알림</p>
                   </div>
-                  <p className="text-xs text-slate-500 mb-3 font-medium">변호사/직원 그룹방에 실시간 봇 알림 발송</p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 pt-3">
                     <button onClick={() => setShowBotTokenGuide(!showBotTokenGuide)}
                       className="flex-1 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
-                      {showBotTokenGuide ? '가이드 닫기' : '📖 가이드'}
+                      {showBotTokenGuide ? '닫기' : '📖 가이드'}
                     </button>
                     <button onClick={async () => {
                       if (!tgBotToken || !tgChatId) { toast.error('Bot Token과 Chat ID를 입력하세요.'); return; }
@@ -4613,24 +4607,26 @@ export default function LawyerRole({
                       }
                     }}
                       className="flex-1 py-1.5 text-xs font-bold rounded-xl bg-brand/10 text-brand border border-brand/20 hover:bg-brand/20 transition-colors cursor-pointer">
-                      {notifTestLoading === 'telegram' ? '⏳ 발송 중...' : '🔔 테스트'}
+                      {notifTestLoading === 'telegram' ? '⏳...' : '🔔 테스트'}
                     </button>
                   </div>
                 </div>
 
-                {/* 이메일 채널 카드 */}
-                <div className={`p-4 rounded-2xl border transition-all ${notifSettings.email.enabled ? 'border-blue-500/40 bg-blue-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">📧 이메일 알림</span>
-                    <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${notifSettings.email.enabled ? 'bg-blue-500/10 text-blue-700 border border-blue-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                      {notifSettings.email.enabled ? '🟢 설정됨' : '⚪ 미설정'}
-                    </span>
+                {/* 2. 이메일 채널 카드 */}
+                <div className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${notifSettings.email.enabled ? 'border-blue-500/40 bg-blue-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs md:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">📧 이메일 알림</span>
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${notifSettings.email.enabled ? 'bg-blue-500/10 text-blue-700 border border-blue-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                        {notifSettings.email.enabled ? '🟢 설정됨' : '⚪ 미설정'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium">로펌 Gmail 계정으로 자동 메일 발송</p>
                   </div>
-                  <p className="text-xs text-slate-500 mb-3 font-medium">로펌 Gmail 계정으로 변호사/직원에게 자동 발송</p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 pt-3">
                     <button onClick={() => setShowEmailSetup(!showEmailSetup)}
                       className="flex-1 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
-                      {showEmailSetup ? '닫기' : '⚙️ 설정하기'}
+                      {showEmailSetup ? '닫기' : '⚙️ 설정'}
                     </button>
                     {notifSettings.email.enabled && (
                       <button onClick={async () => {
@@ -4646,209 +4642,99 @@ export default function LawyerRole({
                         }
                       }}
                         className="flex-1 py-1.5 text-xs font-bold rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer">
-                        {notifTestLoading === 'email' ? '⏳ 발송 중...' : '📧 테스트'}
+                        {notifTestLoading === 'email' ? '⏳...' : '📧 테스트'}
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* 브라우저 Push 채널 카드 */}
-                <div className={`p-4 rounded-2xl border transition-all ${notifSettings.browserPush.enabled ? 'border-amber-500/40 bg-amber-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">🔔 브라우저 Push</span>
-                    <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${notifSettings.browserPush.enabled ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                      {notifSettings.browserPush.enabled ? '🟢 허용됨' : '⚪ 미허용'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mb-3 font-medium">데스크탑 브라우저 알림으로 즉시 팝업 수신</p>
-                  <button onClick={async () => {
-                    const perm = await requestBrowserPushPermission();
-                    if (perm === 'granted') {
-                      const updated = { ...notifSettings, browserPush: { enabled: true, permission: 'granted' } };
-                      setNotifSettings(updated);
-                      saveNotificationSettings(updated);
-                      sendBrowserPushNotification('🔔 알림 테스트', '브라우저 Push 알림이 활성화되었습니다!');
-                      setNotifLogs(loadNotificationLogs());
-                    } else {
-                      toast.error('브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
-                    }
-                  }}
-                    className="w-full py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
-                    {notifSettings.browserPush.enabled ? '🔔 테스트 알림 보내기' : '🔔 알림 허용하기'}
-                  </button>
-                </div>
-
-                {/* 카카오 알림톡 채널 카드 */}
-                <div className={`p-4 rounded-2xl border transition-all ${notifSettings.kakao.enabled ? 'border-yellow-300 bg-yellow-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">💬 카카오 알림톡</span>
-                    <button onClick={() => {
-                      const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, enabled: !notifSettings.kakao.enabled, status: !notifSettings.kakao.enabled ? 'connected' as const : 'disconnected' as const } };
-                      setNotifSettings(updated); saveNotificationSettings(updated);
-                    }} className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${notifSettings.kakao.enabled ? 'bg-yellow-500' : 'bg-slate-300'}`}>
-                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${notifSettings.kakao.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-500 mb-3">의뢰인에게 사건 마일스톤별 알림톡 자동 발송</p>
-                  {notifSettings.kakao.enabled && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 block mb-1">발송 표시 법무법인명</label>
-                          <input value={notifSettings.kakao.firmName || ''} onChange={e => {
-                            const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, firmName: e.target.value } };
-                            setNotifSettings(updated); saveNotificationSettings(updated);
-                          }} placeholder="예: 김우진 법률사무소" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300/50" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 block mb-1">담당 변호사명</label>
-                          <input value={notifSettings.kakao.lawyerName || ''} onChange={e => {
-                            const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, lawyerName: e.target.value } };
-                            setNotifSettings(updated); saveNotificationSettings(updated);
-                          }} placeholder="예: 김우진" className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300/50" />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100">
-                        <div><p className="text-sm font-bold text-slate-700">CRM 상태 변경 시 자동 발송</p><p className="text-[11px] text-slate-400">파이프라인 단계 이동 시 해당 마일스톤 알림톡을 자동 전송합니다.</p></div>
-                        <button onClick={() => {
-                          const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, autoTrigger: !notifSettings.kakao.autoTrigger } };
-                          setNotifSettings(updated); saveNotificationSettings(updated);
-                        }} className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${notifSettings.kakao.autoTrigger ? 'bg-yellow-500' : 'bg-slate-300'}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${notifSettings.kakao.autoTrigger ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                        </button>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-600 mb-2">활성화할 마일스톤</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(Object.entries(ALIMTOK_MILESTONE_CONFIG) as [AlimtokMilestone, { label: string; emoji: string }][]).map(([key, cfg]) => {
-                            const isEnabled = (notifSettings.kakao.enabledMilestones || []).includes(key);
-                            return (
-                              <button key={key} onClick={() => {
-                                const milestones = notifSettings.kakao.enabledMilestones || [];
-                                const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, enabledMilestones: isEnabled ? milestones.filter((m: AlimtokMilestone) => m !== key) : [...milestones, key] as AlimtokMilestone[] } };
-                                setNotifSettings(updated); saveNotificationSettings(updated);
-                              }} className={`text-left p-2.5 rounded-xl border text-xs transition-all cursor-pointer press-scale ${isEnabled ? 'bg-yellow-50 border-yellow-300 text-yellow-800 font-bold' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
-                                <span className="mr-1">{cfg.emoji}</span> {cfg.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                {/* 3. 브라우저 Push 채널 카드 */}
+                <div className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${notifSettings.browserPush.enabled ? 'border-amber-500/40 bg-amber-50/20' : 'border-slate-200 bg-slate-50/50'}`}>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs md:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">🔔 브라우저 Push</span>
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${notifSettings.browserPush.enabled ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                        {notifSettings.browserPush.enabled ? '🟢 허용됨' : '⚪ 미허용'}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                {/* 외부 캘린더 연동 */}
-                <div className="p-5 rounded-2xl border-2 border-slate-200 bg-white">
-                  <div className="flex items-center justify-between mb-2.5"><span className="text-base font-black text-slate-900">📅 외부 캘린더 연동</span></div>
-                  <p className="text-xs text-slate-500 mb-4">Google/Outlook 캘린더와 기일을 동기화합니다.</p>
-                  <div className="space-y-2">
-                    <a href="https://calendar.google.com/calendar/r" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-                      <span className="text-lg">📆</span><div className="flex-1"><p className="text-sm font-bold text-slate-700">Google Calendar</p><p className="text-[11px] text-slate-400">구글 캘린더에서 기일/일정 확인</p></div><span className="text-xs text-brand font-bold">연결 →</span>
-                    </a>
-                    <a href="https://outlook.live.com/calendar" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-                      <span className="text-lg">📧</span><div className="flex-1"><p className="text-sm font-bold text-slate-700">Outlook Calendar</p><p className="text-[11px] text-slate-400">아웃룩 캘린더와 연동</p></div><span className="text-xs text-brand font-bold">연결 →</span>
-                    </a>
+                    <p className="text-[11px] text-slate-500 font-medium">데스크탑 브라우저 알림으로 즉시 팝업</p>
+                  </div>
+                  <div className="pt-3">
+                    <button onClick={async () => {
+                      const perm = await requestBrowserPushPermission();
+                      if (perm === 'granted') {
+                        const updated = { ...notifSettings, browserPush: { enabled: true, permission: 'granted' } };
+                        setNotifSettings(updated);
+                        saveNotificationSettings(updated);
+                        sendBrowserPushNotification('🔔 알림 테스트', '브라우저 Push 알림이 활성화되었습니다!');
+                        setNotifLogs(loadNotificationLogs());
+                      } else {
+                        toast.error('브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
+                      }
+                    }}
+                      className="w-full py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer">
+                      {notifSettings.browserPush.enabled ? '🔔 테스트 알림' : '🔔 권한 허용하기'}
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* 봇 생성 가이드 (토글) */}
+              {/* 봇 생성 가이드 (토글 아코디언) */}
               {showBotTokenGuide && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4">
-                  <h4 className="font-black text-base text-slate-900 flex items-center gap-2">📖 텔레그램 봇 생성 가이드</h4>
-                  <ol className="text-sm text-slate-700 space-y-2.5 list-decimal list-inside leading-relaxed font-medium">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fadeIn">
+                  <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">📖 텔레그램 봇 생성 가이드</h4>
+                  <ol className="text-xs text-slate-600 space-y-1 list-decimal list-inside leading-relaxed font-medium">
                     <li>텔레그램 앱에서 <strong className="text-brand">@BotFather</strong> 검색 후 대화 시작</li>
-                    <li><code className="bg-white border border-slate-200 px-2 py-0.5 rounded text-xs font-mono">/newbot</code> 명령어 입력</li>
-                    <li>봇 이름 설정 (예: <strong>"OO법률사무소 알림봇"</strong>)</li>
-                    <li>봇 사용자명 설정 (예: <strong>"oo_lawfirm_bot"</strong>) — <code>_bot</code>으로 끝나야 합니다</li>
-                    <li>발급된 <strong className="text-red-500">Bot Token</strong>을 아래에 붙여넣기</li>
-                    <li>직원 그룹방을 만들고 생성한 봇을 <strong>관리자로 추가</strong></li>
-                    <li>그룹방에서 <code className="bg-white border border-slate-200 px-2 py-0.5 rounded text-xs font-mono">/start</code> 입력 후, Chat ID 확인</li>
+                    <li><code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[11px]">/newbot</code> 입력하여 봇 생성</li>
+                    <li>발급된 <strong className="text-rose-600">Bot Token</strong>을 아래에 입력</li>
+                    <li>직원 그룹방에 생성한 봇을 <strong>관리자로 추가</strong> 후 Chat ID 확인</li>
                   </ol>
-                  <div className="flex gap-3 pt-2">
-                    <a href="https://t.me/BotFather" target="_blank" rel="noreferrer"
-                      className="flex-1 py-2.5 text-center text-xs font-bold rounded-xl bg-[#0088cc]/10 text-[#0088cc] border border-[#0088cc]/20 hover:bg-[#0088cc]/20 transition-colors">
-                      ▶ BotFather 열기
-                    </a>
-                    <a href="https://api.telegram.org" target="_blank" rel="noreferrer"
-                      className="flex-1 py-2.5 text-center text-xs font-bold rounded-xl bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition-colors">
-                      📋 Telegram API 문서
-                    </a>
-                  </div>
-                  {/* Bot Token 입력 */}
-                  <div className="space-y-3 pt-3 border-t border-slate-200">
-                    <label className="text-sm text-slate-700 font-bold block">Bot Token</label>
-                    <div className="flex gap-2">
-                      <div className="flex-1 relative">
-                        <input
-                          type={showBotToken ? 'text' : 'password'}
-                          value={tgBotToken}
-                          onChange={e => setTgBotToken(e.target.value)}
-                          placeholder="예: 7123456789:AAF1x2y3z..."
-                          className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-16 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
-                        />
-                        <button onClick={() => setShowBotToken(!showBotToken)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-700 font-bold cursor-pointer">
-                          {showBotToken ? '숨기기' : '보기'}
-                        </button>
-                      </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <input
+                      type={showBotToken ? 'text' : 'password'}
+                      value={tgBotToken}
+                      onChange={e => setTgBotToken(e.target.value)}
+                      placeholder="Bot Token (예: 7123456789:AAF...)"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={tgChatId}
+                        onChange={e => setTgChatId(e.target.value)}
+                        placeholder="Chat ID (예: -1001234567890)"
+                        className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
+                      />
+                      <button onClick={() => {
+                        const updated = { ...notifSettings, telegram: { botToken: tgBotToken, chatId: tgChatId, connected: tgConnected } };
+                        setNotifSettings(updated);
+                        saveNotificationSettings(updated);
+                        toast.success('텔레그램 설정이 저장되었습니다.');
+                      }}
+                        className="px-3 py-1.5 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover cursor-pointer shrink-0">
+                        저장
+                      </button>
                     </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 space-y-1.5">
-                        <label className="text-sm text-slate-700 font-bold block">Chat ID (그룹방)</label>
-                        <input
-                          type="text"
-                          value={tgChatId}
-                          onChange={e => setTgChatId(e.target.value)}
-                          placeholder="예: -1001234567890"
-                          className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand/30"
-                        />
-                      </div>
-                    </div>
-                    <button onClick={() => {
-                      const updated = { ...notifSettings, telegram: { botToken: tgBotToken, chatId: tgChatId, connected: tgConnected } };
-                      setNotifSettings(updated);
-                      saveNotificationSettings(updated);
-                      toast.success('텔레그램 설정이 저장되었습니다.');
-                    }}
-                      className="w-full py-3 text-sm font-bold rounded-xl bg-brand hover:bg-brand-hover text-white transition-all cursor-pointer shadow-sm active:scale-[0.98]">
-                      💾 텔레그램 설정 저장
-                    </button>
                   </div>
                 </div>
               )}
 
-              {/* 이메일 설정 (토글) */}
+              {/* 이메일 설정 (토글 아코디언) */}
               {showEmailSetup && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/50 rounded-2xl p-6 space-y-4">
-                  <h4 className="font-black text-base text-slate-900 flex items-center gap-2">📧 Gmail 이메일 알림 설정</h4>
-                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                    로펌의 Gmail 계정에서 변호사/직원에게 상담 알림 이메일을 자동 발송합니다. Gmail <strong>앱 비밀번호</strong>가 필요합니다.
-                  </p>
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-sm text-slate-700 font-bold block">발신 Gmail 주소</label>
-                      <input type="email" value={emailSender} onChange={e => setEmailSender(e.target.value)}
-                        placeholder="lawfirm@gmail.com"
-                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm text-slate-700 font-bold block">Gmail 앱 비밀번호 (16자리)</label>
-                      <input type="password" value={emailAppPassword} onChange={e => setEmailAppPassword(e.target.value)}
-                        placeholder="xxxx xxxx xxxx xxxx"
-                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand/30" />
-                      <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer"
-                        className="text-xs text-brand hover:underline font-medium inline-block mt-0.5">
-                        앱 비밀번호 발급 방법 →
-                      </a>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm text-slate-700 font-bold block">수신 이메일 주소 (쉼표로 구분)</label>
-                      <input type="text" value={emailRecipients} onChange={e => setEmailRecipients(e.target.value)}
-                        placeholder="lawyer1@naver.com, staff1@gmail.com"
-                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30" />
-                    </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fadeIn">
+                  <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">📧 Gmail 이메일 알림 설정</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input type="email" value={emailSender} onChange={e => setEmailSender(e.target.value)}
+                      placeholder="발신 Gmail 주소"
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                    <input type="password" value={emailAppPassword} onChange={e => setEmailAppPassword(e.target.value)}
+                      placeholder="Gmail 앱 비밀번호 (16자리)"
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                    <input type="text" value={emailRecipients} onChange={e => setEmailRecipients(e.target.value)}
+                      placeholder="수신 이메일 (쉼표 구분)"
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30" />
+                  </div>
+                  <div className="flex justify-end pt-1">
                     <button onClick={() => {
                       const recipients = emailRecipients.split(',').map(e => e.trim()).filter(Boolean);
                       if (!emailSender || !emailAppPassword || recipients.length === 0) {
@@ -4858,17 +4744,117 @@ export default function LawyerRole({
                       const updated = { ...notifSettings, email: { senderGmail: emailSender, senderAppPassword: emailAppPassword, recipientEmails: recipients, enabled: true } };
                       setNotifSettings(updated);
                       saveNotificationSettings(updated);
-                      toast.success('이메일 알림 설정이 저장되었습니다.');
+                      toast.success('이메일 설정이 저장되었습니다.');
                     }}
-                      className="w-full py-3 text-sm font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer shadow-sm active:scale-[0.98]">
-                      💾 이메일 설정 저장
+                      className="px-4 py-1.5 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover cursor-pointer shadow-xs">
+                      이메일 설정 저장
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* ══════════════════════════════════════════ */}
+            {/* ── [섹션 3] 의뢰인 자동 발송 카카오 알림톡 (고객 안내용 - 와이드 스마트 패널) ── */}
+            <div className={`p-4 rounded-2xl border transition-all shadow-xs ${notifSettings.kakao.enabled ? 'border-amber-300/80 bg-gradient-to-br from-amber-50/20 via-white to-amber-50/10' : 'border-slate-200 bg-white'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="space-y-0.5">
+                  <h3 className="font-extrabold text-xs md:text-sm text-slate-900 flex items-center gap-1.5">
+                    <span className="text-base">💬</span>
+                    <span>의뢰인 자동 발송 카카오 알림톡 시스템</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">사건 진행 단계(파이프라인) 변경 시 의뢰인에게 카카오톡 알림톡을 자동 발송합니다.</p>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  <span className="text-xs font-bold text-slate-600">{notifSettings.kakao.enabled ? '알림톡 활성화됨' : '알림톡 비활성'}</span>
+                  <button onClick={() => {
+                    const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, enabled: !notifSettings.kakao.enabled, status: !notifSettings.kakao.enabled ? 'connected' as const : 'disconnected' as const } };
+                    setNotifSettings(updated); saveNotificationSettings(updated);
+                  }} className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${notifSettings.kakao.enabled ? 'bg-amber-500' : 'bg-slate-300'}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${notifSettings.kakao.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {notifSettings.kakao.enabled && (
+                <div className="space-y-3.5 pt-3 animate-fadeIn">
+                  {/* 발송자 정보 & CRM 트리거 (2열) */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    <div className="md:col-span-4">
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">발송 표시 법무법인명</label>
+                      <input value={notifSettings.kakao.firmName || ''} onChange={e => {
+                        const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, firmName: e.target.value } };
+                        setNotifSettings(updated); saveNotificationSettings(updated);
+                      }} placeholder="예: 법무법인 한빛" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40" />
+                    </div>
+                    <div className="md:col-span-4">
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">담당 변호사명</label>
+                      <input value={notifSettings.kakao.lawyerName || ''} onChange={e => {
+                        const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, lawyerName: e.target.value } };
+                        setNotifSettings(updated); saveNotificationSettings(updated);
+                      }} placeholder="예: 김우진 변호사" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40" />
+                    </div>
+                    <div className="md:col-span-4 bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">CRM 상태 변경 시 자동 전송</p>
+                        <p className="text-[10px] text-slate-400">파이프라인 이동 시 즉시 발송</p>
+                      </div>
+                      <button onClick={() => {
+                        const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, autoTrigger: !notifSettings.kakao.autoTrigger } };
+                        setNotifSettings(updated); saveNotificationSettings(updated);
+                      }} className={`relative w-9 h-4.5 rounded-full transition-colors cursor-pointer ${notifSettings.kakao.autoTrigger ? 'bg-amber-500' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${notifSettings.kakao.autoTrigger ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 활성화할 마일스톤 단계 (3열 2행) */}
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-extrabold text-slate-700">📌 자동 발송 활성화 마일스톤 단계 선택</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                      {(Object.entries(ALIMTOK_MILESTONE_CONFIG) as [AlimtokMilestone, { label: string; emoji: string }][]).map(([key, cfg]) => {
+                        const isEnabled = (notifSettings.kakao.enabledMilestones || []).includes(key);
+                        return (
+                          <button key={key} onClick={() => {
+                            const milestones = notifSettings.kakao.enabledMilestones || [];
+                            const updated = { ...notifSettings, kakao: { ...notifSettings.kakao, enabledMilestones: isEnabled ? milestones.filter((m: AlimtokMilestone) => m !== key) : [...milestones, key] as AlimtokMilestone[] } };
+                            setNotifSettings(updated); saveNotificationSettings(updated);
+                          }} className={`text-center py-2 px-2 rounded-xl border text-xs transition-all cursor-pointer active:scale-[0.98] ${isEnabled ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+                            <span className="mr-1">{cfg.emoji}</span> {cfg.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── [섹션 4] 외부 캘린더 연동 ── */}
+            <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-2.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-xs md:text-sm text-slate-900 flex items-center gap-1.5">
+                  <span>📅</span>
+                  <span>외부 캘린더 동기화</span>
+                </h3>
+                <span className="text-[11px] text-slate-400">사건 기일 및 상담 일정 자동 연동</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href="https://calendar.google.com/calendar/r" target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">📆</span>
+                    <div><p className="text-xs font-bold text-slate-800">Google Calendar</p><p className="text-[10px] text-slate-400">구글 캘린더에서 기일/일정 확인</p></div>
+                  </div>
+                  <span className="text-xs text-brand font-bold">연결 →</span>
+                </a>
+                <a href="https://outlook.live.com/calendar" target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">📧</span>
+                    <div><p className="text-xs font-bold text-slate-800">Outlook Calendar</p><p className="text-[10px] text-slate-400">아웃룩 캘린더와 일정 동기화</p></div>
+                  </div>
+                  <span className="text-xs text-brand font-bold">연결 →</span>
+                </a>
+              </div>
+            </div>
             </>)}
 
             {settingsSub === 'logs' && (
