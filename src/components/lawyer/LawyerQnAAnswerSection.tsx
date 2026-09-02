@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { MessageSquare, Send, Lock, Eye, ChevronDown, ChevronUp, Search, X, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Send, Lock, Eye, ChevronDown, ChevronUp, Search, X, HelpCircle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ClientQA, QAAnswer, User } from '../../types';
 import { toast } from 'sonner';
 
 const ANSWER_MAX_LENGTH = 3000;
 const ANSWER_MIN_LENGTH = 10;
+const ITEMS_PER_PAGE = 10;
 
 const QNA_CATEGORIES = ['전체', '코인/주식 손실', '급여 압류', '프리랜서 회생', '배우자 재산', '전세사기 피해', '최근 대출 회생', '자영업자 회생', '전문직 면허보존', '추심 차단', '개인파산 면책', '일용직 소득증빙', '보정권고 지연', '해외선물/주식'];
 
@@ -20,6 +21,22 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedQaId, setExpandedQaId] = useState<string | null>(null);
   const [answerTexts, setAnswerTexts] = useState<Record<string, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handleFilterModeChange = (mode: 'all' | 'waiting' | 'answered' | 'secret') => {
+    setFilterMode(mode);
+    setCurrentPage(1);
+  };
+
+  const handleCategoryFilterChange = (cat: string) => {
+    setCategoryFilter(cat);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
 
   const filteredQAs = qas.filter(qa => {
     // Filter mode
@@ -43,6 +60,10 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
     }
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredQAs.length / ITEMS_PER_PAGE));
+  const validPage = Math.min(currentPage, totalPages);
+  const pagedQAs = filteredQAs.slice((validPage - 1) * ITEMS_PER_PAGE, validPage * ITEMS_PER_PAGE);
 
   const waitingCount = qas.filter(q => q.status === 'waiting' || (!q.answer && (!q.additionalAnswers || q.additionalAnswers.length === 0))).length;
   const secretCount = qas.filter(q => q.isSecret).length;
@@ -144,7 +165,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
         ]).map(f => (
           <button
             key={f.key}
-            onClick={() => setFilterMode(f.key)}
+            onClick={() => handleFilterModeChange(f.key)}
             className={`px-4 py-2 text-sm font-bold rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${
               filterMode === f.key
                 ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
@@ -164,18 +185,18 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
             type="text"
             placeholder="질문 검색..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={e => handleSearchChange(e.target.value)}
             className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] focus:outline-none text-slate-900"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <button onClick={() => handleSearchChange('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
         <select
           value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
+          onChange={e => handleCategoryFilterChange(e.target.value)}
           className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 shrink-0"
         >
           {QNA_CATEGORIES.map(cat => (
@@ -193,7 +214,7 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
         </div>
       ) : (
         <div className="space-y-3.5">
-          {filteredQAs.map(qa => {
+          {pagedQAs.map(qa => {
             const isExpanded = expandedQaId === qa.id;
             const isWaiting = qa.status === 'waiting' || (!qa.answer && (!qa.additionalAnswers || qa.additionalAnswers.length === 0));
             const totalAnswers = (qa.answer ? 1 : 0) + (qa.additionalAnswers?.length || 0);
@@ -329,6 +350,59 @@ export default function LawyerQnAAnswerSection({ qas, setQas, currentLawyer }: L
           })}
         </div>
       )}
+
+      {/* ── 페이지네이션 (10개 단위 이동) ── */}
+      {filteredQAs.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <p className="text-xs text-slate-500 font-medium">
+            전체 <span className="font-bold text-slate-800">{filteredQAs.length}</span>개 중{' '}
+            <span className="font-bold text-slate-800">
+              {(validPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(validPage * ITEMS_PER_PAGE, filteredQAs.length)}
+            </span>
+            개 표시 ({validPage} / {totalPages} 페이지)
+          </p>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1 rounded-xl shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={validPage === 1}
+                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                title="이전 10개 페이지"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`min-w-[32px] h-8 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    validPage === p
+                      ? 'bg-[#1E3A5F] text-white shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={validPage === totalPages}
+                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                title="다음 10개 페이지"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
