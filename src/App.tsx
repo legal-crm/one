@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { DialogProvider } from './components/common/DialogProvider';
 import { 
@@ -137,6 +137,71 @@ export default function App() {
     setCurrentRole('client');
   };
 
+  // ── Helper: Smart merge for consult requests (preserves mock edits & incoming data) ──
+  const mergeConsultRequests = React.useCallback((existingList: ConsultRequest[], incomingList: ConsultRequest[] = []): ConsultRequest[] => {
+    const map = new Map<string, ConsultRequest>();
+
+    // 1. Base mock requests
+    initialConsultRequests.forEach(mock => {
+      map.set(mock.id, { ...mock });
+    });
+
+    // 2. Apply existing requests (preserves user actions on mocks or created ones)
+    existingList.forEach(item => {
+      const mockBase = map.get(item.id);
+      if (mockBase) {
+        map.set(item.id, {
+          ...mockBase,
+          ...item,
+          financialProfile: {
+            ...mockBase.financialProfile,
+            ...(item.financialProfile || {}),
+          },
+          proposals: item.proposals && item.proposals.length > 0 ? item.proposals : mockBase.proposals,
+          acceptedLawyerIds: item.acceptedLawyerIds && item.acceptedLawyerIds.length > 0 ? item.acceptedLawyerIds : mockBase.acceptedLawyerIds,
+          status: item.status || mockBase.status,
+        });
+      } else {
+        map.set(item.id, item);
+      }
+    });
+
+    // 3. Apply incoming DB requests
+    incomingList.forEach(item => {
+      const existing = map.get(item.id);
+      if (existing) {
+        const mergedProposals = (existing.proposals?.length || 0) > (item.proposals?.length || 0)
+          ? existing.proposals
+          : (item.proposals || existing.proposals);
+        const mergedAcceptedLawyerIds = Array.from(new Set([
+          ...(existing.acceptedLawyerIds || []),
+          ...(item.acceptedLawyerIds || [])
+        ]));
+        map.set(item.id, {
+          ...existing,
+          ...item,
+          proposals: mergedProposals,
+          acceptedLawyerIds: mergedAcceptedLawyerIds,
+          status: existing.status !== 'requested' && item.status === 'requested' ? existing.status : (item.status || existing.status),
+        });
+      } else {
+        map.set(item.id, item);
+      }
+    });
+
+    return Array.from(map.values()).filter(r => r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3');
+  }, []);
+
+  // ── Helper: Smart merge for messages ──
+  const mergeConsultMessages = React.useCallback((existingList: ConsultMessage[], incomingList: ConsultMessage[] = []): ConsultMessage[] => {
+    const map = new Map<string, ConsultMessage>();
+    existingList.forEach(m => map.set(m.id, m));
+    incomingList.forEach(m => map.set(m.id, m));
+    return Array.from(map.values())
+      .filter(m => m.consultRequestId !== 'req-1' && m.consultRequestId !== 'req-2' && m.consultRequestId !== 'req-3')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, []);
+
   // Core application states
   // Initial load from localStorage (instant)
   const [requests, _setRequests] = useState<ConsultRequest[]>(() => {
@@ -146,8 +211,7 @@ export default function App() {
         const parsed = JSON.parse(saved).filter((r: any) => 
           r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3'
         );
-        const nonMockRequests = parsed.filter((r: any) => !r.id.startsWith('req-mock-'));
-        return [...initialConsultRequests, ...nonMockRequests];
+        return mergeConsultRequests(parsed);
       }
     } catch {}
     return initialConsultRequests;
@@ -172,7 +236,7 @@ export default function App() {
     return [];
   });
 
-  // Async load from Supabase (overrides localStorage data) + 5초 간격 폴링 동기화
+  // Async load from Supabase + 5초 간격 폴링 동기화
   useEffect(() => {
     let isMounted = true;
 
@@ -184,15 +248,18 @@ export default function App() {
         ]);
         if (!isMounted) return;
         if (dbRequests.length > 0) {
-          // initialConsultRequests의 mock 데이터는 최신 정의로 유지하고 사용자 생성 데이터와 병합
-          const userRequests = dbRequests.filter((r: any) => !r.id.startsWith('req-mock-'));
-          const merged = [...initialConsultRequests, ...userRequests];
-          _setRequests(merged);
-          try { secureSetItem('legal_crm_requests', JSON.stringify(merged)); } catch {}
+          _setRequests(prev => {
+            const merged = mergeConsultRequests(prev, dbRequests);
+            try { secureSetItem('legal_crm_requests', JSON.stringify(merged)); } catch {}
+            return merged;
+          });
         }
         if (dbMessages.length > 0) {
-          _setMessages(dbMessages);
-          try { secureSetItem('legal_crm_messages', JSON.stringify(dbMessages)); } catch {}
+          _setMessages(prev => {
+            const merged = mergeConsultMessages(prev, dbMessages);
+            try { secureSetItem('legal_crm_messages', JSON.stringify(merged)); } catch {}
+            return merged;
+          });
         }
       } catch {}
     };
@@ -207,7 +274,7 @@ export default function App() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, []);
+  }, [mergeConsultRequests, mergeConsultMessages]);
 
   const setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>> = React.useCallback((action) => {
     _setMessages(prev => {
@@ -411,7 +478,7 @@ export default function App() {
     targetLawyerId?: string
   ) => {
     const newMessage: ConsultMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       consultRequestId: reqId,
       senderType: sender,
       senderId,
@@ -420,13 +487,20 @@ export default function App() {
       createdAt: new Date().toISOString(),
       ...(targetLawyerId ? { targetLawyerId } : {})
     };
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => mergeConsultMessages(prev, [newMessage]));
     saveConsultMessage(newMessage).catch(() => {});
 
-    // Update the corresponding request status to active 'counseling' if it was just 'requested' or 'responding'
+    // Update the corresponding request status to active 'counseling' & preserve acceptedLawyerIds
     setRequests(prev => prev.map(req => {
-      if (req.id === reqId && (req.status === 'requested' || req.status === 'responding')) {
-        return { ...req, status: 'counseling' };
+      if (req.id === reqId) {
+        const accepted = req.acceptedLawyerIds || [];
+        const isLawyerSender = sender === 'lawyer' && senderId && senderId !== 'system';
+        const updatedAccepted = isLawyerSender && !accepted.includes(senderId) ? [...accepted, senderId] : accepted;
+        return {
+          ...req,
+          acceptedLawyerIds: updatedAccepted,
+          status: (req.status === 'requested' || req.status === 'responding') ? 'counseling' : req.status
+        };
       }
       return req;
     }));
