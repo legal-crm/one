@@ -11,6 +11,11 @@
     { "source": "/tos", "destination": "/tos.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/legal", "destination": "/legal.html" },
+    { "source": "/check", "destination": "/check.html" },
+    { "source": "/lawyers", "destination": "/lawyers.html" },
+    { "source": "/reviews", "destination": "/reviews.html" },
+    { "source": "/qna", "destination": "/qna.html" },
+    { "source": "/news", "destination": "/news.html" },
     { "source": "/guide/:path", "destination": "/guide/:path.html" },
     { "source": "/articles/:path", "destination": "/articles/:path.html" },
     { "source": "/((?!api|assets|guide|articles/).*)", "destination": "/index.html" }

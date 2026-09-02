@@ -24,6 +24,7 @@ import PopupContainer from './popup/PopupContainer';
 import { loadClientNotifications, markAsRead, markAllAsRead, seedInitialNotifications, getUnreadCount } from '../services/clientNotificationService';
 import type { ClientNotification } from '../services/clientNotificationService';
 import { secureGetItem, secureSetItem, secureRemoveItem } from '../utils/secureStorage';
+import { usePageMeta, TAB_META } from '../hooks/usePageMeta';
 
 const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
 const CalculatorView = React.lazy(() => import('./client/CalculatorView'));
@@ -426,6 +427,10 @@ export default function ClientRole({
   // Sub-navigation for user
   const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry' | 'guide'>(() => {
     if (typeof window === 'undefined') return 'landing';
+    // [SEO] 클린 URL 경로를 탭으로 매핑
+    const pathTabMap: Record<string, string> = { '/check': 'request', '/lawyers': 'lawyers', '/reviews': 'reviews', '/qna': 'qna', '/news': 'news' };
+    const mapped = pathTabMap[window.location.pathname];
+    if (mapped) return mapped as any;
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
     const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide'];
@@ -443,6 +448,10 @@ export default function ClientRole({
   const [faqOpenId, setFaqOpenId] = useState<number | null>(null);
   const [faqExpanded, setFaqExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  // [SEO] 탭 전환 시 document.title + meta description 동적 갱신
+  const currentMeta = TAB_META[activeTab] || TAB_META.landing;
+  usePageMeta(currentMeta.title, currentMeta.description);
 
   const isPopStateRef = useRef(false);
 
