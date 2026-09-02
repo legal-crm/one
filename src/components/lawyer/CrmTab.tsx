@@ -692,7 +692,58 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const handleDeleteNote = async (noteId: string) => {
     if (!selectedId) return;
     const ext = getCrmExt(selectedId);
-    await updateCrmExt(selectedId, { notes: ext.notes.filter(n => n.id !== noteId) });
+    const targetNote = ext.notes.find(n => n.id === noteId);
+    const hasReminder = Boolean(targetNote?.reminder);
+
+    const confirmed = await dialog.confirm({
+      title: hasReminder ? '상담 메모 및 리마인더 삭제' : '상담 메모 삭제',
+      message: hasReminder
+        ? '해당 상담 메모와 함께 설정된 리마인더 일정을 모두 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.'
+        : '해당 상담 메모를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const activities = [...ext.activities, createActivityLog(
+      selectedId, actor.id, actor.name, actor.role, 'note_added',
+      `메모 삭제: ${targetNote?.content?.slice(0, 20) || '메모'}`
+    )];
+    await updateCrmExt(selectedId, { notes: ext.notes.filter(n => n.id !== noteId), activities });
+    toast.success('상담 메모가 삭제되었습니다.');
+  };
+
+  const handleCompleteReminder = async (noteId: string) => {
+    if (!selectedId) return;
+    const confirmed = await dialog.confirm({
+      title: '리마인더 완료 처리',
+      message: '이 리마인더 일정을 완료 처리하시겠습니까?',
+      confirmText: '완료 처리',
+      variant: 'success'
+    });
+    if (!confirmed) return;
+
+    const ext = getCrmExt(selectedId);
+    const updatedNotes = ext.notes.map(n => n.id === noteId ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
+    await updateCrmExt(selectedId, { notes: updatedNotes });
+    toast.success('리마인더가 완료 처리되었습니다.');
+  };
+
+  const handleDeleteReminderOnly = async (noteId: string) => {
+    if (!selectedId) return;
+    const confirmed = await dialog.confirm({
+      title: '리마인더 일정 삭제',
+      message: '이 메모에 설정된 리마인더 일정만 삭제하시겠습니까?\n(상담 메모 내용은 보존됩니다)',
+      confirmText: '일정 삭제',
+      variant: 'warning'
+    });
+    if (!confirmed) return;
+
+    const ext = getCrmExt(selectedId);
+    const updatedNotes = ext.notes.map(n => n.id === noteId ? { ...n, reminder: undefined } : n);
+    await updateCrmExt(selectedId, { notes: updatedNotes });
+    toast.success('리마인더 일정이 삭제되었습니다.');
   };
 
   const handleToggleDocument = async (docId: string) => {
@@ -972,6 +1023,14 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
 
   /** 휴지통 이동 (소프트 삭제) */
   const handleSoftDelete = useCallback(async (clientId: string) => {
+    const confirmed = await dialog.confirm({
+      title: '휴지통 이동',
+      message: '해당 고객 사건을 휴지통으로 이동하시겠습니까?\n휴지통으로 이동된 사건은 필요 시 언제든지 복원할 수 있습니다.',
+      confirmText: '휴지통 이동',
+      variant: 'warning'
+    });
+    if (!confirmed) return;
+
     await softDeleteCrmClient(clientId);
     const store = { ...crmData };
     if (store[clientId]) {
@@ -979,7 +1038,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       setCrmData(store);
     }
     toast.success('휴지통으로 이동되었습니다.');
-  }, [crmData]);
+  }, [crmData, dialog]);
 
   /** 휴지통 복원 */
   const handleRestore = useCallback(async (clientId: string) => {
@@ -2735,20 +2794,25 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                         {remDday === 0 ? 'D-Day' : remDday > 0 ? `D-${remDday}` : `D+${Math.abs(remDday)}`}
                                       </span>
                                     )}
-                                    {!rem.completed && (
-                                      <button 
-                                        onClick={async () => {
-                                          if (!selectedId) return;
-                                          const ext = getCrmExt(selectedId);
-                                          const updatedNotes = ext.notes.map(n => n.id === note.id ? { ...n, reminder: { ...n.reminder!, completed: true, completedAt: new Date().toISOString() } } : n);
-                                          await updateCrmExt(selectedId, { notes: updatedNotes });
-                                          toast.success('리마인더 완료 처리되었습니다.');
-                                        }} 
-                                        className="text-emerald-700 hover:text-emerald-900 font-bold ml-auto cursor-pointer"
+                                    <div className="flex items-center gap-1.5 ml-auto">
+                                      {!rem.completed && (
+                                        <button 
+                                          type="button"
+                                          onClick={() => handleCompleteReminder(note.id)} 
+                                          className="text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md font-bold cursor-pointer transition-colors"
+                                        >
+                                          ✓ 완료
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteReminderOnly(note.id)}
+                                        className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition-colors"
+                                        title="리마인더 일정만 삭제"
                                       >
-                                        ✓ 완료
+                                        <X className="w-3.5 h-3.5" />
                                       </button>
-                                    )}
+                                    </div>
                                   </div>
                                 </div>
                               )}

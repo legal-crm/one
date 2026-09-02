@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
 import {
   Send, MessageSquare, Reply, Pin, Trash2, Edit3, Lock, Users, User, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import {
   createMessage, getMessages, getReplies, deleteMessage, togglePin, parseMentions
 } from '../../services/internalMessageService';
@@ -32,6 +33,7 @@ function timeAgo(dateStr: string): string {
 export default function InternalThreadTab({
   tenantId, targetType, targetId, actorId, actorName, actorRole, staffMembers
 }: InternalThreadTabProps) {
+  const dialog = useDialog();
   const [messages, setMessages] = useState<InternalMessage[]>([]);
   const [newContent, setNewContent] = useState('');
   const [category, setCategory] = useState<MessageCategory>('general');
@@ -83,7 +85,16 @@ export default function InternalThreadTab({
   };
 
   const handleDelete = async (msgId: string) => {
+    const confirmed = await dialog.confirm({
+      title: '메시지 삭제',
+      message: '이 사내 스레드 메시지를 삭제하시겠습니까?',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     await deleteMessage(tenantId, msgId);
+    toast.success('메시지가 삭제되었습니다.');
     refresh();
   };
 

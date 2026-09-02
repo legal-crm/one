@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award, Heart, Scale, Search, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import MyPageView from './MyPageView';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile, User as UserType } from '../../types';
 import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
@@ -128,6 +130,7 @@ export default function ChatView({
   onClearModalTrigger,
   showDiagnosisReport
 }: ChatViewProps) {
+  const dialog = useDialog();
   const chatFeedRef = useRef<HTMLDivElement>(null);
   const [showProfilePanel, setShowProfilePanel] = useState<boolean>(false);
   const [isReportExpanded, setIsReportExpanded] = useState<boolean>(false);
@@ -630,8 +633,14 @@ export default function ChatView({
                   </div>
                 </div>
                 <button 
-                  onClick={() => {
-                    if (confirm("정말 전담 지정을 해지하시겠습니까? 해지 시 다른 변호사를 전담 변호사로 선임하실 수 있습니다.")) {
+                  onClick={async () => {
+                    const confirmed = await dialog.confirm({
+                      title: '전담 지정 해지',
+                      message: '정말 전담 지정을 해지하시겠습니까?\n해지 시 다른 변호사를 전담 변호사로 선임하실 수 있습니다.',
+                      confirmText: '전담 해지',
+                      variant: 'warning'
+                    });
+                    if (confirmed) {
                       localStorage.removeItem('legal_crm_appointed_lawyer_id');
                       setAppointedLawyerId(null);
                       if (currentRequest) {
@@ -639,6 +648,7 @@ export default function ChatView({
                           r.id === currentRequest.id ? { ...r, selectedLawyerId: undefined, status: 'responding' } : r
                         ));
                       }
+                      toast.success('전담 변호사 지정이 해지되었습니다.');
                     }
                   }}
                   className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
@@ -776,31 +786,38 @@ export default function ChatView({
               <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col gap-2.5">
                 {currentRequest?.status === 'comparing' && activeChatLawyerId && (
                   <button
-                    onClick={() => {
-                      if (confirm("이 변호사님을 전담으로 선임하시겠습니까? 다른 변호사님들과의 상담은 종료됩니다.")) {
-                        onSetRequests(prev => prev.map(r => 
-                          r.id === currentRequest.id 
-                            ? { ...r, status: 'counseling' as const, selectedLawyerId: activeChatLawyerId, rejectionNotified: true } 
-                            : r
-                        ));
-                        localStorage.setItem('legal_crm_appointed_lawyer_id', activeChatLawyerId);
-                        setAppointedLawyerId(activeChatLawyerId);
-                        
+                    onClick={async () => {
+                      const confirmed = await dialog.confirm({
+                        title: '전담 변호사 선임',
+                        message: '이 변호사님을 전담으로 선임하시겠습니까?\n선임 시 다른 변호사님들과의 상담은 종료됩니다.',
+                        confirmText: '전담 선임',
+                        variant: 'primary'
+                      });
+                      if (!confirmed) return;
+
+                      onSetRequests(prev => prev.map(r => 
+                        r.id === currentRequest.id 
+                          ? { ...r, status: 'counseling' as const, selectedLawyerId: activeChatLawyerId, rejectionNotified: true } 
+                          : r
+                      ));
+                      localStorage.setItem('legal_crm_appointed_lawyer_id', activeChatLawyerId);
+                      setAppointedLawyerId(activeChatLawyerId);
+                      
+                      onAddMessage(
+                        currentRequest.id,
+                        `[System] 🎉 의뢰인이 귀하를 전담 변호사로 선임하였습니다!`,
+                        'client', activeChatLawyerId, '시스템 안내'
+                      );
+
+                      const otherLawyers = (currentRequest.acceptedLawyerIds || []).filter(id => id !== activeChatLawyerId);
+                      otherLawyers.forEach(otherId => {
                         onAddMessage(
                           currentRequest.id,
-                          `[System] 🎉 의뢰인이 귀하를 전담 변호사로 선임하였습니다!`,
-                          'client', activeChatLawyerId, '시스템 안내'
+                          `[System] 📋 의뢰인이 다른 변호사를 전담으로 선임하였습니다. 상담에 참여해 주셔서 감사합니다.`,
+                          'client', otherId, '시스템 안내'
                         );
-
-                        const otherLawyers = (currentRequest.acceptedLawyerIds || []).filter(id => id !== activeChatLawyerId);
-                        otherLawyers.forEach(otherId => {
-                          onAddMessage(
-                            currentRequest.id,
-                            `[System] 📋 의뢰인이 다른 변호사를 전담으로 선임하였습니다. 상담에 참여해 주셔서 감사합니다.`,
-                            'client', otherId, '시스템 안내'
-                          );
-                        });
-                      }
+                      });
+                      toast.success('전담 변호사로 선임되었습니다!');
                     }}
                     className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm sm:text-base font-bold shadow-sm transition-all flex items-center justify-center gap-2"
                   >

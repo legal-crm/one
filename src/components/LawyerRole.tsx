@@ -1013,13 +1013,22 @@ export default function LawyerRole({
     setCrmNewNote('');
   };
 
-  const handleDeleteCrmNote = (idxToDelete: number) => {
+  const handleDeleteCrmNote = async (idxToDelete: number) => {
     if (!crmSelectedId) return;
+    const confirmed = await dialog.confirm({
+      title: '상담 메모 삭제',
+      message: '해당 상담 메모를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     setInternalNotes(prev => {
       const notesArray = prev[crmSelectedId] ? prev[crmSelectedId].split('\n').filter(Boolean) : [];
       const updatedArray = notesArray.filter((_, idx) => idx !== idxToDelete);
       return { ...prev, [crmSelectedId]: updatedArray.join('\n') };
     });
+    toast.success('상담 메모가 삭제되었습니다.');
   };
 
   const filteredRequests = requests.filter(r => {

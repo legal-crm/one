@@ -5,6 +5,7 @@ import { CRM_STATUS_CONFIG, DOC_REVIEW_STATUS_CONFIG } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount } from '../../services/clientNotificationService';
 import type { ClientNotification } from '../../services/clientNotificationService';
 import { submitClientDocument } from '../../services/crmService';
@@ -43,6 +44,7 @@ export default function MyPageView({
   onNavigateToChat,
   isCompact = false
 }: MyPageViewProps) {
+  const dialog = useDialog();
 
   // 마이페이지 3대 서브 탭 (기본값: 'companion' - 회생완주동행 메인)
   const [mypageTab, setMypageTab] = useState<'companion' | 'diagnosis' | 'settings'>('companion');
@@ -76,11 +78,20 @@ export default function MyPageView({
     setEditingNoteValue('');
   };
 
-  const handleDeleteMypageNote = (idx: number) => {
+  const handleDeleteMypageNote = async (idx: number) => {
     if (!profile) return;
+    const confirmed = await dialog.confirm({
+      title: '전달사항 메모 삭제',
+      message: '해당 전달사항 메모를 삭제하시겠습니까?',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     const currentNotes = profile?.clientNotes || (profile?.clientNote ? [profile.clientNote] : []);
     const updated = currentNotes.filter((_, i) => i !== idx);
     handleFieldChange('clientNotes', updated);
+    toast.success('전달사항 메모가 삭제되었습니다.');
   };
 
   // 세부 데이터 핸들러

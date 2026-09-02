@@ -3,6 +3,8 @@ import {
   Plus, Trash2, Edit3, CheckCircle2, Archive, ChevronDown, ChevronUp,
   AlertTriangle, Shield, Copy, Save, Search, Filter, Clock, Eye
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import type {
   ReviewRuleSet, ReviewRule, RuleCondition, RuleOutputType,
   RuleSourceType, RuleSetStatus, RuleExpiryStatus
@@ -99,6 +101,7 @@ function createEmptyRule(ruleSetId: string): ReviewRule {
 export default function CopilotRuleSetManager({
   tenantId, actorId, actorRole, actorName, onBack
 }: CopilotRuleSetManagerProps) {
+  const dialog = useDialog();
   const permissions = useCopilotPermissions(actorRole as StaffRole);
 
   // RuleSet 목록 (localStorage 기반)
@@ -205,10 +208,20 @@ export default function CopilotRuleSetManager({
   };
 
   // 규칙 삭제
-  const handleDeleteRule = (ruleId: string) => {
+  const handleDeleteRule = async (ruleId: string) => {
+    const targetRule = rules.find(r => r.id === ruleId);
+    const confirmed = await dialog.confirm({
+      title: '규칙 삭제',
+      message: `'${targetRule?.title || '규칙'}' 항목을 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     const updated = rules.filter(r => r.id !== ruleId);
     setRules(updated);
     saveToStorage(ruleSets, updated);
+    toast.success('규칙이 삭제되었습니다.');
   };
 
   // 조건 추가
@@ -230,7 +243,15 @@ export default function CopilotRuleSetManager({
   };
 
   // 조건 삭제
-  const handleDeleteCondition = (ruleId: string, idx: number) => {
+  const handleDeleteCondition = async (ruleId: string, idx: number) => {
+    const confirmed = await dialog.confirm({
+      title: '조건 삭제',
+      message: '해당 판정 조건을 삭제하시겠습니까?',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     const rule = rules.find(r => r.id === ruleId);
     if (!rule) return;
     handleUpdateRule(ruleId, {

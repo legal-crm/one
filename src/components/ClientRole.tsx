@@ -6,6 +6,8 @@ import {
   Settings, LogOut, Lock, X, Home, BookOpen, MessageSquare, MapPin, Check, Edit2,
   Star, Sparkles, BarChart3, Shield, ShieldAlert, Calculator, ClipboardCheck, Compass, Zap, Heart, Bell
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useDialog } from './common/DialogProvider';
 import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { migrateAnonymousRequests } from '../services/consultService';
@@ -424,7 +426,7 @@ export default function ClientRole({
   setInquiries,
   popupConfig
 }: ClientRoleProps) {
-  // Sub-navigation for user
+  const dialog = useDialog();
   // Sub-navigation for user
   const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry' | 'guide' | 'companion'>(() => {
     if (typeof window === 'undefined') return 'landing';
@@ -953,22 +955,34 @@ export default function ClientRole({
           const msg = currentMember.status === 'withdrawn'
             ? '탈퇴 완료된 계정입니다. 해당 계정 정보를 더 이상 이용할 수 없습니다.'
             : '이 계정은 운영정책 위반 또는 스팸으로 인해 일시 정지 처리되었습니다. 고객센터에 문의하십시오.';
-          alert(msg);
+          dialog.alert({
+            title: '계정 이용 제한 안내',
+            message: msg,
+            variant: 'warning'
+          });
           setIsLoggedIn(false);
           setUserAlias('');
           secureRemoveItem('legal_crm_client_alias');
         } else if (currentMember.status === 'dormant') {
-          if (confirm('휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?')) {
-            setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
-          } else {
-            setIsLoggedIn(false);
-            setUserAlias('');
-            secureRemoveItem('legal_crm_client_alias');
-          }
+          dialog.confirm({
+            title: '휴면 계정 해제',
+            message: '휴면 처리된 계정입니다. 휴면을 해제하고 정상 활성화하시겠습니까?',
+            confirmText: '휴면 해제',
+            variant: 'primary'
+          }).then(confirmed => {
+            if (confirmed) {
+              setMembers(prev => prev.map(m => m.id === currentMember.id ? { ...m, status: 'active', lastActiveAt: new Date().toISOString() } : m));
+              toast.success('휴면이 해제되었습니다.');
+            } else {
+              setIsLoggedIn(false);
+              setUserAlias('');
+              secureRemoveItem('legal_crm_client_alias');
+            }
+          });
         }
       }
     }
-  }, [isLoggedIn, userAlias, members]);
+  }, [isLoggedIn, userAlias, members, dialog]);
 
   // Debounced effect to log calculator parameter adjustments
   useEffect(() => {

@@ -3,12 +3,8 @@ import {
   X, Plus, Trash2, Edit2, Check, RotateCcw, 
   FileText, Scale, MessageSquare, AlertCircle 
 } from 'lucide-react';
-import { 
-  useProposalTemplates, 
-  OpinionTemplate, 
-  FeePreset, 
-  QASnippet 
-} from '../../hooks/useProposalTemplates';
+import { useProposalTemplates, OpinionTemplate, FeePreset, QASnippet } from '../../hooks/useProposalTemplates';
+import { useDialog } from '../common/DialogProvider';
 import { formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 
 interface TemplateManageModalProps {
@@ -24,6 +20,7 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
   onClose,
   defaultTab = 'opinion'
 }) => {
+  const dialog = useDialog();
   const [activeTab, setActiveTab] = useState<'opinion' | 'fee' | 'qa'>(defaultTab);
   
   const {
@@ -232,8 +229,14 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
 
           <div className="ml-auto flex items-center">
             <button
-              onClick={() => {
-                if (confirm('모든 템플릿과 설정을 초기 기본값으로 되돌리시겠습니까?')) {
+              onClick={async () => {
+                const confirmed = await dialog.confirm({
+                  title: '기본값 복원',
+                  message: '모든 템플릿과 설정을 초기 기본값으로 되돌리시겠습니까?\n기존에 커스텀 추가된 항목들이 초기화됩니다.',
+                  confirmText: '기본값 복원',
+                  variant: 'warning'
+                });
+                if (confirmed) {
                   resetToDefault();
                   resetForms();
                 }
@@ -347,8 +350,14 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm(`'${tpl.title}' 템플릿을 삭제하시겠습니까?`)) {
+                            onClick={async () => {
+                              const confirmed = await dialog.confirm({
+                                title: '소견 템플릿 삭제',
+                                message: `'${tpl.title}' 템플릿을 삭제하시겠습니까?`,
+                                confirmText: '삭제',
+                                variant: 'danger'
+                              });
+                              if (confirmed) {
                                 deleteOpinionTemplate(tpl.id);
                               }
                             }}
@@ -514,8 +523,14 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                               <Edit2 className="w-3 h-3" />
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm(`'${fee.label}' 패키지를 삭제하시겠습니까?`)) {
+                              onClick={async () => {
+                                const confirmed = await dialog.confirm({
+                                  title: '수임료 패키지 삭제',
+                                  message: `'${fee.label}' 패키지를 삭제하시겠습니까?`,
+                                  confirmText: '삭제',
+                                  variant: 'danger'
+                                });
+                                if (confirmed) {
                                   deleteFeePreset(fee.id);
                                 }
                               }}
@@ -635,8 +650,14 @@ export const TemplateManageModal: React.FC<TemplateManageModalProps> = ({
                             <Edit2 className="w-3 h-3" />
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm(`'${snip.keyword}' 답변을 삭제하시겠습니까?`)) {
+                            onClick={async () => {
+                              const confirmed = await dialog.confirm({
+                                title: 'Q&A 답변 삭제',
+                                message: `'${snip.keyword}' 답변을 삭제하시겠습니까?`,
+                                confirmText: '삭제',
+                                variant: 'danger'
+                              });
+                              if (confirmed) {
                                 deleteQaSnippet(snip.id);
                               }
                             }}

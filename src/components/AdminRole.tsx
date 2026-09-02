@@ -537,22 +537,28 @@ export default function AdminRole({
   const paginatedActiveBilling = billingActiveLawyers.slice(startIndexBilling, startIndexBilling + BILLING_ITEMS_PER_PAGE);
 
   // Handlers
-  const handleToggleBlockRequest = (reqId: string) => {
+  const handleToggleBlockRequest = async (reqId: string) => {
     // Toggles request content to [노출 제한] and status to closed (spam filtering)
-    if (confirm('이 의뢰글을 불량 스팸성 글로 판단하여 노출을 전면 차단하시겠습니까? (변호사 대기 목록에서 즉시 숨겨집니다)')) {
-      setRequests(prev => prev.map(r => {
-        if (r.id === reqId) {
-          return {
-            ...r,
-            title: `[노출 차단] 어드민에 의해 스팸 글로 분류되었습니다.`,
-            content: `이 요청글은 광고/장난 등 플랫폼 정책에 위반되는 비정상 유입 데이터로 판명되어 관리자에 의해 비공개 처리되었습니다.`,
-            status: 'closed'
-          };
-        }
-        return r;
-      }));
-      alert('스팸 노출 제한 처리가 완료되었습니다.');
-    }
+    const confirmed = await dialog.confirm({
+      title: '스팸 의뢰글 노출 차단',
+      message: '이 의뢰글을 불량 스팸성 글로 판단하여 노출을 전면 차단하시겠습니까?\n(변호사 대기 목록에서 즉시 숨겨집니다)',
+      confirmText: '노출 차단',
+      variant: 'warning'
+    });
+    if (!confirmed) return;
+
+    setRequests(prev => prev.map(r => {
+      if (r.id === reqId) {
+        return {
+          ...r,
+          title: `[노출 차단] 어드민에 의해 스팸 글로 분류되었습니다.`,
+          content: `이 요청글은 광고/장난 등 플랫폼 정책에 위반되는 비정상 유입 데이터로 판명되어 관리자에 의해 비공개 처리되었습니다.`,
+          status: 'closed'
+        };
+      }
+      return r;
+    }));
+    toast.success('스팸 노출 제한 처리가 완료되었습니다.');
   };
 
   const handleApproveLawyer = (lawyerId: string) => {
@@ -568,25 +574,31 @@ export default function AdminRole({
     }));
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'active' } : m));
     onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 자격 승인 완료: ${lawyerId}`);
-    alert('해당 대리인의 자격 심사가 승인되었습니다. 즉시 포털 이용 및 상담 참여가 가능합니다.');
+    toast.success('해당 대리인의 자격 심사가 승인되었습니다. 즉시 포털 이용 및 상담 참여가 가능합니다.');
   };
 
-  const handleSuspendLawyer = (lawyerId: string) => {
-    if (confirm('이 변호사의 활동 라이선스를 일시 정지(미승인 상태로 강제 전환)하시겠습니까? 포털 접속이 즉각 차단됩니다.')) {
-      setLawyers(prev => prev.map(l => {
-        if (l.id === lawyerId) {
-          return {
-            ...l,
-            approved: false,
-            recentActivity: '운영정책 위반으로 승인 정지 처리됨'
-          };
-        }
-        return l;
-      }));
-      setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'suspended' } : m));
-      onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 라이선스 강제 정지 처리: ${lawyerId}`);
-      alert('대리인 라이선스 정지 처리가 완료되었습니다.');
-    }
+  const handleSuspendLawyer = async (lawyerId: string) => {
+    const confirmed = await dialog.confirm({
+      title: '변호사 라이선스 정지',
+      message: '이 변호사의 활동 라이선스를 일시 정지(미승인 상태로 강제 전환)하시겠습니까?\n포털 접속이 즉각 차단됩니다.',
+      confirmText: '라이선스 정지',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
+    setLawyers(prev => prev.map(l => {
+      if (l.id === lawyerId) {
+        return {
+          ...l,
+          approved: false,
+          recentActivity: '운영정책 위반으로 승인 정지 처리됨'
+        };
+      }
+      return l;
+    }));
+    setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'suspended' } : m));
+    onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 라이선스 강제 정지 처리: ${lawyerId}`);
+    toast.success('대리인 라이선스 정지 처리가 완료되었습니다.');
   };
 
   const handleChangeLawyerPlan = (lawyerId: string, matchedCountTarget: number) => {
@@ -2053,10 +2065,16 @@ export default function AdminRole({
                               </div>
                             </div>
                             <button
-                              onClick={() => {
+                              onClick={async () => {
                                 const isEnabled = selectedLawyer.aiCaseAnalysisEnabled;
                                 const action = isEnabled ? '비활성화' : '활성화';
-                                if (confirm(`${selectedLawyer.name}의 AI 사건 분석 기능을 ${action}하시겠습니까?`)) {
+                                const confirmed = await dialog.confirm({
+                                  title: `AI 사건 분석 기능 ${action}`,
+                                  message: `${selectedLawyer.name} 변호사의 AI 사건 분석 기능을 ${action}하시겠습니까?`,
+                                  confirmText: action,
+                                  variant: isEnabled ? 'warning' : 'primary'
+                                });
+                                if (confirmed) {
                                   setLawyers(prev => prev.map(l => {
                                     if (l.id === selectedLawyer.id) {
                                       return {
@@ -2074,6 +2092,7 @@ export default function AdminRole({
                                     'admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION',
                                     `AI 사건 분석 ${action}: ${selectedLawyer.name} (${selectedLawyer.id})`
                                   );
+                                  toast.success(`AI 사건 분석 기능이 ${action}되었습니다.`);
                                 }
                               }}
                               className={`relative w-12 h-6 rounded-full transition-colors shrink-0 cursor-pointer ${selectedLawyer.aiCaseAnalysisEnabled ? 'bg-violet-500' : 'bg-slate-600'}`}
@@ -3211,10 +3230,16 @@ export default function AdminRole({
                                   수정
                                 </button>
                                 <button 
-                                  onClick={() => {
-                                    if (confirm(`[${art.title}] 법률 기사를 영구 삭제 처리하시겠습니까?`)) {
+                                  onClick={async () => {
+                                    const confirmed = await dialog.confirm({
+                                      title: '법률 기사 영구 삭제',
+                                      message: `[${art.title}]\n해당 법률 기사를 영구 삭제 처리하시겠습니까?`,
+                                      confirmText: '영구 삭제',
+                                      variant: 'danger'
+                                    });
+                                    if (confirmed) {
                                       setNewsArticles(prev => prev.filter(a => a.id !== art.id));
-                                      alert('해당 아티클 기사가 플랫폼에서 전면 영구 삭제 처리되었습니다.');
+                                      toast.success('법률 기사가 영구 삭제 처리되었습니다.');
                                     }
                                   }}
                                   className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
@@ -3434,10 +3459,16 @@ export default function AdminRole({
                                   수정
                                 </button>
                                 <button 
-                                  onClick={() => {
-                                    if (confirm(`고민사례 [${qa.question}] 건을 영구 삭제 처리하시겠습니까?`)) {
+                                  onClick={async () => {
+                                    const confirmed = await dialog.confirm({
+                                      title: '상담사례 Q&A 삭제',
+                                      message: `고민사례 [${qa.question}] 건을 영구 삭제 처리하시겠습니까?`,
+                                      confirmText: '삭제',
+                                      variant: 'danger'
+                                    });
+                                    if (confirmed) {
                                       setQas(prev => prev.filter(q => q.id !== qa.id));
-                                      alert('해당 상담사례 데이터가 플랫폼에서 영구 배제 삭제되었습니다.');
+                                      toast.success('상담사례 데이터가 영구 삭제되었습니다.');
                                     }
                                   }}
                                   className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
@@ -3692,10 +3723,16 @@ export default function AdminRole({
                                     수정
                                   </button>
                                   <button 
-                                    onClick={() => {
-                                      if (confirm(`성공후기 [${rev.title}] 건을 영구 삭제 처리하시겠습니까?`)) {
+                                    onClick={async () => {
+                                      const confirmed = await dialog.confirm({
+                                        title: '성공후기 영구 삭제',
+                                        message: `성공후기 [${rev.title}] 건을 영구 삭제 처리하시겠습니까?`,
+                                        confirmText: '삭제',
+                                        variant: 'danger'
+                                      });
+                                      if (confirmed) {
                                         setReviews(prev => prev.filter(r => r.id !== rev.id));
-                                        alert('해당 성공후기 포스트가 영구 삭제 처리되었습니다.');
+                                        toast.success('해당 성공후기 포스트가 영구 삭제 처리되었습니다.');
                                       }
                                     }}
                                     className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
@@ -3886,10 +3923,16 @@ export default function AdminRole({
                                   수정
                                 </button>
                                 <button 
-                                  onClick={() => {
-                                    if (confirm(`배너 [${bann.title}] 슬라이드를 영구 삭제하시겠습니까?`)) {
+                                  onClick={async () => {
+                                    const confirmed = await dialog.confirm({
+                                      title: '메인 배너 삭제',
+                                      message: `배너 [${bann.title}] 슬라이드를 영구 삭제하시겠습니까?`,
+                                      confirmText: '삭제',
+                                      variant: 'danger'
+                                    });
+                                    if (confirmed) {
                                       setBanners(prev => prev.filter(b => b.id !== bann.id));
-                                      alert('해당 배너 슬라이드가 캐러셀 회전에서 배제되었습니다.');
+                                      toast.success('해당 배너 슬라이드가 삭제되었습니다.');
                                     }
                                   }}
                                   className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
@@ -4053,10 +4096,16 @@ export default function AdminRole({
                                   수정
                                 </button>
                                 <button 
-                                  onClick={() => {
-                                    if (confirm(`[${notice.title}] 공지사항을 영구 삭제 처리하시겠습니까?`)) {
+                                  onClick={async () => {
+                                    const confirmed = await dialog.confirm({
+                                      title: '공지사항 영구 삭제',
+                                      message: `[${notice.title}]\n해당 공지사항을 영구 삭제 처리하시겠습니까?`,
+                                      confirmText: '삭제',
+                                      variant: 'danger'
+                                    });
+                                    if (confirmed) {
                                       setNotices(prev => prev.filter(n => n.id !== notice.id));
-                                      alert('해당 공지사항이 영구 삭제되었습니다.');
+                                      toast.success('해당 공지사항이 영구 삭제되었습니다.');
                                     }
                                   }}
                                   className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
@@ -4267,9 +4316,21 @@ export default function AdminRole({
                             <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="의뢰인의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-indigo-500 outline-none" />
                             <div className="flex gap-2">
                               {selectedInq.status === 'replied' && (
-                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
+                                <button onClick={async () => {
+                                  const confirmed = await dialog.confirm({
+                                    title: '문의 답변 삭제',
+                                    message: '등록된 관리자 답변을 삭제하시겠습니까?\n답변 삭제 시 문의 상태는 대기중으로 전환됩니다.',
+                                    confirmText: '삭제',
+                                    variant: 'danger'
+                                  });
+                                  if (confirmed) {
+                                    setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq));
+                                    setReplyText('');
+                                    toast.success('답변이 삭제되었습니다.');
+                                  }
+                                }} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
                               )}
-                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변: ${selectedInq.id}`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
+                              <button onClick={() => { if (!replyText.trim()) { toast.error('답변 내용을 입력해 주세요.'); return; } setInquiries(prev => prev.map(inq => inq.id === selectedInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `의뢰인 문의 답변: ${selectedInq.id}`); toast.success('답변이 등록되었습니다.'); }} className="flex-2 bg-indigo-650 hover:bg-indigo-600 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
                             </div>
                           </div>
                         </div>
@@ -4320,9 +4381,21 @@ export default function AdminRole({
                             <textarea rows={6} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="변호사의 문의사항에 대한 답변을 작성하십시오." className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 font-normal leading-relaxed text-sm focus:ring-1 focus:ring-teal-500 outline-none" />
                             <div className="flex gap-2">
                               {selectedLawyerInq.status === 'replied' && (
-                                <button onClick={() => { if (confirm('등록된 답변을 삭제하시겠습니까?')) { setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq)); setReplyText(''); }}} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
+                                <button onClick={async () => {
+                                  const confirmed = await dialog.confirm({
+                                    title: '문의 답변 삭제',
+                                    message: '등록된 관리자 답변을 삭제하시겠습니까?\n답변 삭제 시 문의 상태는 대기중으로 전환됩니다.',
+                                    confirmText: '삭제',
+                                    variant: 'danger'
+                                  });
+                                  if (confirmed) {
+                                    setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: undefined, repliedAt: undefined, status: 'pending' as const } : inq));
+                                    setReplyText('');
+                                    toast.success('답변이 삭제되었습니다.');
+                                  }
+                                }} className="flex-1 bg-red-500/10 hover:bg-red-650 text-red-400 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">답변 삭제</button>
                               )}
-                              <button onClick={() => { if (!replyText.trim()) { alert('답변 내용을 입력해 주세요.'); return; } setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 문의 답변: ${selectedLawyerInq.id} (${selectedLawyerInq.lawyerName})`); alert('답변이 등록되었습니다.'); }} className="flex-2 bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedLawyerInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
+                              <button onClick={() => { if (!replyText.trim()) { toast.error('답변 내용을 입력해 주세요.'); return; } setLawyerInquiries(prev => prev.map(inq => inq.id === selectedLawyerInq.id ? { ...inq, replyContent: replyText.trim(), repliedAt: new Date().toISOString(), status: 'replied' as const } : inq)); onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 문의 답변: ${selectedLawyerInq.id} (${selectedLawyerInq.lawyerName})`); toast.success('답변이 등록되었습니다.'); }} className="flex-2 bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-sm font-extrabold transition-all text-center cursor-pointer">{selectedLawyerInq.status === 'replied' ? '답변 수정 등록' : '답변 작성 완료'}</button>
                             </div>
                           </div>
                         </div>
@@ -4347,10 +4420,22 @@ export default function AdminRole({
                       <p className="text-[13px] text-slate-600 mt-1">고객 랜딩 페이지의 5문항 진단 퀴즈를 편집합니다. 변경 후 저장하면 즉시 반영됩니다.</p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { if (confirm('모든 문항을 기본값으로 초기화하시겠습니까?')) { setDiagQuestions(DEFAULT_DIAGNOSIS_QUESTIONS); setEditingDiagIdx(null); } }} className="flex items-center gap-1 px-3 py-1.5 bg-[#111622] border border-[#1E293B]/60 rounded-lg text-sm text-slate-500 hover:text-white transition-colors">
+                      <button onClick={async () => {
+                        const confirmed = await dialog.confirm({
+                          title: '진단 문항 기본값 복원',
+                          message: '모든 진단 문항을 시스템 기본값으로 초기화하시겠습니까?',
+                          confirmText: '기본값 복원',
+                          variant: 'warning'
+                        });
+                        if (confirmed) {
+                          setDiagQuestions(DEFAULT_DIAGNOSIS_QUESTIONS);
+                          setEditingDiagIdx(null);
+                          toast.success('진단 문항이 기본값으로 복원되었습니다.');
+                        }
+                      }} className="flex items-center gap-1 px-3 py-1.5 bg-[#111622] border border-[#1E293B]/60 rounded-lg text-sm text-slate-500 hover:text-white transition-colors">
                         <RotateCcw className="w-3.5 h-3.5" /> 기본값 복원
                       </button>
-                      <button onClick={async () => { setDiagSaving(true); try { await saveDiagnosisConfig({ questions: diagQuestions, isActive: true, lastUpdatedAt: new Date().toISOString(), lastUpdatedBy: 'admin' }); alert('진단 문항이 저장되었습니다.'); } catch { alert('저장에 실패했습니다.'); } finally { setDiagSaving(false); } }} disabled={diagSaving} className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50">
+                      <button onClick={async () => { setDiagSaving(true); try { await saveDiagnosisConfig({ questions: diagQuestions, isActive: true, lastUpdatedAt: new Date().toISOString(), lastUpdatedBy: 'admin' }); toast.success('진단 문항이 저장되었습니다.'); } catch { toast.error('저장에 실패했습니다.'); } finally { setDiagSaving(false); } }} disabled={diagSaving} className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50">
                         <Save className="w-3.5 h-3.5" /> {diagSaving ? '저장 중...' : '전체 저장'}
                       </button>
                     </div>
@@ -4599,7 +4684,18 @@ export default function AdminRole({
                               <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
                                 <button onClick={() => { setEditingAdBanner(banner); setIsAdBannerCreateMode(false); setAdBannerForm({ lawyerId: banner.lawyerId, lawyerName: banner.lawyerName, lawyerAvatar: banner.lawyerAvatar, title: banner.title, subtitle: banner.subtitle, tagline: banner.tagline, gradient: banner.gradient, isActive: banner.isActive ?? true }); }}
                                   className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer">수정</button>
-                                <button onClick={() => { if (confirm(`[${banner.lawyerName}] 프리미엄 광고를 삭제하시겠습니까?`)) { setAdminAdBanners(prev => prev.filter(b => b.id !== banner.id)); } }}
+                                <button onClick={async () => {
+                                  const confirmed = await dialog.confirm({
+                                    title: '프리미엄 광고 삭제',
+                                    message: `[${banner.lawyerName}] 프리미엄 광고를 삭제하시겠습니까?`,
+                                    confirmText: '삭제',
+                                    variant: 'danger'
+                                  });
+                                  if (confirmed) {
+                                    setAdminAdBanners(prev => prev.filter(b => b.id !== banner.id));
+                                    toast.success('프리미엄 광고가 삭제되었습니다.');
+                                  }
+                                }}
                                   className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer">삭제</button>
                               </td>
                             </tr>
@@ -4978,12 +5074,18 @@ export default function AdminRole({
               return matchesAction;
             });
 
-            const handleToggleMemberStatus = (memberId: string) => {
+            const handleToggleMemberStatus = async (memberId: string) => {
               const current = members.find(m => m.id === memberId);
               if (!current) return;
               const newStatus = current.status === 'active' ? 'suspended' : 'active';
               const statusText = newStatus === 'active' ? '활성화' : '임시 정지';
-              if (confirm(`이 회원의 계정 상태를 [${statusText}]로 변경하시겠습니까?`)) {
+              const confirmed = await dialog.confirm({
+                title: `회원 계정 ${statusText}`,
+                message: `회원 [${current.alias}]의 계정 상태를 [${statusText}]로 변경하시겠습니까?`,
+                confirmText: statusText,
+                variant: newStatus === 'active' ? 'primary' : 'warning'
+              });
+              if (confirmed) {
                 setMembers(prev => prev.map(m => m.id === memberId ? { ...m, status: newStatus } : m));
                 
                 // If it is a lawyer/staff, also sync approved flag in lawyers state
@@ -4998,16 +5100,22 @@ export default function AdminRole({
                   'ADMIN_ACTION',
                   `회원 계정 상태 수동 조절: ${current.alias} (${current.role}) -> [${newStatus.toUpperCase()}]`
                 );
-                alert(`해당 계정이 성공적으로 ${statusText} 처리되었습니다.`);
+                toast.success(`해당 계정이 성공적으로 ${statusText} 처리되었습니다.`);
               }
             };
 
-            const handleToggleDormantStatus = (memberId: string) => {
+            const handleToggleDormantStatus = async (memberId: string) => {
               const current = members.find(m => m.id === memberId);
               if (!current) return;
               const newStatus = current.status === 'dormant' ? 'active' : 'dormant';
               const statusText = newStatus === 'active' ? '휴면 해제 (활성화)' : '휴면 계정 전환';
-              if (confirm(`이 회원의 계정 상태를 [${statusText}]로 변경하시겠습니까?`)) {
+              const confirmed = await dialog.confirm({
+                title: `회원 계정 ${statusText}`,
+                message: `회원 [${current.alias}]의 계정 상태를 [${statusText}]로 변경하시겠습니까?`,
+                confirmText: statusText,
+                variant: newStatus === 'active' ? 'primary' : 'warning'
+              });
+              if (confirmed) {
                 setMembers(prev => prev.map(m => m.id === memberId ? { ...m, status: newStatus, lastActiveAt: new Date().toISOString() } : m));
                 
                 onLogActivity(
@@ -5017,18 +5125,24 @@ export default function AdminRole({
                   'ADMIN_ACTION',
                   `회원 계정 휴면 상태 수동 조절: ${current.alias} (${current.role}) -> [${newStatus.toUpperCase()}]`
                 );
-                alert(`해당 계정이 성공적으로 ${statusText} 처리되었습니다.`);
+                toast.success(`해당 계정이 성공적으로 ${statusText} 처리되었습니다.`);
               }
             };
 
-            const handleWithdrawMember = (memberId: string) => {
+            const handleWithdrawMember = async (memberId: string) => {
               const current = members.find(m => m.id === memberId);
               if (!current) return;
               if (current.status === 'withdrawn') {
-                alert('이미 탈퇴 처리된 회원입니다.');
+                toast.info('이미 탈퇴 처리된 회원입니다.');
                 return;
               }
-              if (confirm(`정말로 회원 [${current.alias}]을 강제 탈퇴 처리하시겠습니까?\n이메일, 연락처 등 모든 개인 식별 정보가 즉시 완전 파기되며 복구할 수 없습니다.`)) {
+              const confirmed = await dialog.confirm({
+                title: '회원 강제 탈퇴 처리',
+                message: `정말로 회원 [${current.alias}]을 강제 탈퇴 처리하시겠습니까?\n이메일, 연락처 등 모든 개인 식별 정보가 즉시 완전 파기되며 복구할 수 없습니다.`,
+                confirmText: '강제 탈퇴',
+                variant: 'danger'
+              });
+              if (confirmed) {
                 setMembers(prev => prev.map(m => {
                   if (m.id === memberId) {
                     return {
@@ -5043,7 +5157,7 @@ export default function AdminRole({
                   return m;
                 }));
 
-                // If it is a lawyer/staff, also sync with lawyers array
+                // If lawyer/staff, de-approve
                 if (current.role === 'LAWYER' || current.role === 'STAFF') {
                   setLawyers(prev => prev.map(l => {
                     if (l.id === memberId) {
@@ -5072,10 +5186,10 @@ export default function AdminRole({
                   '최고관리자',
                   'ADMIN',
                   'ADMIN_ACTION',
-                  `회원 강제 탈퇴 실행: ID ${memberId} (${current.role})`
+                  `회원 강제 탈퇴 및 개인식별정보 영구 파기 처리: ${current.id} (${current.role})`
                 );
 
-                alert('회원 강제 탈퇴 및 개인정보 파기가 완료되었습니다.');
+                toast.success('회원 강제 탈퇴 및 개인정보 파기가 완료되었습니다.');
               }
             };
 

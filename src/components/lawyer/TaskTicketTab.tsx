@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus, CheckCircle2, Clock, AlertTriangle, XCircle,
   ChevronDown, ChevronUp, Calendar, User, Check, Trash2, X
-} from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import {
   createTask, getTasksByTarget, updateTaskStatus, deleteTask
 } from '../../services/taskTicketService';
@@ -34,6 +34,7 @@ function timeAgo(dateStr: string): string {
 export default function TaskTicketTab({
   tenantId, targetType, targetId, actorId, actorName, actorRole, staffMembers
 }: TaskTicketTabProps) {
+  const dialog = useDialog();
   const [tasks, setTasks] = useState<TaskTicket[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
@@ -111,7 +112,14 @@ export default function TaskTicketTab({
   };
 
   const handleDelete = async (taskId: string) => {
-    if (!window.confirm('이 업무 지시를 삭제하시겠습니까?')) return;
+    const confirmed = await dialog.confirm({
+      title: '업무 지시 삭제',
+      message: '이 업무 지시를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     await deleteTask(tenantId, taskId);
     toast.success('업무가 삭제되었습니다');
     refresh();

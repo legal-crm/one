@@ -7,6 +7,7 @@ import {
   Search, ExternalLink, ChevronFirst, ChevronLast, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import {
   getMyTasks, getMyAssignedTasks, getAllTenantTasks,
   createTask, updateTaskStatus, deleteTask
@@ -102,6 +103,7 @@ export default function TasksScheduleTab({
   requests, cases, qas, activeLawyerId,
   staffMembers = [], lawyers = []
 }: TasksScheduleTabProps) {
+  const dialog = useDialog();
   const [sub, setSub] = useState<SubTab>('tasks');
   const [tasks, setTasks] = useState<TaskTicket[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -231,7 +233,14 @@ export default function TasksScheduleTab({
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (!window.confirm('이 업무를 삭제하시겠습니까?')) return;
+    const confirmed = await dialog.confirm({
+      title: '업무 삭제',
+      message: '이 업무를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     await deleteTask(tenantId, id);
     toast.success('업무가 삭제되었습니다');
     refreshTasks();
@@ -304,6 +313,14 @@ export default function TasksScheduleTab({
       toast.error('삭제 권한이 없습니다');
       return;
     }
+    const confirmed = await dialog.confirm({
+      title: '일정 삭제',
+      message: `'${evt.title}' 일정을 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
     await deleteEvent(tenantId, evt.id);
     toast.success('일정이 삭제되었습니다');
     refreshEvents();
