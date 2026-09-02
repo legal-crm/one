@@ -2332,6 +2332,8 @@ export default function LawyerRole({
           <main className={`flex-1 ${
             (activeTab as string) === 'proposal-workspace' 
               ? 'h-[calc(100vh-4rem)] overflow-hidden p-0' 
+              : activeTab === 'chat'
+              ? 'h-[calc(100vh-4rem)] overflow-hidden bg-[#F8FAFC] p-3 lg:p-5'
               : 'overflow-y-auto bg-[#F8FAFC] px-4 lg:px-8 py-6 pb-20 lg:pb-8'
           } ${sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'} transition-all duration-200`}>
 
@@ -2978,11 +2980,11 @@ export default function LawyerRole({
 
           const chatEndRef = React.createRef<HTMLDivElement>();
           return (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white rounded-2xl overflow-hidden shadow-md border border-slate-200 min-h-[550px] h-[calc(100vh-14rem)] lg:h-[720px]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 bg-white rounded-2xl overflow-hidden shadow-md border border-slate-200 h-full min-h-0">
             
             {/* PANEL I: INBOX THREADS (LEFT) */}
-            <div className={`lg:col-span-3 border-r border-slate-200 flex flex-col h-full bg-white ${mobilePane === 'threads' ? 'block' : 'hidden lg:flex'}`}>
-              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <div className={`lg:col-span-3 border-r border-slate-200 flex flex-col h-full min-h-0 bg-white ${mobilePane === 'threads' ? 'block' : 'hidden lg:flex'}`}>
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white">
                 <div>
                   <h3 className="font-bold text-base text-slate-900">상담 메시지함</h3>
                   <p className="text-slate-500 text-xs mt-0.5 font-medium">상담 진행 및 매칭 고객</p>
@@ -2992,7 +2994,7 @@ export default function LawyerRole({
                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-hide">
+              <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
                 {chatThreads.map(r => {
                     const isSelected = r.id === activeThreadId;
                     const lastMsg = messages.filter(m => m.consultRequestId === r.id).slice(-1)[0];
@@ -3062,10 +3064,10 @@ export default function LawyerRole({
 
 
             {/* PANEL II: ACTIVE MESSAGING BOARD (CENTER) */}
-            <div className={`lg:col-span-6 border-r border-slate-200 flex flex-col h-full bg-slate-50/30 ${mobilePane === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
+            <div className={`lg:col-span-6 border-r border-slate-200 flex flex-col h-full min-h-0 bg-slate-50/30 ${mobilePane === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
               {selectedThread ? (
                 <>
-                  <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white shadow-xs">
+                  <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white shadow-xs shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <button 
                         onClick={() => setMobilePane('threads')}
@@ -3099,8 +3101,8 @@ export default function LawyerRole({
                   </div>
 
                   {/* Chat messages */}
-                  <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 scrollbar-hide">
-                    <div className="p-4 bg-brand/5 rounded-2xl text-slate-700 text-sm border border-brand/15 text-left whitespace-pre-wrap leading-relaxed">
+                  <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5">
+                    <div className="p-4 bg-brand/5 rounded-2xl text-slate-700 text-xs sm:text-sm border border-brand/15 text-left whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto shadow-xs">
                       📝 <span className="text-brand font-bold">의뢰서 본문:</span> {selectedThread.content}
                     </div>
 
@@ -3141,7 +3143,7 @@ export default function LawyerRole({
                   </div>
 
                   {/* Quick replies + Messenger form */}
-                  <div className="border-t border-slate-200 bg-white">
+                  <div className="border-t border-slate-200 bg-white shrink-0">
                     <div className="px-4 pt-2.5 flex gap-2 overflow-x-auto scrollbar-hide">
                       {['📋 준비서류 안내', '💰 상담료 안내', '📅 일정 조율'].map(label => (
                         <button
@@ -3195,7 +3197,7 @@ export default function LawyerRole({
             </div>
 
             {/* PANEL III: CRM RIGHT-RAIL (RIGHT) */}
-            <div className={`lg:col-span-3 flex flex-col h-full bg-white overflow-y-auto ${mobilePane === 'crm' ? 'block' : 'hidden lg:flex'}`}>
+            <div className={`lg:col-span-3 flex flex-col h-full min-h-0 bg-white overflow-y-auto ${mobilePane === 'crm' ? 'block' : 'hidden lg:flex'}`}>
               {selectedThread ? (
                 <div className="p-5 space-y-5 text-sm">
                   
@@ -3329,36 +3331,44 @@ export default function LawyerRole({
                       if (!profile) return null;
                       const res = calculateRepayment({
                         address: profile.residenceRegion || '서울',
-                        age: 35,
+                        age: profile.age || 35,
                         employmentType: profile.jobType === 'SALARIED' ? 'salary' : profile.jobType === 'BUSINESS' ? 'business' : profile.jobType === 'DAILY' ? 'daily' : profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
-                        monthlyIncome: (profile.income || 0) * 10000,
-                        familySize: (profile.dependents || 0) + 1,
-                        spouseAssets: (profile.spouseAsset || 0) * 10000,
-                        totalDebt: (profile.debtTotal || 0) * 10000,
-                        totalAssets: (profile.assetsTotal || profile.myAssets || 0) * 10000,
+                        monthlyIncome: Math.max(0, (profile.income || 0) * 10000),
+                        familySize: Math.max(1, (profile.dependents || 0) + 1),
+                        spouseAssets: Math.max(0, (profile.spouseAsset || 0) * 10000),
+                        totalDebt: Math.max(0, (profile.debtTotal || 0) * 10000),
+                        totalAssets: Math.max(0, (profile.assetsTotal || profile.myAssets || 0) * 10000),
                         hasMortgage: false,
                         specialCondition: profile.specialCondition || 'none',
-                        gamblingDebt: ((profile.speculativeLoss || 0) + (profile.gamblingLoss || 0)) * 10000,
+                        gamblingDebt: Math.max(0, ((profile.speculativeLoss || 0) + (profile.gamblingLoss || 0)) * 10000),
                         recentDebtRatio: 0,
-                        monthlyRent: (profile.rentCost || 0) * 10000,
-                        monthlyMedical: (profile.medicalCost || 0) * 10000,
-                        monthlyEducation: ((profile.educationCost || 0) + (profile.specialEducationCost || 0)) * 10000,
+                        monthlyRent: Math.max(0, (profile.rentCost || 0) * 10000),
+                        monthlyMedical: Math.max(0, (profile.medicalCost || 0) * 10000),
+                        monthlyEducation: Math.max(0, ((profile.educationCost || 0) + (profile.specialEducationCost || 0)) * 10000),
                         housingType: profile.housingType || 'rent',
-                        rentalDeposit: (profile.rentalDeposit || 0) * 10000,
-                        depositLoan: (profile.depositLoan || 0) * 10000,
-                        childSupportReceived: (profile.childSupportReceived || 0) * 10000,
-                        childSupportPaid: (profile.childSupportPaid || 0) * 10000,
+                        rentalDeposit: Math.max(0, (profile.rentalDeposit || 0) * 10000),
+                        depositLoan: Math.max(0, (profile.depositLoan || 0) * 10000),
+                        childSupportReceived: Math.max(0, (profile.childSupportReceived || 0) * 10000),
+                        childSupportPaid: Math.max(0, (profile.childSupportPaid || 0) * 10000),
                       });
+
+                      const monthlyPay = Number.isFinite(res.monthlyPayment) ? Math.round(res.monthlyPayment / 10000) : 0;
+                      const totalRepay = Number.isFinite(res.totalRepayment) ? Math.round(res.totalRepayment / 10000) : 0;
+                      const debtReduct = Number.isFinite(res.totalDebtReduction) ? Math.round(res.totalDebtReduction / 10000) : 0;
+                      const reductRate = Number.isFinite(res.debtReductionRate) ? res.debtReductionRate : 0;
+                      const liqValue = Number.isFinite(res.liquidationValue) ? Math.round(res.liquidationValue / 10000) : 0;
+
                       return (
                         <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-4 space-y-2 text-sm">
                           <span className="text-xs font-black text-emerald-700 tracking-wide uppercase block">💰 변제 시뮬레이션</span>
-                          <div className="flex justify-between"><span className="text-slate-500">월 변제금</span> <span className="font-bold text-slate-900">{(res.monthlyPayment / 10000).toLocaleString()}만/월</span></div>
-                          <div className="flex justify-between"><span className="text-slate-500">변제 기간</span> <span className="text-slate-800 font-medium">{res.repaymentMonths}개월</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">월 변제금</span> <span className="font-bold text-slate-900">{monthlyPay.toLocaleString()}만/월</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">변제 기간</span> <span className="text-slate-800 font-medium">{res.repaymentMonths || 36}개월</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">총 변제금</span> <span className="text-slate-800 font-medium">{totalRepay.toLocaleString()}만</span></div>
                           <div className="flex justify-between text-emerald-700 font-bold">
                             <span>탕감액</span>
-                            <span>{(res.totalDebtReduction / 10000).toLocaleString()}만 ({res.debtReductionRate}%)</span>
+                            <span>{debtReduct.toLocaleString()}만 ({reductRate}%)</span>
                           </div>
-                          <div className="flex justify-between"><span className="text-slate-500">청산가치</span> <span className="text-slate-700">{(res.liquidationValue / 10000).toLocaleString()}만</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">청산가치</span> <span className="text-slate-700">{liqValue.toLocaleString()}만</span></div>
                         </div>
                       );
                     })()}
