@@ -24,15 +24,21 @@ const STEPS = [
 
 export default function ContractWizard({ contract: initialContract, onClose, onSave }: Props) {
   const [step, setStep] = useState(0);
-  const [c, setC] = useState<ElectronicContract>({ ...initialContract });
+  const [c, setC] = useState<ElectronicContract>(() => ({
+    ...initialContract,
+    courtCosts: initialContract.courtCosts || { creditorCount: 5, deliveryFee: 0, stampFee: 0, miscFee: 0 },
+    feeSchedule: initialContract.feeSchedule || [],
+    documents: initialContract.documents || [],
+    auditTrail: initialContract.auditTrail || [],
+  }));
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(!!c.identityVerification);
 
   // 분납 생성기 상태
   const [downPayment, setDownPayment] = useState(50);
   const [installments, setInstallments] = useState(3);
-  const [downDate, setDownDate] = useState(c.contractDate);
-  const [firstDate, setFirstDate] = useState(c.contractDate);
+  const [downDate, setDownDate] = useState(c.contractDate || new Date().toISOString().slice(0, 10));
+  const [firstDate, setFirstDate] = useState(c.contractDate || new Date().toISOString().slice(0, 10));
 
   // 약관 동의
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -88,10 +94,10 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
   // ─── Step 2: 수임료 및 스케줄 ───
   const renderFeeSchedule = () => {
-    const costs = calculateCourtCosts(c.courtCosts.creditorCount);
-    const totalCourt = costs.total + c.courtCosts.miscFee;
-    const totalWithCourt = c.totalFee * 10000 + totalCourt;
-    const scheduleTotal = c.feeSchedule.reduce((s, f) => s + f.amount, 0);
+    const costs = calculateCourtCosts(c.courtCosts?.creditorCount || 0);
+    const totalCourt = costs.total + (c.courtCosts?.miscFee || 0);
+    const totalWithCourt = (c.totalFee || 0) * 10000 + totalCourt;
+    const scheduleTotal = (c.feeSchedule || []).reduce((s, f) => s + (f.amount || 0), 0);
 
     return (
       <div className="space-y-6">

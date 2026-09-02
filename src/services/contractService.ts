@@ -59,16 +59,24 @@ function rowToContract(row: any): ElectronicContract {
 
 // ── CRUD ──
 
+export function loadContractsLocal(): ElectronicContract[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function loadContracts(): Promise<ElectronicContract[]> {
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase.from('electronic_contracts').select('*').order('created_at', { ascending: false });
       if (error) logSupabaseError('loadContracts', error);
-      else if (data) return data.map(rowToContract);
+      else if (data && data.length > 0) return data.map(rowToContract);
     } catch (e) { logSupabaseError('loadContracts (exception)', e); }
   }
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-  catch { return []; }
+  return loadContractsLocal();
 }
 
 export async function saveContracts(contracts: ElectronicContract[]): Promise<void> {
