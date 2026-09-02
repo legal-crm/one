@@ -98,7 +98,7 @@ export default function LawyerRole({
 }: LawyerRoleProps) {
   const dialog = useDialog();
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'open-requests' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [settingsCategory, setSettingsCategory] = useState<'profile' | 'notifications' | 'rules' | 'notices'>('profile');
   const [settingsSub, setSettingsSub] = useState<string>('profile-edit');
@@ -2034,7 +2034,7 @@ export default function LawyerRole({
                   }
                   setActiveTab('dashboard');
                 } else if (linkType === 'consult_request') {
-                  setActiveTab('open-requests');
+                  setActiveTab('client-crm');
                 } else if (linkType === 'case') {
                   setActiveTab('cases');
                 } else if (linkType === 'copilot_review') {
@@ -2346,7 +2346,7 @@ export default function LawyerRole({
             <button onClick={() => setActiveTab('client-crm')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'client-crm' ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
               <Users className="w-5 h-5" /><span className="text-xs font-bold">CRM</span>
             </button>
-            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','tasks-schedule','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','open-requests','chat','client-crm'].includes(activeTab) ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
+            <button onClick={() => { /* Toggle more menu */ const tabs: Array<typeof activeTab> = ['cases','tasks-schedule','billing','case-copilot','qna-answer','staff-management','settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','chat','client-crm'].includes(activeTab) ? 'text-brand font-bold' : 'text-slate-500 font-medium'}`}>
               <Settings className="w-5 h-5" /><span className="text-xs font-bold">더보기</span>
             </button>
           </div>
@@ -2415,7 +2415,7 @@ export default function LawyerRole({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* 1. 신규 상담 (신규 건수 있을 때 단독 펄스 애니메이션 적용) */}
               <button
-                onClick={() => setActiveTab('open-requests')}
+                onClick={() => setActiveTab('client-crm')}
                 className={`p-4.5 rounded-2xl border flex items-center justify-between transition-all press-scale cursor-pointer active:scale-[0.98] group text-left ${
                   totalOpenRequestsCount > 0
                     ? 'bg-gradient-to-br from-rose-50/60 via-white to-rose-50/20 new-consult-pulse-card hover:shadow-lg'
@@ -2441,7 +2441,7 @@ export default function LawyerRole({
               </button>
 
               {/* 2. 응답 대기 */}
-              <button onClick={() => setActiveTab('open-requests')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
+              <button onClick={() => setActiveTab('client-crm')} className="bg-white p-4.5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-slate-500 font-bold tracking-tight">응답 대기</span>
@@ -2535,7 +2535,7 @@ export default function LawyerRole({
                     return (
                     <button
                       key={r.id}
-                      onClick={() => setActiveTab('open-requests')}
+                      onClick={() => setActiveTab('client-crm')}
                       className="bg-slate-50/70 hover:bg-slate-100/90 rounded-xl border border-slate-200/90 hover:border-slate-300 hover:shadow-md p-4 flex flex-col gap-3 transition-all press-scale cursor-pointer active:scale-[0.98] group text-left"
                     >
                       {/* 상단: 뱃지 + 이름 + 날짜 */}
@@ -2610,7 +2610,7 @@ export default function LawyerRole({
               {requests.filter(r => r.status === 'requested').length > 0 && (
                 <div className="flex justify-center pt-1">
                   <button
-                    onClick={() => setActiveTab('open-requests')}
+                    onClick={() => setActiveTab('client-crm')}
                     className="w-full sm:w-[32%] min-w-[240px] bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-3 px-5 rounded-xl text-sm transition-all press-scale cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
                   >
                     <span>신규 상담 {totalOpenRequestsCount}건 자세히 보기</span>
@@ -2952,231 +2952,6 @@ export default function LawyerRole({
           </div>
         )}
 
-
-
-        {/* TAB 2: INCOMING COUNSEL REQUESTS LIST */}
-        {activeTab === 'open-requests' && (
-          <div className="space-y-6">
-            {/* 페이지 헤더 */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <Briefcase className="w-6 h-6 text-brand" />
-                  신규 상담 요청
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">채무 구조와 소득 진단 통계를 검토한 후 제안서를 작성하세요.</p>
-              </div>
-              <span className="text-xs bg-brand/10 text-brand px-3.5 py-1.5 rounded-lg font-bold whitespace-nowrap">
-                회생파산 전담팀 R-1
-              </span>
-            </div>
-
-            {/* 건너뛴 요청 복원 안내 */}
-            {dismissedReqIds.size > 0 && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">건너뛴 요청 {dismissedReqIds.size}건이 숨겨져 있습니다</span>
-                <button onClick={handleRestoreDismissed} className="text-xs text-brand font-bold hover:underline cursor-pointer whitespace-nowrap">
-                  모두 다시 보기
-                </button>
-              </div>
-            )}
-
-            {/* 요청 목록: 2열 그리드 배치 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
-              {requests
-                .filter(r => {
-                  const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
-                  const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
-                    const targetLawyer = lawyers.find(l => l.id === id);
-                    return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
-                  });
-                  const openMatch = r.requestType === 'open';
-                  return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
-                })
-                .filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id))
-                .filter(r => !dismissedReqIds.has(r.id))
-                .map((r, idx) => {
-                  return (
-                    <div key={r.id} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between">
-
-                      {/* 카드 헤더 */}
-                      <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
-                          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider ${
-                            r.requestType === 'direct' ? 'bg-[#1E3A5F] text-white' :
-                            r.requestType === 'direct_multi' ? 'bg-slate-800 text-white' :
-                            'bg-slate-200 text-slate-700'
-                          }`}>
-                            {r.requestType === 'direct' ? '단독지명' : r.requestType === 'direct_multi' ? '의뢰인 지정' : '오픈형'}
-                          </span>
-                          {r.entryCategory && (
-                            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200 shadow-xs">
-                              {r.entryCategory.type === 'debt_type' ? '💳 ' : r.entryCategory.type === 'solution' ? '⚖️ ' : ''}{r.entryCategory.label}
-                            </span>
-                          )}
-                          <span className="text-sm font-bold text-slate-900">{r.clientName}</span>
-                          {Date.now() - new Date(r.createdAt).getTime() < 48 * 60 * 60 * 1000 && (
-                            <span className="inline-flex items-center text-[10px] font-black tracking-wider text-white bg-rose-500 px-1.5 py-[1px] rounded-md shadow-sm animate-pulse whitespace-nowrap">NEW</span>
-                          )}
-                          <span className={`text-[11px] ${Date.now() - new Date(r.createdAt).getTime() < 48 * 60 * 60 * 1000 ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>등록 {new Date(r.createdAt).toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-slate-500 text-[11px]">지정 변호사: <strong className="text-slate-800">{r.selectedLawyerIds?.length || r.maxParticipants}명</strong></span>
-                          <span className="bg-rose-50 text-rose-600 font-bold text-[11px] px-2.5 py-0.5 rounded-md border border-rose-200">제안서 작성 대기</span>
-                        </div>
-                      </div>
-
-                      {/* 카드 본문 */}
-                      <div className="p-5 space-y-4 flex-1 flex flex-col">
-                        {/* 제목 + 사연 */}
-                        <div className="space-y-1">
-                          <h3 className="font-extrabold text-base text-slate-900 line-clamp-1">{r.title}</h3>
-                          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-2">{r.content}</p>
-                        </div>
-
-                        {/* 의뢰인 메모 */}
-                        {((r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0) || r.financialProfile.clientNote) && (
-                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs sm:text-sm">
-                            <div className="flex items-start gap-2">
-                              <span className="text-base shrink-0">📝</span>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">의뢰인 전달 메모</span>
-                                {r.financialProfile.clientNotes && r.financialProfile.clientNotes.length > 0 ? (
-                                  <ul className="space-y-0.5 text-left list-none">
-                                    {r.financialProfile.clientNotes.map((note, index) => (
-                                      <li key={index} className="text-xs text-slate-800 leading-relaxed break-all">
-                                        • {note}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-line break-all">{r.financialProfile.clientNote}</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 고객 원본 정보 */}
-                        <ClientOriginalInfo
-                          fp={r.financialProfile}
-                          clientName={r.clientName}
-                          phone={r.phone}
-                          consultType={(r as any).consultType || (r as any).request_type || r.requestType}
-                          createdAt={r.createdAt}
-                          compact
-                        />
-
-                        {/* 위험 플래그 — 해당시만 표시 */}
-                        <div className="flex flex-wrap gap-1.5 mt-auto pt-1">
-                          {r.financialProfile.specialCondition && r.financialProfile.specialCondition !== 'none' && (
-                            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-md font-bold border border-slate-200">
-                              ⚡ 24개월 특례: {r.financialProfile.specialCondition === 'basic_recipient' ? '기초수급' : r.financialProfile.specialCondition === 'severe_disability' ? '중증장애' : r.financialProfile.specialCondition === 'single_parent' ? '한부모' : r.financialProfile.specialCondition === 'rent_fraud' ? '전세사기' : '고령자'}
-                            </span>
-                          )}
-                          {r.financialProfile.retirementPay !== undefined && r.financialProfile.retirementPay > 0 && (
-                            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-md font-semibold border border-slate-200">
-                              💼 퇴직금 {r.financialProfile.retirementPay.toLocaleString()}만 ({r.financialProfile.retirementPensionType === 'pension' ? '연금 0%반영' : r.financialProfile.retirementPensionType === 'none' ? '미가입 50%반영' : '확인필요 50%반영'})
-                            </span>
-                          )}
-                          {r.financialProfile.retirementPensionType === 'unknown' && (
-                            <span className="bg-rose-50 text-rose-600 text-xs px-2.5 py-0.5 rounded-md font-bold border border-rose-200">
-                              ⚠️ 퇴직연금 확인 필요
-                            </span>
-                          )}
-                          {r.financialProfile.riskFlags.map(rf => (
-                            <span key={rf} className="bg-rose-50 text-rose-600 text-xs px-2.5 py-0.5 rounded-md font-bold border border-rose-200">
-                              ⚠️ {rf}
-                            </span>
-                          ))}
-                          {(r.financialProfile.speculativeLoss && r.financialProfile.speculativeLoss > 0) && (
-                            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-md font-bold border border-slate-200">
-                              📉 투기손실 {r.financialProfile.speculativeLoss.toLocaleString()}만
-                            </span>
-                          )}
-                          {(r.financialProfile.gamblingLoss && r.financialProfile.gamblingLoss > 0) && (
-                            <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-md font-bold border border-slate-200">
-                              🎰 도박손실 {r.financialProfile.gamblingLoss.toLocaleString()}만
-                            </span>
-                          )}
-                        </div>
-
-                      </div>
-
-                      {/* 워크플로우 패널 (직원 메모, 변호사 의견, 승인) */}
-                      <div className="px-5">
-                        <RequestWorkflowPanel
-                          requestId={r.id}
-                          clientName={r.clientName || (r as any).client_name || '고객'}
-                          isLawyerOrOwner={isLawyerOrOwner}
-                          workflow={{
-                            staffMemo: (r as any).staffMemo,
-                            staffChecklist: (r as any).staffChecklist,
-                            lawyerOpinion: (r as any).lawyerOpinion,
-                            reviewStatus: (r as any).reviewStatus,
-                          }}
-                          onUpdateWorkflow={(reqId, updates) => {
-                            setRequests(prev => prev.map(req => req.id === reqId ? { ...req, ...updates } : req));
-                          }}
-                        />
-                        {/* 처리 이력 타임라인 */}
-                        <RequestTimeline
-                          events={(r as any).timeline || [
-                            { id: `tl-${r.id}-1`, action: 'RECEIVED' as const, actor: '시스템', timestamp: r.createdAt || new Date().toISOString() }
-                          ]}
-                        />
-                      </div>
-
-                      {/* 카드 푸터: 액션 버튼 */}
-                      <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5 mt-auto">
-                        <button 
-                          onClick={() => handleDismissReq(r.id)}
-                          className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-[0.98]"
-                        >
-                          ✕ 건너뛰기
-                        </button>
-                        <div className="flex flex-wrap gap-2.5">
-                          <button 
-                            onClick={() => { setCopilotPreselectedReqId(r.id); setActiveTab('case-copilot'); }}
-                            className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
-                          >
-                            <Microscope className="w-4 h-4 text-slate-600" />
-                            🔬 AI 심층 분석
-                          </button>
-                          <button 
-                            onClick={() => handleOpenProposalDraft(r.id)}
-                            className="bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold py-2.5 px-5 rounded-xl text-xs sm:text-sm tracking-wide transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap press-scale cursor-pointer active:scale-[0.98]"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            고객 제안서 작성
-                          </button>
-                        </div>
-                      </div>
-
-                    </div>
-                  );
-                })}
-
-              {requests.filter(r => {
-                  const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
-                  const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
-                    const targetLawyer = lawyers.find(l => l.id === id);
-                    return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
-                  });
-                  const openMatch = r.requestType === 'open';
-                  return (directMatch || sameFirmMatch || openMatch) && (r.status === 'requested' || r.status === 'responding');
-                }).filter(r => !(r.proposals || []).some(p => p.lawyerId === activeLawyer.id)).filter(r => !dismissedReqIds.has(r.id)).length === 0 && (
-                <div className="col-span-full bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-3 shadow-sm">
-                  <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
-                  <p className="text-base text-slate-700 font-bold">현재 대응할 신규 상담 요청이 없습니다.</p>
-                  <p className="text-sm text-slate-400">의뢰인이 상담을 요청하면 이곳에 표시됩니다.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* TAB 3: 상담 채팅 */}
         {activeTab === 'chat' && (() => {
           const chatThreads = requests.filter(r => (r.status === 'comparing' || r.status === 'counseling') && ((r.acceptedLawyerIds || []).includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id));
@@ -3246,10 +3021,10 @@ export default function LawyerRole({
                     <p className="text-sm text-slate-600 font-bold">활성 대화방이 없습니다</p>
                     <p className="text-xs text-slate-400">제안서 수락 후 상담이 시작됩니다</p>
                     <button 
-                      onClick={() => setActiveTab('open-requests')}
+                      onClick={() => setActiveTab('client-crm')}
                       className="text-brand font-bold text-sm hover:underline press-scale cursor-pointer"
                     >
-                      상담 요청 목록보기 →
+                      고객 관리(CRM)에서 신규 의뢰 확인하기 →
                     </button>
                   </div>
                 )}
@@ -5193,8 +4968,8 @@ export default function LawyerRole({
                                               type="button"
                                               onClick={() => {
                                                 setActiveChatReqId(m.card!.reqId);
-                                                setActiveTab('open-requests');
-                                                toast.info('플랫폼의 신규 상담 탭으로 이동하여 의뢰인 상세 명세를 조회합니다.');
+                                                setActiveTab('client-crm');
+                                                toast.info('플랫폼의 고객 관리(CRM) 탭으로 이동하여 의뢰인 상세 명세를 조회합니다.');
                                               }}
                                               className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[10px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
                                             >
