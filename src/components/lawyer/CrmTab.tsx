@@ -81,6 +81,31 @@ function NewBadge({ className = '' }: { className?: string }) {
   );
 }
 
+/** 만 원 단위 금액을 "1억 2,500만" 형식으로 직관적으로 포맷 */
+function formatWonShort(amountManWon: number | undefined): string {
+  if (!amountManWon || amountManWon <= 0) return '0원';
+  const eok = Math.floor(amountManWon / 10000);
+  const remainder = amountManWon % 10000;
+  if (eok > 0) {
+    return remainder > 0 ? `${eok}억 ${remainder.toLocaleString()}만` : `${eok}억`;
+  }
+  return `${amountManWon.toLocaleString()}만`;
+}
+
+/** 사건 구분 뱃지 (개인회생 / 개인파산) */
+function getCaseTypeBadge(r: ConsultRequest) {
+  const isBankruptcy = (r.financialProfile.income || 0) === 0 || (r.financialProfile.debtTotal || 0) > 50000;
+  return !isBankruptcy ? (
+    <span className="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80 whitespace-nowrap">
+      개인회생
+    </span>
+  ) : (
+    <span className="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80 whitespace-nowrap">
+      개인파산
+    </span>
+  );
+}
+
 export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, getDisplayPhoneNumber, handleOpenProposalDraft, setActiveTab, setCopilotPreselectedReqId, initialView }: CrmTabProps) {
   const dialog = useDialog();
   // ── 기본 State ──
@@ -177,6 +202,52 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
     staffId: string;
     status: CrmStatus;
   } | null>(null);
+
+  // ── 업그레이드: 스마트 툴바 & 퀵 액션 상태 ──
+  const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
+  const [isDetailFilterOpen, setIsDetailFilterOpen] = useState(false);
+  const [periodFilter, setPeriodFilter] = useState<string>('all');
+  const [quickStatusMenuId, setQuickStatusMenuId] = useState<string | null>(null);
+  const toolsMenuRef = React.useRef<HTMLDivElement>(null);
+
+  // 도구 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(e.target as Node)) {
+        setIsToolsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handlePeriodChange = (val: string) => {
+    setPeriodFilter(val);
+    const now = new Date();
+    if (val === 'today') {
+      const t = now.toISOString().slice(0, 10);
+      setDateFrom(t);
+      setDateTo(t);
+    } else if (val === 'week') {
+      const d = now.getDay();
+      const mon = new Date(now);
+      mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1));
+      setDateFrom(mon.toISOString().slice(0, 10));
+      setDateTo(now.toISOString().slice(0, 10));
+    } else if (val === 'month') {
+      setDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
+      setDateTo(now.toISOString().slice(0, 10));
+    } else if (val === '3month') {
+      const ago = new Date(now);
+      ago.setMonth(ago.getMonth() - 3);
+      setDateFrom(ago.toISOString().slice(0, 10));
+      setDateTo(now.toISOString().slice(0, 10));
+    } else {
+      setDateFrom('');
+      setDateTo('');
+    }
+    setPage(1);
+  };
 
   // ── 초기 로드 ──
   useEffect(() => {
@@ -1015,210 +1086,324 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
             </>);
           })()}
         </div>
+      </div>
 
-        {/* 담당자별 건수 */}
-        <div className="flex flex-wrap gap-2 mt-4 text-xs sm:text-sm text-slate-600 font-medium">
-          {staffMembers.filter(m => m.isActive).map(m => {
-            const count = requests.filter(r => {
+      {/* ═══ [1단] 스마트 상태 파이프라인 탭 바 & 퀵 칩 ═══ */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-white p-2.5 md:p-3 rounded-2xl border border-slate-200 shadow-xs">
+
+        {/* 좌측 4대 파이프라인 탭 */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
+          {([
+            { key: 'all', label: '전체 고객', emoji: '👥', count: requests.length },
+            { key: 'consulting', label: '상담 접수/대기', emoji: '📞', count: requests.filter(r => ['requested','consulting'].includes(getCrmExt(r.id).crmStatus)).length },
+            { key: 'contracted', label: '수임·사건진행', emoji: '📁', count: requests.filter(r => ['contracted','document','filed','commenced','repaying'].includes(getCrmExt(r.id).crmStatus)).length },
+            { key: 'discharged', label: '종결', emoji: '✅', count: requests.filter(r => ['discharged','cancelled'].includes(getCrmExt(r.id).crmStatus)).length },
+          ] as const).map(f => (
+            <button
+              key={f.key}
+              onClick={() => {
+                setStatusFilter(f.key);
+                setPage(1);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs md:text-sm font-bold transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${
+                statusFilter === f.key
+                  ? 'bg-[#1E3A5F] text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <span>{f.emoji}</span>
+              <span>{f.label}</span>
+              <span className={`text-[11px] px-1.5 py-0.2 rounded-md font-black ${
+                statusFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+              }`}>{f.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 우측 퀵 필터 칩 */}
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap w-full md:w-auto justify-end">
+          {/* 미배정 퀵 필터 칩 */}
+          {(() => {
+            const unassignedCount = requests.filter(r => {
               const ext = getCrmExt(r.id);
-              const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId || ext.assignedStaffId;
-              return effectiveAssignee === m.id;
+              const a = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId;
+              return !a;
             }).length;
             return (
-              <span key={m.id} className="bg-slate-100 px-3 py-1 rounded-lg border border-slate-200 text-slate-700 font-semibold">
-                {m.name}({count})
-              </span>
+              <button
+                onClick={() => {
+                  setAssigneeFilter(prev => prev === 'unassigned' ? 'all' : 'unassigned');
+                  setPage(1);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-[0.98] ${
+                  assigneeFilter === 'unassigned'
+                    ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
+                    : unassignedCount > 0 
+                      ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                      : 'bg-slate-50 text-slate-400 border-slate-200'
+                }`}
+              >
+                <span>⚠️ 미배정</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  assigneeFilter === 'unassigned' ? 'bg-white text-rose-600' : 'bg-rose-200/80 text-rose-800'
+                }`}>{unassignedCount}</span>
+              </button>
             );
-          })}
-          <span className="bg-rose-50 px-3 py-1 rounded-lg border border-rose-200 text-rose-600 font-bold">
-            미배정({requests.filter(r => { const ext = getCrmExt(r.id); const a = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId; return !a; }).length})
-          </span>
-        </div>
-      </div>
+          })()}
 
-      {/* ── 빠른 필터 ── */}
-      <div className="flex gap-2 flex-wrap">
-        {([
-          { key: 'all', label: '전체 고객', icon: '👥', count: requests.length },
-          { key: 'consulting', label: '상담 중', icon: '📞', count: requests.filter(r => ['requested','consulting'].includes(getCrmExt(r.id).crmStatus)).length },
-          { key: 'contracted', label: '수임 사건', icon: '📁', count: requests.filter(r => ['contracted','document','filed','commenced','repaying'].includes(getCrmExt(r.id).crmStatus)).length },
-          { key: 'discharged', label: '종결', icon: '✅', count: requests.filter(r => ['discharged','cancelled'].includes(getCrmExt(r.id).crmStatus)).length },
-        ] as const).map(f => (
-          <button key={f.key} onClick={() => {
-            if (f.key === 'all') { setStatusFilter('all'); }
-            else if (f.key === 'consulting') { setStatusFilter('consulting'); }
-            else if (f.key === 'contracted') { setStatusFilter('contracted'); }
-            else { setStatusFilter('discharged'); }
-            setPage(1);
-          }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer border ${
-              (f.key === 'all' && statusFilter === 'all') ||
-              (f.key === 'consulting' && statusFilter === 'consulting') ||
-              (f.key === 'contracted' && statusFilter === 'contracted') ||
-              (f.key === 'discharged' && statusFilter === 'discharged')
-                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-            }`}>
-            <span>{f.icon}</span>
-            <span>{f.label}</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded-md font-black ${
-              (f.key === 'all' && statusFilter === 'all') ||
-              (f.key === 'consulting' && statusFilter === 'consulting') ||
-              (f.key === 'contracted' && statusFilter === 'contracted') ||
-              (f.key === 'discharged' && statusFilter === 'discharged')
-                ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-            }`}>{f.count}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── 검색 + 필터 + 뷰 토글 ── */}
-      <div className="bg-white p-4.5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
-        <div className="relative w-full sm:max-w-xs">
-          <input type="text" placeholder="고객명 또는 연락처 검색..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400" />
-          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-        </div>
-
-        <div className="flex flex-wrap gap-2.5 w-full sm:w-auto justify-end items-center">
-          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium">
-            <option value="all">상태: 전체</option>
-            {CRM_STATUSES.map(s => <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>)}
-          </select>
-
-          <select value={assigneeFilter} onChange={e => { setAssigneeFilter(e.target.value); setPage(1); }}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium">
-            <option value="all">담당자: 전체</option>
-            <option value="unassigned">미배정</option>
-            {staffMembers.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-
-          <select 
-            value={channelFilter} 
-            onChange={e => { setChannelFilter(e.target.value); setPage(1); }} 
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand/20"
+          {/* 중요(즐겨찾기) 칩 */}
+          <button
+            onClick={() => { setStarFilter(s => !s); setPage(1); }}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-[0.98] ${
+              starFilter ? 'bg-amber-50 text-amber-700 border-amber-300 shadow-xs' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            }`}
           >
-            <option value="all">유입 채널: 전체</option>
-            {Object.entries(INTAKE_CHANNEL_CONFIG).map(([key, cfg]) => (
-              <option key={key} value={key}>{cfg.emoji} {cfg.label}</option>
+            <Star className={`w-3.5 h-3.5 ${starFilter ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`} />
+            <span>중요</span>
+          </button>
+
+          {/* 완료건 숨김 칩 */}
+          <button
+            onClick={() => setHideCompleted(h => !h)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border active:scale-[0.98] ${
+              hideCompleted ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white text-slate-400 border-slate-200'
+            }`}
+          >
+            <span>{hideCompleted ? '✓ 종결 숨김' : '종결 표시'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ [2단] 통합 검색 & 스마트 툴바 ═══ */}
+      <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+        {/* 좌측: 통합 검색창 + 핵심 드롭다운 3종 + 상세필터 토글 */}
+        <div className="flex flex-1 items-center gap-2 flex-wrap">
+          {/* 검색창 */}
+          <div className="relative min-w-[220px] flex-1 max-w-sm">
+            <input
+              type="text"
+              placeholder="고객명, 연락처, 메모 검색..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-7 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400"
+            />
+            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* 담당자 드롭다운 */}
+          <select
+            value={assigneeFilter}
+            onChange={e => { setAssigneeFilter(e.target.value); setPage(1); }}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-700 font-medium cursor-pointer"
+          >
+            <option value="all">담당자: 전체</option>
+            <option value="unassigned">⚠️ 미배정만</option>
+            {staffMembers.filter(m => m.isActive).map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
 
-          <select value={`${sortField}_${sortDir}`} onChange={e => {
-            const [f, d] = e.target.value.split('_') as [SortField, SortDir];
-            setSortField(f); setSortDir(d); setPage(1);
-          }}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium">
-            <option value="createdAt_desc">{'\uCD5C\uC2E0 \uB4F1\uB85D\uC21C'}</option>
-            <option value="createdAt_asc">{'\uC624\uB798\uB41C \uC21C'}</option>
-            <option value="lastActivity_desc">{'\uCD5C\uADFC \uC218\uC815\uC21C'}</option>
-            <option value="clientName_asc">{'\uACE0\uAC1D\uBA85 \u3131-\u314E'}</option>
-            <option value="clientName_desc">{'\uACE0\uAC1D\uBA85 \u314E-\u3131'}</option>
-            <option value="debtTotal_desc">{'\uCC44\uBB34 \uB192\uC740\uC21C'}</option>
-            <option value="debtTotal_asc">{'\uCC44\uBB34 \uB0AE\uC740\uC21C'}</option>
-            <option value="income_desc">{'\uC18C\uB4DD \uB192\uC740\uC21C'}</option>
-            <option value="crmStatus_asc">{'\uC9C4\uD589 \uB2E8\uACC4\uC21C'}</option>
-            <option value="reminderCount_desc">{'\uB9AC\uB9C8\uC778\uB354 \uB9CE\uC740\uC21C'}</option>
+          {/* 정렬 드롭다운 */}
+          <select
+            value={`${sortField}_${sortDir}`}
+            onChange={e => {
+              const [f, d] = e.target.value.split('_') as [SortField, SortDir];
+              setSortField(f); setSortDir(d); setPage(1);
+            }}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-700 font-medium cursor-pointer"
+          >
+            <option value="createdAt_desc">최신 등록순</option>
+            <option value="createdAt_asc">오래된 순</option>
+            <option value="lastActivity_desc">최근 활동순</option>
+            <option value="debtTotal_desc">총 채무 높은순</option>
+            <option value="debtTotal_asc">총 채무 낮은순</option>
+            <option value="income_desc">월 소득 높은순</option>
+            <option value="clientName_asc">고객명 (ㄱ-ㅎ)</option>
           </select>
 
-          <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 font-medium">
-            <option value={10}>10건</option>
-            <option value={20}>20건</option>
-            <option value={50}>50건</option>
+          {/* 기간 빠른 선택 드롭다운 */}
+          <select
+            value={periodFilter}
+            onChange={e => handlePeriodChange(e.target.value)}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-700 font-medium cursor-pointer"
+          >
+            <option value="all">📅 기간: 전체</option>
+            <option value="today">오늘 접수</option>
+            <option value="week">이번 주</option>
+            <option value="month">이번 달</option>
+            <option value="3month">최근 3개월</option>
           </select>
 
-          <button 
-            onClick={() => setHideCompleted(h => !h)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] border whitespace-nowrap ${
-              hideCompleted 
-                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' 
-                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {hideCompleted ? '✓ 완료 건 숨김' : '완료 건 표시 중'}
-          </button>
-
-          <button onClick={() => setShowBulkMessage(!showBulkMessage)} className="text-xs font-bold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors press-scale whitespace-nowrap">📢 대량 발송</button>
-
-          {/* ── 케이스 관리 확장 버튼 ── */}
+          {/* 상세 필터 토글 버튼 */}
           <button
-            onClick={() => setStarFilter(f => !f)}
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] border whitespace-nowrap ${
-              starFilter ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            onClick={() => setIsDetailFilterOpen(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              isDetailFilterOpen || channelFilter !== 'all'
+                ? 'bg-brand/10 border-brand/30 text-brand'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <Star className={`w-3.5 h-3.5 ${starFilter ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-            즐겨찾기
+            <Filter className="w-3.5 h-3.5" />
+            <span>상세 필터</span>
+            {channelFilter !== 'all' && <span className="w-1.5 h-1.5 rounded-full bg-brand" />}
           </button>
+        </div>
 
+        {/* 우측: 신규 고객 등록 (Primary) + 도구 모음 드롭다운 + 뷰 토글 */}
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          {/* + 신규 고객 등록 */}
           <button
-            onClick={() => setShowTrash(t => !t)}
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] border whitespace-nowrap ${
-              showTrash ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-            }`}
+            onClick={() => setIsNewCaseModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-extrabold bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98]"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            휴지통
+            <Plus className="w-4 h-4" />
+            <span>신규 고객 등록</span>
           </button>
 
-          <button onClick={() => setIsExportModalOpen(true)} className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors press-scale whitespace-nowrap">
-            <Download className="w-3.5 h-3.5" /> 내보내기
-          </button>
+          {/* 📥 도구 모음 드롭다운 메뉴 */}
+          <div className="relative" ref={toolsMenuRef}>
+            <button
+              onClick={() => setIsToolsDropdownOpen(v => !v)}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <span>도구 모음</span>
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isToolsDropdownOpen ? 'rotate-90' : ''}`} />
+            </button>
 
-          <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors press-scale whitespace-nowrap">
-            <Upload className="w-3.5 h-3.5" /> 대량 업로드
-          </button>
-
-          <button onClick={() => setIsNewCaseModalOpen(true)} className="flex items-center gap-1.5 min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-sm hover:from-blue-700 hover:to-blue-600 transition-colors press-scale whitespace-nowrap">
-            <Plus className="w-4 h-4" /> 신규 등록
-          </button>
-
-          <div className="flex border border-slate-200 rounded-xl overflow-hidden">
-            {handleOpenProposalDraft && (
-              <button onClick={() => setViewMode('leads')} className={`px-3 py-2 cursor-pointer text-xs font-bold flex items-center gap-1 ${viewMode === 'leads' ? 'bg-rose-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
-                📋 신규 리드
-                {(() => { const cnt = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id)).length; return cnt > 0 ? <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full font-black ${viewMode === 'leads' ? 'bg-white text-rose-600' : 'bg-rose-100 text-rose-600'}`}>{cnt}</span> : null; })()}
-              </button>
+            {isToolsDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 p-1.5 space-y-1 animate-fadeIn">
+                <button
+                  onClick={() => { setShowBulkMessage(true); setIsToolsDropdownOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                >
+                  <span>📢 대량 알림톡 발송</span>
+                </button>
+                <button
+                  onClick={() => { setIsExportModalOpen(true); setIsToolsDropdownOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>엑셀로 내보내기</span>
+                </button>
+                <button
+                  onClick={() => { setIsImportModalOpen(true); setIsToolsDropdownOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                >
+                  <Upload className="w-3.5 h-3.5 text-slate-500" />
+                  <span>엑셀 대량 업로드</span>
+                </button>
+                <div className="border-t border-slate-100 my-1" />
+                <button
+                  onClick={() => { setShowTrash(true); setIsToolsDropdownOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  <span>휴지통 (삭제 건)</span>
+                </button>
+              </div>
             )}
-            <button onClick={() => setViewMode('list')} className={`p-2.5 cursor-pointer ${viewMode === 'list' ? 'bg-brand text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+          </div>
+
+          {/* 신규 리드 & 뷰 토글 */}
+          <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+            {handleOpenProposalDraft && (() => {
+              const newLeadsCount = requests.filter(r => (r.status === 'requested' || r.status === 'responding') && !(r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id)).length;
+              return (
+                <button
+                  onClick={() => setViewMode('leads')}
+                  className={`px-3 py-2 cursor-pointer text-xs font-bold flex items-center gap-1 ${
+                    viewMode === 'leads' ? 'bg-rose-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>신규 리드</span>
+                  {newLeadsCount > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      viewMode === 'leads' ? 'bg-white text-rose-600' : 'bg-rose-100 text-rose-600'
+                    }`}>{newLeadsCount}</span>
+                  )}
+                </button>
+              );
+            })()}
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 cursor-pointer ${viewMode === 'list' ? 'bg-brand text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              title="리스트 뷰"
+            >
               <List className="w-4 h-4" />
             </button>
-            <button onClick={() => setViewMode('kanban')} className={`p-2.5 cursor-pointer ${viewMode === 'kanban' ? 'bg-brand text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`p-2 cursor-pointer ${viewMode === 'kanban' ? 'bg-brand text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              title="칸반 뷰"
+            >
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── 기간 필터 (접이식) ── */}
-      {(dateFrom || dateTo) && (
-        <div className="bg-blue-50/50 border border-blue-200/50 rounded-xl px-4 py-2.5 flex items-center gap-3 text-sm animate-fadeIn">
-          <span className="text-blue-600 font-bold text-xs">📅 기간 필터</span>
-          <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-            className="rounded-lg border border-blue-200 px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-400 focus:outline-none" />
-          <span className="text-slate-400">~</span>
-          <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
-            className="rounded-lg border border-blue-200 px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-400 focus:outline-none" />
-          <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
-            className="text-xs text-blue-500 hover:text-blue-700 font-bold ml-auto">초기화</button>
+      {/* ── 상세 필터 접이식 패널 ── */}
+      {isDetailFilterOpen && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-wrap items-center gap-3 text-xs animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-600">유입 채널:</span>
+            <select
+              value={channelFilter}
+              onChange={e => { setChannelFilter(e.target.value); setPage(1); }}
+              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium"
+            >
+              <option value="all">유입 채널: 전체</option>
+              {Object.entries(INTAKE_CHANNEL_CONFIG).map(([k, v]) => (
+                <option key={k} value={k}>{v.emoji} {v.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-600">페이지당 건수:</span>
+            <select
+              value={perPage}
+              onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
+              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium"
+            >
+              <option value={10}>10건씩 보기</option>
+              <option value={20}>20건씩 보기</option>
+              <option value={50}>50건씩 보기</option>
+            </select>
+          </div>
+
+          {/* 직접 기간 지정 */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="font-bold text-slate-600">기간 직접 지정:</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setPeriodFilter('custom'); setPage(1); }}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs"
+            />
+            <span className="text-slate-400">~</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => { setDateTo(e.target.value); setPeriodFilter('custom'); setPage(1); }}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); setPeriodFilter('all'); setPage(1); }}
+                className="text-brand hover:underline font-bold ml-1"
+              >
+                초기화
+              </button>
+            )}
+          </div>
         </div>
       )}
-
-      {/* ── 기간 빠른 선택 ── */}
-      <div className="flex gap-1.5 flex-wrap">
-        {[
-          { label: '오늘', fn: () => { const t = new Date().toISOString().slice(0,10); setDateFrom(t); setDateTo(t); } },
-          { label: '이번 주', fn: () => { const now = new Date(); const d = now.getDay(); const mon = new Date(now); mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1)); setDateFrom(mon.toISOString().slice(0,10)); setDateTo(now.toISOString().slice(0,10)); } },
-          { label: '이번 달', fn: () => { const now = new Date(); setDateFrom(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`); setDateTo(now.toISOString().slice(0,10)); } },
-          { label: '최근 3개월', fn: () => { const now = new Date(); const ago = new Date(now); ago.setMonth(ago.getMonth()-3); setDateFrom(ago.toISOString().slice(0,10)); setDateTo(now.toISOString().slice(0,10)); } },
-          { label: '전체', fn: () => { setDateFrom(''); setDateTo(''); } },
-        ].map(p => (
-          <button key={p.label} onClick={() => { p.fn(); setPage(1); }}
-            className="text-[11px] px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 active:scale-[0.97] font-medium whitespace-nowrap">{p.label}</button>
-        ))}
-      </div>
 
       {/* ── 휴지통 모드 배너 ── */}
       {showTrash && (
@@ -1259,31 +1444,38 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
       )}
       </>)}
 
-      {/* ══════════ 리스트 뷰 ══════════ */}
+      {/* ══════════ 리스트 뷰 (고도화 테이블) ══════════ */}
       {viewMode === 'list' && !selectedId && (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse table-fixed">
                 <thead>
-                  <tr className="bg-slate-50/80 text-slate-600 font-bold border-b border-slate-200">
-                    <th className="p-3.5 w-[38px]">
+                  <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200 text-xs uppercase tracking-wider">
+                    <th className="p-3 w-[36px] text-center">
                       <input type="checkbox" checked={selectedIds.size === pagedRequests.length && pagedRequests.length > 0} onChange={handleSelectAll}
                         className="rounded border-slate-300" />
                     </th>
-                    <th className="p-1 w-[28px]"></th>
-                    <th className="p-3.5 w-[28%] cursor-pointer hover:text-slate-900" onClick={() => handleSort('clientName')}>
-                      고객명 {sortField === 'clientName' && (sortDir === 'asc' ? '↑' : '↓')}
+                    <th className="p-1 w-[26px]"></th>
+                    <th className="p-3.5 w-[20%] cursor-pointer hover:text-slate-900" onClick={() => handleSort('clientName')}>
+                      의뢰인 정보 {sortField === 'clientName' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="p-3.5 w-[14%] cursor-pointer hover:text-slate-900 text-center" onClick={() => handleSort('crmStatus')}>
-                      상태 {sortField === 'crmStatus' && (sortDir === 'asc' ? '↑' : '↓')}
+                    <th className="p-3.5 w-[10%] text-center">
+                      사건 구분
                     </th>
-                    <th className="p-3.5 w-[10%] text-center">채널</th>
-                    <th className="p-3.5 w-[14%] text-center">담당자</th>
-                    <th className="p-3.5 w-[18%] cursor-pointer hover:text-slate-900 text-right" onClick={() => handleSort('debtTotal')}>
-                      총 채무 {sortField === 'debtTotal' && (sortDir === 'asc' ? '↑' : '↓')}
+                    <th className="p-3.5 w-[18%] cursor-pointer hover:text-slate-900" onClick={() => handleSort('crmStatus')}>
+                      진행 상태 & 일정 {sortField === 'crmStatus' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="p-3.5 w-[16%] cursor-pointer hover:text-slate-900 text-right" onClick={() => handleSort('createdAt')}>
+                    <th className="p-3.5 w-[16%] cursor-pointer hover:text-slate-900 text-right" onClick={() => handleSort('debtTotal')}>
+                      채무 & 소득 {sortField === 'debtTotal' && (sortDir === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="p-3.5 w-[13%] text-center">
+                      담당자 / 채널
+                    </th>
+                    <th className="p-3.5 w-[10%] cursor-pointer hover:text-slate-900 text-right" onClick={() => handleSort('createdAt')}>
                       등록일 {sortField === 'createdAt' && (sortDir === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="p-3.5 w-[13%] text-center">
+                      빠른 실행
                     </th>
                   </tr>
                 </thead>
@@ -1292,70 +1484,209 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     const ext = getCrmExt(r.id);
                     const sc = CRM_STATUS_CONFIG[ext.crmStatus];
                     const isSelected = r.id === selectedId;
+                    
+                    // 다음 미완료 리마인더
+                    const nextReminder = ext.notes?.find(n => n.reminder && !n.reminder.completed);
+                    
+                    // 서류 미비 건수
+                    const docChecked = ext.documents?.filter(d => d.checked).length || 0;
+                    const docTotal = ext.documents?.length || 15;
+                    
                     return (
                       <tr key={r.id}
-                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-brand/5' : 'hover:bg-slate-50'}`}
+                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-brand/5' : 'hover:bg-slate-50/80'}`}
                         onClick={() => setSelectedId(r.id)}>
-                        <td className="p-3.5 w-[38px]" onClick={e => e.stopPropagation()}>
+                        <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => handleToggleSelect(r.id)} className="rounded border-slate-300" />
                         </td>
-                        <td className="p-1 w-[28px]" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => handleToggleStar(r.id)} className="p-1 hover:bg-yellow-50 rounded-lg transition-colors">
-                            <Star className={`w-4 h-4 ${ext.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300 hover:text-yellow-400'}`} />
+                        <td className="p-1" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => handleToggleStar(r.id)} className="p-1 hover:bg-amber-50 rounded-lg transition-colors">
+                            <Star className={`w-3.5 h-3.5 ${ext.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-300 hover:text-amber-400'}`} />
                           </button>
                         </td>
+                        
+                        {/* 1. 의뢰인 정보 */}
                         <td className="p-3.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900 text-base truncate">{r.clientName}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-slate-900 text-sm md:text-base truncate">{r.clientName}</span>
                             {isNewCase(r.createdAt) && <NewBadge />}
                           </div>
-                          <div className="text-xs text-slate-400 font-medium truncate">{getDisplayPhoneNumber(r)}</div>
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <span className={`text-xs px-2.5 py-1 rounded-md border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold whitespace-nowrap`}>
-                            {sc.emoji} {sc.label}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <span className="text-xs" title={INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.label}>
-                            {INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.emoji || '🏠'}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {getStaffRoleBadge(ext.assigneeId || ext.assignedLawyerId)}
-                            <span className="text-xs text-slate-700 font-medium truncate">{getStaffName(ext.assigneeId || ext.assignedLawyerId)}</span>
+                          <div 
+                            onClick={e => {
+                              e.stopPropagation();
+                              const phone = getDisplayPhoneNumber(r);
+                              if (phone) {
+                                navigator.clipboard.writeText(phone);
+                                toast.success('연락처가 복사되었습니다.');
+                              }
+                            }}
+                            className="text-xs text-slate-400 font-medium truncate hover:text-brand hover:underline cursor-pointer flex items-center gap-1 mt-0.5"
+                            title="연락처 복사"
+                          >
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>{getDisplayPhoneNumber(r)}</span>
                           </div>
                         </td>
-                        <td className="p-3.5 text-right font-bold text-red-600 text-base whitespace-nowrap">
-                          {r.financialProfile.debtTotal.toLocaleString()}만
+
+                        {/* 2. 사건 구분 */}
+                        <td className="p-3.5 text-center">
+                          {getCaseTypeBadge(r)}
                         </td>
+
+                        {/* 3. 진행 상태 & 일정 */}
+                        <td className="p-3.5">
+                          <div className="space-y-1">
+                            <span className={`inline-flex items-center text-xs px-2.5 py-0.5 rounded-md border ${sc.bgColor} ${sc.color} ${sc.borderColor} font-bold whitespace-nowrap`}>
+                              {sc.emoji} {sc.label}
+                            </span>
+                            {nextReminder ? (
+                              <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1 truncate">
+                                <span>⏰</span>
+                                <span>{nextReminder.reminder?.date} {nextReminder.reminder?.action || '상담'}</span>
+                              </p>
+                            ) : ext.crmStatus === 'document' ? (
+                              <p className="text-[11px] text-purple-600 font-bold flex items-center gap-1 truncate">
+                                <span>📁</span>
+                                <span>서류 {docChecked}/{docTotal} ({docChecked < docTotal ? '미비' : '완료'})</span>
+                              </p>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        {/* 4. 채무 & 소득 (DTI 및 가용소득 배제) */}
+                        <td className="p-3.5 text-right">
+                          <div className="font-black text-rose-600 text-sm md:text-base whitespace-nowrap">
+                            {formatWonShort(r.financialProfile.debtTotal)}
+                          </div>
+                          <div className="text-xs text-slate-500 font-medium whitespace-nowrap mt-0.5">
+                            {r.financialProfile.income && r.financialProfile.income > 0 
+                              ? `월 ${formatWonShort(r.financialProfile.income)}`
+                              : '무소득'}
+                          </div>
+                        </td>
+
+                        {/* 5. 담당자 & 유입 채널 */}
+                        <td className="p-3.5 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            {(() => {
+                              const effectiveAssignee = ext.assigneeId || ext.assignedLawyerId || ext.assignedConsultantId;
+                              return effectiveAssignee ? (
+                                <div className="flex items-center gap-1">
+                                  {getStaffRoleBadge(effectiveAssignee)}
+                                  <span className="text-xs text-slate-700 font-bold truncate max-w-[80px]">
+                                    {getStaffName(effectiveAssignee)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-md font-bold whitespace-nowrap">
+                                  ⚠️ 미배정
+                                </span>
+                              );
+                            })()}
+                            <span className="text-[11px] text-slate-400 font-medium flex items-center gap-0.5" title={INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.label}>
+                              <span>{INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.emoji || '🏠'}</span>
+                              <span>{INTAKE_CHANNEL_CONFIG[ext.intakeChannel || 'mykim']?.label || '마이김변'}</span>
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 6. 등록일 */}
                         <td className="p-3.5 text-right text-xs text-slate-500 font-medium">
-                          <div className={isNewCase(r.createdAt) ? 'text-rose-500 font-bold' : ''}>{new Date(r.createdAt).toLocaleDateString()}</div>
-                          <div className={isNewCase(r.createdAt) ? 'text-rose-400' : 'text-slate-400'}>{timeAgo(ext.lastActivityAt)}</div>
+                          <div className={isNewCase(r.createdAt) ? 'text-rose-500 font-bold' : ''}>
+                            {new Date(r.createdAt).toLocaleDateString()}
+                          </div>
+                          <div className="text-slate-400 text-[11px] mt-0.5">
+                            {timeAgo(ext.lastActivityAt)}
+                          </div>
                         </td>
-                        {showTrash && (
-                          <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center gap-1.5 justify-center">
-                              <button onClick={() => handleRestore(r.id)} className="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 font-bold hover:bg-emerald-100 active:scale-[0.97]" title="복원">
+
+                        {/* 7. 빠른 실행 액션 */}
+                        <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {setActiveTab && (
+                              <button
+                                onClick={() => {
+                                  setActiveTab('chat');
+                                }}
+                                className="px-2.5 py-1.5 bg-brand/10 hover:bg-brand text-brand hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="1:1 상담 채팅방으로 이동"
+                              >
+                                <span>💬</span>
+                                <span>상담</span>
+                              </button>
+                            )}
+
+                            {/* 빠른 상태 변경 드롭다운 토글 */}
+                            <div className="relative">
+                              <button
+                                onClick={() => setQuickStatusMenuId(prev => prev === r.id ? null : r.id)}
+                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                                title="빠른 상태 변경"
+                              >
+                                <span>⚡</span>
+                              </button>
+
+                              {quickStatusMenuId === r.id && (
+                                <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-1 space-y-0.5 animate-fadeIn text-left">
+                                  <div className="text-[10px] text-slate-400 font-bold px-2 py-1 uppercase tracking-wider border-b border-slate-100">
+                                    상태 즉시 변경
+                                  </div>
+                                  {CRM_STATUSES.map(st => (
+                                    <button
+                                      key={st}
+                                      onClick={() => {
+                                        const updated: CrmClientExtension = {
+                                          ...ext,
+                                          crmStatus: st,
+                                          lastActivityAt: new Date().toISOString(),
+                                          activities: [
+                                            ...(ext.activities || []),
+                                            {
+                                              id: `act-quick-${Date.now()}`,
+                                              clientId: r.id,
+                                              actorId: activeStaff?.id || activeLawyer.id,
+                                              actorName: activeStaff?.name || activeLawyer.name,
+                                              actorRole: activeStaff?.role || 'OWNER',
+                                              type: 'status_change',
+                                              description: `빠른 상태 변경: ${CRM_STATUS_CONFIG[ext.crmStatus].label} → ${CRM_STATUS_CONFIG[st].label}`,
+                                              createdAt: new Date().toISOString(),
+                                            },
+                                          ],
+                                        };
+                                        setCrmData(prev => ({ ...prev, [r.id]: updated }));
+                                        saveCrmClient(r.id, updated);
+                                        setQuickStatusMenuId(null);
+                                        toast.success(`[${r.clientName}] 상태가 [${CRM_STATUS_CONFIG[st].label}]로 변경되었습니다.`);
+                                      }}
+                                      className={`w-full text-left px-2 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+                                        ext.crmStatus === st ? 'bg-brand/10 text-brand' : 'text-slate-700 hover:bg-slate-50'
+                                      }`}
+                                    >
+                                      <span>{CRM_STATUS_CONFIG[st].emoji}</span>
+                                      <span>{CRM_STATUS_CONFIG[st].label}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {showTrash && (
+                              <button onClick={() => handleRestore(r.id)} className="p-1.5 bg-emerald-50 text-emerald-600 font-bold hover:bg-emerald-100 rounded-lg" title="복원">
                                 <RotateCcw className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => { deleteCrmClient(r.id); setRequests(prev => prev.filter(p => p.id !== r.id)); toast.success('영구 삭제됨'); }}
-                                className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-500 font-bold hover:bg-red-100 active:scale-[0.97]" title="영구 삭제">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        )}
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
                   {pagedRequests.length === 0 && (
-                    <tr><td colSpan={8} className="p-12 text-center text-slate-500 text-sm font-medium">검색 조건에 부합하는 고객이 없습니다.</td></tr>
+                    <tr><td colSpan={9} className="p-12 text-center text-slate-500 text-sm font-medium">검색 조건에 부합하는 고객이 없습니다.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
+
 
             {/* 페이지네이션 */}
             {totalPages > 1 && (() => {
@@ -1552,7 +1883,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       재무 스펙 & 탕감 분석
                     </span>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
-                      DTI {dtiRatio}배
+                      채무 배율 {dtiRatio}배
                     </span>
                   </div>
 
@@ -1572,7 +1903,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     </div>
                   </div>
 
-                  {/* DTI 위험도 게이지 바 */}
+                  {/* 채무 과다 위험도 게이지 바 */}
                   <div className="space-y-1 pt-1">
                     <div className="flex justify-between text-[11px] font-medium text-slate-500">
                       <span>소득 대비 채무 위험도</span>
@@ -1580,6 +1911,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                         {dtiNum >= 25 ? '⚠️ 초고위험' : dtiNum >= 15 ? '경고' : '양호'}
                       </span>
                     </div>
+
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all ${dtiNum >= 25 ? 'bg-rose-500' : dtiNum >= 15 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
