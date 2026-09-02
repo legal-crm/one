@@ -1315,9 +1315,21 @@ export default function LawyerRole({
 
   const handleContractSuccess = (newCase: Case, newContract: any) => {
     setCases(prev => [newCase, ...prev]);
-    // Close active consultation request and promote to document intake
+    // Promote consultation request to contracted/counseling and ensure lawyer assignment
     if (contractTargetRequest) {
-      setRequests(prev => prev.map(r => r.id === contractTargetRequest.id ? { ...r, status: 'closed' } : r));
+      setRequests(prev => prev.map(r => {
+        if (r.id === contractTargetRequest.id) {
+          const accepted = r.acceptedLawyerIds ? [...r.acceptedLawyerIds] : [];
+          if (!accepted.includes(activeLawyer.id)) accepted.push(activeLawyer.id);
+          return {
+            ...r,
+            status: 'counseling',
+            assignedLawyerId: activeLawyer.id,
+            acceptedLawyerIds: accepted
+          };
+        }
+        return r;
+      }));
     }
     setActiveTab('client-crm');
     setContractTargetRequest(null);

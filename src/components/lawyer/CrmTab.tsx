@@ -285,7 +285,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   useEffect(() => {
     requests.forEach(r => {
       // 현재 변호사에게 관련된 요청만 동기화
-      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
+                          r.selectedLawyerId === activeLawyer.id ||
+                          r.acceptedLawyerIds?.includes(activeLawyer.id) ||
+                          r.assignedLawyerId === activeLawyer.id ||
+                          (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id));
       const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
         const targetLawyer = lawyers.find(l => l.id === id);
         return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
@@ -339,8 +343,12 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   // ── 필터링 + 정렬 + 페이지네이션 ──
   const filteredRequests = useMemo(() => {
     let result = requests.filter(r => {
-      // 현재 변호사에게 관련된 요청만 표시
-      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+      // 현재 변호사에게 관련된 요청만 표시 (지정, 수락, 배정, 제안서 발송 포함)
+      const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
+                          r.selectedLawyerId === activeLawyer.id ||
+                          r.acceptedLawyerIds?.includes(activeLawyer.id) ||
+                          r.assignedLawyerId === activeLawyer.id ||
+                          (r.proposals && r.proposals.some((p: any) => p.lawyerId === activeLawyer.id));
       const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
         const targetLawyer = lawyers.find(l => l.id === id);
         return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;

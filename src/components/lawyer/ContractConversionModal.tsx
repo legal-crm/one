@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { FileSignature, Smartphone, Users, CheckCircle2, FileText, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ConsultRequest, Case, Lawyer as LawyerType, ElectronicContract, FeeInstallment } from '../../types';
+import type { ConsultRequest, Case, Lawyer as LawyerType, ElectronicContract, FeeInstallment, CrmStatus, CrmClientExtension } from '../../types';
 import { createContract, saveContract } from '../../services/contractService';
 import { sendAlimtok } from '../../services/alimtokService';
+import { saveCrmClient, createDefaultCrmExtension } from '../../services/crmService';
 
 interface Props {
   request: ConsultRequest;
@@ -133,6 +134,34 @@ export default function ContractConversionModal({
           sendDocPackage ? '📋 필수 제출 서류 15종 가이드 및 체크리스트 발송 완료' : '서류 준비 착수 지시'
         ]
       };
+
+      // 3-1. CRM 데이터베이스(crm_clients) 즉시 동기화 (수임계약/서류수집 단계 승격)
+      const crmExt = createDefaultCrmExtension(request.id);
+      const updatedCrmExt: CrmClientExtension = {
+        ...crmExt,
+        crmStatus: 'contracted' as CrmStatus,
+        assigneeId: activeLawyer.id,
+        assignedLawyerId: activeLawyer.id,
+        totalFee: totalFee * 10000,
+        contractDate: now.toISOString().split('T')[0],
+        contractAmount: totalFee * 10000,
+        feeSchedule,
+        lastActivityAt: now.toISOString(),
+        activities: [
+          ...(crmExt.activities || []),
+          {
+            id: `act-contract-${Date.now()}`,
+            clientId: request.id,
+            actorId: activeLawyer.id,
+            actorName: activeLawyer.name,
+            actorRole: 'OWNER',
+            type: 'status_change',
+            description: `${contractMethod === 'electronic' ? '전자계약서 발송' : '대면 수임계약 체결'} 완료 (총 수임료 ${totalFee}만 원)`,
+            createdAt: now.toISOString()
+          }
+        ]
+      };
+      await saveCrmClient(request.id, updatedCrmExt);
 
       // 4. 채팅 대화방에 시스템/변호사 안내 메시지 자동 전송
       if (onAddMessage) {
