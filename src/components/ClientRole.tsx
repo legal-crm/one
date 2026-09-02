@@ -50,6 +50,7 @@ const LawyerProfileModal = React.lazy(() => import('./client/LawyerProfileModal'
 
 import type { SolutionType } from './client/SolutionDetailModal';
 const SolutionDetailModal = React.lazy(() => import('./client/SolutionDetailModal'));
+const RehabCompanionView = React.lazy(() => import('./client/companion/RehabCompanionView'));
 
 
 interface RemedyPreset {
@@ -425,15 +426,15 @@ export default function ClientRole({
 }: ClientRoleProps) {
   // Sub-navigation for user
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry' | 'guide'>(() => {
+  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry' | 'guide' | 'companion'>(() => {
     if (typeof window === 'undefined') return 'landing';
     // [SEO] 클린 URL 경로를 탭으로 매핑
-    const pathTabMap: Record<string, string> = { '/check': 'request', '/lawyers': 'lawyers', '/reviews': 'reviews', '/qna': 'qna', '/news': 'news' };
+    const pathTabMap: Record<string, string> = { '/check': 'request', '/lawyers': 'lawyers', '/reviews': 'reviews', '/qna': 'qna', '/news': 'news', '/companion': 'companion' };
     const mapped = pathTabMap[window.location.pathname];
     if (mapped) return mapped as any;
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide'];
+    const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion'];
     if (tabParam && validTabs.includes(tabParam)) {
       return tabParam as any;
     }
@@ -1930,6 +1931,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               </button>
 
               <button 
+                onClick={() => setActiveTab('companion')}
+                className={`relative whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
+                  activeTab === 'companion' 
+                    ? 'bg-[#1E3A5F]/10 border-[#1E3A5F]/25 text-[#1E3A5F] font-bold shadow-[0_2px_10px_rgba(30,58,95,0.08)]' 
+                    : 'border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white font-bold'
+                }`}
+              >
+                회생동행
+                <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow-sm">
+                  NEW
+                </span>
+              </button>
+              <button 
                 onClick={() => setActiveTab('lawyers')}
                 className={`whitespace-nowrap px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl text-[15px] lg:text-base transition-all duration-200 border ${
                   activeTab === 'lawyers' 
@@ -3036,6 +3050,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               <p className="text-xs text-slate-500 font-bold">페이지를 로딩하고 있습니다...</p>
             </div>
           }>
+            {/* TAB: 회생동행 (3~5년 변제관리 & 면책 완주) */}
+            {activeTab === 'companion' && (
+              <RehabCompanionView
+                userAlias={userAlias}
+                onNavigateToChat={() => setActiveTab('chat')}
+                onNavigateToLawyers={() => setActiveTab('lawyers')}
+              />
+            )}
+
             {/* TAB: 탕감액 계산기 */}
             {activeTab === 'calculator' && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); setActiveTab('request'); }} />)}
 

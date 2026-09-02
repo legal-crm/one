@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ClipboardCheck, MessageSquare, Search, HelpCircle } from 'lucide-react';
+import { Home, ClipboardCheck, MessageSquare, Search, HelpCircle, TrendingUp } from 'lucide-react';
 import { getUnreadCount } from '../../services/clientNotificationService';
 
 interface MobileGNBProps {
@@ -37,6 +37,13 @@ export default function MobileGNB({ activeTab, onSetActiveTab, onRequestConsult,
       onClick: () => onSetActiveTab('chat'),
       isActive: activeTab === 'chat',
       badgeCount: unreadCount,
+    },
+    {
+      key: 'companion',
+      label: '회생동행',
+      icon: TrendingUp,
+      onClick: () => onSetActiveTab('companion'),
+      isActive: activeTab === 'companion',
     },
     {
       key: 'lawyers',

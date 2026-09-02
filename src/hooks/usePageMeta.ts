@@ -55,6 +55,10 @@ export const TAB_META: Record<string, { title: string; description: string }> = 
     title: '이용 후기 | 실제 상담 경험 | my김변',
     description: '실제 이용자들의 채무 상담 경험과 후기를 확인하세요.',
   },
+  companion: {
+    title: '마이김변 회생동행 | 3~5년 변제관리 & 면책 완주 플랫폼 | my김변',
+    description: '타 사무소 수임자도 나홀로 소송자도 100% 무료! 매월 변제금 D-Day, 36개월 납부 캘린더, 생계 밸런서, 공적 복지지원까지 면책까지 동행합니다.',
+  },
   qna: {
     title: '채무 고민상담 Q&A | 변호사 무료 답변 | my김변',
     description: '채무 관련 궁금한 점을 질문하고 전문 변호사 답변을 받으세요.',

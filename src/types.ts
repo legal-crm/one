@@ -1828,3 +1828,138 @@ export interface ElectronicContract {
   createdAt: string;
   updatedAt: string;
 }
+
+// ═══════════════════════════════════════════════
+// 마이김변 2.0 회생·파산 완주 동행 (Companion) 시스템
+// ═══════════════════════════════════════════════
+
+export type CompanionSourceType = 'mykim_lawyer' | 'external_office' | 'self_litigant';
+
+export type RepaymentVerificationStatus = 
+  | 'court_confirmed'      // 🟢 법원자료 기준
+  | 'receipt_uploaded'     // 🔵 증빙 첨부
+  | 'self_marked'          // 🟡 고객 확인
+  | 'overdue_check_needed' // 🔴 확인 필요
+  | 'pending';             // ⚪ 아직 도래하지 않음
+
+export interface RepaymentRoundItem {
+  round: number;
+  dueDate: string; // YYYY-MM-DD
+  scheduledAmount: number; // 원 단위
+  actualPaidAmount?: number;
+  paidDate?: string;
+  status: RepaymentVerificationStatus;
+  receiptName?: string;
+  receiptDataUrl?: string;
+  memo?: string;
+}
+
+export interface MonthlyCashflowProfile {
+  monthlyIncome: number;      // 월 소득 (원)
+  essentialLivingCost: number; // 법정 필수 생계비 (원)
+  repaymentAmount: number;    // 월 변제금 (원)
+  otherFixedExpenses: number; // 통신비/보험료 등 기타 고정지출 (원)
+}
+
+export interface RehabCompanionCase {
+  id: string;
+  clientId?: string;
+  alias: string;
+  sourceType: CompanionSourceType; // mykim_lawyer, external_office, self_litigant
+  externalOfficeName?: string;     // 타 사무소 명칭
+  caseType: 'individual_rehab' | 'bankruptcy';
+  
+  courtName: string;           // 관할 법원 (e.g. 서울회생법원)
+  caseNumber: string;          // e.g. 2024개회101234
+  caseNumberMasked: string;    // e.g. 2024개회10****
+  
+  // 회생 변제 조건
+  monthlyRepaymentAmount: number; // 월 변제금 (원)
+  repaymentDay: number;           // 매월 변제일 (1~31)
+  totalRounds: number;            // 총 변제 회차 (36 or 60)
+  completedRounds: number;        // 현재 완료 회차
+  startRepaymentDate: string;     // 변제 개시년월 (YYYY-MM)
+  courtVirtualAccount?: string;   // 법원 납부 전용 가상계좌 (마스킹)
+  assignedLawyerName?: string;    // 담당 변호사명
+  
+  // 30일 생계 밸런서
+  cashflow: MonthlyCashflowProfile;
+  
+  // 36~60개월 스케줄
+  schedules: RepaymentRoundItem[];
+  
+  // 서류함
+  documents: Array<{
+    id: string;
+    name: string;
+    type: 'decision' | 'plan' | 'receipt' | 'discharge' | 'other';
+    uploadedAt: string;
+    fileSize?: number;
+    dataUrl?: string;
+  }>;
+  
+  notificationLevel: 'basic' | 'detailed' | 'inapp_only';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CrisisReasonType = 
+  | 'income_reduction'  // 소득 감소
+  | 'job_loss'          // 실직 / 폐업
+  | 'medical_expense'   // 질병 / 의료비 발생
+  | 'housing_increase'  // 주거비 / 전세 피해
+  | 'family_care'       // 가족 부양 / 돌봄
+  | 'auto_transfer_fail'// 자동이체 계좌 오류
+  | 'other';            // 기타
+
+export interface LifeCrisisReport {
+  id: string;
+  caseId: string;
+  reason: CrisisReasonType;
+  reasonLabel: string;
+  estimatedShortage: number; // 부족 예상액 (원)
+  description: string;
+  evidenceFiles?: Array<{ name: string; dataUrl: string }>;
+  createdAt: string;
+  status: 'submitted' | 'lawyer_reviewing' | 'consult_scheduled' | 'resolved';
+  lawyerAdvice?: string;
+}
+
+export interface SupportProgram {
+  id: string;
+  priority: 1 | 2 | 3;
+  category: 'welfare_emergency' | 'public_debt_credit' | 'diligent_repayment_loan';
+  title: string;
+  subtitle: string;
+  organization: string;
+  eligibility: string;
+  benefit: string;
+  officialUrl: string;
+  contactNumber: string;
+  badge: string;
+}
+
+export interface BankruptcyTimelineItem {
+  id: string;
+  stageName: string;
+  status: 'completed' | 'in_progress' | 'pending';
+  targetDate?: string;
+  description: string;
+  requiredDocuments?: string[];
+  notes?: string;
+}
+
+export interface BankruptcyCompanionCase {
+  id: string;
+  alias: string;
+  sourceType: CompanionSourceType;
+  externalOfficeName?: string;
+  courtName: string;
+  caseNumberMasked: string;
+  bankruptcyTrusteeName?: string; // 파산관재인
+  timelines: BankruptcyTimelineItem[];
+  documents: Array<{ id: string; name: string; uploadedAt: string; status: 'reviewed' | 'pending' }>;
+  notificationLevel: 'basic' | 'detailed' | 'inapp_only';
+  createdAt: string;
+}
+

@@ -330,6 +330,50 @@ export default function LandingPage({
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════════
+          NEW SECTION: 회생동행 오픈 배너 (3~5년 완주 관리)
+          ═══════════════════════════════════════════════════════════════════════ */}
+      <section className="relative py-4 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div 
+            onClick={() => onNavigate('companion')}
+            className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 cursor-pointer hover:border-indigo-400/60 transition-all group"
+          >
+            <div className="flex items-center gap-4 text-left">
+              <div className="w-14 h-14 rounded-2xl bg-brand/20 border border-brand/40 flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform">
+                🌱
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                    전국 회생·파산인 100% 무료
+                  </span>
+                  <span className="text-xs text-indigo-300 font-semibold">
+                    타 사무소 진행자도 OK
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-white group-hover:text-indigo-200 transition-colors">
+                  이미 개인회생 중이신가요? 면책까지 3~5년 변제 일정을 함께합니다
+                </h3>
+                <p className="text-xs text-slate-400">
+                  매월 변제 D-Day 알림 · 36개월 납부 캘린더 · 생계 밸런서 · 공적 지원제도 무료 관리
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full sm:w-auto">
+              <button
+                type="button"
+                className="w-full sm:w-auto px-6 py-3 bg-brand hover:bg-brand-hover text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 group-hover:translate-x-1"
+              >
+                <span>회생동행 시작하기</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════════
           AD BANNER SLIDE — 메인 배너 광고 (상품 1)
           ═══════════════════════════════════════════════════════════════════════ */}
       {shuffledBanners.length > 0 && (
