@@ -720,17 +720,25 @@ export default function AdminRole({
   };
 
   const handleApproveLawyer = (lawyerId: string) => {
-    setLawyers(prev => prev.map(l => {
-      if (l.id === lawyerId) {
-        return {
-          ...l,
-          approved: true,
-          recentActivity: '자격 승인 검토 완료 (정식 활동 개시)'
-        };
-      }
-      return l;
-    }));
+    setLawyers(prev => {
+      const next = prev.map(l => {
+        if (l.id === lawyerId) {
+          return {
+            ...l,
+            approved: true,
+            licenseStatus: 'verified',
+            recentActivity: '자격 승인 검토 완료 (정식 활동 개시)'
+          };
+        }
+        return l;
+      });
+      try {
+        localStorage.setItem('legal_crm_lawyers', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'active' } : m));
+    setSelectedLawyer(prev => (prev && prev.id === lawyerId ? { ...prev, approved: true, licenseStatus: 'verified', recentActivity: '자격 승인 검토 완료 (정식 활동 개시)' } : prev));
     onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 자격 승인 완료: ${lawyerId}`);
     toast.success('해당 대리인의 자격 심사가 승인되었습니다. 즉시 포털 이용 및 상담 참여가 가능합니다.');
   };
@@ -744,17 +752,25 @@ export default function AdminRole({
     });
     if (!confirmed) return;
 
-    setLawyers(prev => prev.map(l => {
-      if (l.id === lawyerId) {
-        return {
-          ...l,
-          approved: false,
-          recentActivity: '운영정책 위반으로 승인 정지 처리됨'
-        };
-      }
-      return l;
-    }));
+    setLawyers(prev => {
+      const next = prev.map(l => {
+        if (l.id === lawyerId) {
+          return {
+            ...l,
+            approved: false,
+            licenseStatus: 'suspended',
+            recentActivity: '운영정책 위반으로 승인 정지 처리됨'
+          };
+        }
+        return l;
+      });
+      try {
+        localStorage.setItem('legal_crm_lawyers', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
     setMembers(prev => prev.map(m => m.id === lawyerId ? { ...m, status: 'suspended' } : m));
+    setSelectedLawyer(prev => (prev && prev.id === lawyerId ? { ...prev, approved: false, licenseStatus: 'suspended', recentActivity: '운영정책 위반으로 승인 정지 처리됨' } : prev));
     onLogActivity('admin', '최고관리자', 'ADMIN', 'ADMIN_ACTION', `변호사 라이선스 강제 정지 처리: ${lawyerId}`);
     toast.success('대리인 라이선스 정지 처리가 완료되었습니다.');
   };

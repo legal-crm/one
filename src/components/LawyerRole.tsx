@@ -4,7 +4,7 @@ import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice 
@@ -392,6 +392,8 @@ export default function LawyerRole({
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [showServiceGuide, setShowServiceGuide] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
+  // 승인 심사 대기 중 포털 둘러보기(체험 모드) 상태
+  const [isGuestPreviewMode, setIsGuestPreviewMode] = useState<boolean>(false);
 
   // Signup form state
   const [signupId, setSignupId] = useState<string>('');
@@ -1509,6 +1511,10 @@ export default function LawyerRole({
   };
 
   const handleSendChat = () => {
+    if (activeLawyer?.approved === false) {
+      toast.warning('현재 자격 심사 대기(체험 모드) 상태입니다. 관리자 정식 승인 완료 후 실제 의뢰인 상담 메시지를 전송하실 수 있습니다.');
+      return;
+    }
     if (!chatInput.trim() || !activeChatReqId) return;
     onAddMessage(activeChatReqId, chatInput.trim(), 'lawyer', activeLawyer.id, activeLawyer.name);
     
@@ -1876,7 +1882,7 @@ export default function LawyerRole({
     );
   }
 
-  if (isLoggedIn && activeLawyer?.approved === false) {
+  if (isLoggedIn && activeLawyer?.approved === false && !isGuestPreviewMode) {
     return (
       <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
         <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center">
@@ -1965,12 +1971,27 @@ export default function LawyerRole({
             </div>
           )}
 
-          <button 
-            onClick={handleLogout}
-            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold py-3 rounded-[200px] text-xs border border-slate-200 transition-colors shrink-0"
-          >
-            로그아웃
-          </button>
+          {/* 둘러보기 및 로그아웃 버튼 영역 */}
+          <div className="space-y-2 pt-1">
+            <button 
+              type="button"
+              onClick={() => {
+                setIsGuestPreviewMode(true);
+                toast.info('변호사 포털 체험 모드로 진입했습니다. 기능을 자유롭게 둘러보세요.');
+              }}
+              className="w-full bg-brand hover:bg-brand-hover text-white font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm shadow-md shadow-brand/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+            >
+              <Compass className="w-4 h-4" />
+              <span>변호사 어드민 페이지 둘러보기 (체험 모드)</span>
+            </button>
+            <button 
+              type="button"
+              onClick={handleLogout}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-2xl text-xs border border-slate-200 transition-colors cursor-pointer"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1978,6 +1999,37 @@ export default function LawyerRole({
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white">
+      {/* ── 둘러보기(체험 모드) 상단 안내 배너 ── */}
+      {isLoggedIn && activeLawyer?.approved === false && isGuestPreviewMode && (
+        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-medium shadow-md z-50 shrink-0 border-b border-amber-500/30">
+          <div className="flex items-center gap-2.5">
+            <span className="bg-white/20 text-white px-2 py-0.5 rounded-full font-bold text-[11px] animate-pulse flex items-center gap-1 shrink-0">
+              <Compass className="w-3.5 h-3.5" />
+              <span>체험 모드</span>
+            </span>
+            <span className="text-amber-100 leading-snug">
+              현재 <strong className="text-white font-bold underline underline-offset-2">변호사 자격 심사 대기 중</strong>입니다. 포털 기능을 미리 둘러보실 수 있으며, 관리자 승인 완료 후 실시간 의뢰인 수임 및 상담이 정식 개시됩니다.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button 
+              type="button"
+              onClick={() => setIsGuestPreviewMode(false)}
+              className="bg-white text-amber-900 hover:bg-amber-50 px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+            >
+              심사 대기 화면으로 돌아가기
+            </button>
+            <button 
+              type="button"
+              onClick={handleLogout}
+              className="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1.5 rounded-xl text-xs transition-colors cursor-pointer whitespace-nowrap"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="w-full h-full flex flex-col relative">
       
         {/* ── Top Header Bar (다크 네이비) ── */}
