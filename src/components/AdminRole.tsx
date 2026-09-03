@@ -181,6 +181,12 @@ export default function AdminRole({
   const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5분
   const SESSION_KEY = 'legal_crm_admin_session';
 
+  // [SECURITY] 허용된 관리자 구글 계정 화이트리스트 (대표님 전용 계정)
+  const ALLOWED_ADMIN_GOOGLE_EMAILS = [
+    'pipj601@gmail.com',
+    'aimart9999@gmail.com',
+  ];
+
   // 초기 로드 시 동기적으로 타임스탬프만 확인 (HMAC은 비동기로 후속 검증)
   const quickCheckSession = (): boolean => {
     const sessionData = secureGetItem(SESSION_KEY);
@@ -200,6 +206,7 @@ export default function AdminRole({
   };
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => quickCheckSession());
+  const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState<boolean>(false);
   const [loginId, setLoginId] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
@@ -247,6 +254,71 @@ export default function AdminRole({
     };
     verifyOnMount();
   }, []);
+
+  // [SECURITY] 지정된 관리자 구글 계정 OAuth 세션 검증
+  useEffect(() => {
+    if (isLoggedIn) return;
+
+    const checkGoogleSession = async (session: any) => {
+      if (!session?.user?.email) return;
+      const userEmail = session.user.email.toLowerCase().trim();
+
+      if (ALLOWED_ADMIN_GOOGLE_EMAILS.includes(userEmail)) {
+        sessionStorage.removeItem('pending_admin_oauth');
+        const token = await createSecureSession();
+        secureSetItem(SESSION_KEY, token);
+        setIsLoggedIn(true);
+        setLoginError('');
+        auditAdminLogin(userEmail);
+        toast.success(`[보안 인증 완료] 대표님 계정(${userEmail})으로 관리자 접속되었습니다.`);
+      } else {
+        // 비인가 구글 계정 접근 즉시 차단 및 세션 해제
+        await supabase.auth.signOut();
+        sessionStorage.removeItem('pending_admin_oauth');
+        setLoginError(`접근 거부: 등록되지 않은 관리자 구글 계정입니다. (${userEmail})`);
+        toast.error(`접근 불가: 등록되지 않은 구글 계정(${userEmail})입니다.`);
+        auditAdminLoginFailed(userEmail, 1);
+      }
+    };
+
+    // 1) 초기 세션 확인
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user && !isLoggedIn) {
+        checkGoogleSession(session);
+      }
+    });
+
+    // 2) 실시간 Auth 상태 변화 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user && !isLoggedIn) {
+        checkGoogleSession(session);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [isLoggedIn]);
+
+  // [SECURITY] 구글 로그인 시작 핸들러
+  const handleGoogleAdminLogin = async () => {
+    try {
+      setIsGoogleLoggingIn(true);
+      setLoginError('');
+      sessionStorage.setItem('pending_admin_oauth', 'true');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/?role=adm_sec_9k7q`
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setIsGoogleLoggingIn(false);
+      sessionStorage.removeItem('pending_admin_oauth');
+      setLoginError(`Google 로그인 시작 실패: ${err.message || err}`);
+    }
+  };
 
   // [SECURITY] 30분 미활동 자동 로그아웃 + HMAC 갱신 타이머
   useEffect(() => {
@@ -713,181 +785,92 @@ export default function AdminRole({
               </div>
               <span className="font-black text-xl tracking-tight text-white">my김변 통합 어드민</span>
             </div>
-            <p className="text-slate-500 text-sm">플랫폼 통합 의뢰인 및 파트너 제어 관리 센터</p>
+            <p className="text-slate-500 text-sm">지정 관리자 구글 계정 전용 보안 접속 센터</p>
           </div>
 
-          {isOtpStep ? (
-            /* [SECURITY 2FA] 2단계 이메일 OTP 입력 화면 */
-            <form onSubmit={handleVerifyOtp} className="space-y-4 text-left animate-fadeIn">
-              <h3 className="font-extrabold text-base text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>2단계 인증 (2FA) 보안코드</span>
-                </span>
-                <span className={`text-xs font-mono font-bold ${otpRemainingSec < 60 ? 'text-red-400 animate-pulse' : 'text-slate-400'}`}>
-                  ⏱️ {Math.floor(otpRemainingSec / 60)}:{(otpRemainingSec % 60).toString().padStart(2, '0')}
-                </span>
-              </h3>
-
-              <div className="bg-indigo-950/30 border border-indigo-500/20 rounded-xl p-3.5 text-xs text-slate-300 space-y-1">
-                <p>
-                  등록된 관리자 이메일(<strong className="text-indigo-300">{pendingAdminEmail}</strong>)로 6자리 일회용 보안코드가 발송되었습니다.
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  타인에게 절대 공유하지 마시고 5분 이내에 입력해 주세요.
-                </p>
+          {loginError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:text-sm p-3.5 rounded-xl space-y-1 text-left animate-fadeIn">
+              <div className="flex items-center gap-1.5 font-bold">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>접근 제어 안내</span>
               </div>
+              <p className="leading-relaxed">{loginError}</p>
+            </div>
+          )}
 
-              {otpError && (
-                <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-xs p-3 rounded-xl">
-                  {otpError}
+          {/* Whitelist Badge Card */}
+          <div className="bg-[#161B26] border border-[#1E293B] rounded-2xl p-4 text-left space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-indigo-400 uppercase tracking-wide flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5" />
+                <span>접근 허용 관리자 구글 계정</span>
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
+                2개 계정 인가됨
+              </span>
+            </div>
+            <div className="space-y-1.5 font-mono text-xs text-slate-200">
+              {ALLOWED_ADMIN_GOOGLE_EMAILS.map((email) => (
+                <div key={email} className="flex items-center gap-2 bg-[#0E121A] px-3 py-2 rounded-xl border border-[#1E293B]/60">
+                  <span className="text-emerald-400 font-bold text-sm">✓</span>
+                  <span className="font-bold">{email}</span>
                 </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 pt-1 leading-relaxed">
+              * 위 등록된 대표님 구글 계정으로 로그인 시 1초 만에 안전하게 접속됩니다.
+            </p>
+          </div>
+
+          {/* Primary Google Login Button */}
+          <div className="space-y-3 pt-1">
+            <button
+              type="button"
+              disabled={isGoogleLoggingIn}
+              onClick={handleGoogleAdminLogin}
+              className="w-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold py-3.5 px-4 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
+            >
+              {isGoogleLoggingIn ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-slate-700" />
+                  <span>Google 보안 인증 진행 중...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>Google 계정으로 관리자 로그인</span>
+                </>
               )}
+            </button>
+          </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs text-slate-400 block uppercase font-bold">6자리 보안코드</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  autoFocus
-                  placeholder="000000"
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
-                  className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-center font-mono text-2xl tracking-[10px] focus:outline-none focus:ring-1 focus:ring-indigo-500 text-emerald-400 placeholder-slate-700"
-                />
-              </div>
-
-              {/* Dev/Demo Hint */}
-              {demoOtpHint && (
-                <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3 text-xs text-emerald-300 flex items-center justify-between">
-                  <span>🔑 [테스트 힌트] 발송 코드: <strong className="font-mono text-white text-sm">{demoOtpHint}</strong></span>
-                  <button
-                    type="button"
-                    onClick={() => setOtpInput(demoOtpHint)}
-                    className="px-2 py-1 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 rounded-lg text-[11px] font-bold cursor-pointer"
-                  >
-                    원클릭 입력
-                  </button>
-                </div>
-              )}
-
-              <div className="pt-1 space-y-2">
-                <button
-                  type="submit"
-                  disabled={isOtpLoading || otpInput.trim().length !== 6}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 text-white font-extrabold py-3.5 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>2단계 인증 완료 및 로그인</span>
-                </button>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={isOtpLoading}
-                    className="flex-1 bg-[#111622] hover:bg-[#161B26] text-slate-300 font-bold py-2.5 rounded-xl text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
-                  >
-                    {isOtpLoading ? '발송 중...' : '코드 재발송'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelOtp}
-                    className="flex-1 bg-[#111622] hover:bg-[#161B26] text-slate-400 hover:text-white font-bold py-2.5 rounded-xl text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
-                  >
-                    로그인 취소
-                  </button>
-                </div>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-4 text-left">
-              <h3 className="font-extrabold text-base text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center gap-1.5">
-                <Lock className="w-4 h-4 text-indigo-400" />
-                <span>관리자 인증</span>
-              </h3>
-
-              {loginError && (
-                <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-sm p-3 rounded-xl">
-                  {loginError}
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label className="text-sm text-slate-600 block uppercase font-bold">어드민 ID</label>
-                <input 
-                  type="text" 
-                  placeholder="어드민 아이디 입력"
-                  value={loginId}
-                  onChange={(e) => setLoginId(e.target.value)}
-                  className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm text-slate-600 block uppercase font-bold">비밀번호</label>
-                <input 
-                  type="password" 
-                  placeholder="비밀번호 입력"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
-                />
-              </div>
-
-              {/* [SECURITY] 테스트 계정 정보 + 1초 로그인은 개발환경에서만 표시 */}
-              {import.meta.env.DEV && (
-              <>
-              {/* Test credentials info */}
-              <div className="bg-[#111622] border border-[#1E293B]/40 rounded-xl p-3.5 text-[13px] text-slate-500 space-y-1">
-                <span className="font-bold text-indigo-400 block">🔑 테스트용 관리자 계정 (DEV Only)</span>
-                <div>• 아이디: <strong className="text-white">admin</strong> / 비밀번호: <strong className="text-white">admin</strong></div>
-                <div>• (또는 초간편 바이패스: <strong className="text-slate-350">1</strong> / <strong className="text-slate-350">1</strong>)</div>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button 
-                  type="submit"
-                  disabled={isOtpLoading}
-                  className="flex-1 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>{isOtpLoading ? '보안코드 생성 중...' : '어드민 로그인'}</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={async () => {
-                    const token = await createSecureSession();
-                    secureSetItem(SESSION_KEY, token);
-                    setIsLoggedIn(true);
-                  }}
-                  className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-sm border border-[#1E293B]/60 transition-colors cursor-pointer"
-                >
-                  테스트 계정 1초 로그인
-                </button>
-              </div>
-              </>
-              )}
-
-              {/* 프로덕션 로그인 버튼 */}
-              {!import.meta.env.DEV && (
-              <div className="pt-1">
-                <button 
-                  type="submit"
-                  disabled={isOtpLoading}
-                  className="w-full bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>{isOtpLoading ? '보안코드 생성 중...' : '어드민 로그인'}</span>
-                </button>
-              </div>
-              )}
-            </form>
+          {/* Dev Test Quick Bypass */}
+          {import.meta.env.DEV && (
+            <div className="pt-2 border-t border-[#1E293B]/40">
+              <button
+                type="button"
+                onClick={async () => {
+                  const token = await createSecureSession();
+                  secureSetItem(SESSION_KEY, token);
+                  setIsLoggedIn(true);
+                  toast.success('[DEV] 테스트 계정으로 즉시 로그인되었습니다.');
+                }}
+                className="w-full bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-2.5 rounded-xl text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
+              >
+                🛠️ 개발용 1초 즉시 로그인 (DEV Only)
+              </button>
+            </div>
           )}
 
           {/* Compliance statement */}
-          <div className="text-sm text-slate-600 leading-normal border-t border-[#1E293B]/30 pt-3 flex items-center justify-center gap-1">
-            <span>🔒 플랫폼 보안 1등급 마스터 라이선스 적용됨</span>
+          <div className="text-xs text-slate-600 leading-normal border-t border-[#1E293B]/30 pt-3 flex items-center justify-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Google 다중 인증(MFA) 및 HMAC 암호화 세션 적용됨</span>
           </div>
         </div>
       </div>
