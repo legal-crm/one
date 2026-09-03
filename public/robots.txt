@@ -1,20 +1,70 @@
+# my김변 검색엔진 크롤러 접근 제어 규칙 (KISA 개인정보 안전성 기준 준수)
 User-agent: *
 Allow: /
-Disallow: /#admin
-Disallow: /#lawyer
+Allow: /about
+Allow: /reviews
+Allow: /faq
+Allow: /guide/
+Allow: /articles/
 
-# AI Crawlers - Explicitly allow
+# 개인정보 및 관리자/변호사 비공개 엔드포인트 차단 (제주항공 검색엔진 노출 사태 방지)
+Disallow: /?role=*
+Disallow: /*?*role=*
+Disallow: /*?*share=*
+Disallow: /*?*reqId=*
+Disallow: /api/
+Disallow: /check*
+Disallow: /auth*
+
+# Googlebot
 User-agent: Googlebot
 Allow: /
+Allow: /about
+Allow: /reviews
+Allow: /faq
+Allow: /guide/
+Allow: /articles/
+Disallow: /?role=*
+Disallow: /*?*role=*
+Disallow: /*?*share=*
+Disallow: /*?*reqId=*
+Disallow: /api/
 
-User-agent: Google-Extended
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
+# Naver Yeti
 User-agent: Yeti
 Allow: /
+Allow: /about
+Allow: /reviews
+Allow: /faq
+Allow: /guide/
+Allow: /articles/
+Disallow: /?role=*
+Disallow: /*?*role=*
+Disallow: /*?*share=*
+Disallow: /*?*reqId=*
+Disallow: /api/
+
+# Bingbot
+User-agent: Bingbot
+Allow: /
+Allow: /about
+Allow: /reviews
+Allow: /faq
+Allow: /guide/
+Allow: /articles/
+Disallow: /?role=*
+Disallow: /*?*role=*
+Disallow: /*?*share=*
+Disallow: /*?*reqId=*
+Disallow: /api/
+
+# AI Crawlers
+User-agent: Google-Extended
+Allow: /
+Allow: /articles/
+Disallow: /?role=*
+Disallow: /*?*share=*
 
 # Sitemap
 Sitemap: https://mykim.kr/sitemap.xml
+

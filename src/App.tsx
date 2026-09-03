@@ -31,18 +31,23 @@ import { ConsultRequest, ConsultMessage, Case, User as LawyerType, NewsArticle, 
 const ClientRole = React.lazy(() => import('./components/ClientRole'));
 const LawyerRole = React.lazy(() => import('./components/LawyerRole'));
 const AdminRole = React.lazy(() => import('./components/AdminRole'));
+const HoneypotAdminLogin = React.lazy(() => import('./components/admin/HoneypotAdminLogin'));
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
 import { decryptReport } from './utils';
 import SharedReportViewer from './components/client/SharedReportViewer';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 
+// [SECURITY] 진짜 관리자 전용 비공개 난수 경로 (뻔한 ?role=admin은 허니팟으로 유인)
+export const ADMIN_SECRET_ROLE = 'adm_sec_9k7q';
+
 export default function App() {
-  // Triple role state: 'client' | 'lawyer' | 'admin'
+  // Quad role state: 'client' | 'lawyer' | 'admin' | 'honeypot'
   // 1순위: URL 쿼리 파라미터, 2순위: 활성 세션 감지 (새로고침 시 홈페이지 플래시 방지)
-  const [currentRole, setCurrentRole] = useState<'client' | 'lawyer' | 'admin'>(() => {
+  const [currentRole, setCurrentRole] = useState<'client' | 'lawyer' | 'admin' | 'honeypot'>(() => {
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get('role');
-    if (roleParam === 'admin') return 'admin';
+    if (roleParam === 'admin') return 'honeypot'; // [SECURITY] 공격자/봇은 가짜 허니팟으로 유인
+    if (roleParam === ADMIN_SECRET_ROLE) return 'admin'; // [SECURITY] 비공개 난수 주소로만 진짜 관리자 진입
     if (roleParam === 'lawyer') return 'lawyer';
     if (roleParam) return 'client';
 
@@ -107,6 +112,24 @@ export default function App() {
 
     // Share/Role parameter detection은 useState 초기화에서 동기적으로 처리됨 (플래시 방지)
   }, []);
+
+  // [SECURITY] 검색엔진 봇 차단 동적 메타태그 (제주항공 검색엔진 노출 사태 방지)
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+    const isPrivate = currentRole !== 'client' || Boolean(sharePayload) || window.location.search.includes('share=') || window.location.search.includes('reqId=');
+    if (isPrivate) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'robots';
+        document.head.appendChild(meta);
+      }
+      meta.content = 'noindex, nofollow, noarchive, nosnippet';
+    } else {
+      if (meta) {
+        meta.content = 'index, follow';
+      }
+    }
+  }, [currentRole, sharePayload]);
 
   const handleUnlock = async () => {
     if (pin.length !== 6) return;
@@ -646,7 +669,9 @@ export default function App() {
               <p className="text-xs text-slate-500 font-bold">권한 페이지를 불러오고 있습니다...</p>
             </div>
           }>
-            {currentRole === 'client' ? (
+            {currentRole === 'honeypot' ? (
+              <HoneypotAdminLogin />
+            ) : currentRole === 'client' ? (
               <ClientRole 
                 requests={requests}
                 setRequests={setRequests}

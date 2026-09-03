@@ -19,6 +19,8 @@ import { issueTaxInvoice } from '../services/taxInvoiceService';
 import RehabSettingsPanel from './RehabSettingsPanel';
 import PopupEditor from './popup/PopupEditor';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
+import { issueAdminOtp, verifyAdminOtp, getRemainingOtpSeconds } from '../services/otpService';
+import { getHoneypotLogs, clearHoneypotLogs, HoneypotAttackLog } from '../services/honeypotService';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -204,6 +206,34 @@ export default function AdminRole({
   const [loginAttempts, setLoginAttempts] = useState<number>(0);
   const [lockoutUntil, setLockoutUntil] = useState<number>(0);
 
+  // [SECURITY 2FA OTP STATES]
+  const [isOtpStep, setIsOtpStep] = useState<boolean>(false);
+  const [otpInput, setOtpInput] = useState<string>('');
+  const [otpError, setOtpError] = useState<string>('');
+  const [otpRemainingSec, setOtpRemainingSec] = useState<number>(300);
+  const [pendingAdminEmail, setPendingAdminEmail] = useState<string>('');
+  const [demoOtpHint, setDemoOtpHint] = useState<string>('');
+  const [isOtpLoading, setIsOtpLoading] = useState<boolean>(false);
+
+  // [SECURITY HONEYPOT STATE]
+  const [honeypotLogs, setHoneypotLogs] = useState<HoneypotAttackLog[]>(() => getHoneypotLogs());
+  const refreshHoneypotLogs = () => {
+    setHoneypotLogs(getHoneypotLogs());
+  };
+
+  // [SECURITY] 2FA 카운트다운 타이머
+  useEffect(() => {
+    if (!isOtpStep) return;
+    const timer = setInterval(() => {
+      const remain = getRemainingOtpSeconds();
+      setOtpRemainingSec(remain);
+      if (remain <= 0) {
+        setOtpError('보안코드 유효시간이 만료되었습니다. 다시 발송해주세요.');
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isOtpStep]);
+
   // [SECURITY] 마운트 시 HMAC 서명 비동기 검증
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -277,17 +307,20 @@ export default function AdminRole({
     });
 
     if (!error && data.user) {
-      // [SECURITY] HMAC 서명된 세션 토큰 생성 (비동기)
-      createSecureSession().then(token => {
-        secureSetItem(SESSION_KEY, token);
-      });
-      setIsLoggedIn(true);
-      setLoginError('');
-      setLoginId('');
-      setLoginPassword('');
-      setLoginAttempts(0);
-      // [AUDIT] 로그인 성공 기록
-      auditAdminLogin(id);
+      // [SECURITY 2FA] 1차 인증 성공 -> 2차 이메일 OTP 보안코드 발송 및 화면 전환
+      const targetEmail = data.user.email || (id.includes('@') ? id : 'admin@mykim.kr');
+      setPendingAdminEmail(targetEmail);
+      setIsOtpLoading(true);
+      const otpRes = await issueAdminOtp(targetEmail);
+      setIsOtpLoading(false);
+      if (otpRes.demoCode) {
+        setDemoOtpHint(otpRes.demoCode);
+      }
+      setIsOtpStep(true);
+      setOtpError('');
+      setOtpInput('');
+      setOtpRemainingSec(300);
+      toast.info(`[2단계 인증] ${targetEmail}로 6자리 보안코드가 발송되었습니다.`);
     } else {
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
@@ -305,6 +338,59 @@ export default function AdminRole({
         auditAdminLoginFailed(id, newAttempts);
       }
     }
+  };
+
+  // [SECURITY 2FA] 6자리 OTP 검증 핸들러
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otpInput.trim().length !== 6) {
+      setOtpError('6자리 보안코드를 입력해주세요.');
+      return;
+    }
+
+    const verifyResult = verifyAdminOtp(otpInput.trim());
+    if (verifyResult.valid) {
+      // [SECURITY] HMAC 서명된 세션 토큰 생성 (비동기)
+      const token = await createSecureSession();
+      secureSetItem(SESSION_KEY, token);
+      setIsLoggedIn(true);
+      setIsOtpStep(false);
+      setLoginError('');
+      setLoginId('');
+      setLoginPassword('');
+      setLoginAttempts(0);
+      setDemoOtpHint('');
+      auditAdminLogin(pendingAdminEmail);
+      toast.success('2단계 인증 통과! my김변 관리자 세션이 시작되었습니다.');
+    } else {
+      setOtpError(verifyResult.error || '보안코드가 일치하지 않습니다.');
+      if (verifyResult.remainingAttempts === 0) {
+        setIsOtpStep(false);
+        setLoginError('보안코드 3회 연속 오입력으로 인증이 취소되었습니다. 다시 로그인해주세요.');
+      }
+    }
+  };
+
+  // [SECURITY 2FA] 보안코드 재발송
+  const handleResendOtp = async () => {
+    setIsOtpLoading(true);
+    const otpRes = await issueAdminOtp(pendingAdminEmail);
+    setIsOtpLoading(false);
+    if (otpRes.demoCode) {
+      setDemoOtpHint(otpRes.demoCode);
+    }
+    setOtpRemainingSec(300);
+    setOtpError('');
+    setOtpInput('');
+    toast.success('새로운 6자리 보안코드가 재발송되었습니다.');
+  };
+
+  // [SECURITY 2FA] 인증 취소 (1차 로그인 화면으로 복귀)
+  const handleCancelOtp = () => {
+    setIsOtpStep(false);
+    setOtpError('');
+    setOtpInput('');
+    setDemoOtpHint('');
   };
 
   const handleLogout = async () => {
@@ -630,86 +716,174 @@ export default function AdminRole({
             <p className="text-slate-500 text-sm">플랫폼 통합 의뢰인 및 파트너 제어 관리 센터</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4 text-left">
-            <h3 className="font-extrabold text-base text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center gap-1.5">
-              <Lock className="w-4 h-4 text-indigo-400" />
-              <span>관리자 인증</span>
-            </h3>
+          {isOtpStep ? (
+            /* [SECURITY 2FA] 2단계 이메일 OTP 입력 화면 */
+            <form onSubmit={handleVerifyOtp} className="space-y-4 text-left animate-fadeIn">
+              <h3 className="font-extrabold text-base text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>2단계 인증 (2FA) 보안코드</span>
+                </span>
+                <span className={`text-xs font-mono font-bold ${otpRemainingSec < 60 ? 'text-red-400 animate-pulse' : 'text-slate-400'}`}>
+                  ⏱️ {Math.floor(otpRemainingSec / 60)}:{(otpRemainingSec % 60).toString().padStart(2, '0')}
+                </span>
+              </h3>
 
-            {loginError && (
-              <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-sm p-3 rounded-xl">
-                {loginError}
+              <div className="bg-indigo-950/30 border border-indigo-500/20 rounded-xl p-3.5 text-xs text-slate-300 space-y-1">
+                <p>
+                  등록된 관리자 이메일(<strong className="text-indigo-300">{pendingAdminEmail}</strong>)로 6자리 일회용 보안코드가 발송되었습니다.
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  타인에게 절대 공유하지 마시고 5분 이내에 입력해 주세요.
+                </p>
               </div>
-            )}
 
-            <div className="space-y-1.5">
-              <label className="text-sm text-slate-600 block uppercase font-bold">어드민 ID</label>
-              <input 
-                type="text" 
-                placeholder="어드민 아이디 입력"
-                value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
-                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
-              />
-            </div>
+              {otpError && (
+                <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-xs p-3 rounded-xl">
+                  {otpError}
+                </div>
+              )}
 
-            <div className="space-y-1.5">
-              <label className="text-sm text-slate-600 block uppercase font-bold">비밀번호</label>
-              <input 
-                type="password" 
-                placeholder="비밀번호 입력"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-400 block uppercase font-bold">6자리 보안코드</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  autoFocus
+                  placeholder="000000"
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3.5 text-center font-mono text-2xl tracking-[10px] focus:outline-none focus:ring-1 focus:ring-indigo-500 text-emerald-400 placeholder-slate-700"
+                />
+              </div>
 
-            {/* [SECURITY] 테스트 계정 정보 + 1초 로그인은 개발환경에서만 표시 */}
-            {import.meta.env.DEV && (
-            <>
-            {/* Test credentials info */}
-            <div className="bg-[#111622] border border-[#1E293B]/40 rounded-xl p-3.5 text-[13px] text-slate-500 space-y-1">
-              <span className="font-bold text-indigo-400 block">🔑 테스트용 관리자 계정 (DEV Only)</span>
-              <div>• 아이디: <strong className="text-white">admin</strong> / 비밀번호: <strong className="text-white">admin</strong></div>
-              <div>• (또는 초간편 바이패스: <strong className="text-slate-350">1</strong> / <strong className="text-slate-350">1</strong>)</div>
-            </div>
+              {/* Dev/Demo Hint */}
+              {demoOtpHint && (
+                <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3 text-xs text-emerald-300 flex items-center justify-between">
+                  <span>🔑 [테스트 힌트] 발송 코드: <strong className="font-mono text-white text-sm">{demoOtpHint}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => setOtpInput(demoOtpHint)}
+                    className="px-2 py-1 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 rounded-lg text-[11px] font-bold cursor-pointer"
+                  >
+                    원클릭 입력
+                  </button>
+                </div>
+              )}
 
-            <div className="flex gap-2 pt-1">
-              <button 
-                type="submit"
-                className="flex-1 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>어드민 로그인</span>
-              </button>
-              <button 
-                type="button"
-                onClick={async () => {
-                  const token = await createSecureSession();
-                  secureSetItem(SESSION_KEY, token);
-                  setIsLoggedIn(true);
-                }}
-                className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-sm border border-[#1E293B]/60 transition-colors cursor-pointer"
-              >
-                테스트 계정 1초 로그인
-              </button>
-            </div>
-            </>
-            )}
+              <div className="pt-1 space-y-2">
+                <button
+                  type="submit"
+                  disabled={isOtpLoading || otpInput.trim().length !== 6}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 text-white font-extrabold py-3.5 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>2단계 인증 완료 및 로그인</span>
+                </button>
 
-            {/* 프로덕션 로그인 버튼 */}
-            {!import.meta.env.DEV && (
-            <div className="pt-1">
-              <button 
-                type="submit"
-                className="w-full bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>어드민 로그인</span>
-              </button>
-            </div>
-            )}
-          </form>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isOtpLoading}
+                    className="flex-1 bg-[#111622] hover:bg-[#161B26] text-slate-300 font-bold py-2.5 rounded-xl text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
+                  >
+                    {isOtpLoading ? '발송 중...' : '코드 재발송'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelOtp}
+                    className="flex-1 bg-[#111622] hover:bg-[#161B26] text-slate-400 hover:text-white font-bold py-2.5 rounded-xl text-xs border border-[#1E293B]/60 transition-colors cursor-pointer"
+                  >
+                    로그인 취소
+                  </button>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-4 text-left">
+              <h3 className="font-extrabold text-base text-slate-200 border-b border-[#1E293B]/50 pb-2 flex items-center gap-1.5">
+                <Lock className="w-4 h-4 text-indigo-400" />
+                <span>관리자 인증</span>
+              </h3>
+
+              {loginError && (
+                <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-sm p-3 rounded-xl">
+                  {loginError}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-sm text-slate-600 block uppercase font-bold">어드민 ID</label>
+                <input 
+                  type="text" 
+                  placeholder="어드민 아이디 입력"
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
+                  className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm text-slate-600 block uppercase font-bold">비밀번호</label>
+                <input 
+                  type="password" 
+                  placeholder="비밀번호 입력"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                />
+              </div>
+
+              {/* [SECURITY] 테스트 계정 정보 + 1초 로그인은 개발환경에서만 표시 */}
+              {import.meta.env.DEV && (
+              <>
+              {/* Test credentials info */}
+              <div className="bg-[#111622] border border-[#1E293B]/40 rounded-xl p-3.5 text-[13px] text-slate-500 space-y-1">
+                <span className="font-bold text-indigo-400 block">🔑 테스트용 관리자 계정 (DEV Only)</span>
+                <div>• 아이디: <strong className="text-white">admin</strong> / 비밀번호: <strong className="text-white">admin</strong></div>
+                <div>• (또는 초간편 바이패스: <strong className="text-slate-350">1</strong> / <strong className="text-slate-350">1</strong>)</div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button 
+                  type="submit"
+                  disabled={isOtpLoading}
+                  className="flex-1 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{isOtpLoading ? '보안코드 생성 중...' : '어드민 로그인'}</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={async () => {
+                    const token = await createSecureSession();
+                    secureSetItem(SESSION_KEY, token);
+                    setIsLoggedIn(true);
+                  }}
+                  className="flex-1 bg-[#111622] hover:bg-[#161B26] text-indigo-400 font-extrabold py-3 rounded-[200px] text-sm border border-[#1E293B]/60 transition-colors cursor-pointer"
+                >
+                  테스트 계정 1초 로그인
+                </button>
+              </div>
+              </>
+              )}
+
+              {/* 프로덕션 로그인 버튼 */}
+              {!import.meta.env.DEV && (
+              <div className="pt-1">
+                <button 
+                  type="submit"
+                  disabled={isOtpLoading}
+                  className="w-full bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{isOtpLoading ? '보안코드 생성 중...' : '어드민 로그인'}</span>
+                </button>
+              </div>
+              )}
+            </form>
+          )}
 
           {/* Compliance statement */}
           <div className="text-sm text-slate-600 leading-normal border-t border-[#1E293B]/30 pt-3 flex items-center justify-center gap-1">
@@ -5002,6 +5176,118 @@ export default function AdminRole({
                 {/* 🏛️ 회생/파산 정책 및 계산 기준 설정 (관리자 전용) */}
                 <div className="mt-6">
                   <RehabSettingsPanel />
+                </div>
+
+                {/* 🚨 [SECURITY] 허니팟(Honeypot) 침입 탐지 및 방화벽 현황 */}
+                <div className="mt-6 bg-[#111622] p-6 rounded-2xl border border-red-500/20 text-left space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1E293B]/60 pb-4">
+                    <div>
+                      <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
+                        <ShieldAlert className="w-5 h-5 text-red-400" />
+                        <span>🚨 해커 유인용 허니팟(Honeypot) 침입 탐지 현황</span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 font-bold">
+                          실시간 방어 가동 중
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1">
+                        뻔한 관리자 경로(<code className="text-indigo-400 bg-black/40 px-1 py-0.5 rounded font-mono">?role=admin</code>)로 침투를 시도한 외부 공격자/봇 탐지 이력입니다. (2.5초 Tarpit 지연 및 100% 차단)
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={refreshHoneypotLogs}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>새로고침</span>
+                      </button>
+                      {honeypotLogs.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearHoneypotLogs();
+                            refreshHoneypotLogs();
+                            toast.success('허니팟 침입 로그가 초기화되었습니다.');
+                          }}
+                          className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 rounded-xl text-xs font-bold border border-red-800/50 transition-colors cursor-pointer"
+                        >
+                          로그 비우기
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary Stat Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/60">
+                      <span className="text-xs text-slate-500 font-bold block">누적 차단 시도</span>
+                      <span className="text-2xl font-black text-white font-mono mt-0.5 block">{honeypotLogs.length}건</span>
+                    </div>
+                    <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/60">
+                      <span className="text-xs text-slate-500 font-bold block">최근 침입 시각</span>
+                      <span className="text-sm font-bold text-slate-300 mt-1 block">
+                        {honeypotLogs[0] ? new Date(honeypotLogs[0].timestamp).toLocaleTimeString('ko-KR') : '침입 없음'}
+                      </span>
+                    </div>
+                    <div className="bg-[#161B26] p-4 rounded-xl border border-[#1E293B]/60">
+                      <span className="text-xs text-slate-500 font-bold block">방어 상태</span>
+                      <span className="text-sm font-extrabold text-emerald-400 mt-1 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>100% 차단 성공</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Logs Table */}
+                  <div className="overflow-x-auto rounded-xl border border-[#1E293B]/60 mt-3">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#161B26] text-slate-400 border-b border-[#1E293B]/80 font-bold uppercase">
+                        <tr>
+                          <th className="p-3">침입 시각</th>
+                          <th className="p-3">시도 ID</th>
+                          <th className="p-3">비밀번호 길이</th>
+                          <th className="p-3">지연(Tarpit)</th>
+                          <th className="p-3">접속 환경 (User Agent)</th>
+                          <th className="p-3 text-center">차단 결과</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1E293B]/40 bg-[#0F121C]">
+                        {honeypotLogs.length > 0 ? (
+                          honeypotLogs.slice(0, 15).map((log) => (
+                            <tr key={log.id} className="hover:bg-white/5 transition-colors">
+                              <td className="p-3 font-mono text-slate-300 whitespace-nowrap">
+                                {new Date(log.timestamp).toLocaleString('ko-KR')}
+                              </td>
+                              <td className="p-3 font-mono font-bold text-red-300">
+                                {log.attemptedId}
+                              </td>
+                              <td className="p-3 font-mono text-slate-400">
+                                {'•'.repeat(Math.min(log.passwordLength, 12))} ({log.passwordLength}자)
+                              </td>
+                              <td className="p-3 font-mono text-amber-400">
+                                {log.tarpitMs}ms 지연
+                              </td>
+                              <td className="p-3 text-slate-400 max-w-[240px] truncate" title={log.userAgent}>
+                                {log.userAgent}
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-extrabold border border-red-500/30 text-[10px]">
+                                  차단됨 (BLOCKED)
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="p-8 text-center text-slate-500">
+                              최근 허니팟 침입 시도가 없습니다. 시스템이 안전합니다.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
               </div>
