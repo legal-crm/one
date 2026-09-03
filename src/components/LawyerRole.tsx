@@ -783,6 +783,7 @@ export default function LawyerRole({
         const user = session.user;
         const email = user.email || '';
         const provider = user.app_metadata?.provider || 'email';
+        const providerName = provider === 'kakao' ? '카카오' : 'Google';
         
         // 기존 변호사 계정과 매칭 시도
         const matchedLawyer = lawyers.find(l => 
@@ -795,33 +796,50 @@ export default function LawyerRole({
           setActiveLawyer(matchedLawyer);
           setIsLoggedIn(true);
         } else {
-          // 신규 Google 사용자 — StaffMember로 등록
+          // 신규 소셜 연동 변호사 — 가입 접수 및 심사 대기(approved: false) 등록
+          const newId = `lawyer-${Date.now()}`;
+          const rawName = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0] || '신규 변호사';
+          const newLawyerObj: User = {
+            id: newId,
+            lawFirmId: 'firm-1',
+            teamId: 'team-1',
+            name: rawName.includes('변호사') ? rawName : `${rawName} 변호사`,
+            role: 'LAWYER',
+            fields: ['개인회생', '개인파산'],
+            region: '전국',
+            avatar: user.user_metadata?.avatar_url,
+            bio: `${providerName} 계정으로 가입 신청된 변호사입니다.`,
+            recentActivity: `${providerName} 소셜 연동 신청 완료 (자격 심사 대기)`,
+            matchedCount: 0,
+            approved: false,
+            licenseStatus: 'pending'
+          };
+          setLawyers(prev => [...prev, newLawyerObj]);
+          sessionStorage.setItem('legal_crm_lawyer_session', newLawyerObj.id);
+          setActiveLawyer(newLawyerObj);
+          setIsLoggedIn(true);
+
           try {
             const { saveStaffMember: saveSM } = await import('../services/crmService');
             const newStaff: StaffMember = {
-              id: `staff-google-${Date.now()}`,
-              name: user.user_metadata?.full_name || email.split('@')[0],
-              role: 'CONSULTANT' as StaffRoleType,
+              id: `staff-${Date.now()}`,
+              name: newLawyerObj.name,
+              role: 'LAWYER' as StaffRoleType,
               email: email,
               avatar: user.user_metadata?.avatar_url,
               isActive: false,
               assignedCount: 0,
               createdAt: new Date().toISOString(),
-              permissions: DEFAULT_PERMISSIONS['CONSULTANT'],
+              permissions: DEFAULT_PERMISSIONS['LAWYER'],
               status: 'pending',
               authEmail: email,
-              authProvider: provider === 'google' ? 'google' : 'email',
+              authProvider: provider === 'google' ? 'google' : 'kakao',
               supabaseUserId: user.id,
             };
             await saveSM(newStaff);
           } catch (err) {
             console.warn('[OAuth] StaffMember 생성 실패:', err);
           }
-          dialog.alert({
-            title: 'Google 계정 가입 완료',
-            message: 'Google 계정으로 가입되었습니다.\n관리자 승인 후 로그인이 가능합니다.',
-            variant: 'info'
-          });
         }
       }
     });
@@ -1480,234 +1498,78 @@ export default function LawyerRole({
             <p className="text-slate-600 text-xs">도산 전문 법률 대리인 통합 솔루션</p>
           </div>
 
-          {authMode === 'login' ? (
-            <div className="space-y-4 text-left">
-              <h3 className="font-extrabold text-sm text-slate-900 border-b border-slate-200 pb-2">로그인</h3>
+          {/* Main Card Content */}
+          <div className="space-y-4 text-left">
+            <h3 className="font-extrabold text-sm text-slate-900 border-b border-slate-200 pb-2">변호사 및 파트너 로그인</h3>
 
-              {/* 초대 링크 배너 */}
-              {inviteToken && inviteTokenValid && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span><strong>초대 링크가 확인되었습니다!</strong> 아래에서 회원가입을 완료해주세요. 역할: {inviteTokenRole === 'LAWYER' ? '담당 변호사' : inviteTokenRole === 'CONSULTANT' ? '상담 직원' : inviteTokenRole === 'STAFF' ? '사무 직원' : '경리 직원'}</span>
-                </div>
-              )}
-
-              {/* Security Portal Notice */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-1.5">
-                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                  <Lock className="w-3.5 h-3.5 text-brand" />
-                  <span>변호사 및 로펌 파트너 전용 보안 포털</span>
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  비밀번호 저장 없는 소셜 보안 계정으로 1초 로그인하세요.<br/>
-                  사전에 관리자 자격 승인이 완료된 계정만 CRM 포털에 접속됩니다.
-                </p>
+            {/* 초대 링크 배너 */}
+            {inviteToken && inviteTokenValid && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span><strong>초대 링크가 확인되었습니다!</strong> 아래 소셜 계정으로 로그인하시면 담당 역할({inviteTokenRole === 'LAWYER' ? '담당 변호사' : inviteTokenRole === 'CONSULTANT' ? '상담 직원' : inviteTokenRole === 'STAFF' ? '사무 직원' : '경리 직원'})로 즉시 연동됩니다.</span>
               </div>
+            )}
 
-              {loginError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3.5 rounded-xl font-medium">
-                  {loginError}
-                </div>
-              )}
-
-              {/* OAuth Buttons */}
-              <div className="space-y-3 pt-1">
-                {/* Kakao 로그인 */}
-                <button
-                  type="button"
-                  onClick={handleKakaoLogin}
-                  className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#191919] font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
-                >
-                  <span className="w-6 h-6 flex items-center justify-center font-black text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full shrink-0">K</span>
-                  <span>카카오 계정으로 변호사 로그인</span>
-                </button>
-
-                {/* Google 로그인 */}
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
-                >
-                  <span className="w-6 h-6 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full shrink-0">G</span>
-                  <span>Google 계정으로 변호사 로그인</span>
-                </button>
+            {/* Security Portal Notice */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                <Lock className="w-3.5 h-3.5 text-brand" />
+                <span>변호사 및 로펌 파트너 전용 보안 포털</span>
               </div>
-
-              {/* Dev Only Fast Login */}
-              {import.meta.env.DEV && (
-                <div className="pt-2 border-t border-slate-100">
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
-                      sessionStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
-                      setActiveLawyer(demoLawyer);
-                      setIsLoggedIn(true);
-                      toast.success('[DEV] 김우진 대표변호사 테스트 계정으로 로그인되었습니다.');
-                    }}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-brand font-bold py-3 rounded-xl text-sm border border-slate-200 transition-all cursor-pointer active:scale-[0.98]"
-                  >
-                    🛠️ 개발용 1초 즉시 로그인 (DEV Only)
-                  </button>
-                </div>
-              )}
-
-              <div className="text-center pt-2 text-sm text-slate-600">
-                계정이 없으신가요?{' '}
-                <button 
-                  type="button" 
-                  onClick={() => setAuthMode('signup')}
-                  className="text-brand font-bold hover:underline cursor-pointer"
-                >
-                  회원가입하기
-                </button>
-              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                비밀번호 저장 없는 소셜 보안 계정으로 1초 로그인하세요.<br/>
+                신규 대리인은 최초 로그인 시 자격 심사 절차가 진행됩니다.
+              </p>
             </div>
-          ) : (
-            <form onSubmit={handleSignup} className="space-y-4 text-left max-h-[450px] overflow-y-auto pr-1 scrollbar-hide">
-              <h3 className="font-extrabold text-base text-slate-900 border-b border-slate-200 pb-2.5">대리인 회원가입</h3>
-              {signupError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-xl font-medium">
-                  {signupError}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm text-slate-700 block font-bold">아이디 (ID)*</label>
-                  <input 
-                    type="text" 
-                    placeholder="예: lawyer-kim"
-                    value={signupId}
-                    onChange={(e) => setSignupId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm text-slate-700 block font-bold">비밀번호*</label>
-                  <input 
-                    type="password" 
-                    placeholder="비밀번호 입력"
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm text-slate-700 block font-bold">이름 (성명)*</label>
-                  <input 
-                    type="text" 
-                    placeholder="예: 홍길동"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm text-slate-700 block font-bold">역할 구분*</label>
-                  <select 
-                    value={signupRole}
-                    onChange={(e) => setSignupRole(e.target.value as 'LAWYER' | 'STAFF')}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                  >
-                    <option value="LAWYER">변호사 (LAWYER)</option>
-                    <option value="STAFF">실장/사무장 (STAFF)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm text-slate-700 block font-bold">전문분야 (쉼표로 구분)</label>
-                <input 
-                  type="text" 
-                  placeholder="예: 개인회생, 개인파산, 보정명령대응"
-                  onChange={(e) => setSignupFields(e.target.value.split(',').map(f => f.trim()).filter(Boolean))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm text-slate-700 block font-bold">활동 지역</label>
-                <input 
-                  type="text" 
-                  placeholder="예: 서울, 경기/수원, 부산"
-                  value={signupRegion}
-                  onChange={(e) => setSignupRegion(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm text-slate-700 block font-bold">프로필 사진 업로드</label>
-                <div className="flex items-center gap-3">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="프로필 미리보기" className="w-14 h-14 rounded-xl object-cover border border-brand/30 shrink-0" />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 text-xs shrink-0 border border-slate-200 font-bold">사진</div>
-                  )}
-                  <label className="flex-1 cursor-pointer">
-                    <div className="bg-slate-50 border border-slate-200 border-dashed rounded-xl p-3 text-sm text-slate-600 text-center hover:border-brand/50 transition-colors font-medium">
-                      📷 클릭하여 프로필 사진 선택
-                    </div>
-                    <input type="file" accept="image/*" onChange={handleAvatarFileChange} className="hidden" />
-                  </label>
-                </div>
-              </div>
 
-              {/* 변호사 등록증 첨부 (핵심 자격 증빙) */}
-              <div className="space-y-2 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
-                <label className="text-sm text-amber-800 block font-bold">📋 변호사 등록증 첨부 (필수 자격 증빙)*</label>
-                <p className="text-sm text-slate-600 leading-relaxed">관리자가 등록증을 확인한 후 계정이 승인됩니다. 이미지 또는 PDF 파일을 첨부해주세요.</p>
-                <label className="block cursor-pointer">
-                  <div className={`border ${licensePreview ? 'border-emerald-300' : 'border-slate-200 border-dashed'} rounded-xl p-3 text-sm text-center transition-colors hover:border-brand/50 bg-white`}>
-                    {licensePreview ? (
-                      <div className="space-y-2">
-                        <img src={licensePreview} alt="등록증 미리보기" className="max-h-32 mx-auto rounded-lg object-contain" />
-                        <span className="text-emerald-600 text-xs font-bold">✅ 파일 첨부 완료 — 다시 선택하려면 클릭</span>
-                      </div>
-                    ) : (
-                      <span className="text-slate-600 font-medium">📎 클릭하여 변호사 등록증 이미지 첨부 (최대 5MB)</span>
-                    )}
-                  </div>
-                  <input type="file" accept="image/*,.pdf" onChange={handleLicenseFileChange} className="hidden" />
-                </label>
-                <div className="space-y-1.5 pt-1">
-                  <label className="text-sm text-slate-700 block font-bold">변호사 등록번호</label>
-                  <input
-                    type="text"
-                    placeholder="예: 12345"
-                    value={signupLicenseNumber}
-                    onChange={(e) => setSignupLicenseNumber(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                  />
-                </div>
+            {loginError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3.5 rounded-xl font-medium">
+                {loginError}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm text-slate-700 block font-bold">소개 약력(Bio)</label>
-                <textarea 
-                  rows={2}
-                  placeholder="전문 대리인으로서의 약력 및 인사말을 작성하세요."
-                  value={signupBio}
-                  onChange={(e) => setSignupBio(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
-                />
-              </div>
-              <button 
-                type="submit"
-                className="w-full bg-brand hover:bg-brand-hover text-white font-extrabold py-3.5 rounded-xl text-base transition-all shadow-md mt-2 cursor-pointer active:scale-[0.98]"
+            )}
+
+            {/* OAuth Buttons */}
+            <div className="space-y-3 pt-1">
+              {/* Kakao 로그인 */}
+              <button
+                type="button"
+                onClick={handleKakaoLogin}
+                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#191919] font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
               >
-                신규 대리인 등록 완료
+                <span className="w-6 h-6 flex items-center justify-center font-black text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full shrink-0">K</span>
+                <span>카카오 계정으로 변호사 로그인</span>
               </button>
-              <div className="text-center pt-2 text-sm text-slate-600">
-                이미 계정이 있으신가요?{' '}
+
+              {/* Google 로그인 */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
+              >
+                <span className="w-6 h-6 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full shrink-0">G</span>
+                <span>Google 계정으로 변호사 로그인</span>
+              </button>
+            </div>
+
+            {/* Dev Only Fast Login */}
+            {import.meta.env.DEV && (
+              <div className="pt-2 border-t border-slate-100">
                 <button 
-                  type="button" 
-                  onClick={() => setAuthMode('login')}
-                  className="text-brand font-bold hover:underline cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
+                    sessionStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
+                    setActiveLawyer(demoLawyer);
+                    setIsLoggedIn(true);
+                    toast.success('[DEV] 김우진 대표변호사 테스트 계정으로 로그인되었습니다.');
+                  }}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-brand font-bold py-3 rounded-xl text-sm border border-slate-200 transition-all cursor-pointer active:scale-[0.98]"
                 >
-                  로그인하기
+                  🛠️ 개발용 1초 즉시 로그인 (DEV Only)
                 </button>
               </div>
-            </form>
-          )}
+            )}
+          </div>
 
           {/* 변호사 가입 안내 버튼 */}
           <button
@@ -1752,7 +1614,7 @@ export default function LawyerRole({
                   더 이상 기초 상담에 시간을 낭비하지 마세요.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                  <button onClick={() => { setShowServiceGuide(false); setAuthMode('signup'); }} className="bg-brand hover:bg-brand-hover text-white font-bold px-8 py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
+                  <button onClick={() => setShowServiceGuide(false)} className="bg-brand hover:bg-brand-hover text-white font-bold px-8 py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
                     지금 바로 시작하기
                   </button>
                   <button onClick={() => setShowServiceGuide(false)} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-3.5 rounded-2xl text-sm transition-all">
@@ -1900,8 +1762,8 @@ export default function LawyerRole({
                 <h2 className="text-2xl md:text-3xl font-black">지금 바로 시작하세요</h2>
                 <p className="text-sm text-slate-400">가입비·월정액 없음. AI가 정리한 의뢰인 데이터로 더 효율적인 수임을 경험하세요.</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button onClick={() => { setShowServiceGuide(false); setAuthMode('signup'); }} className="bg-brand hover:bg-brand-hover text-white font-bold px-10 py-4 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
-                    회원가입
+                  <button onClick={() => setShowServiceGuide(false)} className="bg-brand hover:bg-brand-hover text-white font-bold px-10 py-4 rounded-2xl text-sm transition-all shadow-lg shadow-brand/30">
+                    변호사 간편 로그인 / 시작하기
                   </button>
                   <button onClick={() => setShowServiceGuide(false)} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-10 py-4 rounded-2xl text-sm transition-all">
                     로그인 페이지로 돌아가기
@@ -1939,8 +1801,76 @@ export default function LawyerRole({
             <p>안녕하세요, <strong>{activeLawyer.name}</strong> 님.</p>
             <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
             <p>{platformConfig.siteLogoText || "my김변"} 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
-            <p className="text-[13px] text-slate-600">* 어드민 페이지(Admin Portal)에서 본 계정의 승인 처리를 하실 수 있습니다.</p>
+            <p className="text-[13px] text-slate-600">* 관리자(Admin Portal)가 자격을 확인한 후 정식 승인 처리됩니다.</p>
           </div>
+
+          {/* 자격 증빙 등록증 제출 영역 */}
+          {(!activeLawyer.licenseNumber && !activeLawyer.licenseImageData) ? (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                <ShieldAlert className="w-4 h-4 text-amber-500" />
+                <span>변호사 자격 증빙 서류 제출</span>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-600 block">변호사 등록번호</label>
+                <input
+                  type="text"
+                  placeholder="예: 12345"
+                  value={signupLicenseNumber}
+                  onChange={(e) => setSignupLicenseNumber(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-600 block">변호사 등록증 첨부 (이미지/PDF)</label>
+                <label className="block cursor-pointer">
+                  <div className={`border ${licensePreview ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-200 border-dashed bg-white'} rounded-xl p-3 text-xs text-center transition-colors hover:border-brand/50`}>
+                    {licensePreview ? (
+                      <span className="text-emerald-700 font-bold">✅ 등록증 파일 첨부 완료</span>
+                    ) : (
+                      <span className="text-slate-500">📎 클릭하여 등록증 첨부 (최대 5MB)</span>
+                    )}
+                  </div>
+                  <input type="file" accept="image/*,.pdf" onChange={handleLicenseFileChange} className="hidden" />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!signupLicenseNumber.trim() && !licenseImageData) {
+                    toast.error('변호사 등록번호 또는 등록증 이미지를 첨부해주세요.');
+                    return;
+                  }
+                  setActiveLawyer(prev => ({
+                    ...prev,
+                    licenseNumber: signupLicenseNumber.trim() || undefined,
+                    licenseImageData: licenseImageData || undefined,
+                    recentActivity: '변호사 등록증 자격 증빙 제출 완료'
+                  }));
+                  setLawyers(prev => prev.map(l => l.id === activeLawyer.id ? {
+                    ...l,
+                    licenseNumber: signupLicenseNumber.trim() || undefined,
+                    licenseImageData: licenseImageData || undefined,
+                    recentActivity: '변호사 등록증 자격 증빙 제출 완료'
+                  } : l));
+                  toast.success('자격 증빙 서류가 제출되었습니다! 관리자 확인 후 즉시 승인됩니다.');
+                }}
+                className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                자격 증빙 제출하기
+              </button>
+            </div>
+          ) : (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-xs text-left space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>변호사 자격 증빙 접수 완료</span>
+              </div>
+              <p className="text-slate-600 leading-relaxed">
+                제출하신 변호사 등록번호({activeLawyer.licenseNumber || '제출됨'})와 등록증 서류를 관리자가 확인 중입니다. 심사가 완료되면 다음 로그인 시 즉시 CRM에 접근하실 수 있습니다.
+              </p>
+            </div>
+          )}
 
           <button 
             onClick={handleLogout}
