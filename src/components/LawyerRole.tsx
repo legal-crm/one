@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
 import { 
-  Briefcase, BarChart2, Shield, MessageSquare, ListCheck, FolderHeart, 
+  Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
   Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature
 } from 'lucide-react';
@@ -156,9 +156,22 @@ export default function LawyerRole({
     return sessionStorage.getItem('legal_crm_lawyer_session') !== null;
   });
   const [activeLawyer, setActiveLawyer] = useState<User>(() => {
+    const cached = sessionStorage.getItem('legal_crm_active_lawyer');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {}
+    }
     const sessionLawyerId = sessionStorage.getItem('legal_crm_lawyer_session');
     if (sessionLawyerId) {
-      return mockLawyers[0];
+      try {
+        const raw = localStorage.getItem('legal_crm_lawyers');
+        if (raw) {
+          const list: User[] = JSON.parse(raw);
+          const found = list.find(l => l.id === sessionLawyerId);
+          if (found) return found;
+        }
+      } catch (e) {}
     }
     return mockLawyers[0];
   });
@@ -170,6 +183,7 @@ export default function LawyerRole({
       const found = lawyers.find(l => l.id === sessionLawyerId);
       if (found) {
         setActiveLawyer(found);
+        sessionStorage.setItem('legal_crm_active_lawyer', JSON.stringify(found));
         setIsLoggedIn(true);
       }
     } else if (lawyers.length > 0 && !isLoggedIn) {
@@ -833,6 +847,15 @@ export default function LawyerRole({
         });
 
         sessionStorage.setItem('legal_crm_lawyer_session', newLawyerObj.id);
+        sessionStorage.setItem('legal_crm_active_lawyer', JSON.stringify(newLawyerObj));
+        try {
+          const raw = localStorage.getItem('legal_crm_lawyers');
+          const existingList: User[] = raw ? JSON.parse(raw) : [];
+          if (!existingList.some(l => l.id === newId || (l.email && l.email.toLowerCase() === email))) {
+            localStorage.setItem('legal_crm_lawyers', JSON.stringify([...existingList, newLawyerObj]));
+          }
+        } catch (e) {}
+
         setActiveLawyer(newLawyerObj);
         setIsLoggedIn(true);
         toast.info(`${formattedName} 님, 신규 대리인 등록 접수되었습니다. 자격 증빙 제출 후 승인됩니다.`);
@@ -1060,6 +1083,7 @@ export default function LawyerRole({
     });
     if (confirmed) {
       sessionStorage.removeItem('legal_crm_lawyer_session');
+      sessionStorage.removeItem('legal_crm_active_lawyer');
       sessionStorage.removeItem('pending_lawyer_oauth');
       if (isSupabaseConfigured) {
         await supabase.auth.signOut().catch(() => {});
@@ -1852,7 +1876,7 @@ export default function LawyerRole({
     );
   }
 
-  if (isLoggedIn && activeLawyer.approved === false) {
+  if (isLoggedIn && activeLawyer?.approved === false) {
     return (
       <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
         <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center">
@@ -1867,14 +1891,14 @@ export default function LawyerRole({
 
           <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-xs text-left space-y-2 leading-relaxed">
             <h4 className="font-bold text-sm text-center">⏳ 계정 승인 심사 대기 중</h4>
-            <p>안녕하세요, <strong>{activeLawyer.name}</strong> 님.</p>
+            <p>안녕하세요, <strong>{activeLawyer?.name || '변호사'}</strong> 님.</p>
             <p>현재 계정 자격 확인 및 정식 소속 승인 절차가 진행 중입니다.</p>
             <p>{platformConfig.siteLogoText || "my김변"} 플랫폼은 변호사법 제34조 정식 변호사 자격 검증 의무에 따라, 관리자의 수동 라이선스 검토를 거쳐 활동을 승인하고 있습니다.</p>
             <p className="text-[13px] text-slate-600">* 관리자(Admin Portal)가 자격을 확인한 후 정식 승인 처리됩니다.</p>
           </div>
 
           {/* 자격 증빙 등록증 제출 영역 */}
-          {(!activeLawyer.licenseNumber && !activeLawyer.licenseImageData) ? (
+          {(!activeLawyer?.licenseNumber && !activeLawyer?.licenseImageData) ? (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                 <ShieldAlert className="w-4 h-4 text-amber-500" />
@@ -1916,7 +1940,7 @@ export default function LawyerRole({
                     licenseImageData: licenseImageData || undefined,
                     recentActivity: '변호사 등록증 자격 증빙 제출 완료'
                   }));
-                  setLawyers(prev => prev.map(l => l.id === activeLawyer.id ? {
+                  setLawyers(prev => prev.map(l => l.id === activeLawyer?.id ? {
                     ...l,
                     licenseNumber: signupLicenseNumber.trim() || undefined,
                     licenseImageData: licenseImageData || undefined,
@@ -1936,7 +1960,7 @@ export default function LawyerRole({
                 <span>변호사 자격 증빙 접수 완료</span>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                제출하신 변호사 등록번호({activeLawyer.licenseNumber || '제출됨'})와 등록증 서류를 관리자가 확인 중입니다. 심사가 완료되면 다음 로그인 시 즉시 CRM에 접근하실 수 있습니다.
+                제출하신 변호사 등록번호({activeLawyer?.licenseNumber || '제출됨'})와 등록증 서류를 관리자가 확인 중입니다. 심사가 완료되면 다음 로그인 시 즉시 CRM에 접근하실 수 있습니다.
               </p>
             </div>
           )}
