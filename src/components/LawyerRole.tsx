@@ -918,6 +918,29 @@ export default function LawyerRole({
     }
   };
 
+  // Kakao OAuth 로그인
+  const handleKakaoLogin = async () => {
+    if (!isSupabaseConfigured) {
+      dialog.alert({
+        title: '카카오 로그인 설정 필요',
+        message: '카카오 로그인을 사용하려면 Supabase 설정이 필요합니다.\n.env 파일에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해주세요.',
+        variant: 'warning'
+      });
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: {
+          redirectTo: window.location.origin + '?role=lawyer'
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      toast.error(`카카오 로그인 실패: ${err.message || err}`);
+    }
+  };
+
   // 비밀번호 찾기
   const handlePasswordReset = async () => {
     if (!resetEmail.trim()) {
@@ -1469,20 +1492,16 @@ export default function LawyerRole({
                 </div>
               )}
 
-              {/* Google 로그인 */}
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
-              >
-                <span className="w-6 h-6 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full">G</span>
-                <span>Google 계정으로 로그인</span>
-              </button>
-
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-slate-200"></div>
-                <span className="flex-shrink mx-3 text-slate-400 text-xs font-bold">또는 이메일로 로그인</span>
-                <div className="flex-grow border-t border-slate-200"></div>
+              {/* Security Portal Notice */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                  <Lock className="w-3.5 h-3.5 text-brand" />
+                  <span>변호사 및 로펌 파트너 전용 보안 포털</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  비밀번호 저장 없는 소셜 보안 계정으로 1초 로그인하세요.<br/>
+                  사전에 관리자 자격 승인이 완료된 계정만 CRM 포털에 접속됩니다.
+                </p>
               </div>
 
               {loginError && (
@@ -1491,85 +1510,44 @@ export default function LawyerRole({
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-700 block font-bold">아이디 (이름 또는 ID)</label>
-                  <input 
-                    type="text" 
-                    placeholder="예: 1 또는 김우진 또는 lawyer-1"
-                    value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-base focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-700 block font-bold">비밀번호</label>
-                  <input 
-                    type="password" 
-                    placeholder="비밀번호 입력 (기본: 1)"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-base focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400"
-                  />
-                </div>
-
-                {/* Quick test login info */}
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 text-sm text-slate-700 space-y-1.5 leading-relaxed font-normal">
-                  <span className="font-bold text-slate-800 block text-sm">🔑 테스트 로그인 계정 정보</span>
-                  <div>• 아이디: <strong className="text-slate-900 font-bold">1</strong> / 비밀번호: <strong className="text-slate-900 font-bold">1</strong></div>
-                  <div>• (또는 변호사명: <strong className="text-slate-800 font-bold">김우진</strong> / 비밀번호: <strong className="text-slate-800 font-bold">1234</strong>)</div>
-                </div>
-
-                <div className="flex gap-2.5 pt-1">
-                  <button 
-                    type="submit"
-                    className="flex-1 bg-brand hover:bg-brand-hover text-white font-extrabold py-3.5 rounded-xl text-base transition-all shadow-md cursor-pointer active:scale-[0.98]"
-                  >
-                    로그인
-                  </button>
-                  {import.meta.env.DEV && (
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
-                        sessionStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
-                        setActiveLawyer(demoLawyer);
-                        setIsLoggedIn(true);
-                      }}
-                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-brand font-extrabold py-3.5 rounded-xl text-base border border-slate-200 transition-all cursor-pointer active:scale-[0.98]"
-                    >
-                      테스트 계정 1초 로그인
-                    </button>
-                  )}
-                </div>
-              </form>
-
-              {/* 비밀번호 찾기 */}
-              <div className="text-center pt-1">
+              {/* OAuth Buttons */}
+              <div className="space-y-3 pt-1">
+                {/* Kakao 로그인 */}
                 <button
                   type="button"
-                  onClick={() => setShowPasswordReset(!showPasswordReset)}
-                  className="text-sm text-slate-500 hover:text-brand transition-colors font-medium cursor-pointer"
+                  onClick={handleKakaoLogin}
+                  className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#191919] font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
                 >
-                  비밀번호를 잊으셨나요?
+                  <span className="w-6 h-6 flex items-center justify-center font-black text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full shrink-0">K</span>
+                  <span>카카오 계정으로 변호사 로그인</span>
+                </button>
+
+                {/* Google 로그인 */}
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
+                >
+                  <span className="w-6 h-6 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full shrink-0">G</span>
+                  <span>Google 계정으로 변호사 로그인</span>
                 </button>
               </div>
-              {showPasswordReset && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                  <p className="text-sm text-slate-600 leading-relaxed">가입 시 사용한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.</p>
-                  <input
-                    type="email"
-                    value={resetEmail}
-                    onChange={e => setResetEmail(e.target.value)}
-                    placeholder="이메일 주소 입력"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
-                  />
-                  <button
+
+              {/* Dev Only Fast Login */}
+              {import.meta.env.DEV && (
+                <div className="pt-2 border-t border-slate-100">
+                  <button 
                     type="button"
-                    onClick={handlePasswordReset}
-                    className="w-full bg-slate-700 hover:bg-slate-800 text-white py-3 rounded-xl text-sm font-bold transition-colors cursor-pointer"
+                    onClick={() => {
+                      const demoLawyer = lawyers.find(l => l.id === 'lawyer-1') || lawyers[0] || mockLawyers[0];
+                      sessionStorage.setItem('legal_crm_lawyer_session', demoLawyer.id);
+                      setActiveLawyer(demoLawyer);
+                      setIsLoggedIn(true);
+                      toast.success('[DEV] 김우진 대표변호사 테스트 계정으로 로그인되었습니다.');
+                    }}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-brand font-bold py-3 rounded-xl text-sm border border-slate-200 transition-all cursor-pointer active:scale-[0.98]"
                   >
-                    비밀번호 재설정 링크 발송
+                    🛠️ 개발용 1초 즉시 로그인 (DEV Only)
                   </button>
                 </div>
               )}
