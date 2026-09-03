@@ -410,6 +410,42 @@ export default function LawyerRole({
   const [licenseImageData, setLicenseImageData] = useState<string>('');
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const [avatarImageData, setAvatarImageData] = useState<string>('');
+  // 심사 대기 중 서류 추가/수정 접이식 상태 (기본 닫힘)
+  const [showDocSubmit, setShowDocSubmit] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (activeLawyer?.licenseNumber) {
+      setSignupLicenseNumber(activeLawyer.licenseNumber);
+    }
+    if (activeLawyer?.licenseImageData) {
+      setLicensePreview(activeLawyer.licenseImageData);
+    }
+  }, [activeLawyer]);
+
+  const handleSubmitLicenseDoc = () => {
+    if (!signupLicenseNumber.trim() && !licenseImageData) {
+      toast.error('변호사 등록번호 또는 등록증 이미지를 첨부해주세요.');
+      return;
+    }
+    const updated: User = {
+      ...activeLawyer,
+      licenseNumber: signupLicenseNumber.trim() || activeLawyer.licenseNumber || undefined,
+      licenseImageData: licenseImageData || activeLawyer.licenseImageData || undefined,
+      licenseStatus: 'pending',
+      recentActivity: '변호사 등록증 자격 증빙 제출 완료'
+    };
+    setActiveLawyer(updated);
+    sessionStorage.setItem('legal_crm_active_lawyer', JSON.stringify(updated));
+    setLawyers(prev => {
+      const next = prev.map(l => l.id === activeLawyer?.id ? updated : l);
+      try {
+        localStorage.setItem('legal_crm_lawyers', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    setShowDocSubmit(false);
+    toast.success('자격 증빙 서류가 저장되었습니다! 관리자 심사에 즉시 반영됩니다.');
+  };
 
   const handleLicenseFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1903,12 +1939,40 @@ export default function LawyerRole({
             <p className="text-[13px] text-slate-600">* 관리자(Admin Portal)가 자격을 확인한 후 정식 승인 처리됩니다.</p>
           </div>
 
-          {/* 자격 증빙 등록증 제출 영역 */}
-          {(!activeLawyer?.licenseNumber && !activeLawyer?.licenseImageData) ? (
+          {/* 심사 진행 상태 카드 (상시 노출) */}
+          <div className="bg-emerald-50/90 border border-emerald-200 text-emerald-900 rounded-2xl p-4 sm:p-5 text-left space-y-2 shadow-xs">
+            <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>변호사 자격 및 서류 심사 진행 중</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              접수된 변호사 등록 정보 및 자격 서류를 관리자가 확인하고 있습니다.<br/>
+              변호사법 제34조 검증 완료 후 즉시 정식 CRM 활동이 승인됩니다.
+            </p>
+            {activeLawyer?.licenseNumber && (
+              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs text-slate-700">
+                <span>등록번호: <strong className="text-emerald-800 font-bold">{activeLawyer.licenseNumber}</strong></span>
+                <span className="text-[11px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-md">서류 확인 중</span>
+              </div>
+            )}
+          </div>
+
+          {/* 서류 추가 제출 / 수정 접이식 영역 (기본은 닫힘) */}
+          <div className="text-center pt-0.5">
+            <button
+              type="button"
+              onClick={() => setShowDocSubmit(prev => !prev)}
+              className="text-xs text-slate-400 hover:text-slate-600 transition-colors underline underline-offset-4 cursor-pointer"
+            >
+              {showDocSubmit ? '서류 제출/수정 창 닫기 ▲' : '서류 추가 보완 또는 등록번호 수정이 필요하신가요? ▼'}
+            </button>
+          </div>
+
+          {showDocSubmit && (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                 <ShieldAlert className="w-4 h-4 text-amber-500" />
-                <span>변호사 자격 증빙 서류 제출</span>
+                <span>변호사 등록번호 및 등록증 서류 제출 / 수정</span>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-600 block">변호사 등록번호</label>
@@ -1935,39 +1999,11 @@ export default function LawyerRole({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  if (!signupLicenseNumber.trim() && !licenseImageData) {
-                    toast.error('변호사 등록번호 또는 등록증 이미지를 첨부해주세요.');
-                    return;
-                  }
-                  setActiveLawyer(prev => ({
-                    ...prev,
-                    licenseNumber: signupLicenseNumber.trim() || undefined,
-                    licenseImageData: licenseImageData || undefined,
-                    recentActivity: '변호사 등록증 자격 증빙 제출 완료'
-                  }));
-                  setLawyers(prev => prev.map(l => l.id === activeLawyer?.id ? {
-                    ...l,
-                    licenseNumber: signupLicenseNumber.trim() || undefined,
-                    licenseImageData: licenseImageData || undefined,
-                    recentActivity: '변호사 등록증 자격 증빙 제출 완료'
-                  } : l));
-                  toast.success('자격 증빙 서류가 제출되었습니다! 관리자 확인 후 즉시 승인됩니다.');
-                }}
+                onClick={handleSubmitLicenseDoc}
                 className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
               >
-                자격 증빙 제출하기
+                자격 증빙 서류 저장
               </button>
-            </div>
-          ) : (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-xs text-left space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-sm">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>변호사 자격 증빙 접수 완료</span>
-              </div>
-              <p className="text-slate-600 leading-relaxed">
-                제출하신 변호사 등록번호({activeLawyer?.licenseNumber || '제출됨'})와 등록증 서류를 관리자가 확인 중입니다. 심사가 완료되면 다음 로그인 시 즉시 CRM에 접근하실 수 있습니다.
-              </p>
             </div>
           )}
 
