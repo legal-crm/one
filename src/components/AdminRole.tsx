@@ -798,29 +798,18 @@ export default function AdminRole({
             </div>
           )}
 
-          {/* Whitelist Badge Card */}
-          <div className="bg-[#161B26] border border-[#1E293B] rounded-2xl p-4 text-left space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-indigo-400 uppercase tracking-wide flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5" />
-                <span>접근 허용 관리자 구글 계정</span>
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
-                2개 계정 인가됨
-              </span>
+          {/* Security Notice */}
+          <div className="bg-[#161B26] border border-[#1E293B] rounded-2xl p-4 text-center space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-400 uppercase tracking-wide">
+              <Lock className="w-3.5 h-3.5" />
+              <span>보안 인가 관리자 전용 접속</span>
             </div>
-            <div className="space-y-1.5 font-mono text-xs text-slate-200">
-              {ALLOWED_ADMIN_GOOGLE_EMAILS.map((email) => (
-                <div key={email} className="flex items-center gap-2 bg-[#0E121A] px-3 py-2 rounded-xl border border-[#1E293B]/60">
-                  <span className="text-emerald-400 font-bold text-sm">✓</span>
-                  <span className="font-bold">{email}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-slate-500 pt-1 leading-relaxed">
-              * 위 등록된 대표님 구글 계정으로 로그인 시 1초 만에 안전하게 접속됩니다.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              사전에 등록된 관리자 구글 계정으로만 접근이 허용됩니다.<br/>
+              인가되지 않은 계정은 접근이 즉시 차단됩니다.
             </p>
           </div>
+
 
           {/* Primary Google Login Button */}
           <div className="space-y-3 pt-1">
