@@ -775,76 +775,134 @@ export default function LawyerRole({
     setInviteTokenValid(false);
   };
 
-  // Google OAuth 콜백 처리 (리다이렉트 후 세션 매핑)
+  // Google & Kakao OAuth 콜백 및 세션 동기화 처리 (리다이렉트 복귀 처리)
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const user = session.user;
-        const email = user.email || '';
-        const provider = user.app_metadata?.provider || 'email';
-        const providerName = provider === 'kakao' ? '카카오' : 'Google';
-        
-        // 기존 변호사 계정과 매칭 시도
-        const matchedLawyer = lawyers.find(l => 
-          l.id.toLowerCase() === email.toLowerCase() ||
-          l.name.toLowerCase().includes(email.split('@')[0].toLowerCase())
-        );
-        
-        if (matchedLawyer) {
-          sessionStorage.setItem('legal_crm_lawyer_session', matchedLawyer.id);
-          setActiveLawyer(matchedLawyer);
-          setIsLoggedIn(true);
-        } else {
-          // 신규 소셜 연동 변호사 — 가입 접수 및 심사 대기(approved: false) 등록
-          const newId = `lawyer-${Date.now()}`;
-          const rawName = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0] || '신규 변호사';
-          const newLawyerObj: User = {
-            id: newId,
-            lawFirmId: 'firm-1',
-            teamId: 'team-1',
-            name: rawName.includes('변호사') ? rawName : `${rawName} 변호사`,
-            role: 'LAWYER',
-            fields: ['개인회생', '개인파산'],
-            region: '전국',
-            avatar: user.user_metadata?.avatar_url,
-            bio: `${providerName} 계정으로 가입 신청된 변호사입니다.`,
-            recentActivity: `${providerName} 소셜 연동 신청 완료 (자격 심사 대기)`,
-            matchedCount: 0,
-            approved: false,
-            licenseStatus: 'pending'
-          };
-          setLawyers(prev => [...prev, newLawyerObj]);
-          sessionStorage.setItem('legal_crm_lawyer_session', newLawyerObj.id);
-          setActiveLawyer(newLawyerObj);
-          setIsLoggedIn(true);
 
-          try {
-            const { saveStaffMember: saveSM } = await import('../services/crmService');
-            const newStaff: StaffMember = {
-              id: `staff-${Date.now()}`,
-              name: newLawyerObj.name,
-              role: 'LAWYER' as StaffRoleType,
-              email: email,
-              avatar: user.user_metadata?.avatar_url,
-              isActive: false,
-              assignedCount: 0,
-              createdAt: new Date().toISOString(),
-              permissions: DEFAULT_PERMISSIONS['LAWYER'],
-              status: 'pending',
-              authEmail: email,
-              authProvider: provider === 'google' ? 'google' : 'kakao',
-              supabaseUserId: user.id,
-            };
-            await saveSM(newStaff);
-          } catch (err) {
-            console.warn('[OAuth] StaffMember 생성 실패:', err);
+    const processOAuthSession = async (session: any, source: string) => {
+      if (!session?.user?.email) return;
+      const user = session.user;
+      const email = user.email.toLowerCase().trim();
+      const provider = user.app_metadata?.provider || 'google';
+      const providerName = provider === 'kakao' ? '카카오' : 'Google';
+
+      console.log(`[LawyerRole] OAuth 세션 확인 (${source}):`, email);
+
+      // 1. 기존 변호사 계정과 매칭 시도 (email, id, 또는 이름 매칭)
+      const matchedLawyer = lawyers.find(l => 
+        (l.email && l.email.toLowerCase().trim() === email) ||
+        l.id.toLowerCase() === email ||
+        l.name.toLowerCase().includes(email.split('@')[0].toLowerCase())
+      );
+
+      if (matchedLawyer) {
+        sessionStorage.removeItem('pending_lawyer_oauth');
+        sessionStorage.setItem('legal_crm_lawyer_session', matchedLawyer.id);
+        setActiveLawyer(matchedLawyer);
+        setIsLoggedIn(true);
+        toast.success(`[인증 완료] ${matchedLawyer.name} 님으로 로그인되었습니다.`);
+      } else {
+        // 2. 신규 소셜 연동 변호사 — 가입 접수 및 심사 대기(approved: false) 등록
+        sessionStorage.removeItem('pending_lawyer_oauth');
+        const newId = `lawyer-${Date.now()}`;
+        const rawName = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0] || '신규 변호사';
+        const formattedName = rawName.includes('변호사') ? rawName : `${rawName} 변호사`;
+        
+        const newLawyerObj: User = {
+          id: newId,
+          lawFirmId: 'firm-1',
+          teamId: 'team-1',
+          name: formattedName,
+          role: 'LAWYER',
+          fields: ['개인회생', '개인파산'],
+          region: '전국',
+          email: email,
+          avatar: user.user_metadata?.avatar_url,
+          bio: `${providerName} 계정으로 가입 신청된 변호사입니다.`,
+          recentActivity: `${providerName} 소셜 연동 신청 완료 (자격 심사 대기)`,
+          matchedCount: 0,
+          approved: false,
+          licenseStatus: 'pending'
+        };
+
+        setLawyers(prev => {
+          if (prev.some(l => l.id === newId || (l.email && l.email.toLowerCase() === email))) {
+            return prev;
           }
+          return [...prev, newLawyerObj];
+        });
+
+        sessionStorage.setItem('legal_crm_lawyer_session', newLawyerObj.id);
+        setActiveLawyer(newLawyerObj);
+        setIsLoggedIn(true);
+        toast.info(`${formattedName} 님, 신규 대리인 등록 접수되었습니다. 자격 증빙 제출 후 승인됩니다.`);
+
+        try {
+          const { saveStaffMember: saveSM } = await import('../services/crmService');
+          const newStaff: StaffMember = {
+            id: `staff-${Date.now()}`,
+            name: newLawyerObj.name,
+            role: 'LAWYER' as StaffRoleType,
+            email: email,
+            avatar: user.user_metadata?.avatar_url,
+            isActive: false,
+            assignedCount: 0,
+            createdAt: new Date().toISOString(),
+            permissions: DEFAULT_PERMISSIONS['LAWYER'],
+            status: 'pending',
+            authEmail: email,
+            authProvider: provider === 'google' ? 'google' : 'kakao',
+            supabaseUserId: user.id,
+          };
+          await saveSM(newStaff);
+        } catch (err) {
+          console.warn('[OAuth] StaffMember 생성 실패:', err);
         }
       }
+    };
+
+    // 1) 마운트 즉시 초기 세션 확인
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user && !isLoggedIn) {
+        processOAuthSession(session, '초기 getSession');
+      }
+    }).catch(err => {
+      console.warn('[LawyerRole] getSession 실패:', err);
     });
-    return () => { listener?.subscription?.unsubscribe(); };
-  }, [lawyers, dialog]);
+
+    // 2) URL 해시 비동기 파싱 지연 대응 (1초, 2.5초 재시도)
+    const timer1 = setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user && !isLoggedIn) {
+          processOAuthSession(session, '1초 지연 세션');
+        }
+      });
+    }, 1000);
+
+    const timer2 = setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user && !isLoggedIn) {
+          processOAuthSession(session, '2.5초 지연 세션');
+        }
+      });
+    }, 2500);
+
+    // 3) 실시간 Auth 상태 변화 감지 (INITIAL_SESSION, SIGNED_IN 등 모든 이벤트 수용)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user && !isLoggedIn) {
+        processOAuthSession(session, `onAuthStateChange(${event})`);
+      } else if (event === 'SIGNED_OUT') {
+        sessionStorage.removeItem('legal_crm_lawyer_session');
+        setIsLoggedIn(false);
+      }
+    });
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      subscription?.unsubscribe();
+    };
+  }, [lawyers, isLoggedIn]);
 
   // 비밀번호 변경 상태
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -924,14 +982,19 @@ export default function LawyerRole({
       return;
     }
     try {
+      sessionStorage.setItem('pending_lawyer_oauth', 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '?role=lawyer'
+          redirectTo: `${window.location.origin}/?role=lawyer`,
+          queryParams: {
+            prompt: 'select_account'
+          }
         }
       });
       if (error) throw error;
     } catch (err: any) {
+      sessionStorage.removeItem('pending_lawyer_oauth');
       toast.error(`Google 로그인 실패: ${err.message || err}`);
     }
   };
@@ -947,14 +1010,16 @@ export default function LawyerRole({
       return;
     }
     try {
+      sessionStorage.setItem('pending_lawyer_oauth', 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: window.location.origin + '?role=lawyer'
+          redirectTo: `${window.location.origin}/?role=lawyer`
         }
       });
       if (error) throw error;
     } catch (err: any) {
+      sessionStorage.removeItem('pending_lawyer_oauth');
       toast.error(`카카오 로그인 실패: ${err.message || err}`);
     }
   };
@@ -971,7 +1036,7 @@ export default function LawyerRole({
     }
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-        redirectTo: window.location.origin + '?role=lawyer'
+        redirectTo: `${window.location.origin}/?role=lawyer`
       });
       if (error) throw error;
       dialog.alert({
@@ -995,6 +1060,10 @@ export default function LawyerRole({
     });
     if (confirmed) {
       sessionStorage.removeItem('legal_crm_lawyer_session');
+      sessionStorage.removeItem('pending_lawyer_oauth');
+      if (isSupabaseConfigured) {
+        await supabase.auth.signOut().catch(() => {});
+      }
       setIsLoggedIn(false);
       setActiveStaffMember(null);
       if (lawyers.length > 0) {
