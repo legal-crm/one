@@ -35,4 +35,22 @@ export function ChatDisclaimer() {
   );
 }
 
+export function ProposalLegalDisclaimer() {
+  return (
+    <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed space-y-1">
+      <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-xs">
+        <Info className="w-3.5 h-3.5 text-[#1E3A5F] dark:text-blue-400" />
+        <span>변호사 직접 검수 및 법률의견서 고지 (변호사법 제109조·제34조 준수)</span>
+      </div>
+      <p>
+        본 제안서 및 사건분석 리포트는 의뢰인의 상담 요청에 따라 <strong>담당 변호사가 법적 기준과 실무준칙에 따라 직접 검토·확정하여 발행한 법률의견서</strong>입니다.
+      </p>
+      <p>
+        플랫폼은 변호사에게 AI 사건분석 지원 소프트웨어(SaaS)만을 제공하며, 일체의 사건 알선 수수료나 성공보수를 배분받지 않는 순수 기술 솔루션입니다.
+      </p>
+    </div>
+  );
+}
+
+
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ArrowLeft, FileText, Send, Clock, Edit3, CheckCircle2, 
-  Microscope, Eye, Sparkles, Settings, User, X
+  Microscope, Eye, Sparkles, Settings, User, X, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import type { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 import type { AIAnalysisData, ProposalData } from './LawyerProposalDraft';
 import { ClientReferencePanel } from './ClientReferencePanel';
@@ -87,6 +88,22 @@ export default function ProposalWorkspace({
   const handleDraftChange = useCallback((draft: ProposalDraftState) => {
     scheduleAutoSave(draft);
   }, [scheduleAutoSave]);
+
+  const dialog = useDialog();
+
+  // 변호사 직접 검수 확인 후 발송
+  const handleConfirmAndSendProposal = async () => {
+    const confirmed = await dialog.confirm({
+      title: '변호사 직접 검수 및 법률의견서 발송',
+      message: `본 제안서는 의뢰인(${clientName}님)의 기초 채무 정보 및 법원 실무 기준을 담당 변호사가 직접 검토·확정한 정식 법률 의견서입니다.\n\n변호사법 제109조 및 변협 광고규정을 준수하여, 담당 변호사님의 명의와 책임으로 의뢰인에게 정식 전송하시겠습니까?`,
+      confirmText: '검수 완료 및 발송',
+      cancelText: '더 검토하기',
+      variant: 'primary'
+    });
+    if (confirmed) {
+      document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
+    }
+  };
 
   const handleSendProposal = useCallback((data: ProposalData) => {
     onSendProposal(data);
@@ -311,15 +328,18 @@ export default function ProposalWorkspace({
             )}
           </button>
 
+          <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>변호사 직접 검수 모드</span>
+          </div>
+
           {viewerRole === 'lawyer' ? (
             <button
-              onClick={() => {
-                document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
-              }}
+              onClick={handleConfirmAndSendProposal}
               className="px-6 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-[#163152] text-white font-extrabold text-xs shadow-md flex items-center gap-2 transition-all active:scale-95 min-h-[44px] whitespace-nowrap cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              고객에게 제안서 발송하기
+              검수 완료 및 제안서 발송
             </button>
           ) : viewerRole === 'reviewer' ? (
             <div className="flex items-center gap-2">
@@ -330,9 +350,7 @@ export default function ProposalWorkspace({
                 반려
               </button>
               <button 
-                onClick={() => {
-                  document.dispatchEvent(new CustomEvent('proposal-workspace-submit'));
-                }}
+                onClick={handleConfirmAndSendProposal}
                 className="px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-md flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap min-h-[44px] cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />

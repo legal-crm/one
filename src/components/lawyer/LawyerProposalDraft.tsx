@@ -10,6 +10,8 @@ import { useProposalTemplates, OpinionTemplate, FeePreset, QASnippet } from '../
 import { TemplateManageModal } from './TemplateManageModal';
 import { ProposalDraftState } from '../../hooks/useProposalDraft';
 import { toast } from 'sonner';
+import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
+import { getCourtStats } from '../../constants/courtStatistics';
 
 export interface AIAnalysisData {
   factSummary: {
@@ -370,6 +372,13 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
       question: q,
       answer: clientAnswers[idx] || ''
     })),
+    attorneyReview: {
+      isReviewed: true,
+      reviewedAt: new Date().toISOString(),
+      reviewerName: lawyerInfo?.name || '담당 변호사',
+      firmName: lawyerInfo?.firmName || '법률사무소',
+      disclaimerAgreed: true,
+    },
     ...(isAIPremium && aiAnalysis ? {
       aiInsights: {
         isAIPremium: true as const,
@@ -389,6 +398,13 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
         includeFinancialAnalysis,
         includeRiskReport,
         includeCourtNotes,
+        courtStats: {
+          courtName,
+          injunctionRate: getCourtStats(courtName).injunctionRate,
+          averageReductionRate: getCourtStats(courtName).averageReductionRate,
+          speedRating: getCourtStats(courtName).speedRating,
+          specialRules: getCourtStats(courtName).specialRules,
+        },
       }
     } : {})
   });
@@ -454,127 +470,57 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // ═════════════════════════════════════════════════════════════════════
   if (activeViewMode === 'preview') {
     return (
-      <div className="h-full bg-slate-100 p-6 overflow-y-auto flex flex-col items-center">
-        <div className="max-w-xl w-full space-y-4 animate-fadeIn">
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center justify-between text-xs text-blue-900 shadow-xs">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#1E3A5F] shrink-0" />
-              <span className="font-bold">고객 수신 화면 실시간 미리보기</span>
-            </div>
-            <span className="text-[11px] text-blue-600 bg-white px-2 py-0.5 rounded-md font-medium border border-blue-100">
-              카카오톡/웹 제안서 규격
-            </span>
-          </div>
-
-          {/* 실제 고객이 보게 될 제안서 카드 규격 */}
-          <div className="bg-white border-2 border-[#1E3A5F] rounded-3xl p-6 shadow-lg space-y-5">
-            {/* 상단 변호사 정보 */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                {lawyerInfo?.avatar ? (
-                  <img src={lawyerInfo.avatar} alt="변호사" className="w-12 h-12 rounded-full object-cover border border-slate-200" />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-[#1E3A5F]/10 text-[#1E3A5F] flex items-center justify-center font-black text-lg">
-                    {lawyerInfo?.name?.charAt(0) || '변'}
-                  </div>
-                )}
-                <div>
-                  <div className="text-xs font-bold text-slate-400">{lawyerInfo?.firmName || '도산전문 법률사무소'}</div>
-                  <div className="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
-                    {lawyerInfo?.name || '담당 변호사'}
-                    <span className="text-[10px] bg-[#1E3A5F] text-white px-2 py-0.5 rounded-full font-bold">인증 변호사</span>
-                  </div>
-                </div>
-              </div>
-
-              {isAIPremium && (
-                <div className="bg-[#1E3A5F] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs">
-                  <Microscope className="w-3 h-3 text-blue-300" />
-                  AI 정밀 분석 인증
-                </div>
-              )}
-            </div>
-
-            {/* 진단 결과 핵심 박스 */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="text-slate-500">진단 결과</span>
-                <span className="text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  {rehabCalcResult.status === 'POSSIBLE' ? '✓ 개인회생 신청 적격' : '⚠️ 보완 필요'}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">월 예상 변제금</span>
-                  <span className="text-sm font-black text-[#1E3A5F] font-mono">{formatCurrency(rehabCalcResult.monthlyPayment)}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">변제 기간</span>
-                  <span className="text-sm font-black text-slate-800 font-mono">{rehabCalcResult.repaymentMonths}개월</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">예상 감면율</span>
-                  <span className="text-sm font-black text-rose-600 font-mono">약 {rehabCalcResult.debtReductionRate}%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 변호사 의견 */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-[#1E3A5F]" />
-                변호사 종합 검토 소견
-              </h4>
-              <div className="bg-blue-50/40 rounded-2xl p-4 border border-blue-100 text-xs text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">
-                {lawyerOpinion || '작성된 변호사 소견이 없습니다.'}
-              </div>
-            </div>
-
-            {/* 수임료 및 분납 조건 */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5">
-              <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                <Scale className="w-4 h-4 text-[#1E3A5F]" />
-                예상 수임료 및 분납 안내
-              </h4>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">총 수임료</span>
-                <span className="font-extrabold text-slate-900 font-mono text-sm">{formatCurrency(totalFee)}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">착수금</span>
-                <span className="font-bold text-slate-700 font-mono">{formatCurrency(downPayment)}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200">
-                <span className="font-bold text-[#1E3A5F]">월 분납금 ({installments}회)</span>
-                <span className="font-black text-[#1E3A5F] font-mono text-sm">{formatCurrency(monthlyInstallment)} / 월</span>
-              </div>
-              {feeMemo && (
-                <p className="text-[11px] text-slate-500 pt-1 leading-snug">• {feeMemo}</p>
-              )}
-            </div>
-
-            {/* Q&A 리스트 */}
-            {clientQuestions.length > 0 && (
-              <div className="space-y-2.5">
-                <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                  <MessageSquare className="w-4 h-4 text-[#1E3A5F]" />
-                  고객님 질문에 대한 답변
-                </h4>
-                {clientQuestions.map((q, idx) => (
-                  <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-1.5 text-xs">
-                    <p className="font-bold text-slate-800">Q. {q}</p>
-                    <p className="text-slate-600 bg-white p-2.5 rounded-lg border border-slate-100 leading-relaxed whitespace-pre-wrap">
-                      {clientAnswers[idx] || '변호사가 직접 상담 시 상세히 답변드릴 예정입니다.'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-          </div>
-        </div>
-      </div>
+      <PremiumProposalReportModal
+        isOpen={true}
+        onClose={() => onToggleViewMode && onToggleViewMode('editor')}
+        reportData={{
+          lawyerInfo: {
+            name: lawyerInfo?.name || '담당 변호사',
+            firmName: lawyerInfo?.firmName || '도산전문 법률사무소',
+            avatar: lawyerInfo?.avatar
+          },
+          clientName,
+          diagnosis: {
+            monthlyPayment: rehabCalcResult.monthlyPayment,
+            repaymentMonths: rehabCalcResult.repaymentMonths,
+            debtReductionRate: rehabCalcResult.debtReductionRate,
+            totalDebt,
+            totalRepayment,
+            estimatedReduction,
+            status: rehabCalcResult.status,
+            statusReason: rehabCalcResult.statusReason,
+            court: courtName
+          },
+          fees: {
+            totalFee,
+            downPayment,
+            installments,
+            monthlyInstallment,
+            courtDeposit,
+            feeMemo
+          },
+          lawyerOpinion,
+          specialNotes,
+          clientQnA: clientQuestions.map((q, idx) => ({
+            question: q,
+            answer: clientAnswers[idx] || ''
+          })),
+          aiInsights: isAIPremium ? {
+            isAIPremium: true,
+            courtStats: {
+              courtName,
+              injunctionRate: getCourtStats(courtName).injunctionRate,
+              averageReductionRate: getCourtStats(courtName).averageReductionRate,
+              speedRating: getCourtStats(courtName).speedRating,
+              specialRules: getCourtStats(courtName).specialRules,
+            },
+            reviewGrade: aiAnalysis?.reviewGrade || 'NORMAL_REVIEW'
+          } : undefined,
+          createdAt: new Date().toISOString()
+        }}
+        embedded={true}
+        isClientViewer={false}
+      />
     );
   }
 

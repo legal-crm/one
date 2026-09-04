@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell, CheckCircle2, XCircle, RotateCcw, Send } from 'lucide-react';
-import type { ConsultRequest, CrmStatus, FeeInstallment, DocumentReviewStatus, DocumentCheckItem, DocumentRequest, DocumentFile } from '../../types';
+import type { ConsultRequest, ConsultProposal, CrmStatus, FeeInstallment, DocumentReviewStatus, DocumentCheckItem, DocumentRequest, DocumentFile } from '../../types';
 import { CRM_STATUS_CONFIG, DOC_REVIEW_STATUS_CONFIG } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
@@ -12,6 +12,7 @@ import { submitClientDocument } from '../../services/crmService';
 import MobileScanner from '../lawyer/MobileScanner';
 import { loadFeeNotificationSettings } from '../../services/alimtokService';
 import RehabCompanionView from './companion/RehabCompanionView';
+import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -59,6 +60,21 @@ export default function MyPageView({
   const [showScanner, setShowScanner] = useState(false);
   
   const feeSettings = useMemo(() => loadFeeNotificationSettings(), []);
+
+  // 프리미엄 제안서/7p 리포트 모달 열림 상태
+  const [selectedProposalForReport, setSelectedProposalForReport] = useState<any | null>(null);
+
+  // 모든 상담 요청에 포함된 변호사 제안서 취합
+  const allProposals = useMemo(() => {
+    const list: { req: ConsultRequest; proposal: ConsultProposal }[] = [];
+    const reqs = (requests && requests.length > 0) ? requests : (activeRequest ? [activeRequest] : []);
+    reqs.forEach(r => {
+      (r.proposals || []).forEach(p => {
+        list.push({ req: r, proposal: p });
+      });
+    });
+    return list;
+  }, [requests, activeRequest]);
 
   const profile = activeRequest?.financialProfile;
 
@@ -277,6 +293,11 @@ export default function MyPageView({
           >
             <span>📋</span>
             <span>내 채무진단 & 서류</span>
+            {allProposals.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-blue-600 text-white ml-0.5 animate-pulse">
+                {allProposals.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -386,8 +407,114 @@ export default function MyPageView({
 
       {/* ═══ 탭 2: 채무 진단 & 법원 서류 제출 ═══ */}
       {mypageTab === 'diagnosis' && (
-        !profile ? (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4 shadow-xl">
+        <div className="space-y-6 animate-fadeIn">
+          {/* 1. 변호사 맞춤 제안서 & 7p AI 정밀 진단서 보관함 */}
+          {allProposals.length > 0 && (
+            <div className="bg-gradient-to-br from-[#0F172A] via-[#1E3A5F] to-[#0F172A] rounded-3xl p-6 text-white shadow-xl border border-blue-500/30 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-amber-300 shrink-0">
+                    <Sparkles className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-extrabold text-base sm:text-lg text-white">변호사 검수 공인 제안서 & 정밀 법률의견서 보관함</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/30 border border-blue-400/40 text-blue-200 text-xs font-bold">
+                        {allProposals.length}건 도착
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      담당 변호사가 AI 사건분석을 바탕으로 직접 검토·작성한 법률의견서, 3단 변제 시나리오, 관할법원 실무통계 및 7페이지 정식 A4 PDF 리포트를 열람하고 다운로드할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 제안서 카드 그리드 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                {allProposals.map(({ req, proposal }, idx) => (
+                  <div 
+                    key={proposal.id || idx}
+                    className="bg-white/10 hover:bg-white/[0.15] border border-white/10 hover:border-blue-400/40 rounded-2xl p-4.5 transition-all backdrop-blur-sm flex flex-col justify-between gap-3"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          {proposal.lawyerAvatar ? (
+                            <img src={proposal.lawyerAvatar} alt={proposal.lawyerName} className="w-10 h-10 rounded-full object-cover border border-white/20" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-blue-600/60 text-white flex items-center justify-center font-bold text-sm border border-white/20">
+                              {proposal.lawyerName?.charAt(0) || '변'}
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-bold text-sm text-white flex items-center gap-1.5">
+                              <span>{proposal.lawyerName} 변호사</span>
+                              {req.selectedLawyerId === proposal.lawyerId ? (
+                                <span className="px-1.5 py-0.2 bg-emerald-500/40 text-emerald-300 text-[10px] rounded font-bold border border-emerald-400/30">
+                                  선임 전담
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.2 bg-blue-500/40 text-blue-200 text-[10px] rounded font-bold border border-blue-400/30 flex items-center gap-0.5">
+                                  <Shield className="w-2.5 h-2.5" />
+                                  <span>검수 완료</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-300">{proposal.firmName}</div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-slate-400">
+                          {proposal.createdAt ? new Date(proposal.createdAt).toLocaleDateString() : '최근 제안'}
+                        </span>
+                      </div>
+
+                      {/* 핵심 수치 배지 */}
+                      <div className="grid grid-cols-2 gap-2 bg-slate-900/60 rounded-xl p-2.5 text-center border border-white/5">
+                        <div>
+                          <div className="text-[10px] text-slate-400 font-medium">월 예상 변제금</div>
+                          <div className="text-sm font-extrabold text-white">{proposal.monthlyPayment}만원</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400 font-medium">예상 탕감율</div>
+                          <div className="text-sm font-extrabold text-emerald-400">{proposal.reductionRate}% 탕감</div>
+                        </div>
+                      </div>
+
+                      {proposal.remark && (
+                        <div className="text-xs text-slate-200 line-clamp-2 bg-white/5 rounded-lg p-2 italic">
+                          "{proposal.remark}"
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProposalForReport(proposal)}
+                        className="flex-1 py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-amber-300" />
+                        <span>변호사 검수의견서 & 7p PDF 열람</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onNavigateToChat(req.id)}
+                        className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        title="1:1 채팅으로 이동"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>상담방</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!profile ? (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4 shadow-xl">
             <div className="w-16 h-16 mx-auto bg-brand/10 rounded-full flex items-center justify-center text-brand">
               <FileText className="w-8 h-8" />
             </div>
@@ -1685,8 +1812,19 @@ export default function MyPageView({
       )}
     </div>
   </div>
-)
 )}
+</div>
+)}
+
+  {/* 프리미엄 제안서 & 7p AI 진단서 모달 */}
+  {selectedProposalForReport && (
+    <PremiumProposalReportModal
+      isOpen={!!selectedProposalForReport}
+      onClose={() => setSelectedProposalForReport(null)}
+      proposal={selectedProposalForReport}
+      clientInfo={activeRequest || requests[0]}
+    />
+  )}
 </div>
   );
 }

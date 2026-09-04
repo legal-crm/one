@@ -8,6 +8,7 @@ import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../re
 
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
 const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
+import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 
 interface BannerProps {
   onClose: () => void;
@@ -259,6 +260,9 @@ export default function ChatView({
   }, [activeChatMessages.length]);
 
   const proposals: ConsultProposal[] = currentRequest?.proposals || [];
+  const [selectedProposalForReport, setSelectedProposalForReport] = useState<any | null>(null);
+  const currentChatLawyerId = activeChatLawyerId || currentRequest?.selectedLawyerId || proposals[0]?.lawyerId;
+  const currentChatProposal = proposals.find(p => p.lawyerId === currentChatLawyerId) || (proposals.length > 0 ? proposals[0] : null);
   
   const totalDebt = Math.round(((activeResult?.totalRepayment || 0) + (activeResult?.totalDebtReduction || 0)) / 10000);
   const monthlyPayment = Math.round((activeResult?.monthlyPayment || 0) / 10000);
@@ -574,6 +578,16 @@ export default function ChatView({
                       "{bid.remark}"
                     </div>
 
+                    {/* 변호사 검수 의견서 전체 열람 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProposalForReport(bid)}
+                      className="w-full py-2.5 rounded-xl text-xs font-black bg-blue-50 hover:bg-blue-100 text-[#1E3A5F] border border-blue-200 shadow-2xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#1E3A5F]" />
+                      <span>변호사 검수 의견서 & 7p 리포트 열람</span>
+                    </button>
+
                     <button 
                       onClick={() => {
                         if (currentRequest) {
@@ -622,9 +636,9 @@ export default function ChatView({
             )}
 
             {isSelectedLawyer && (
-              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 flex items-center justify-between">
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-300 text-xl font-bold">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-300 text-xl font-bold shrink-0">
                     ✓
                   </div>
                   <div>
@@ -632,29 +646,41 @@ export default function ChatView({
                     <div className="font-bold text-slate-900 dark:text-white">성공적으로 매칭되었습니다.</div>
                   </div>
                 </div>
-                <button 
-                  onClick={async () => {
-                    const confirmed = await dialog.confirm({
-                      title: '전담 지정 해지',
-                      message: '정말 전담 지정을 해지하시겠습니까?\n해지 시 다른 변호사를 전담 변호사로 선임하실 수 있습니다.',
-                      confirmText: '전담 해지',
-                      variant: 'warning'
-                    });
-                    if (confirmed) {
-                      localStorage.removeItem('legal_crm_appointed_lawyer_id');
-                      setAppointedLawyerId(null);
-                      if (currentRequest) {
-                        onSetRequests(prev => prev.map(r => 
-                          r.id === currentRequest.id ? { ...r, selectedLawyerId: undefined, status: 'responding' } : r
-                        ));
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  {currentChatProposal && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProposalForReport(currentChatProposal)}
+                      className="px-3.5 py-2 bg-[#1E3A5F] hover:bg-[#152840] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>AI 정밀 진단서 & 7p 리포트</span>
+                    </button>
+                  )}
+                  <button 
+                    onClick={async () => {
+                      const confirmed = await dialog.confirm({
+                        title: '전담 지정 해지',
+                        message: '정말 전담 지정을 해지하시겠습니까?\n해지 시 다른 변호사를 전담 변호사로 선임하실 수 있습니다.',
+                        confirmText: '전담 해지',
+                        variant: 'warning'
+                      });
+                      if (confirmed) {
+                        localStorage.removeItem('legal_crm_appointed_lawyer_id');
+                        setAppointedLawyerId(null);
+                        if (currentRequest) {
+                          onSetRequests(prev => prev.map(r => 
+                            r.id === currentRequest.id ? { ...r, selectedLawyerId: undefined, status: 'responding' } : r
+                          ));
+                        }
+                        toast.success('전담 변호사 지정이 해지되었습니다.');
                       }
-                      toast.success('전담 변호사 지정이 해지되었습니다.');
-                    }
-                  }}
-                  className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  전담 해지
-                </button>
+                    }}
+                    className="px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    전담 해지
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -750,6 +776,34 @@ export default function ChatView({
                 </div>
               )}
 
+              {/* 변호사 제안서/검수 의견서 배너 (채팅방 상단) */}
+              {currentChatProposal && (
+                <div className="mx-4 my-2.5 p-3.5 bg-gradient-to-r from-[#0F172A] via-[#1E3A5F] to-[#0F172A] text-white rounded-2xl shadow-md flex items-center justify-between gap-3 border border-blue-500/30">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-4 h-4 text-amber-300" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-blue-200 flex items-center gap-1.5">
+                        <span>{currentChatProposal.lawyerName} 변호사님의 맞춤 법률의견서 도착</span>
+                        <span className="px-1.5 py-0.2 bg-emerald-500/30 text-emerald-300 text-[10px] rounded font-semibold">변호사 검수완료</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 truncate">
+                        월 변제금 {currentChatProposal.monthlyPayment}만원 · 감면율 {currentChatProposal.reductionRate}% · 변호사 직접검수 7p 정식 의견서
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProposalForReport(currentChatProposal)}
+                    className="px-3.5 py-2 bg-blue-500 hover:bg-blue-400 text-white text-xs font-black rounded-xl shadow transition-all shrink-0 flex items-center gap-1 cursor-pointer active:scale-95"
+                  >
+                    <span>의견서 열람</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               <div ref={chatFeedRef} className="h-[450px] overflow-y-auto p-5 space-y-6 scrollbar-hide bg-slate-50/[0.15] dark:bg-slate-950/[0.05]">
                 {activeChatMessages.map(m => {
                   const isSystem = m.message.startsWith('[System]');
@@ -776,6 +830,18 @@ export default function ChatView({
                           : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-700'
                       }`}>
                         {m.message}
+                        {!isMe && currentChatProposal && (m.message.includes('제안서') || m.message.includes('초안') || m.message.includes('분석') || m.message.includes('수락') || m.message.includes('의견서')) && (
+                          <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-700">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProposalForReport(currentChatProposal)}
+                              className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-[#1E3A5F] dark:text-blue-300 hover:bg-blue-100 flex items-center justify-center gap-1.5 border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer active:scale-98"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                              <span>{currentChatProposal.lawyerName} 변호사 검수 법률의견서·7p 리포트 보기</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1317,6 +1383,16 @@ export default function ChatView({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 프리미엄 제안서 및 7p AI 진단서 모달 */}
+      {selectedProposalForReport && (
+        <PremiumProposalReportModal
+          isOpen={!!selectedProposalForReport}
+          onClose={() => setSelectedProposalForReport(null)}
+          proposal={selectedProposalForReport}
+          clientInfo={currentRequest || activeResult}
+        />
       )}
 
     </>
