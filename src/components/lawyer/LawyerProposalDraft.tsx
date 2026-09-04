@@ -100,6 +100,8 @@ export interface ProposalData {
     reviewedAt: string;
     disclaimerAgreed?: boolean;
   };
+  rehabUserInput?: RehabUserInput;
+  rehabCalcResult?: RehabCalculationResult;
 }
 
 interface LawyerProposalDraftProps {
@@ -420,7 +422,9 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
           specialRules: getCourtStats(courtName).features,
         },
       }
-    } : {})
+    } : {}),
+    rehabUserInput,
+    rehabCalcResult
   });
 
   // External Submit listener
@@ -554,6 +558,8 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
               } : undefined,
               createdAt: new Date().toISOString()
             }}
+            userInput={rehabUserInput}
+            calcResult={rehabCalcResult}
             embedded={true}
             isClientViewer={false}
           />

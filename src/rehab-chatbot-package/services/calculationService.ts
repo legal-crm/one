@@ -863,7 +863,7 @@ function calculateMonthlyWithInterest(principal: number, annualRate: number, mon
  * 현재 월 부담 계산 (이자율 반영, 36개월 원리금균등상환 기준)
  * debtTypeAmounts가 있으면 유형별로 이자 적용, 없으면 총채무에 보수적 15% 적용
  */
-function calculateCurrentMonthlyBurden(input: RehabUserInput): number {
+export function calculateCurrentMonthlyBurden(input: RehabUserInput): number {
     const months = 36;
 
     // 유형별 금액이 있는 경우: 각 유형에 맞는 이자율 적용 후 합산
