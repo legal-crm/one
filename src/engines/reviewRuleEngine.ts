@@ -89,6 +89,69 @@ export const DEFAULT_REVIEW_RULES: ReviewRule[] = [
     version: 1,
     status: 'ACTIVE',
     expiryStatus: 'CURRENT',
+  },
+  {
+    id: 'rule-04',
+    ruleSetId: 'default',
+    category: '형사고소위험',
+    title: '최근 채무 사기죄 피소 주의',
+    description: '최근 6개월 이내 발생한 채무가 포함되어 채권자의 사기죄(형법 제347조) 고소 위험',
+    conditions: [
+      { field: 'recentDebts', operator: 'EXISTS', value: true }
+    ],
+    outputType: 'HIGH_RISK',
+    outputMessage: '최근 발생한 채무가 확인되었습니다. 채권자의 사기죄 고소(차용 당시 변제의사/능력 부존재) 위험에 대비해 병원비, 생계비 등 실제 사용처 소명자료를 사전에 확보하세요.',
+    sourceType: 'STATUTE',
+    sourceReference: '형법 제347조, 채무자회생법 제595조',
+    effectiveFrom: '',
+    reviewDueAt: '',
+    approvedByLawyerId: '',
+    approvedAt: '',
+    version: 1,
+    status: 'ACTIVE',
+    expiryStatus: 'CURRENT',
+  },
+  {
+    id: 'rule-05',
+    ruleSetId: 'default',
+    category: '별제권',
+    title: '담보부 채권 예정부족액 발생',
+    description: '담보물의 예상 환가액을 초과하는 담보부 채무가 존재하여 일반 무담보 회생채권으로 분할 필요',
+    conditions: [
+      { field: 'pledgedAssetsEstimatedDeficit', operator: 'GT', value: 0 }
+    ],
+    outputType: 'CAUTION',
+    outputMessage: '담보물의 예상 환가액을 초과하는 담보 대출 부족액이 발생합니다. 해당 부족액을 일반 무담보 회생채권으로 변제계획안에 산입하세요.',
+    sourceType: 'PRACTICE_MANUAL',
+    sourceReference: '회생실무준칙 제411호',
+    effectiveFrom: '',
+    reviewDueAt: '',
+    approvedByLawyerId: '',
+    approvedAt: '',
+    version: 1,
+    status: 'ACTIVE',
+    expiryStatus: 'CURRENT',
+  },
+  {
+    id: 'rule-06',
+    ruleSetId: 'default',
+    category: '우선채권',
+    title: '조세 등 우선권 채권 분할 상환',
+    description: '세금 체납액이 존재하여 변제기간 전반부 18회차 이내 전액 변제 스케줄링 필요',
+    conditions: [
+      { field: 'taxDebt', operator: 'GT', value: 0 }
+    ],
+    outputType: 'CAUTION',
+    outputMessage: '국세/지방세 등 체납 세금이 포함되어 있습니다. 변제기간의 1/2(최대 18회차) 이내에 세금을 전액 우선 배당하도록 변제계획안을 편성하세요.',
+    sourceType: 'STATUTE',
+    sourceReference: '채무자회생법 제611조 제1항',
+    effectiveFrom: '',
+    reviewDueAt: '',
+    approvedByLawyerId: '',
+    approvedAt: '',
+    version: 1,
+    status: 'ACTIVE',
+    expiryStatus: 'CURRENT',
   }
 ];
 
@@ -111,8 +174,12 @@ function evaluateCondition(condition: RuleCondition, factOutput: FactEngineOutpu
     case 'LT': return actualValue < condition.value;
     case 'LTE': return actualValue <= condition.value;
     case 'CONTAINS': return String(actualValue).includes(String(condition.value));
-    case 'EXISTS': return actualValue !== undefined && actualValue !== null;
-    case 'NOT_EXISTS': return actualValue === undefined || actualValue === null;
+    case 'EXISTS': 
+      if (Array.isArray(actualValue)) return actualValue.length > 0;
+      return actualValue !== undefined && actualValue !== null;
+    case 'NOT_EXISTS': 
+      if (Array.isArray(actualValue)) return actualValue.length === 0;
+      return actualValue === undefined || actualValue === null;
     default: return false;
   }
 }

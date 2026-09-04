@@ -23,6 +23,12 @@ import { calculateRepayment, type RehabUserInput, type RehabCalculationResult, f
 const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 import LawyerProposalDraft from './LawyerProposalDraft';
 import { mapToRehabUserInput } from './mapToRehabUserInput';
+import CourtStatsRadar from './copilot/CourtStatsRadar';
+import LegalQualificationChart from './copilot/LegalQualificationChart';
+import AIRepaymentMatrix, { type RepaymentScenario } from './copilot/AIRepaymentMatrix';
+import ExemptAssetBasket from './copilot/ExemptAssetBasket';
+import CollateralPledgeSection from './copilot/CollateralPledgeSection';
+import SpecialCreditorRadar from './copilot/SpecialCreditorRadar';
 
 // ============================================================
 // 사건검토 코파일럿 메인 컴포넌트
@@ -794,6 +800,13 @@ export default function CaseReviewCopilot({
                       )}
                     </div>
 
+                    {/* [기능 1] 관할 법원 실무 통계 & 1:1 관할 비교 레이더 */}
+                    <CourtStatsRadar
+                      residenceAddress={fp.residence || fp.residenceRegion || fp.address || '서울특별시'}
+                      workLocation={fp.workLocation}
+                      selectedCourtName={rehabCalcResult?.courtName || fp.selectedCourt || '서울회생법원'}
+                    />
+
                     {factOutput || rehabCalcResult ? (
                       <>
                         {/* 1. 변제금 진단 결과 핵심 카드 */}
@@ -841,6 +854,55 @@ export default function CaseReviewCopilot({
                               고객 제안서 초안 작성하기 →
                             </button>
                           </div>
+                        )}
+
+                        {/* [기능 2] AI 변제금 3단 예측 매트릭스 */}
+                        {factOutput && (
+                          <AIRepaymentMatrix
+                            baseMonthlyPayment={rehabCalcResult?.monthlyPayment || factOutput.factSummary.disposableIncome || 0}
+                            totalDebt={factOutput.factSummary.totalDebt || 0}
+                            liquidationValue={factOutput.factSummary.assets.effectiveLiquidationValue || factOutput.factSummary.assets.netAssetValue || 0}
+                            repaymentMonths={rehabCalcResult?.repaymentMonths || 36}
+                            hasDependents={factOutput.factSummary.dependents > 0}
+                            onSelectScenario={(sc) => {
+                              if (rehabCalcResult) {
+                                setRehabCalcResult(prev => prev ? ({
+                                  ...prev,
+                                  monthlyPayment: sc.monthlyPayment,
+                                  debtReductionRate: sc.reductionRate,
+                                  totalRepayment: sc.totalRepayment
+                                }) : null);
+                                addAuditLog('SCENARIO_SELECTED', `[${sc.title}] 선택: 월 ${formatCurrency(sc.monthlyPayment)}, 탕감율 ${sc.reductionRate}%`);
+                              }
+                            }}
+                          />
+                        )}
+
+                        {/* [기능 3] 3대 법적 인가 요건 실시간 검증 워터폴 차트 */}
+                        {factOutput && (
+                          <LegalQualificationChart
+                            liquidationValue={factOutput.factSummary.assets.effectiveLiquidationValue || factOutput.factSummary.assets.netAssetValue || 0}
+                            monthlyPayment={rehabCalcResult?.monthlyPayment || factOutput.factSummary.disposableIncome || 0}
+                            repaymentMonths={rehabCalcResult?.repaymentMonths || 36}
+                            totalDebt={factOutput.factSummary.totalDebt || 0}
+                            monthlyIncome={factOutput.factSummary.monthlyIncome || 0}
+                            monthlyLivingCost={factOutput.factSummary.monthlyExpense || 0}
+                            onAdjustPlan={(newMonths, newMonthly) => {
+                              if (rehabCalcResult) {
+                                const totalDebt = factOutput.factSummary.totalDebt || 1;
+                                const newTotal = newMonthly * newMonths;
+                                const newReductionRate = Math.max(0, Math.round(((totalDebt - newTotal) / totalDebt) * 100));
+                                setRehabCalcResult(prev => prev ? ({
+                                  ...prev,
+                                  repaymentMonths: newMonths,
+                                  monthlyPayment: newMonthly,
+                                  totalRepayment: newTotal,
+                                  debtReductionRate: newReductionRate
+                                }) : null);
+                                addAuditLog('PLAN_ADJUSTED', `인가 요건 충족을 위한 플랜 조정: ${newMonths}개월, 월 ${formatCurrency(newMonthly)}`);
+                              }
+                            }}
+                          />
                         )}
 
                         {/* 2. 코파일럿 재무 및 가용소득 정밀 분석 */}
@@ -1060,6 +1122,14 @@ export default function CaseReviewCopilot({
                       </div>
                     </div>
 
+                    {/* [기능 6] 특수 채권 관리 레이더 (사기죄 위험 / 양도채권 / 세금 우선변제) */}
+                    {factOutput?.factSummary?.specialDebts && factOutput.factSummary.specialDebts.length > 0 && (
+                      <SpecialCreditorRadar
+                        specialDebts={factOutput.factSummary.specialDebts}
+                        rawDebts={fp.debts || []}
+                      />
+                    )}
+
                     {/* 4. 자산 현황 */}
                     <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
                       <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200/80">
@@ -1110,6 +1180,25 @@ export default function CaseReviewCopilot({
                         </table>
                       )}
                     </div>
+
+                    {/* [기능 4] 민사집행법 제246조 압류금지채권 공제 바스켓 명세 */}
+                    {factOutput?.factSummary?.assets && (
+                      <ExemptAssetBasket
+                        assetsSummary={factOutput.factSummary.assets}
+                        rawAssets={fp.assets || []}
+                      />
+                    )}
+
+                    {/* [기능 5] 별제권(담보부 채무) & 공동담보 정밀 분석 섹션 */}
+                    {factOutput && (
+                      <CollateralPledgeSection
+                        securedDebt={factOutput.factSummary.securedDebt || 0}
+                        securedDebtCovered={factOutput.factSummary.securedDebtCovered || 0}
+                        pledgedAssetsEstimatedDeficit={factOutput.factSummary.pledgedAssetsEstimatedDeficit || 0}
+                        rawDebts={fp.debts || []}
+                        rawAssets={fp.assets || []}
+                      />
+                    )}
 
                     {/* 5. 생활비 */}
                     <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">

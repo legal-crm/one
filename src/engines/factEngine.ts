@@ -34,6 +34,21 @@ export interface AssetSummary {
   hasSeverance: boolean;
   hasStock: boolean;
   spouseAssetCount: number;
+  // 민사집행법 제246조 압류금지 바스켓 필드
+  exemptDepositTotal: number;       // 예금 185만 원 통합 공제액
+  exemptInsuranceTotal: number;     // 보장성 보험 150만 원 한도 공제액
+  exemptHousingDeposit: number;     // 주거용 소액임차보증금 공제액
+  totalExemptDeductions: number;    // 총 압류금지 공제액
+  effectiveLiquidationValue: number; // 압류금지 공제 후 최종 청산가치
+}
+
+/** 특수 채권 인터페이스 */
+export interface SpecialDebtItem {
+  creditor: string;
+  principal: number;
+  riskType: 'FRAUD_RISK' | 'TRANSFERRED' | 'GUARANTEED' | 'TAX_PRIORITY';
+  reason: string;
+  recommendedAction: string;
 }
 
 /** Fact Engine 출력 */
@@ -55,6 +70,10 @@ export interface FactEngineOutput {
     seizureStatus: string;      // 압류 상태 텍스트 (사실)
     previousHistory: boolean;
     delinquencyMonths: number;
+    // 별제권 및 특수 채권 고도화 지표
+    securedDebtCovered: number;              // 담보물로 우선 변제되는 유담보 채권
+    pledgedAssetsEstimatedDeficit: number;  // 담보 처분 후 남는 무담보 예정부족액
+    specialDebts: SpecialDebtItem[];        // 특수 채권(사기죄 위험, 양도, 보증) 목록
   };
   /** ② 누락정보 */
   missingFields: MissingField[];
@@ -188,16 +207,51 @@ export function runFactEngine(intakeData: IntakeData, settings?: AppSettings): F
   let hasStock = false;
   let spouseAssetCount = 0;
 
+  // 압류금지 바스켓 분류 계산
+  let bankDepositTotal = 0;
+  let insuranceTotal = 0;
+  let housingRentalDeposit = 0;
+  let collateralEstimatedValue = 0; // 담보물 예상 환가액 합산 (부동산 70%, 차량 50%)
+
   assets.forEach(a => {
     totalMarketValue += a.marketValue;
     totalLoanBalance += a.loanBalance;
-    if (a.type === 'realestate' || a.type === 'realestate_general') hasRealEstate = true;
-    if (a.type === 'vehicle' || a.type === 'business_vehicle') hasVehicle = true;
-    if (a.type === 'insurance') hasInsurance = true;
+    if (a.type === 'realestate' || a.type === 'realestate_general') {
+      hasRealEstate = true;
+      collateralEstimatedValue += Math.round(a.marketValue * 0.7);
+    }
+    if (a.type === 'vehicle' || a.type === 'business_vehicle') {
+      hasVehicle = true;
+      collateralEstimatedValue += Math.round(a.marketValue * 0.5);
+    }
+    if (a.type === 'insurance') {
+      hasInsurance = true;
+      insuranceTotal += a.marketValue;
+    }
     if (a.type === 'severance') hasSeverance = true;
     if (a.type === 'stock') hasStock = true;
+    if (a.type === 'savings') {
+      bankDepositTotal += a.marketValue;
+    }
+    if (a.type === 'deposit') {
+      housingRentalDeposit += a.marketValue;
+    }
     if (a.owner === 'spouse') spouseAssetCount++;
   });
+
+  // 민사집행법 제246조 압류금지 바스켓 공제 계산
+  // 1) 예금 185만 원 일괄 공제
+  const exemptDepositTotal = Math.min(bankDepositTotal, 1850000);
+  // 2) 보장성 보험 해약환급금 150만 원 한도 공제
+  const exemptInsuranceTotal = Math.min(insuranceTotal, 1500000);
+  // 3) 주거용 소액임차보증금 공제 (rawComputeResponse의 exemptions 참조 또는 서울 기본 5,500만 원 적용)
+  let exemptHousingDeposit = 0;
+  if (housingRentalDeposit > 0) {
+    const deductFound = rawComputeResponse.breakdown?.liquidation?.exemptions?.find(e => e.label === 'deposit');
+    exemptHousingDeposit = deductFound ? deductFound.amount : Math.min(housingRentalDeposit, 55000000);
+  }
+  const totalExemptDeductions = exemptDepositTotal + exemptInsuranceTotal + exemptHousingDeposit;
+  const effectiveLiquidationValue = rawComputeResponse.base.liq;
 
   const netAssetValue = totalMarketValue - totalLoanBalance;
   const assetSummary: AssetSummary = {
@@ -209,8 +263,53 @@ export function runFactEngine(intakeData: IntakeData, settings?: AppSettings): F
     hasInsurance,
     hasSeverance,
     hasStock,
-    spouseAssetCount
+    spouseAssetCount,
+    exemptDepositTotal,
+    exemptInsuranceTotal,
+    exemptHousingDeposit,
+    totalExemptDeductions,
+    effectiveLiquidationValue
   };
+
+  // 별제권 담보 충당 및 예정부족액 계산
+  const securedDebtCovered = Math.min(securedDebt, collateralEstimatedValue);
+  const pledgedAssetsEstimatedDeficit = Math.max(0, securedDebt - collateralEstimatedValue);
+
+  // 특수 채권(사기죄 위험, 양도, 보증, 세금) 레이더 탐지
+  const specialDebts: SpecialDebtItem[] = [];
+  debts.forEach(d => {
+    // 1) 세금/우선권 채권
+    if (d.type === 'tax') {
+      specialDebts.push({
+        creditor: d.creditor,
+        principal: d.principal,
+        riskType: 'TAX_PRIORITY',
+        reason: '국세/지방세/건강보험 등 우선권 회생채권',
+        recommendedAction: '전체 변제기간의 절반(18회차 이내)에 전액 우선 변제 스케줄링 필요'
+      });
+    }
+    // 2) 최근 채무 & 사기 피소 리스크 (최근 대출이거나 6개월 내 의심)
+    if (d.isRecent) {
+      specialDebts.push({
+        creditor: d.creditor,
+        principal: d.principal,
+        riskType: 'FRAUD_RISK',
+        reason: '최근 6개월 이내 발생 채무 (이자 납부 미흡 시 사기죄 고소 위험)',
+        recommendedAction: '차용 당시 변제 의사 및 실제 생활비/병원비 사용처 소명 영수증 필수 구비'
+      });
+    }
+    // 3) 대부업/채권양도 의심
+    const creditorLower = d.creditor.toLowerCase();
+    if (creditorLower.includes('대부') || creditorLower.includes('자산관리') || creditorLower.includes('대위') || creditorLower.includes('엔피엘')) {
+      specialDebts.push({
+        creditor: d.creditor,
+        principal: d.principal,
+        riskType: 'TRANSFERRED',
+        reason: '원채권사에서 대부업 또는 추심사로 매각(양도)된 채권',
+        recommendedAction: '원채권자 확인 및 양도통지서, 채무잔액확인서 교차 검증 필요'
+      });
+    }
+  });
 
   const totalIncome = rawComputeResponse.client.monthlyIncome;
   const totalDebt = rawComputeResponse.base.debtTotal;
@@ -237,11 +336,14 @@ export function runFactEngine(intakeData: IntakeData, settings?: AppSettings): F
       seizureStatus: '확인 필요',
       previousHistory: intakeData.prevHistory?.exists || false,
       delinquencyMonths: 0,
+      securedDebtCovered,
+      pledgedAssetsEstimatedDeficit,
+      specialDebts
     },
     missingFields,
     conflicts,
     rawComputeResponse,
-    engineVersion: '1.0.0',
+    engineVersion: '2.0.0',
     executedAt: new Date().toISOString()
   };
 }
