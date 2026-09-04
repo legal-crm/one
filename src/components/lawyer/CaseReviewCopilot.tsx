@@ -22,6 +22,7 @@ import CopilotRuleSetManager from './CopilotRuleSetManager';
 import { calculateRepayment, type RehabUserInput, type RehabCalculationResult, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 import LawyerProposalDraft from './LawyerProposalDraft';
+import ProposalWorkspace from './ProposalWorkspace';
 import { mapToRehabUserInput } from './mapToRehabUserInput';
 import CourtStatsRadar from './copilot/CourtStatsRadar';
 import LegalQualificationChart from './copilot/LegalQualificationChart';
@@ -701,6 +702,16 @@ export default function CaseReviewCopilot({
                 <span>{factOutput ? '초안 재생성' : '⚡ 검토 초안 생성'}</span>
               </button>
             )}
+            {rehabCalcResult && (
+              <button
+                onClick={() => setShowRehabReport(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 font-bold text-sm shadow-xs active:scale-[0.98] transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                title="고객 질문과 AI 분석을 보며 1분 만에 제안서를 작성합니다"
+              >
+                <FileText className="w-4 h-4" />
+                <span>맞춤 제안서 스튜디오</span>
+              </button>
+            )}
             {permissions.canManageRuleSets && (
               <button
                 onClick={() => setSettingsView(settingsView === 'ruleset' ? 'none' : 'ruleset')}
@@ -848,10 +859,11 @@ export default function CaseReviewCopilot({
 
                             <button
                               onClick={() => setShowRehabReport(true)}
-                              className="w-full bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold text-sm py-3 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                              className="w-full bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold text-sm py-3 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xs cursor-pointer min-h-[44px]"
+                              title="고객 질문과 상황을 실시간으로 확인하며 1분 만에 제안서를 작성합니다"
                             >
-                              <FileText className="w-4 h-4" />
-                              고객 제안서 초안 작성하기 →
+                              <FileText className="w-4 h-4 text-blue-200" />
+                              <span>맞춤 제안서 스튜디오 열기 (고객 질문 참조 & 1분 작성) →</span>
                             </button>
                           </div>
                         )}
@@ -1284,9 +1296,9 @@ export default function CaseReviewCopilot({
       )}
     </div>
 
-      {/* 변호사 제안서 초안 모달 (기존 RehabResultReport 대체) */}
+      {/* 듀얼 뷰포트 맞춤 제안서 스튜디오 (고객 질의 실시간 확인 및 1분 컷 제안서 빌더) */}
       {showRehabReport && rehabCalcResult && rehabUserInput && (
-        <LawyerProposalDraft
+        <ProposalWorkspace
           rehabCalcResult={rehabCalcResult}
           rehabUserInput={rehabUserInput}
           consultRequest={consultRequest}
@@ -1300,6 +1312,13 @@ export default function CaseReviewCopilot({
             reviewGrade: ruleOutput.reviewGrade,
             courtPracticeNotes: ruleOutput.courtPracticeNotes,
           } : undefined}
+          factOutput={factOutput}
+          ruleOutput={ruleOutput}
+          isAIPremiumEnabled={true}
+          lawyerInfo={{
+            name: actorName || '담당 변호사',
+            firmName: '도산전문 법률사무소'
+          }}
           onSendProposal={(proposalData) => {
             // 채팅 연동: 부모(LawyerRole)의 handleSubmitProposalFromDraft 호출
             if (onProposalSent && consultRequest?.id) {
