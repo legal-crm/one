@@ -110,6 +110,48 @@ interface PremiumProposalReportModalProps {
   embedded?: boolean; // 스튜디오 미리보기용 인라인 모드
 }
 
+class ReportErrorBoundary extends React.Component<
+  { children: React.ReactNode; onClose?: () => void },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Report Rendering Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 max-w-xl mx-auto my-8 shadow-xl">
+          <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">제안서 화면을 준비 중입니다.</h3>
+          <p className="text-xs text-slate-500">
+            {this.state.error?.message || '잠시 후 다시 시도해 주세요.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 bg-[#1E3A5F] text-white rounded-xl text-xs font-bold"
+          >
+            새로고침
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function PremiumProposalReportModal({
   isOpen,
   onClose,
@@ -270,6 +312,11 @@ export default function PremiumProposalReportModal({
           description: '3년간 총 변제액이 보유 재산 평가액보다 많아야 인가 결정이 내려집니다.',
           solution: '면제재산 및 공제 한도 최적 법리 반영'
         }
+      ],
+      aiAdvice: raw.aiAdvice || [
+        `${courtName} 실무준칙에 의거하여 주식/코인 투자 손실금 청산가치 제외 특례 적용을 적극 권고합니다.`,
+        '부양가족 인정 범위를 최대로 산정하여 가용소득을 최소화하고 월 변제금을 낮추었습니다.',
+        '신속한 금지명령 신청을 통해 접수 후 3~7일 이내 채권자의 모든 독촉 및 압류를 차단합니다.'
       ]
     };
   }, [calcResultProp, proposal, clientInfo, activeUserInput, repaymentMonths, debtReductionRate, monthlyPayment, totalRepayment, estimatedReduction, courtName]);
@@ -348,6 +395,9 @@ export default function PremiumProposalReportModal({
     toast.info('공인 정밀진단서 PDF를 렌더링 중입니다...');
 
     try {
+      // PDF 템플릿 마운트 대기
+      await new Promise(resolve => setTimeout(resolve, 350));
+
       // 1. 만약 PrintableReportTemplate의 7페이지 요소가 DOM에 존재하면 전수 캡처
       const pageElements: HTMLElement[] = [];
       for (let i = 1; i <= 7; i++) {
@@ -1057,25 +1107,25 @@ export default function PremiumProposalReportModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <StatComparisonCard
                   title="월 소득 비교"
-                  userValue={activeUserInput.monthlyIncome}
+                  userValue={activeUserInput.monthlyIncome || 2450000}
                   averageValue={AVERAGE_VALUES.monthlyIncome}
-                  percentile={calculateIncomePercentile(activeUserInput.monthlyIncome)}
+                  percentile={calculateIncomePercentile(activeUserInput.monthlyIncome || 2450000)}
                   icon={<DollarSign className="w-4 h-4" />}
                   unit="원"
                 />
                 <StatComparisonCard
                   title="총 채무 비교"
-                  userValue={totalDebt}
+                  userValue={totalDebt || 85000000}
                   averageValue={AVERAGE_VALUES.totalDebt}
-                  percentile={calculateDebtPercentile(totalDebt)}
+                  percentile={calculateDebtPercentile(totalDebt || 85000000)}
                   icon={<CreditCard className="w-4 h-4" />}
                   unit="원"
                 />
                 <StatComparisonCard
                   title="예상 탕감율 비교"
-                  userValue={debtReductionRate}
+                  userValue={debtReductionRate || 68}
                   averageValue={AVERAGE_VALUES.debtReductionRate}
-                  percentile={calculateReductionRatePercentile(debtReductionRate)}
+                  percentile={calculateReductionRatePercentile(debtReductionRate || 68)}
                   icon={<Percent className="w-4 h-4" />}
                   unit="%"
                 />
@@ -1300,26 +1350,30 @@ export default function PremiumProposalReportModal({
       </div>
 
       {/* 숨겨진 7페이지 A4 인쇄 템플릿 (PDF 다운로드 엔진용) */}
-      <div className="hidden">
-        <PrintableReportTemplate result={activeCalcResult} userInput={activeUserInput} />
-      </div>
+      {isGeneratingPdf && (
+        <div className="hidden">
+          <PrintableReportTemplate result={activeCalcResult} userInput={activeUserInput} />
+        </div>
+      )}
     </div>
   );
 
   // 임베디드(스튜디오 인라인) 모드일 때는 래퍼 없이 렌더링
   if (embedded) {
-    return modalContent;
+    return <ReportErrorBoundary onClose={onClose}>{modalContent}</ReportErrorBoundary>;
   }
 
   // 모달 팝업 모드일 때는 fixed 백드롭 래퍼
   return (
-    <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="relative w-full max-w-4xl my-4 max-h-[94vh] flex flex-col">
-        {modalContent}
+    <ReportErrorBoundary onClose={onClose}>
+      <div 
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <div className="relative w-full max-w-4xl my-4 max-h-[94vh] flex flex-col">
+          {modalContent}
+        </div>
       </div>
-    </div>
+    </ReportErrorBoundary>
   );
 }

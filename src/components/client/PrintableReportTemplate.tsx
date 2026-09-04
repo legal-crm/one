@@ -590,12 +590,12 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
         </div>
         
         <div style={{ borderLeft: '4px solid #4338ca', backgroundColor: '#eef2ff', padding: '20px', borderRadius: '0 8px 8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {result.aiAdvice.map((advice, index) => (
+          {(result.aiAdvice || []).map((advice, index) => (
             <div key={index} style={{ fontSize: '13px', color: '#312e81', lineHeight: 1.6 }}>
               • {advice}
             </div>
           ))}
-          {result.aiAdvice.length === 0 && (
+          {(!result.aiAdvice || result.aiAdvice.length === 0) && (
             <div style={{ fontSize: '13px', color: '#312e81' }}>
               특별한 이상 징후가 발견되지 않았습니다. 통상적인 절차에 따라 진행이 가능할 것으로 예상됩니다.
             </div>
