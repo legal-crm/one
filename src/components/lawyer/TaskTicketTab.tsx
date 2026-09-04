@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus, CheckCircle2, Clock, AlertTriangle, XCircle,
   ChevronDown, ChevronUp, Calendar, User, Check, Trash2, X
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import {

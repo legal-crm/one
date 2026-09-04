@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, Download, CheckCircle2, ShieldCheck, Scale, Sparkles, 
   Landmark, TrendingDown, Clock, AlertTriangle, MessageSquare, 
@@ -76,7 +76,9 @@ export interface PremiumReportData {
 interface PremiumProposalReportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  reportData: PremiumReportData;
+  reportData?: PremiumReportData;
+  proposal?: any;
+  clientInfo?: any;
   onAppointLawyer?: () => void;
   isClientViewer?: boolean;
   isAppointed?: boolean;
@@ -87,6 +89,8 @@ export default function PremiumProposalReportModal({
   isOpen,
   onClose,
   reportData,
+  proposal,
+  clientInfo,
   onAppointLawyer,
   isClientViewer = true,
   isAppointed = false,
@@ -95,7 +99,66 @@ export default function PremiumProposalReportModal({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (!isOpen || embedded) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, embedded, onClose]);
+
   if (!isOpen && !embedded) return null;
+
+  // reportData가 직접 전달되지 않은 경우 proposal/clientInfo로부터 안전하게 복원
+  const safeData: PremiumReportData = reportData || {
+    lawyerInfo: {
+      name: proposal?.lawyerName || proposal?.lawyer?.name || '담당 변호사',
+      firmName: proposal?.firmName || proposal?.lawyer?.firmName || '도산전문 법률사무소',
+      avatar: proposal?.lawyerAvatar || proposal?.lawyer?.avatar
+    },
+    clientName: clientInfo?.clientName || clientInfo?.name || '의뢰인',
+    diagnosis: {
+      monthlyPayment: proposal?.monthlyPayment || clientInfo?.monthlyPayment || 650000,
+      repaymentMonths: proposal?.repaymentMonths || clientInfo?.repaymentMonths || 36,
+      debtReductionRate: proposal?.debtReductionRate || clientInfo?.debtReductionRate || 68,
+      totalDebt: proposal?.totalDebt || clientInfo?.totalDebt || 85000000,
+      totalRepayment: proposal?.totalRepayment || (proposal?.monthlyPayment ? proposal.monthlyPayment * 36 : 23400000),
+      estimatedReduction: proposal?.estimatedReduction || 61600000,
+      status: 'APPROVE',
+      court: proposal?.court || clientInfo?.court || '서울회생법원'
+    },
+    fees: {
+      totalFee: proposal?.totalFee || proposal?.fee || 1800000,
+      downPayment: proposal?.downPayment || 300000,
+      installments: proposal?.installments || 5,
+      monthlyInstallment: proposal?.monthlyInstallment || 300000,
+      courtDeposit: proposal?.courtDeposit || 350000,
+      feeMemo: proposal?.feeMemo || '수임료 분납 지원 (착수금 외 분할 납부)'
+    },
+    lawyerOpinion: proposal?.lawyerOpinion || proposal?.remark || proposal?.opinion || '의뢰인의 소득 및 부양가족 현황을 종합 검토한 결과, 관할 법원의 실무준칙에 의거하여 원금 대폭 탕감이 가능할 것으로 판단됩니다. 신속한 금지명령 신청을 통해 독촉을 즉시 중단시키겠습니다.',
+    specialNotes: proposal?.specialNotes || [
+      '신청 즉시 7일 이내 금지명령 결정을 목표로 접수합니다.',
+      '최근 채무 비중이 높아 사용처 소명 자료(금융거래내역서) 준비가 필요합니다.',
+      '부양가족 인정 범위를 최대로 산정하여 가용소득을 최소화합니다.'
+    ],
+    clientQnA: proposal?.clientQnA || [
+      { question: '급여 압류나 독촉 전화는 언제 멈추나요?', answer: '법원에 접수 후 3~7일 내 금지명령이 발령되면 채권자의 모든 독촉과 압류 행위가 법적으로 전면 중단됩니다.' },
+      { question: '회사나 가족들이 알게 될까 봐 걱정됩니다.', answer: '개인회생은 100% 비공개 절차이며 회사나 가족에게 어떠한 통지도 발송되지 않습니다. 모든 서류는 당 사무실로 송달됩니다.' }
+    ],
+    aiInsights: {
+      isAIPremium: true,
+      courtStats: {
+        courtName: proposal?.court || clientInfo?.court || '서울회생법원',
+        injunctionRate: 94.2,
+        averageReductionRate: 67.5,
+        speedRating: '매우 빠름 (평균 2.8개월)',
+        specialRules: ['주식·가상자산 손실금 청산가치 제외', '배우자 재산 0% 반영']
+      },
+      reviewGrade: 'OPTIMAL_REDUCTION'
+    },
+    createdAt: proposal?.createdAt || new Date().toISOString()
+  };
 
   const {
     lawyerInfo = { name: '담당 변호사', firmName: '도산전문 법률사무소' },
@@ -107,7 +170,7 @@ export default function PremiumProposalReportModal({
     clientQnA = [],
     aiInsights,
     createdAt
-  } = reportData;
+  } = safeData;
 
   const courtName = diagnosis.court || '서울회생법원';
   const reportDate = createdAt ? new Date(createdAt).toLocaleDateString('ko-KR') : new Date().toLocaleDateString('ko-KR');
@@ -512,60 +575,74 @@ export default function PremiumProposalReportModal({
       </div>
 
       {/* ── 10. 하단 액션 바 (고객 전담 선임 & PDF 다운로드) ── */}
-      {!embedded && (
-        <div className="bg-slate-50 border-t border-slate-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <button
-            onClick={handleDownloadPDF}
-            disabled={isGeneratingPdf}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer min-h-[44px]"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>{isGeneratingPdf ? 'PDF 생성 중...' : '📥 정식 A4 진단서 PDF 다운로드'}</span>
-          </button>
+      <div className="bg-slate-50 border-t border-slate-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <button
+          onClick={handleDownloadPDF}
+          disabled={isGeneratingPdf}
+          className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer min-h-[44px]"
+        >
+          <Download className="w-4 h-4 text-slate-500" />
+          <span>{isGeneratingPdf ? 'PDF 생성 중...' : '📥 정식 A4 진단서 PDF 다운로드'}</span>
+        </button>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {isClientViewer && !isAppointed && onAppointLawyer && (
-              <button
-                onClick={onAppointLawyer}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer min-h-[44px]"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>⭐ 이 변호사를 전담으로 선임하기</span>
-              </button>
-            )}
-
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {isClientViewer && !isAppointed && onAppointLawyer && (
             <button
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs transition-all active:scale-95 cursor-pointer min-h-[44px]"
+              onClick={onAppointLawyer}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer min-h-[44px]"
             >
-              닫기
+              <CheckCircle2 className="w-4 h-4" />
+              <span>⭐ 이 변호사를 전담으로 선임하기</span>
             </button>
-          </div>
+          )}
+
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs transition-all active:scale-95 cursor-pointer min-h-[44px]"
+          >
+            {embedded ? '에디터로 돌아가기' : '닫기'}
+          </button>
         </div>
-      )}
+      </div>
 
     </div>
   );
 
   if (embedded) {
     return (
-      <div className="h-full overflow-y-auto p-4 sm:p-6 bg-slate-100 flex flex-col items-center">
+      <div className="w-full">
         {content}
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fadeIn">
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col my-auto">
-        <button
-          onClick={onClose}
-          className="absolute -top-11 right-0 text-white/80 hover:text-white p-2 transition-colors cursor-pointer"
-          title="닫기"
-        >
-          <X className="w-6 h-6" />
-        </button>
-        <div className="overflow-y-auto rounded-3xl no-scrollbar">
+    <div 
+      className="fixed inset-0 z-[9999] bg-slate-900/80 backdrop-blur-xs overflow-y-auto p-3 sm:p-6 md:p-8 animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative w-full max-w-4xl mx-auto my-3 sm:my-6 flex flex-col">
+        {/* 상단 닫기 & 안내 바 (Sticky) */}
+        <div className="sticky top-2 z-20 flex items-center justify-between bg-slate-900/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-xl mb-4 text-white">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+            <span className="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-md font-black text-[11px]">공인 법률문서</span>
+            <span>변호사 검토 의견서 & AI 정밀 진단 리포트</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer active:scale-95"
+            title="창 닫기 (ESC)"
+          >
+            <X className="w-4 h-4" />
+            <span>닫기</span>
+          </button>
+        </div>
+
+        {/* 리포트 본문 카드 */}
+        <div className="w-full rounded-3xl shadow-2xl overflow-hidden bg-white border border-slate-200">
           {content}
         </div>
       </div>

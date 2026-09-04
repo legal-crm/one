@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award, Heart, Scale, Search, ArrowRight } from 'lucide-react';
+import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award, Heart, Scale, Search, ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import MyPageView from './MyPageView';

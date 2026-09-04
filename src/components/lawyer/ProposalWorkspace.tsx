@@ -124,12 +124,10 @@ export default function ProposalWorkspace({
 
   const isAIPremium = !!aiAnalysis || isAIPremiumEnabled;
 
-  // 좌측 패널 ➔ 우측 제안서 이벤트 디스패치 브리지
   const handleQuoteQuestion = useCallback((question: string, defaultAnswer?: string) => {
     document.dispatchEvent(new CustomEvent('proposal-quote-question', {
       detail: { question, defaultAnswer }
     }));
-    // 모바일인 경우 작성 탭으로 자동 이동
     setMobileTab('editor');
   }, []);
 
@@ -141,7 +139,7 @@ export default function ProposalWorkspace({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden font-sans select-none animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden font-sans animate-fadeIn">
       
       {/* ── 1. 프리미엄 상단 헤더 ── */}
       <header className="shrink-0 h-14 bg-[#0F172A] text-white flex items-center justify-between px-4 sm:px-6 shadow-md z-20">
@@ -181,8 +179,9 @@ export default function ProposalWorkspace({
             }`}
           >
             <Edit3 className="w-3.5 h-3.5" />
-            제안서 작성
+            <span>제안서 에디터</span>
           </button>
+          
           <button
             onClick={() => setViewMode('preview')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -191,27 +190,17 @@ export default function ProposalWorkspace({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Eye className="w-3.5 h-3.5" />
-            고객 시점 미리보기
+            <Eye className="w-3.5 h-3.5 text-amber-400" />
+            <span>고객 시점 미리보기</span>
           </button>
         </div>
 
-        {/* 우측: 저장 상태 & 닫기 */}
+        {/* 우측 도구: 템플릿 관리자 + 닫기 */}
         <div className="flex items-center gap-2">
-          {isDirty && (
-            <span className="text-[11px] text-amber-300 font-bold animate-pulse">저장 중...</span>
-          )}
-          {lastSavedAt && !isDirty && (
-            <div className="hidden sm:flex items-center gap-1.5 text-slate-300 text-xs bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-700/60 font-mono">
-              <Clock className="w-3 h-3 text-slate-400" />
-              <span>자동저장 {formatTime(lastSavedAt)}</span>
-            </div>
-          )}
-
           <button
             onClick={() => setIsTemplateModalOpen(true)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            title="템플릿 & 패키지 설정"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="문구/플랜 템플릿 보관함"
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -229,20 +218,20 @@ export default function ProposalWorkspace({
       {/* ── Mobile Segmented Tabs ── */}
       <div className="lg:hidden flex border-b border-slate-200 bg-white shrink-0">
         <button
-          onClick={() => setMobileTab('info')}
+          onClick={() => { setMobileTab('info'); setViewMode('editor'); }}
           className={`flex-1 flex justify-center items-center py-3 text-xs font-bold border-b-2 transition-colors min-h-[44px] cursor-pointer ${
-            mobileTab === 'info' 
+            mobileTab === 'info' && viewMode === 'editor'
               ? 'border-[#1E3A5F] text-[#1E3A5F] bg-[#1E3A5F]/5' 
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileText className="w-4 h-4 mr-1.5" />
-          고객 상황 및 AI 분석
+          고객 정보
         </button>
         <button
-          onClick={() => setMobileTab('editor')}
+          onClick={() => { setMobileTab('editor'); setViewMode('editor'); }}
           className={`flex-1 flex justify-center items-center py-3 text-xs font-bold border-b-2 transition-colors min-h-[44px] cursor-pointer ${
-            mobileTab === 'editor' 
+            mobileTab === 'editor' && viewMode === 'editor'
               ? 'border-[#1E3A5F] text-[#1E3A5F] bg-[#1E3A5F]/5' 
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
@@ -250,15 +239,26 @@ export default function ProposalWorkspace({
           <Edit3 className="w-4 h-4 mr-1.5" />
           제안서 작성
         </button>
+        <button
+          onClick={() => { setMobileTab('editor'); setViewMode('preview'); }}
+          className={`flex-1 flex justify-center items-center py-3 text-xs font-bold border-b-2 transition-colors min-h-[44px] cursor-pointer ${
+            viewMode === 'preview'
+              ? 'border-[#1E3A5F] text-[#1E3A5F] bg-[#1E3A5F]/5' 
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Eye className="w-4 h-4 mr-1.5 text-amber-500" />
+          미리보기
+        </button>
       </div>
 
-      {/* ── Main Split-Pane Content (독립 듀얼 스크롤) ── */}
+      {/* ── Main Split-Pane Content (독립 듀얼 스크롤 / 미리보기 시 전폭) ── */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0 bg-slate-100">
         
-        {/* 좌측: 고객 상황 360° 인텔리전스 패널 (42% 폭, 독립 스크롤) */}
+        {/* 좌측: 고객 상황 360° 인텔리전스 패널 (에디터 모드 시 표시, 미리보기 모드 시 숨김) */}
         <div className={`
-          lg:w-[42%] h-full min-h-0 lg:border-r border-slate-200 overflow-hidden flex flex-col bg-slate-50
-          ${mobileTab === 'info' ? 'block' : 'hidden lg:block'}
+          ${viewMode === 'preview' ? 'hidden' : 'lg:w-[42%] lg:block'} h-full min-h-0 lg:border-r border-slate-200 overflow-hidden flex flex-col bg-slate-50
+          ${mobileTab === 'info' && viewMode !== 'preview' ? 'block' : 'hidden'}
         `}>
           <ClientReferencePanel 
             rehabCalcResult={rehabCalcResult}
@@ -274,10 +274,10 @@ export default function ProposalWorkspace({
           />
         </div>
 
-        {/* 우측: 초고속 제안서 빌더 & Live Preview (58% 폭, 독립 스크롤) */}
+        {/* 우측: 초고속 제안서 빌더 & Live Preview (미리보기 모드 시 전폭 100%) */}
         <div className={`
-          lg:w-[58%] h-full min-h-0 overflow-hidden flex flex-col bg-white
-          ${mobileTab === 'editor' ? 'block' : 'hidden lg:block'}
+          ${viewMode === 'preview' ? 'w-full' : 'lg:w-[58%]'} h-full min-h-0 overflow-hidden flex flex-col bg-white
+          ${mobileTab === 'editor' || viewMode === 'preview' ? 'block' : 'hidden lg:block'}
         `}>
           <LawyerProposalDraft 
             mode="embedded"

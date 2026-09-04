@@ -85,6 +85,20 @@ export interface ProposalData {
     includeFinancialAnalysis: boolean;
     includeRiskReport: boolean;
     includeCourtNotes: boolean;
+    courtStats?: {
+      courtName: string;
+      injunctionRate: number;
+      averageReductionRate: number;
+      speedRating: string;
+      specialRules?: string[];
+    };
+  };
+  attorneyReview?: {
+    isReviewed: boolean;
+    reviewerName: string;
+    firmName?: string;
+    reviewedAt: string;
+    disclaimerAgreed?: boolean;
   };
 }
 
@@ -401,9 +415,9 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
         courtStats: {
           courtName,
           injunctionRate: getCourtStats(courtName).injunctionRate,
-          averageReductionRate: getCourtStats(courtName).averageReductionRate,
+          averageReductionRate: Math.round(100 - getCourtStats(courtName).avgRepaymentRate),
           speedRating: getCourtStats(courtName).speedRating,
-          specialRules: getCourtStats(courtName).specialRules,
+          specialRules: getCourtStats(courtName).features,
         },
       }
     } : {})
@@ -469,58 +483,82 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // VIEW: 1. 실시간 고객 시점 미리보기 (Live Preview Card)
   // ═════════════════════════════════════════════════════════════════════
   if (activeViewMode === 'preview') {
+    const stats = getCourtStats(courtName);
     return (
-      <PremiumProposalReportModal
-        isOpen={true}
-        onClose={() => onToggleViewMode && onToggleViewMode('editor')}
-        reportData={{
-          lawyerInfo: {
-            name: lawyerInfo?.name || '담당 변호사',
-            firmName: lawyerInfo?.firmName || '도산전문 법률사무소',
-            avatar: lawyerInfo?.avatar
-          },
-          clientName,
-          diagnosis: {
-            monthlyPayment: rehabCalcResult.monthlyPayment,
-            repaymentMonths: rehabCalcResult.repaymentMonths,
-            debtReductionRate: rehabCalcResult.debtReductionRate,
-            totalDebt,
-            totalRepayment,
-            estimatedReduction,
-            status: rehabCalcResult.status,
-            statusReason: rehabCalcResult.statusReason,
-            court: courtName
-          },
-          fees: {
-            totalFee,
-            downPayment,
-            installments,
-            monthlyInstallment,
-            courtDeposit,
-            feeMemo
-          },
-          lawyerOpinion,
-          specialNotes,
-          clientQnA: clientQuestions.map((q, idx) => ({
-            question: q,
-            answer: clientAnswers[idx] || ''
-          })),
-          aiInsights: isAIPremium ? {
-            isAIPremium: true,
-            courtStats: {
-              courtName,
-              injunctionRate: getCourtStats(courtName).injunctionRate,
-              averageReductionRate: getCourtStats(courtName).averageReductionRate,
-              speedRating: getCourtStats(courtName).speedRating,
-              specialRules: getCourtStats(courtName).specialRules,
-            },
-            reviewGrade: aiAnalysis?.reviewGrade || 'NORMAL_REVIEW'
-          } : undefined,
-          createdAt: new Date().toISOString()
-        }}
-        embedded={true}
-        isClientViewer={false}
-      />
+      <div className="w-full h-full min-h-0 flex-1 overflow-y-auto bg-slate-100 p-4 sm:p-6 md:p-8">
+        <div className="max-w-4xl mx-auto w-full pb-24 space-y-4">
+          {/* 고객 시점 실시간 검수 안내 바 */}
+          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl px-5 py-3 shadow-md flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+              <Eye className="w-4 h-4 text-amber-500" />
+              <span>실제 의뢰인에게 전달될 <strong>정식 법률 제안서 및 AI 정밀 진단서</strong> 실시간 검수 화면입니다.</span>
+            </div>
+            {onToggleViewMode && (
+              <button
+                type="button"
+                onClick={() => onToggleViewMode('editor')}
+                className="px-3.5 py-1.5 rounded-xl border border-[#1E3A5F] bg-[#1E3A5F]/5 hover:bg-[#1E3A5F]/10 text-[#1E3A5F] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>내용 수정하기 (에디터)</span>
+              </button>
+            )}
+          </div>
+
+          {/* 공인 리포트 본체 */}
+          <PremiumProposalReportModal
+            isOpen={true}
+            onClose={() => onToggleViewMode && onToggleViewMode('editor')}
+            reportData={{
+              lawyerInfo: {
+                name: lawyerInfo?.name || '담당 변호사',
+                firmName: lawyerInfo?.firmName || '도산전문 법률사무소',
+                avatar: lawyerInfo?.avatar
+              },
+              clientName,
+              diagnosis: {
+                monthlyPayment: rehabCalcResult.monthlyPayment,
+                repaymentMonths: rehabCalcResult.repaymentMonths,
+                debtReductionRate: rehabCalcResult.debtReductionRate,
+                totalDebt,
+                totalRepayment,
+                estimatedReduction,
+                status: rehabCalcResult.status,
+                statusReason: rehabCalcResult.statusReason,
+                court: courtName
+              },
+              fees: {
+                totalFee,
+                downPayment,
+                installments,
+                monthlyInstallment,
+                courtDeposit,
+                feeMemo
+              },
+              lawyerOpinion,
+              specialNotes,
+              clientQnA: clientQuestions.map((q, idx) => ({
+                question: q,
+                answer: clientAnswers[idx] || ''
+              })),
+              aiInsights: isAIPremium ? {
+                isAIPremium: true,
+                courtStats: {
+                  courtName,
+                  injunctionRate: stats.injunctionRate,
+                  averageReductionRate: Math.round(100 - stats.avgRepaymentRate),
+                  speedRating: stats.speedRating,
+                  specialRules: stats.features,
+                },
+                reviewGrade: aiAnalysis?.reviewGrade || 'NORMAL_REVIEW'
+              } : undefined,
+              createdAt: new Date().toISOString()
+            }}
+            embedded={true}
+            isClientViewer={false}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -528,7 +566,7 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
   // VIEW: 2. 제안서 에디터 렌더링 (Speed Proposal Builder)
   // ═════════════════════════════════════════════════════════════════════
   return (
-    <div className="h-full flex flex-col bg-white overflow-y-auto font-sans text-left">
+    <div className="w-full h-full min-h-0 flex-1 flex flex-col bg-white overflow-y-auto font-sans text-left">
       
       {/* ── 1. 맞춤 소견 템플릿 바 (가로 스크롤 칩) ── */}
       <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 px-5 py-2.5 space-y-2">
