@@ -390,15 +390,17 @@ export default function PremiumProposalReportModal({
 
   // PDF 다운로드 핸들러
   const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
     setIsGeneratingPdf(true);
     toast.info('공인 정밀진단서 PDF를 렌더링 중입니다...');
 
     try {
-      // PDF 템플릿 마운트 대기
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // 폰트 및 DOM 렌더링 완료 대기
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise(resolve => setTimeout(resolve, 400));
 
-      // 1. 만약 PrintableReportTemplate의 7페이지 요소가 DOM에 존재하면 전수 캡처
+      // 1. PrintableReportTemplate의 7페이지 요소 탐색
       const pageElements: HTMLElement[] = [];
       for (let i = 1; i <= 7; i++) {
         const el = document.getElementById(`pdf-page-${i}`);
@@ -415,7 +417,8 @@ export default function PremiumProposalReportModal({
             scale: 2,
             useCORS: true,
             logging: false,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            windowWidth: 1000
           }))
         );
 
@@ -424,8 +427,8 @@ export default function PremiumProposalReportModal({
           const imgData = canvas.toDataURL('image/jpeg', 0.95);
           pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, pageHeight, undefined, 'FAST');
         });
-      } else {
-        // 단일 화면 캡처
+      } else if (printRef.current) {
+        // 단일 화면 캡처 (폴백)
         const canvas = await html2canvas(printRef.current, {
           scale: 2,
           useCORS: true,
@@ -1349,12 +1352,21 @@ export default function PremiumProposalReportModal({
         </div>
       </div>
 
-      {/* 숨겨진 7페이지 A4 인쇄 템플릿 (PDF 다운로드 엔진용) */}
-      {isGeneratingPdf && (
-        <div className="hidden">
-          <PrintableReportTemplate result={activeCalcResult} userInput={activeUserInput} />
-        </div>
-      )}
+      {/* 오프스크린 7페이지 A4 인쇄 템플릿 (PDF 다운로드 엔진용: 0x0 display:none 방지 및 뷰포트 후면 렌더링) */}
+      <div 
+        id="pdf-render-container"
+        style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          width: '794px', 
+          zIndex: -9999, 
+          pointerEvents: 'none',
+          opacity: 1
+        }}
+      >
+        <PrintableReportTemplate result={activeCalcResult} userInput={activeUserInput} />
+      </div>
     </div>
   );
 

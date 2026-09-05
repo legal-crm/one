@@ -84,6 +84,12 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
     const handleDownloadPDF = async () => {
         setIsGeneratingPdf(true);
         try {
+            // 폰트 및 렌더링 완료 대기
+            if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+            }
+            await new Promise(resolve => setTimeout(resolve, 400));
+
             const totalPages = 7;
             const pageElements: HTMLElement[] = [];
             
@@ -103,7 +109,8 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     scale: 2,
                     useCORS: true,
                     logging: false,
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    windowWidth: 1000
                 }))
             );
 
@@ -114,7 +121,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
 
             canvases.forEach((canvas, idx) => {
                 if (idx > 0) pdf.addPage();
-                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
                 pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
             });
 
@@ -1817,7 +1824,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                     </div>
 
                     {/* Off-screen Printable Template */}
-                    <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', overflow: 'hidden', height: 0, width: 0 }}>
+                    <div style={{ position: 'fixed', top: 0, left: 0, width: '794px', zIndex: -9999, pointerEvents: 'none', opacity: 1 }}>
                         <PrintableReportTemplate result={result} userInput={userInput} />
                     </div>
 

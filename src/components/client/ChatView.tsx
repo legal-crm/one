@@ -960,7 +960,7 @@ export default function ChatView({
 
       {/* 오프스크린 PDF 템플릿 (화면에 안 보이지만 html2canvas가 캡처) */}
       {showProfilePanel && activeResult && reportUserInput && (
-        <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '794px', zIndex: -9999, pointerEvents: 'none', opacity: 1 }}>
           <React.Suspense fallback={null}>
             <PrintableReportTemplate result={activeResult} userInput={reportUserInput} />
           </React.Suspense>
