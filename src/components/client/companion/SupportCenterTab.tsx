@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Shield, ExternalLink, Phone, HeartHandshake, Landmark, DollarSign, 
   AlertTriangle, CheckCircle2, ChevronRight, HelpCircle, Sparkles, 
-  MapPin, Check, Award, Lightbulb, Home, Briefcase, Zap
+  MapPin, Check, Award, Lightbulb, Home, Briefcase, Zap, Globe
 } from 'lucide-react';
 import { 
   loadRehabCompanionCase, 
   getRecommendedBenefits, 
+  fetchLiveBenefitsFromApi,
   OFFICIAL_SUPPORT_PROGRAMS 
 } from '../../../services/companionService';
 import { RehabCompanionCase, SupportProgram, SupportCategoryType } from '../../../types';
@@ -20,8 +21,23 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
   
   const [selectedCategory, setSelectedCategory] = useState<string>('stage_matched');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [isLiveApi, setIsLiveApi] = useState<boolean>(false);
+  const [livePrograms, setLivePrograms] = useState<SupportProgram[] | null>(null);
 
-  // 추천 엔진 결과 가져오기
+  // 실시간 공공데이터포털 API 연동 시도
+  useEffect(() => {
+    const stage = currentCase.caseStage || (currentCase.completedRounds > 0 ? 'approved' : 'submitted');
+    fetchLiveBenefitsFromApi(stage, selectedCategory, selectedRegion, currentCase.completedRounds || 0)
+      .then(res => {
+        setIsLiveApi(res.isLiveApi);
+        if (res.isLiveApi && res.programs?.length > 0) {
+          setLivePrograms(res.programs);
+        }
+      });
+  }, [currentCase.caseStage, currentCase.completedRounds, selectedCategory, selectedRegion]);
+
+  // 추천 엔진 결과 가져오기 (실시간 수신 데이터가 있으면 병합)
+  const basePrograms = (isLiveApi && livePrograms) ? livePrograms : OFFICIAL_SUPPORT_PROGRAMS;
   const { programs: scoredPrograms, stageMatchedCount } = getRecommendedBenefits(
     currentCase, 
     selectedCategory === 'stage_matched' ? 'all' : selectedCategory, 
@@ -65,6 +81,14 @@ export default function SupportCenterTab({ caseData }: SupportCenterTabProps) {
             </span>
             <span className="text-[11px] font-bold bg-white/10 text-white/90 px-3 py-1 rounded-full">
               {getStageLabel()}
+            </span>
+            <span className={`text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${
+              isLiveApi 
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
+                : 'bg-white/10 text-slate-300 border border-white/10'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${isLiveApi ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
+              <span>{isLiveApi ? '공공데이터포털 실시간 연동 가동' : '공식 공공데이터 기준 검증 16선'}</span>
             </span>
           </div>
 
