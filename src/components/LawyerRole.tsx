@@ -158,6 +158,32 @@ export default function LawyerRole({
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     return sessionStorage.getItem('legal_crm_lawyer_session') !== null;
   });
+
+  // [FLICKER 방지] OAuth 리다이렉트 복귀 시점 즉시 감지 (로그인 폼 깜빡 노출 차단)
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(() => {
+    if (sessionStorage.getItem('legal_crm_lawyer_session')) return false;
+    const hasPendingOauth = sessionStorage.getItem('pending_lawyer_oauth') === 'true';
+    const hasOAuthHash = typeof window !== 'undefined' && Boolean(
+      window.location.hash && (
+        window.location.hash.includes('access_token') ||
+        window.location.hash.includes('refresh_token')
+      )
+    );
+    return hasPendingOauth || hasOAuthHash;
+  });
+  const [isStartingOAuth, setIsStartingOAuth] = useState<'kakao' | 'google' | null>(null);
+  const [isAuthSuccess, setIsAuthSuccess] = useState(false);
+
+  // 세션 파싱 무한 대기 방지 안전 타임아웃 (4초 후 자동 해제)
+  useEffect(() => {
+    if (isAuthenticating) {
+      const fallbackTimer = setTimeout(() => {
+        setIsAuthenticating(false);
+        sessionStorage.removeItem('pending_lawyer_oauth');
+      }, 4000);
+      return () => clearTimeout(fallbackTimer);
+    }
+  }, [isAuthenticating]);
   const [activeLawyer, setActiveLawyer] = useState<User>(() => {
     const cached = sessionStorage.getItem('legal_crm_active_lawyer');
     if (cached) {
@@ -861,7 +887,10 @@ export default function LawyerRole({
     if (!isSupabaseConfigured) return;
 
     const processOAuthSession = async (session: any, source: string) => {
-      if (!session?.user?.email) return;
+      if (!session?.user?.email) {
+        setIsAuthenticating(false);
+        return;
+      }
       const user = session.user;
       const email = user.email.toLowerCase().trim();
       const provider = user.app_metadata?.provider || 'google';
@@ -869,18 +898,46 @@ export default function LawyerRole({
 
       console.log(`[LawyerRole] OAuth 세션 확인 (${source}):`, email);
 
-      // 1. 기존 변호사 계정과 매칭 시도 (email, id, 또는 이름 매칭)
-      const matchedLawyer = lawyers.find(l => 
+      // 1. 기존 변호사 계정과 매칭 시도 (1차: lawyers prop, 2차: localStorage, 3차: mockLawyers)
+      let matchedLawyer = lawyers.find(l => 
         (l.email && l.email.toLowerCase().trim() === email) ||
         l.id.toLowerCase() === email ||
         l.name.toLowerCase().includes(email.split('@')[0].toLowerCase())
       );
 
+      if (!matchedLawyer) {
+        try {
+          const raw = localStorage.getItem('legal_crm_lawyers');
+          if (raw) {
+            const cachedList: User[] = JSON.parse(raw);
+            matchedLawyer = cachedList.find(l =>
+              (l.email && l.email.toLowerCase().trim() === email) ||
+              l.id.toLowerCase() === email ||
+              l.name.toLowerCase().includes(email.split('@')[0].toLowerCase())
+            );
+          }
+        } catch {}
+      }
+
+      if (!matchedLawyer) {
+        matchedLawyer = mockLawyers.find(l =>
+          (l.email && l.email.toLowerCase().trim() === email) ||
+          l.id.toLowerCase() === email ||
+          l.name.toLowerCase().includes(email.split('@')[0].toLowerCase())
+        );
+      }
+
       if (matchedLawyer) {
         sessionStorage.removeItem('pending_lawyer_oauth');
         sessionStorage.setItem('legal_crm_lawyer_session', matchedLawyer.id);
+        sessionStorage.setItem('legal_crm_active_lawyer', JSON.stringify(matchedLawyer));
         setActiveLawyer(matchedLawyer);
-        setIsLoggedIn(true);
+        setIsAuthSuccess(true);
+        setTimeout(() => {
+          setIsLoggedIn(true);
+          setIsAuthenticating(false);
+          setIsAuthSuccess(false);
+        }, 280);
         toast.success(`[인증 완료] ${matchedLawyer.name} 님으로 로그인되었습니다.`);
       } else {
         // 2. 신규 소셜 연동 변호사 — 가입 접수 및 심사 대기(approved: false) 등록
@@ -924,7 +981,12 @@ export default function LawyerRole({
         } catch (e) {}
 
         setActiveLawyer(newLawyerObj);
-        setIsLoggedIn(true);
+        setIsAuthSuccess(true);
+        setTimeout(() => {
+          setIsLoggedIn(true);
+          setIsAuthenticating(false);
+          setIsAuthSuccess(false);
+        }, 280);
         toast.info(`${formattedName} 님, 신규 대리인 등록 접수되었습니다. 자격 증빙 제출 후 승인됩니다.`);
 
         try {
@@ -955,9 +1017,12 @@ export default function LawyerRole({
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user && !isLoggedIn) {
         processOAuthSession(session, '초기 getSession');
+      } else if (!session?.user && !sessionStorage.getItem('pending_lawyer_oauth') && !window.location.hash) {
+        setIsAuthenticating(false);
       }
     }).catch(err => {
       console.warn('[LawyerRole] getSession 실패:', err);
+      setIsAuthenticating(false);
     });
 
     // 2) URL 해시 비동기 파싱 지연 대응 (1초, 2.5초 재시도)
@@ -1072,6 +1137,7 @@ export default function LawyerRole({
       return;
     }
     try {
+      setIsStartingOAuth('google');
       sessionStorage.setItem('pending_lawyer_oauth', 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -1084,6 +1150,7 @@ export default function LawyerRole({
       });
       if (error) throw error;
     } catch (err: any) {
+      setIsStartingOAuth(null);
       sessionStorage.removeItem('pending_lawyer_oauth');
       toast.error(`Google 로그인 실패: ${err.message || err}`);
     }
@@ -1100,6 +1167,7 @@ export default function LawyerRole({
       return;
     }
     try {
+      setIsStartingOAuth('kakao');
       sessionStorage.setItem('pending_lawyer_oauth', 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
@@ -1109,6 +1177,7 @@ export default function LawyerRole({
       });
       if (error) throw error;
     } catch (err: any) {
+      setIsStartingOAuth(null);
       sessionStorage.removeItem('pending_lawyer_oauth');
       toast.error(`카카오 로그인 실패: ${err.message || err}`);
     }
@@ -1650,8 +1719,42 @@ export default function LawyerRole({
   }, [currentChatRequest]);
 
   if (!isLoggedIn) {
+    // [FLICKER 방지] OAuth 복귀 세션 확인 중 또는 인증 성공 시 매끄러운 브릿지 뷰 렌더링
+    if (isAuthenticating || isAuthSuccess) {
+      return (
+        <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border border-slate-200 shadow-2xl rounded-3xl p-8 space-y-6 text-center animate-fadeIn">
+            {/* 세련된 로고 & 펄스 애니메이션 */}
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="relative">
+                <img src={platformConfig.siteLogoUrl || "./logo.png"} alt="my김변 로고" className="w-14 h-14 rounded-2xl object-cover shadow-md" />
+                <div className="absolute -inset-1.5 rounded-2xl border-2 border-brand/30 animate-ping opacity-25 pointer-events-none"></div>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-lg text-slate-900">
+                  {isAuthSuccess ? '대리인 보안 인증 완료' : '변호사 보안 인증 확인 중'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {isAuthSuccess ? 'CRM 대시보드로 안전하게 이동합니다...' : '보안 세션 토큰을 검증하고 있습니다.'}
+                </p>
+              </div>
+            </div>
+
+            {/* 인디케이터 바 */}
+            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div className="bg-brand h-full rounded-full animate-pulse w-3/4 mx-auto"></div>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              🔒 암호화된 토큰 검증 및 자격 인가 절차 진행 중
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white items-center justify-center p-4">
+      <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white items-center justify-center p-4 animate-fadeIn">
         <div className="w-full max-w-md bg-white backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-center">
           {/* logo & brand header */}
           <div className="space-y-2">
@@ -1697,21 +1800,23 @@ export default function LawyerRole({
               {/* Kakao 로그인 */}
               <button
                 type="button"
+                disabled={!!isStartingOAuth}
                 onClick={handleKakaoLogin}
-                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#191919] font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
+                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 disabled:opacity-60 text-[#191919] font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
               >
                 <span className="w-6 h-6 flex items-center justify-center font-black text-xs bg-[#3c2a2b] text-[#FEE500] rounded-full shrink-0">K</span>
-                <span>카카오 계정으로 변호사 로그인</span>
+                <span>{isStartingOAuth === 'kakao' ? '카카오 인증 연결 중...' : '카카오 계정으로 변호사 로그인'}</span>
               </button>
 
               {/* Google 로그인 */}
               <button
                 type="button"
+                disabled={!!isStartingOAuth}
                 onClick={handleGoogleLogin}
-                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
+                className="w-full bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm text-base cursor-pointer active:scale-[0.98]"
               >
                 <span className="w-6 h-6 flex items-center justify-center font-bold text-xs bg-red-500 text-white rounded-full shrink-0">G</span>
-                <span>Google 계정으로 변호사 로그인</span>
+                <span>{isStartingOAuth === 'google' ? 'Google 인증 연결 중...' : 'Google 계정으로 변호사 로그인'}</span>
               </button>
             </div>
 
@@ -2063,7 +2168,7 @@ export default function LawyerRole({
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans selection:bg-brand selection:text-white animate-fadeIn">
       {/* ── 둘러보기(체험 모드) 상단 안내 배너 ── */}
       {isLoggedIn && activeLawyer?.approved === false && isGuestPreviewMode && (
         <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-medium shadow-md z-50 shrink-0 border-b border-amber-500/30">

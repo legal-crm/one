@@ -307,10 +307,40 @@ export default function App() {
       return next;
     });
   }, []);
-  const [cases, setCases] = useState<Case[]>([]);
-  const [lawyers, setLawyers] = useState<LawyerType[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [cases, setCases] = useState<Case[]>(() => {
+    try {
+      const saved = secureGetItem('legal_crm_cases');
+      return saved ? JSON.parse(saved) : initialCases;
+    } catch {
+      return initialCases;
+    }
+  });
+  const [lawyers, setLawyers] = useState<LawyerType[]>(() => {
+    try {
+      const saved = secureGetItem('legal_crm_lawyers');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.length >= mockLawyers.length) return parsed;
+      }
+    } catch {}
+    return mockLawyers.map(l => ({ ...l, password: '1234' }));
+  });
+  const [members, setMembers] = useState<Member[]>(() => {
+    try {
+      const saved = secureGetItem('legal_crm_members');
+      return saved ? JSON.parse(saved) : initialMembers;
+    } catch {
+      return initialMembers;
+    }
+  });
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
+    try {
+      const saved = secureGetItem('legal_crm_activity_logs');
+      return saved ? JSON.parse(saved) : initialActivityLogs;
+    } catch {
+      return initialActivityLogs;
+    }
+  });
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>(() => {
     const savedNews = secureGetItem('legal_crm_news');
     return savedNews ? JSON.parse(savedNews) : mockNewsArticles;
@@ -664,9 +694,19 @@ export default function App() {
         {/* Role View Render */}
         <div className="flex-1">
           <React.Suspense fallback={
-            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-              <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
-              <p className="text-xs text-slate-500 font-bold">권한 페이지를 불러오고 있습니다...</p>
+            <div className="flex flex-col min-h-screen bg-slate-50 items-center justify-center p-4">
+              <div className="w-full max-w-md bg-white border border-slate-200 shadow-xl rounded-3xl p-8 space-y-6 text-center animate-pulse">
+                <div className="flex items-center justify-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-slate-200"></div>
+                  <div className="h-6 w-36 bg-slate-200 rounded-lg"></div>
+                </div>
+                <div className="space-y-3 pt-2">
+                  <div className="h-10 bg-slate-100 rounded-2xl"></div>
+                  <div className="h-12 bg-slate-200/70 rounded-xl"></div>
+                  <div className="h-12 bg-slate-100 rounded-xl"></div>
+                </div>
+                <p className="text-xs text-slate-400 font-medium pt-1">보안 포털 로딩 중...</p>
+              </div>
             </div>
           }>
             {currentRole === 'honeypot' ? (
