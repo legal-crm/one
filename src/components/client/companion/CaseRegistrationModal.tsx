@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, Check, Building2, UserCheck, ShieldCheck, Upload, FileText, 
   Sparkles, AlertCircle, HelpCircle, ExternalLink, Copy, CheckCircle2,
-  Search, ShieldAlert, ArrowRight
+  Search, ShieldAlert, ArrowRight, AlertTriangle, ChevronRight, Lightbulb
 } from 'lucide-react';
 import { CompanionSourceType, CaseStageType, CaseOcrParseResult } from '../../../types';
 import { 
@@ -45,6 +45,12 @@ export default function CaseRegistrationModal({
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrHighlights, setOcrHighlights] = useState<string[]>([]);
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
+
+  // OCR 검증 및 경고/실패 팝업 상태
+  const [ocrStatus, setOcrStatus] = useState<'idle' | 'success' | 'failed'>('idle');
+  const [ocrFailureReason, setOcrFailureReason] = useState<string>('');
+  const [ocrFailureHighlights, setOcrFailureHighlights] = useState<string[]>([]);
+  const [showOcrAlertModal, setShowOcrAlertModal] = useState<boolean>(false);
   
   // 변제 조건
   const [monthlyRepaymentAmount, setMonthlyRepaymentAmount] = useState<number>(480000);
@@ -52,7 +58,7 @@ export default function CaseRegistrationModal({
   const [totalRounds, setTotalRounds] = useState<number>(36);
   const [completedRounds, setCompletedRounds] = useState<number>(14);
   const [startRepaymentDate, setStartRepaymentDate] = useState<string>('2025-07');
-  const [courtVirtualAccount, setCourtVirtualAccount] = useState<string>('신한은행 110-***-849201');
+  const [courtVirtualAccount, setCourtVirtualAccount] = useState<string>('');
   
   // 소득/생계비
   const [monthlyIncome, setMonthlyIncome] = useState<number>(2800000);
@@ -64,12 +70,35 @@ export default function CaseRegistrationModal({
   // 스마트 문서 OCR 비동기 파싱
   const handleOcrUpload = async (file: File) => {
     setIsOcrProcessing(true);
-    toast.info('문서에서 사건번호와 변제계획을 지능형 분석하고 있습니다...');
+    setOcrStatus('idle');
+    setOcrFailureReason('');
+    setOcrFailureHighlights([]);
+    toast.info('Gemini AI가 서류에서 사건번호와 변제계획을 정밀 분석하고 있습니다...');
     
     try {
       const result: CaseOcrParseResult = await parseCaseDocumentOcr(file);
       setIsOcrProcessing(false);
 
+      // 공식 법원 서류가 아니거나 사건번호를 찾을 수 없는 경우 엄격한 실패 판정
+      const isFailed = result.isValidCourtDoc === false || 
+                       !result.caseNumber || 
+                       result.recognitionStatus === 'invalid_document' || 
+                       result.detectedDocType === 'invalid_or_unrelated' ||
+                       (result.confidenceScore !== undefined && result.confidenceScore < 0.4);
+
+      if (isFailed) {
+        setOcrStatus('failed');
+        const reason = result.failureReason || '법원 공식 회생·파산 서류(결정문, 접수증 등)로 확인되지 않았거나 사건번호를 찾을 수 없습니다.';
+        setOcrFailureReason(reason);
+        setOcrFailureHighlights(result.extractedHighlights || []);
+        setOcrConfidence(result.confidenceScore || 0);
+        setShowOcrAlertModal(true);
+        toast.error('⚠️ 서류 인식 실패: 법원 서류가 아니거나 사건번호를 식별하지 못했습니다.');
+        return;
+      }
+
+      // 회생/파산 법원 공식 서류로 확인되고 사건번호가 추출된 경우
+      setOcrStatus('success');
       if (result.courtName) setCourtName(result.courtName);
       if (result.caseNumber) setCaseNumber(result.caseNumber);
       if (result.caseStage) setCaseStage(result.caseStage);
@@ -84,6 +113,9 @@ export default function CaseRegistrationModal({
       toast.success('🎉 법원 결정문에서 핵심 사건정보가 자동 추출되었습니다!');
     } catch (err) {
       setIsOcrProcessing(false);
+      setOcrStatus('failed');
+      setOcrFailureReason('문서 분석 중 통신 오류가 발생했습니다. 직접 입력하시거나 선명한 사진으로 다시 시도해 주세요.');
+      setShowOcrAlertModal(true);
       toast.error('문서 분석 중 오류가 발생했습니다. 직접 입력해 주세요.');
     }
   };
@@ -346,8 +378,8 @@ export default function CaseRegistrationModal({
                 </label>
               </div>
 
-              {/* OCR 인식 결과 하이라이트 박스 */}
-              {ocrHighlights.length > 0 && (
+              {/* OCR 인식 결과: 성공 시 초록색 박스 */}
+              {ocrStatus === 'success' && ocrHighlights.length > 0 && (
                 <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2 animate-fadeIn">
                   <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -361,6 +393,54 @@ export default function CaseRegistrationModal({
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* OCR 인식 결과: 실패/무관문서 시 주황색 경고 배너 */}
+              {ocrStatus === 'failed' && (
+                <div className="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/70 space-y-2.5 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-black text-amber-900 dark:text-amber-200">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>서류 인식 실패: 사건번호를 찾지 못했습니다</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowOcrAlertModal(true)}
+                      className="text-[11px] font-bold text-amber-700 dark:text-amber-300 hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span>경고 팝업 다시보기</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
+                    {ocrFailureReason || '업로드된 파일에서 공식 법원 회생·파산 사건번호를 식별하지 못했습니다.'}
+                  </p>
+                  {ocrFailureHighlights.length > 0 && (
+                    <ul className="text-[11px] text-amber-800/90 dark:text-amber-300/90 space-y-1 bg-amber-100/60 dark:bg-amber-900/40 p-2.5 rounded-xl">
+                      {ocrFailureHighlights.map((hl, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                          <span>{hl}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="pt-1 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById('case-number-input');
+                        if (input) {
+                          input.focus();
+                          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+                    >
+                      아래 입력란에서 직접 입력하기 ➔
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -447,16 +527,31 @@ export default function CaseRegistrationModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    사건번호 <span className="text-red-500">*</span>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                    <span>사건번호 <span className="text-red-500">*</span></span>
+                    {ocrStatus === 'failed' && (
+                      <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 animate-pulse">
+                        직접 입력 필요
+                      </span>
+                    )}
                   </label>
                   <input
+                    id="case-number-input"
                     type="text"
                     value={caseNumber}
-                    onChange={(e) => setCaseNumber(e.target.value)}
+                    onChange={(e) => {
+                      setCaseNumber(e.target.value);
+                      if (ocrStatus === 'failed' && e.target.value.trim().length > 3) {
+                        setOcrStatus('idle');
+                      }
+                    }}
                     placeholder="예: 2024개회108492"
                     required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-white focus:ring-1 focus:ring-brand focus:outline-none"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all focus:outline-none ${
+                      ocrStatus === 'failed'
+                        ? 'border-amber-400 bg-amber-50/30 dark:bg-amber-950/30 ring-2 ring-amber-400/60 text-slate-900 dark:text-white'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-1 focus:ring-brand'
+                    }`}
                   />
                 </div>
               </div>
@@ -635,6 +730,123 @@ export default function CaseRegistrationModal({
         </form>
 
       </div>
+
+      {/* ═══ 서류 인식 실패 및 다음 프로세스 안내 팝업 모달 ═══ */}
+      {showOcrAlertModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/60 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-scaleUp text-left">
+            
+            {/* 팝업 헤더 */}
+            <div className="p-5 border-b border-amber-100 dark:border-amber-900/40 bg-amber-500/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>법원 서류 인식 실패 경고</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                      인식 불가
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    업로드하신 파일에서 회생·파산 공식 사건번호를 확인할 수 없습니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOcrAlertModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 팝업 내용 */}
+            <div className="p-6 space-y-4">
+              {/* AI 판독 결과 박스 */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  🔍 AI 이미지 판독 내용
+                </span>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
+                  {ocrFailureReason || '회생·파산 공식 법원 결정문 또는 접수증이 아닌 이미지입니다.'}
+                </p>
+                {ocrFailureHighlights.length > 0 && (
+                  <ul className="space-y-1.5 pt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                    {ocrFailureHighlights.map((hl, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                        <span>{hl}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* 다음 진행 방법 안내 */}
+              <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 space-y-2">
+                <span className="text-xs font-black text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                  <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  다음 프로세스 진행 방법
+                </span>
+                <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+                  회생동행 서비스를 정상적으로 이용하시려면 아래 2가지 방법 중 하나를 선택해 주세요:
+                </p>
+                <div className="space-y-2 text-[11px] text-blue-800 dark:text-blue-300">
+                  <div className="flex items-start gap-1.5">
+                    <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">① 직접 입력:</span>
+                    <span>사건번호(예: 2024개회108492)만 알고 계시다면 아래 입력란에 직접 입력하시고 바로 사건을 등록할 수 있습니다.</span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">② 다시 올리기:</span>
+                    <span>법원에서 송달받은 <strong>변제계획인가결정문, 개시결정문, 전자소송 사건접수증</strong> 원본을 선명하게 다시 촬영하여 올려주세요.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 팝업 액션 버튼 */}
+            <div className="p-5 border-t border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+              <label className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]">
+                <Upload className="w-4 h-4" />
+                <span>다른 서류 사진 다시 올리기</span>
+                <input 
+                  type="file" 
+                  accept="image/*,.pdf" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    setShowOcrAlertModal(false);
+                    if (e.target.files?.[0]) handleOcrUpload(e.target.files[0]);
+                  }} 
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOcrAlertModal(false);
+                  setStep(2);
+                  setTimeout(() => {
+                    const input = document.getElementById('case-number-input');
+                    if (input) {
+                      input.focus();
+                      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                  }, 120);
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+              >
+                <span>사건번호 직접 입력하기</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

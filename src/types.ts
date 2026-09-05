@@ -1877,6 +1877,10 @@ export type SupportCategoryType =
   | 'housing_job';            // 5순위: 주거·취업 지원
 
 export interface CaseOcrParseResult {
+  isValidCourtDoc?: boolean;
+  recognitionStatus?: 'success' | 'invalid_document' | 'unreadable';
+  failureReason?: string;
+  guidance?: string;
   courtName?: string;
   caseNumber?: string;
   caseStage?: CaseStageType;
@@ -1886,7 +1890,7 @@ export interface CaseOcrParseResult {
   startRepaymentDate?: string;
   courtVirtualAccount?: string;
   confidenceScore: number; // 0.0 ~ 1.0
-  detectedDocType: 'decision_approval' | 'decision_start' | 'case_receipt' | 'unknown';
+  detectedDocType: 'decision_approval' | 'decision_start' | 'case_receipt' | 'unknown' | 'invalid_or_unrelated';
   extractedHighlights: string[];
 }
 

@@ -365,6 +365,8 @@ export async function parseCaseDocumentOcr(file: File): Promise<CaseOcrParseResu
 
   if (lowerName.includes('개시') || lowerName.includes('start')) {
     return {
+      isValidCourtDoc: true,
+      recognitionStatus: 'success',
       courtName: '서울회생법원',
       caseNumber: '2024개회108492',
       caseStage: 'started',
@@ -386,6 +388,8 @@ export async function parseCaseDocumentOcr(file: File): Promise<CaseOcrParseResu
 
   if (lowerName.includes('접수') || lowerName.includes('receipt') || lowerName.includes('신청')) {
     return {
+      isValidCourtDoc: true,
+      recognitionStatus: 'success',
       courtName: '수원회생법원',
       caseNumber: '2025개회204118',
       caseStage: 'submitted',
@@ -405,22 +409,41 @@ export async function parseCaseDocumentOcr(file: File): Promise<CaseOcrParseResu
     };
   }
 
+  if (lowerName.includes('인가') || lowerName.includes('approval') || lowerName.includes('결정문')) {
+    return {
+      isValidCourtDoc: true,
+      recognitionStatus: 'success',
+      courtName: '서울회생법원',
+      caseNumber: '2024개회108492',
+      caseStage: 'approved',
+      monthlyRepaymentAmount: 480000,
+      repaymentDay: 10,
+      totalRounds: 36,
+      startRepaymentDate: '2025-07',
+      courtVirtualAccount: '신한은행 110-***-849201 (서울회생법원)',
+      confidenceScore: 0.98,
+      detectedDocType: 'decision_approval',
+      extractedHighlights: [
+        '문서 유형: 변제계획인가결정문 정밀 인식 성공',
+        '인가일자: 2025년 6월 18일 인가 확정',
+        '확정 월 변제금: 480,000원 (총 36회차 분할납부)',
+        '법원 전용 변제금 가상계좌 인식 완료'
+      ]
+    };
+  }
+
+  // 회생/파산 서류 키워드가 없는 경우: 실패 처리
   return {
-    courtName: '서울회생법원',
-    caseNumber: '2024개회108492',
-    caseStage: 'approved',
-    monthlyRepaymentAmount: 480000,
-    repaymentDay: 10,
-    totalRounds: 36,
-    startRepaymentDate: '2025-07',
-    courtVirtualAccount: '신한은행 110-***-849201 (서울회생법원)',
-    confidenceScore: 0.98,
-    detectedDocType: 'decision_approval',
+    isValidCourtDoc: false,
+    recognitionStatus: 'invalid_document',
+    failureReason: '업로드된 파일에서 공식 법원 회생·파산 결정문 또는 사건접수증 서식을 확인할 수 없습니다.',
+    guidance: '선명한 법원 결정문/접수증 원본 사진을 다시 올려주시거나, 아래에서 사건번호를 직접 입력해 주세요.',
+    confidenceScore: 0.2,
+    detectedDocType: 'invalid_or_unrelated',
     extractedHighlights: [
-      '문서 유형: 변제계획인가결정문 정밀 인식 성공',
-      '인가일자: 2025년 6월 18일 인가 확정',
-      '확정 월 변제금: 480,000원 (총 36회차 분할납부)',
-      '법원 전용 변제금 가상계좌 인식 완료'
+      '공식 법원 회생/파산 서식 미식별',
+      '사건번호 및 변제 정보 미포함',
+      '직접 입력 또는 재촬영 권장'
     ]
   };
 }
