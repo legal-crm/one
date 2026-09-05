@@ -1861,6 +1861,35 @@ export interface MonthlyCashflowProfile {
   otherFixedExpenses: number; // 통신비/보험료 등 기타 고정지출 (원)
 }
 
+export type CaseStageType = 
+  | 'preparing'     // 신청 준비 / 접수 전
+  | 'submitted'     // 사건 접수 / 서류 검토
+  | 'correction'    // 보정명령 진행 중
+  | 'started'       // 개시결정 완료 / 채권자집회
+  | 'approved'      // 변제계획인가 / 변제 수행 중
+  | 'completed';    // 변제 완주 / 면책결정
+
+export type SupportCategoryType = 
+  | 'welfare_emergency'       // 1순위: 무상·긴급 복지
+  | 'public_debt_credit'      // 2순위: 공적 채무·법률
+  | 'diligent_repayment_loan' // 3순위: 성실상환 정책금융
+  | 'cost_reduction'          // 4순위: 생활비·공과금 감면
+  | 'housing_job';            // 5순위: 주거·취업 지원
+
+export interface CaseOcrParseResult {
+  courtName?: string;
+  caseNumber?: string;
+  caseStage?: CaseStageType;
+  monthlyRepaymentAmount?: number;
+  repaymentDay?: number;
+  totalRounds?: number;
+  startRepaymentDate?: string;
+  courtVirtualAccount?: string;
+  confidenceScore: number; // 0.0 ~ 1.0
+  detectedDocType: 'decision_approval' | 'decision_start' | 'case_receipt' | 'unknown';
+  extractedHighlights: string[];
+}
+
 export interface RehabCompanionCase {
   id: string;
   clientId?: string;
@@ -1868,6 +1897,7 @@ export interface RehabCompanionCase {
   sourceType: CompanionSourceType; // mykim_lawyer, external_office, self_litigant
   externalOfficeName?: string;     // 타 사무소 명칭
   caseType: 'individual_rehab' | 'bankruptcy';
+  caseStage?: CaseStageType;       // 사건 단계
   
   courtName: string;           // 관할 법원 (e.g. 서울회생법원)
   caseNumber: string;          // e.g. 2024개회101234
@@ -1927,8 +1957,8 @@ export interface LifeCrisisReport {
 
 export interface SupportProgram {
   id: string;
-  priority: 1 | 2 | 3;
-  category: 'welfare_emergency' | 'public_debt_credit' | 'diligent_repayment_loan';
+  priority: 1 | 2 | 3 | 4 | 5;
+  category: SupportCategoryType;
   title: string;
   subtitle: string;
   organization: string;
@@ -1937,6 +1967,11 @@ export interface SupportProgram {
   officialUrl: string;
   contactNumber: string;
   badge: string;
+  targetStages?: CaseStageType[];
+  minCompletedRounds?: number;
+  region?: string;
+  criteriaTags?: string[];
+  safetyNotice?: string;
 }
 
 export interface BankruptcyTimelineItem {

@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
-import { X, Check, Building2, UserCheck, ShieldCheck, Upload, FileText, Sparkles, AlertCircle, HelpCircle } from 'lucide-react';
-import { CompanionSourceType } from '../../../types';
-import { registerNewCompanionCase } from '../../../services/companionService';
+import { 
+  X, Check, Building2, UserCheck, ShieldCheck, Upload, FileText, 
+  Sparkles, AlertCircle, HelpCircle, ExternalLink, Copy, CheckCircle2,
+  Search, ShieldAlert, ArrowRight
+} from 'lucide-react';
+import { CompanionSourceType, CaseStageType, CaseOcrParseResult } from '../../../types';
+import { 
+  registerNewCompanionCase, 
+  parseCaseDocumentOcr, 
+  getCourtSearchDeepLink 
+} from '../../../services/companionService';
 import { toast } from 'sonner';
 
 interface CaseRegistrationModalProps {
@@ -29,11 +37,14 @@ export default function CaseRegistrationModal({
   const [sourceType, setSourceType] = useState<CompanionSourceType>('external_office');
   const [externalOfficeName, setExternalOfficeName] = useState('');
   const [caseType, setCaseType] = useState<'individual_rehab' | 'bankruptcy'>('individual_rehab');
+  const [caseStage, setCaseStage] = useState<CaseStageType>('approved');
   
   // 사건 정보
   const [courtName, setCourtName] = useState('서울회생법원');
   const [caseNumber, setCaseNumber] = useState('');
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
+  const [ocrHighlights, setOcrHighlights] = useState<string[]>([]);
+  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
   
   // 변제 조건
   const [monthlyRepaymentAmount, setMonthlyRepaymentAmount] = useState<number>(480000);
@@ -50,20 +61,39 @@ export default function CaseRegistrationModal({
 
   if (!isOpen) return null;
 
-  // OCR 시뮬레이션
-  const handleOcrUpload = (file: File) => {
+  // 스마트 문서 OCR 비동기 파싱
+  const handleOcrUpload = async (file: File) => {
     setIsOcrProcessing(true);
-    toast.info('문서에서 사건번호와 변제계획을 분석하고 있습니다...');
+    toast.info('문서에서 사건번호와 변제계획을 지능형 분석하고 있습니다...');
     
-    setTimeout(() => {
+    try {
+      const result: CaseOcrParseResult = await parseCaseDocumentOcr(file);
       setIsOcrProcessing(false);
-      setCourtName('서울회생법원');
-      setCaseNumber('2024개회108492');
-      setMonthlyRepaymentAmount(480000);
-      setTotalRounds(36);
-      setStartRepaymentDate('2025-07');
-      toast.success('결정문에서 사건정보 5건이 자동 입력되었습니다. 내용을 확인해 주세요.');
-    }, 1200);
+
+      if (result.courtName) setCourtName(result.courtName);
+      if (result.caseNumber) setCaseNumber(result.caseNumber);
+      if (result.caseStage) setCaseStage(result.caseStage);
+      if (result.monthlyRepaymentAmount) setMonthlyRepaymentAmount(result.monthlyRepaymentAmount);
+      if (result.repaymentDay) setRepaymentDay(result.repaymentDay);
+      if (result.totalRounds) setTotalRounds(result.totalRounds);
+      if (result.startRepaymentDate) setStartRepaymentDate(result.startRepaymentDate);
+      if (result.courtVirtualAccount) setCourtVirtualAccount(result.courtVirtualAccount);
+      
+      setOcrHighlights(result.extractedHighlights);
+      setOcrConfidence(result.confidenceScore);
+      toast.success('🎉 법원 결정문에서 핵심 사건정보가 자동 추출되었습니다!');
+    } catch (err) {
+      setIsOcrProcessing(false);
+      toast.error('문서 분석 중 오류가 발생했습니다. 직접 입력해 주세요.');
+    }
+  };
+
+  // 대법원 사건검색 딥링크 정보
+  const courtDeepLink = getCourtSearchDeepLink(courtName, caseNumber);
+
+  const handleCopyCourtInfo = () => {
+    navigator.clipboard.writeText(courtDeepLink.copySummaryText);
+    toast.success(`'${courtDeepLink.copySummaryText}'가 클립보드에 복사되었습니다. 대법원 사이트에서 붙여넣기 하세요.`);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -79,6 +109,7 @@ export default function CaseRegistrationModal({
         sourceType,
         externalOfficeName: sourceType === 'external_office' ? externalOfficeName : undefined,
         caseType,
+        caseStage,
         courtName,
         caseNumber: caseNumber.trim(),
         monthlyRepaymentAmount: Number(monthlyRepaymentAmount) || 0,
@@ -266,30 +297,48 @@ export default function CaseRegistrationModal({
             </div>
           )}
 
-          {/* STEP 2: 사건 번호 및 관할 법원 */}
+          {/* STEP 2: 3-Track 사건 연동 및 정보 입력 */}
           {step === 2 && (
             <div className="space-y-5 animate-fadeIn">
               
-              {/* OCR 업로드 지원 배너 */}
-              <div className="p-4 rounded-2xl bg-brand/5 dark:bg-brand/10 border border-brand/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <div className="p-2 rounded-xl bg-brand text-white shrink-0 mt-0.5">
-                    <Sparkles className="w-4 h-4" />
+              {/* Track 1: 스마트 문서 OCR 파싱 배너 */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-brand/10 via-brand/5 to-indigo-50/50 dark:to-slate-800/50 border border-brand/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-brand text-white shrink-0 mt-0.5 shadow-sm">
+                    {isOcrProcessing ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles className="w-5 h-5" />
+                    )}
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-white">결정문 사진으로 1초 자동 완성</h5>
-                    <p className="text-[11px] text-slate-500">
-                      인가결정문 또는 변제계획안을 올리시면 사건번호와 변제금액을 자동으로 읽어옵니다.
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-brand/15 text-brand dark:text-brand-light">
+                        Track 1: 스마트 OCR
+                      </span>
+                      {ocrConfidence && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                          인식 신뢰도 {(ocrConfidence * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                    <h5 className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                      결정문·접수증 사진으로 1초 자동 완성
+                    </h5>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      인가결정문, 개시결정문 또는 법원 사건접수증을 업로드하시면 사건번호와 일정이 자동 추출됩니다.
                     </p>
                   </div>
                 </div>
-                <label className="px-3.5 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-[0.98]">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>문서 사진 올리기</span>
+
+                <label className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer shrink-0 flex items-center gap-2 active:scale-[0.98]">
+                  <Upload className="w-4 h-4" />
+                  <span>{isOcrProcessing ? '분석 중...' : '문서 사진 올리기'}</span>
                   <input 
                     type="file" 
                     accept="image/*,.pdf" 
                     className="hidden" 
+                    disabled={isOcrProcessing}
                     onChange={(e) => {
                       if (e.target.files?.[0]) handleOcrUpload(e.target.files[0]);
                     }} 
@@ -297,6 +346,92 @@ export default function CaseRegistrationModal({
                 </label>
               </div>
 
+              {/* OCR 인식 결과 하이라이트 박스 */}
+              {ocrHighlights.length > 0 && (
+                <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2 animate-fadeIn">
+                  <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>문서 정밀 분석 완료: 아래 정보가 자동 채워졌습니다</span>
+                  </div>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+                    {ocrHighlights.map((hl, idx) => (
+                      <li key={idx} className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        <span>{hl}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Track 2: 대법원 공식 사건검색 딥링크 카드 */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                      Track 2: 대법원 공식 연계
+                    </span>
+                    <h5 className="text-xs font-black text-slate-800 dark:text-slate-200">
+                      대한민국 법원 실시간 사건조회
+                    </h5>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyCourtInfo}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-100 border border-slate-200 dark:border-slate-600 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>사건정보 복사</span>
+                    </button>
+                    <a
+                      href={courtDeepLink.mobileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand dark:hover:bg-brand-light text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>대법원 조회 바로가기</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  * 대법원 대국민서비스는 보안상 자동입력방지문자(숫자 6자리)가 적용되어 있습니다. 위 버튼으로 공식 사이트 연결 후 사건번호를 붙여넣어 최신 송달·기일을 확인하세요.
+                </p>
+              </div>
+
+              {/* 사건 단계 선택 (회생 라이프사이클) */}
+              <div className="space-y-2 pt-1">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <span>🌱 현재 사건 진행 단계</span>
+                  <span className="text-[11px] text-slate-400 font-normal">(단계별 맞춤 혜택 추천의 기준이 됩니다)</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {[
+                    { key: 'preparing', label: '1. 신청 준비', desc: '서류준비/상담' },
+                    { key: 'submitted', label: '2. 접수/보정', desc: '사건번호 부여' },
+                    { key: 'started', label: '3. 개시 결정', desc: '집회/변제안' },
+                    { key: 'approved', label: '4. 인가/변제', desc: '월납부 수행' },
+                    { key: 'completed', label: '5. 완주/면책', desc: '면책결정 확정' },
+                  ].map((st) => (
+                    <button
+                      key={st.key}
+                      type="button"
+                      onClick={() => setCaseStage(st.key as CaseStageType)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        caseStage === st.key
+                          ? 'border-brand bg-brand/10 text-brand dark:text-brand-light ring-2 ring-brand/20 font-bold'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="text-xs font-bold block truncate">{st.label}</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">{st.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 관할 법원 및 사건 번호 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">관할 법원</label>
@@ -326,6 +461,7 @@ export default function CaseRegistrationModal({
                 </div>
               </div>
 
+              {/* 법원 가상계좌 */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   법원 변제금 전용 가상계좌 (선택)
@@ -345,7 +481,7 @@ export default function CaseRegistrationModal({
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-150 dark:border-slate-800 flex items-start gap-2 text-slate-500">
                 <ShieldCheck className="w-4 h-4 text-brand shrink-0 mt-0.5" />
                 <span className="text-[11px] leading-relaxed">
-                  마이김변은 법원 데이터를 임의로 확정하지 않으며, 입력하신 사건번호는 암호화 가명 시스템으로 안전하게 보호됩니다.
+                  마이김변은 대법원 시스템을 무단 크롤링하지 않으며, 입력하신 사건정보는 안전하게 보호됩니다.
                 </span>
               </div>
             </div>

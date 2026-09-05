@@ -165,7 +165,7 @@ export default function RehabCompanionView({
       )}
 
       {activeSubTab === 'support' && (
-        <SupportCenterTab />
+        <SupportCenterTab caseData={rehabCase} />
       )}
 
       {activeSubTab === 'academy' && (

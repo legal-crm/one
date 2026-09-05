@@ -4,8 +4,10 @@ import {
   Calendar, CheckCircle, Clock, DollarSign, FileText, 
   TrendingUp, AlertTriangle, ShieldCheck, Copy, 
   ChevronRight, ArrowUpRight, Sparkles, Upload, 
-  Layers, Percent, Activity, RefreshCw, Send, Check
+  Layers, Percent, Activity, RefreshCw, Send, Check,
+  ExternalLink, Search, Award
 } from 'lucide-react';
+import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
 import { toast } from 'sonner';
 
 interface CompanionDashboardProps {
@@ -61,6 +63,18 @@ export default function CompanionDashboard({
   const { monthlyIncome, essentialLivingCost, repaymentAmount, otherFixedExpenses } = caseData.cashflow;
   const expectedSurplus = monthlyIncome - (essentialLivingCost + repaymentAmount + otherFixedExpenses);
 
+  // 미납 및 폐지 위험도 진단
+  const overdueRisk = evaluateOverdueRisk(caseData);
+
+  // 대법원 사건검색 딥링크
+  const courtDeepLink = getCourtSearchDeepLink(caseData.courtName, caseData.caseNumber);
+
+  const handleOpenCourtSearch = () => {
+    navigator.clipboard.writeText(courtDeepLink.copySummaryText);
+    toast.success(`'${courtDeepLink.copySummaryText}'가 복사되었습니다. 대법원 모바일 사이트로 연결합니다.`);
+    window.open(courtDeepLink.mobileUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // 가상계좌 복사
   const handleCopyAccount = () => {
     if (caseData.courtVirtualAccount) {
@@ -72,6 +86,30 @@ export default function CompanionDashboard({
   return (
     <div className="space-y-6 text-left animate-fadeIn">
       
+      {/* ═══ 0. 미납 & 폐지위험 스마트 경보 배너 (위험 감지 시만 노출) ═══ */}
+      {overdueRisk.riskLevel !== 'safe' && (
+        <div className="p-5 rounded-3xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-2xl bg-red-600 text-white shrink-0 mt-0.5 shadow-sm">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black tracking-tight">{overdueRisk.message}</h4>
+              <p className="text-xs text-red-600/90 dark:text-red-300/90 mt-1 leading-relaxed">
+                {overdueRisk.recommendedAction}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenCrisisModal}
+            className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-xl transition-all shadow-md shrink-0 cursor-pointer active:scale-[0.98]"
+          >
+            🚨 긴급 사정변경 SOS 신청
+          </button>
+        </div>
+      )}
+
       {/* ═══ 1. 사건 헤더 & 가상계좌 바 ═══ */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -80,11 +118,14 @@ export default function CompanionDashboard({
               {caseData.sourceType === 'external_office' ? '타 법률사무소 진행' : 
                caseData.sourceType === 'self_litigant' ? '나홀로 전자소송' : '마이김변 전담 변호사'}
             </span>
-            <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold">
+            <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold">
               {caseData.courtName}
             </span>
             <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-2.5 py-0.5 rounded-full font-semibold">
               사건번호: {caseData.caseNumberMasked}
+            </span>
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+              {caseData.caseStage === 'approved' ? `🌱 인가 완료 (${completedCount}/${totalRounds}회차)` : '진행 중'}
             </span>
           </div>
 
@@ -97,8 +138,21 @@ export default function CompanionDashboard({
           </p>
         </div>
 
-        {/* 우측 사건 정보 수정 & 가상계좌 버튼 */}
+        {/* 우측 대법원 사건검색 & 가상계좌 버튼 */}
         <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0 w-full md:w-64">
+          <button
+            type="button"
+            onClick={handleOpenCourtSearch}
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-2xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer shadow-sm group active:scale-[0.98]"
+            title="대법원 나의 사건검색 실시간 조회"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-brand-light dark:text-brand" />
+              <span>대법원 사건검색 조회</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-white/70 dark:text-slate-500" />
+          </button>
+
           {caseData.courtVirtualAccount && (
             <button
               type="button"
@@ -123,6 +177,33 @@ export default function CompanionDashboard({
           </button>
         </div>
       </div>
+
+      {/* ═══ 1.5 맞춤 공적 혜택 퀵 브릿지 배너 ═══ */}
+      {onNavigateToSupport && (
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 dark:from-slate-850 dark:to-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                현재 {completedCount}회차 성실 수행 중: 지금 신청 검토 가능한 국가 공적 제도가 있습니다
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                서민금융진흥원 소액대출(연 2~4%), 취약계층 전기·통신요금 감면, LH 긴급주거 등 맞춤 혜택을 확인하세요.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onNavigateToSupport}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 cursor-pointer flex items-center gap-1.5 active:scale-[0.98]"
+          >
+            <span>맞춤 혜택 보러가기</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ═══ 2. Hero D-Day & 이번 달 납부 현황 배너 ═══ */}
       <div className="bg-gradient-to-br from-brand/90 to-brand-hover text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
