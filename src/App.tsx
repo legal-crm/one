@@ -81,13 +81,13 @@ export default function App() {
       setTimeout(() => appLoader.remove(), 200);
     }
 
-    // [보안 마이그레이션] localStorage에 남아있는 기존 Supabase 세션 토큰 정리
-    // sessionStorage로 전환했으므로 localStorage의 세션 데이터는 더 이상 불필요
+    // [보안 정화] localStorage에 남아있는 모든 Supabase 세션 및 청크 토큰 정리
+    // sessionStorage로 전환했으므로 localStorage의 세션 데이터는 전수 소각
     try {
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+        if (key && (key.startsWith('sb-') || key.includes('auth-token'))) {
           keysToRemove.push(key);
         }
       }

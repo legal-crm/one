@@ -26,6 +26,13 @@ import PopupContainer from './popup/PopupContainer';
 import { loadClientNotifications, markAsRead, markAllAsRead, seedInitialNotifications, getUnreadCount } from '../services/clientNotificationService';
 import type { ClientNotification } from '../services/clientNotificationService';
 import { secureGetItem, secureSetItem, secureRemoveItem } from '../utils/secureStorage';
+import { 
+  validateClientSessionOnMount, 
+  touchClientActivity, 
+  purgeClientSession, 
+  setupClientInactivityWatcher, 
+  listenToRemoteClientLogout 
+} from '../services/clientSessionSecurity';
 import { usePageMeta, TAB_META } from '../hooks/usePageMeta';
 
 const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
@@ -1001,66 +1008,121 @@ export default function ClientRole({
 
 
   useEffect(() => {
-    // OAuth 플래그 확인 (AuthModal에서 리다이렉트 전에 설정)
-    const pendingOAuth = secureGetItem('pending_oauth_login');
-    const isPendingOAuth = !!pendingOAuth;
+    let isCancelled = false;
+    let retry1: any = null;
+    let retry2: any = null;
+    let subscription: any = null;
 
-    // 세션 감지 시 처리 함수
-    const handleSession = (session: any, _source: string) => {
-      if (!session?.user) return;
-      // Supabase user ID를 client ID로 사용
-      if (session.user.id) {
-        secureSetItem('legal_crm_client_id', session.user.id);
-      }
-      setIsLoggedIn(true);
-      const metaAlias = session.user.user_metadata?.alias || generateAlias();
-      setUserAlias(metaAlias);
-      recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
-      
-      // OAuth 리다이렉트 직후이면 chat 탭으로 이동
-      if (isPendingOAuth) {
-        secureRemoveItem('pending_oauth_login');
-        setActiveTab('chat');
-      }
-    };
+    const initAuthLifecycle = async () => {
+      // 1. 세션 생명주기 엄격 검증 (창 닫힘 재진입 차단 / F5 새로고침 30분 유휴 검증 / OAuth 복귀 승인)
+      const { canRestore, reason } = await validateClientSessionOnMount();
+      if (isCancelled) return;
 
-    // 1) getSession 즉시 확인
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session, 'getSession');
-    }).catch(_err => { /* silent */ });
-
-    // 2) 지연 재시도 (Supabase _initialize 완료 대기)
-    const retry1 = setTimeout(() => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) handleSession(session, '1초 재시도');
-      });
-    }, 1000);
-
-    const retry2 = setTimeout(() => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) handleSession(session, '3초 재시도');
-        else if (isPendingOAuth) {
-          secureRemoveItem('pending_oauth_login');
-        }
-      });
-    }, 3000);
-
-    // 3) 실시간 상태 변경 감지
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        handleSession(session, `onAuthStateChange(${event})`);
-      } else if (event === 'SIGNED_OUT') {
+      if (!canRestore) {
+        // 창이 닫혔다 다시 열렸거나 30분 유휴 초과인 경우 → 세션 복원 차단
         setIsLoggedIn(false);
         setUserAlias('');
+        if (reason === 'inactivity_timeout') {
+          toast.info('보안을 위해 30분간 활동이 없어 세션이 자동 종료되었습니다.');
+        }
+        return;
       }
+
+      // 2. 검증 통과(정상 새로고침 또는 OAuth 리턴) 시에만 Supabase 세션 연결
+      const pendingOAuth = secureGetItem('pending_oauth_login') || localStorage.getItem('pending_oauth_login');
+      const isPendingOAuth = !!pendingOAuth;
+
+      // 세션 감지 시 처리 함수
+      const handleSession = (session: any, _source: string) => {
+        if (!session?.user || isCancelled) return;
+        // Supabase user ID를 client ID로 사용
+        if (session.user.id) {
+          secureSetItem('legal_crm_client_id', session.user.id);
+        }
+        setIsLoggedIn(true);
+        touchClientActivity();
+        const metaAlias = session.user.user_metadata?.alias || generateAlias();
+        setUserAlias(metaAlias);
+        recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
+        
+        // OAuth 리다이렉트 직후이면 chat 탭으로 이동
+        if (isPendingOAuth) {
+          secureRemoveItem('pending_oauth_login');
+          localStorage.removeItem('pending_oauth_login');
+          setActiveTab('chat');
+        }
+      };
+
+      // 1) getSession 즉시 확인
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!isCancelled) handleSession(session, 'getSession');
+      }).catch(_err => { /* silent */ });
+
+      // 2) 지연 재시도 (Supabase _initialize 완료 대기)
+      retry1 = setTimeout(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!isCancelled && session?.user) handleSession(session, '1초 재시도');
+        });
+      }, 1000);
+
+      retry2 = setTimeout(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!isCancelled && session?.user) handleSession(session, '3초 재시도');
+          else if (isPendingOAuth) {
+            secureRemoveItem('pending_oauth_login');
+            localStorage.removeItem('pending_oauth_login');
+          }
+        });
+      }, 3000);
+
+      // 3) 실시간 상태 변경 감지
+      const { data: subData } = supabase.auth.onAuthStateChange((event, session) => {
+        if (isCancelled) return;
+        if (session?.user) {
+          handleSession(session, `onAuthStateChange(${event})`);
+        } else if (event === 'SIGNED_OUT') {
+          setIsLoggedIn(false);
+          setUserAlias('');
+        }
+      });
+      subscription = subData?.subscription;
+    };
+
+    initAuthLifecycle();
+
+    return () => {
+      isCancelled = true;
+      if (retry1) clearTimeout(retry1);
+      if (retry2) clearTimeout(retry2);
+      if (subscription) subscription.unsubscribe();
+    };
+  }, []);
+
+  // [SECURITY] 30분 무활동(유휴) 실시간 감시 및 타 탭 로그아웃 동기화
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const cleanupWatcher = setupClientInactivityWatcher((msg) => {
+      setIsLoggedIn(false);
+      setUserAlias('');
+      dialog.alert({
+        title: '안심 보안 자동 로그아웃',
+        message: msg,
+        variant: 'warning',
+      });
+    });
+
+    const cleanupRemote = listenToRemoteClientLogout(() => {
+      setIsLoggedIn(false);
+      setUserAlias('');
+      toast.info('다른 탭 또는 기기에서 로그아웃되었습니다.');
     });
 
     return () => {
-      clearTimeout(retry1);
-      clearTimeout(retry2);
-      subscription.unsubscribe();
+      cleanupWatcher();
+      cleanupRemote();
     };
-  }, []);
+  }, [isLoggedIn, dialog]);
   
   // New Request Form State
   const [requestStep, setRequestStep] = useState<number>(1);
@@ -2087,17 +2149,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 </button>
                 <button 
                   onClick={async () => {
-                    await supabase.auth.signOut();
+                    await purgeClientSession();
                     setIsLoggedIn(false);
                     setUserAlias('');
-                    
-                    secureRemoveItem('legal_crm_client_id');
-                    secureRemoveItem('legal_crm_inquiries');
-                    secureRemoveItem('legal_crm_client_alias');
-                    secureRemoveItem('lawyer_favorites');
-                    secureRemoveItem('legal_crm_appointed_lawyer_id');
-                    secureRemoveItem('legal_crm_requests');
-                    secureRemoveItem('legal_crm_messages');
                     
                     // 로컬 상태만 초기화
                     setRequests([]);
@@ -3126,17 +3180,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   onNavigateToTab={setActiveTab}
                   onShowAuthModal={() => setShowAuthModal(true)}
                   onLogout={async () => {
-                    await supabase.auth.signOut();
+                    await purgeClientSession();
                     setIsLoggedIn(false);
                     setUserAlias('');
-                    
-                    secureRemoveItem('legal_crm_client_id');
-                    secureRemoveItem('legal_crm_inquiries');
-                    secureRemoveItem('legal_crm_client_alias');
-                    secureRemoveItem('lawyer_favorites');
-                    secureRemoveItem('legal_crm_appointed_lawyer_id');
-                    secureRemoveItem('legal_crm_requests');
-                    secureRemoveItem('legal_crm_messages');
                     
                     // 로컬 상태만 초기화 (Supabase 데이터는 보존 - 다시 로그인하면 복원됨)
                     setRequests([]);
@@ -3313,6 +3359,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             onClose={() => { setShowAuthModal(false); setPendingDiagnosisAfterLogin(false); }} 
             onLoginSuccess={(alias,ep,ch) => { 
               setIsLoggedIn(true); 
+              touchClientActivity();
               setUserAlias(alias); 
               setShowAuthModal(false); 
               recordClientLogin(alias,ep,ch); 

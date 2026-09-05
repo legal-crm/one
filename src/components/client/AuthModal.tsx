@@ -24,7 +24,9 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
     try {
       setIsLoadingProvider(provider);
       // OAuth 리다이렉트 전 플래그 저장 (돌아왔을 때 OAuth 로그인 감지용)
-      localStorage.setItem('pending_oauth_login', Date.now().toString());
+      const nowStr = Date.now().toString();
+      localStorage.setItem('pending_oauth_login', nowStr);
+      sessionStorage.setItem('pending_oauth_login', nowStr);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: supabaseProvider as any,
         options: {
@@ -33,11 +35,13 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
       });
       if (error) {
         localStorage.removeItem('pending_oauth_login');
+        sessionStorage.removeItem('pending_oauth_login');
         throw error;
       }
     } catch (err: any) {
       setIsLoadingProvider(null);
       localStorage.removeItem('pending_oauth_login');
+      sessionStorage.removeItem('pending_oauth_login');
       alert(`${provider} 로그인 시작 실패: ${err.message || err}`);
     }
   };
