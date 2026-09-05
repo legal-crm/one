@@ -53,44 +53,59 @@ export default async function handler(req, res) {
 }
 `;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
-      const response = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: promptText },
-                {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: cleanBase64
-                  }
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            response_mime_type: 'application/json'
-          }
-        }),
-        signal: AbortSignal.timeout(12000)
-      });
+      const modelNames = ['gemini-3.6-flash', 'gemini-flash-latest'];
+      let candidateText = null;
+      let usedModel = 'gemini-3.6-flash';
 
-      if (response.ok) {
-        const data = await response.json();
-        const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidateText) {
-          const parsed = JSON.parse(candidateText);
-          return res.status(200).json({
-            ok: true,
-            isRealAiOcr: true,
-            engine: 'Google Gemini 2.0 Flash Vision',
-            result: parsed
+      for (const model of modelNames) {
+        try {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+          const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: promptText },
+                    {
+                      inline_data: {
+                        mime_type: mimeType,
+                        data: cleanBase64
+                      }
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.1,
+                response_mime_type: 'application/json'
+              }
+            }),
+            signal: AbortSignal.timeout(15000)
           });
+
+          if (response.ok) {
+            const data = await response.json();
+            candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (candidateText) {
+              usedModel = model;
+              break;
+            }
+          }
+        } catch (callErr) {
+          console.warn(`[Gemini model ${model} failed, trying next]`, callErr.message);
         }
+      }
+
+      if (candidateText) {
+        const parsed = JSON.parse(candidateText);
+        return res.status(200).json({
+          ok: true,
+          isRealAiOcr: true,
+          engine: `Google Gemini Flash Vision (${usedModel})`,
+          result: parsed
+        });
       }
     } catch (ocrErr) {
       console.warn('[Gemini Vision OCR Error, Falling back to Heuristic Parser]', ocrErr.message);
