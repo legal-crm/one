@@ -3159,10 +3159,19 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </div>
                         )}
 
-                        {/* 기본 필수 서류 체크리스트 */}
+                        {/* 기본 필수 서류 체크리스트 (2단 그리드 배치) */}
                         <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3">
-                          <span className="text-xs font-black text-slate-800 block">✓ 회생/파산 기본 필수 서류 체크</span>
-                          <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                              <span>✓</span>
+                              <span>회생/파산 기본 필수 서류 체크</span>
+                              <span className="text-[11px] font-normal text-slate-500">
+                                ({docs.filter(d => d.checked).length}/{docs.length} 완료)
+                              </span>
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-medium">클릭하여 체크 및 승인/반려</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             {docs.map(doc => {
                               const status = doc.reviewStatus || 'not_submitted';
                               const config = DOC_REVIEW_STATUS_CONFIG[status];
@@ -3170,37 +3179,70 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                               const linkedFile = doc.linkedFileId ? files.find(f => f.id === doc.linkedFileId) : null;
                               
                               return (
-                                <div key={doc.id} className="flex flex-col gap-2 p-3 rounded-xl border bg-white border-slate-200 transition-all hover:border-slate-300 shadow-sm">
-                                  <div className="flex items-center gap-2.5">
-                                    <div onClick={() => handleToggleDocument(doc.id)} className="cursor-pointer shrink-0">
-                                      <input type="checkbox" checked={doc.checked} readOnly className="rounded border-slate-300 text-brand pointer-events-none" />
+                                <div 
+                                  key={doc.id} 
+                                  className={`flex flex-col justify-between gap-2 p-3 rounded-xl border transition-all shadow-xs ${
+                                    doc.checked 
+                                      ? 'bg-slate-50/90 border-slate-200 text-slate-600' 
+                                      : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-sm'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-2.5">
+                                    <div 
+                                      onClick={() => handleToggleDocument(doc.id)} 
+                                      className="cursor-pointer shrink-0 mt-0.5"
+                                      title="체크 상태 변경"
+                                    >
+                                      <input 
+                                        type="checkbox" 
+                                        checked={doc.checked} 
+                                        readOnly 
+                                        className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand pointer-events-none cursor-pointer" 
+                                      />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-slate-800 truncate">{doc.label}</span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-lg border font-bold ${config.color} ${config.bgColor} ${config.borderColor}`}>
+                                    <div 
+                                      className="flex-1 min-w-0 cursor-pointer"
+                                      onClick={() => handleToggleDocument(doc.id)}
+                                    >
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className={`text-[13px] font-bold truncate ${doc.checked ? 'text-slate-600 line-through' : 'text-slate-800'}`}>
+                                          {doc.label}
+                                        </span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-bold shrink-0 ${config.color} ${config.bgColor} ${config.borderColor}`}>
                                           {config.emoji} {config.label}
                                         </span>
                                       </div>
                                       {linkedFile && (
                                         <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500">
-                                          <FileText className="w-3 h-3" />
+                                          <FileText className="w-3 h-3 shrink-0 text-slate-400" />
                                           <span className="truncate">{linkedFile.name}</span>
                                         </div>
                                       )}
                                     </div>
                                     
                                     {isReviewable && (
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button onClick={async () => {
-                                          const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                          await approveDocument(selectedId, doc.id, actor.name);
-                                          toast.success('서류를 승인했습니다.');
-                                          setCrmData({ ...crmData });
-                                        }} className="px-2 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg whitespace-nowrap press-scale transition-colors">
+                                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                                        <button 
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+                                            await approveDocument(selectedId, doc.id, actor.name);
+                                            toast.success('서류를 승인했습니다.');
+                                            setCrmData({ ...crmData });
+                                          }} 
+                                          className="px-2 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg whitespace-nowrap press-scale transition-colors"
+                                          title="서류 승인"
+                                        >
                                           ✅ 승인
                                         </button>
-                                        <button onClick={() => setRejectingDocId(doc.id)} className="px-2 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg whitespace-nowrap press-scale transition-colors">
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRejectingDocId(doc.id);
+                                          }} 
+                                          className="px-2 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg whitespace-nowrap press-scale transition-colors"
+                                          title="서류 반려"
+                                        >
                                           ❌ 반려
                                         </button>
                                       </div>
@@ -3208,25 +3250,41 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                   </div>
                                   
                                   {status === 'rejected' && doc.rejectionReason && (
-                                    <div className="ml-7 text-xs text-rose-600 bg-rose-50/50 p-2 rounded-lg border border-rose-100 flex items-start gap-1.5">
-                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                      <span>반려 사유: {doc.rejectionReason}</span>
+                                    <div className="text-xs text-rose-600 bg-rose-50/60 p-2 rounded-lg border border-rose-100 flex items-start gap-1.5 mt-1">
+                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-500" />
+                                      <span className="text-[11px] leading-snug">반려 사유: {doc.rejectionReason}</span>
                                     </div>
                                   )}
 
                                   {rejectingDocId === doc.id && (
-                                    <div className="ml-7 mt-2 flex items-center gap-2">
-                                      <input type="text" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="반려 사유를 입력하세요" className="flex-1 text-xs p-1.5 border border-rose-200 rounded-lg focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 bg-rose-50/30 text-rose-900" />
-                                      <button onClick={async () => {
-                                        if (!rejectReason.trim()) return toast.error('반려 사유를 입력해주세요');
-                                        const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
-                                        await rejectDocument(selectedId, doc.id, actor.name, rejectReason.trim());
-                                        setRejectingDocId(null);
-                                        setRejectReason('');
-                                        toast.success('서류를 반려했습니다.');
-                                        setCrmData({ ...crmData });
-                                      }} className="px-2 py-1.5 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg press-scale">확인</button>
-                                      <button onClick={() => { setRejectingDocId(null); setRejectReason(''); }} className="px-2 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg">취소</button>
+                                    <div className="mt-1.5 flex items-center gap-1.5 pt-1.5 border-t border-rose-100">
+                                      <input 
+                                        type="text" 
+                                        value={rejectReason} 
+                                        onChange={e => setRejectReason(e.target.value)} 
+                                        placeholder="반려 사유를 입력하세요" 
+                                        className="flex-1 text-xs p-1.5 border border-rose-200 rounded-lg focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 bg-rose-50/30 text-rose-900" 
+                                      />
+                                      <button 
+                                        onClick={async () => {
+                                          if (!rejectReason.trim()) return toast.error('반려 사유를 입력해주세요');
+                                          const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+                                          await rejectDocument(selectedId, doc.id, actor.name, rejectReason.trim());
+                                          setRejectingDocId(null);
+                                          setRejectReason('');
+                                          toast.success('서류를 반려했습니다.');
+                                          setCrmData({ ...crmData });
+                                        }} 
+                                        className="px-2 py-1 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg press-scale shrink-0"
+                                      >
+                                        확인
+                                      </button>
+                                      <button 
+                                        onClick={() => { setRejectingDocId(null); setRejectReason(''); }} 
+                                        className="px-2 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg shrink-0"
+                                      >
+                                        취소
+                                      </button>
                                     </div>
                                   )}
                                 </div>
@@ -3235,11 +3293,11 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </div>
                         </div>
 
-                        {/* 추가 요청 서류 리스트 */}
+                        {/* 추가 요청 서류 리스트 (2단 그리드) */}
                         {ext.documentRequests && ext.documentRequests.length > 0 && (
                           <div className="space-y-2">
                             <span className="text-xs font-bold text-slate-700 block">추가 요청 서류 ({ext.documentRequests.length}건)</span>
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                               {ext.documentRequests.map(req => (
                                 <div key={req.id} className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-200 bg-white shadow-xs">
                                   <div className="flex items-center justify-between">
@@ -3260,41 +3318,43 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                           </div>
                         )}
 
-                        {/* 업로드된 파일 리스트 */}
+                        {/* 업로드된 파일 리스트 (2단 그리드) */}
                         {files.length > 0 ? (
                           <div className="space-y-2">
                             <span className="text-xs font-bold text-slate-700 block">전체 첨부 파일 ({files.length}건)</span>
-                            {files.map(f => {
-                              const isClient = f.uploadSource === 'client';
-                              return (
-                                <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-xs">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <FileText className="w-4 h-4 text-brand shrink-0" />
-                                    <div className="flex flex-col min-w-0">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-bold text-slate-800 truncate">{f.name}</span>
-                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isClient ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                                          {isClient ? '고객 제출' : '변호사 업로드'}
-                                        </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {files.map(f => {
+                                const isClient = f.uploadSource === 'client';
+                                return (
+                                  <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <FileText className="w-4 h-4 text-brand shrink-0" />
+                                      <div className="flex flex-col min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs font-bold text-slate-800 truncate">{f.name}</span>
+                                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${isClient ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                                            {isClient ? '고객 제출' : '변호사 업로드'}
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 font-mono mt-0.5">{(f.fileSize ? Math.round(f.fileSize / 1024) : 0)} KB</span>
                                       </div>
-                                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">{(f.fileSize ? Math.round(f.fileSize / 1024) : 0)} KB</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                                      <a href={f.dataUrl} download={f.name} className="text-brand hover:text-brand-hover text-xs font-bold flex items-center gap-0.5 p-1 rounded-lg hover:bg-brand/5 transition-colors" title="다운로드">
+                                        <Download className="w-3.5 h-3.5" />
+                                      </a>
+                                      <button onClick={async () => {
+                                        const latestExt = getCrmExt(selectedId);
+                                        await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: (latestExt.uploadedFiles || []).filter(item => item.id !== f.id) });
+                                        toast.success('파일이 삭제되었습니다.');
+                                      }} className="text-slate-300 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="삭제">
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <a href={f.dataUrl} download={f.name} className="text-brand hover:text-brand-hover text-xs font-bold flex items-center gap-0.5 p-1">
-                                      <Download className="w-3.5 h-3.5" />
-                                    </a>
-                                    <button onClick={async () => {
-                                      const latestExt = getCrmExt(selectedId);
-                                      await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: (latestExt.uploadedFiles || []).filter(item => item.id !== f.id) });
-                                      toast.success('파일이 삭제되었습니다.');
-                                    }} className="text-slate-300 hover:text-rose-500 p-1">
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
                         ) : null}
 
