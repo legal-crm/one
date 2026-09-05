@@ -23,6 +23,7 @@ import {
   loadCrmData, saveCrmClient, updateStaffPermissions,
   type CrmDataStore
 } from '../../services/crmService';
+import { revokeAllUserSessionsByAdmin } from '../../services/sessionService';
 
 // ── 활동 타입 한글 라벨 ──
 const ACTIVITY_TYPE_LABELS: Record<StaffActivityType, { label: string; emoji: string; color: string }> = {
@@ -221,14 +222,15 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const handleSuspend = async (member: StaffMember) => {
     const confirmed = await dialog.confirm({
       title: '활동 정지 확인',
-      message: `${member.name}님의 활동을 정지하시겠습니까?\n해당 직원의 CRM 접근이 즉시 차단됩니다.`,
+      message: `${member.name}님의 활동을 정지하시겠습니까?\n해당 직원의 CRM 접근이 즉시 차단되며 활성 세션이 강제 종료됩니다.`,
       confirmText: '활동 정지',
       variant: 'warning'
     });
     if (!confirmed) return;
     await suspendStaffMember(member.id);
+    await revokeAllUserSessionsByAdmin(member.id, '대표 변호사에 의한 계정 활동 정지');
     setStaffMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: 'suspended' as StaffMemberStatus, isActive: false } : m));
-    recordActivity(member.id, member.name, 'staff_suspended', `${member.name}님의 활동을 정지했습니다.`);
+    recordActivity(member.id, member.name, 'staff_suspended', `${member.name}님의 활동을 정지하고 세션을 강제 종료했습니다.`);
   };
 
   // ── 핸들러: 재활성화 ──
@@ -244,8 +246,9 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
     const target = staffMembers.find(m => m.id === removeTargetId);
     if (!target) return;
     await removeStaffMemberWithReason(removeTargetId, removeReason.trim());
+    await revokeAllUserSessionsByAdmin(removeTargetId, `대표 변호사에 의한 강제 탈퇴: ${removeReason.trim()}`);
     setStaffMembers(prev => prev.map(m => m.id === removeTargetId ? { ...m, status: 'removed' as StaffMemberStatus, isActive: false, removedAt: new Date().toISOString(), removalReason: removeReason.trim() } : m));
-    recordActivity(removeTargetId, target.name, 'staff_removed', `${target.name}님을 강제 탈퇴 처리했습니다. 사유: ${removeReason.trim()}`);
+    recordActivity(removeTargetId, target.name, 'staff_removed', `${target.name}님을 강제 탈퇴 및 세션 폐기 처리했습니다. 사유: ${removeReason.trim()}`);
     setShowRemoveModal(false);
     setRemoveTargetId(''); setRemoveReason('');
 

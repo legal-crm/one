@@ -21,6 +21,9 @@ import PopupEditor from './popup/PopupEditor';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
 import { issueAdminOtp, verifyAdminOtp, getRemainingOtpSeconds } from '../services/otpService';
 import { getHoneypotLogs, clearHoneypotLogs, HoneypotAttackLog } from '../services/honeypotService';
+import GlobalSessionMonitor from './admin/GlobalSessionMonitor';
+import { useSessionGuard } from '../hooks/useSessionGuard';
+import { registerSession } from '../services/sessionService';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -87,7 +90,7 @@ export default function AdminRole({
 }: AdminRoleProps) {
   const dialog = useDialog();
   // Triple tab state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security'>('dashboard');
   const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(mockAdOrders);
@@ -254,6 +257,29 @@ export default function AdminRole({
     };
     verifyOnMount();
   }, []);
+
+  // [SECURITY] 관리자 로그인 시 기기 세션 자동 등록
+  useEffect(() => {
+    if (isLoggedIn) {
+      registerSession({
+        userId: pendingAdminEmail || 'pipj601@gmail.com',
+        userName: '대표 관리자',
+        userEmail: pendingAdminEmail || 'pipj601@gmail.com',
+        userRole: 'ADMIN',
+        firmName: 'my김변 본사 관제센터',
+      });
+    }
+  }, [isLoggedIn, pendingAdminEmail]);
+
+  // [SECURITY] 실시간 세션 가드 (관리자 원격 강제 로그아웃 감시)
+  useSessionGuard({
+    userId: pendingAdminEmail || 'pipj601@gmail.com',
+    isLoggedIn,
+    onForceLogout: () => {
+      secureRemoveItem(SESSION_KEY);
+      setIsLoggedIn(false);
+    },
+  });
 
   // [SECURITY] 지정된 관리자 구글 계정 OAuth 세션 검증
   useEffect(() => {
@@ -940,6 +966,9 @@ export default function AdminRole({
               <button onClick={() => setActiveTab('members')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'members' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <Activity className="w-5 h-5 shrink-0" /><span>회원 모니터링</span>
               </button>
+              <button onClick={() => setActiveTab('security')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'security' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
+                <ShieldAlert className="w-5 h-5 shrink-0 text-indigo-400" /><span>보안 & 세션 관제</span>
+              </button>
 
               {/* 그룹 2: 과금 */}
               <div className="pt-3 pb-1"><div className="border-t border-slate-800" /></div>
@@ -993,7 +1022,7 @@ export default function AdminRole({
             <button onClick={() => setActiveTab('billing')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'billing' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
               <CreditCard className="w-5 h-5" /><span className="text-sm font-bold">과금</span>
             </button>
-            <button onClick={() => { const tabs: Array<typeof activeTab> = ['members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+            <button onClick={() => { const tabs: Array<typeof activeTab> = ['security', 'members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
               <Settings className="w-5 h-5" /><span className="text-sm font-bold">더보기</span>
             </button>
           </div>
@@ -5280,6 +5309,13 @@ export default function AdminRole({
 
               </div>
             )}
+
+          {/* TAB 8: GLOBAL SECURITY & SESSION MONITOR */}
+          {activeTab === 'security' && (
+            <div className="space-y-6 animate-fadeIn">
+              <GlobalSessionMonitor currentAdminEmail={pendingAdminEmail || 'pipj601@gmail.com'} />
+            </div>
+          )}
 
           {/* TAB 7: MEMBER MANAGEMENT & ACTIVITY MONITORING */}
           {activeTab === 'members' && (() => {

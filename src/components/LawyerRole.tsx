@@ -46,6 +46,9 @@ import type { NotificationSettings, NotificationLog } from '../types';
 import PopupContainer from './popup/PopupContainer';
 import LawyerInquiryTab from './lawyer/LawyerInquiryTab';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
+import DeviceSessionManager from './common/DeviceSessionManager';
+import { useSessionGuard } from '../hooks/useSessionGuard';
+import { registerSession } from '../services/sessionService';
 const NewCaseModal = React.lazy(() => import('./lawyer/NewCaseModal'));
 const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalette'));
 import ContractConversionModal from './lawyer/ContractConversionModal';
@@ -101,7 +104,7 @@ export default function LawyerRole({
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
-  const [settingsCategory, setSettingsCategory] = useState<'profile' | 'notifications' | 'rules' | 'notices'>('profile');
+  const [settingsCategory, setSettingsCategory] = useState<'profile' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
   const [settingsSub, setSettingsSub] = useState<string>('profile-edit');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [noticeSearchTerm, setNoticeSearchTerm] = useState<string>('');
@@ -190,6 +193,32 @@ export default function LawyerRole({
       setActiveLawyer(lawyers[0]);
     }
   }, [lawyers, isLoggedIn]);
+
+  // [SECURITY] 로그인 시 실시간 기기 세션 등록
+  useEffect(() => {
+    if (isLoggedIn && activeLawyer?.id) {
+      registerSession({
+        userId: activeLawyer.id,
+        userName: activeLawyer.name,
+        userEmail: (activeLawyer as any).email || `${activeLawyer.id}@mykim.kr`,
+        userRole: 'LAWYER',
+        firmName: activeLawyer.firmName || '법률사무소',
+      });
+    }
+  }, [isLoggedIn, activeLawyer?.id]);
+
+  // [SECURITY] 실시간 세션 가드 (원격 강제 로그아웃 감시)
+  useSessionGuard({
+    userId: activeLawyer?.id,
+    isLoggedIn,
+    onForceLogout: () => {
+      sessionStorage.removeItem('legal_crm_lawyer_session');
+      sessionStorage.removeItem('legal_crm_active_lawyer');
+      sessionStorage.removeItem('pending_lawyer_oauth');
+      setIsLoggedIn(false);
+      setActiveStaffMember(null);
+    },
+  });
 
   // Sync tempFirmName when activeLawyer changes
   useEffect(() => {
@@ -4152,10 +4181,11 @@ export default function LawyerRole({
         {/* TAB 7: 알림 및 플랫폼 설정 */}
         {activeTab === 'settings' && (
           <div className="space-y-4">
-            {/* 1단: 4대 스마트 카테고리 탭 */}
+            {/* 1단: 5대 스마트 카테고리 탭 */}
             <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {[
                 { key: 'profile' as const, label: '👤 프로필 & 브랜딩', defaultSub: 'profile-edit' },
+                { key: 'security' as const, label: '🛡️ 보안 & 기기 관리', defaultSub: 'devices' },
                 { key: 'notifications' as const, label: '🔔 알림 & 보안 연동', defaultSub: 'channels' },
                 { key: 'rules' as const, label: '⚖️ 법률 기준 & 데이터', defaultSub: 'calc-rules' },
                 { key: 'notices' as const, label: '📢 플랫폼 공지', defaultSub: 'notices' },
@@ -4176,6 +4206,17 @@ export default function LawyerRole({
                 </button>
               ))}
             </div>
+
+            {/* 보안 & 기기 관리 뷰 */}
+            {settingsCategory === 'security' && (
+              <DeviceSessionManager
+                userId={activeLawyer.id}
+                userName={activeLawyer.name}
+                userRole="LAWYER"
+                userEmail={(activeLawyer as any).email || `${activeLawyer.id}@mykim.kr`}
+                firmName={activeLawyer.firmName || '법률사무소'}
+              />
+            )}
 
             {/* 2단: 카테고리별 서브 세그먼트 (서브탭이 2개 이상일 때 노출) */}
             {settingsCategory === 'profile' && (
