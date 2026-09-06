@@ -385,7 +385,7 @@ export async function notifyAdminNewAdOrder(order: AdOrder): Promise<{ ok: boole
     }
 
     // 2. 서버리스 알림 API (/api/notify-admin) 호출 -> 텔레그램 / 슬랙 발송
-    const res = await fetch('/api/notify-admin', {
+    const res = await fetch('/api/telegram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -429,7 +429,7 @@ export async function notifyAdminAdConfirmed(order: AdOrder): Promise<{ ok: bool
     const markdown = formatTelegramAdConfirmedCard(order);
     const plainText = `[광고 승인 완료] ${order.lawyerName} - ${order.productName} (${order.totalPrice.toLocaleString()}원) 활성화 완료`;
 
-    const res = await fetch('/api/notify-admin', {
+    const res = await fetch('/api/telegram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
