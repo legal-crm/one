@@ -101,8 +101,8 @@ export async function validateBusinessRegistration(params: NtsValidateParams): P
       }
 
       const isValid = item.valid === '01'; // 01: 일치, 02: 불일치
-      const statusCode = item.status?.b_stt_cd || '01';
-      const statusName = item.status?.b_stt || '계속사업자';
+      const statusCode = item.status?.b_stt_cd || (isValid ? '01' : '02');
+      const statusName = item.status?.b_stt || (isValid ? '계속사업자' : '등록정보 불일치');
 
       let status: 'VALID' | 'INVALID' | 'CLOSED' | 'SUSPENDED' = 'VALID';
       if (!isValid) {
@@ -119,9 +119,10 @@ export async function validateBusinessRegistration(params: NtsValidateParams): P
         status,
         statusCode,
         statusName,
-        taxType: item.status?.tax_type || '부가가치세 일반과세자',
+        taxType: item.status?.tax_type || (isValid ? '부가가치세 일반과세자' : '-'),
         txId: `NTS-TX-${Date.now()}-${cleanBizNum.slice(-4)}`,
         checkedAt: new Date().toISOString(),
+        error: isValid ? undefined : (item.valid_msg || '국세청에 등록된 대표자명 또는 개업일자와 일치하지 않습니다.'),
       };
     } catch (err: any) {
       console.warn('[NTS Service] API 호출 실패, 데모 모드로 폴백:', err.message);
