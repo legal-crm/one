@@ -363,7 +363,7 @@ export interface PopbillServerStatus {
 
 export const checkAlimtokServerStatus = async (): Promise<PopbillServerStatus> => {
   try {
-    const res = await fetch('/api/alimtalk/status');
+    const res = await fetch('/api/alimtok?action=status');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err: any) {

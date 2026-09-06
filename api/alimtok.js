@@ -1,5 +1,6 @@
-// Vercel Serverless Function: 카카오 알림톡 및 LMS/SMS 발송 엔드포인트
-// POST /api/alimtok
+// Vercel Serverless Function: 카카오 알림톡/문자 발송 및 상태/잔액 통합 엔드포인트
+// GET  /api/alimtok?action=status -> 팝빌 상태 및 잔여 포인트 조회
+// POST /api/alimtok               -> 알림톡 발송 (실패 시 LMS/SMS 자동 대체 발송)
 
 import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from './_lib/popbill-service.js';
 
@@ -34,6 +35,91 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // URL 쿼리 파라미터 파싱
+  let isStatusQuery = false;
+  try {
+    const url = new URL(req.url, 'https://mykim.kr');
+    if (url.searchParams.get('action') === 'status') isStatusQuery = true;
+  } catch (_) {}
+
+  const isStatus = req.method === 'GET' || isStatusQuery || req.query?.action === 'status' || req.body?.action === 'status';
+
+  // ─────────────────────────────────────────────────────────────
+  // A. [STATUS / 잔액 조회] 팝빌 연동 상태 및 잔여 포인트 확인
+  // ─────────────────────────────────────────────────────────────
+  if (isStatus) {
+    if (!POPBILL_CONFIG.isConfigured) {
+      return res.status(200).json({
+        ok: true,
+        configured: false,
+        isTest: POPBILL_CONFIG.isTest,
+        corpNum: POPBILL_CONFIG.corpNum,
+        userId: POPBILL_CONFIG.userId,
+        plusFriendId: POPBILL_CONFIG.plusFriendId,
+        senderPhone: POPBILL_CONFIG.senderPhone,
+        balance: 0,
+        partnerBalance: 0,
+        channelStatus: 'UNCONFIGURED',
+        statusMessage: '팝빌 API 인증키(POPBILL_LINK_ID, POPBILL_SECRET_KEY) 미등록 상태 (현재 모의 발송 모드 작동 중)',
+        senders: [POPBILL_CONFIG.senderPhone],
+        plusFriends: [{ plusFriendID: POPBILL_CONFIG.plusFriendId, state: 'READY' }],
+        templates: [],
+      });
+    }
+
+    try {
+      const corpNum = POPBILL_CONFIG.corpNum;
+
+      const balance = await new Promise((resolve, reject) => {
+        kakaoService.getBalance(corpNum, (res) => resolve(res), (err) => reject(err));
+      }).catch(() => 0);
+
+      const partnerBalance = await new Promise((resolve, reject) => {
+        kakaoService.getPartnerBalance(corpNum, (res) => resolve(res), (err) => reject(err));
+      }).catch(() => 0);
+
+      const senders = await new Promise((resolve, reject) => {
+        kakaoService.getSenderNumberList(corpNum, (res) => resolve(res), (err) => reject(err));
+      }).catch(() => []);
+
+      const plusFriends = await new Promise((resolve, reject) => {
+        kakaoService.listPlusFriendID(corpNum, (res) => resolve(res), (err) => reject(err));
+      }).catch(() => []);
+
+      const templates = await new Promise((resolve, reject) => {
+        kakaoService.listATSTemplate(corpNum, (res) => resolve(res), (err) => reject(err));
+      }).catch(() => []);
+
+      return res.status(200).json({
+        ok: true,
+        configured: true,
+        isTest: POPBILL_CONFIG.isTest,
+        corpNum,
+        userId: POPBILL_CONFIG.userId,
+        plusFriendId: POPBILL_CONFIG.plusFriendId,
+        senderPhone: POPBILL_CONFIG.senderPhone,
+        balance: typeof balance === 'number' ? balance : 0,
+        partnerBalance: typeof partnerBalance === 'number' ? partnerBalance : 0,
+        channelStatus: plusFriends.length > 0 ? 'CONNECTED' : 'STANDBY',
+        statusMessage: '팝빌 카카오 알림톡/문자 서비스 정상 연동 활성화됨',
+        senders,
+        plusFriends,
+        templates,
+      });
+    } catch (err) {
+      console.error('[Popbill Status Check Error]:', err);
+      return res.status(200).json({
+        ok: false,
+        configured: true,
+        error: err.message || '팝빌 상태 조회 중 오류가 발생했습니다.',
+        code: err.code || -1,
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // B. [발송] 카카오 알림톡 및 LMS/SMS 대체 발송
+  // ─────────────────────────────────────────────────────────────
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
@@ -50,7 +136,7 @@ export default async function handler(req, res) {
     sender,            // 발신번호
     buttons,           // 알림톡 버튼 배열
     reserveTime,       // 예약일시 (YYYYMMDDHHmmss, 없으면 즉시)
-  } = req.body;
+  } = req.body || {};
 
   if (!phone) {
     return res.status(400).json({ ok: false, error: '수신번호(phone)는 필수입니다.' });
@@ -65,7 +151,7 @@ export default async function handler(req, res) {
   const finalAltSubject = altSubject || '[my김변 법률센터] 안내';
   const finalAltContent = altContent || content;
 
-  // ── 1. 팝빌 환경변수 미등록 시 모의(Mock) 발송 지원 ──
+  // 1. 팝빌 환경변수 미등록 시 모의(Mock) 발송 지원
   if (!POPBILL_CONFIG.isConfigured) {
     console.log('[Alimtok Mock Send]', {
       phone: cleanPhone,
@@ -86,7 +172,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── 2. 팝빌 실제 알림톡(ATS) 발송 (카카오톡 우선 + 미수신시 LMS 자동 대체 전송) ──
+  // 2. 팝빌 실제 알림톡(ATS) 발송 (카카오톡 우선 + 미수신시 LMS 자동 대체 전송)
   try {
     const popbillButtons = Array.isArray(buttons) ? buttons.map(b => ({
       n: b.name || b.n,
@@ -96,7 +182,6 @@ export default async function handler(req, res) {
     })) : null;
 
     const receiptNum = await new Promise((resolve, reject) => {
-      // sendATS_one(CorpNum, templateCode, Sender, content, altSubject, altContent, altSendType, sndDT, receiver, receiverName, UserID, requestNum, btns, success, error)
       kakaoService.sendATS_one(
         POPBILL_CONFIG.corpNum,
         finalTemplateCode,
@@ -129,7 +214,7 @@ export default async function handler(req, res) {
   } catch (atsError) {
     console.warn('[Alimtok ATS Failed -> Fallback to LMS Check]:', atsError);
 
-    // ── 3. 카카오 템플릿 미승인/불일치 시 팝빌 LMS/SMS로 무중단 자동 대체 발송 ──
+    // 3. 카카오 템플릿 미승인/불일치 시 팝빌 LMS/SMS로 무중단 자동 대체 발송
     try {
       const isShort = content.length <= 90; // 90바이트 이하는 SMS 가능, 긴 문장은 LMS
       const lmsReceiptNum = await new Promise((resolve, reject) => {
