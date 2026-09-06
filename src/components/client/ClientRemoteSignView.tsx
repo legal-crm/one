@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Smartphone, CheckCircle2, AlertTriangle, 
-  FileText, Check, Loader2, Lock, ArrowRight, Building2, User 
+  FileText, Check, Loader2, Lock, ArrowRight, Building2, User,
+  ExternalLink, ChevronDown, ChevronUp 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
 import { getContract, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
 import SignatureCanvas from '../lawyer/SignatureCanvas';
+import LegalContractTermsModal, { TermKey, LEGAL_TERMS_DATA } from '../common/LegalContractTermsModal';
 
 interface Props {
   cid: string;
@@ -19,9 +21,13 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const [contract, setContract] = useState<ElectronicContract | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 약관 동의
+  // 4대 법적 효력 약관 동의 상태
   const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeThirdParty, setAgreeThirdParty] = useState(false);
+  const [agreeProcedure, setAgreeProcedure] = useState(false);
   const [agreeLegalEffect, setAgreeLegalEffect] = useState(false);
+  const [selectedTermKey, setSelectedTermKey] = useState<TermKey | null>(null);
+  const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
 
   // 본인인증
   const [verifying, setVerifying] = useState(false);
@@ -118,8 +124,8 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       toast.error('서명을 먼저 진행해 주세요.');
       return;
     }
-    if (!agreePrivacy || !agreeLegalEffect) {
-      toast.error('필수 동의 항목에 모두 체크해 주세요.');
+    if (!agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect) {
+      toast.error('4대 법적 필수 동의 항목에 모두 체크해 주세요.');
       return;
     }
     if (!verified) {
@@ -337,41 +343,166 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           </div>
         </div>
 
-        {/* 4대 법적 효력 약관 동의 */}
+        {/* 4대 법적 효력 약관 동의 (상세 전문 확인) */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
-          <h3 className="text-sm font-black text-slate-800">법적 효력 필수 동의</h3>
-          
-          <div className="space-y-2.5">
-            <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${agreeLegalEffect ? 'border-brand/30 bg-brand/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-              <input
-                type="checkbox"
-                checked={agreeLegalEffect}
-                onChange={e => setAgreeLegalEffect(e.target.checked)}
-                className="w-4 h-4 rounded accent-[#1E3A5F] mt-0.5 cursor-pointer shrink-0"
-              />
-              <div>
-                <p className="text-xs font-bold text-slate-800">[필수] 전자서명법 제3조 법적 효력 합의</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  본 전자서명은 종이 서면의 자필 서명 및 날인과 동일한 법적 효력을 가짐에 동의합니다.
-                </p>
-              </div>
-            </label>
-
-            <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${agreePrivacy ? 'border-brand/30 bg-brand/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-              <input
-                type="checkbox"
-                checked={agreePrivacy}
-                onChange={e => setAgreePrivacy(e.target.checked)}
-                className="w-4 h-4 rounded accent-[#1E3A5F] mt-0.5 cursor-pointer shrink-0"
-              />
-              <div>
-                <p className="text-xs font-bold text-slate-800">[필수] 개인정보 수집 및 위임 사무 처리 동의</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  법무법인의 사건 대리 및 법원 제출 서류 작성을 위한 개인정보 수집·이용에 동의합니다.
-                </p>
-              </div>
-            </label>
+          <div>
+            <h3 className="text-sm font-black text-slate-800">법적 효력 필수 동의 (4대 조항)</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              법적 효력 충족을 위해 각 조항의 상세 전문을 확인하고 동의해 주십시오.
+            </p>
           </div>
+
+          {/* 전체 동의 바 */}
+          {(() => {
+            const allChecked = agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect;
+            const toggleAll = (checked: boolean) => {
+              setAgreePrivacy(checked);
+              setAgreeThirdParty(checked);
+              setAgreeProcedure(checked);
+              setAgreeLegalEffect(checked);
+            };
+
+            const clientTerms: Array<{
+              key: TermKey;
+              checked: boolean;
+              set: (v: boolean) => void;
+              title: string;
+              desc: string;
+              badge: string;
+            }> = [
+              {
+                key: 'legalEffect',
+                checked: agreeLegalEffect,
+                set: setAgreeLegalEffect,
+                title: '전자서명법 제3조 법적 효력 합의 (필수)',
+                desc: '본 전자서명은 종이 서면의 자필 서명과 동일한 법적 효력을 가짐에 합의합니다.',
+                badge: '전자서명법 제3조',
+              },
+              {
+                key: 'privacy',
+                checked: agreePrivacy,
+                set: setAgreePrivacy,
+                title: '개인정보 수집 및 위임 사무 처리 동의 (필수)',
+                desc: '법무법인의 사건 대리 및 법원 서류 작성을 위한 개인정보 수집·이용에 동의합니다.',
+                badge: '개인정보보호법 제15조·제22조',
+              },
+              {
+                key: 'thirdParty',
+                checked: agreeThirdParty,
+                set: setAgreeThirdParty,
+                title: '제3자 정보제공 동의 (필수)',
+                desc: '법원, 채권 금융기관, 신용정보원 등에 사건 접수 및 심사를 위한 정보 제공에 동의합니다.',
+                badge: '개인정보보호법 제17조',
+              },
+              {
+                key: 'procedure',
+                checked: agreeProcedure,
+                set: setAgreeProcedure,
+                title: '사건 진행 절차 및 유의사항 확인 (필수)',
+                desc: '사법 심사 결과 보장 불가 고지, 소요 기간, 면책 불허가 사유 등을 충분히 확인하였습니다.',
+                badge: '변호사법 광고규정 준수',
+              },
+            ];
+
+            return (
+              <div className="space-y-2.5">
+                <label className={`flex items-center justify-between p-3.5 rounded-xl border-2 cursor-pointer transition-colors ${
+                  allChecked ? 'border-brand bg-brand/5' : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100/70'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      onChange={e => toggleAll(e.target.checked)}
+                      className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs font-black text-slate-900">
+                      모든 필수 약관에 전체 동의합니다
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {allChecked ? '완료' : '1클릭 동의'}
+                  </span>
+                </label>
+
+                {clientTerms.map(item => {
+                  const isExpanded = expandedTerms[item.key] ?? false;
+                  const termDef = LEGAL_TERMS_DATA[item.key];
+                  const content = termDef.getContent({
+                    firmName: contract.lawFirmName,
+                    clientName: contract.clientName,
+                    lawyerName: contract.lawyerName,
+                  });
+
+                  return (
+                    <div
+                      key={item.key}
+                      className={`rounded-xl border transition-colors overflow-hidden ${
+                        item.checked ? 'border-brand/30 bg-white' : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      <div className="p-3 flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <label className="flex items-start gap-2.5 cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={item.checked}
+                              onChange={e => item.set(e.target.checked)}
+                              className="w-4 h-4 rounded accent-[#1E3A5F] mt-0.5 cursor-pointer shrink-0"
+                            />
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{item.title}</p>
+                              <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">{item.desc}</p>
+                            </div>
+                          </label>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTermKey(item.key)}
+                              className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] cursor-pointer whitespace-nowrap"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>전문 팝업</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedTerms(p => ({ ...p, [item.key]: !p[item.key] }))}
+                              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                              title="상세보기 토글"
+                            >
+                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 아코디언 인라인 전문 */}
+                        {isExpanded && (
+                          <div className="mt-2 p-3 bg-slate-50 border-t border-slate-100 rounded-lg text-[11px] text-slate-700 space-y-2">
+                            <div className="p-2.5 bg-white border border-slate-200 rounded max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                              {content}
+                            </div>
+                            {!item.checked && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  item.set(true);
+                                  toast.success('동의가 완료되었습니다.');
+                                }}
+                                className="w-full py-1.5 bg-[#1E3A5F] text-white font-bold rounded-lg text-xs cursor-pointer"
+                              >
+                                내용 확인 및 동의하기
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         {/* 1단계: 스마트폰 본인인증 (PASS / 문자 실명확인) */}
@@ -472,7 +603,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           <button
             type="button"
             onClick={handleSubmitSignature}
-            disabled={submitting || !verified || !signatureData || !agreePrivacy || !agreeLegalEffect}
+            disabled={submitting || !verified || !signatureData || !agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect}
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-sm cursor-pointer shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-h-[48px]"
           >
             {submitting ? (
@@ -491,6 +622,23 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
             제출 시 전자서명법 및 관련 법령에 따라 법적 구속력을 가지는 계약이 체결됩니다.
           </p>
         </div>
+
+        {/* 정식 법률 조항 전문 팝업 모달 */}
+        <LegalContractTermsModal
+          isOpen={!!selectedTermKey}
+          termKey={selectedTermKey}
+          onClose={() => setSelectedTermKey(null)}
+          onAgree={(key) => {
+            if (key === 'privacy') setAgreePrivacy(true);
+            if (key === 'thirdParty') setAgreeThirdParty(true);
+            if (key === 'procedure') setAgreeProcedure(true);
+            if (key === 'legalEffect') setAgreeLegalEffect(true);
+            toast.success('약관 내용을 확인하고 동의하였습니다.');
+          }}
+          firmName={contract.lawFirmName}
+          clientName={contract.clientName}
+          lawyerName={contract.lawyerName}
+        />
 
       </div>
     </div>
