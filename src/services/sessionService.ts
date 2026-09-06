@@ -157,7 +157,7 @@ export function getCurrentSessionId(): string | null {
 }
 
 /**
- * 신규 세션 등록 (로그인 시 호출)
+ * 신규 세션 등록 (로그인 또는 세션 복원 시 호출)
  */
 export async function registerSession(params: {
   userId: string;
@@ -166,10 +166,49 @@ export async function registerSession(params: {
   userRole: UserRoleCategory;
   firmName?: string;
 }): Promise<UserSession> {
-  const deviceInfo = await getClientDeviceInfo();
-  const sessionId = generateUUID();
+  const existingSessionId = sessionStorage.getItem(CURRENT_SESSION_ID_KEY);
+  const allSessions = loadStoredSessions();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7일 유효
+
+  // 1. 현재 브라우저 탭에 이미 활성 세션이 유효하게 등록되어 있다면 중복 생성 대신 갱신(Touch)
+  if (existingSessionId) {
+    const existingIndex = allSessions.findIndex(
+      s => s.id === existingSessionId && s.status === 'active' && s.userId === params.userId
+    );
+    if (existingIndex !== -1) {
+      const existing = allSessions[existingIndex];
+      existing.lastActiveAt = now.toISOString();
+      existing.userName = params.userName;
+      if (params.userEmail) existing.userEmail = params.userEmail;
+      if (params.firmName) existing.firmName = params.firmName;
+      saveStoredSessions(allSessions);
+      return existing;
+    }
+  }
+
+  const deviceInfo = await getClientDeviceInfo();
+  const sessionId = existingSessionId || generateUUID();
+
+  // 2. 동일 기기(동일 OS + 브라우저 + IP + 기기유형)의 이전 유령 세션 정리
+  // 새로고침이나 탭 재실행 시 이전 세션이 '다른 기기'로 오인 누적되지 않도록 이전 동일 기기 세션을 자동 만료 처리
+  const cleanedSessions = allSessions.map(s => {
+    if (
+      s.userId === params.userId &&
+      s.status === 'active' &&
+      s.device.os === deviceInfo.os &&
+      s.device.browser === deviceInfo.browser &&
+      s.device.ipAddress === deviceInfo.ipAddress &&
+      s.device.deviceType === deviceInfo.deviceType
+    ) {
+      return {
+        ...s,
+        status: 'expired' as const,
+        revokeReason: '동일 기기에서 신규 세션 연결로 이전 세션 만료',
+      };
+    }
+    return s;
+  });
 
   const newSession: UserSession = {
     id: sessionId,
@@ -189,10 +228,8 @@ export async function registerSession(params: {
   // 현재 탭 세션 ID 저장
   sessionStorage.setItem(CURRENT_SESSION_ID_KEY, sessionId);
 
-  // 로컬 스토리지에 세션 동기화
-  const existing = loadStoredSessions();
-  // 동일한 현재 탭 이전 세션이 있었다면 정리
-  const filtered = existing.filter(s => s.id !== sessionId);
+  // 로컬 스토리지에 세션 동기화 (기존 동일 ID 제거 후 신규 추가)
+  const filtered = cleanedSessions.filter(s => s.id !== sessionId);
   filtered.unshift(newSession);
   saveStoredSessions(filtered);
 
@@ -236,10 +273,54 @@ export async function registerSession(params: {
 
 /**
  * 특정 사용자의 활성 세션 목록 조회 (변호사/관리자 본인용)
+ * 동일 기기(동일 PC/브라우저) 중복 세션 자동 정리 및 만료 처리 포함
  */
 export async function getActiveSessions(userId: string): Promise<UserSession[]> {
   const currentSessionId = getCurrentSessionId();
   const allSessions = loadStoredSessions();
+  const now = Date.now();
+  let changed = false;
+
+  // 1. 만료 시간 지난 세션 자동 만료 처리
+  allSessions.forEach(s => {
+    if (s.status === 'active' && s.expiresAt && new Date(s.expiresAt).getTime() < now) {
+      s.status = 'expired';
+      changed = true;
+    }
+  });
+
+  // 2. 동일 사용자, 동일 기기(OS + 브라우저 + IP)의 중복 세션 자동 통합 정리
+  // 현재 접속 세션이거나 가장 최근 세션 1개만 활성으로 유지
+  const activeForUser = allSessions.filter(s => s.userId === userId && s.status === 'active');
+  const seenDevices = new Set<string>();
+
+  // 현재 활성 세션의 기기 핑거프린트 우선 등록
+  if (currentSessionId) {
+    const current = activeForUser.find(s => s.id === currentSessionId);
+    if (current) {
+      const key = `${current.device.os}__${current.device.browser}__${current.device.ipAddress}__${current.device.deviceType}`;
+      seenDevices.add(key);
+    }
+  }
+
+  // 최신 활동순으로 정렬하여 동일 기기의 오래된 잔여 세션은 자동 만료 정리
+  activeForUser
+    .sort((a, b) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime())
+    .forEach(s => {
+      const key = `${s.device.os}__${s.device.browser}__${s.device.ipAddress}__${s.device.deviceType}`;
+      if (s.id === currentSessionId) return;
+      if (seenDevices.has(key)) {
+        s.status = 'expired';
+        s.revokeReason = '동일 기기 중복 세션 자동 통합 정리';
+        changed = true;
+      } else {
+        seenDevices.add(key);
+      }
+    });
+
+  if (changed) {
+    saveStoredSessions(allSessions);
+  }
 
   return allSessions
     .filter(s => s.userId === userId && s.status === 'active')

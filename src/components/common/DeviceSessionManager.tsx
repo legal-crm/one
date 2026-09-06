@@ -17,7 +17,9 @@ import {
   CheckCircle2, 
   XCircle, 
   Info,
-  ShieldAlert
+  ShieldAlert,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserSession, LoginAuditEntry } from '../../types/session';
@@ -71,9 +73,43 @@ export default function DeviceSessionManager({
     fetchSessionData();
   }, [fetchSessionData]);
 
-  // 현재 기기와 다른 기기 분리
+  // 현재 기기와 다른 기기 분리 및 페이징 (10개 단위)
+  const SESSIONS_PER_PAGE = 10;
+  const [devicePage, setDevicePage] = useState(1);
   const currentSession = sessions.find(s => s.isCurrentSession);
   const otherSessions = sessions.filter(s => !s.isCurrentSession);
+  const totalDevicePages = Math.max(1, Math.ceil(otherSessions.length / SESSIONS_PER_PAGE));
+  const validDevicePage = Math.min(devicePage, totalDevicePages);
+  const pagedOtherSessions = otherSessions.slice((validDevicePage - 1) * SESSIONS_PER_PAGE, validDevicePage * SESSIONS_PER_PAGE);
+
+  // 접속 이력 페이징 (10개 단위)
+  const HISTORY_PER_PAGE = 10;
+  const [historyPage, setHistoryPage] = useState(1);
+  const totalHistoryPages = Math.max(1, Math.ceil(loginHistory.length / HISTORY_PER_PAGE));
+  const validHistoryPage = Math.min(historyPage, totalHistoryPages);
+  const pagedHistory = loginHistory.slice((validHistoryPage - 1) * HISTORY_PER_PAGE, validHistoryPage * HISTORY_PER_PAGE);
+
+  // 페이지 버튼 리스트 생성 헬퍼
+  const getVisiblePages = (current: number, total: number) => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages: (number | string)[] = [];
+    if (current <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(total);
+    } else if (current >= total - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = total - 4; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+      pages.push('...');
+      pages.push(total);
+    }
+    return pages;
+  };
 
   // 기기 형태별 아이콘 렌더링
   const renderDeviceIcon = (type: string, className = 'w-5 h-5') => {
@@ -295,7 +331,7 @@ export default function DeviceSessionManager({
 
             {otherSessions.length > 0 ? (
               <div className="space-y-3">
-                {otherSessions.map((s) => (
+                {pagedOtherSessions.map((s) => (
                   <div 
                     key={s.id}
                     className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -334,6 +370,71 @@ export default function DeviceSessionManager({
                     </button>
                   </div>
                 ))}
+
+                {/* 다른 활성 기기 목록 10개 단위 페이지네이션 */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <p className="text-xs text-slate-600 font-medium">
+                    전체 다른 기기 <span className="font-bold text-slate-800">{otherSessions.length}</span>대 중{' '}
+                    <span className="font-bold text-slate-800">
+                      {(validDevicePage - 1) * SESSIONS_PER_PAGE + 1}-{Math.min(validDevicePage * SESSIONS_PER_PAGE, otherSessions.length)}
+                    </span>
+                    대 표시 ({validDevicePage} / {totalDevicePages} 페이지)
+                  </p>
+
+                  {totalDevicePages > 1 && (
+                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded-xl shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setDevicePage(p => Math.max(1, p - 1))}
+                        disabled={validDevicePage === 1}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200/70 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-1 press-scale"
+                        title="이전 10대 페이지"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">이전</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {getVisiblePages(validDevicePage, totalDevicePages).map((p, idx) => {
+                          if (p === '...') {
+                            return (
+                              <span key={`dev-ellipsis-${idx}`} className="px-1 text-xs text-slate-400 select-none">
+                                ...
+                              </span>
+                            );
+                          }
+                          const pageNum = p as number;
+                          const isActive = validDevicePage === pageNum;
+                          return (
+                            <button
+                              key={`dev-page-${pageNum}`}
+                              type="button"
+                              onClick={() => setDevicePage(pageNum)}
+                              className={`min-w-[32px] h-8 text-xs font-bold rounded-lg transition-all cursor-pointer press-scale ${
+                                isActive
+                                  ? 'bg-[#1E3A5F] text-white shadow-2xs'
+                                  : 'text-slate-600 hover:bg-slate-200/70'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setDevicePage(p => Math.min(totalDevicePages, p + 1))}
+                        disabled={validDevicePage === totalDevicePages}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200/70 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-1 press-scale"
+                        title="다음 10대 페이지"
+                      >
+                        <span className="hidden sm:inline">다음</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center space-y-2">
@@ -387,7 +488,7 @@ export default function DeviceSessionManager({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {loginHistory.map((item) => (
+                {pagedHistory.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-3 font-medium text-slate-800 whitespace-nowrap">
                       {new Date(item.timestamp).toLocaleString('ko-KR', {
@@ -426,6 +527,73 @@ export default function DeviceSessionManager({
               </tbody>
             </table>
           </div>
+
+          {/* 접속 이력 10건 단위 페이지네이션 */}
+          {loginHistory.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200">
+              <p className="text-xs text-slate-600 font-medium">
+                전체 <span className="font-bold text-slate-800">{loginHistory.length}</span>건 중{' '}
+                <span className="font-bold text-slate-800">
+                  {(validHistoryPage - 1) * HISTORY_PER_PAGE + 1}-{Math.min(validHistoryPage * HISTORY_PER_PAGE, loginHistory.length)}
+                </span>
+                건 표시 ({validHistoryPage} / {totalHistoryPages} 페이지)
+              </p>
+
+              {totalHistoryPages > 1 && (
+                <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded-xl shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                    disabled={validHistoryPage === 1}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200/70 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-1 press-scale"
+                    title="이전 10건 페이지"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">이전</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {getVisiblePages(validHistoryPage, totalHistoryPages).map((p, idx) => {
+                      if (p === '...') {
+                        return (
+                          <span key={`hist-ellipsis-${idx}`} className="px-1 text-xs text-slate-400 select-none">
+                            ...
+                          </span>
+                        );
+                      }
+                      const pageNum = p as number;
+                      const isActive = validHistoryPage === pageNum;
+                      return (
+                        <button
+                          key={`hist-page-${pageNum}`}
+                          type="button"
+                          onClick={() => setHistoryPage(pageNum)}
+                          className={`min-w-[32px] h-8 text-xs font-bold rounded-lg transition-all cursor-pointer press-scale ${
+                            isActive
+                              ? 'bg-[#1E3A5F] text-white shadow-2xs'
+                              : 'text-slate-600 hover:bg-slate-200/70'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+                    disabled={validHistoryPage === totalHistoryPages}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200/70 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-1 press-scale"
+                    title="다음 10건 페이지"
+                  >
+                    <span className="hidden sm:inline">다음</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
