@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { FileSignature, Clock, CheckCircle2, Plus, Search, Eye, Trash2, RefreshCw } from 'lucide-react';
+import { FileSignature, Clock, CheckCircle2, Plus, Search, Eye, Trash2, RefreshCw, FolderKanban } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import type { ElectronicContract, ContractStatus } from '../../types';
 import { CONTRACT_STATUS_CONFIG } from '../../types';
 import { loadContracts, loadContractsLocal, saveContract, deleteContract, createContract, seedMockContracts } from '../../services/contractService';
 import ContractWizard from './ContractWizard';
+import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 
 interface Props {
   lawyerName: string;
@@ -21,6 +22,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName }: Props
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingContract, setEditingContract] = useState<ElectronicContract | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const refreshContracts = useCallback(async () => {
     const list = await loadContracts();
@@ -92,6 +94,13 @@ export default function ContractManagementTab({ lawyerName, lawFirmName }: Props
           </div>
           <div className="flex items-center gap-2">
             <button onClick={refreshContracts} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer" title="새로고침"><RefreshCw className="w-4 h-4" /></button>
+            <button
+              onClick={() => setLibraryOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap min-h-[44px] border border-indigo-200 text-sm shadow-2xs"
+            >
+              <FolderKanban className="w-4 h-4 text-indigo-600" />
+              <span>📂 문서함 (서식 관리)</span>
+            </button>
             <button onClick={handleNewContract} className="flex items-center gap-2 px-4 py-2.5 bg-[#1E3A5F] text-white font-bold rounded-xl hover:bg-[#162d4a] transition-colors cursor-pointer whitespace-nowrap min-h-[44px] shadow-xs text-sm">
               <Plus className="w-4 h-4" /> 새 계약
             </button>
@@ -221,6 +230,14 @@ export default function ContractManagementTab({ lawyerName, lawFirmName }: Props
           </tbody>
         </table>
       </div>
+
+      {/* 문서함 (서식 보관함) 단독 모달 */}
+      <ContractDocLibraryModal
+        isOpen={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        lawyerName={lawyerName}
+        lawFirmName={lawFirmName}
+      />
     </div>
   );
 }

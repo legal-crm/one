@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Smartphone, CheckCircle2, AlertTriangle, 
   FileText, Check, Loader2, Lock, ArrowRight, Building2, User,
-  ExternalLink, ChevronDown, ChevronUp 
+  ExternalLink, ChevronDown, ChevronUp, ShieldAlert, Highlighter 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
@@ -10,6 +10,7 @@ import { getContract, saveContract, addAuditLog, finalizeContractWithIntegrity }
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
 import SignatureCanvas from '../lawyer/SignatureCanvas';
 import LegalContractTermsModal, { TermKey, LEGAL_TERMS_DATA } from '../common/LegalContractTermsModal';
+import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
 
 interface Props {
   cid: string;
@@ -33,6 +34,9 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [repMatchMessage, setRepMatchMessage] = useState<string | null>(null);
+
+  // 고객 직접 확약 타이핑 입력 상태 (문서 ID -> 입력한 텍스트)
+  const [userConfirmations, setUserConfirmations] = useState<Record<string, string>>({});
 
   // 서명 상태
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -133,12 +137,30 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       return;
     }
 
+    // 직접 확약 타이핑 문구 검증 (약관규제법 제3조 설명의무 부인방지)
+    const docsWithRequiredConfirmation = contract.documents.filter(d => d.included && d.requiredConfirmationText);
+    for (const doc of docsWithRequiredConfirmation) {
+      const userText = (userConfirmations[doc.id] || '').trim();
+      const targetText = (doc.requiredConfirmationText || '').trim();
+      if (userText !== targetText) {
+        toast.error(`[${doc.title}] 중요 조항 직접 확인 문구를 정확히 입력해 주세요.`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const now = new Date().toISOString();
-      const updatedDocs = contract.documents.map(d => 
-        d.included ? { ...d, clientSignature: signatureData, clientSignedAt: now } : d
-      );
+      const updatedDocs = contract.documents.map(d => {
+        if (!d.included) return d;
+        return {
+          ...d,
+          clientSignature: signatureData,
+          clientSignedAt: now,
+          clientConfirmationText: d.requiredConfirmationText ? (userConfirmations[d.id] || '').trim() : undefined,
+          confirmedAt: d.requiredConfirmationText ? now : undefined,
+        };
+      });
 
       let updatedContract: ElectronicContract = {
         ...contract,
@@ -146,11 +168,12 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
         updatedAt: now,
       };
 
-      updatedContract = addAuditLog(
-        updatedContract, 
-        `위임인(${contract.clientName}) 모바일 스마트폰 본인인증 및 전자서명 제출`, 
-        'client'
-      );
+      const confirmationLogs = docsWithRequiredConfirmation.map(d => `[${d.title}: '${userConfirmations[d.id]}']`).join(', ');
+      const auditMsg = confirmationLogs 
+        ? `위임인(${contract.clientName}) 모바일 본인인증, 중요조항 직접자필확약(${confirmationLogs}) 및 전자서명 제출`
+        : `위임인(${contract.clientName}) 모바일 스마트폰 본인인증 및 전자서명 제출`;
+
+      updatedContract = addAuditLog(updatedContract, auditMsg, 'client');
 
       // 변호사 서명이 이미 있는 경우 즉시 최종 3중 타임스탬프 체결 봉인
       const lawyerSig = contract.documents.find(d => d.lawyerSignature)?.lawyerSignature;
@@ -334,8 +357,11 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 </button>
 
                 {expandedDoc === doc.id && (
-                  <div className="p-4 bg-white border-t border-slate-100 text-xs text-slate-600 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap font-sans">
-                    {doc.content}
+                  <div className="p-4 bg-white border-t border-slate-100 max-h-64 overflow-y-auto">
+                    <HighlightedDocumentViewer
+                      content={doc.content}
+                      requiredConfirmationText={doc.requiredConfirmationText}
+                    />
                   </div>
                 )}
               </div>
@@ -554,11 +580,120 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           )}
         </div>
 
-        {/* 2단계: 자필 전자 서명 */}
+        {/* 2단계 (조건부): 중요 조항 직접 자필확약 문구 입력 (금융·보험사 벤치마킹) */}
+        {(() => {
+          const confirmationDocs = includedDocs.filter(d => d.requiredConfirmationText);
+          if (confirmationDocs.length === 0) return null;
+
+          const allConfirmationsMatch = confirmationDocs.every(
+            d => (userConfirmations[d.id] || '').trim() === (d.requiredConfirmationText || '').trim()
+          );
+
+          return (
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-600" />
+                  <span>2단계: 중요 조항 직접 자필확약 입력</span>
+                </h3>
+                <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                  약관규제법 제3조 준수
+                </span>
+              </div>
+
+              <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                <p className="font-bold mb-1">
+                  💡 금융기관·보험사 전자청약과 동일한 법적 부인방지 확인 절차입니다.
+                </p>
+                <p className="text-[11px] text-amber-800/90">
+                  의뢰인 보호 및 설명의무 이행을 위해, 아래 각 문서별 지정 문구를 <strong>토씨 하나까지 정확히 직접 타이핑</strong>해 주셔야 서명 제출이 승인됩니다.
+                </p>
+              </div>
+
+              <div className="space-y-3.5">
+                {confirmationDocs.map(doc => {
+                  const targetText = (doc.requiredConfirmationText || '').trim();
+                  const currentVal = userConfirmations[doc.id] || '';
+                  const isMatch = currentVal.trim() === targetText;
+
+                  return (
+                    <div key={doc.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <span>{CONTRACT_DOC_TYPES[doc.type]?.emoji || '📄'}</span>
+                          <span>{doc.title}</span>
+                        </span>
+                        {isMatch ? (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>일치 완료</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                            직접 입력 대기
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-slate-700">
+                        <span className="text-[11px] text-slate-400 block mb-1">입력 요구 문구:</span>
+                        <div className="p-2.5 bg-yellow-100/80 border border-yellow-300 rounded-lg font-black text-amber-950 select-none">
+                          "{targetText}"
+                        </div>
+                      </div>
+
+                      <div>
+                        <input
+                          type="text"
+                          value={currentVal}
+                          onChange={e => setUserConfirmations(prev => ({ ...prev, [doc.id]: e.target.value }))}
+                          placeholder={`위 문구("${targetText}")를 그대로 직접 입력하세요`}
+                          className={`w-full px-3 py-2.5 bg-white border rounded-xl text-xs font-bold transition-all ${
+                            isMatch
+                              ? 'border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950'
+                              : currentVal.length > 0
+                              ? 'border-amber-400 text-slate-900'
+                              : 'border-slate-200 text-slate-900'
+                          } focus:outline-none`}
+                        />
+                        <div className="mt-1 flex items-center justify-between text-[11px]">
+                          {isMatch ? (
+                            <span className="text-emerald-600 font-bold flex items-center gap-1">
+                              <Check className="w-3.5 h-3.5" /> 정확히 일치합니다.
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">
+                              {currentVal.length === 0 ? '공백과 띄어쓰기를 포함하여 입력하세요.' : '문구가 아직 일치하지 않습니다.'}
+                            </span>
+                          )}
+                          <span className="text-slate-400">{currentVal.length} / {targetText.length}자</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {allConfirmationsMatch ? (
+                <div className="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>모든 중요 조항에 대한 직접 자필확약 입력이 정상 확인되었습니다.</span>
+                </div>
+              ) : (
+                <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>모든 문구를 정확히 입력해야 아래 서명 단계가 최종 완료됩니다.</span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* 2단계 또는 3단계: 자필 전자 서명 */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-slate-800">
-              2단계: 위임인 자필 서명
+              {includedDocs.some(d => d.requiredConfirmationText) ? '3단계: 위임인 자필 서명 날인' : '2단계: 위임인 자필 서명 날인'}
             </h3>
             {!verified && (
               <span className="text-[11px] text-amber-600 font-bold">

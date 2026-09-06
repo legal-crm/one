@@ -3,17 +3,27 @@ import {
   ArrowLeft, ArrowRight, User, CreditCard, FileText, Shield, 
   PenTool, Eye, Plus, Trash2, GripVertical, Check, X, AlertTriangle, 
   Download, Loader2, Building2, Smartphone, Lock, CheckCircle2, 
-  Share2, ShieldCheck, RefreshCw, Clock, ChevronDown, ChevronUp, ExternalLink 
+  Share2, ShieldCheck, RefreshCw, Clock, ChevronDown, ChevronUp, ExternalLink,
+  FolderKanban, Edit3, RotateCcw, Highlighter, ShieldAlert
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import type { ElectronicContract, ContractDocument, ContractDocType, FeeInstallment } from '../../types';
 import { CONTRACT_DOC_TYPES } from '../../types';
 import { calculateCourtCosts, generateFeeSchedule, saveContract, getContract, addAuditLog, updateContractStatus, finalizeContractWithIntegrity } from '../../services/contractService';
 import { validateBusinessRegistration } from '../../services/ntsService';
+import { 
+  STANDARD_LEGAL_TEMPLATES, 
+  templateToContractDocument, 
+  LawyerContractTemplate 
+} from '../../services/contractTemplateService';
 import SignatureCanvas from './SignatureCanvas';
 import AuditTrailCertificate from './AuditTrailCertificate';
 import ClientSignShareModal from './ClientSignShareModal';
 import LegalContractTermsModal, { TermKey, LEGAL_TERMS_DATA } from '../common/LegalContractTermsModal';
+import { ContractDocEditModal } from './ContractDocEditModal';
+import { ContractDocLibraryModal } from './ContractDocLibraryModal';
+import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
 
 interface Props {
   contract: ElectronicContract;
@@ -31,6 +41,7 @@ const STEPS = [
 ];
 
 export default function ContractWizard({ contract: initialContract, onClose, onSave }: Props) {
+  const dialog = useDialog();
   const [step, setStep] = useState(0);
   const [c, setC] = useState<ElectronicContract>(() => ({
     ...initialContract,
@@ -39,6 +50,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     documents: initialContract.documents || [],
     auditTrail: initialContract.auditTrail || [],
   }));
+
+  // 문서 편집 및 문서함 모달 상태
+  const [editingDoc, setEditingDoc] = useState<ContractDocument | null>(null);
+  const [libraryModalOpen, setLibraryModalOpen] = useState(false);
+  const [expandedDocPreviews, setExpandedDocPreviews] = useState<Record<string, boolean>>({});
 
   // 사업자 검증 상태
   const [isBusiness, setIsBusiness] = useState<boolean>(c.isBusiness ?? false);
@@ -360,39 +376,334 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   };
 
   // ─── Step 3: 계약 문서 관리 ───
-  const renderDocuments = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-black text-slate-800">📋 계약 문서 관리</h3>
-        <button onClick={() => {
-          const newDoc: ContractDocument = { id: `doc-${Date.now()}`, type: 'custom', title: '새 문서', content: '문서 내용을 입력하세요.', signatureRequired: 'both', order: c.documents.length, included: true };
-          update({ documents: [...c.documents, newDoc] });
-        }} className="flex items-center gap-1.5 text-xs font-bold text-brand bg-brand/10 px-3 py-2 rounded-xl hover:bg-brand/20 cursor-pointer whitespace-nowrap"><Plus className="w-3.5 h-3.5" /> 문서 추가</button>
-      </div>
-      <p className="text-xs text-slate-500">체크된 문서만 최종 계약서에 포함됩니다.</p>
+  const handleRestoreStandard7Docs = async () => {
+    const confirmed = await dialog.confirm({
+      title: '7대 표준서식 일괄 복원',
+      message: '현재 편집된 문서 목록을 대한변호사협회 표준 7대 계약문서(위임계약서, 동의서, 위임장, 분납약정서 등)로 초기화하시겠습니까? (현재 입력된 의뢰인/변호사 정보가 자동 반영됩니다)',
+      confirmText: '복원하기',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
 
-      <div className="space-y-2">
-        {c.documents.sort((a, b) => a.order - b.order).map((doc, i) => (
-          <div key={doc.id} className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${doc.included ? 'border-brand/20 bg-brand/5' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
-            <GripVertical className="w-4 h-4 text-slate-300 shrink-0" />
-            <input type="checkbox" checked={doc.included} onChange={e => {
-              const docs = [...c.documents]; docs[i] = { ...docs[i], included: e.target.checked }; update({ documents: docs });
-            }} className="w-4 h-4 rounded accent-brand cursor-pointer" />
-            <span className="text-lg shrink-0">{CONTRACT_DOC_TYPES[doc.type]?.emoji || '📎'}</span>
-            <div className="flex-1 min-w-0">
-              <input value={doc.title} onChange={e => { const docs = [...c.documents]; docs[i] = { ...docs[i], title: e.target.value }; update({ documents: docs }); }} className="text-sm font-bold text-slate-800 bg-transparent outline-none w-full" />
-              <p className="text-[11px] text-slate-400 truncate">{CONTRACT_DOC_TYPES[doc.type]?.description || '사용자 정의 문서'}</p>
-            </div>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${doc.signatureRequired === 'both' ? 'bg-indigo-50 text-indigo-600' : doc.signatureRequired === 'client' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-              {doc.signatureRequired === 'both' ? '양측 서명' : doc.signatureRequired === 'client' ? '의뢰인 서명' : '변호사 서명'}
-            </span>
-            {doc.clientSignature && <Check className="w-4 h-4 text-emerald-500 shrink-0" />}
-            <button onClick={() => update({ documents: c.documents.filter(d => d.id !== doc.id) })} className="text-slate-400 hover:text-red-500 cursor-pointer shrink-0"><Trash2 className="w-4 h-4" /></button>
+    const std7Types: ContractDocType[] = [
+      'main_contract', 'privacy_consent', 'third_party_consent', 
+      'power_of_attorney', 'installment_agreement', 'procedure_consent', 'id_confirmation'
+    ];
+
+    const newDocs: ContractDocument[] = std7Types.map((type, i) => {
+      const stdTpl = STANDARD_LEGAL_TEMPLATES.find(t => t.type === type) || STANDARD_LEGAL_TEMPLATES[0];
+      return templateToContractDocument(stdTpl, {
+        clientName: c.clientName,
+        clientPhone: c.clientPhone,
+        clientAddress: c.clientAddress,
+        lawyerName: c.lawyerName,
+        lawFirmName: c.lawFirmName,
+        totalFee: c.totalFee,
+        contractDate: c.contractDate,
+      }, i);
+    });
+
+    update({ documents: newDocs });
+    toast.success('7대 법률 표준문서 세트로 복원되었습니다.');
+  };
+
+  const handleDeleteDoc = async (doc: ContractDocument) => {
+    const isRequiredDoc = ['main_contract', 'privacy_consent', 'third_party_consent', 'power_of_attorney'].includes(doc.type);
+    const message = isRequiredDoc
+      ? `"${doc.title}" 문서는 회생·파산 사건의 법정 필수 서식입니다. 삭제 시 전자계약 체결 및 법원 접수에 중대한 결함이 발생할 수 있습니다. 정말 삭제하시겠습니까?`
+      : `"${doc.title}" 문서를 계약서에서 완전히 삭제하시겠습니까?`;
+
+    const confirmed = await dialog.confirm({
+      title: isRequiredDoc ? '⚠️ 필수 법률 문서 삭제 경고' : '계약 문서 삭제',
+      message,
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    update({ documents: c.documents.filter(d => d.id !== doc.id) });
+    toast.success(`"${doc.title}" 문서가 삭제되었습니다.`);
+  };
+
+  const renderDocuments = () => {
+    const sortedDocs = [...c.documents].sort((a, b) => a.order - b.order);
+
+    return (
+      <div className="space-y-6">
+        {/* 상단 툴바 */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-brand" />
+              <span>계약 문서 관리 & 사무소 문서함</span>
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                총 {c.documents.length}종 (선택 {c.documents.filter(d => d.included).length}종)
+              </span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              각 문서별 본문 내용, 특약사항, 형광펜 강조 및 고객 직접 확약 타이핑 문구를 자유롭게 편집할 수 있습니다.
+            </p>
           </div>
-        ))}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* 1. 문서함에서 서식 불러오기 */}
+            <button
+              type="button"
+              onClick={() => setLibraryModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-2 rounded-xl transition-colors cursor-pointer border border-indigo-200 whitespace-nowrap shadow-2xs"
+            >
+              <FolderKanban className="w-4 h-4 text-indigo-600" />
+              <span>📂 문서함에서 불러오기</span>
+            </button>
+
+            {/* 2. 새 빈 문서 작성 */}
+            <button
+              type="button"
+              onClick={() => {
+                const newDoc: ContractDocument = {
+                  id: `doc-${Date.now()}`,
+                  type: 'custom',
+                  title: '새 문서',
+                  content: `새 문서 제목\n\n위임인: ${c.clientName || '의뢰인'}\n수임인: ${c.lawFirmName} ${c.lawyerName}\n\n제 1 조 (목적)\n본 조항의 내용을 입력하세요.`,
+                  signatureRequired: 'both',
+                  order: c.documents.length,
+                  included: true,
+                };
+                update({ documents: [...c.documents, newDoc] });
+                setEditingDoc(newDoc);
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold text-brand bg-brand/10 hover:bg-brand/20 px-3.5 py-2 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>새 문서 작성</span>
+            </button>
+
+            {/* 3. 기본 7대 표준문서 복원 */}
+            <button
+              type="button"
+              onClick={handleRestoreStandard7Docs}
+              className="flex items-center gap-1 px-3 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
+              title="대한변호사협회 7대 표준 문서로 초기화 복원합니다"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>표준양식 복원</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 문서 목록 카드들 */}
+        <div className="space-y-3">
+          {sortedDocs.length === 0 ? (
+            <div className="p-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-3">
+              <p className="text-sm font-bold text-slate-600">포함된 계약 문서가 없습니다.</p>
+              <p className="text-xs text-slate-400">우측 상단의 [문서함에서 불러오기] 또는 [표준양식 복원] 버튼을 눌러 문서를 추가해 주세요.</p>
+              <button
+                type="button"
+                onClick={handleRestoreStandard7Docs}
+                className="px-4 py-2 bg-[#1E3A5F] text-white font-bold text-xs rounded-xl shadow-xs"
+              >
+                7대 표준 문서 일괄 추가
+              </button>
+            </div>
+          ) : (
+            sortedDocs.map((doc, i) => {
+              const hasHighlight = doc.content?.includes('==');
+              const hasConfirmation = Boolean(doc.requiredConfirmationText);
+              const isExpanded = expandedDocPreviews[doc.id] ?? false;
+
+              return (
+                <div
+                  key={doc.id}
+                  className={`rounded-2xl border transition-all overflow-hidden ${
+                    doc.included ? 'border-brand/30 bg-white shadow-xs' : 'border-slate-200 bg-slate-50/60 opacity-60'
+                  }`}
+                >
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    
+                    {/* 체크박스 & 타이틀 영역 */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <GripVertical className="w-4 h-4 text-slate-300 shrink-0 hidden sm:block" />
+                      
+                      <input
+                        type="checkbox"
+                        checked={doc.included}
+                        onChange={e => {
+                          const docs = [...c.documents];
+                          const idx = docs.findIndex(d => d.id === doc.id);
+                          if (idx >= 0) docs[idx] = { ...docs[idx], included: e.target.checked };
+                          update({ documents: docs });
+                        }}
+                        className="w-4 h-4 rounded accent-brand cursor-pointer shrink-0"
+                      />
+
+                      <span className="text-xl shrink-0">
+                        {CONTRACT_DOC_TYPES[doc.type]?.emoji || '📎'}
+                      </span>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-slate-900 truncate">
+                            {doc.title}
+                          </span>
+
+                          {/* 서명 주체 뱃지 */}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                            doc.signatureRequired === 'both' ? 'bg-indigo-50 text-indigo-700' :
+                            doc.signatureRequired === 'client' ? 'bg-amber-50 text-amber-700' :
+                            doc.signatureRequired === 'lawyer' ? 'bg-emerald-50 text-emerald-700' :
+                            'bg-slate-100 text-slate-600'
+                          }`}>
+                            {doc.signatureRequired === 'both' ? '양측 서명' :
+                             doc.signatureRequired === 'client' ? '의뢰인 서명' :
+                             doc.signatureRequired === 'lawyer' ? '변호사 서명' : '서명 불필요'}
+                          </span>
+
+                          {/* 형광펜 배지 */}
+                          {hasHighlight && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-yellow-100 px-1.5 py-0.5 rounded border border-yellow-300 flex items-center gap-1">
+                              <Highlighter className="w-3 h-3 text-amber-600" />
+                              <span>형광펜 강조 조항 있음</span>
+                            </span>
+                          )}
+
+                          {/* 필수 확약 문구 배지 */}
+                          {hasConfirmation && (
+                            <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-1">
+                              <ShieldAlert className="w-3 h-3 text-amber-700" />
+                              <span>직접확약: "{doc.requiredConfirmationText}"</span>
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                          <span>{CONTRACT_DOC_TYPES[doc.type]?.description || '사무소 자체 약정 서식'}</span>
+                          <span>•</span>
+                          <span>약 {(doc.content || '').length.toLocaleString()}자</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 액션 버튼들 */}
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      {/* 미리보기 아코디언 토글 */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedDocPreviews(prev => ({ ...prev, [doc.id]: !prev[doc.id] }))}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{isExpanded ? '닫기' : '미리보기'}</span>
+                      </button>
+
+                      {/* 본문 상세 편집 */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingDoc(doc)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-lg text-xs transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>내용 상세 편집</span>
+                      </button>
+
+                      {/* 삭제 버튼 */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDoc(doc)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                        title="문서 삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* 인라인 미리보기 영역 (형광펜 마킹 렌더링) */}
+                  {isExpanded && (
+                    <div className="p-4 bg-slate-50 border-t border-slate-100 space-y-2">
+                      <div className="p-4 bg-white border border-slate-200 rounded-xl max-h-56 overflow-y-auto">
+                        <HighlightedDocumentViewer
+                          content={doc.content}
+                          requiredConfirmationText={doc.requiredConfirmationText}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                        <span>실제 의뢰인 스마트폰 및 계약서 전문에 이와 동일하게 렌더링됩니다.</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingDoc(doc)}
+                          className="text-brand font-bold underline cursor-pointer"
+                        >
+                          조항 문구 및 형광펜 수정하기
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 문서 상세 편집 모달 */}
+        <ContractDocEditModal
+          isOpen={!!editingDoc}
+          doc={editingDoc}
+          contractContext={{
+            clientName: c.clientName,
+            clientPhone: c.clientPhone,
+            clientAddress: c.clientAddress,
+            lawyerName: c.lawyerName,
+            lawFirmName: c.lawFirmName,
+            totalFee: c.totalFee,
+            contractDate: c.contractDate,
+          }}
+          onClose={() => setEditingDoc(null)}
+          onSave={(updatedDoc) => {
+            const docs = [...c.documents];
+            const idx = docs.findIndex(d => d.id === updatedDoc.id);
+            if (idx >= 0) {
+              docs[idx] = updatedDoc;
+            } else {
+              docs.push(updatedDoc);
+            }
+            update({ documents: docs });
+          }}
+        />
+
+        {/* 사무소 문서함 (서식 보관함) 모달 */}
+        <ContractDocLibraryModal
+          isOpen={libraryModalOpen}
+          onClose={() => setLibraryModalOpen(false)}
+          contractContext={{
+            clientName: c.clientName,
+            clientPhone: c.clientPhone,
+            clientAddress: c.clientAddress,
+            lawyerName: c.lawyerName,
+            lawFirmName: c.lawFirmName,
+            totalFee: c.totalFee,
+            contractDate: c.contractDate,
+          }}
+          lawyerName={c.lawyerName}
+          lawFirmName={c.lawFirmName}
+          onSelectTemplate={(tpl: LawyerContractTemplate) => {
+            const newDoc = templateToContractDocument(tpl, {
+              clientName: c.clientName,
+              clientPhone: c.clientPhone,
+              clientAddress: c.clientAddress,
+              lawyerName: c.lawyerName,
+              lawFirmName: c.lawFirmName,
+              totalFee: c.totalFee,
+              contractDate: c.contractDate,
+            }, c.documents.length);
+
+            update({ documents: [...c.documents, newDoc] });
+          }}
+        />
       </div>
-    </div>
-  );
+    );
+  };
 
   // ─── Step 4: 약관 동의 (전자서명법 4대 요건 & 상세 전문 확인) ───
   const renderTerms = () => {
@@ -902,11 +1213,51 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           )}
 
           <div>
-            <h4 className="font-bold text-slate-800 mb-2">첨부 서류 목록</h4>
+            <h4 className="font-bold text-slate-800 mb-2 flex items-center justify-between">
+              <span>첨부 계약 문서 및 특약 전문 ({includedDocs.length}종)</span>
+              <span className="text-[11px] text-slate-400 font-normal">터치하여 형광펜 강조 및 본문 확인</span>
+            </h4>
             {includedDocs.length === 0 ? (
               <p className="text-xs text-slate-400 italic">첨부된 서류가 없습니다.</p>
             ) : (
-              <ul className="space-y-1">{includedDocs.map(d => <li key={d.id} className="text-xs text-slate-600">• {d.title} {d.clientSignature ? '✅ 자필서명 완료' : '⏳'}</li>)}</ul>
+              <div className="space-y-2">
+                {includedDocs.map(d => (
+                  <details key={d.id} className="group border border-slate-200 rounded-xl overflow-hidden bg-white">
+                    <summary className="p-3 bg-slate-50 flex items-center justify-between cursor-pointer font-bold text-xs text-slate-800 hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{CONTRACT_DOC_TYPES[d.type]?.emoji || '📎'}</span>
+                        <span>{d.title}</span>
+                        {d.content?.includes('==') && (
+                          <span className="text-[10px] font-bold text-amber-800 bg-yellow-100 px-1.5 py-0.2 rounded border border-yellow-300">
+                            형광펜 강조
+                          </span>
+                        )}
+                        {d.requiredConfirmationText && (
+                          <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
+                            ✍️ 직접확약: "{d.requiredConfirmationText}"
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {d.clientSignature ? (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            의뢰인 서명완료
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">서명 대기</span>
+                        )}
+                        <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" />
+                      </div>
+                    </summary>
+                    <div className="p-4 bg-white border-t border-slate-100 text-xs">
+                      <HighlightedDocumentViewer
+                        content={d.content}
+                        requiredConfirmationText={d.requiredConfirmationText}
+                      />
+                    </div>
+                  </details>
+                ))}
+              </div>
             )}
           </div>
 

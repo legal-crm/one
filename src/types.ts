@@ -1824,13 +1824,17 @@ export interface ContractDocument {
   type: ContractDocType;
   title: string;
   content: string;
-  signatureRequired: 'client' | 'lawyer' | 'both';
+  signatureRequired: 'client' | 'lawyer' | 'both' | 'none';
   clientSignature?: string;
   lawyerSignature?: string;
   clientSignedAt?: string;
   lawyerSignedAt?: string;
   order: number;
   included: boolean;
+  // ── 직접 자필 확약 문구 입력 (약관규제법 및 부인방지 고도화) ──
+  requiredConfirmationText?: string; // 변호사가 지정한 필수 타이핑 문구 (예: "총 수임료 및 분납 일정을 확인하였습니다")
+  clientConfirmationText?: string;   // 고객이 실제 타이핑한 확약 문구
+  confirmedAt?: string;              // 확약 입력 일시
 }
 
 export interface ElectronicContract {
