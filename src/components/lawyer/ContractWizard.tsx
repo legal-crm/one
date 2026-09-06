@@ -470,13 +470,17 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
                   const expectedRep = isBusiness ? (bizRepName || c.clientName) : c.clientName;
                   const result = await requestIdentityVerification(expectedRep);
                   setVerifying(false);
-                  
                   if (result.success) {
-                    // 대표자 일치 교차 검증 실행
-                    const match = verifyRepresentativeMatch(expectedRep, result.name);
+                    // 대표자 및 전화번호 일치 2단계 교차 검증 실행 (동명이인 도용 방지)
+                    const match = verifyRepresentativeMatch(
+                      expectedRep,
+                      result.name,
+                      c.clientPhone,
+                      result.phoneNumber || result.phoneMasked
+                    );
                     setRepMatchMessage(match.message);
 
-                    if (isBusiness && !match.matched) {
+                    if (!match.matched) {
                       toast.error(match.message);
                       return;
                     }

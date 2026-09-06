@@ -2169,9 +2169,25 @@ export default function AdminRole({
                               </div>
                             )}
 
+                            {/* 대한변협 공식 포털 원클릭 교차검증 버튼 */}
+                            <div className="pt-1">
+                              <a
+                                href={`https://klaw.or.kr/search/lawyer?keyword=${encodeURIComponent(selectedLawyer.name.replace(/변호사|\s+/g, ''))}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 text-blue-300 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>대한변협 '나의 변호사' 공식 자격 대조 ↗</span>
+                              </a>
+                              <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                                ※ 대한변호사협회 등록원부에서 개업 여부와 등록번호 일치를 5초 만에 확인하실 수 있습니다.
+                              </p>
+                            </div>
+
                             <button 
                               onClick={() => handleApproveLawyer(selectedLawyer.id)}
-                              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1"
+                              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                             >
                               <CheckCircle2 className="w-4 h-4" />
                               <span>소속 대리인 자격 정식 승인</span>
@@ -2188,7 +2204,7 @@ export default function AdminRole({
                             </p>
                             <button 
                               onClick={() => handleSuspendLawyer(selectedLawyer.id)}
-                              className="w-full bg-slate-900 hover:bg-red-600 hover:text-white text-slate-500 py-2 rounded-[200px] text-sm font-extrabold border border-slate-800 transition-colors flex items-center justify-center gap-1"
+                              className="w-full bg-slate-900 hover:bg-red-600 hover:text-white text-slate-400 py-2.5 rounded-xl text-sm font-extrabold border border-slate-800 transition-colors flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                             >
                               <EyeOff className="w-4 h-4" />
                               <span>변호사 정식 자격 임시 정지</span>

@@ -13,6 +13,7 @@ export interface VerificationResult {
   name: string;            // 통신사 인증 실명 (예: 홍길동)
   birthDate?: string;      // 생년월일 (YYYY-MM-DD 또는 YYYYMMDD)
   gender?: string;         // 성별
+  phoneNumber?: string;    // 휴대폰번호 (숫자)
   phoneMasked?: string;    // 마스킹된 휴대폰번호
   carrier?: string;        // 통신사 (SKT, KT, LGU+, 알뜰폰)
   txId: string;            // identityVerificationId / 통신사 공인 거래 승인번호
@@ -29,6 +30,8 @@ export interface RepresentativeMatchResult {
   matched: boolean;
   status: 'REPRESENTATIVE_VERIFIED' | 'DELEGATION_REQUIRED' | 'UNVERIFIED';
   message: string;
+  nameMatched: boolean;
+  phoneMatched?: boolean;
 }
 
 /**
@@ -134,6 +137,7 @@ export async function requestIdentityVerification(targetName?: string): Promise<
       name: certifiedName,
       birthDate,
       gender,
+      phoneNumber: rawPhone || undefined,
       phoneMasked,
       carrier,
       txId: identityVerificationId,
@@ -173,7 +177,8 @@ async function simulateDemoVerification(targetName?: string, deviceInfo?: string
     name: demoName,
     birthDate: '1982-05-15',
     gender: 'MALE',
-    phoneMasked: '010-****-7788',
+    phoneNumber: '01012345678',
+    phoneMasked: '010-****-5678',
     carrier: 'SKT (PASS 간편인증)',
     txId: `identity-verification-demo-${Date.now()}`,
     certifiedAt: now,
@@ -186,35 +191,83 @@ async function simulateDemoVerification(targetName?: string, deviceInfo?: string
 }
 
 /**
- * [권한성] 국세청 대표자명과 통신사 본인인증 실명 교차 대조기
+ * [권한성 & 동명이인 방지] 국세청 대표자명 및 연락처 2단계 교차 대조기
  */
 export function verifyRepresentativeMatch(
   ntsRepresentativeName: string,
-  verifiedName: string
+  verifiedName: string,
+  expectedPhone?: string,
+  verifiedPhone?: string
 ): RepresentativeMatchResult {
-  const cleanNts = ntsRepresentativeName.replace(/\s+/g, '');
-  const cleanVerified = verifiedName.replace(/\s+/g, '');
+  const cleanNts = (ntsRepresentativeName || '').replace(/\s+/g, '');
+  const cleanVerified = (verifiedName || '').replace(/\s+/g, '');
+
+  const nameMatched = !cleanNts || cleanNts === cleanVerified;
+
+  // 전화번호 대조 (전달된 경우)
+  let phoneMatched = true;
+  if (expectedPhone && verifiedPhone) {
+    const cleanExpected = expectedPhone.replace(/\D/g, '');
+    const cleanVerifiedPhone = verifiedPhone.replace(/\D/g, '');
+
+    // 마스킹된 번호인 경우 (예: 010-****-5678 vs 01012345678)
+    if (verifiedPhone.includes('*')) {
+      const expSuffix = cleanExpected.slice(-4);
+      const verSuffix = verifiedPhone.replace(/\D/g, '').slice(-4);
+      const expPrefix = cleanExpected.slice(0, 3);
+      const verPrefix = verifiedPhone.replace(/\D/g, '').slice(0, 3);
+      phoneMatched = (expSuffix === verSuffix) && (!verPrefix || expPrefix === verPrefix);
+    } else if (cleanExpected && cleanVerifiedPhone) {
+      // 끝 8자리 대조 (국가번호 82 고려)
+      phoneMatched = cleanExpected.slice(-8) === cleanVerifiedPhone.slice(-8);
+    }
+  }
 
   if (!cleanNts) {
+    if (!phoneMatched) {
+      return {
+        matched: false,
+        nameMatched: true,
+        phoneMatched: false,
+        status: 'DELEGATION_REQUIRED',
+        message: `동명이인 도용 방지: 등록된 연락처(${expectedPhone})와 인증된 스마트폰 번호(${verifiedPhone})가 일치하지 않습니다.`,
+      };
+    }
     return {
       matched: true,
+      nameMatched: true,
+      phoneMatched: true,
       status: 'REPRESENTATIVE_VERIFIED',
       message: '개인 서명자 본인인증 완료',
     };
   }
 
-  if (cleanNts === cleanVerified) {
+  if (!nameMatched) {
     return {
-      matched: true,
-      status: 'REPRESENTATIVE_VERIFIED',
-      message: `국세청 등록 대표자(${ntsRepresentativeName})와 본인인증 실명(${verifiedName})이 100% 일치합니다.`,
+      matched: false,
+      nameMatched: false,
+      phoneMatched,
+      status: 'DELEGATION_REQUIRED',
+      message: `대표자 실명 불일치: 사업자등록 대표자(${ntsRepresentativeName})와 스마트폰 인증자(${verifiedName})가 다릅니다.`,
+    };
+  }
+
+  if (!phoneMatched) {
+    return {
+      matched: false,
+      nameMatched: true,
+      phoneMatched: false,
+      status: 'DELEGATION_REQUIRED',
+      message: `동명이인 도용 차단: 대표자 성명(${verifiedName})은 일치하나, 계약서 등록 연락처(${expectedPhone})와 본인인증 스마트폰 번호(${verifiedPhone})가 일치하지 않습니다.`,
     };
   }
 
   return {
-    matched: false,
-    status: 'DELEGATION_REQUIRED',
-    message: `불일치: 사업자등록 대표자(${ntsRepresentativeName})와 스마트폰 인증자(${verifiedName})가 다릅니다. 대표자 본인 스마트폰으로 인증하거나 대리인 위임 절차가 필요합니다.`,
+    matched: true,
+    nameMatched: true,
+    phoneMatched: true,
+    status: 'REPRESENTATIVE_VERIFIED',
+    message: `국세청 등록 대표자(${ntsRepresentativeName}) 및 등록 연락처와 본인인증 정보가 100% 일치합니다.`,
   };
 }
 
