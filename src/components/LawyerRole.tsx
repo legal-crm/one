@@ -4,7 +4,7 @@ import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle, Printer
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType 
@@ -36,7 +36,7 @@ import { validateInviteToken, consumeInviteToken } from '../services/inviteServi
 import { loadStaffMembers } from '../services/crmService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { createNotification } from '../services/notificationCenterService';
-import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCorpNum, type LawyerBusinessInfo } from '../services/taxInvoiceService';
+import { loadLawyerBusinessInfo, saveLawyerBusinessInfo, checkCorpNum, formatCorpNum, getTaxInvoicePdfUrl, type LawyerBusinessInfo } from '../services/taxInvoiceService';
 import {
   loadNotificationSettings, saveNotificationSettings, loadNotificationLogs,
   testTelegramConnection, sendEmailNotification, formatEmailConsultHtml,
@@ -139,9 +139,10 @@ export default function LawyerRole({
   // 세금계산서 / 사업자 정보 상태
   const [bizInfo, setBizInfo] = useState<LawyerBusinessInfo | null>(() => loadLawyerBusinessInfo());
   const [bizFormOpen, setBizFormOpen] = useState(false);
-  const [bizForm, setBizForm] = useState({ corpNum: '', corpName: '', ceoName: '', bizType: '전문서비스업', bizClass: '법률서비스', addr: '', taxEmail: '' });
+  const [bizForm, setBizForm] = useState({ corpNum: '', corpName: '', ceoName: '', bizType: '전문서비스업', bizClass: '법률서비스', addr: '', taxEmail: '', taxEmail2: '' });
   const [bizCheckResult, setBizCheckResult] = useState<string | null>(null);
   const [bizSaving, setBizSaving] = useState(false);
+  const [lawyerPdfLoadingKey, setLawyerPdfLoadingKey] = useState<string | null>(null);
   const [tempFirmName, setTempFirmName] = useState('');
 
   // ── 전역 검색 & 외부 고객 등록 ──
@@ -4254,6 +4255,10 @@ export default function LawyerRole({
                       <label className="text-sm font-bold text-slate-700 block mb-1.5">세금계산서 수신 이메일 *</label>
                       <input type="email" value={bizForm.taxEmail} onChange={e => setBizForm(p => ({...p, taxEmail: e.target.value}))} placeholder="tax@lawfirm.com" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
                     </div>
+                    <div>
+                      <label className="text-sm font-bold text-slate-700 block mb-1.5">사무장 / 회계담당자 이메일 (선택)</label>
+                      <input type="email" value={bizForm.taxEmail2 || ''} onChange={e => setBizForm(p => ({...p, taxEmail2: e.target.value}))} placeholder="accounting@lawfirm.com" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
+                    </div>
                     <div className="md:col-span-2">
                       <label className="text-sm font-bold text-slate-700 block mb-1.5">사업장 주소</label>
                       <input type="text" value={bizForm.addr} onChange={e => setBizForm(p => ({...p, addr: e.target.value}))} placeholder="서울특별시 강남구..." className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:border-[#1E3A5F] outline-none placeholder:text-slate-400" />
@@ -4271,6 +4276,7 @@ export default function LawyerRole({
                         setBizFormOpen(false);
                         setBizSaving(false);
                         setBizCheckResult(null);
+                        toast.success('사업자 정보가 저장되었습니다.');
                       }}
                       className="flex-1 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white text-sm font-bold rounded-xl transition-all shadow-xs disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                     >
@@ -4286,13 +4292,16 @@ export default function LawyerRole({
                   <div className="bg-slate-50 rounded-2xl p-5 space-y-3 border border-slate-200/80">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-bold text-slate-700">등록된 사업자 정보</span>
-                      <button onClick={() => { setBizForm({corpNum: bizInfo.corpNum, corpName: bizInfo.corpName, ceoName: bizInfo.ceoName, bizType: bizInfo.bizType, bizClass: bizInfo.bizClass, addr: bizInfo.addr, taxEmail: bizInfo.taxEmail}); setBizFormOpen(true); }} className="text-xs font-bold text-[#1E3A5F] hover:underline cursor-pointer">수정</button>
+                      <button onClick={() => { setBizForm({corpNum: bizInfo.corpNum, corpName: bizInfo.corpName, ceoName: bizInfo.ceoName, bizType: bizInfo.bizType, bizClass: bizInfo.bizClass, addr: bizInfo.addr, taxEmail: bizInfo.taxEmail, taxEmail2: bizInfo.taxEmail2 || ''}); setBizFormOpen(true); }} className="text-xs font-bold text-[#1E3A5F] hover:underline cursor-pointer">수정</button>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div><span className="text-slate-500">사업자번호</span> <span className="font-bold text-slate-900 ml-1.5">{formatCorpNum(bizInfo.corpNum)}</span></div>
                       <div><span className="text-slate-500">상호</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.corpName}</span></div>
                       <div><span className="text-slate-500">대표자</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.ceoName}</span></div>
-                      <div><span className="text-slate-500">이메일</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.taxEmail}</span></div>
+                      <div><span className="text-slate-500">계산서 이메일</span> <span className="font-bold text-slate-900 ml-1.5">{bizInfo.taxEmail}</span></div>
+                      {bizInfo.taxEmail2 && (
+                        <div className="col-span-2"><span className="text-slate-500">사무장/회계 이메일</span> <span className="font-bold text-indigo-700 ml-1.5">{bizInfo.taxEmail2}</span></div>
+                      )}
                     </div>
                   </div>
 
@@ -4304,17 +4313,69 @@ export default function LawyerRole({
                         아직 발행된 세금계산서가 없습니다.
                       </div>
                     ) : (
-                      <div className="space-y-2.5">
+                      <div className="space-y-3">
                         {adOrders.filter(o => o.taxInvoice).map(order => (
-                          <div key={order.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                            <div className="space-y-1">
-                              <p className="text-sm font-bold text-slate-900">{order.productName}</p>
-                              <p className="text-xs text-slate-500 font-medium">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : ''}</p>
+                          <div key={order.id} className="space-y-2">
+                            {/* 당초 정발행 건 */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 gap-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-bold text-slate-900">{order.productName}</p>
+                                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">정발행</span>
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium">
+                                  {order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : ''}
+                                  {order.taxInvoice?.ntsConfirmNum && <span className="ml-2 font-mono text-[11px] text-slate-400">승인번호: {order.taxInvoice.ntsConfirmNum}</span>}
+                                </p>
+                              </div>
+                              <div className="flex items-center justify-between sm:justify-end gap-3">
+                                <p className="text-sm font-black text-slate-900 tracking-tight tabular-nums">{order.taxInvoice?.totalAmount.toLocaleString()}원</p>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={async () => {
+                                      if (!order.taxInvoice?.itemKey) return;
+                                      setLawyerPdfLoadingKey(order.id);
+                                      const res = await getTaxInvoicePdfUrl(order.taxInvoice.itemKey);
+                                      if (res.ok && res.data?.url) {
+                                        window.open(res.data.url, '_blank', 'width=900,height=800');
+                                      } else {
+                                        toast.error(res.error || 'PDF 뷰어 호출 실패');
+                                      }
+                                      setLawyerPdfLoadingKey(null);
+                                    }}
+                                    disabled={lawyerPdfLoadingKey === order.id}
+                                    className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                  >
+                                    <Printer className="w-3 h-3 text-slate-500" />
+                                    {lawyerPdfLoadingKey === order.id ? '로딩...' : '계산서 PDF'}
+                                  </button>
+                                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 whitespace-nowrap">
+                                    {order.modifiedTaxInvoice ? '수정발행됨' : '발행완료'}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-right space-y-1">
-                              <p className="text-sm font-black text-slate-900 tracking-tight tabular-nums">{order.taxInvoice?.totalAmount.toLocaleString()}원</p>
-                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">발행완료</span>
-                            </div>
+
+                            {/* 수정발행(취소/환불) 내역이 있는 경우 차감 표시 */}
+                            {order.modifiedTaxInvoice && (
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-red-50/70 rounded-xl border border-red-200/80 gap-3 ml-2 border-l-4 border-l-red-500">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-md">
+                                      수정발행: {order.modifiedTaxInvoice.modifyCode === 2 ? '공급가액 변동' : '계약의 해제'}
+                                    </span>
+                                    <p className="text-xs text-red-600 font-medium">사유: {order.modifiedTaxInvoice.modifyReason}</p>
+                                  </div>
+                                  <p className="text-[11px] text-red-500 font-mono">
+                                    {new Date(order.modifiedTaxInvoice.issuedAt).toLocaleDateString('ko-KR')} | 국세청 승인번호: {order.modifiedTaxInvoice.ntsConfirmNum || '승인완료'}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-black text-red-700 tracking-tight tabular-nums">{order.modifiedTaxInvoice.totalAmount.toLocaleString()}원</p>
+                                  <span className="text-[11px] font-bold text-red-600">국세청 차감 반영</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

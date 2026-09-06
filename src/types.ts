@@ -1503,6 +1503,18 @@ export interface AdOrder {
     supplyCost: number;
     tax: number;
     totalAmount: number;
+    status: 'issued' | 'sent_nts' | 'failed' | 'modified';
+  };
+  // 수정세금계산서 관련 (광고 취소/환불 시)
+  modifiedTaxInvoice?: {
+    itemKey: string;
+    ntsConfirmNum: string;
+    modifyCode: number; // 4: 계약의 해제, 2: 공급가액 변동
+    modifyReason: string;
+    issuedAt: string;
+    supplyCost: number; // 음수(-)
+    tax: number;        // 음수(-)
+    totalAmount: number;// 음수(-)
     status: 'issued' | 'sent_nts' | 'failed';
   };
   // 변호사 사업자 정보
@@ -1510,6 +1522,7 @@ export interface AdOrder {
   buyerCorpName?: string;
   buyerCEOName?: string;
   buyerEmail?: string;
+  buyerTaxEmail2?: string;
 }
 
 export interface Notice {

@@ -9,13 +9,20 @@ import {
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server, Settings,
-  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope
+  Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope, Download, Send, Printer
 } from 'lucide-react';
 import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner, LawyerFirmType, LAWYER_FIRM_TYPE_LABELS } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
-import { issueTaxInvoice } from '../services/taxInvoiceService';
+import { 
+  issueTaxInvoice, 
+  issueModifyTaxInvoice, 
+  resendTaxInvoiceEmail, 
+  getTaxInvoicePdfUrl, 
+  exportTaxInvoicesToExcel,
+  formatCorpNum
+} from '../services/taxInvoiceService';
 import RehabSettingsPanel from './RehabSettingsPanel';
 import PopupEditor from './popup/PopupEditor';
 import LawyerProfileEditor from './lawyer/LawyerProfileEditor';
@@ -99,6 +106,18 @@ export default function AdminRole({
   const [invoiceConfirmOrder, setInvoiceConfirmOrder] = useState<AdOrder | null>(null);
   const [invoiceIssuing, setInvoiceIssuing] = useState(false);
   const [invoiceResult, setInvoiceResult] = useState<{ok: boolean; message: string} | null>(null);
+
+  // 수정세금계산서 발행 및 광고 취소 모달 state
+  const [modifyModalOrder, setModifyModalOrder] = useState<AdOrder | null>(null);
+  const [modifyCode, setModifyCode] = useState<2 | 4>(4); // 4: 계약해제(전액취소), 2: 공급가액변동(부분환불)
+  const [modifyReason, setModifyReason] = useState<string>('변호사 요청에 의한 광고 취소 및 환불');
+  const [partialRefundAmount, setPartialRefundAmount] = useState<number>(0);
+  const [isModifying, setIsModifying] = useState<boolean>(false);
+  const [modifyResult, setModifyResult] = useState<{ok: boolean; message: string} | null>(null);
+
+  // 이메일 재발송 및 PDF 로딩 state
+  const [resendingOrderId, setResendingOrderId] = useState<string | null>(null);
+  const [pdfLoadingOrderId, setPdfLoadingOrderId] = useState<string | null>(null);
 
   // Members tab states
   const [memberSearch, setMemberSearch] = useState<string>('');
@@ -2909,7 +2928,42 @@ export default function AdminRole({
                               <td className="p-3 font-bold text-indigo-400">{order.totalPrice.toLocaleString()}원</td>
                               <td className="p-3 text-slate-300">{order.depositorName || '-'}</td>
                               <td className="p-3"><span className={`text-xs font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${order.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : order.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-500 border-slate-700'}`}><span className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : order.status === 'active' ? 'bg-emerald-500 animate-pulse' : order.status === 'cancelled' ? 'bg-red-500' : 'bg-slate-500'}`}></span>{order.status === 'pending' ? '입금대기' : order.status === 'active' ? '활성' : order.status === 'cancelled' ? '취소' : '만료'}</span></td>
-                              <td className="p-3 text-right">{order.status === 'pending' && (<button onClick={() => { setInvoiceConfirmOrder(order); setInvoiceResult(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm flex items-center gap-1 ml-auto"><Receipt className="w-3 h-3" />입금 확인 + 발행</button>)}{order.status === 'active' && (<span className="text-xs text-emerald-400 font-bold flex items-center gap-1 justify-end">{order.taxInvoice ? <><FileText className="w-3 h-3" />발행완료</> : <>✅ 활성 중</>}</span>)}{order.status === 'cancelled' && (<span className="text-xs text-slate-500">취소됨</span>)}</td>
+                              <td className="p-3 text-right">
+                                {order.status === 'pending' && (
+                                  <button onClick={() => { setInvoiceConfirmOrder(order); setInvoiceResult(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm flex items-center gap-1 ml-auto">
+                                    <Receipt className="w-3 h-3" />입금 확인 + 발행
+                                  </button>
+                                )}
+                                {order.status === 'active' && (
+                                  <div className="flex items-center gap-2 justify-end">
+                                    {order.taxInvoice && !order.modifiedTaxInvoice && (
+                                      <button 
+                                        onClick={() => { 
+                                          setModifyModalOrder(order); 
+                                          setModifyCode(4); 
+                                          setModifyReason('변호사 요청에 의한 광고 취소 및 환불'); 
+                                          setPartialRefundAmount(order.totalPrice); 
+                                          setModifyResult(null); 
+                                        }} 
+                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                                        title="광고 취소 및 마이너스 수정세금계산서 국세청 발행"
+                                      >
+                                        <RotateCcw className="w-3 h-3" />취소/수정발행
+                                      </button>
+                                    )}
+                                    <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                                      {order.taxInvoice ? <><FileText className="w-3 h-3" />발행완료</> : <>✅ 활성 중</>}
+                                    </span>
+                                  </div>
+                                )}
+                                {order.status === 'cancelled' && (
+                                  <div className="flex items-center gap-1.5 justify-end">
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                                      {order.modifiedTaxInvoice ? '수정발행(취소완료)' : '취소됨'}
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -2925,144 +2979,188 @@ export default function AdminRole({
                     </div>
                   </div>
 
-                  {/* 세금계산서 발행 확인 모달 */}
-                  {invoiceConfirmOrder && (
-                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => !invoiceIssuing && setInvoiceConfirmOrder(null)}>
-                      <div className="bg-[#111622] rounded-2xl border border-[#1E293B] max-w-lg w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-3 mb-5">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                            <Receipt className="w-5 h-5 text-emerald-400" />
+                  {/* 수정세금계산서 발행 및 광고 취소/환불 모달 */}
+                  {modifyModalOrder && (
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => !isModifying && setModifyModalOrder(null)}>
+                      <div className="bg-[#111622] rounded-2xl border border-[#1E293B] max-w-lg w-full p-6 shadow-2xl space-y-5 text-left" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center">
+                            <RotateCcw className="w-5 h-5 text-red-400" />
                           </div>
                           <div>
-                            <h3 className="text-white font-extrabold">입금 확인 + 세금계산서 발행</h3>
-                            <p className="text-xs text-slate-500">입금 확인 시 세금계산서가 자동으로 발행됩니다</p>
+                            <h3 className="text-white font-extrabold text-base">광고 취소 및 수정세금계산서 발행</h3>
+                            <p className="text-xs text-slate-500">국세청 전자세금계산서 규정에 따라 마이너스(-) 계산서가 발행됩니다</p>
                           </div>
                         </div>
 
-                        <div className="space-y-3 mb-5">
-                          <div className="bg-[#0B0F19] rounded-xl p-4 space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">변호사</span>
-                              <span className="text-white font-bold">{invoiceConfirmOrder.lawyerName}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">광고 상품</span>
-                              <span className="text-white font-bold">{invoiceConfirmOrder.productName}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">공급가액</span>
-                              <span className="text-indigo-400 font-bold">{Math.round(invoiceConfirmOrder.totalPrice / 1.1).toLocaleString()}원</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">부가세 (10%)</span>
-                              <span className="text-indigo-400 font-bold">{(invoiceConfirmOrder.totalPrice - Math.round(invoiceConfirmOrder.totalPrice / 1.1)).toLocaleString()}원</span>
-                            </div>
-                            <div className="border-t border-[#1E293B] pt-2 flex justify-between text-sm">
-                              <span className="text-slate-400 font-bold">합계 금액</span>
-                              <span className="text-white font-extrabold text-base">{invoiceConfirmOrder.totalPrice.toLocaleString()}원</span>
-                            </div>
+                        <div className="bg-[#0B0F19] rounded-xl p-4 space-y-2 text-sm border border-[#1E293B]/60">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">대상 변호사</span>
+                            <span className="text-white font-bold">{modifyModalOrder.lawyerName} ({modifyModalOrder.buyerCorpName || '상호미등록'})</span>
                           </div>
-
-                          <div className="bg-[#0B0F19] rounded-xl p-4 space-y-2">
-                            <span className="text-xs text-slate-500 font-bold block mb-1">공급받는 자 (변호사)</span>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">사업자번호</span>
-                              <span className="text-white font-mono">{invoiceConfirmOrder.buyerCorpNum || '미등록'}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">상호</span>
-                              <span className="text-white">{invoiceConfirmOrder.buyerCorpName || '미등록'}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">대표자</span>
-                              <span className="text-white">{invoiceConfirmOrder.buyerCEOName || '미등록'}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">이메일</span>
-                              <span className="text-white">{invoiceConfirmOrder.buyerEmail || '미등록'}</span>
-                            </div>
-                            {!invoiceConfirmOrder.buyerCorpNum && (
-                              <p className="text-xs text-amber-400 mt-1">⚠️ 사업자 정보 미등록 — 세금계산서 없이 입금 확인만 진행됩니다</p>
-                            )}
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">광고 상품</span>
+                            <span className="text-white font-bold">{modifyModalOrder.productName} ({modifyModalOrder.contractMonths}개월)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">당초 승인번호</span>
+                            <span className="text-slate-400 font-mono text-xs">{modifyModalOrder.taxInvoice?.ntsConfirmNum || '승인번호 확인중'}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-[#1E293B] pt-2">
+                            <span className="text-slate-400 font-bold">당초 결제 총액</span>
+                            <span className="text-white font-black text-base">{modifyModalOrder.totalPrice.toLocaleString()}원</span>
                           </div>
                         </div>
 
-                        {invoiceResult && (
-                          <div className={`mb-4 p-3 rounded-xl text-sm font-bold ${invoiceResult.ok ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                            {invoiceResult.message}
+                        {/* 수정 사유 선택 */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-slate-400 block">수정세금계산서 발행 사유</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModifyCode(4);
+                                setPartialRefundAmount(modifyModalOrder.totalPrice);
+                              }}
+                              className={`p-3 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
+                                modifyCode === 4
+                                  ? 'bg-red-500/10 border-red-500/40 text-red-300 shadow-xs'
+                                  : 'bg-[#0B0F19] border-[#1E293B] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              <span className="block font-black text-sm mb-0.5">계약의 해제 (전액 취소)</span>
+                              <span className="text-[11px] opacity-75">결제 전액(-{modifyModalOrder.totalPrice.toLocaleString()}원) 마이너스 발행</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModifyCode(2);
+                                setPartialRefundAmount(Math.round(modifyModalOrder.totalPrice / 2));
+                              }}
+                              className={`p-3 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
+                                modifyCode === 2
+                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-300 shadow-xs'
+                                  : 'bg-[#0B0F19] border-[#1E293B] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              <span className="block font-black text-sm mb-0.5">공급가액 변동 (부분 환불)</span>
+                              <span className="text-[11px] opacity-75">잔여 일수 환불액만 차액 마이너스 발행</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 부분 환불일 때 환불 금액 입력 */}
+                        {modifyCode === 2 && (
+                          <div>
+                            <label className="text-xs font-bold text-slate-400 block mb-1.5">환불(취소) 총 금액 (VAT 포함)</label>
+                            <input
+                              type="number"
+                              value={partialRefundAmount || ''}
+                              onChange={e => setPartialRefundAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                              max={modifyModalOrder.totalPrice}
+                              placeholder="환불할 총 금액"
+                              className="w-full p-2.5 rounded-xl bg-[#0B0F19] border border-[#1E293B] text-white text-sm font-bold focus:border-indigo-500 outline-none"
+                            />
                           </div>
                         )}
 
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setInvoiceConfirmOrder(null)}
-                            disabled={invoiceIssuing}
-                            className="flex-1 py-2.5 bg-[#0B0F19] hover:bg-[#161B26] text-slate-400 text-base font-bold rounded-xl transition-colors disabled:opacity-50"
-                          >취소</button>
-                          <button
-                            onClick={async () => {
-                              setInvoiceIssuing(true);
-                              const order = invoiceConfirmOrder;
-                              const supplyCost = Math.round(order.totalPrice / 1.1);
-                              const tax = order.totalPrice - supplyCost;
+                        {/* 취소/환불 사유 입력 */}
+                        <div>
+                          <label className="text-xs font-bold text-slate-400 block mb-1.5">취소/환불 상세 사유</label>
+                          <input
+                            type="text"
+                            value={modifyReason}
+                            onChange={e => setModifyReason(e.target.value)}
+                            placeholder="예: 변호사 요청에 의한 계약 해지 및 환불"
+                            className="w-full p-2.5 rounded-xl bg-[#0B0F19] border border-[#1E293B] text-white text-sm focus:border-indigo-500 outline-none"
+                          />
+                        </div>
 
-                              if (order.buyerCorpNum) {
-                                const result = await issueTaxInvoice({
-                                  orderId: order.id,
-                                  itemName: order.productName + ' (' + order.contractMonths + '개월)',
-                                  supplyCost,
-                                  tax,
-                                  totalAmount: order.totalPrice,
-                                  buyerCorpNum: order.buyerCorpNum,
-                                  buyerCorpName: order.buyerCorpName || '',
-                                  buyerCEOName: order.buyerCEOName || '',
-                                  buyerEmail: order.buyerEmail,
-                                });
+                        {/* 마이너스 발행 예정 프리뷰 */}
+                        {(() => {
+                          const targetTotal = modifyCode === 4 ? modifyModalOrder.totalPrice : partialRefundAmount;
+                          const targetSupply = Math.round(targetTotal / 1.1);
+                          const targetTax = targetTotal - targetSupply;
+                          return (
+                            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 text-xs space-y-1">
+                              <span className="text-red-400 font-bold block mb-1">📢 국세청 전송 예정 (마이너스 수정세금계산서)</span>
+                              <div className="flex justify-between text-slate-400">
+                                <span>공급가액: <strong className="text-red-400 font-mono">-{targetSupply.toLocaleString()}원</strong></span>
+                                <span>부가세: <strong className="text-red-400 font-mono">-{targetTax.toLocaleString()}원</strong></span>
+                                <span>합계: <strong className="text-red-400 font-mono font-black">-{targetTotal.toLocaleString()}원</strong></span>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
-                                if (result.ok) {
-                                  setAdminAdOrders(prev => prev.map(o => o.id === order.id ? {
-                                    ...o,
-                                    status: 'active' as const,
-                                    paidAt: new Date().toISOString(),
-                                    activatedAt: new Date().toISOString(),
-                                    taxInvoice: {
-                                      itemKey: result.data?.itemKey || '',
-                                      ntsConfirmNum: result.data?.ntsConfirmNum || '',
-                                      issuedAt: result.data?.issuedAt || new Date().toISOString(),
-                                      supplyCost,
-                                      tax,
-                                      totalAmount: order.totalPrice,
-                                      status: 'issued',
-                                    }
-                                  } : o));
-                                  setInvoiceResult({ ok: true, message: '✅ 입금 확인 + 세금계산서 발행 완료! 국세청 전송이 자동 처리됩니다.' });
-                                  setTimeout(() => setInvoiceConfirmOrder(null), 2000);
-                                } else {
-                                  setAdminAdOrders(prev => prev.map(o => o.id === order.id ? {
-                                    ...o, status: 'active' as const,
-                                    paidAt: new Date().toISOString(),
-                                    activatedAt: new Date().toISOString()
-                                  } : o));
-                                  setInvoiceResult({ ok: false, message: `⚠️ 입금 확인 완료 (광고 활성화됨). 세금계산서 발행 실패: ${result.error}` });
-                                }
-                              } else {
-                                setAdminAdOrders(prev => prev.map(o => o.id === order.id ? {
-                                  ...o, status: 'active' as const,
-                                  paidAt: new Date().toISOString(),
-                                  activatedAt: new Date().toISOString()
-                                } : o));
-                                setInvoiceResult({ ok: true, message: '✅ 입금 확인 완료! (사업자 정보 미등록으로 세금계산서는 미발행)' });
-                                setTimeout(() => setInvoiceConfirmOrder(null), 2000);
-                              }
-                              setInvoiceIssuing(false);
-                            }}
-                            disabled={invoiceIssuing}
-                            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-base font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        {modifyResult && (
+                          <div className={`p-3 rounded-xl text-xs font-bold ${modifyResult.ok ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                            {modifyResult.message}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => setModifyModalOrder(null)}
+                            disabled={isModifying}
+                            className="flex-1 py-2.5 bg-[#0B0F19] hover:bg-[#161B26] text-slate-400 text-sm font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                           >
-                            {invoiceIssuing ? (
-                              <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>처리 중...</>
+                            취소
+                          </button>
+                          <button
+                            disabled={isModifying || (modifyCode === 2 && partialRefundAmount <= 0)}
+                            onClick={async () => {
+                              setIsModifying(true);
+                              const order = modifyModalOrder;
+                              const targetTotal = modifyCode === 4 ? order.totalPrice : partialRefundAmount;
+                              const targetSupply = Math.round(targetTotal / 1.1);
+                              const targetTax = targetTotal - targetSupply;
+
+                              const res = await issueModifyTaxInvoice({
+                                orderId: order.id,
+                                orgNTSConfirmNum: order.taxInvoice?.ntsConfirmNum || `MOCK-${Date.now()}`,
+                                modifyCode,
+                                modifyReason,
+                                refundSupplyCost: targetSupply,
+                                refundTax: targetTax,
+                                refundTotalAmount: targetTotal,
+                                itemName: order.productName,
+                                buyerCorpNum: order.buyerCorpNum || '0000000000',
+                                buyerCorpName: order.buyerCorpName,
+                                buyerCEOName: order.buyerCEOName,
+                                buyerEmail: order.buyerEmail,
+                              });
+
+                              if (res.ok) {
+                                setAdminAdOrders(prev => prev.map(o => o.id === order.id ? {
+                                  ...o,
+                                  status: 'cancelled' as const,
+                                  modifiedTaxInvoice: {
+                                    itemKey: res.data?.itemKey || `mod-${Date.now()}`,
+                                    ntsConfirmNum: res.data?.ntsConfirmNum || '',
+                                    modifyCode,
+                                    modifyReason: modifyReason || (modifyCode === 4 ? '계약의 해제' : '공급가액 변동'),
+                                    issuedAt: res.data?.issuedAt || new Date().toISOString(),
+                                    supplyCost: -Math.abs(targetSupply),
+                                    tax: -Math.abs(targetTax),
+                                    totalAmount: -Math.abs(targetTotal),
+                                    status: 'issued',
+                                  }
+                                } : o));
+                                setModifyResult({ ok: true, message: '✅ 마이너스 수정세금계산서가 국세청으로 발행되었습니다!' });
+                                toast.success('광고 취소 및 수정세금계산서가 국세청에 발행되었습니다.');
+                                setTimeout(() => setModifyModalOrder(null), 1800);
+                              } else {
+                                setModifyResult({ ok: false, message: `발행 실패: ${res.error}` });
+                              }
+                              setIsModifying(false);
+                            }}
+                            className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            {isModifying ? (
+                              <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>국세청 발행 중...</>
                             ) : (
-                              <><Receipt className="w-4 h-4" />{invoiceConfirmOrder.buyerCorpNum ? '입금확인 + 세금계산서 발행' : '입금 확인 (발행 없음)'}</>
+                              <><RotateCcw className="w-4 h-4" />수정세금계산서 발행 및 취소</>
                             )}
                           </button>
                         </div>
@@ -3075,86 +3173,208 @@ export default function AdminRole({
               {/* TAX INVOICE HISTORY SUBTAB */}
               {billingSubTab === 'taxinvoice' && (() => {
                 const invoicedOrders = adminAdOrders.filter(o => o.taxInvoice);
-                const totalSupply = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.supplyCost || 0), 0);
-                const totalTax = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.tax || 0), 0);
-                const totalAmount = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.totalAmount || 0), 0);
-                const thisMonth = new Date().getMonth();
-                const thisMonthOrders = invoicedOrders.filter(o => o.taxInvoice?.issuedAt && new Date(o.taxInvoice.issuedAt).getMonth() === thisMonth);
+                
+                // 정발행 합계
+                const origSupply = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.supplyCost || 0), 0);
+                const origTax = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.tax || 0), 0);
+                const origAmount = invoicedOrders.reduce((s, o) => s + (o.taxInvoice?.totalAmount || 0), 0);
+                
+                // 수정발행(차감) 합계 (음수)
+                const modSupply = invoicedOrders.reduce((s, o) => s + (o.modifiedTaxInvoice?.supplyCost || 0), 0);
+                const modTax = invoicedOrders.reduce((s, o) => s + (o.modifiedTaxInvoice?.tax || 0), 0);
+                const modAmount = invoicedOrders.reduce((s, o) => s + (o.modifiedTaxInvoice?.totalAmount || 0), 0);
+                
+                // 순 매출 합계
+                const netSupply = origSupply + modSupply;
+                const netTax = origTax + modTax;
+                const netAmount = origAmount + modAmount;
+                const modCount = invoicedOrders.filter(o => o.modifiedTaxInvoice).length;
+                
                 return (
-                  <div className="space-y-6">
+                  <div className="space-y-6 text-left">
+                    {/* Header with Excel Export Button */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 shadow-md">
+                      <div>
+                        <h3 className="text-lg font-black text-white flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-indigo-400" />
+                          전자세금계산서 발행 및 국세청 전송 관리
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">팝빌 연동을 통해 국세청으로 전송된 정발행 및 수정세금계산서(계약해제/환불) 전체 내역입니다.</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          try {
+                            exportTaxInvoicesToExcel(adminAdOrders);
+                            toast.success('부가세 신고용 세금계산서 엑셀 파일이 다운로드되었습니다.');
+                          } catch (e: any) {
+                            toast.error(e.message || '엑셀 다운로드 실패');
+                          }
+                        }}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 self-start sm:self-auto cursor-pointer whitespace-nowrap press-scale"
+                      >
+                        <Download className="w-4 h-4" />부가세 신고용 엑셀(XLSX) 다운로드
+                      </button>
+                    </div>
+
                     {/* Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="bg-[#111622] p-5 rounded-2xl border border-indigo-500/20 space-y-2">
                         <span className="text-xs text-indigo-400/80 font-bold block uppercase">총 발행 건수</span>
                         <strong className="text-xl font-black text-indigo-400">{invoicedOrders.length}건</strong>
+                        <p className="text-xs text-slate-500">수정(마이너스) 발행: {modCount}건</p>
                       </div>
                       <div className="bg-[#111622] p-5 rounded-2xl border border-emerald-500/20 space-y-2">
-                        <span className="text-xs text-emerald-400/80 font-bold block uppercase">총 공급가액</span>
-                        <strong className="text-xl font-black text-emerald-400">{totalSupply.toLocaleString()}원</strong>
-                        <p className="text-xs text-slate-600">부가세: {totalTax.toLocaleString()}원</p>
+                        <span className="text-xs text-emerald-400/80 font-bold block uppercase">순 공급가액 (차감반영)</span>
+                        <strong className="text-xl font-black text-emerald-400">{netSupply.toLocaleString()}원</strong>
+                        <p className="text-xs text-slate-500">순 부가세: {netTax.toLocaleString()}원</p>
                       </div>
                       <div className="bg-[#111622] p-5 rounded-2xl border border-amber-500/20 space-y-2">
-                        <span className="text-xs text-amber-400/80 font-bold block uppercase">총 발행 금액</span>
-                        <strong className="text-xl font-black text-amber-400">{totalAmount.toLocaleString()}원</strong>
+                        <span className="text-xs text-amber-400/80 font-bold block uppercase">순 발행 합계</span>
+                        <strong className="text-xl font-black text-amber-400">{netAmount.toLocaleString()}원</strong>
+                        <p className="text-xs text-slate-500">당초 총액: {origAmount.toLocaleString()}원</p>
                       </div>
-                      <div className="bg-[#111622] p-5 rounded-2xl border border-violet-500/20 space-y-2">
-                        <span className="text-xs text-violet-400/80 font-bold block uppercase">이달 발행</span>
-                        <strong className="text-xl font-black text-violet-400">{thisMonthOrders.length}건</strong>
-                        <p className="text-xs text-slate-600">{thisMonthOrders.reduce((s, o) => s + (o.taxInvoice?.totalAmount || 0), 0).toLocaleString()}원</p>
+                      <div className="bg-[#111622] p-5 rounded-2xl border border-red-500/20 space-y-2">
+                        <span className="text-xs text-red-400/80 font-bold block uppercase">환불/취소 차감액</span>
+                        <strong className="text-xl font-black text-red-400">{modAmount.toLocaleString()}원</strong>
+                        <p className="text-xs text-slate-500">계약의 해제 등 총 {modCount}건</p>
                       </div>
                     </div>
 
                     {/* Invoice Table */}
-                    <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden">
+                    <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 overflow-hidden shadow-md">
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                              <th className="p-3">발행일</th>
-                              <th className="p-3">변호사</th>
-                              <th className="p-3">광고 상품</th>
+                            <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60 text-xs">
+                              <th className="p-3">작성일자</th>
+                              <th className="p-3">구분</th>
+                              <th className="p-3">변호사 (상호)</th>
+                              <th className="p-3">품목명</th>
                               <th className="p-3 text-right">공급가액</th>
                               <th className="p-3 text-right">부가세</th>
                               <th className="p-3 text-right">합계</th>
-                              <th className="p-3">국세청확인번호</th>
+                              <th className="p-3">국세청 승인번호</th>
                               <th className="p-3">상태</th>
+                              <th className="p-3 text-right">증빙/관리</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#1E293B]/30">
                             {invoicedOrders.length === 0 ? (
-                              <tr><td colSpan={8} className="p-8 text-center text-slate-600 font-semibold">발행된 세금계산서가 없습니다.</td></tr>
+                              <tr><td colSpan={10} className="p-8 text-center text-slate-600 font-semibold">발행된 세금계산서가 없습니다.</td></tr>
                             ) : invoicedOrders.map(order => (
                               <React.Fragment key={order.id}>
+                                {/* 1. 당초 정발행 행 */}
                                 <tr className="hover:bg-[#0B0F19]/20 transition-colors cursor-pointer" onClick={() => setExpandedInvoiceId(expandedInvoiceId === order.id ? null : order.id)}>
                                   <td className="p-3 text-slate-400 font-mono text-xs">{order.taxInvoice?.issuedAt ? new Date(order.taxInvoice.issuedAt).toLocaleDateString('ko-KR') : '-'}</td>
-                                  <td className="p-3 font-bold text-white">{order.lawyerName}</td>
+                                  <td className="p-3"><span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">정발행</span></td>
+                                  <td className="p-3 font-bold text-white">{order.lawyerName} <span className="text-xs text-slate-500 font-normal">({order.buyerCorpName || '상호미등록'})</span></td>
                                   <td className="p-3 text-slate-300">{order.productName}</td>
-                                  <td className="p-3 text-right text-slate-300">{(order.taxInvoice?.supplyCost || 0).toLocaleString()}원</td>
-                                  <td className="p-3 text-right text-slate-400">{(order.taxInvoice?.tax || 0).toLocaleString()}원</td>
-                                  <td className="p-3 text-right font-bold text-indigo-400">{(order.taxInvoice?.totalAmount || 0).toLocaleString()}원</td>
+                                  <td className="p-3 text-right text-slate-300 font-mono">{(order.taxInvoice?.supplyCost || 0).toLocaleString()}원</td>
+                                  <td className="p-3 text-right text-slate-400 font-mono">{(order.taxInvoice?.tax || 0).toLocaleString()}원</td>
+                                  <td className="p-3 text-right font-bold text-indigo-400 font-mono">{(order.taxInvoice?.totalAmount || 0).toLocaleString()}원</td>
                                   <td className="p-3 font-mono text-xs text-slate-400">{order.taxInvoice?.ntsConfirmNum || '-'}</td>
-                                  <td className="p-3"><span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>발행완료</span></td>
+                                  <td className="p-3">
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                      {order.modifiedTaxInvoice ? '수정발행됨' : '발행완료'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right" onClick={e => e.stopPropagation()}>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        onClick={async () => {
+                                          if (!order.taxInvoice?.itemKey) return;
+                                          setPdfLoadingOrderId(order.id);
+                                          const res = await getTaxInvoicePdfUrl(order.taxInvoice.itemKey);
+                                          if (res.ok && res.data?.url) {
+                                            window.open(res.data.url, '_blank', 'width=900,height=800');
+                                          } else {
+                                            toast.error(res.error || 'PDF 뷰어 로드 실패');
+                                          }
+                                          setPdfLoadingOrderId(null);
+                                        }}
+                                        disabled={pdfLoadingOrderId === order.id}
+                                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                        title="국세청 공인 PDF 뷰어 및 인쇄"
+                                      >
+                                        <Printer className="w-3 h-3" />
+                                        {pdfLoadingOrderId === order.id ? '로딩...' : 'PDF'}
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          if (!order.taxInvoice?.itemKey) return;
+                                          const targetEmail = order.buyerEmail || 'tax@lawfirm.com';
+                                          setResendingOrderId(order.id);
+                                          const res = await resendTaxInvoiceEmail(order.taxInvoice.itemKey, targetEmail);
+                                          if (res.ok) {
+                                            toast.success(`${targetEmail} 주소로 세금계산서 메일이 재발송되었습니다.`);
+                                          } else {
+                                            toast.error(res.error || '메일 재발송 실패');
+                                          }
+                                          setResendingOrderId(null);
+                                        }}
+                                        disabled={resendingOrderId === order.id}
+                                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                        title="변호사 이메일로 세금계산서 재발송"
+                                      >
+                                        <Send className="w-3 h-3" />
+                                        {resendingOrderId === order.id ? '전송중...' : '재발송'}
+                                      </button>
+                                    </div>
+                                  </td>
                                 </tr>
+
+                                {/* 2. 수정세금계산서(계약해제/환불) 행이 있을 경우 음수 행 렌더링 */}
+                                {order.modifiedTaxInvoice && (
+                                  <tr className="bg-red-500/5 hover:bg-red-500/10 transition-colors border-l-2 border-red-500">
+                                    <td className="p-3 text-red-400 font-mono text-xs">{new Date(order.modifiedTaxInvoice.issuedAt).toLocaleDateString('ko-KR')}</td>
+                                    <td className="p-3">
+                                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">
+                                        수정: {order.modifiedTaxInvoice.modifyCode === 2 ? '공급가변동' : '계약해제'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 font-bold text-red-300">{order.lawyerName} <span className="text-xs text-red-400/80 font-normal">({order.modifiedTaxInvoice.modifyReason})</span></td>
+                                    <td className="p-3 text-red-300">{order.productName} [취소차감]</td>
+                                    <td className="p-3 text-right text-red-400 font-mono font-bold">{order.modifiedTaxInvoice.supplyCost.toLocaleString()}원</td>
+                                    <td className="p-3 text-right text-red-400 font-mono">{order.modifiedTaxInvoice.tax.toLocaleString()}원</td>
+                                    <td className="p-3 text-right font-black text-red-400 font-mono">{order.modifiedTaxInvoice.totalAmount.toLocaleString()}원</td>
+                                    <td className="p-3 font-mono text-xs text-red-400/80">{order.modifiedTaxInvoice.ntsConfirmNum || '-'}</td>
+                                    <td className="p-3">
+                                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 inline-flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>국세청 차감완료
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-right">
+                                      <span className="text-xs text-slate-500 font-mono">사유: {order.modifiedTaxInvoice.modifyReason}</span>
+                                    </td>
+                                  </tr>
+                                )}
+
+                                {/* 확장 상세 패널 */}
                                 {expandedInvoiceId === order.id && (
                                   <tr>
-                                    <td colSpan={8} className="p-0">
-                                      <div className="bg-[#0B0F19] p-4 border-t border-[#1E293B]/30">
-                                        <div className="flex items-start gap-6">
-                                          <div className="space-y-1.5 flex-1">
-                                            <span className="text-xs text-indigo-400 font-bold uppercase block">공급받는 자 (변호사) 사업자 정보</span>
-                                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                                              <div><span className="text-slate-600">사업자번호</span> <span className="text-white font-mono ml-1">{order.buyerCorpNum || '미등록'}</span></div>
-                                              <div><span className="text-slate-600">상호</span> <span className="text-white ml-1">{order.buyerCorpName || '미등록'}</span></div>
-                                              <div><span className="text-slate-600">대표자</span> <span className="text-white ml-1">{order.buyerCEOName || '미등록'}</span></div>
-                                              <div><span className="text-slate-600">이메일</span> <span className="text-white ml-1">{order.buyerEmail || '미등록'}</span></div>
+                                    <td colSpan={10} className="p-0">
+                                      <div className="bg-[#0B0F19] p-5 border-t border-[#1E293B]/30 space-y-4 text-left">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                          <div className="space-y-2">
+                                            <span className="text-xs text-indigo-400 font-bold uppercase block tracking-wider">공급받는 자 (변호사) 사업자 정보</span>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs bg-[#111622] p-3.5 rounded-xl border border-[#1E293B]/60">
+                                              <div><span className="text-slate-500">사업자번호:</span> <span className="text-white font-mono ml-1">{formatCorpNum(order.buyerCorpNum || '')}</span></div>
+                                              <div><span className="text-slate-500">상호:</span> <span className="text-white ml-1">{order.buyerCorpName || '미등록'}</span></div>
+                                              <div><span className="text-slate-500">대표자:</span> <span className="text-white ml-1">{order.buyerCEOName || '미등록'}</span></div>
+                                              <div><span className="text-slate-500">계산서 이메일:</span> <span className="text-white ml-1">{order.buyerEmail || '미등록'}</span></div>
+                                              {order.buyerTaxEmail2 && (
+                                                <div className="col-span-2"><span className="text-slate-500">사무장/회계 이메일:</span> <span className="text-indigo-300 ml-1">{order.buyerTaxEmail2}</span></div>
+                                              )}
                                             </div>
                                           </div>
-                                          <div className="space-y-1.5">
-                                            <span className="text-xs text-indigo-400 font-bold uppercase block">발행 상세</span>
-                                            <div className="grid grid-cols-1 gap-1 text-sm">
-                                              <div><span className="text-slate-600">주문 ID</span> <span className="text-slate-400 font-mono ml-1">{order.id}</span></div>
-                                              <div><span className="text-slate-600">계약기간</span> <span className="text-white ml-1">{order.contractMonths}개월</span></div>
-                                              <div><span className="text-slate-600">입금확인일</span> <span className="text-white ml-1">{order.paidAt ? new Date(order.paidAt).toLocaleDateString('ko-KR') : '-'}</span></div>
+                                          <div className="space-y-2">
+                                            <span className="text-xs text-indigo-400 font-bold uppercase block tracking-wider">계산서 관리 및 이력 정보</span>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs bg-[#111622] p-3.5 rounded-xl border border-[#1E293B]/60">
+                                              <div><span className="text-slate-500">주문 ID:</span> <span className="text-slate-300 font-mono ml-1">{order.id}</span></div>
+                                              <div><span className="text-slate-500">계약기간:</span> <span className="text-white ml-1">{order.contractMonths}개월</span></div>
+                                              <div><span className="text-slate-500">팝빌 관리키:</span> <span className="text-slate-300 font-mono ml-1">{order.taxInvoice?.itemKey}</span></div>
+                                              <div><span className="text-slate-500">입금확인일:</span> <span className="text-white ml-1">{order.paidAt ? new Date(order.paidAt).toLocaleDateString('ko-KR') : '-'}</span></div>
                                             </div>
                                           </div>
                                         </div>
