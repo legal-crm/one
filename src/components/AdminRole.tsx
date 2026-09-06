@@ -823,7 +823,15 @@ export default function AdminRole({
     toast.success('스팸 노출 제한 처리가 완료되었습니다.');
   };
 
-  const handleApproveLawyer = (lawyerId: string) => {
+  const handleApproveLawyer = async (lawyerId: string) => {
+    const targetLawyer = lawyers.find(l => l.id === lawyerId);
+    const confirmed = await dialog.confirm({
+      title: '변호사 자격 승인',
+      message: `[${targetLawyer?.name || '해당 변호사'}] 대리인의 자격 심사를 승인하시겠습니까?\n승인 즉시 플랫폼 내 활동 및 실시간 상담 매칭이 개시됩니다.`,
+      confirmText: '승인 처리'
+    });
+    if (!confirmed) return;
+
     setLawyers(prev => {
       const next = prev.map(l => {
         if (l.id === lawyerId) {
@@ -3474,6 +3482,13 @@ export default function AdminRole({
                                         onClick={async () => {
                                           if (!order.taxInvoice?.itemKey) return;
                                           const targetEmail = order.buyerEmail || 'tax@lawfirm.com';
+                                          const confirmed = await dialog.confirm({
+                                            title: '전자세금계산서 메일 재발송',
+                                            message: `[${order.buyerCorpName || order.lawyerName}]\n${targetEmail} 주소로 국세청 승인 세금계산서 안내 메일을 재발송하시겠습니까?`,
+                                            confirmText: '재발송'
+                                          });
+                                          if (!confirmed) return;
+
                                           setResendingOrderId(order.id);
                                           const res = await resendTaxInvoiceEmail(order.taxInvoice.itemKey, targetEmail);
                                           if (res.ok) {

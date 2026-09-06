@@ -17,6 +17,7 @@ import ContractWizard from './ContractWizard';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
 import AuditTrailCertificate from './AuditTrailCertificate';
+import ContractReminderModal from './ContractReminderModal';
 
 interface Props {
   lawyerName: string;
@@ -35,6 +36,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
   const [searchQuery, setSearchQuery] = useState('');
   const [editingContract, setEditingContract] = useState<ElectronicContract | null>(null);
   const [viewingContract, setViewingContract] = useState<ElectronicContract | null>(null);
+  const [reminderTargetContract, setReminderTargetContract] = useState<ElectronicContract | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
 
   const refreshContracts = useCallback(async () => {
@@ -118,9 +120,41 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     toast.success('계약서가 삭제되었습니다');
   };
 
-  // ── 골든타임 재촉 알림톡/문자 원클릭 발송 ──
+  // ── 골든타임 재촉 알림톡 사전 확인 모달 오픈 ──
   const handleSendReminder = (contract: ElectronicContract) => {
-    toast.success(`[${contract.clientName}] 의뢰인에게 서명 골든타임 재촉 알림톡을 발송했습니다.`);
+    setReminderTargetContract(contract);
+  };
+
+  // ── 재촉 알림톡 최종 발송 및 감사 추적 기록 ──
+  const handleConfirmSendReminder = async (
+    templateKey: string,
+    message: string,
+    channel: 'alimtok' | 'sms' | 'both'
+  ) => {
+    if (!reminderTargetContract) return;
+    const target = reminderTargetContract;
+    const now = new Date().toISOString();
+    const channelLabel = channel === 'both' ? '카카오 알림톡(SMS 대체포함)' : channel === 'alimtok' ? '카카오 알림톡' : 'SMS';
+    
+    // 감사 추적(Audit Trail)에 발송 이력 영구 기록
+    const updatedContract: ElectronicContract = {
+      ...target,
+      auditTrail: [
+        ...(target.auditTrail || []),
+        {
+          action: '골든타임 서명 재촉 알림톡 발송',
+          timestamp: now,
+          actor: 'lawyer',
+          details: `수신: ${target.clientPhone || '의뢰인'}, 채널: ${channelLabel}, 템플릿: ${templateKey}`
+        }
+      ],
+      updatedAt: now
+    };
+
+    await saveContract(updatedContract);
+    await refreshContracts();
+    toast.success(`[${target.clientName}] 의뢰인에게 서명 골든타임 재촉 알림톡을 정상 발송했습니다.`);
+    setReminderTargetContract(null);
   };
 
   // ── 엑셀/CSV 회계 원장 다운로드 (UTF-8 BOM) ──
@@ -521,7 +555,19 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* 3. 작성중인 경우 마법사 수정 */}
+                          {/* 3. 서명 진행/지체 건인 경우 재촉 알림톡 버튼 */}
+                          {(c.status === 'signing' || overdue) && (
+                            <button
+                              onClick={() => handleSendReminder(c)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                              title="골든타임 재촉 알림톡 미리보기 및 발송"
+                            >
+                              <Send className="w-3.5 h-3.5 text-amber-700" />
+                              <span>재촉</span>
+                            </button>
+                          )}
+
+                          {/* 4. 작성중인 경우 마법사 수정 */}
                           {c.status === 'drafting' && (
                             <button
                               onClick={() => setEditingContract(c)}
@@ -532,7 +578,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* 4. 삭제 버튼 */}
+                          {/* 5. 삭제 버튼 */}
                           <button
                             onClick={() => handleDelete(c.id)}
                             className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
@@ -673,6 +719,14 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
           </div>
         </div>
       )}
+
+      {/* ── 6. 골든타임 재촉 알림톡 사전 확인 & 미리보기 모달 ── */}
+      <ContractReminderModal
+        isOpen={Boolean(reminderTargetContract)}
+        onClose={() => setReminderTargetContract(null)}
+        contract={reminderTargetContract}
+        onSend={handleConfirmSendReminder}
+      />
 
     </div>
   );

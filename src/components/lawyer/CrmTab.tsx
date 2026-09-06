@@ -20,6 +20,7 @@ import AssignmentDirectiveModal from './AssignmentDirectiveModal';
 import MobileScanner from './MobileScanner';
 import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeAlimtokModal from './FeeAlimtokModal';
+import BulkMessageSendModal from './BulkMessageSendModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import { getContractsByClientId } from '../../services/contractService';
@@ -170,6 +171,10 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
   const [bulkSelected, setBulkSelected] = useState<string[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [bulkSendModalConfig, setBulkSendModalConfig] = useState<{
+    isOpen: boolean;
+    channel: 'alimtok' | 'sms';
+  } | null>(null);
 
   // ── 케이스 관리 확장 (LeadMaster 이식) ──
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
@@ -3680,23 +3685,61 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
               </button>
             ))}
           </div>
-          <div className="bg-slate-50 p-3 rounded-xl">
-            <p className="text-xs text-slate-500">대상: <span className="font-bold text-slate-700">{(() => {
-              // Simple filter logic based on CRM data
-              const filtered = requests.filter(r => {
-                const ext = getCrmExt(r.id);
-                if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
-                if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
-                if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
-                return false;
-              });
-              return filtered.length;
-            })()}명</span></p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => { toast.success('알림톡 발송이 예약되었습니다.'); setShowBulkMessage(false); }} className="flex-1 py-2.5 text-xs font-bold text-white bg-yellow-500 rounded-xl hover:bg-yellow-600 transition-colors press-scale whitespace-nowrap cursor-pointer">💬 카카오 알림톡 발송</button>
-            <button onClick={() => { toast.success('SMS 발송이 예약되었습니다.'); setShowBulkMessage(false); }} className="flex-1 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors press-scale whitespace-nowrap cursor-pointer">📱 SMS 발송</button>
-          </div>
+          {(() => {
+            const bulkFilteredClients = requests.filter(r => {
+              const ext = getCrmExt(r.id);
+              if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
+              if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+              if (bulkFilter === 'hearing_month') return true;
+              if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+              return false;
+            }).map(r => ({
+              id: r.id,
+              clientName: r.clientName || '의뢰인',
+              phone: r.phone || '',
+              subText: r.debtTotal ? `${r.debtTotal}만원` : undefined
+            }));
+
+            return (
+              <>
+                <div className="bg-slate-50 p-3 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500">
+                    발송 대상 의뢰인: <span className="font-black text-sm text-slate-800">{bulkFilteredClients.length}명</span>
+                  </p>
+                  <span className="text-[11px] text-slate-400">
+                    {bulkFilteredClients.slice(0, 3).map(c => c.clientName).join(', ')}
+                    {bulkFilteredClients.length > 3 ? ` 외 ${bulkFilteredClients.length - 3}명` : ''}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      if (bulkFilteredClients.length === 0) {
+                        toast.info('발송 대상 의뢰인이 없습니다.');
+                        return;
+                      }
+                      setBulkSendModalConfig({ isOpen: true, channel: 'alimtok' });
+                    }} 
+                    className="flex-1 py-2.5 text-xs font-bold text-[#391B1B] bg-[#FAE100] hover:bg-[#F4D700] rounded-xl transition-colors press-scale whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    💬 카카오 알림톡 발송 ({bulkFilteredClients.length}명)
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (bulkFilteredClients.length === 0) {
+                        toast.info('발송 대상 의뢰인이 없습니다.');
+                        return;
+                      }
+                      setBulkSendModalConfig({ isOpen: true, channel: 'sms' });
+                    }} 
+                    className="flex-1 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors press-scale whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    📱 SMS 발송 ({bulkFilteredClients.length}명)
+                  </button>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -3773,6 +3816,61 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                } : f)
              };
              updateCrmExt(selectedClient.id, updated);
+          }}
+        />
+      )}
+
+      {/* ── 타겟 대량 메시지 발송 사전 확인 & 미리보기 모달 ── */}
+      {bulkSendModalConfig && (
+        <BulkMessageSendModal
+          isOpen={bulkSendModalConfig.isOpen}
+          onClose={() => setBulkSendModalConfig(null)}
+          channel={bulkSendModalConfig.channel}
+          filterKey={bulkFilter}
+          filterLabel={
+            bulkFilter === 'doc_overdue' ? '서류 3일+ 미제출 의뢰인' :
+            bulkFilter === 'fee_overdue' ? '분납 2회+ 연체 의뢰인' :
+            bulkFilter === 'hearing_month' ? '이달 채권자집회 참석 대상자' :
+            bulkFilter === 'correction_urgent' ? '법원 보정 기한 임박 (3일 내) 의뢰인' :
+            '타겟 의뢰인 세그먼트'
+          }
+          targetClients={requests.filter(r => {
+            const ext = getCrmExt(r.id);
+            if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
+            if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+            if (bulkFilter === 'hearing_month') return true;
+            if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+            return false;
+          }).map(r => ({
+            id: r.id,
+            clientName: r.clientName || '의뢰인',
+            phone: r.phone || '',
+            subText: r.debtTotal ? `${r.debtTotal}만원` : undefined
+          }))}
+          firmName={activeLawyer.lawFirmName || activeLawyer.firm || '법무법인'}
+          lawyerName={activeLawyer.name || '담당 변호사'}
+          onConfirmSend={async (message, channel) => {
+            const targets = requests.filter(r => {
+              const ext = getCrmExt(r.id);
+              if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
+              if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+              if (bulkFilter === 'hearing_month') return true;
+              if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+              return false;
+            });
+            const channelName = channel === 'alimtok' ? '카카오 알림톡' : 'SMS';
+            for (const t of targets) {
+              await createActivityLog(
+                t.id,
+                'COMMUNICATION',
+                `타겟 대량 메시지 발송 완료 (${channelName})`,
+                activeStaff?.name || activeLawyer.name,
+                { filter: bulkFilter, snippet: message.slice(0, 40) }
+              );
+            }
+            toast.success(`총 ${targets.length}명의 의뢰인에게 ${channelName} 대량 발송이 완료되었습니다.`);
+            setShowBulkMessage(false);
+            setBulkSendModalConfig(null);
           }}
         />
       )}
