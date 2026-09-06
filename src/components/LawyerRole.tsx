@@ -41,6 +41,7 @@ import {
   loadNotificationSettings, saveNotificationSettings, loadNotificationLogs,
   testTelegramConnection, sendEmailNotification, formatEmailConsultHtml,
   requestBrowserPushPermission, sendBrowserPushNotification,
+  notifyAdminNewAdOrder,
 } from '../services/notificationService';
 import type { NotificationSettings, NotificationLog } from '../types';
 import PopupContainer from './popup/PopupContainer';
@@ -4173,7 +4174,34 @@ export default function LawyerRole({
                         </div>
                         <div className="flex gap-3">
                           <button onClick={() => setAdModalProduct(null)} className="flex-1 py-3.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">취소</button>
-                          <button onClick={() => { if (!adModalDepositor.trim()) return; if (adModalProduct.id === 'ad-regional-top' && !adModalRegion) return; const disc = adModalProduct.discounts.find((d: any) => d.months === adModalMonths); const mp = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price; const newOrder: AdOrder = { id: `ado-${Date.now()}`, lawyerId: activeLawyer.id, lawyerName: activeLawyer.name, productId: adModalProduct.id, productName: adModalProduct.name, contractMonths: adModalMonths, monthlyPrice: mp, totalPrice: mp * adModalMonths, status: 'pending', requestedAt: new Date().toISOString(), depositorName: adModalDepositor, region: adModalRegion || undefined }; setAdOrders(prev => [newOrder, ...prev]); setAdModalStep('done'); }} disabled={!adModalDepositor.trim() || (adModalProduct.id === 'ad-regional-top' && !adModalRegion)} className="flex-1 py-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer bg-[#1E3A5F] hover:bg-[#163152] text-white shadow-md disabled:opacity-40 disabled:cursor-not-allowed">신청 완료</button>
+                          <button onClick={() => {
+                            if (!adModalDepositor.trim()) return;
+                            if (adModalProduct.id === 'ad-regional-top' && !adModalRegion) return;
+                            const disc = adModalProduct.discounts.find((d: any) => d.months === adModalMonths);
+                            const mp = disc ? parseInt(disc.price.replace(/[^0-9]/g, '')) * 10000 : adModalProduct.price;
+                            const newOrder: AdOrder = {
+                              id: `ado-${Date.now()}`,
+                              lawyerId: activeLawyer.id,
+                              lawyerName: activeLawyer.name,
+                              productId: adModalProduct.id,
+                              productName: adModalProduct.name,
+                              contractMonths: adModalMonths,
+                              monthlyPrice: mp,
+                              totalPrice: mp * adModalMonths,
+                              status: 'pending',
+                              requestedAt: new Date().toISOString(),
+                              depositorName: adModalDepositor.trim(),
+                              region: adModalRegion || undefined,
+                              buyerCorpNum: (activeLawyer as any).businessNumber || (activeLawyer as any).bizNumber || undefined,
+                              buyerCorpName: (activeLawyer as any).firmName || (activeLawyer as any).officeName || `${activeLawyer.name} 법률사무소`,
+                              buyerCEOName: activeLawyer.name,
+                              buyerEmail: activeLawyer.email,
+                            };
+                            setAdOrders(prev => [newOrder, ...prev]);
+                            // 관리자 실시간 알림 (텔레그램 / 슬랙 / 브라우저 푸시)
+                            notifyAdminNewAdOrder(newOrder);
+                            setAdModalStep('done');
+                          }} disabled={!adModalDepositor.trim() || (adModalProduct.id === 'ad-regional-top' && !adModalRegion)} className="flex-1 py-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer bg-[#1E3A5F] hover:bg-[#163152] text-white shadow-md disabled:opacity-40 disabled:cursor-not-allowed">신청 완료</button>
                         </div>
                       </div>
                     </>

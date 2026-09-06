@@ -5,7 +5,8 @@
  * - Browser Push Notification
  * - SMS/카카오톡 (스텁, 준비중)
  */
-import type { NotificationLog, NotificationSettings } from '../types';
+import type { AdOrder, NotificationLog, NotificationSettings } from '../types';
+import { BANK_ACCOUNT_INFO } from '../data';
 
 // ═══════════════════════════════════════════════════════
 // 설정 저장/로드 (localStorage)
@@ -324,3 +325,128 @@ export async function notifyAllChannels(
 
   return { results };
 }
+
+// ═══════════════════════════════════════════════════════
+// 광고비 입금 대기 & 입금 확인 관리자 알림 (Telegram / Slack)
+// ═══════════════════════════════════════════════════════
+
+export function formatTelegramAdOrderCard(order: AdOrder): string {
+  const reqDate = order.requestedAt ? new Date(order.requestedAt).toLocaleString('ko-KR') : new Date().toLocaleString('ko-KR');
+  const depositor = order.depositorName || order.lawyerName;
+
+  return [
+    `💳 *[신규 광고 신청 & 입금 대기]*`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `• 신청 변호사: *${order.lawyerName}*`,
+    `• 신청 상품: *${order.productName}* (${order.contractMonths}개월${order.region ? ` / ${order.region}` : ''})`,
+    `• 입금 예정액: *${order.totalPrice.toLocaleString()} 원* (VAT 포함)`,
+    `• 입금자명: *${depositor}*`,
+    `• 입금 계좌: *${BANK_ACCOUNT_INFO.bank} ${BANK_ACCOUNT_INFO.accountNumber}*`,
+    `• 예금주: *${BANK_ACCOUNT_INFO.holder}*`,
+    `• 주문 번호: \`${order.id}\``,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `⏰ ${reqDate} 신청 접수`,
+    `👉 *관리자 페이지 [정산 관리]에서 입금 대조 후 [입금 확인 + 발행]을 클릭해 주세요.*`,
+  ].join('\n');
+}
+
+export function formatTelegramAdConfirmedCard(order: AdOrder): string {
+  const expiresStr = order.expiresAt ? new Date(order.expiresAt).toLocaleDateString('ko-KR') : '-';
+  const ntsNum = order.taxInvoice?.ntsConfirmNum || '승인완료';
+
+  return [
+    `✅ *[광고비 입금 확인 & 활성화 완료]*`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `• 대상 변호사: *${order.lawyerName}*`,
+    `• 광고 상품: *${order.productName}* (${order.contractMonths}개월)`,
+    `• 결제 금액: *${order.totalPrice.toLocaleString()} 원*`,
+    `• 노출 만료일: *${expiresStr}*`,
+    `• 세금계산서: *${order.taxInvoice ? `국세청 정발행 (${ntsNum})` : '미발행/직접처리'}*`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `⚡ 플랫폼에 광고 배너/노출이 즉시 활성화되었습니다.`,
+  ].join('\n');
+}
+
+/**
+ * 변호사가 광고 신청 완료 시 관리자에게 실시간 알림(텔레그램/슬랙/푸시) 발송
+ */
+export async function notifyAdminNewAdOrder(order: AdOrder): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const settings = loadNotificationSettings();
+    const markdown = formatTelegramAdOrderCard(order);
+    const plainText = `[광고 신청] ${order.lawyerName} - ${order.productName} (${order.totalPrice.toLocaleString()}원 / 입금자: ${order.depositorName || order.lawyerName})`;
+
+    // 1. 브라우저 푸시 (관리자 탭이 열려있거나 권한 있는 경우)
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      sendBrowserPushNotification(
+        '💳 신규 광고 신청 (입금대기)',
+        `${order.lawyerName} | ${order.productName} | ${order.totalPrice.toLocaleString()}원`
+      );
+    }
+
+    // 2. 서버리스 알림 API (/api/notify-admin) 호출 -> 텔레그램 / 슬랙 발송
+    const res = await fetch('/api/notify-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: '💳 [신규 광고 신청] 입금 대기 안내',
+        message: plainText,
+        markdown,
+        telegram: settings.telegram.connected ? {
+          botToken: settings.telegram.botToken,
+          chatId: settings.telegram.chatId,
+        } : undefined,
+      }),
+    });
+
+    const data = await res.json();
+
+    // 알림 로그 저장
+    const log: NotificationLog = {
+      id: createLogId(),
+      channel: 'telegram',
+      type: 'test',
+      sentAt: new Date().toISOString(),
+      status: data.ok ? 'sent' : 'failed',
+      detail: `광고신청 입금대기: ${order.lawyerName} (${order.id})`,
+      errorMessage: data.error,
+    };
+    saveNotificationLog(log);
+
+    return data;
+  } catch (err: any) {
+    console.error('[notifyAdminNewAdOrder Error]', err);
+    return { ok: false, message: err.message || '알림 전송 오류' };
+  }
+}
+
+/**
+ * 관리자가 입금 확인 및 광고 승인 완료 시 관리자 알림(텔레그램/슬랙) 발송
+ */
+export async function notifyAdminAdConfirmed(order: AdOrder): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const settings = loadNotificationSettings();
+    const markdown = formatTelegramAdConfirmedCard(order);
+    const plainText = `[광고 승인 완료] ${order.lawyerName} - ${order.productName} (${order.totalPrice.toLocaleString()}원) 활성화 완료`;
+
+    const res = await fetch('/api/notify-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: '✅ [광고 활성화 완료]',
+        message: plainText,
+        markdown,
+        telegram: settings.telegram.connected ? {
+          botToken: settings.telegram.botToken,
+          chatId: settings.telegram.chatId,
+        } : undefined,
+      }),
+    });
+
+    return await res.json();
+  } catch (err: any) {
+    console.error('[notifyAdminAdConfirmed Error]', err);
+    return { ok: false, message: err.message || '알림 전송 오류' };
+  }
+}
+

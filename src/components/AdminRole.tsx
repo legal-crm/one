@@ -31,6 +31,7 @@ import { getHoneypotLogs, clearHoneypotLogs, HoneypotAttackLog } from '../servic
 import GlobalSessionMonitor from './admin/GlobalSessionMonitor';
 import { useSessionGuard } from '../hooks/useSessionGuard';
 import { registerSession } from '../services/sessionService';
+import { notifyAdminAdConfirmed } from '../services/notificationService';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -106,6 +107,27 @@ export default function AdminRole({
   const [invoiceConfirmOrder, setInvoiceConfirmOrder] = useState<AdOrder | null>(null);
   const [invoiceIssuing, setInvoiceIssuing] = useState(false);
   const [invoiceResult, setInvoiceResult] = useState<{ok: boolean; message: string} | null>(null);
+  const [confirmDepositorVerified, setConfirmDepositorVerified] = useState(true);
+  const [confirmIssueTaxInvoice, setConfirmIssueTaxInvoice] = useState(true);
+  const [confirmCorpNum, setConfirmCorpNum] = useState('');
+  const [confirmCorpName, setConfirmCorpName] = useState('');
+  const [confirmCEOName, setConfirmCEOName] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [confirmTaxEmail2, setConfirmTaxEmail2] = useState('');
+
+  // 입금 확인 모달 열릴 때 대상 주문 정보 기반 폼 초기화
+  useEffect(() => {
+    if (invoiceConfirmOrder) {
+      setConfirmDepositorVerified(true);
+      setConfirmIssueTaxInvoice(true);
+      setConfirmCorpNum(invoiceConfirmOrder.buyerCorpNum || '120-81-47521');
+      setConfirmCorpName(invoiceConfirmOrder.buyerCorpName || `${invoiceConfirmOrder.lawyerName} 법률사무소`);
+      setConfirmCEOName(invoiceConfirmOrder.buyerCEOName || invoiceConfirmOrder.lawyerName);
+      setConfirmEmail(invoiceConfirmOrder.buyerEmail || 'tax@lawyer.example.com');
+      setConfirmTaxEmail2(invoiceConfirmOrder.buyerTaxEmail2 || '');
+      setInvoiceResult(null);
+    }
+  }, [invoiceConfirmOrder]);
 
   // 수정세금계산서 발행 및 광고 취소 모달 state
   const [modifyModalOrder, setModifyModalOrder] = useState<AdOrder | null>(null);
@@ -2970,6 +2992,7 @@ export default function AdminRole({
                       </table>
                     </div>
                   </div>
+                  {/* 입금 안내 계좌 안내 바 */}
                   <div className="bg-[#111622] p-4 rounded-2xl border border-[#1E293B]/60 flex items-center gap-4">
                     <span className="text-lg">🏦</span>
                     <div>
@@ -2978,6 +3001,229 @@ export default function AdminRole({
                       <span className="text-xs text-slate-400 ml-2">예금주: {BANK_ACCOUNT_INFO.holder}</span>
                     </div>
                   </div>
+
+                  {/* 입금 확인 및 세금계산서 발행 모달 */}
+                  {invoiceConfirmOrder && (
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !invoiceIssuing && setInvoiceConfirmOrder(null)}>
+                      <div className="bg-[#111622] rounded-2xl border border-[#1E293B] max-w-lg w-full p-6 shadow-2xl space-y-5 text-left my-8" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                            <Receipt className="w-5 h-5 text-emerald-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-white font-extrabold text-base">광고비 입금 확인 및 즉시 승인</h3>
+                            <p className="text-xs text-slate-500">카카오뱅크 무통장 입금을 확인하고 광고 활성화 및 세금계산서를 발행합니다</p>
+                          </div>
+                        </div>
+
+                        {/* 주문 및 입금 정보 카드 */}
+                        <div className="bg-[#0B0F19] rounded-xl p-4 space-y-2 text-sm border border-[#1E293B]/60">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">대상 변호사</span>
+                            <span className="text-white font-bold">{invoiceConfirmOrder.lawyerName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">광고 상품</span>
+                            <span className="text-white font-bold">{invoiceConfirmOrder.productName} ({invoiceConfirmOrder.contractMonths}개월{invoiceConfirmOrder.region ? ` / ${invoiceConfirmOrder.region}` : ''})</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">신청 입금자명</span>
+                            <span className="text-amber-400 font-black">{invoiceConfirmOrder.depositorName || invoiceConfirmOrder.lawyerName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">입금 계좌</span>
+                            <span className="text-slate-300 font-mono text-xs">{BANK_ACCOUNT_INFO.bank} {BANK_ACCOUNT_INFO.accountNumber} ({BANK_ACCOUNT_INFO.holder})</span>
+                          </div>
+                          <div className="flex justify-between border-t border-[#1E293B] pt-2">
+                            <span className="text-slate-400 font-bold">실 입금 총액</span>
+                            <span className="text-emerald-400 font-black text-base">{invoiceConfirmOrder.totalPrice.toLocaleString()}원 <span className="text-xs font-normal text-slate-500">(VAT포함)</span></span>
+                          </div>
+                        </div>
+
+                        {/* 통장 입금 대조 확인 체크박스 */}
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3.5">
+                          <label className="flex items-start gap-2.5 cursor-pointer text-xs">
+                            <input
+                              type="checkbox"
+                              checked={confirmDepositorVerified}
+                              onChange={e => setConfirmDepositorVerified(e.target.checked)}
+                              className="w-4 h-4 mt-0.5 rounded border-slate-750 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-white block">카카오뱅크 계좌 실입금 확인 완료</span>
+                              <span className="text-slate-400 block text-[11px]">
+                                통장에 <strong className="text-emerald-300">{invoiceConfirmOrder.totalPrice.toLocaleString()}원</strong>이 입금자명 <strong className="text-emerald-300">{invoiceConfirmOrder.depositorName || invoiceConfirmOrder.lawyerName}</strong>으로 입금된 것을 확인했습니다.
+                              </span>
+                            </div>
+                          </label>
+                        </div>
+
+                        {/* 국세청 전자세금계산서 발행 옵션 */}
+                        <div className="space-y-3 pt-1 border-t border-[#1E293B]">
+                          <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-300">
+                              <input
+                                type="checkbox"
+                                checked={confirmIssueTaxInvoice}
+                                onChange={e => setConfirmIssueTaxInvoice(e.target.checked)}
+                                className="w-4 h-4 rounded border-slate-750 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              />
+                              <span>국세청 전자세금계산서 즉시 발행 (Popbill)</span>
+                            </label>
+                            <span className="text-[11px] text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                              공급가: {Math.round(invoiceConfirmOrder.totalPrice / 1.1).toLocaleString()}원 / 부가세: {(invoiceConfirmOrder.totalPrice - Math.round(invoiceConfirmOrder.totalPrice / 1.1)).toLocaleString()}원
+                            </span>
+                          </div>
+
+                          {confirmIssueTaxInvoice && (
+                            <div className="bg-[#0B0F19] rounded-xl p-3.5 space-y-2.5 border border-[#1E293B]/60 text-xs">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[11px] text-slate-500 font-bold block mb-1">사업자등록번호</label>
+                                  <input
+                                    type="text"
+                                    value={confirmCorpNum}
+                                    onChange={e => setConfirmCorpNum(e.target.value)}
+                                    placeholder="123-45-67890"
+                                    className="w-full p-2 rounded-lg bg-[#111622] border border-[#1E293B] text-white font-mono outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[11px] text-slate-500 font-bold block mb-1">상호(법률사무소)</label>
+                                  <input
+                                    type="text"
+                                    value={confirmCorpName}
+                                    onChange={e => setConfirmCorpName(e.target.value)}
+                                    placeholder="법률사무소 명"
+                                    className="w-full p-2 rounded-lg bg-[#111622] border border-[#1E293B] text-white outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[11px] text-slate-500 font-bold block mb-1">대표 변호사명</label>
+                                  <input
+                                    type="text"
+                                    value={confirmCEOName}
+                                    onChange={e => setConfirmCEOName(e.target.value)}
+                                    placeholder="대표자명"
+                                    className="w-full p-2 rounded-lg bg-[#111622] border border-[#1E293B] text-white outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[11px] text-slate-500 font-bold block mb-1">계산서 수신 이메일</label>
+                                  <input
+                                    type="email"
+                                    value={confirmEmail}
+                                    onChange={e => setConfirmEmail(e.target.value)}
+                                    placeholder="tax@lawyer.example.com"
+                                    className="w-full p-2 rounded-lg bg-[#111622] border border-[#1E293B] text-white outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {invoiceResult && (
+                          <div className={`p-3 rounded-xl text-xs font-bold ${invoiceResult.ok ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                            {invoiceResult.message}
+                          </div>
+                        )}
+
+                        {/* 버튼 영역 */}
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => setInvoiceConfirmOrder(null)}
+                            disabled={invoiceIssuing}
+                            className="flex-1 py-2.5 bg-[#0B0F19] hover:bg-[#161B26] text-slate-400 text-sm font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            취소
+                          </button>
+                          <button
+                            disabled={invoiceIssuing || !confirmDepositorVerified}
+                            onClick={async () => {
+                              setInvoiceIssuing(true);
+                              const order = invoiceConfirmOrder;
+                              const supplyCost = Math.round(order.totalPrice / 1.1);
+                              const tax = order.totalPrice - supplyCost;
+                              let invoiceData: any = undefined;
+
+                              // 1. 세금계산서 발행 옵션이 켜져있을 경우
+                              if (confirmIssueTaxInvoice) {
+                                const res = await issueTaxInvoice({
+                                  orderId: order.id,
+                                  itemName: `${order.productName} (${order.contractMonths}개월)`,
+                                  supplyCost,
+                                  tax,
+                                  totalAmount: order.totalPrice,
+                                  buyerCorpNum: confirmCorpNum || '120-81-47521',
+                                  buyerCorpName: confirmCorpName || `${order.lawyerName} 법률사무소`,
+                                  buyerCEOName: confirmCEOName || order.lawyerName,
+                                  buyerEmail: confirmEmail || 'tax@lawyer.example.com',
+                                  buyerTaxEmail2: confirmTaxEmail2 || undefined,
+                                });
+
+                                if (res.ok && res.data) {
+                                  invoiceData = {
+                                    itemKey: res.data.itemKey,
+                                    ntsConfirmNum: res.data.ntsConfirmNum,
+                                    issuedAt: res.data.issuedAt,
+                                    supplyCost: res.data.supplyCost,
+                                    tax: res.data.tax,
+                                    totalAmount: res.data.totalAmount,
+                                    status: 'issued' as const,
+                                  };
+                                } else {
+                                  setInvoiceResult({ ok: false, message: `세금계산서 발행 오류: ${res.error || '실패'}` });
+                                  setInvoiceIssuing(false);
+                                  return;
+                                }
+                              }
+
+                              // 2. 만료 일자 계산 (계약 개월 수)
+                              const now = new Date();
+                              const expDate = new Date();
+                              expDate.setMonth(expDate.getMonth() + order.contractMonths);
+
+                              const updatedOrder: AdOrder = {
+                                ...order,
+                                status: 'active',
+                                paidAt: now.toISOString(),
+                                activatedAt: now.toISOString(),
+                                expiresAt: expDate.toISOString(),
+                                taxInvoice: invoiceData,
+                                buyerCorpNum: confirmCorpNum || order.buyerCorpNum,
+                                buyerCorpName: confirmCorpName || order.buyerCorpName,
+                                buyerCEOName: confirmCEOName || order.buyerCEOName,
+                                buyerEmail: confirmEmail || order.buyerEmail,
+                              };
+
+                              // 3. 주문 목록 업데이트
+                              setAdminAdOrders(prev => prev.map(o => o.id === order.id ? updatedOrder : o));
+
+                              // 4. 관리자 알림 발송 (광고 승인 및 활성화 완료)
+                              notifyAdminAdConfirmed(updatedOrder);
+
+                              toast.success(`[${order.lawyerName}] 입금 확인 완료! 광고가 활성화되었습니다.`);
+                              setInvoiceResult({ ok: true, message: '✅ 입금 확인 및 광고 활성화 처리가 완료되었습니다.' });
+                              setTimeout(() => {
+                                setInvoiceConfirmOrder(null);
+                                setInvoiceIssuing(false);
+                              }, 1200);
+                            }}
+                            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            {invoiceIssuing ? (
+                              <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>처리 중...</>
+                            ) : (
+                              <><CheckCircle2 className="w-4 h-4" />입금 확인 & 광고 승인</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 수정세금계산서 발행 및 광고 취소/환불 모달 */}
                   {modifyModalOrder && (
