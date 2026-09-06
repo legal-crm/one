@@ -4,7 +4,8 @@ import { useDialog } from '../common/DialogProvider';
 import {
   Users, Shield, UserPlus, UserMinus, Clock, CheckCircle2, XCircle,
   AlertTriangle, ArrowRightLeft, Search, Filter, ChevronDown, ChevronUp,
-  Briefcase, Activity, Mail, Phone, RotateCcw, Trash2, ShieldCheck
+  ChevronLeft, ChevronRight, Briefcase, Activity, Mail, Phone, RotateCcw,
+  Trash2, ShieldCheck
 } from 'lucide-react';
 import { generateInviteToken, buildInviteUrl, loadInviteTokens, expireInviteToken } from '../../services/inviteService';
 import type { InviteToken, CustomStaffRole } from '../../types';
@@ -88,6 +89,15 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
   const [logFilter, setLogFilter] = useState<string>('all');
   const [logStaffFilter, setLogStaffFilter] = useState<string>('all');
   const [logTimeFilter, setLogTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+
+  // ── 활동 이력 페이징 ──
+  const LOGS_PER_PAGE = 10;
+  const [logCurrentPage, setLogCurrentPage] = useState(1);
+
+  // 필터 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setLogCurrentPage(1);
+  }, [logFilter, logStaffFilter, logTimeFilter]);
 
   // ── 초대 링크 관리 ──
   const [inviteTokens, setInviteTokens] = useState<InviteToken[]>([]);
@@ -342,6 +352,38 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       return matchType && matchStaff && matchTime;
     });
   }, [activityLogs, logFilter, logStaffFilter, logTimeFilter]);
+
+  // 활동 로그 페이지네이션 계산
+  const totalLogPages = Math.max(1, Math.ceil(filteredLogs.length / LOGS_PER_PAGE));
+  const validLogPage = Math.min(logCurrentPage, totalLogPages);
+
+  const pagedLogs = useMemo(() => {
+    const start = (validLogPage - 1) * LOGS_PER_PAGE;
+    return filteredLogs.slice(start, start + LOGS_PER_PAGE);
+  }, [filteredLogs, validLogPage]);
+
+  const visibleLogPages = useMemo(() => {
+    if (totalLogPages <= 7) {
+      return Array.from({ length: totalLogPages }, (_, i) => i + 1);
+    }
+    const pages: (number | string)[] = [];
+    if (validLogPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalLogPages);
+    } else if (validLogPage >= totalLogPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalLogPages - 4; i <= totalLogPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      for (let i = validLogPage - 1; i <= validLogPage + 1; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalLogPages);
+    }
+    return pages;
+  }, [validLogPage, totalLogPages]);
 
   // ── 역할 뱃지 렌더러 ──
   const renderRoleBadge = (role: StaffRole) => {
@@ -803,31 +845,98 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                 기록된 활동 이력이 없습니다.
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
-                {filteredLogs.slice(0, 50).map(log => {
-                  const typeInfo = ACTIVITY_TYPE_LABELS[log.type] || { label: log.type, emoji: '📌', color: 'text-slate-400' };
-                  return (
-                    <div key={log.id} className="p-3.5 flex items-start gap-3 hover:bg-slate-50/50 transition-colors">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 bg-slate-100 border border-slate-200`}>
-                        {typeInfo.emoji}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${typeInfo.color} bg-slate-50 border border-slate-200`}>
-                            {typeInfo.label}
-                          </span>
-                          <span className="font-bold text-slate-800 text-xs">{log.staffName}</span>
+              <>
+                <div className="divide-y divide-slate-100">
+                  {pagedLogs.map(log => {
+                    const typeInfo = ACTIVITY_TYPE_LABELS[log.type] || { label: log.type, emoji: '📌', color: 'text-slate-400' };
+                    return (
+                      <div key={log.id} className="p-3.5 flex items-start gap-3 hover:bg-slate-50/50 transition-colors">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 bg-slate-100 border border-slate-200`}>
+                          {typeInfo.emoji}
                         </div>
-                        <p className="text-[12px] text-slate-500 mt-0.5 text-left">{log.description}</p>
-                        <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
-                          <span>{formatDate(log.createdAt)}</span>
-                          <span>• 실행: {log.actorName}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${typeInfo.color} bg-slate-50 border border-slate-200`}>
+                              {typeInfo.label}
+                            </span>
+                            <span className="font-bold text-slate-800 text-xs">{log.staffName}</span>
+                          </div>
+                          <p className="text-[12px] text-slate-500 mt-0.5 text-left">{log.description}</p>
+                          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
+                            <span>{formatDate(log.createdAt)}</span>
+                            <span>• 실행: {log.actorName}</span>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                {/* 페이지네이션 하단 바 */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-slate-50/90 border-t border-slate-200">
+                  <p className="text-xs text-slate-600 font-medium">
+                    전체 <span className="font-bold text-slate-800">{filteredLogs.length}</span>건 중{' '}
+                    <span className="font-bold text-slate-800">
+                      {(validLogPage - 1) * LOGS_PER_PAGE + 1}-{Math.min(validLogPage * LOGS_PER_PAGE, filteredLogs.length)}
+                    </span>
+                    건 표시 ({validLogPage} / {totalLogPages} 페이지)
+                  </p>
+
+                  {totalLogPages > 1 && (
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setLogCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={validLogPage === 1}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-1 press-scale"
+                        title="이전 페이지"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">이전</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {visibleLogPages.map((p, idx) => {
+                          if (p === '...') {
+                            return (
+                              <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400 select-none">
+                                ...
+                              </span>
+                            );
+                          }
+                          const pageNum = p as number;
+                          const isActive = validLogPage === pageNum;
+                          return (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              onClick={() => setLogCurrentPage(pageNum)}
+                              className={`min-w-[32px] h-8 text-xs font-bold rounded-lg transition-all cursor-pointer press-scale ${
+                                isActive
+                                  ? 'bg-[#1E3A5F] text-white shadow-2xs'
+                                  : 'text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setLogCurrentPage(p => Math.min(totalLogPages, p + 1))}
+                        disabled={validLogPage === totalLogPages}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors flex items-center gap-1 press-scale"
+                        title="다음 페이지"
+                      >
+                        <span className="hidden sm:inline">다음</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
