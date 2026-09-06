@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FileSignature, CheckCircle2, Clock, Plus, Eye, Printer, 
   Shield, PenTool, AlertCircle, RefreshCw, FileText, Check, 
-  Sparkles, Download, ArrowRight, UserCheck, ChevronDown, ChevronUp
+  Sparkles, Download, ArrowRight, UserCheck, ChevronDown, ChevronUp,
+  Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -16,6 +17,7 @@ import {
 } from '../../services/contractService';
 import { syncContractToCrm } from '../../services/crmService';
 import ContractWizard from './ContractWizard';
+import ClientSignShareModal from './ClientSignShareModal';
 
 interface Props {
   client: ConsultRequest;
@@ -38,6 +40,7 @@ export default function ClientContractSubTab({
   const [editingContract, setEditingContract] = useState<ElectronicContract | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ContractDocument | null>(null);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const loadClientContracts = async () => {
     const list = await getContractsByClientId(client.id);
@@ -273,6 +276,15 @@ ${d.content}
             <Printer className="w-3.5 h-3.5" />
             <span>계약서 출력</span>
           </button>
+
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors cursor-pointer press-scale whitespace-nowrap border border-indigo-200"
+            title="의뢰인 스마트폰으로 서명 링크 전송"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>원격 서명 링크</span>
+          </button>
           
           <button
             onClick={() => handleEditContract(contract)}
@@ -483,6 +495,13 @@ ${d.content}
           </div>
         )}
       </div>
+
+      {/* 고객 원격 모바일 서명 발송 모달 */}
+      <ClientSignShareModal
+        contract={contract}
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </div>
   );
 }

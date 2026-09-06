@@ -1823,8 +1823,70 @@ export interface ElectronicContract {
   documents: ContractDocument[];
   status: ContractStatus;
   contractDate: string;
-  identityVerification?: { method: string; verifiedAt: string; ci?: string; deviceInfo: string; ipAddress: string };
-  auditTrail: Array<{ action: string; timestamp: string; actor: 'lawyer' | 'client' | 'system'; ip?: string; userAgent?: string; documentHash?: string }>;
+  
+  // ── 4대 법적 효력 고도화 필드 ──
+  // 1. 사업자 및 권한성(Right)
+  isBusiness?: boolean;
+  businessInfo?: {
+    businessNumber: string; // 10자리 사업자등록번호
+    companyName: string; // 상호명
+    representativeName: string; // 대표자 성명
+    openingDate: string; // 개업일자 (YYYYMMDD)
+    ntsStatus?: 'VALID' | 'INVALID' | 'CLOSED' | 'SUSPENDED'; // 국세청 계속사업자 검증 상태
+    ntsCheckedAt?: string; // 국세청 검증 일시
+    ntsTxId?: string; // 국세청 조회 거래번호
+  };
+  authorityStatus?: 'REPRESENTATIVE_VERIFIED' | 'DELEGATION_REQUIRED' | 'MANUAL_REVIEW' | 'UNVERIFIED';
+
+  // 2. 당사자성(Who) 본인인증
+  identityVerification?: { 
+    method: string; 
+    verifiedAt: string; 
+    name?: string; // 통신사 인증 실명
+    birthDate?: string; // 생년월일 (YYYYMMDD)
+    phoneMasked?: string;
+    carrier?: string; // SKT, KT, LGU+
+    txId?: string; // 통신사 공인 거래번호
+    certifiedAt?: string; // 통신사 공인 서버 시각
+    ci?: string; 
+    deviceInfo: string; 
+    ipAddress: string; 
+  };
+
+  // 3. 의사성(Intent) 강제 스크롤 및 동의 기록
+  intentVerification?: {
+    scrollCompleted: boolean;
+    scrollCompletedAt?: string;
+    viewDurationSeconds?: number;
+    agreedTerms: string[];
+  };
+
+  // 4. 무결성(Integrity) & 3중 타임스탬프
+  documentHashes?: {
+    originalHash: string; // 원본 SHA-256 해시
+    finalHash: string; // 체결본 SHA-256 해시
+    algorithm: 'SHA-256';
+  };
+  timestampToken?: {
+    token: string; // 암호학적 시점 봉인 토큰
+    certifiedAt: string; // 통신사 공인 인증 시각
+    kstServerTime: string; // 대한민국 표준시(KST) 서버 시각
+    txId: string; // 공인 승인번호
+  };
+
+  // 5. 원격 모바일 서명용 일회용 토큰
+  remoteSignToken?: string;
+  remoteSignExpiresAt?: string;
+
+  auditTrail: Array<{ 
+    action: string; 
+    timestamp: string; 
+    actor: 'lawyer' | 'client' | 'system'; 
+    ip?: string; 
+    userAgent?: string; 
+    documentHash?: string;
+    details?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
