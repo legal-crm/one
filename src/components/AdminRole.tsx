@@ -34,6 +34,7 @@ import { registerSession } from '../services/sessionService';
 import { notifyAdminAdConfirmed } from '../services/notificationService';
 import { loadAdOrders, updateAdOrder, subscribeToAdOrders } from '../services/adOrderService';
 import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
+import AlimtalkControlCenter from './admin/AlimtalkControlCenter';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -101,7 +102,7 @@ export default function AdminRole({
   const dialog = useDialog();
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security'>('dashboard');
-  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice'>('overview');
+  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice' | 'alimtalk'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
@@ -2599,6 +2600,14 @@ export default function AdminRole({
                 >
                   📄 세금계산서 내역
                 </button>
+                <button
+                  onClick={() => setBillingSubTab('alimtalk')}
+                  className={`pb-2 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                    billingSubTab === 'alimtalk' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
+                  }`}
+                >
+                  <span>💬 알림톡/문자 발송 관제 (Popbill)</span>
+                </button>
               </div>
 
               {/* OVERVIEW SUBTAB: HIGH-PERFORMANCE LIVE BILLING ANALYTICS DASHBOARD */}
@@ -3576,6 +3585,11 @@ export default function AdminRole({
                   </div>
                 );
               })()}
+
+              {/* ALIMTALK & SMS SUBTAB: POPBILL INTEGRATED CONTROL CENTER */}
+              {billingSubTab === 'alimtalk' && (
+                <AlimtalkControlCenter />
+              )}
 
             </div>
           )}

@@ -24,14 +24,40 @@ export const renderTemplate = (milestone: AlimtokMilestone, vars: Record<string,
   return template;
 };
 
+export interface SendAlimtokOptions {
+  receiverName?: string;
+  customText?: string;
+  altSubject?: string;
+  altContent?: string;
+  buttons?: Array<{ name: string; url: string; urlPc?: string; urlMobile?: string }>;
+  sender?: string;
+  templateCode?: string;
+}
+
+export interface SendAlimtokResult {
+  ok: boolean;
+  mock?: boolean;
+  channel?: 'alimtalk' | 'lms_fallback' | 'sms_fallback' | 'mock_alimtalk';
+  receiptNum?: string;
+  sentAt?: string;
+  notice?: string;
+  error?: string;
+  rendered: string;
+}
+
 // ── 2. 알림톡 발송 (실제 API 또는 모의 발송) ──
 
 export const sendAlimtok = async (
   phone: string, 
   milestone: AlimtokMilestone, 
   vars: Record<string, string>,
-  customText?: string
-) => {
+  customTextOrOptions?: string | SendAlimtokOptions
+): Promise<SendAlimtokResult> => {
+  const options: SendAlimtokOptions = typeof customTextOrOptions === 'string'
+    ? { customText: customTextOrOptions }
+    : (customTextOrOptions || {});
+
+  const customText = options.customText;
   const rendered = customText !== undefined && customText.trim() !== '' 
     ? customText 
     : renderTemplate(milestone, vars);
@@ -40,17 +66,53 @@ export const sendAlimtok = async (
     const response = await fetch('/api/alimtok', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, template: rendered, milestone, vars, customText }),
+      body: JSON.stringify({ 
+        phone, 
+        receiverName: options.receiverName || vars.clientName || '',
+        template: rendered, 
+        customText,
+        milestone, 
+        templateCode: options.templateCode,
+        altSubject: options.altSubject || `[my김변] ${ALIMTOK_MILESTONE_CONFIG[milestone]?.label || '안내'}`,
+        altContent: options.altContent || rendered,
+        sender: options.sender,
+        buttons: options.buttons,
+        vars 
+      }),
     });
-    // API 엔드포인트가 없을 경우에도 클라이언트 Mock 발송 성공 처리
+
     if (response.status === 404) {
-      return { ok: true, mock: true, rendered };
+      return { 
+        ok: true, 
+        mock: true, 
+        channel: 'mock_alimtalk',
+        receiptNum: `MOCK-${Date.now()}`,
+        sentAt: new Date().toISOString(),
+        rendered 
+      };
     }
+
     const data = await response.json();
-    return { ok: response.ok, error: data.error, rendered };
-  } catch (error) {
+    return { 
+      ok: data.ok !== undefined ? data.ok : response.ok, 
+      mock: data.mock,
+      channel: data.channel,
+      receiptNum: data.receiptNum,
+      sentAt: data.sentAt,
+      notice: data.notice,
+      error: data.error, 
+      rendered 
+    };
+  } catch (error: any) {
     // 네트워크 실패나 개발환경 데모 모드 지원
-    return { ok: true, mock: true, rendered };
+    return { 
+      ok: true, 
+      mock: true, 
+      channel: 'mock_alimtalk',
+      receiptNum: `MOCK-${Date.now()}`,
+      sentAt: new Date().toISOString(),
+      rendered 
+    };
   }
 };
 
@@ -278,3 +340,129 @@ export const triggerAlimtokOnStatusChange = async (
   }
   return false;
 };
+
+// ── 7. 팝빌 알림톡 서버 연동 상태 확인 ──
+
+export interface PopbillServerStatus {
+  ok: boolean;
+  configured: boolean;
+  isTest?: boolean;
+  corpNum?: string;
+  userId?: string;
+  plusFriendId?: string;
+  senderPhone?: string;
+  balance?: number;
+  partnerBalance?: number;
+  channelStatus?: string;
+  statusMessage?: string;
+  senders?: string[];
+  plusFriends?: Array<{ plusFriendID: string; state: string }>;
+  templates?: Array<{ templateCode: string; templateName: string; template?: string }>;
+  error?: string;
+}
+
+export const checkAlimtokServerStatus = async (): Promise<PopbillServerStatus> => {
+  try {
+    const res = await fetch('/api/alimtalk/status');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: any) {
+    return {
+      ok: false,
+      configured: false,
+      error: err.message || '상태 조회 실패',
+      statusMessage: '로컬/서버리스 환경 상태 확인 불가',
+      balance: 0,
+      templates: []
+    };
+  }
+};
+
+// ── 8. 관리자/변호사용 실시간 단독 테스트 발송 ──
+
+export const testSendAlimtok = async (params: {
+  phone: string;
+  receiverName?: string;
+  text: string;
+  milestone?: AlimtokMilestone;
+  sender?: string;
+}): Promise<SendAlimtokResult> => {
+  try {
+    const response = await fetch('/api/alimtok', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: params.phone,
+        receiverName: params.receiverName || '테스트 수신자',
+        template: params.text,
+        customText: params.text,
+        milestone: params.milestone || 'general_announcement',
+        sender: params.sender,
+      }),
+    });
+    const data = await response.json();
+    return {
+      ok: data.ok,
+      mock: data.mock,
+      channel: data.channel,
+      receiptNum: data.receiptNum,
+      sentAt: data.sentAt,
+      notice: data.notice,
+      error: data.error,
+      rendered: params.text,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err.message || '테스트 발송 요청 실패',
+      rendered: params.text,
+    };
+  }
+};
+
+// ── 9. 통합 관리자용 전사 알림톡 발송 이력 조회 ──
+
+export const loadAllPlatformAlimtokLogs = async (): Promise<AlimtokLog[]> => {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('alimtok_logs')
+        .select('*')
+        .order('sent_at', { ascending: false })
+        .limit(200);
+      if (error) logSupabaseError('loadAllPlatformAlimtokLogs', error);
+      else if (data && data.length > 0) {
+        return data.map((r: any) => ({
+          id: r.id,
+          milestone: r.milestone,
+          clientName: r.client_name,
+          phone: r.phone,
+          sentAt: r.sent_at,
+          status: r.status,
+          errorMessage: r.error_message,
+        }));
+      }
+    } catch (e) {
+      logSupabaseError('loadAllPlatformAlimtokLogs (exception)', e);
+    }
+  }
+
+  // 로컬 스토리지 누적 로그 집계 (Mock/로컬 보조)
+  try {
+    const allLogs: AlimtokLog[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('alimtok_logs_')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) allLogs.push(...parsed);
+        }
+      }
+    }
+    return allLogs.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+  } catch {
+    return [];
+  }
+};
+
