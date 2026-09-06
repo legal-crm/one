@@ -33,6 +33,7 @@ import { useSessionGuard } from '../hooks/useSessionGuard';
 import { registerSession } from '../services/sessionService';
 import { notifyAdminAdConfirmed } from '../services/notificationService';
 import { loadAdOrders, updateAdOrder, subscribeToAdOrders } from '../services/adOrderService';
+import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -2592,138 +2593,19 @@ export default function AdminRole({
                 </button>
               </div>
 
-              {/* OVERVIEW SUBTAB */}
+              {/* OVERVIEW SUBTAB: HIGH-PERFORMANCE LIVE BILLING ANALYTICS DASHBOARD */}
               {billingSubTab === 'overview' && (
-                <div className="space-y-6">
-                  {/* Financial Overview Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
-                      <span className="text-xs text-slate-600 font-bold block uppercase">일 평균 예상 매출</span>
-                      <strong className="text-xl font-black text-emerald-400">
-                        {Math.round(activeMRR / 30).toLocaleString()} 원
-                      </strong>
-                      <p className="text-sm text-slate-600 leading-normal">구독 활성 파트너 기준 일정산 환산</p>
-                    </div>
-                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
-                      <span className="text-xs text-slate-600 font-bold block uppercase">주간 누적 예상 매출</span>
-                      <strong className="text-xl font-black text-indigo-400">
-                        {Math.round(activeMRR / 4).toLocaleString()} 원
-                      </strong>
-                      <p className="text-sm text-slate-600 leading-normal">최근 7일간의 총 정산 구독료</p>
-                    </div>
-                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-2">
-                      <span className="text-xs text-slate-600 font-bold block uppercase">월 고정 구독 매출 (MRR)</span>
-                      <strong className="text-xl font-black text-white">
-                        {activeMRR.toLocaleString()} 원
-                      </strong>
-                      <p className="text-sm text-slate-600 leading-normal">현재 활성화된 대리인 광고 구독 총액</p>
-                    </div>
-                    <div className="bg-[#111622] p-5 rounded-2xl border border-red-500/20 bg-red-950/5 space-y-2">
-                      <span className="text-xs text-red-400/80 font-bold block uppercase">이탈/정지 누수 매출액</span>
-                      <strong className="text-xl font-black text-red-400">
-                        -{lostMRR.toLocaleString()} 원
-                      </strong>
-                      <p className="text-sm text-red-500/60 leading-normal">정지/탈퇴 대리인의 미청구 구독 손실</p>
-                    </div>
-                  </div>
-
-                  {/* Revenue Breakdowns */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    {/* 1. Daily Breakdown */}
-                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
-                      <h4 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center justify-between">
-                        <span>일별 매출 추이 (최근 5일)</span>
-                        <span className="text-sm text-slate-600 font-mono">Daily Trend</span>
-                      </h4>
-                      <div className="space-y-2">
-                        {[
-                          { date: '오늘 (6/4)', amount: Math.round(activeMRR / 30 + 8000), count: 5, pct: 98 },
-                          { date: '어제 (6/3)', amount: Math.round(activeMRR / 30 - 12000), count: 4, pct: 86 },
-                          { date: '그저께 (6/2)', amount: Math.round(activeMRR / 30 + 4000), count: 4, pct: 92 },
-                          { date: '6/1 (월)', amount: Math.round(activeMRR / 30 - 3000), count: 3, pct: 88 },
-                          { date: '5/31 (일)', amount: Math.round(activeMRR / 30 + 15000), count: 6, pct: 100 }
-                        ].map((d, i) => (
-                          <div key={i} className="bg-[#0B0F19]/40 p-2.5 rounded-lg border border-[#1E293B]/30 space-y-1">
-                            <div className="flex justify-between items-center text-[13px]">
-                              <span className="font-bold text-slate-355">{d.date}</span>
-                              <span className="font-mono text-emerald-450 font-bold">{d.amount.toLocaleString()}원</span>
-                            </div>
-                            <div className="w-full bg-[#1E293B]/40 h-1 rounded overflow-hidden">
-                              <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${d.pct}%` }} />
-                            </div>
-                            <div className="flex justify-between items-center text-xs text-slate-600">
-                              <span>정수 구독 수납</span>
-                              <span>{d.count}건 정산완료</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 2. Weekly Breakdown */}
-                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
-                      <h4 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center justify-between">
-                        <span>주별 매출 추이 (6월 누적)</span>
-                        <span className="text-sm text-slate-600 font-mono">Weekly Trend</span>
-                      </h4>
-                      <div className="space-y-2">
-                        {[
-                          { week: '1주차 (6/1~6/7)', amount: Math.round(activeMRR / 4), status: '진행중 (정산중)', pct: 75, color: 'bg-indigo-500' },
-                          { week: '5월 4주차', amount: Math.round(activeMRR / 4 - 30000), status: '징수 완료', pct: 95, color: 'bg-slate-500' },
-                          { week: '5월 3주차', amount: Math.round(activeMRR / 4 + 50000), status: '징수 완료', pct: 100, color: 'bg-slate-500' },
-                          { week: '5월 2주차', amount: Math.round(activeMRR / 4 - 10000), status: '징수 완료', pct: 90, color: 'bg-slate-500' }
-                        ].map((w, i) => (
-                          <div key={i} className="bg-[#0B0F19]/40 p-2.5 rounded-lg border border-[#1E293B]/30 space-y-1">
-                            <div className="flex justify-between items-center text-[13px]">
-                              <span className="font-bold text-slate-355">{w.week}</span>
-                              <span className="font-mono text-indigo-400 font-bold">{w.amount.toLocaleString()}원</span>
-                            </div>
-                            <div className="w-full bg-[#1E293B]/40 h-1.5 rounded overflow-hidden">
-                              <div className={`${w.color} h-full rounded-full`} style={{ width: `${w.pct}%` }} />
-                            </div>
-                            <div className="flex justify-between items-center text-xs text-slate-600">
-                              <span>상태: {w.status}</span>
-                              <span>실적 보정 완료</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 3. Monthly Breakdown */}
-                    <div className="bg-[#111622] p-5 rounded-2xl border border-[#1E293B]/60 space-y-3">
-                      <h4 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center justify-between">
-                        <span>월별 매출 추이 (최근 5개월)</span>
-                        <span className="text-sm text-slate-600 font-mono">Monthly Trend</span>
-                      </h4>
-                      <div className="space-y-2">
-                        {[
-                          { month: '6월 (현재 기준)', amount: activeMRR, count: billingActiveLawyers.length, pct: 100, color: 'from-indigo-650 to-brand' },
-                          { month: '5월', amount: Math.max(3000000, activeMRR - 300000), count: Math.max(1, billingActiveLawyers.length - 1), pct: 90, color: 'from-slate-700 to-slate-650' },
-                          { month: '4월', amount: Math.max(3000000, activeMRR - 600000), count: Math.max(1, billingActiveLawyers.length - 2), pct: 85, color: 'from-slate-700 to-slate-650' },
-                          { month: '3월', amount: Math.max(3000000, activeMRR - 900000), count: Math.max(1, billingActiveLawyers.length - 3), pct: 78, color: 'from-slate-700 to-slate-650' },
-                          { month: '2월', amount: Math.max(3000000, activeMRR - 1200000), count: Math.max(1, billingActiveLawyers.length - 4), pct: 70, color: 'from-slate-700 to-slate-650' }
-                        ].map((m, i) => (
-                          <div key={i} className="bg-[#0B0F19]/40 p-2.5 rounded-lg border border-[#1E293B]/30 space-y-1">
-                            <div className="flex justify-between items-center text-[13px]">
-                              <span className="font-bold text-slate-355">{m.month}</span>
-                              <span className="font-mono text-white font-black">{m.amount.toLocaleString()}원</span>
-                            </div>
-                            <div className="w-full bg-[#1E293B]/40 h-1.5 rounded overflow-hidden">
-                              <div className={`bg-gradient-to-r ${m.color} h-full rounded-full`} style={{ width: `${m.pct}%` }} />
-                            </div>
-                            <div className="flex justify-between items-center text-xs text-slate-600">
-                              <span>활성 구독 파트너 {m.count}명</span>
-                              <span>수납률 100%</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
+                <BillingOverviewDashboard
+                  lawyers={lawyers}
+                  adOrders={adminAdOrders}
+                  onNavigateSubTab={(tab) => setBillingSubTab(tab as any)}
+                  onOpenInvoiceModal={(order) => {
+                    setInvoiceConfirmOrder(order);
+                    setInvoiceResult(null);
+                  }}
+                  activeMRR={activeMRR}
+                  lostMRR={lostMRR}
+                />
               )}
 
               {/* ACTIVE SUBSCRIBERS BILLING SUBTAB */}
