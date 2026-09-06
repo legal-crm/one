@@ -2119,13 +2119,24 @@ export default function LawyerRole({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-600 block">변호사 등록증 첨부 (이미지/PDF)</label>
+                <label className="text-xs font-bold text-slate-700 block flex items-center gap-1">
+                  <span>변호사 신분증 또는 등록증 (스마트폰 촬영 / PDF)</span>
+                </label>
                 <label className="block cursor-pointer">
-                  <div className={`border ${licensePreview ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-200 border-dashed bg-white'} rounded-xl p-3 text-xs text-center transition-colors hover:border-brand/50`}>
+                  <div className={`border-2 ${licensePreview ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-300 border-dashed bg-slate-50 hover:bg-slate-100'} rounded-2xl p-4 text-xs text-center transition-all hover:border-brand/50`}>
                     {licensePreview ? (
-                      <span className="text-emerald-700 font-bold">✅ 등록증 파일 첨부 완료</span>
+                      <div className="space-y-2">
+                        <img src={licensePreview} alt="신분증 미리보기" className="max-h-36 mx-auto rounded-xl object-contain border border-emerald-300 bg-white shadow-xs" />
+                        <span className="text-emerald-700 font-bold block text-xs">✅ 신분증 촬영/첨부 완료 (터치하여 다시 촬영)</span>
+                      </div>
                     ) : (
-                      <span className="text-slate-500">📎 클릭하여 등록증 첨부 (최대 5MB)</span>
+                      <div className="py-2 space-y-1.5">
+                        <div className="text-2xl">📷</div>
+                        <span className="text-slate-800 font-bold block text-xs">스마트폰 카메라로 직접 촬영하거나 앨범에서 선택</span>
+                        <span className="text-slate-500 text-[11px] block leading-normal">
+                          지갑 속 대한변협 변호사 신분증 앞면 또는 사업자등록증 (최대 5MB)
+                        </span>
+                      </div>
                     )}
                   </div>
                   <input type="file" accept="image/*,.pdf" onChange={handleLicenseFileChange} className="hidden" />
