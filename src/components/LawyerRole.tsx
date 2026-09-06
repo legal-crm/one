@@ -4523,10 +4523,14 @@ export default function LawyerRole({
           </div>
         )}
 
-        {/* TAB: 전자 계약 */}
+        {/* TAB: 전자 계약 (총괄 관리 센터 & 경영 대시보드) */}
         {activeTab === 'contracts' && (
           <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand/20 border-t-brand rounded-full" /></div>}>
-            <ContractManagementTab lawyerName={activeLawyer.name} lawFirmName={activeLawyer.lawFirmName || '법무법인'} />
+            <ContractManagementTab 
+              lawyerName={activeLawyer.name} 
+              lawFirmName={activeLawyer.lawFirmName || '법무법인'} 
+              onNavigateToCrm={() => setActiveTab('client-crm')}
+            />
           </React.Suspense>
         )}
 
