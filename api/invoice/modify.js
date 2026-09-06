@@ -2,8 +2,8 @@
 // POST /api/invoice/modify
 // 통합어드민에서 광고 취소/환불 처리 시 호출
 
-import { taxinvoiceService, SUPPLIER_INFO, getTodayStr, setCorsHeaders } from '../lib/popbill-service.js';
-import { withAuth } from '../lib/auth-middleware.js';
+import { taxinvoiceService, SUPPLIER_INFO, getTodayStr, setCorsHeaders } from '../_lib/popbill-service.js';
+import { withAuth } from '../_lib/auth-middleware.js';
 
 async function handler(req, res) {
   setCorsHeaders(req, res);

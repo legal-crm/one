@@ -2,8 +2,8 @@
 // POST /api/send-email
 // Uses nodemailer with Gmail SMTP (각 로펌이 자체 Gmail 계정 사용)
 
-import { withAuth } from './lib/auth-middleware.js';
-import { setCorsHeaders } from './lib/popbill-service.js';
+import { withAuth } from './_lib/auth-middleware.js';
+import { setCorsHeaders } from './_lib/popbill-service.js';
 
 async function handler(req, res) {
   setCorsHeaders(req, res);

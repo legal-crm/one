@@ -1,7 +1,7 @@
 // Vercel Serverless Function: 세금계산서 이메일 재발송
 // POST /api/invoice/resend
-import { taxinvoiceService, SUPPLIER_INFO, setCorsHeaders } from '../lib/popbill-service.js';
-import { withAuth } from '../lib/auth-middleware.js';
+import { taxinvoiceService, SUPPLIER_INFO, setCorsHeaders } from '../_lib/popbill-service.js';
+import { withAuth } from '../_lib/auth-middleware.js';
 
 async function handler(req, res) {
   setCorsHeaders(req, res);

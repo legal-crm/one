@@ -1,7 +1,7 @@
 // Vercel Serverless Function: Telegram Bot & Multi-Channel Notification API
 // POST /api/telegram
 
-import { setCorsHeaders } from './lib/popbill-service.js';
+import { setCorsHeaders } from './_lib/popbill-service.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(req, res);

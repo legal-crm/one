@@ -2,8 +2,8 @@
 // POST /api/invoice/issue
 // 통합어드민에서 입금 확인 시 호출
 
-import { taxinvoiceService, SUPPLIER_INFO, getTodayStr, setCorsHeaders } from '../lib/popbill-service.js';
-import { withAuth } from '../lib/auth-middleware.js';
+import { taxinvoiceService, SUPPLIER_INFO, getTodayStr, setCorsHeaders } from '../_lib/popbill-service.js';
+import { withAuth } from '../_lib/auth-middleware.js';
 
 async function handler(req, res) {
   setCorsHeaders(req, res);
