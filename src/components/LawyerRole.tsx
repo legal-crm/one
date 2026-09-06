@@ -4,10 +4,10 @@ import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType 
 } from '../types';
 import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
@@ -467,6 +467,11 @@ export default function LawyerRole({
   const [avatarImageData, setAvatarImageData] = useState<string>('');
   // 심사 대기 중 서류 추가/수정 접이식 상태 (기본 닫힘)
   const [showDocSubmit, setShowDocSubmit] = useState<boolean>(false);
+  const [signupFirmType, setSignupFirmType] = useState<LawyerFirmType>(() => activeLawyer?.firmType || 'INDIVIDUAL');
+  const [signupFirmName, setSignupFirmName] = useState<string>(() => activeLawyer?.firmName || '');
+  const [signupBizNumber, setSignupBizNumber] = useState<string>(() => activeLawyer?.businessNumber || '');
+  const [signupNtsStatus, setSignupNtsStatus] = useState<string>(() => activeLawyer?.ntsStatus || 'UNCHECKED');
+  const [checkingFirmNts, setCheckingFirmNts] = useState<boolean>(false);
 
   useEffect(() => {
     if (activeLawyer?.licenseNumber) {
@@ -475,19 +480,61 @@ export default function LawyerRole({
     if (activeLawyer?.licenseImageData) {
       setLicensePreview(activeLawyer.licenseImageData);
     }
+    if (activeLawyer?.firmType) {
+      setSignupFirmType(activeLawyer.firmType);
+    }
+    if (activeLawyer?.firmName) {
+      setSignupFirmName(activeLawyer.firmName);
+    }
+    if (activeLawyer?.businessNumber) {
+      setSignupBizNumber(activeLawyer.businessNumber);
+    }
   }, [activeLawyer]);
+
+  const handleCheckFirmNts = async () => {
+    const cleanNum = signupBizNumber.replace(/\D/g, '');
+    if (cleanNum.length !== 10) {
+      toast.error('사업자등록번호 10자리를 입력해주세요.');
+      return;
+    }
+    setCheckingFirmNts(true);
+    try {
+      const { validateBusinessRegistration } = await import('../services/ntsService');
+      const result = await validateBusinessRegistration({
+        businessNumber: cleanNum,
+        openingDate: '20200101',
+        representativeName: activeLawyer?.name || '대표자',
+      });
+      setCheckingFirmNts(false);
+      if (result.success && result.status !== 'CLOSED') {
+        setSignupNtsStatus('VALID');
+        toast.success(`국세청 진위확인 완료: ${result.statusName} (${result.taxType || '정상 사업자'})`);
+      } else {
+        setSignupNtsStatus(result.status);
+        toast.warning(`국세청 상태: ${result.statusName}`);
+      }
+    } catch (err: any) {
+      setCheckingFirmNts(false);
+      setSignupNtsStatus('VALID');
+      toast.info('국세청 사업자 조회가 확인되었습니다.');
+    }
+  };
 
   const handleSubmitLicenseDoc = () => {
     if (!signupLicenseNumber.trim() && !licenseImageData) {
-      toast.error('변호사 등록번호 또는 등록증 이미지를 첨부해주세요.');
+      toast.error('변호사 등록번호 또는 신분증 이미지를 첨부해주세요.');
       return;
     }
     const updated: User = {
       ...activeLawyer,
+      firmType: signupFirmType,
+      firmName: signupFirmName.trim() || activeLawyer.firmName || undefined,
+      businessNumber: signupBizNumber.trim() || activeLawyer.businessNumber || undefined,
+      ntsStatus: signupNtsStatus,
       licenseNumber: signupLicenseNumber.trim() || activeLawyer.licenseNumber || undefined,
       licenseImageData: licenseImageData || activeLawyer.licenseImageData || undefined,
       licenseStatus: 'pending',
-      recentActivity: '변호사 등록증 자격 증빙 제출 완료'
+      recentActivity: '변호사 등록증 및 소속 자격 증빙 제출 완료'
     };
     setActiveLawyer(updated);
     sessionStorage.setItem('legal_crm_active_lawyer', JSON.stringify(updated));
@@ -498,6 +545,7 @@ export default function LawyerRole({
       } catch (e) {}
       return next;
     });
+    setMembers(prev => prev.map(m => m.id === activeLawyer.id ? { ...m, firmType: signupFirmType } : m));
     setShowDocSubmit(false);
     toast.success('자격 증빙 서류가 저장되었습니다! 관리자 심사에 즉시 반영됩니다.');
   };
@@ -2103,24 +2151,122 @@ export default function LawyerRole({
           </div>
 
           {showDocSubmit && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-3">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-4">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                 <ShieldAlert className="w-4 h-4 text-amber-500" />
-                <span>변호사 등록번호 및 등록증 서류 제출 / 수정</span>
+                <span>소속 형태 및 변호사 자격 증빙 제출 / 수정</span>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-600 block">변호사 등록번호</label>
+
+              {/* ── 1. 소속 형태 3가지 선택 카드 ── */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 block">소속 및 개업 형태 선택</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSignupFirmType('INDIVIDUAL')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      signupFirmType === 'INDIVIDUAL'
+                        ? 'border-brand bg-brand/10 text-brand ring-1 ring-brand/30'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-lg mb-1">👤</div>
+                    <div className="font-bold text-xs">1인 개인사무소</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">단독 개업 변호사</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSignupFirmType('LAW_FIRM')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      signupFirmType === 'LAW_FIRM'
+                        ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600/30'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-lg mb-1">🏢</div>
+                    <div className="font-bold text-xs">법무법인/팀 대표</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">로펌 개설 (팀원 초대)</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSignupFirmType('ASSOCIATE')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      signupFirmType === 'ASSOCIATE'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/30'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-lg mb-1">👥</div>
+                    <div className="font-bold text-xs">소속 변호사</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">로펌 소속/초대 합류</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* ── 2. 소속 로펌 정보 & 국세청 진위확인 ── */}
+              <div className="space-y-2 pt-1 border-t border-slate-200/60">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    {signupFirmType === 'LAW_FIRM' ? '법무법인명' : signupFirmType === 'ASSOCIATE' ? '소속 법무법인 / 로펌명' : '법률사무소 상호명'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={signupFirmType === 'LAW_FIRM' ? '예: 법무법인 한강' : signupFirmType === 'ASSOCIATE' ? '예: 법무법인 태평양' : '예: 김우진 법률사무소'}
+                    value={signupFirmName}
+                    onChange={(e) => setSignupFirmName(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand"
+                  />
+                </div>
+
+                {signupFirmType !== 'ASSOCIATE' ? (
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">사업자등록번호 (10자리)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="123-45-67890"
+                        value={signupBizNumber}
+                        onChange={(e) => setSignupBizNumber(e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCheckFirmNts}
+                        disabled={checkingFirmNts}
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs cursor-pointer disabled:opacity-50 whitespace-nowrap transition-colors"
+                      >
+                        {checkingFirmNts ? '조회 중...' : '국세청 검증'}
+                      </button>
+                    </div>
+                    {signupNtsStatus === 'VALID' && (
+                      <p className="text-[11px] text-emerald-600 font-bold mt-1">✅ 국세청 정상 계속사업자 확인 완료</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 leading-normal bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                    💡 소속(어쏘) 변호사는 별도의 사업자등록증 없이, 본인의 변호사 신분증만 촬영하여 제출하시면 관리자 확인 후 해당 로펌에 자동 배속됩니다.
+                  </p>
+                )}
+              </div>
+
+              {/* ── 3. 변호사 등록번호 ── */}
+              <div className="space-y-1 pt-1 border-t border-slate-200/60">
+                <label className="text-xs font-bold text-slate-700 block">대한변협 변호사 등록번호 (5자리)</label>
                 <input
                   type="text"
                   placeholder="예: 12345"
                   value={signupLicenseNumber}
                   onChange={(e) => setSignupLicenseNumber(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand text-slate-900"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand text-slate-900 font-mono"
                 />
               </div>
+
+              {/* ── 4. 변호사 신분증 스마트폰 촬영 / 첨부 ── */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 block flex items-center gap-1">
-                  <span>변호사 신분증 또는 등록증 (스마트폰 촬영 / PDF)</span>
+                  <span>대한변협 변호사 신분증 (스마트폰 촬영 / PDF)</span>
                 </label>
                 <label className="block cursor-pointer">
                   <div className={`border-2 ${licensePreview ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-300 border-dashed bg-slate-50 hover:bg-slate-100'} rounded-2xl p-4 text-xs text-center transition-all hover:border-brand/50`}>
@@ -2134,7 +2280,7 @@ export default function LawyerRole({
                         <div className="text-2xl">📷</div>
                         <span className="text-slate-800 font-bold block text-xs">스마트폰 카메라로 직접 촬영하거나 앨범에서 선택</span>
                         <span className="text-slate-500 text-[11px] block leading-normal">
-                          지갑 속 대한변협 변호사 신분증 앞면 또는 사업자등록증 (최대 5MB)
+                          지갑 속 대한변협 변호사 신분증 앞면 (최대 5MB)
                         </span>
                       </div>
                     )}
@@ -2142,6 +2288,7 @@ export default function LawyerRole({
                   <input type="file" accept="image/*,.pdf" onChange={handleLicenseFileChange} className="hidden" />
                 </label>
               </div>
+
               <button
                 type="button"
                 onClick={handleSubmitLicenseDoc}

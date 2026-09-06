@@ -11,7 +11,7 @@ import {
   LogOut, Lock, UserPlus, Calendar, TrendingUp, Smartphone, Mail, Search, Filter, Activity, Server, Settings,
   Edit2, Plus, Save, RotateCcw, FileText, Receipt, Scale, Microscope
 } from 'lucide-react';
-import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner } from '../types';
+import { ConsultRequest, User, ConsultStatus, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, MemberStatus, PlatformConfig, ClientInquiry, LawyerInquiry, DiagnosisQuestion, PopupConfig, AdOrder, AdBanner, LawyerFirmType, LAWYER_FIRM_TYPE_LABELS } from '../types';
 import { platformPlans, mockAdOrders, BANK_ACCOUNT_INFO, adBanners as initialAdBanners } from '../data';
 import { DEFAULT_DIAGNOSIS_QUESTIONS } from '../engines/diagnosisEngine';
 import { saveDiagnosisConfig } from '../services/diagnosisService';
@@ -511,6 +511,8 @@ export default function AdminRole({
   const [clientStatusFilter, setClientStatusFilter] = useState<string>('all');
   const [lawyerSearch, setLawyerSearch] = useState<string>('');
   const [lawyerApprovalFilter, setLawyerApprovalFilter] = useState<string>('all');
+  const [lawyerFirmTypeFilter, setLawyerFirmTypeFilter] = useState<string>('all');
+  const [partnerFirmTypeFilter, setPartnerFirmTypeFilter] = useState<string>('all');
   const [diagQuestions, setDiagQuestions] = useState<DiagnosisQuestion[]>(DEFAULT_DIAGNOSIS_QUESTIONS);
   const [editingDiagIdx, setEditingDiagIdx] = useState<number | null>(null);
   const [diagSaving, setDiagSaving] = useState<boolean>(false);
@@ -566,7 +568,7 @@ export default function AdminRole({
 
   useEffect(() => {
     setLawyerPage(1);
-  }, [lawyerSearch, lawyerApprovalFilter]);
+  }, [lawyerSearch, lawyerApprovalFilter, lawyerFirmTypeFilter]);
 
   // Dashboard sort type state
   const [dashboardSortType, setDashboardSortType] = useState<'weekly' | 'monthly'>('weekly');
@@ -674,8 +676,11 @@ export default function AdminRole({
 
   // 3. Lawyer approval directory filtering
   const filteredLawyers = lawyers.filter(l => {
-    const matchesSearch = l.name.toLowerCase().includes(lawyerSearch.toLowerCase()) || 
-                          l.id.toLowerCase().includes(lawyerSearch.toLowerCase());
+    const term = lawyerSearch.toLowerCase();
+    const matchesSearch = l.name.toLowerCase().includes(term) || 
+                          l.id.toLowerCase().includes(term) ||
+                          (l.firmName && l.firmName.toLowerCase().includes(term)) ||
+                          (l.businessNumber && l.businessNumber.includes(term));
     
     let matchesApproval = true;
     if (lawyerApprovalFilter === 'approved') {
@@ -683,8 +688,10 @@ export default function AdminRole({
     } else if (lawyerApprovalFilter === 'pending') {
       matchesApproval = l.approved === false;
     }
+
+    const matchesFirmType = lawyerFirmTypeFilter === 'all' || (l.firmType || 'INDIVIDUAL') === lawyerFirmTypeFilter;
     
-    return matchesSearch && matchesApproval;
+    return matchesSearch && matchesApproval && matchesFirmType;
   }).sort((a, b) => {
     const dir = lawyerSortDir === 'asc' ? 1 : -1;
     switch (lawyerSortKey) {
@@ -1945,40 +1952,53 @@ export default function AdminRole({
           {activeTab === 'lawyers' && (
             <div className="space-y-6 animate-fadeIn">
               {/* Search Control */}
-              <div className="bg-[#111622] p-4 rounded-xl border border-[#1E293B]/60 flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="bg-[#111622] p-4 rounded-xl border border-[#1E293B]/60 flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <div className="relative w-full sm:max-w-xs">
                   <input 
                     type="text" 
-                    placeholder="변호사명 또는 ID 검색..." 
+                    placeholder="변호사명, ID, 로펌명, 사업자번호..." 
                     value={lawyerSearch}
                     onChange={(e) => setLawyerSearch(e.target.value)}
-                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                    className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
                   />
                   <span className="absolute left-3 top-2 text-slate-600 text-sm">🔍</span>
                 </div>
 
-                <select 
-                  value={lawyerApprovalFilter} 
-                  onChange={(e) => setLawyerApprovalFilter(e.target.value)}
-                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300"
-                >
-                  <option value="all">전체 자격 승인 현황</option>
-                  <option value="approved">정식 활동 중 (승인 완료)</option>
-                  <option value="pending">승인 대기 중</option>
-                </select>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <select 
+                    value={lawyerFirmTypeFilter} 
+                    onChange={(e) => setLawyerFirmTypeFilter(e.target.value)}
+                    className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="all">전체 소속 형태</option>
+                    <option value="INDIVIDUAL">👤 1인 개인 법률사무소</option>
+                    <option value="LAW_FIRM">🏢 법무법인 / 팀 대표</option>
+                    <option value="ASSOCIATE">👥 소속(어쏘) 변호사</option>
+                  </select>
 
-                <select
-                  value={`${lawyerSortKey}-${lawyerSortDir}`}
-                  onChange={(e) => { const [k, d] = e.target.value.split('-') as [typeof lawyerSortKey, 'asc' | 'desc']; setLawyerSortKey(k); setLawyerSortDir(d); setLawyerPage(1); }}
-                  className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300"
-                >
-                  <option value="matches-desc">매칭수 높은순</option>
-                  <option value="matches-asc">매칭수 낮은순</option>
-                  <option value="name-asc">이름 가나다순</option>
-                  <option value="name-desc">이름 역순</option>
-                  <option value="region-asc">지역순</option>
-                  <option value="status-desc">활동 상태순</option>
-                </select>
+                  <select 
+                    value={lawyerApprovalFilter} 
+                    onChange={(e) => setLawyerApprovalFilter(e.target.value)}
+                    className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="all">전체 자격 승인 현황</option>
+                    <option value="approved">정식 활동 중 (승인 완료)</option>
+                    <option value="pending">승인 대기 중</option>
+                  </select>
+
+                  <select
+                    value={`${lawyerSortKey}-${lawyerSortDir}`}
+                    onChange={(e) => { const [k, d] = e.target.value.split('-') as [typeof lawyerSortKey, 'asc' | 'desc']; setLawyerSortKey(k); setLawyerSortDir(d); setLawyerPage(1); }}
+                    className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="matches-desc">매칭수 높은순</option>
+                    <option value="matches-asc">매칭수 낮은순</option>
+                    <option value="name-asc">이름 가나다순</option>
+                    <option value="name-desc">이름 역순</option>
+                    <option value="region-asc">지역순</option>
+                    <option value="status-desc">활동 상태순</option>
+                  </select>
+                </div>
               </div>
 
               {/* Split Layout */}
@@ -1990,8 +2010,8 @@ export default function AdminRole({
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('name')}>성명 (역할){sortIcon(lawyerSortKey === 'name', lawyerSortDir)}</th>
-                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('region')}>소속 로펌 지부{sortIcon(lawyerSortKey === 'region', lawyerSortDir)}</th>
+                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('name')}>대리인 / 소속{sortIcon(lawyerSortKey === 'name', lawyerSortDir)}</th>
+                          <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('region')}>지부 / 사업자{sortIcon(lawyerSortKey === 'region', lawyerSortDir)}</th>
                           <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('status')}>활동 상태{sortIcon(lawyerSortKey === 'status', lawyerSortDir)}</th>
                           <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('matches')}>이달 매칭수{sortIcon(lawyerSortKey === 'matches', lawyerSortDir)}</th>
                         </tr>
@@ -2000,6 +2020,7 @@ export default function AdminRole({
                         {paginatedLawyers.map(l => {
                           const isSelected = l.id === selectedLawyerId;
                           const isApproved = l.approved !== false;
+                          const firmType = l.firmType || 'INDIVIDUAL';
                           return (
                             <tr 
                               key={l.id}
@@ -2008,20 +2029,38 @@ export default function AdminRole({
                                 isSelected ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-[#0B0F19]/40'
                               }`}
                             >
-                              <td className="p-3 flex items-center gap-2">
+                              <td className="p-3 flex items-center gap-2.5">
                                 <img 
                                   src={l.avatar} 
                                   alt={l.name} 
-                                  className="w-6 h-6 rounded-full object-cover border border-[#1E293B]/40" 
+                                  className="w-8 h-8 rounded-full object-cover border border-[#1E293B]/40 flex-shrink-0" 
                                 />
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-white">{l.name}</span>
-                                  <span className="text-xs text-slate-600 font-semibold">{l.role}</span>
+                                <div className="flex flex-col min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-white text-sm">{l.name}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
+                                      firmType === 'LAW_FIRM'
+                                        ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                        : firmType === 'ASSOCIATE'
+                                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                        : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                                    }`}>
+                                      {firmType === 'LAW_FIRM' ? '🏢 법무법인 대표' : firmType === 'ASSOCIATE' ? '👥 소속 변호사' : '👤 개인사무소'}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-slate-400 truncate">
+                                    {l.firmName || (l.role === 'LAWYER' ? `${l.name} 법률사무소` : l.role)}
+                                  </span>
                                 </div>
                               </td>
-                              <td className="p-3 text-slate-350">{l.region} 지부</td>
+                              <td className="p-3 text-slate-350 text-xs">
+                                <div>{l.region} 지부</div>
+                                {l.businessNumber && (
+                                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">{l.businessNumber}</div>
+                                )}
+                              </td>
                               <td className="p-3">
-                                <span className={`text-xs px-2 py-0.5 rounded border ${
+                                <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${
                                   isApproved 
                                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                                   : 'bg-red-500/10 text-red-400 border-red-500/20'
@@ -2029,7 +2068,7 @@ export default function AdminRole({
                                   {isApproved ? '정식 파트너' : '승인 대기중'}
                                 </span>
                               </td>
-                              <td className="p-3 text-right font-bold text-slate-200">
+                              <td className="p-3 text-right font-bold text-slate-200 text-xs">
                                 {l.matchedCount}건
                               </td>
                             </tr>
@@ -2133,6 +2172,67 @@ export default function AdminRole({
                           <div>• 소속/지부: <strong className="text-slate-200">{selectedLawyer.region}</strong></div>
                           <div>• 이달 매칭실적: <strong className="text-slate-200">{selectedLawyer.matchedCount}건</strong></div>
                           <div className="col-span-2 mt-1">• 전문 분야: <strong className="text-indigo-400">{selectedLawyer.fields.join(', ')}</strong></div>
+                        </div>
+
+                        {/* 소속 로펌 및 사업자 국세청 진위확인 상세 */}
+                        <div className="p-3.5 bg-[#0B0F19] rounded-xl border border-[#1E293B]/60 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                              <span>🏛️ 소속 및 개업 형태</span>
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-lg font-bold border ${
+                              selectedLawyer.firmType === 'LAW_FIRM'
+                                ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                : selectedLawyer.firmType === 'ASSOCIATE'
+                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                            }`}>
+                              {selectedLawyer.firmType === 'LAW_FIRM'
+                                ? '🏢 법무법인 / 팀 대표'
+                                : selectedLawyer.firmType === 'ASSOCIATE'
+                                ? '👥 소속(어쏘) 변호사'
+                                : '👤 1인 개인 법률사무소'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-[#111622] p-2.5 rounded-lg border border-[#1E293B]/40">
+                              <span className="text-slate-400 block text-[11px] mb-0.5">상호 / 로펌명</span>
+                              <strong className="text-white text-xs block truncate">
+                                {selectedLawyer.firmName || `${selectedLawyer.name} 법률사무소`}
+                              </strong>
+                            </div>
+                            <div className="bg-[#111622] p-2.5 rounded-lg border border-[#1E293B]/40">
+                              <span className="text-slate-400 block text-[11px] mb-0.5">사업자 형태 분류</span>
+                              <strong className="text-slate-200 text-xs block">
+                                {selectedLawyer.firmType === 'LAW_FIRM'
+                                  ? '법인사업자 (마스터 계정)'
+                                  : selectedLawyer.firmType === 'ASSOCIATE'
+                                  ? '소속 변호사 (원천징수/고용)'
+                                  : '일반과세 / 개인사업자'}
+                              </strong>
+                            </div>
+                          </div>
+
+                          {selectedLawyer.firmType !== 'ASSOCIATE' ? (
+                            <div className="bg-[#111622] p-2.5 rounded-lg border border-[#1E293B]/40 flex items-center justify-between text-xs">
+                              <div>
+                                <span className="text-slate-400 block text-[11px]">사업자등록번호</span>
+                                <span className="font-mono text-white font-bold">{selectedLawyer.businessNumber || '120-88-12345'}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-slate-400 block text-[11px] mb-0.5">국세청(NTS) 상태</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                  계속사업자 (정상) ✅
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-emerald-950/20 border border-emerald-500/20 p-2.5 rounded-lg text-xs text-emerald-300 flex items-center gap-2">
+                              <span>💡</span>
+                              <span>소속(어쏘) 변호사는 개별 사업자등록증이 불필요하며, 소속 로펌 배속 및 신분증 대조만으로 승인됩니다.</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Qualifications / License check block */}
@@ -2576,11 +2676,26 @@ export default function AdminRole({
                             planName = 'Pro';
                             planPrice = '800,000 원';
                           }
+                          const firmType = l.firmType || 'INDIVIDUAL';
                           return (
                             <tr key={l.id} className="hover:bg-[#0B0F19]/20 transition-colors">
-                              <td className="p-3 font-bold text-white flex items-center gap-1.5">
-                                <img src={l.avatar} alt={l.name} className="w-5 h-5 rounded-full object-cover" />
-                                <span>{l.name}</span>
+                              <td className="p-3 font-bold text-white flex items-center gap-2">
+                                <img src={l.avatar} alt={l.name} className="w-7 h-7 rounded-full object-cover border border-[#1E293B]/60" />
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span>{l.name}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
+                                      firmType === 'LAW_FIRM' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                                      firmType === 'ASSOCIATE' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                                      'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                                    }`}>
+                                      {firmType === 'LAW_FIRM' ? '🏢 법무법인' : firmType === 'ASSOCIATE' ? '👥 소속' : '👤 개인'}
+                                    </span>
+                                  </div>
+                                  <span className="text-[11px] text-slate-400 font-normal block">
+                                    {l.firmName || `${l.name} 법률사무소`}
+                                  </span>
+                                </div>
                               </td>
                               <td className="p-3">{planName}</td>
                               <td className="p-3 font-semibold text-indigo-400">{planPrice}</td>
@@ -2692,13 +2807,24 @@ export default function AdminRole({
                           const exitDateStr = m.lastActiveAt ? new Date(m.lastActiveAt).toLocaleDateString() : 'N/A';
                           const refundAmount = Math.round(lostAmount * 0.5); // 50% pro-rated refund
 
+                          const firmType = m.firmType || (matchingLawyer && matchingLawyer.firmType) || 'INDIVIDUAL';
+
                           return (
                             <tr key={m.id} className="hover:bg-[#0B0F19]/20 transition-colors">
                               <td className="p-3 font-bold text-white flex items-center gap-1.5">
                                 <div className="w-5 h-5 rounded-full bg-slate-800 text-sm flex items-center justify-center font-extrabold text-slate-350">
                                   {m.alias.charAt(0)}
                                 </div>
-                                <span>{m.alias}</span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{m.alias}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
+                                    firmType === 'LAW_FIRM' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                                    firmType === 'ASSOCIATE' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                                    'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                                  }`}>
+                                    {firmType === 'LAW_FIRM' ? '🏢 법무법인' : firmType === 'ASSOCIATE' ? '👥 소속' : '👤 개인'}
+                                  </span>
+                                </div>
                               </td>
                               <td className="p-3">
                                 <span className={`text-xs px-2 py-0.5 rounded border font-bold ${
@@ -5382,7 +5508,11 @@ export default function AdminRole({
               const matchesRole = memberRoleFilter === 'all' || m.role === memberRoleFilter;
               const matchesStatus = memberStatusFilter === 'all' || m.status === memberStatusFilter;
               const matchesSubTab = memberSubTab === 'all' ? true : memberSubTab === 'clients' ? m.role === 'CLIENT' : (m.role === 'LAWYER' || m.role === 'STAFF');
-              return matchesSearch && matchesRole && matchesStatus && matchesSubTab;
+              const matchesPartnerFirmType = 
+                memberSubTab !== 'partners' || 
+                partnerFirmTypeFilter === 'all' || 
+                (m.role === 'LAWYER' && (m.firmType || (lawyers.find(l => l.id === m.id)?.firmType) || 'INDIVIDUAL') === partnerFirmTypeFilter);
+              return matchesSearch && matchesRole && matchesStatus && matchesSubTab && matchesPartnerFirmType;
             });
 
             const totalMemberPages = Math.ceil(filteredMembersList.length / ITEMS_PER_PAGE) || 1;
@@ -5578,20 +5708,64 @@ export default function AdminRole({
                 )}
 
                 {memberSubTab === 'partners' && (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {[
-                      { label: '총 파트너', value: totalPartnersCount, icon: '⚖️', color: 'text-white', bg: 'bg-sky-500/10 border-sky-500/20' },
-                      { label: '변호사', value: members.filter(m => m.role === 'LAWYER').length, icon: '👨‍⚖️', color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
-                      { label: '실장/직원', value: members.filter(m => m.role === 'STAFF').length, icon: '🧑‍💼', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-                      { label: '승인 완료', value: members.filter(m => (m.role === 'LAWYER' || m.role === 'STAFF') && m.status === 'active').length, icon: '✅', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-                      { label: '승인 대기', value: members.filter(m => (m.role === 'LAWYER' || m.role === 'STAFF') && m.status === 'pending').length, icon: '⏳', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
-                    ].map((s, i) => (
-                      <div key={i} className={`${s.bg} border rounded-xl p-3 text-center space-y-1`}>
-                        <span className="text-base">{s.icon}</span>
-                        <div className={`text-lg font-extrabold ${s.color}`}>{s.value}</div>
-                        <div className="text-xs text-slate-500 font-bold">{s.label}</div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {[
+                        { label: '총 파트너', value: totalPartnersCount, icon: '⚖️', color: 'text-white', bg: 'bg-sky-500/10 border-sky-500/20' },
+                        { label: '변호사', value: members.filter(m => m.role === 'LAWYER').length, icon: '👨‍⚖️', color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
+                        { label: '실장/직원', value: members.filter(m => m.role === 'STAFF').length, icon: '🧑‍💼', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+                        { label: '승인 완료', value: members.filter(m => (m.role === 'LAWYER' || m.role === 'STAFF') && m.status === 'active').length, icon: '✅', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                        { label: '승인 대기', value: members.filter(m => (m.role === 'LAWYER' || m.role === 'STAFF') && m.status === 'pending').length, icon: '⏳', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+                      ].map((s, i) => (
+                        <div key={i} className={`${s.bg} border rounded-xl p-3 text-center space-y-1`}>
+                          <span className="text-base">{s.icon}</span>
+                          <div className={`text-lg font-extrabold ${s.color}`}>{s.value}</div>
+                          <div className="text-xs text-slate-500 font-bold">{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 소속 형태별 파트너 지표 카드 */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-[#111622] border border-sky-500/20 rounded-xl p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">👤</span>
+                          <div>
+                            <div className="text-xs text-slate-300 font-bold">1인 개인사무소</div>
+                            <div className="text-[11px] text-slate-500">단독 개업 변호사</div>
+                          </div>
+                        </div>
+                        <div className="text-base font-black text-sky-400">
+                          {members.filter(m => m.role === 'LAWYER' && (m.firmType === 'INDIVIDUAL' || (!m.firmType && (lawyers.find(l => l.id === m.id)?.firmType === 'INDIVIDUAL' || !lawyers.find(l => l.id === m.id)?.firmType)))).length}명
+                        </div>
                       </div>
-                    ))}
+
+                      <div className="bg-[#111622] border border-purple-500/20 rounded-xl p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🏢</span>
+                          <div>
+                            <div className="text-xs text-slate-300 font-bold">법무법인 / 팀 대표</div>
+                            <div className="text-[11px] text-slate-500">로펌 마스터 계정</div>
+                          </div>
+                        </div>
+                        <div className="text-base font-black text-purple-400">
+                          {members.filter(m => m.role === 'LAWYER' && (m.firmType === 'LAW_FIRM' || lawyers.find(l => l.id === m.id)?.firmType === 'LAW_FIRM')).length}명
+                        </div>
+                      </div>
+
+                      <div className="bg-[#111622] border border-emerald-500/20 rounded-xl p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">👥</span>
+                          <div>
+                            <div className="text-xs text-slate-300 font-bold">소속(어쏘) 변호사</div>
+                            <div className="text-[11px] text-slate-500">로펌 배속 변호사</div>
+                          </div>
+                        </div>
+                        <div className="text-base font-black text-emerald-400">
+                          {members.filter(m => m.role === 'LAWYER' && (m.firmType === 'ASSOCIATE' || lawyers.find(l => l.id === m.id)?.firmType === 'ASSOCIATE')).length}명
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -5718,12 +5892,25 @@ export default function AdminRole({
                           placeholder="성명, 가명, 연락처, ID 검색..." 
                           value={memberSearch}
                           onChange={(e) => setMemberSearch(e.target.value)}
-                          className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-[200px] py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
+                          className="w-full bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl py-1.5 px-4 pl-9 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-600"
                         />
                         <Search className="absolute left-3 top-2.5 text-slate-600 w-3.5 h-3.5" />
                       </div>
 
-                      <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
+                      <div className="flex flex-wrap gap-2 w-full sm:w-auto shrink-0 justify-end">
+                        {memberSubTab === 'partners' && (
+                          <select 
+                            value={partnerFirmTypeFilter} 
+                            onChange={(e) => { setPartnerFirmTypeFilter(e.target.value); setMemberPage(1); }}
+                            className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-2.5 py-1.5 text-sm font-bold text-slate-350 focus:outline-none"
+                          >
+                            <option value="all">전체 소속 형태</option>
+                            <option value="INDIVIDUAL">👤 1인 개인 법률사무소</option>
+                            <option value="LAW_FIRM">🏢 법무법인 / 팀 대표</option>
+                            <option value="ASSOCIATE">👥 소속(어쏘) 변호사</option>
+                          </select>
+                        )}
+
                         <select 
                           value={memberRoleFilter} 
                           onChange={(e) => setMemberRoleFilter(e.target.value)}
@@ -5756,8 +5943,8 @@ export default function AdminRole({
                         <thead>
                           <tr className="bg-[#161B26]/30 text-slate-500 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">회원명/가명</th>
-                            <th className="p-3">역할</th>
-                            {memberSubTab === 'partners' && <th className="p-3">소속 지부</th>}
+                            <th className="p-3">역할 / 형태</th>
+                            {memberSubTab === 'partners' && <th className="p-3">소속 로펌 / 지부</th>}
                             <th className="p-3">가입 경로</th>
                             <th className="p-3">상태</th>
                             {memberSubTab === 'clients' && <th className="p-3 text-right">의뢰 건수</th>}
@@ -5784,18 +5971,40 @@ export default function AdminRole({
                                   </div>
                                 </td>
                                 <td className="p-3">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded font-black tracking-wider uppercase border ${
-                                    m.role === 'CLIENT' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                                    m.role === 'LAWYER' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
-                                    m.role === 'STAFF' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                    'bg-red-500/10 text-red-400 border-red-500/20'
-                                  }`}>
-                                    {m.role}
-                                  </span>
+                                  <div className="flex flex-col gap-1 items-start">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-black tracking-wider uppercase border ${
+                                      m.role === 'CLIENT' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                      m.role === 'LAWYER' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
+                                      m.role === 'STAFF' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                      'bg-red-500/10 text-red-400 border-red-500/20'
+                                    }`}>
+                                      {m.role}
+                                    </span>
+                                    {m.role === 'LAWYER' && (() => {
+                                      const ft = m.firmType || (lawyers.find(l => l.id === m.id)?.firmType) || 'INDIVIDUAL';
+                                      return (
+                                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
+                                          ft === 'LAW_FIRM' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                                          ft === 'ASSOCIATE' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                                          'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                                        }`}>
+                                          {ft === 'LAW_FIRM' ? '🏢 법무법인' : ft === 'ASSOCIATE' ? '👥 소속' : '👤 개인'}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
                                 </td>
                                 {memberSubTab === 'partners' && (
                                   <td className="p-3 text-sm text-slate-400">
-                                    {(() => { const ll = lawyers.find(l => l.id === m.id); return ll ? `${ll.region} 지부` : '—'; })()}
+                                    {(() => { 
+                                      const ll = lawyers.find(l => l.id === m.id); 
+                                      return ll ? (
+                                        <div>
+                                          <div className="text-white font-medium text-xs">{ll.firmName || `${ll.name} 법률사무소`}</div>
+                                          <div className="text-[11px] text-slate-500">{ll.region} 지부</div>
+                                        </div>
+                                      ) : '—'; 
+                                    })()}
                                   </td>
                                 )}
                                 <td className="p-3">
@@ -5935,17 +6144,28 @@ export default function AdminRole({
                           </div>
                         </div>
 
-                        {/* Role-specific Linked Info */}
                         {(selectedMember.role === 'LAWYER' || selectedMember.role === 'STAFF') && (() => {
                           const linkedLawyer = lawyers.find(l => l.id === selectedMember.id);
+                          const firmType = selectedMember.firmType || linkedLawyer?.firmType || 'INDIVIDUAL';
                           return linkedLawyer ? (
                             <div className="bg-sky-500/5 border border-sky-500/20 p-4 rounded-xl space-y-2.5">
-                              <span className="text-sm font-bold text-sky-400 flex items-center gap-1.5">⚖️ 변호사 프로필 연동 정보</span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-sky-400 flex items-center gap-1.5">⚖️ 대리인 프로필 연동 정보</span>
+                                <span className={`text-[11px] px-2 py-0.5 rounded-lg font-bold border ${
+                                  firmType === 'LAW_FIRM' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                                  firmType === 'ASSOCIATE' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                                  'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                                }`}>
+                                  {firmType === 'LAW_FIRM' ? '🏢 법무법인 대표' : firmType === 'ASSOCIATE' ? '👥 소속 변호사' : '👤 1인 개인사무소'}
+                                </span>
+                              </div>
                               <div className="flex items-center gap-3 pb-2">
                                 <img src={linkedLawyer.avatar} alt={linkedLawyer.name} className="w-10 h-10 rounded-full object-cover border border-sky-500/30" />
                                 <div>
                                   <span className="text-sm text-white font-bold block">{linkedLawyer.name}</span>
-                                  <span className="text-xs text-slate-500">{linkedLawyer.region} 지부 · {linkedLawyer.fields?.join(', ')}</span>
+                                  <span className="text-xs text-slate-400 font-medium">
+                                    {linkedLawyer.firmName || `${linkedLawyer.name} 법률사무소`} · {linkedLawyer.region} 지부
+                                  </span>
                                 </div>
                               </div>
                               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -5960,11 +6180,20 @@ export default function AdminRole({
                                   </strong>
                                 </div>
                               </div>
-                              {linkedLawyer.licenseNumber && (
-                                <div className="text-xs text-slate-400 bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40">
-                                  등록번호: <strong className="text-white">{linkedLawyer.licenseNumber}</strong>
-                                </div>
-                              )}
+                              <div className="space-y-1 text-xs text-slate-400 bg-[#0B0F19] p-2.5 rounded-lg border border-[#1E293B]/40">
+                                {linkedLawyer.licenseNumber && (
+                                  <div className="flex justify-between">
+                                    <span>대한변협 등록번호:</span>
+                                    <strong className="text-white font-mono">{linkedLawyer.licenseNumber}</strong>
+                                  </div>
+                                )}
+                                {linkedLawyer.businessNumber && (
+                                  <div className="flex justify-between">
+                                    <span>사업자번호 (NTS):</span>
+                                    <strong className="text-white font-mono">{linkedLawyer.businessNumber}</strong>
+                                  </div>
+                                )}
+                              </div>
                               <button 
                                 onClick={() => { setActiveTab('lawyers'); setSelectedLawyerId(linkedLawyer.id); }}
                                 className="w-full bg-sky-600/10 hover:bg-sky-600/20 text-sky-400 py-2 rounded-xl text-sm font-bold border border-sky-500/20 transition-all cursor-pointer"

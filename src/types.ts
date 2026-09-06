@@ -834,12 +834,23 @@ export interface Team {
 
 export type UserRole = 'LAWYER' | 'STAFF' | 'ADMIN';
 
+export type LawyerFirmType = 'INDIVIDUAL' | 'LAW_FIRM' | 'ASSOCIATE';
+
+export const LAWYER_FIRM_TYPE_LABELS: Record<LawyerFirmType, { label: string; badge: string; color: string; bgColor: string; desc: string }> = {
+  INDIVIDUAL: { label: '1인 개인 법률사무소', badge: '개인사무소', color: 'text-sky-400', bgColor: 'bg-sky-500/10', desc: '단독 개업 변호사 (본인 사업자등록증 + 신분증)' },
+  LAW_FIRM:   { label: '법무법인 / 팀 대표',   badge: '법무법인 대표', color: 'text-purple-400', bgColor: 'bg-purple-500/10', desc: '법인 또는 여러 변호사가 함께 일하는 사무소 (대표/관리자)' },
+  ASSOCIATE:  { label: '소속(어쏘) 변호사',     badge: '소속 변호사', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', desc: '이미 등록된 로펌의 소속 변호사 (초대 링크 또는 로펌 소속)' },
+};
+
 export interface User {
   id: string;
   lawFirmId: string;
   teamId: string;
   name: string;
   firmName?: string; // 소속 법률사무소/법인 명칭 (직접 설정 가능)
+  firmType?: LawyerFirmType; // 1인 개인 | 법무법인 대표 | 소속 변호사
+  businessNumber?: string; // 소속 사무소 사업자등록번호
+  ntsStatus?: string; // 국세청 검증 상태 ('VALID' | 'INVALID' | 'UNCHECKED')
   role: UserRole;
   fields: string[];
   region: string;
@@ -1520,6 +1531,7 @@ export interface Member {
   phone?: string;
   alias: string;
   role: MemberRole;
+  firmType?: LawyerFirmType;
   createdAt: string;
   loginChannel: 'email' | 'google' | 'kakao' | 'naver' | 'sms';
   status: MemberStatus;
