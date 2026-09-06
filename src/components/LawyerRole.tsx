@@ -53,6 +53,7 @@ import { registerSession } from '../services/sessionService';
 const NewCaseModal = React.lazy(() => import('./lawyer/NewCaseModal'));
 const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalette'));
 import ContractConversionModal from './lawyer/ContractConversionModal';
+import { loadAdOrders, saveNewAdOrder, subscribeToAdOrders } from '../services/adOrderService';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   return req.phone || (req as any).clientPhone || (req as any).userPhone || "-";
@@ -135,7 +136,16 @@ export default function LawyerRole({
   const [adModalDepositor, setAdModalDepositor] = useState('');
   const [adModalRegion, setAdModalRegion] = useState('');
   const [adModalStep, setAdModalStep] = useState<'select' | 'done'>('select');
-  const [adOrders, setAdOrders] = useState<AdOrder[]>(mockAdOrders);
+  const [adOrders, setAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
+
+  // 관리자가 입금 확인/승인 또는 취소 처리 시 변호사 화면 실시간 동기화
+  useEffect(() => {
+    const unsub = subscribeToAdOrders(
+      () => setAdOrders(loadAdOrders()),
+      () => setAdOrders(loadAdOrders())
+    );
+    return unsub;
+  }, []);
 
   // 세금계산서 / 사업자 정보 상태
   const [bizInfo, setBizInfo] = useState<LawyerBusinessInfo | null>(() => loadLawyerBusinessInfo());
@@ -4197,7 +4207,9 @@ export default function LawyerRole({
                               buyerCEOName: activeLawyer.name,
                               buyerEmail: activeLawyer.email,
                             };
-                            setAdOrders(prev => [newOrder, ...prev]);
+                            // 스토리지 저장 및 브라우저/탭 간 실시간 전파
+                            saveNewAdOrder(newOrder);
+                            setAdOrders(loadAdOrders());
                             // 관리자 실시간 알림 (텔레그램 / 슬랙 / 브라우저 푸시)
                             notifyAdminNewAdOrder(newOrder);
                             setAdModalStep('done');

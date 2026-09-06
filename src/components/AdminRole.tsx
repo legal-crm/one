@@ -32,6 +32,7 @@ import GlobalSessionMonitor from './admin/GlobalSessionMonitor';
 import { useSessionGuard } from '../hooks/useSessionGuard';
 import { registerSession } from '../services/sessionService';
 import { notifyAdminAdConfirmed } from '../services/notificationService';
+import { loadAdOrders, updateAdOrder, subscribeToAdOrders } from '../services/adOrderService';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -101,8 +102,36 @@ export default function AdminRole({
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security'>('dashboard');
   const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
-  const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(mockAdOrders);
+  const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
+
+  // 변호사의 실시간 광고 주문 신청/입금대기 이벤트 감지 및 관리자 토스트 알림
+  useEffect(() => {
+    const unsub = subscribeToAdOrders(
+      (newOrder) => {
+        setAdminAdOrders(loadAdOrders());
+        if (newOrder.status === 'pending') {
+          toast.info(
+            `🔔 [신규 광고 신청] ${newOrder.lawyerName} - ${newOrder.productName} (${newOrder.totalPrice.toLocaleString()}원 / 입금자: ${newOrder.depositorName || newOrder.lawyerName}) 입금 대기 중`,
+            {
+              duration: 8000,
+              action: {
+                label: '입금 확인하기',
+                onClick: () => {
+                  setActiveTab('billing');
+                  setBillingSubTab('adorders');
+                }
+              }
+            }
+          );
+        }
+      },
+      () => {
+        setAdminAdOrders(loadAdOrders());
+      }
+    );
+    return unsub;
+  }, []);
   // 세금계산서 발행 확인 모달
   const [invoiceConfirmOrder, setInvoiceConfirmOrder] = useState<AdOrder | null>(null);
   const [invoiceIssuing, setInvoiceIssuing] = useState(false);
@@ -1023,6 +1052,11 @@ export default function AdminRole({
               <p className="text-sm font-bold text-slate-400 uppercase tracking-wider px-3.5 pb-1 pt-1">과금</p>
               <button onClick={() => setActiveTab('billing')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
                 <CreditCard className="w-5 h-5 shrink-0" /><span>과금 분석</span>
+                {adminAdOrders.filter(o => o.status === 'pending').length > 0 && (
+                  <span className="ml-auto bg-amber-500 text-slate-950 text-xs font-black px-2 py-0.5 rounded-full animate-pulse shadow-sm">
+                    입금대기 {adminAdOrders.filter(o => o.status === 'pending').length}
+                  </span>
+                )}
               </button>
 
               {/* 그룹 3: 설정 */}
@@ -1067,8 +1101,13 @@ export default function AdminRole({
               <Briefcase className="w-5 h-5" /><span className="text-sm font-bold">변호사</span>
               {pendingLawyersCount > 0 && (<span className="absolute -top-0.5 right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold animate-pulse">{pendingLawyersCount}</span>)}
             </button>
-            <button onClick={() => setActiveTab('billing')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${activeTab === 'billing' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
+            <button onClick={() => setActiveTab('billing')} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors relative cursor-pointer ${activeTab === 'billing' ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
               <CreditCard className="w-5 h-5" /><span className="text-sm font-bold">과금</span>
+              {adminAdOrders.filter(o => o.status === 'pending').length > 0 && (
+                <span className="absolute -top-0.5 right-1 bg-amber-500 text-slate-950 rounded-full w-4 h-4 flex items-center justify-center text-xs font-black animate-pulse">
+                  {adminAdOrders.filter(o => o.status === 'pending').length}
+                </span>
+              )}
             </button>
             <button onClick={() => { const tabs: Array<typeof activeTab> = ['security', 'members', 'contents', 'settings']; const curr = tabs.indexOf(activeTab as any); setActiveTab(tabs[curr >= 0 ? (curr + 1) % tabs.length : 0]); }} className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg transition-colors cursor-pointer ${!['dashboard','clients','lawyers','billing'].includes(activeTab) ? 'text-indigo-400 font-bold' : 'text-slate-500 font-medium'}`}>
               <Settings className="w-5 h-5" /><span className="text-sm font-bold">더보기</span>
@@ -3199,8 +3238,9 @@ export default function AdminRole({
                                 buyerEmail: confirmEmail || order.buyerEmail,
                               };
 
-                              // 3. 주문 목록 업데이트
-                              setAdminAdOrders(prev => prev.map(o => o.id === order.id ? updatedOrder : o));
+                              // 3. 주문 목록 업데이트 (로컬 스토리지 및 브로드캐스트 동기화)
+                              updateAdOrder(updatedOrder);
+                              setAdminAdOrders(loadAdOrders());
 
                               // 4. 관리자 알림 발송 (광고 승인 및 활성화 완료)
                               notifyAdminAdConfirmed(updatedOrder);
@@ -3378,8 +3418,8 @@ export default function AdminRole({
                               });
 
                               if (res.ok) {
-                                setAdminAdOrders(prev => prev.map(o => o.id === order.id ? {
-                                  ...o,
+                                const cancelledOrder: AdOrder = {
+                                  ...order,
                                   status: 'cancelled' as const,
                                   modifiedTaxInvoice: {
                                     itemKey: res.data?.itemKey || `mod-${Date.now()}`,
@@ -3392,7 +3432,9 @@ export default function AdminRole({
                                     totalAmount: -Math.abs(targetTotal),
                                     status: 'issued',
                                   }
-                                } : o));
+                                };
+                                updateAdOrder(cancelledOrder);
+                                setAdminAdOrders(loadAdOrders());
                                 setModifyResult({ ok: true, message: '✅ 마이너스 수정세금계산서가 국세청으로 발행되었습니다!' });
                                 toast.success('광고 취소 및 수정세금계산서가 국세청에 발행되었습니다.');
                                 setTimeout(() => setModifyModalOrder(null), 1800);
