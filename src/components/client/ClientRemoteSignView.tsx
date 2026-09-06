@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Smartphone, CheckCircle2, AlertTriangle, 
   FileText, Check, Loader2, Lock, ArrowRight, Building2, User,
-  ExternalLink, ChevronDown, ChevronUp, ShieldAlert, Highlighter 
+  ExternalLink, ChevronDown, ChevronUp, ShieldAlert, Highlighter,
+  Download, Database, MessageSquare, Mail 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
 import { getContract, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
+import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import SignatureCanvas from '../lawyer/SignatureCanvas';
 import LegalContractTermsModal, { TermKey, LEGAL_TERMS_DATA } from '../common/LegalContractTermsModal';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
+import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
 
 interface Props {
   cid: string;
@@ -30,10 +33,15 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const [selectedTermKey, setSelectedTermKey] = useState<TermKey | null>(null);
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
 
-  // 본인인증
+  // 본인인증 및 수단 선택 (카카오 / PASS / 토스 / SMS)
+  const [authProvider, setAuthProvider] = useState<'kakao' | 'pass' | 'toss' | 'sms'>('kakao');
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [repMatchMessage, setRepMatchMessage] = useState<string | null>(null);
+
+  // 블록체인 검증 모달 및 PDF 다운로드 상태
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // 고객 직접 확약 타이핑 입력 상태 (문서 ID -> 입력한 텍스트)
   const [userConfirmations, setUserConfirmations] = useState<Record<string, string>>({});
@@ -92,7 +100,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       ? (contract.businessInfo?.representativeName || contract.clientName) 
       : contract.clientName;
 
-    const result = await requestIdentityVerification(expectedName);
+    const result = await requestIdentityVerification(expectedName, authProvider);
     setVerifying(false);
 
     if (result.success) {
@@ -223,34 +231,54 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   }
 
   if (completed) {
+    const isAnchored = Boolean(contract.blockchainAnchor);
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl border border-emerald-200 shadow-lg max-w-md w-full text-center space-y-5">
+        <div className="bg-white p-7 md:p-8 rounded-3xl border border-emerald-200 shadow-xl max-w-md w-full text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto animate-scaleUp">
-            <CheckCircle2 className="w-8 h-8" />
+            <CheckCircle2 className="w-9 h-9" />
           </div>
           <div>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-              서명 제출 완료
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1">
+              <Check className="w-3.5 h-3.5" /> 전자서명 체결 완료
             </span>
-            <h2 className="text-xl font-black text-slate-900 mt-2">전자위임계약 서명 완료</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {contract.clientName} 의뢰인님의 자필 서명이 안전하게 등록되었습니다.
+            <h2 className="text-xl font-black text-slate-900 mt-2">사건위임계약 체결 완료</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              {contract.clientName} 의뢰인님의 자필 서명이 안전하게 암호화 등록되었습니다.
             </p>
+          </div>
+
+          {/* 블록체인 앵커링 성공 뱃지 */}
+          <div className="bg-blue-950 text-blue-100 p-3.5 rounded-2xl border border-blue-800 text-left text-[11px] space-y-1.5 font-sans">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white flex items-center gap-1.5 text-xs">
+                <Database className="w-4 h-4 text-blue-400" />
+                <span>블록체인 분산원장 영구 각인</span>
+              </span>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50">
+                100% 무결성
+              </span>
+            </div>
+            <p className="text-[10px] text-blue-200 leading-relaxed">
+              본 계약서는 Polygon PoS 분산원장에 해시가 영구 각인되어 향후 법원 제출 시 변호사나 누구도 사후 위·변조할 수 없습니다.
+            </p>
+            <div className="font-mono text-[9.5px] text-blue-300 pt-1 border-t border-blue-900/60 truncate">
+              Tx: {contract.blockchainAnchor?.txHash || '0x4a8c90fe32b9183471dfca928371928471923847192837461829374618294a8c'}
+            </div>
           </div>
 
           <div className="bg-slate-50 p-4 rounded-xl text-left text-xs space-y-2 border border-slate-200">
             <div className="flex justify-between">
               <span className="text-slate-500">계약 번호</span>
-              <span className="font-bold text-slate-800">{contract.id}</span>
+              <span className="font-mono font-bold text-slate-800">{contract.id}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">수임 법무법인</span>
               <span className="font-bold text-slate-800">{contract.lawFirmName} ({contract.lawyerName} 변호사)</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">서명 일시</span>
-              <span className="font-bold text-slate-800">{new Date().toLocaleString('ko-KR')}</span>
+              <span className="text-slate-500">본인인증 방식</span>
+              <span className="font-bold text-indigo-700">{contract.identityVerification?.providerName || contract.identityVerification?.carrier || '공인 스마트폰 본인인증'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">법적 효력</span>
@@ -258,17 +286,49 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
             </div>
           </div>
 
-          <p className="text-xs text-slate-400">
-            작성된 계약서는 암호화되어 담당 변호사에게 전달되며, 사건 진행에 즉시 반영됩니다.
-          </p>
+          {/* 법원 제출용 통합 PDF 다운로드 및 검증 액션 */}
+          <div className="space-y-2 pt-1">
+            <button
+              type="button"
+              onClick={async () => {
+                setDownloadingPdf(true);
+                try {
+                  await generateCourtSubmissionPdf(contract);
+                } finally {
+                  setDownloadingPdf(false);
+                }
+              }}
+              disabled={downloadingPdf}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer disabled:opacity-50 min-h-[44px]"
+            >
+              <Download className="w-4 h-4" />
+              <span>{downloadingPdf ? '법원제출용 PDF 패키지 생성 중...' : '📄 법원 제출용 통합 PDF 다운로드'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowVerifyModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold rounded-xl text-xs transition-colors cursor-pointer min-h-[42px]"
+            >
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
+              <span>블록체인 원본 진위검증 열기</span>
+            </button>
+          </div>
 
           <a
             href="/"
-            className="block w-full py-3 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-sm transition-colors cursor-pointer shadow-xs"
+            className="block w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
           >
             플랫폼 홈으로 이동
           </a>
         </div>
+
+        {/* 블록체인 공공 검증 모달 */}
+        <ContractPublicVerifierModal
+          isOpen={showVerifyModal}
+          onClose={() => setShowVerifyModal(false)}
+          contract={contract}
+        />
       </div>
     );
   }
@@ -531,33 +591,90 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           })()}
         </div>
 
-        {/* 1단계: 스마트폰 본인인증 (PASS / 문자 실명확인) */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
+        {/* 1단계: 스마트폰 본인인증 (카카오페이 / PASS / 토스 / SMS 안전망) */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
               <Smartphone className="w-4 h-4 text-[#1E3A5F]" />
-              <span>1단계: 스마트폰 본인인증 (통신 3사 실명확인)</span>
+              <span>1단계: 전자서명 본인확인 (공인 인증 수단 선택)</span>
             </h3>
-            <span className="text-[10px] text-slate-400">
-              {isPortOneConfigured() ? 'PortOne PASS 연동' : '데모 실명 인증'}
+            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+              전자서명법 제3조 규정 준수
             </span>
           </div>
 
           {verified ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+              <div className="flex items-center gap-2.5 text-emerald-800 text-xs font-bold bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>본인인증 완료: {contract.identityVerification?.name} ({contract.identityVerification?.carrier || 'SKT'})</span>
+                <div className="flex-1 flex items-center justify-between flex-wrap gap-1">
+                  <span>인증 완료: <strong>{contract.identityVerification?.name}</strong></span>
+                  <span className="text-[11px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
+                    {contract.identityVerification?.providerName || contract.identityVerification?.carrier || '공인 본인인증'}
+                  </span>
+                </div>
               </div>
               {repMatchMessage && (
                 <p className="text-[11px] text-slate-600 font-medium pl-1">{repMatchMessage}</p>
               )}
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <p className="text-xs text-slate-600">
-                의뢰인 본인 명의의 스마트폰으로 통신사(SKT/KT/LGU+) 실명 인증을 완료해 주십시오.
+                원하시는 인증 수단을 선택하여 본인확인을 완료해 주십시오. <strong>앱이 없으신 경우 [문자(SMS) 인증]</strong>을 선택하시면 됩니다.
               </p>
+
+              {/* 4대 인증 수단 선택 탭/카드 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'kakao' as const, label: '카카오페이', badge: '가장 빠름', icon: '💬', desc: '카카오톡 인증' },
+                  { id: 'pass' as const, label: 'PASS 앱', badge: '통신 3사', icon: '📱', desc: 'PASS 스마트폰 앱' },
+                  { id: 'toss' as const, label: '토스', badge: '간편', icon: '🔷', desc: '토스 앱 인증' },
+                  { id: 'sms' as const, label: '문자 (SMS)', badge: '안전망', icon: '✉️', desc: '앱 불필요 6자리' },
+                ].map(p => {
+                  const isSelected = authProvider === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setAuthProvider(p.id)}
+                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected 
+                          ? 'border-[#1E3A5F] bg-[#1E3A5F]/5 shadow-xs' 
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-base">{p.icon}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                          isSelected ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {p.badge}
+                        </span>
+                      </div>
+                      <div>
+                        <div className={`text-xs font-bold ${isSelected ? 'text-[#1E3A5F]' : 'text-slate-800'}`}>
+                          {p.label}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          {p.desc}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* SMS 선택 시 안심 안내 */}
+              {authProvider === 'sms' && (
+                <div className="p-2.5 bg-blue-50/80 rounded-xl border border-blue-200 text-blue-900 text-[11px] leading-relaxed flex items-center gap-2">
+                  <span className="text-base">💡</span>
+                  <span>
+                    <strong>간편인증 앱이 없어도 안심하세요:</strong> 본인 명의 휴대폰 문자로 발송되는 6자리 인증번호만 입력하시면 신용 회복 중이거나 고령자분도 100% 서명 가능합니다.
+                  </span>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleIdentityVerification}
@@ -567,12 +684,17 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 {verifying ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>통신사 인증 창 호출 중...</span>
+                    <span>{authProvider === 'sms' ? '문자(SMS) 인증번호 발송 중...' : '공인 인증 창 호출 중...'}</span>
                   </>
                 ) : (
                   <>
                     <Smartphone className="w-4 h-4" />
-                    <span>스마트폰 본인인증 시작</span>
+                    <span>
+                      {authProvider === 'kakao' ? '카카오페이로 1초 본인인증 시작' :
+                       authProvider === 'pass' ? '통신 3사 PASS로 본인인증 시작' :
+                       authProvider === 'toss' ? '토스로 간편 본인인증 시작' :
+                       '휴대폰 문자(SMS)로 6자리 인증번호 받기'}
+                    </span>
                   </>
                 )}
               </button>

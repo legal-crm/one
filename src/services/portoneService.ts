@@ -9,15 +9,17 @@ const PORTONE_API_SECRET = (typeof import.meta !== 'undefined' && (import.meta a
 
 export interface VerificationResult {
   success: boolean;
-  method: string;          // 'portone_pass' | 'portone_sms' | 'demo_pass'
-  name: string;            // 통신사 인증 실명 (예: 홍길동)
+  method: string;          // 'portone_pass' | 'portone_sms' | 'kakao_pay_cert' | 'toss_cert' | 'demo_pass'
+  provider?: 'pass' | 'kakao' | 'toss' | 'sms';
+  providerName?: string;
+  name: string;            // 통신사/기관 인증 실명 (예: 홍길동)
   birthDate?: string;      // 생년월일 (YYYY-MM-DD 또는 YYYYMMDD)
   gender?: string;         // 성별
   phoneNumber?: string;    // 휴대폰번호 (숫자)
   phoneMasked?: string;    // 마스킹된 휴대폰번호
-  carrier?: string;        // 통신사 (SKT, KT, LGU+, 알뜰폰)
-  txId: string;            // identityVerificationId / 통신사 공인 거래 승인번호
-  certifiedAt: string;     // 통신사 인증 서버 공인 시각 (ISO 8601)
+  carrier?: string;        // 통신사/기관 (SKT, KT, LGU+, 알뜰폰, 카카오페이 등)
+  txId: string;            // identityVerificationId / 공인 거래 승인번호
+  certifiedAt: string;     // 공인 시각 (ISO 8601)
   ci?: string;             // 연계정보 (Connecting Information)
   di?: string;             // 중복가입확인정보 (Duplication Information)
   isForeigner?: boolean;   // 외국인 여부
@@ -64,17 +66,21 @@ export async function fetchIdentityVerificationDetails(identityVerificationId: s
 }
 
 /**
- * 스마트폰 본인인증 실행 (PortOne V2 브라우저 SDK)
+ * 스마트폰 본인인증 실행 (PortOne V2 브라우저 SDK / 카카오 / PASS / 토스 / SMS)
  * 공식 가이드: PortOne.requestIdentityVerification({ storeId, identityVerificationId, channelKey })
  * @param targetName 인증을 기대하는 대표자명 (데모 시뮬레이션 및 폴백용)
+ * @param provider 선택한 인증 수단 ('kakao' | 'pass' | 'toss' | 'sms')
  */
-export async function requestIdentityVerification(targetName?: string): Promise<VerificationResult> {
+export async function requestIdentityVerification(
+  targetName?: string,
+  provider: 'pass' | 'kakao' | 'toss' | 'sms' = 'kakao'
+): Promise<VerificationResult> {
   const deviceInfo = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown Browser';
   const ipAddress = '211.234.12.89'; // 프로덕션 권장
 
   // Store ID 및 Channel Key가 미설정된 경우 데모 시뮬레이션 모드로 동작
   if (!STORE_ID || !CHANNEL_KEY) {
-    return simulateDemoVerification(targetName, deviceInfo, ipAddress);
+    return simulateDemoVerification(targetName, deviceInfo, ipAddress, provider);
   }
 
   try {
@@ -88,9 +94,9 @@ export async function requestIdentityVerification(targetName?: string): Promise<
     const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID) 
       ? crypto.randomUUID() 
       : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const identityVerificationId = `identity-verification-${uuid}`;
+    const identityVerificationId = `idv-${provider}-${uuid}`;
 
-    // 1. 브라우저 본인인증창 호출 (PASS 앱 / 문자 인증)
+    // 1. 브라우저 본인인증창 호출 (PASS 앱 / 카카오 / 문자 인증)
     const response = await PortOne.requestIdentityVerification({
       storeId: STORE_ID,
       identityVerificationId,
@@ -101,7 +107,8 @@ export async function requestIdentityVerification(targetName?: string): Promise<
     if (response && response.code !== undefined) {
       return {
         success: false,
-        method: 'portone_v2',
+        method: `portone_${provider}`,
+        provider,
         name: '',
         txId: identityVerificationId,
         certifiedAt: new Date().toISOString(),
@@ -125,7 +132,11 @@ export async function requestIdentityVerification(targetName?: string): Promise<
     const birthDate = verifiedCustomer?.birthDate || response?.birthDate || '1985-01-01';
     const rawPhone = verifiedCustomer?.phoneNumber || response?.phoneNumber || '';
     const phoneMasked = rawPhone ? rawPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1-****-$2') : '010-****-5678';
-    const carrier = verifiedCustomer?.operator || response?.operator || 'SKT';
+    const carrier = verifiedCustomer?.operator || response?.operator || (
+      provider === 'kakao' ? '카카오페이 전자서명인증' :
+      provider === 'toss' ? '토스 전자서명인증' :
+      provider === 'sms' ? '휴대폰 문자(SMS) 공인인증' : 'SKT / PASS'
+    );
     const ci = verifiedCustomer?.ci || response?.ci || undefined;
     const di = verifiedCustomer?.di || undefined;
     const gender = verifiedCustomer?.gender || undefined;
@@ -133,7 +144,9 @@ export async function requestIdentityVerification(targetName?: string): Promise<
 
     return {
       success: true,
-      method: 'portone_pass',
+      method: `portone_${provider}`,
+      provider,
+      providerName: getProviderDisplayName(provider),
       name: certifiedName,
       birthDate,
       gender,
@@ -152,6 +165,7 @@ export async function requestIdentityVerification(targetName?: string): Promise<
     return {
       success: false,
       method: 'portone_error',
+      provider,
       name: '',
       txId: '',
       certifiedAt: new Date().toISOString(),
@@ -162,28 +176,66 @@ export async function requestIdentityVerification(targetName?: string): Promise<
   }
 }
 
+export function getProviderDisplayName(provider: 'pass' | 'kakao' | 'toss' | 'sms'): string {
+  switch (provider) {
+    case 'kakao':
+      return '카카오페이 전자서명인증 (KISA 공인)';
+    case 'pass':
+      return '통신 3사 PASS 앱 간편인증';
+    case 'toss':
+      return '토스 전자서명인증 (KISA 공인)';
+    case 'sms':
+      return '휴대폰 문자(SMS) 6자리 본인확인 (안전망)';
+  }
+}
+
 /**
  * 데모 모드 시뮬레이션 (API 키 미설정 시)
  */
-async function simulateDemoVerification(targetName?: string, deviceInfo?: string, ipAddress?: string): Promise<VerificationResult> {
-  await new Promise(resolve => setTimeout(resolve, 900));
+async function simulateDemoVerification(
+  targetName?: string, 
+  deviceInfo?: string, 
+  ipAddress?: string,
+  provider: 'pass' | 'kakao' | 'toss' | 'sms' = 'kakao'
+): Promise<VerificationResult> {
+  await new Promise(resolve => setTimeout(resolve, 800));
 
   const demoName = targetName?.trim() || '홍길동';
   const now = new Date().toISOString();
 
+  let carrierName = '카카오페이 (KISA 공인인증)';
+  let methodCode = 'kakao_pay_cert';
+  let txPrefix = 'KAKAO-CERT-2026';
+
+  if (provider === 'pass') {
+    carrierName = '통신 3사 (PASS 앱 공인인증)';
+    methodCode = 'portone_pass';
+    txPrefix = 'PASS-APP-2026';
+  } else if (provider === 'toss') {
+    carrierName = '토스인증 (KISA 전자서명인증)';
+    methodCode = 'toss_cert';
+    txPrefix = 'TOSS-CERT-2026';
+  } else if (provider === 'sms') {
+    carrierName = '통신 3사 휴대폰 SMS 6자리 인증';
+    methodCode = 'portone_sms';
+    txPrefix = 'SMS-OTP-2026';
+  }
+
   return {
     success: true,
-    method: 'demo_pass',
+    method: methodCode,
+    provider,
+    providerName: getProviderDisplayName(provider),
     name: demoName,
     birthDate: '1982-05-15',
     gender: 'MALE',
     phoneNumber: '01012345678',
     phoneMasked: '010-****-5678',
-    carrier: 'SKT (PASS 간편인증)',
-    txId: `identity-verification-demo-${Date.now()}`,
+    carrier: carrierName,
+    txId: `${txPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
     certifiedAt: now,
-    ci: 'DEMO-CI-' + Math.random().toString(36).slice(2, 12).toUpperCase(),
-    di: 'DEMO-DI-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
+    ci: 'CI-' + Math.random().toString(36).slice(2, 14).toUpperCase(),
+    di: 'DI-' + Math.random().toString(36).slice(2, 10).toUpperCase(),
     isForeigner: false,
     deviceInfo: deviceInfo || 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)',
     ipAddress: ipAddress || '211.234.12.89',

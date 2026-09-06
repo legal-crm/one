@@ -36,6 +36,9 @@ import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shiel
 import { decryptReport } from './utils';
 import SharedReportViewer from './components/client/SharedReportViewer';
 import ClientRemoteSignView from './components/client/ClientRemoteSignView';
+import ContractPublicVerifierModal from './components/common/ContractPublicVerifierModal';
+import { getContract } from './services/contractService';
+import type { ElectronicContract } from './types';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 
 // [SECURITY] 진짜 관리자 전용 비공개 난수 경로 (뻔한 ?role=admin은 허니팟으로 유인)
@@ -85,6 +88,25 @@ export default function App() {
     }
     return null;
   });
+
+  // 블록체인 공공 원본 검증 URL 파라미터 감지 (?verifyContractId=... 또는 ?verify=...)
+  const [verifyContractId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('verifyContractId') || params.get('verify') || null;
+  });
+  const [verifiedContract, setVerifiedContract] = useState<ElectronicContract | null>(null);
+  const [showPublicVerifyModal, setShowPublicVerifyModal] = useState(false);
+
+  useEffect(() => {
+    if (verifyContractId) {
+      getContract(verifyContractId).then(c => {
+        if (c) {
+          setVerifiedContract(c);
+          setShowPublicVerifyModal(true);
+        }
+      });
+    }
+  }, [verifyContractId]);
 
   useEffect(() => {
     // [FLASH 방지] index.html의 전체 화면 로더를 페이드아웃 후 제거
@@ -822,6 +844,13 @@ export default function App() {
         </div>
 
         <Toaster position="top-center" richColors closeButton />
+
+        {/* 블록체인 공공 원본 검증기 (QR 스캔 또는 URL 직접 접근) */}
+        <ContractPublicVerifierModal
+          isOpen={showPublicVerifyModal}
+          onClose={() => setShowPublicVerifyModal(false)}
+          contract={verifiedContract}
+        />
       </div>
     </DialogProvider>
   );

@@ -1871,10 +1871,12 @@ export interface ElectronicContract {
   identityVerification?: { 
     method: string; 
     verifiedAt: string; 
+    provider?: 'pass' | 'kakao' | 'toss' | 'sms'; // 인증 제공자
+    providerName?: string; // 인증 기관/방식 표시명 (예: 카카오페이 전자서명인증)
     name?: string; // 통신사 인증 실명
     birthDate?: string; // 생년월일 (YYYYMMDD)
     phoneMasked?: string;
-    carrier?: string; // SKT, KT, LGU+
+    carrier?: string; // SKT, KT, LGU+, 알뜰폰, 카카오페이 등
     txId?: string; // 통신사 공인 거래번호
     certifiedAt?: string; // 통신사 공인 서버 시각
     ci?: string; 
@@ -1903,7 +1905,10 @@ export interface ElectronicContract {
     txId: string; // 공인 승인번호
   };
 
-  // 5. 원격 모바일 서명용 일회용 토큰
+  // 5. 블록체인(Polygon) 분산원장 영구 앵커링 (사후 위·변조 원천 차단)
+  blockchainAnchor?: BlockchainAnchorInfo;
+
+  // 6. 원격 모바일 서명용 일회용 토큰
   remoteSignToken?: string;
   remoteSignExpiresAt?: string;
 
@@ -1918,6 +1923,17 @@ export interface ElectronicContract {
   }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BlockchainAnchorInfo {
+  network: string;          // 'Polygon PoS Mainnet'
+  txHash: string;           // '0x7b4a...' (66자)
+  blockNumber: number;      // 블록 번호
+  anchoredAt: string;       // 앵커링 완료 시각 (KST / ISO)
+  explorerUrl: string;      // PolygonScan 트랜잭션 조회 URL
+  verifyUrl: string;        // my김변 자체 공공 진위검증 URL
+  contractHash: string;     // 계약 체결본 SHA-256 해시
+  smartContractAddress?: string; // 공인 앵커링 스마트 컨트랙트 주소
 }
 
 // ═══════════════════════════════════════════════

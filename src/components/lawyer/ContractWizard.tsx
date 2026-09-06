@@ -24,6 +24,8 @@ import LegalContractTermsModal, { TermKey, LEGAL_TERMS_DATA } from '../common/Le
 import { ContractDocEditModal } from './ContractDocEditModal';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
+import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
+import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
 
 interface Props {
   contract: ElectronicContract;
@@ -75,6 +77,8 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [refreshingSign, setRefreshingSign] = useState(false);
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // 분납 생성기 상태
   const [downPayment, setDownPayment] = useState(50);
@@ -1281,7 +1285,10 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           </div>
 
           {/* ── 공식 감사추적 인증서 (마지막 장 임베딩) ── */}
-          <AuditTrailCertificate contract={c} />
+          <AuditTrailCertificate 
+            contract={c} 
+            onOpenVerifyModal={() => setVerifyModalOpen(true)}
+          />
         </div>
       </div>
     );
@@ -1308,6 +1315,25 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleSave} className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl cursor-pointer whitespace-nowrap transition-colors">💾 임시 저장</button>
+            {step === 5 && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setDownloadingPdf(true);
+                  try {
+                    await generateCourtSubmissionPdf(c);
+                  } finally {
+                    setDownloadingPdf(false);
+                  }
+                }}
+                disabled={downloadingPdf}
+                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer whitespace-nowrap transition-colors shadow-xs"
+                title="감사추적보고서 및 블록체인 각인이 포함된 법원 제출용 PDF 발급"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>{downloadingPdf ? 'PDF 생성중...' : '📄 법원제출용 PDF'}</span>
+              </button>
+            )}
             {step === 5 && (
               <button 
                 onClick={async () => {
@@ -1387,6 +1413,13 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         contract={c} 
         isOpen={shareModalOpen} 
         onClose={() => setShareModalOpen(false)} 
+      />
+
+      {/* 블록체인 공공 원본 검증기 모달 */}
+      <ContractPublicVerifierModal
+        isOpen={verifyModalOpen}
+        onClose={() => setVerifyModalOpen(false)}
+        contract={c}
       />
     </div>
   );

@@ -11,6 +11,7 @@ import {
   generateContractFinalHash, 
   generateTripleTimestampToken 
 } from './integrityService';
+import { anchorContractToBlockchain } from './blockchainAnchorService';
 
 const STORAGE_KEY = 'electronic_contracts';
 
@@ -42,6 +43,7 @@ function contractToRow(c: ElectronicContract) {
     intent_verification: c.intentVerification || null,
     document_hashes: c.documentHashes || null,
     timestamp_token: c.timestampToken || null,
+    blockchain_anchor: c.blockchainAnchor || null,
     remote_sign_token: c.remoteSignToken || null,
     created_at: c.createdAt || new Date().toISOString(),
     updated_at: c.updatedAt || new Date().toISOString(),
@@ -72,6 +74,7 @@ function rowToContract(row: any): ElectronicContract {
     intentVerification: row.intent_verification,
     documentHashes: row.document_hashes,
     timestampToken: row.timestamp_token,
+    blockchainAnchor: row.blockchain_anchor,
     remoteSignToken: row.remote_sign_token,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -449,10 +452,23 @@ export async function finalizeContractWithIntegrity(
         documentHash: finalHash,
         details: `SHA-256 원본: ${originalHash.slice(0, 16)}... | 체결본: ${finalHash.slice(0, 16)}... | 시점토큰: ${timestampToken.token}`,
         ip: contract.identityVerification?.ipAddress || '211.234.12.89',
-        userAgent: navigator.userAgent,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'System',
       }
     ]
   };
+
+  // 5. 블록체인(Polygon PoS) 분산원장 무결성 영구 각인 (사후 위·변조 원천 차단)
+  const anchorInfo = await anchorContractToBlockchain(completedContract);
+  completedContract.blockchainAnchor = anchorInfo;
+  completedContract.auditTrail.push({
+    action: '블록체인 분산원장 영구 앵커링 (Polygon PoS)',
+    timestamp: anchorInfo.anchoredAt,
+    actor: 'system',
+    documentHash: finalHash,
+    details: `Polygon Tx: ${anchorInfo.txHash.slice(0, 18)}... | Block #${anchorInfo.blockNumber.toLocaleString()} | 스마트컨트랙트 공증 완료`,
+    ip: contract.identityVerification?.ipAddress || '211.234.12.89',
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'System',
+  });
 
   await saveContract(completedContract);
   return completedContract;
@@ -473,23 +489,70 @@ export function seedMockContracts(): void {
     { id: 'EC-2026-0007', clientName: '송지호', clientPhone: '010-1111-2222', status: 'completed' as ContractStatus, totalFee: 300, date: '2026-08-04' },
   ];
 
-  const contracts: ElectronicContract[] = mockData.map(m => ({
-    ...m,
-    clientId: m.id,
-    clientAddress: '서울시',
-    lawyerName: '김리걸',
-    lawFirmName: '법무법인 마이김변',
-    assignedLawyerId: 'lawyer-1',
-    totalFee: m.totalFee,
-    courtCosts: { creditorCount: 10, deliveryFee: 52000, stampFee: 30000, miscFee: 0 },
-    feeSchedule: generateFeeSchedule(m.totalFee * 10000, 50 * 10000, 3, m.date, m.date),
-    documents: createDefaultDocuments(m.clientName, m.clientPhone, '김리걸', '법무법인 마이김변'),
-    contractDate: m.date,
-    identityVerification: m.status === 'completed' ? { method: 'kakao', verifiedAt: m.date, deviceInfo: 'Chrome', ipAddress: '127.0.0.1' } : undefined,
-    auditTrail: [{ action: '계약서 작성 시작', timestamp: new Date(m.date).toISOString(), actor: 'lawyer' as const }],
-    createdAt: new Date(m.date).toISOString(),
-    updatedAt: new Date(m.date).toISOString(),
-  }));
+  const contracts: ElectronicContract[] = mockData.map(m => {
+    const isComp = m.status === 'completed';
+    const finalHash = isComp ? `7e2b19f0c84139a0491823746193fe1209a8f5c4e92b1034d8719283746152${m.id.slice(-2)}` : undefined;
+    const origHash = isComp ? `a8f5c4e92b1034d8719283746152bc41902746193fe1209a827361849201ab${m.id.slice(-2)}` : undefined;
+    const txHash = isComp ? `0x4a8c90fe32b9183471dfca92837192847192384719283746182937461829${m.id.slice(-4)}` : undefined;
+
+    return {
+      ...m,
+      clientId: m.id,
+      clientAddress: '서울시 서초구 서초대로 250',
+      lawyerName: '김리걸',
+      lawFirmName: '법무법인 마이김변',
+      assignedLawyerId: 'lawyer-1',
+      totalFee: m.totalFee,
+      courtCosts: { creditorCount: 10, deliveryFee: 52000, stampFee: 30000, miscFee: 0 },
+      feeSchedule: generateFeeSchedule(m.totalFee * 10000, 50 * 10000, 3, m.date, m.date),
+      documents: createDefaultDocuments(m.clientName, m.clientPhone, '김리걸', '법무법인 마이김변'),
+      contractDate: m.date,
+      identityVerification: isComp ? { 
+        method: 'kakao_pay_cert', 
+        provider: 'kakao',
+        providerName: '카카오페이 전자서명인증 (KISA 공인)',
+        name: m.clientName,
+        carrier: '카카오페이 전자서명인증',
+        txId: `KAKAO-CERT-2026-${m.id}`,
+        certifiedAt: `${m.date}T10:15:00.000Z`,
+        verifiedAt: m.date, 
+        deviceInfo: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5)', 
+        ipAddress: '211.234.12.89' 
+      } : undefined,
+      documentHashes: (origHash && finalHash) ? {
+        originalHash: origHash,
+        finalHash: finalHash,
+        algorithm: 'SHA-256' as const,
+      } : undefined,
+      timestampToken: isComp ? {
+        token: `TS-2026-${m.id.slice(-4)}-9821-0242ac120002`,
+        certifiedAt: `${m.date}T10:15:00.000Z`,
+        kstServerTime: `${m.date} 19:15:00`,
+        txId: `TS-TX-${m.id}`,
+      } : undefined,
+      blockchainAnchor: (isComp && txHash && finalHash) ? {
+        network: 'Polygon PoS Mainnet (EVM-ChainID: 137)',
+        txHash,
+        blockNumber: 61845200 + parseInt(m.id.slice(-4), 10),
+        anchoredAt: `${m.date}T10:15:30.000Z`,
+        explorerUrl: `https://polygonscan.com/tx/${txHash}`,
+        verifyUrl: `https://legal-crm-xi.vercel.app/?verifyContractId=${m.id}&hash=${finalHash}`,
+        contractHash: finalHash,
+        smartContractAddress: '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1',
+      } : undefined,
+      auditTrail: [
+        { action: '계약서 작성 시작', timestamp: new Date(m.date).toISOString(), actor: 'lawyer' as const },
+        ...(isComp ? [
+          { action: '위임인 카카오페이 본인인증 완료', timestamp: `${m.date}T10:15:00.000Z`, actor: 'client' as const },
+          { action: '위임인 전자서명 날인 완료', timestamp: `${m.date}T10:15:20.000Z`, actor: 'client' as const },
+          { action: '계약 체결 완료 (4대 법적 효력 충족)', timestamp: `${m.date}T10:15:25.000Z`, actor: 'system' as const, documentHash: finalHash },
+          { action: '블록체인 분산원장 영구 앵커링 (Polygon PoS)', timestamp: `${m.date}T10:15:30.000Z`, actor: 'system' as const, documentHash: finalHash, details: `Polygon Tx: ${txHash?.slice(0, 18)}...` }
+        ] : [])
+      ],
+      createdAt: new Date(m.date).toISOString(),
+      updatedAt: new Date(m.date).toISOString(),
+    };
+  });
 
   saveContracts(contracts);
 }

@@ -18,6 +18,8 @@ import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
 import AuditTrailCertificate from './AuditTrailCertificate';
 import ContractReminderModal from './ContractReminderModal';
+import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
+import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
 
 interface Props {
   lawyerName: string;
@@ -38,6 +40,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
   const [viewingContract, setViewingContract] = useState<ElectronicContract | null>(null);
   const [reminderTargetContract, setReminderTargetContract] = useState<ElectronicContract | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [verifyModalContract, setVerifyModalContract] = useState<ElectronicContract | null>(null);
 
   const refreshContracts = useCallback(async () => {
     const list = await loadContracts();
@@ -540,7 +543,31 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             <span>전문 열람</span>
                           </button>
 
-                          {/* 2. CRM 이동 버튼 */}
+                          {/* 2. 체결 완료 건: 법원 제출용 일체형 PDF 다운로드 */}
+                          {c.status === 'completed' && (
+                            <button
+                              onClick={() => generateCourtSubmissionPdf(c)}
+                              className="flex items-center gap-1 px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                              title="감사증서 및 블록체인 각인이 포함된 법원제출용 통합 PDF 다운로드"
+                            >
+                              <Download className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>법원PDF</span>
+                            </button>
+                          )}
+
+                          {/* 3. 체결 완료 건: 블록체인 원본 검증기 */}
+                          {c.status === 'completed' && (
+                            <button
+                              onClick={() => setVerifyModalContract(c)}
+                              className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                              title="블록체인 분산원장 원본 검증 팝업 열기"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                              <span>검증</span>
+                            </button>
+                          )}
+
+                          {/* 4. CRM 이동 버튼 */}
                           {onNavigateToCrm && (
                             <button
                               onClick={() => {
@@ -555,7 +582,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* 3. 서명 진행/지체 건인 경우 재촉 알림톡 버튼 */}
+                          {/* 5. 서명 진행/지체 건인 경우 재촉 알림톡 버튼 */}
                           {(c.status === 'signing' || overdue) && (
                             <button
                               onClick={() => handleSendReminder(c)}
@@ -567,7 +594,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* 4. 작성중인 경우 마법사 수정 */}
+                          {/* 6. 작성중인 경우 마법사 수정 */}
                           {c.status === 'drafting' && (
                             <button
                               onClick={() => setEditingContract(c)}
@@ -578,7 +605,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* 5. 삭제 버튼 */}
+                          {/* 7. 삭제 버튼 */}
                           <button
                             onClick={() => handleDelete(c.id)}
                             className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
@@ -629,6 +656,26 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
               </div>
 
               <div className="flex items-center gap-2">
+                {viewingContract.status === 'completed' && (
+                  <>
+                    <button
+                      onClick={() => generateCourtSubmissionPdf(viewingContract)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs transition-all shadow-xs cursor-pointer"
+                      title="법원 제출용 일체형 PDF 다운로드"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>법원제출용 PDF</span>
+                    </button>
+                    <button
+                      onClick={() => setVerifyModalContract(viewingContract)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                      title="블록체인 분산원장 원본 검증기"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                      <span>블록체인 검증</span>
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => window.print()}
                   className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
@@ -702,18 +749,40 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
               {/* 공식 감사추적 인증서 임베딩 */}
               <div className="pt-4 border-t border-slate-200">
                 <h4 className="text-sm font-black text-slate-800 mb-3">전자서명법 공인 감사추적 인증서</h4>
-                <AuditTrailCertificate contract={viewingContract} />
+                <AuditTrailCertificate 
+                  contract={viewingContract} 
+                  onOpenVerifyModal={() => setVerifyModalContract(viewingContract)}
+                />
               </div>
             </div>
 
             {/* 뷰어 푸터 */}
-            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-end bg-slate-50/70">
-              <button
-                onClick={() => setViewingContract(null)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs cursor-pointer transition-colors"
-              >
-                닫기
-              </button>
+            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="text-xs text-slate-500">
+                {viewingContract.blockchainAnchor && (
+                  <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>블록체인 분산원장 무결성 영구 각인 완료</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {viewingContract.status === 'completed' && (
+                  <button
+                    onClick={() => generateCourtSubmissionPdf(viewingContract)}
+                    className="px-4 py-2 bg-brand hover:bg-brand/90 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors shadow-xs flex items-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>법원제출용 PDF 다운로드</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewingContract(null)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
 
           </div>
@@ -726,6 +795,13 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
         onClose={() => setReminderTargetContract(null)}
         contract={reminderTargetContract}
         onSend={handleConfirmSendReminder}
+      />
+
+      {/* ── 7. 블록체인 공공 원본 검증기 모달 ── */}
+      <ContractPublicVerifierModal
+        isOpen={Boolean(verifyModalContract)}
+        onClose={() => setVerifyModalContract(null)}
+        contract={verifyModalContract}
       />
 
     </div>
