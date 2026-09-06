@@ -3,13 +3,12 @@ import {
   ArrowLeft, ArrowRight, User, CreditCard, FileText, Shield, 
   PenTool, Eye, Plus, Trash2, GripVertical, Check, X, AlertTriangle, 
   Download, Loader2, Building2, Smartphone, Lock, CheckCircle2, 
-  Share2, ShieldCheck, RefreshCw 
+  Share2, ShieldCheck, RefreshCw, Clock 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract, ContractDocument, ContractDocType, FeeInstallment } from '../../types';
 import { CONTRACT_DOC_TYPES } from '../../types';
-import { calculateCourtCosts, generateFeeSchedule, saveContract, addAuditLog, updateContractStatus, finalizeContractWithIntegrity } from '../../services/contractService';
-import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
+import { calculateCourtCosts, generateFeeSchedule, saveContract, getContract, addAuditLog, updateContractStatus, finalizeContractWithIntegrity } from '../../services/contractService';
 import { validateBusinessRegistration } from '../../services/ntsService';
 import SignatureCanvas from './SignatureCanvas';
 import AuditTrailCertificate from './AuditTrailCertificate';
@@ -26,7 +25,7 @@ const STEPS = [
   { key: 'fee', label: '수임료 및 스케줄', icon: CreditCard },
   { key: 'documents', label: '계약 문서 관리', icon: FileText },
   { key: 'terms', label: '약관·동의 안내', icon: Shield },
-  { key: 'signature', label: '스마트폰 인증·서명', icon: PenTool },
+  { key: 'signature', label: '변호사 서명·고객 발송', icon: PenTool },
   { key: 'preview', label: '미리보기·감사증서', icon: Eye },
 ];
 
@@ -51,18 +50,14 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     c.businessInfo?.ntsStatus || 'PENDING'
   );
 
-  // 본인인증 & 대표자 교차 검증 상태
-  const [verifying, setVerifying] = useState(false);
-  const [verified, setVerified] = useState(!!c.identityVerification);
-  const [repMatchMessage, setRepMatchMessage] = useState<string | null>(null);
-
   // 강제 스크롤 열람 검증
   const [isScrolledToEnd, setIsScrolledToEnd] = useState(false);
   const previewScrollRef = useRef<HTMLDivElement>(null);
 
-  // 원격 서명 링크 모달
+  // 원격 서명 링크 모달 및 상태 갱신
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [refreshingSign, setRefreshingSign] = useState(false);
 
   // 분납 생성기 상태
   const [downPayment, setDownPayment] = useState(50);
@@ -427,88 +422,86 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     </div>
   );
 
-  // ─── Step 5: 전자 서명 (스마트폰 본인인증 & 대표자 교차 검증) ───
+  // ─── Step 5: 전자 서명 및 고객 발송 (변호사 서명 & 고객 모바일 발송) ───
   const renderSignature = () => {
     const lawyerSigned = c.documents.some(d => d.included && d.lawyerSignature);
-    const clientSigned = c.documents.some(d => d.included && d.clientSignature);
+    const clientSignedDoc = c.documents.find(d => d.included && d.clientSignature);
+    const clientSigned = Boolean(clientSignedDoc);
+
+    const signToken = c.remoteSignToken || `sgn-${c.id.toLowerCase()}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mykimlawyer.kr';
+    const signUrl = `${origin}?view=sign&token=${signToken}&cid=${c.id}`;
+
+    const handleRefreshStatus = async () => {
+      setRefreshingSign(true);
+      try {
+        const fresh = await getContract(c.id);
+        if (fresh) {
+          setC(fresh);
+          const isDone = fresh.documents.some(d => d.included && d.clientSignature);
+          if (isDone) {
+            toast.success('고객 서명이 완료된 것을 확인했습니다!');
+          } else {
+            toast.info('아직 고객 서명이 대기 중입니다.');
+          }
+        }
+      } catch {
+        toast.error('상태 확인 중 오류가 발생했습니다.');
+      } finally {
+        setRefreshingSign(false);
+      }
+    };
 
     return (
       <div className="space-y-6">
-        <h3 className="text-base font-black text-slate-800">✍️ 통신사 본인인증 & 전자 서명</h3>
-
-        {/* 스마트폰 본인인증 카드 */}
-        <div className="bg-slate-50 rounded-2xl p-5 space-y-4 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-              <Smartphone className="w-4 h-4 text-brand" />
-              <span>스마트폰 본인인증 (PASS / SMS 실명확인)</span>
-            </h4>
-            <span className="text-[10px] text-slate-500">
-              {isPortOneConfigured() ? 'PortOne 통신 3사 실망' : '데모 실명 모드'}
-            </span>
-          </div>
-
-          {verified ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-emerald-700 text-sm font-bold bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                <span>본인인증 완료: {c.identityVerification?.name} ({c.identityVerification?.carrier || 'SKT'})</span>
-              </div>
-              {repMatchMessage && (
-                <p className="text-xs text-slate-600 font-medium pl-2">{repMatchMessage}</p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-slate-600">
-                의뢰인({c.clientName || '대표자'}) 명의의 스마트폰으로 통신사 실명 인증을 진행합니다.
-              </p>
-              <button 
-                type="button"
-                onClick={async () => {
-                  setVerifying(true);
-                  const expectedRep = isBusiness ? (bizRepName || c.clientName) : c.clientName;
-                  const result = await requestIdentityVerification(expectedRep);
-                  setVerifying(false);
-                  if (result.success) {
-                    // 대표자 및 전화번호 일치 2단계 교차 검증 실행 (동명이인 도용 방지)
-                    const match = verifyRepresentativeMatch(
-                      expectedRep,
-                      result.name,
-                      c.clientPhone,
-                      result.phoneNumber || result.phoneMasked
-                    );
-                    setRepMatchMessage(match.message);
-
-                    if (!match.matched) {
-                      toast.error(match.message);
-                      return;
-                    }
-
-                    update({ 
-                      identityVerification: result,
-                      authorityStatus: match.status,
-                    });
-                    setVerified(true);
-                    toast.success('대표자 본인인증이 완료되었습니다.');
-                  } else {
-                    toast.error(result.error || '인증에 실패했습니다');
-                  }
-                }} 
-                disabled={verifying} 
-                className="flex items-center gap-2 px-5 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand/90 transition-colors cursor-pointer whitespace-nowrap min-h-[44px] disabled:opacity-50 shadow-xs text-sm"
-              >
-                {verifying ? <><Loader2 className="w-4 h-4 animate-spin" /> 통신사 인증 진행 중...</> : '📱 스마트폰 본인인증 시작'}
-              </button>
-            </div>
-          )}
+        <div>
+          <h3 className="text-base font-black text-slate-800">✍️ 전자 서명 및 고객 발송</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            수임인(담당 변호사) 서명을 날인하고, 위임인(의뢰인)에게는 스마트폰 서명 링크를 발송합니다.
+          </p>
         </div>
 
-        {/* 변호사 서명 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-          <h4 className="text-sm font-bold text-slate-700">수임인 (담당 변호사) 서명</h4>
+        {/* 1. 변호사 (수임인) 서명 */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-brand" />
+              <span>수임인 (담당 변호사) 날인·서명</span>
+            </h4>
+            {lawyerSigned && (
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" /> 변호사 서명 완료
+              </span>
+            )}
+          </div>
+
           {lawyerSigned ? (
-            <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold"><Check className="w-5 h-5" /> 서명 완료</div>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <Check className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">{c.lawyerName} 변호사 서명 완료</p>
+                  <p className="text-[11px] text-slate-400">
+                    {c.documents.find(d => d.lawyerSignature)?.lawyerSignedAt 
+                      ? new Date(c.documents.find(d => d.lawyerSignature)!.lawyerSignedAt!).toLocaleString('ko-KR')
+                      : '서명 완료'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const docs = c.documents.map(d => ({ ...d, lawyerSignature: undefined, lawyerSignedAt: undefined }));
+                  update({ documents: docs });
+                  toast.info('변호사 서명이 초기화되었습니다. 다시 서명해 주세요.');
+                }}
+                className="text-xs text-slate-500 hover:text-slate-800 font-bold px-3 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
+              >
+                다시 서명
+              </button>
+            </div>
           ) : (
             <SignatureCanvas label={`${c.lawyerName} 변호사 서명`} onComplete={(sig) => {
               const docs = c.documents.map(d => d.included ? { ...d, lawyerSignature: sig, lawyerSignedAt: new Date().toISOString() } : d);
@@ -518,24 +511,123 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           )}
         </div>
 
-        {/* 의뢰인 서명 */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-slate-700">위임인 ({c.clientName || '대표자'}) 자필 서명</h4>
-            {!verified && <span className="text-xs text-amber-600 font-bold">⚠️ 본인인증 완료 후 서명 가능</span>}
+        {/* 2. 의뢰인 (위임인) 스마트폰 안전 서명 발송 카드 */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-brand" />
+              <span>위임인 ({c.clientName || '대표자'}) 스마트폰 안전 서명</span>
+            </h4>
+            
+            {clientSigned ? (
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1 w-fit">
+                <CheckCircle2 className="w-3.5 h-3.5" /> 의뢰인 서명 완료
+              </span>
+            ) : (
+              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 flex items-center gap-1 w-fit">
+                <Clock className="w-3.5 h-3.5" /> 고객 스마트폰 서명 대기
+              </span>
+            )}
           </div>
 
+          {/* 법적 설명 및 안내 박스 */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+            <p className="font-bold text-slate-800 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-brand" />
+              <span>본인 명의 스마트폰 직접 서명 원칙 (보안·법적 무결성)</span>
+            </p>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              전자서명법 규정에 따라 의뢰인 서명은 본인 명의 스마트폰(통신사 PASS 또는 문자 실명인증)을 통해 직접 진행됩니다.
+              방문 대면 상담 시에도 변호사 관리자 화면을 건네지 않고 의뢰인의 스마트폰으로 서명 링크를 전송해 주십시오.
+            </p>
+          </div>
+
+          {/* 서명 완료 상태 vs 대기 상태 */}
           {clientSigned ? (
-            <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold"><Check className="w-5 h-5" /> 서명 완료</div>
-          ) : verified ? (
-            <SignatureCanvas label={`${c.clientName} 의뢰인 자필 서명`} onComplete={(sig) => {
-              const docs = c.documents.map(d => d.included ? { ...d, clientSignature: sig, clientSignedAt: new Date().toISOString() } : d);
-              update({ documents: docs });
-              toast.success('의뢰인 자필 서명이 완료되었습니다');
-            }} />
+            <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>스마트폰 본인인증 및 자필 서명이 정상 제출되었습니다.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRefreshStatus}
+                  disabled={refreshingSign}
+                  className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1 font-bold cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshingSign ? 'animate-spin' : ''}`} />
+                  <span>새로고침</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs bg-white p-3 rounded-lg border border-emerald-100">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">서명자 성명</span>
+                  <span className="font-bold text-slate-800">{c.clientName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">통신사 실명인증</span>
+                  <span className="font-bold text-emerald-700">
+                    {c.identityVerification?.carrier || 'PASS'} 인증 완료 ({c.identityVerification?.name || c.clientName})
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-400 block text-[11px]">서명 제출 일시</span>
+                  <span className="font-bold text-slate-700">
+                    {clientSignedDoc?.clientSignedAt ? new Date(clientSignedDoc.clientSignedAt).toLocaleString('ko-KR') : '완료'}
+                  </span>
+                </div>
+              </div>
+
+              {clientSignedDoc?.clientSignature && (
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[11px] text-slate-400 block mb-1">의뢰인 자필 서명 이미지</span>
+                  <img src={clientSignedDoc.clientSignature} alt="의뢰인 자필 서명" className="h-14 object-contain" />
+                </div>
+              )}
+            </div>
           ) : (
-            <div className="p-6 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400">
-              상단의 스마트폰 본인인증을 먼저 완료해 주십시오.
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShareModalOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs transition-colors min-h-[44px]"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>📱 고객 스마트폰으로 카톡/문자 서명 링크 발송</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(signUrl);
+                    toast.success('서명 링크가 복사되었습니다.');
+                  }}
+                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer transition-colors whitespace-nowrap min-h-[44px]"
+                >
+                  링크 복사
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRefreshStatus}
+                  disabled={refreshingSign}
+                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer transition-colors whitespace-nowrap min-h-[44px] flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  title="고객이 스마트폰에서 서명을 완료했는지 새로고침하여 확인합니다"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshingSign ? 'animate-spin' : ''}`} />
+                  <span>서명 확인</span>
+                </button>
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+                <Clock className="w-4 h-4 shrink-0 text-amber-600" />
+                <span>
+                  의뢰인이 스마트폰에서 PASS 본인인증 후 서명을 제출하면, 위 [서명 확인] 버튼을 누르거나 화면을 새로고침하여 즉시 반영할 수 있습니다.
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -671,15 +763,29 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             {step === 5 && (
               <button 
                 onClick={async () => {
+                  const lawyerSig = c.documents.find(d => d.lawyerSignature)?.lawyerSignature;
+                  const clientSig = c.documents.find(d => d.clientSignature)?.clientSignature;
+
+                  if (!lawyerSig) {
+                    toast.error('수임인(담당 변호사) 서명이 필요합니다. 5단계에서 서명을 먼저 진행해 주세요.');
+                    return;
+                  }
+                  if (!clientSig) {
+                    toast.error('위임인(고객) 스마트폰 서명이 완료되지 않았습니다. 고객에게 서명 링크를 먼저 발송해 주세요.');
+                    return;
+                  }
+
                   setCompleting(true);
-                  const clientSig = c.documents.find(d => d.clientSignature)?.clientSignature || 'CLIENT_SIGNED_DEMO';
-                  const lawyerSig = c.documents.find(d => d.lawyerSignature)?.lawyerSignature || 'LAWYER_SIGNED_DEMO';
-                  
-                  const final = await finalizeContractWithIntegrity(c, clientSig, lawyerSig);
-                  setCompleting(false);
-                  onSave(final);
-                  toast.success('SHA-256 해시 및 3중 타임스탬프 봉인 계약이 완료되었습니다!');
-                  onClose();
+                  try {
+                    const final = await finalizeContractWithIntegrity(c, clientSig, lawyerSig);
+                    onSave(final);
+                    toast.success('SHA-256 해시 및 3중 타임스탬프 봉인 계약이 완료되었습니다!');
+                    onClose();
+                  } catch (e: any) {
+                    toast.error(e?.message || '체결 처리 중 오류가 발생했습니다.');
+                  } finally {
+                    setCompleting(false);
+                  }
                 }} 
                 disabled={completing}
                 className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer whitespace-nowrap min-h-[44px] shadow-xs transition-colors disabled:opacity-50"

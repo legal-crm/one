@@ -35,6 +35,7 @@ const HoneypotAdminLogin = React.lazy(() => import('./components/admin/HoneypotA
 import { ShieldCheck, Info, Sparkles, Scale, RefreshCw, Lock, AlertCircle, Shield } from 'lucide-react';
 import { decryptReport } from './utils';
 import SharedReportViewer from './components/client/SharedReportViewer';
+import ClientRemoteSignView from './components/client/ClientRemoteSignView';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 
 // [SECURITY] 진짜 관리자 전용 비공개 난수 경로 (뻔한 ?role=admin은 허니팟으로 유인)
@@ -72,6 +73,18 @@ export default function App() {
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
+
+  // 모바일 원격 전자서명 뷰 파라미터 감지 (?view=sign&cid=...&token=...)
+  const [signParams] = useState<{ cid: string; token: string } | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'sign' && params.get('cid')) {
+      return {
+        cid: params.get('cid') || '',
+        token: params.get('token') || '',
+      };
+    }
+    return null;
+  });
 
   useEffect(() => {
     // [FLASH 방지] index.html의 전체 화면 로더를 페이드아웃 후 제거
@@ -116,7 +129,7 @@ export default function App() {
   // [SECURITY] 검색엔진 봇 차단 동적 메타태그 (제주항공 검색엔진 노출 사태 방지)
   useEffect(() => {
     let meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
-    const isPrivate = currentRole !== 'client' || Boolean(sharePayload) || window.location.search.includes('share=') || window.location.search.includes('reqId=');
+    const isPrivate = currentRole !== 'client' || Boolean(sharePayload) || Boolean(signParams) || window.location.search.includes('share=') || window.location.search.includes('reqId=') || window.location.search.includes('view=sign');
     if (isPrivate) {
       if (!meta) {
         meta = document.createElement('meta');
@@ -129,7 +142,7 @@ export default function App() {
         meta.content = 'index, follow';
       }
     }
-  }, [currentRole, sharePayload]);
+  }, [currentRole, sharePayload, signParams]);
 
   const handleUnlock = async () => {
     if (pin.length !== 6) return;
@@ -610,6 +623,16 @@ export default function App() {
       window.location.reload();
     }
   };
+
+  // 모바일 원격 전자서명 뷰 렌더링 (?view=sign&cid=...&token=...)
+  if (signParams && signParams.cid) {
+    return (
+      <>
+        <Toaster position="top-center" richColors />
+        <ClientRemoteSignView cid={signParams.cid} token={signParams.token} />
+      </>
+    );
+  }
 
   // Share mode conditional rendering
   if (sharePayload) {
