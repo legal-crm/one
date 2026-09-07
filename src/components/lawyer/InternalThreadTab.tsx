@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Send, MessageSquare, Reply, Pin, Trash2, Edit3, Lock, Users, User, ChevronDown, ChevronUp
 } from 'lucide-react';
