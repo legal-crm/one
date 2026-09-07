@@ -10,6 +10,68 @@ import { calculateSha256 } from './integrityService';
 // 공인 블록체인 문서 공증 스마트 컨트랙트 규격
 export const POLYGON_NOTARY_CONTRACT = '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1';
 export const DEFAULT_NETWORK_NAME = 'Polygon Amoy Testnet (EVM-80002)';
+export const DEFAULT_MAINNET_NAME = 'Polygon PoS Mainnet (EVM-137)';
+export const DEFAULT_MAINNET_RPC = 'https://polygon.drpc.org';
+export const DEFAULT_AMOY_RPC = 'https://polygon-amoy.drpc.org';
+
+export const BLOCKCHAIN_CONFIG_STORAGE_KEY = 'legal_crm_polygon_config';
+
+export interface BlockchainConfig {
+  network: 'mainnet' | 'amoy';
+  rpcUrl?: string;
+  notaryContract?: string;
+  relayerMode: 'auto' | 'onchain' | 'simulation';
+}
+
+/**
+ * 로컬 브라우저에 저장된 관리자 블록체인 네트워크 설정 조회
+ */
+export function getBlockchainConfig(): BlockchainConfig {
+  if (typeof window === 'undefined') {
+    return { network: 'amoy', rpcUrl: '', notaryContract: POLYGON_NOTARY_CONTRACT, relayerMode: 'auto' };
+  }
+  try {
+    const raw = localStorage.getItem(BLOCKCHAIN_CONFIG_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        network: parsed.network === 'mainnet' ? 'mainnet' : 'amoy',
+        rpcUrl: parsed.rpcUrl || '',
+        notaryContract: parsed.notaryContract || POLYGON_NOTARY_CONTRACT,
+        relayerMode: parsed.relayerMode || 'auto',
+      };
+    }
+  } catch (e) {
+    console.warn('[BlockchainConfig] 설정 읽기 실패:', e);
+  }
+  return { network: 'amoy', rpcUrl: '', notaryContract: POLYGON_NOTARY_CONTRACT, relayerMode: 'auto' };
+}
+
+/**
+ * 관리자 블록체인 네트워크 설정 영구 저장 (메인넷 ↔ 테스트넷 전환)
+ */
+export function saveBlockchainConfig(config: BlockchainConfig): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(BLOCKCHAIN_CONFIG_STORAGE_KEY, JSON.stringify(config));
+  } catch (e) {
+    console.warn('[BlockchainConfig] 설정 저장 실패:', e);
+  }
+}
+
+/**
+ * 기본 테스트넷 환경으로 초기화
+ */
+export function resetBlockchainConfig(): BlockchainConfig {
+  const defaultConfig: BlockchainConfig = {
+    network: 'amoy',
+    rpcUrl: '',
+    notaryContract: POLYGON_NOTARY_CONTRACT,
+    relayerMode: 'auto',
+  };
+  saveBlockchainConfig(defaultConfig);
+  return defaultConfig;
+}
 
 export interface BlockchainNetworkStatus {
   ok: boolean;
@@ -49,17 +111,27 @@ export async function generateQrCodeDataUrl(content: string): Promise<string> {
 /**
  * 백엔드 Polygon RPC 노드 및 릴레이어 지갑 실시간 상태 조회
  */
-export async function fetchBlockchainNetworkStatus(): Promise<BlockchainNetworkStatus> {
+export async function fetchBlockchainNetworkStatus(
+  customConfig?: Partial<BlockchainConfig>
+): Promise<BlockchainNetworkStatus> {
   try {
-    const res = await fetch('/api/contract?action=status');
+    const activeConfig = { ...getBlockchainConfig(), ...customConfig };
+    const params = new URLSearchParams();
+    params.set('action', 'status');
+    if (activeConfig.network) params.set('network', activeConfig.network);
+    if (activeConfig.rpcUrl && activeConfig.rpcUrl.trim()) params.set('rpcUrl', activeConfig.rpcUrl.trim());
+    if (activeConfig.notaryContract && activeConfig.notaryContract.trim()) params.set('notaryContract', activeConfig.notaryContract.trim());
+
+    const res = await fetch(`/api/contract?${params.toString()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err: any) {
+    const isMain = customConfig?.network === 'mainnet' || getBlockchainConfig().network === 'mainnet';
     return {
       ok: false,
-      network: DEFAULT_NETWORK_NAME,
-      isMainnet: false,
-      chainId: 80002,
+      network: isMain ? DEFAULT_MAINNET_NAME : DEFAULT_NETWORK_NAME,
+      isMainnet: isMain,
+      chainId: isMain ? 137 : 80002,
       error: err.message || '블록체인 노드 응답 대기중',
     };
   }
@@ -79,6 +151,11 @@ export async function anchorContractToBlockchain(
     : 'https://legal-crm-xi.vercel.app';
   const verifyUrl = `${origin}/?verifyContractId=${encodeURIComponent(contract.id)}&hash=${encodeURIComponent(finalHash)}`;
 
+  const config = getBlockchainConfig();
+  const isMainnet = config.network === 'mainnet';
+  const explorerBase = isMainnet ? 'https://polygonscan.com' : 'https://amoy.polygonscan.com';
+  const notaryContract = config.notaryContract?.trim() || POLYGON_NOTARY_CONTRACT;
+
   // 1. 서버리스 온체인 릴레이어 엔드포인트 호출 (/api/contract?action=anchor)
   try {
     const response = await fetch('/api/contract?action=anchor', {
@@ -89,6 +166,10 @@ export async function anchorContractToBlockchain(
         documentHash: finalHash,
         clientName: contract.clientName,
         lawyerName: contract.lawyerName,
+        network: config.network,
+        rpcUrl: config.rpcUrl || undefined,
+        notaryContract: notaryContract,
+        relayerMode: config.relayerMode,
       }),
     });
 
@@ -96,14 +177,14 @@ export async function anchorContractToBlockchain(
       const data = await response.json();
       if (data.ok) {
         return {
-          network: data.network || DEFAULT_NETWORK_NAME,
+          network: data.network || (isMainnet ? DEFAULT_MAINNET_NAME : DEFAULT_NETWORK_NAME),
           txHash: data.txHash,
           blockNumber: data.blockNumber,
           anchoredAt: data.anchoredAt || new Date().toISOString(),
-          explorerUrl: data.explorerUrl || `https://amoy.polygonscan.com/tx/${data.txHash}`,
+          explorerUrl: data.explorerUrl || `${explorerBase}/tx/${data.txHash}`,
           verifyUrl,
           contractHash: finalHash,
-          smartContractAddress: data.notaryContract || POLYGON_NOTARY_CONTRACT,
+          smartContractAddress: data.notaryContract || notaryContract,
           isRealOnChain: Boolean(data.isRealOnChain),
           relayerAddress: data.relayerAddress,
         };
@@ -115,22 +196,22 @@ export async function anchorContractToBlockchain(
 
   // 2. 오프라인/로컬 환경용 무중단 암호학적 타임스탬프 각인 (안전망)
   const now = new Date();
-  const txSeed = `POLYGON::${POLYGON_NOTARY_CONTRACT}::HASH:${finalHash}::CID:${contract.id}::TIME:${now.toISOString()}`;
+  const txSeed = `POLYGON::${notaryContract}::HASH:${finalHash}::CID:${contract.id}::TIME:${now.toISOString()}`;
   const txRaw = await calculateSha256(txSeed);
   const txHash = `0x${txRaw}`;
-  const baseBlock = 46945000;
+  const baseBlock = isMainnet ? 68900000 : 46945000;
   const pseudoRandomOffset = Math.abs(parseInt(txRaw.slice(0, 6), 16) % 9999);
   const blockNumber = baseBlock + pseudoRandomOffset;
 
   return {
-    network: DEFAULT_NETWORK_NAME,
+    network: isMainnet ? DEFAULT_MAINNET_NAME : DEFAULT_NETWORK_NAME,
     txHash,
     blockNumber,
     anchoredAt: now.toISOString(),
-    explorerUrl: `https://amoy.polygonscan.com/tx/${txHash}`,
+    explorerUrl: `${explorerBase}/tx/${txHash}`,
     verifyUrl,
     contractHash: finalHash,
-    smartContractAddress: POLYGON_NOTARY_CONTRACT,
+    smartContractAddress: notaryContract,
     isRealOnChain: false,
   };
 }
@@ -148,7 +229,15 @@ export async function verifyTxOnChain(txHash: string, documentHash?: string): Pr
   explorerUrl?: string;
 }> {
   try {
-    const res = await fetch(`/api/contract?action=verify&txHash=${encodeURIComponent(txHash)}&documentHash=${encodeURIComponent(documentHash || '')}`);
+    const config = getBlockchainConfig();
+    const params = new URLSearchParams();
+    params.set('action', 'verify');
+    params.set('txHash', txHash);
+    if (documentHash) params.set('documentHash', documentHash);
+    if (config.network) params.set('network', config.network);
+    if (config.rpcUrl) params.set('rpcUrl', config.rpcUrl);
+
+    const res = await fetch(`/api/contract?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
       return {

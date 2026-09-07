@@ -25,23 +25,32 @@ function setCorsHeaders(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
-// 환경변수 기반 네트워크 선택 ('amoy' | 'mainnet')
-const IS_MAINNET = process.env.POLYGON_NETWORK === 'mainnet';
-const CURRENT_CHAIN = IS_MAINNET ? polygon : polygonAmoy;
-const NETWORK_NAME = IS_MAINNET ? 'Polygon PoS Mainnet (EVM-137)' : 'Polygon Amoy Testnet (EVM-80002)';
-const EXPLORER_BASE = IS_MAINNET ? 'https://polygonscan.com' : 'https://amoy.polygonscan.com';
-const RPC_URL = IS_MAINNET 
-  ? (process.env.POLYGON_MAINNET_RPC || 'https://polygon.drpc.org')
-  : (process.env.POLYGON_AMOY_RPC || 'https://polygon-amoy.drpc.org');
+// 동적 네트워크 해석 헬퍼 (환경변수 기본값 + 프론트엔드 어드민 설정 오버라이드 지원)
+function resolveNetworkConfig(req) {
+  const reqNetwork = req.body?.network || req.query?.network;
+  const isMainnet = reqNetwork ? (reqNetwork === 'mainnet') : (process.env.POLYGON_NETWORK === 'mainnet');
+  const currentChain = isMainnet ? polygon : polygonAmoy;
+  const networkName = isMainnet ? 'Polygon PoS Mainnet (EVM-137)' : 'Polygon Amoy Testnet (EVM-80002)';
+  const explorerBase = isMainnet ? 'https://polygonscan.com' : 'https://amoy.polygonscan.com';
+  
+  const customRpc = req.body?.rpcUrl || req.query?.rpcUrl;
+  const rpcUrl = customRpc && typeof customRpc === 'string' && customRpc.trim() !== '' 
+    ? customRpc.trim() 
+    : (isMainnet 
+        ? (process.env.POLYGON_MAINNET_RPC || 'https://polygon.drpc.org')
+        : (process.env.POLYGON_AMOY_RPC || 'https://polygon-amoy.drpc.org'));
 
-// 공인 스마트 컨트랙트 또는 공증 주소
-const NOTARY_ADDRESS = process.env.POLYGON_NOTARY_CONTRACT || '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1';
+  const customNotary = req.body?.notaryContract || req.query?.notaryContract;
+  const notaryAddress = customNotary && typeof customNotary === 'string' && customNotary.trim() !== ''
+    ? customNotary.trim()
+    : (process.env.POLYGON_NOTARY_CONTRACT || '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1');
 
-function getPublicClient() {
-  return createPublicClient({
-    chain: CURRENT_CHAIN,
-    transport: http(RPC_URL, { timeout: 10_000, retryCount: 2 }),
+  const client = createPublicClient({
+    chain: currentChain,
+    transport: http(rpcUrl, { timeout: 10_000, retryCount: 2 }),
   });
+
+  return { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client };
 }
 
 export default async function handler(req, res) {
@@ -64,8 +73,8 @@ export default async function handler(req, res) {
   // 1. [STATUS] 블록체인 노드 연결 및 릴레이어 지갑 상태 조회
   // ─────────────────────────────────────────────────────────────
   if (action === 'status') {
+    const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req);
     try {
-      const client = getPublicClient();
       const blockNumber = await client.getBlockNumber();
 
       let relayerAddress = null;
@@ -87,24 +96,27 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         ok: true,
-        network: NETWORK_NAME,
-        isMainnet: IS_MAINNET,
-        chainId: CURRENT_CHAIN.id,
-        rpcUrl: RPC_URL,
+        network: networkName,
+        isMainnet: isMainnet,
+        chainId: currentChain.id,
+        rpcUrl: rpcUrl,
         blockHeight: Number(blockNumber),
-        explorerBase: EXPLORER_BASE,
+        explorerBase: explorerBase,
         hasRelayerKey,
         relayerAddress,
         relayerBalance,
-        notaryContract: NOTARY_ADDRESS,
+        notaryContract: notaryAddress,
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
       console.error('[Contract Status Error]:', err);
       return res.status(200).json({
         ok: false,
-        network: NETWORK_NAME,
-        isMainnet: IS_MAINNET,
+        network: networkName,
+        isMainnet: isMainnet,
+        chainId: currentChain.id,
+        rpcUrl: rpcUrl,
+        notaryContract: notaryAddress,
         error: err.message || 'Polygon RPC 노드 연결 실패',
       });
     }
@@ -126,7 +138,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: '유효한 32바이트(64자리) SHA-256 해시여야 합니다.' });
     }
 
-    const client = getPublicClient();
+    const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req);
     const rawPrivateKey = process.env.POLYGON_RELAYER_PRIVATE_KEY;
     const now = new Date();
 
@@ -137,8 +149,8 @@ export default async function handler(req, res) {
         const account = privateKeyToAccount(cleanKey);
         const walletClient = createWalletClient({
           account,
-          chain: CURRENT_CHAIN,
-          transport: http(RPC_URL, { timeout: 15_000 }),
+          chain: currentChain,
+          transport: http(rpcUrl, { timeout: 15_000 }),
         });
 
         // 가스비 잔액 확인
@@ -146,7 +158,7 @@ export default async function handler(req, res) {
         if (balanceWei > 0n) {
           // 트랜잭션 전송: data 필드에 계약서 SHA-256 해시 영구 각인
           const txHash = await walletClient.sendTransaction({
-            to: NOTARY_ADDRESS,
+            to: notaryAddress,
             value: 0n,
             data: `0x${cleanHash}`,
           });
@@ -160,20 +172,20 @@ export default async function handler(req, res) {
             blockNumber = Number(await client.getBlockNumber());
           }
 
-          const explorerUrl = `${EXPLORER_BASE}/tx/${txHash}`;
+          const explorerUrl = `${explorerBase}/tx/${txHash}`;
           return res.status(200).json({
             ok: true,
             isRealOnChain: true,
-            network: NETWORK_NAME,
-            chainId: CURRENT_CHAIN.id,
+            network: networkName,
+            chainId: currentChain.id,
             txHash,
             blockNumber,
             anchoredAt: now.toISOString(),
             explorerUrl,
             contractHash: cleanHash,
-            notaryContract: NOTARY_ADDRESS,
+            notaryContract: notaryAddress,
             relayerAddress: account.address,
-            message: 'Polygon 블록체인 메인넷에 실제 온체인 트랜잭션이 성공적으로 영구 각인되었습니다.',
+            message: `${networkName}에 실제 온체인 트랜잭션이 성공적으로 영구 각인되었습니다.`,
           });
         } else {
           console.warn('[Contract Anchor] Relayer gas balance is 0. Falling back to cryptographic timestamp.');
@@ -191,22 +203,22 @@ export default async function handler(req, res) {
       } catch (_) {}
 
       // 암호학적 다이제스트 생성
-      const digestSeed = `POLYGON::${CURRENT_CHAIN.id}::CID:${contractId}::HASH:${cleanHash}::BLOCK:${currentBlock}::AT:${now.toISOString()}`;
+      const digestSeed = `POLYGON::${currentChain.id}::CID:${contractId}::HASH:${cleanHash}::BLOCK:${currentBlock}::AT:${now.toISOString()}`;
       const digestHex = crypto.createHash('sha256').update(digestSeed).digest('hex');
       const fallbackTxHash = `0x${digestHex}`;
-      const explorerUrl = `${EXPLORER_BASE}/tx/${fallbackTxHash}`;
+      const explorerUrl = `${explorerBase}/tx/${fallbackTxHash}`;
 
       return res.status(200).json({
         ok: true,
         isRealOnChain: false,
-        network: NETWORK_NAME,
-        chainId: CURRENT_CHAIN.id,
+        network: networkName,
+        chainId: currentChain.id,
         txHash: fallbackTxHash,
         blockNumber: currentBlock,
         anchoredAt: now.toISOString(),
         explorerUrl,
         contractHash: cleanHash,
-        notaryContract: NOTARY_ADDRESS,
+        notaryContract: notaryAddress,
         message: 'KISA 표준 암호학적 무결성 타임스탬프 각인 완료 (릴레이어 지갑 충전 시 즉시 온체인 브로드캐스팅)',
       });
     } catch (fallbackErr) {
@@ -226,8 +238,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: 'txHash는 필수입니다.' });
     }
 
+    const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req);
     try {
-      const client = getPublicClient();
       let onChainTx = null;
 
       try {
@@ -244,7 +256,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           ok: true,
           verifiedOnChain: true,
-          network: NETWORK_NAME,
+          network: networkName,
           txHash,
           blockNumber: Number(onChainTx.blockNumber),
           from: onChainTx.from,
@@ -252,7 +264,7 @@ export default async function handler(req, res) {
           inputData: onChainTx.input,
           hashMatched,
           statusText: hashMatched ? '100% 온체인 무결성 인증 완료 (원본 일치)' : '온체인 데이터 해시 불일치',
-          explorerUrl: `${EXPLORER_BASE}/tx/${txHash}`,
+          explorerUrl: `${explorerBase}/tx/${txHash}`,
         });
       }
 
@@ -262,7 +274,7 @@ export default async function handler(req, res) {
         verifiedOnChain: false,
         txHash,
         statusText: '암호학적 타임스탬프 서명 일치 (오프체인 보관 검증)',
-        explorerUrl: `${EXPLORER_BASE}/tx/${txHash}`,
+        explorerUrl: `${explorerBase}/tx/${txHash}`,
       });
     } catch (err) {
       console.error('[Contract Verify Error]:', err);

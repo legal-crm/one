@@ -23,7 +23,10 @@ import {
   Copy,
   Layers,
   Radio,
-  Clock
+  Clock,
+  Settings,
+  Flame,
+  Globe
 } from 'lucide-react';
 import type { ElectronicContract } from '../../types';
 import { loadContracts } from '../../services/contractService';
@@ -31,9 +34,11 @@ import {
   fetchBlockchainNetworkStatus, 
   verifyTxOnChain,
   verifyContractBlockchainAnchor,
+  getBlockchainConfig,
   BlockchainNetworkStatus 
 } from '../../services/blockchainAnchorService';
 import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
+import BlockchainConfigModal from './BlockchainConfigModal';
 
 export default function BlockchainContractControlCenter() {
   const [contracts, setContracts] = useState<ElectronicContract[]>([]);
@@ -48,6 +53,7 @@ export default function BlockchainContractControlCenter() {
   // 모달 및 복사 상태
   const [selectedContract, setSelectedContract] = useState<ElectronicContract | null>(null);
   const [isVerifierOpen, setIsVerifierOpen] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // 페이징 및 필터
@@ -143,23 +149,36 @@ export default function BlockchainContractControlCenter() {
 
   const completedCount = contracts.filter(c => c.status === 'completed').length;
   const anchoredCount = contracts.filter(c => Boolean(c.blockchainAnchor)).length;
+  const isMainnetActive = Boolean(networkStatus?.isMainnet);
 
   return (
     <div className="space-y-6 text-slate-100 animate-fadeIn">
       {/* ── 1. 헤더 및 종합 상태 대시보드 ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-blue-950 p-6 rounded-3xl border border-blue-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className={`p-6 rounded-3xl border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors ${
+        isMainnetActive 
+          ? 'bg-gradient-to-r from-slate-900 via-purple-950/40 to-slate-950 border-purple-800/60 shadow-purple-950/30' 
+          : 'bg-gradient-to-r from-slate-900 via-slate-950 to-blue-950 border-blue-900/50 shadow-blue-950/30'
+      }`}>
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-            <Database className="w-6 h-6" />
+          <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${
+            isMainnetActive 
+              ? 'bg-purple-600/20 border-purple-500/40 text-purple-300' 
+              : 'bg-blue-600/20 border-blue-500/30 text-blue-400'
+          }`}>
+            {isMainnetActive ? <Flame className="w-6 h-6 text-purple-400" /> : <Database className="w-6 h-6" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                POLYGON DISTRIBUTED LEDGER
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider border ${
+                isMainnetActive 
+                  ? 'bg-purple-500/20 text-purple-300 border-purple-400/40' 
+                  : 'bg-blue-500/20 text-blue-300 border-blue-400/30'
+              }`}>
+                {isMainnetActive ? 'POLYGON POS MAINNET (EVM-137)' : 'POLYGON AMOY TESTNET'}
               </span>
               <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                온체인 실시간 노드 동기화
+                {isMainnetActive ? '실제 온체인 트랜잭션 활성화' : '온체인 실시간 노드 동기화'}
               </span>
             </div>
             <h2 className="text-xl font-black text-white mt-1">
@@ -171,7 +190,24 @@ export default function BlockchainContractControlCenter() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
+        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+          {/* 네트워크 및 노드 설정 버튼 */}
+          <button
+            onClick={() => setIsConfigModalOpen(true)}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all ${
+              isMainnetActive
+                ? 'bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 border-purple-500/60 shadow-lg shadow-purple-950/40'
+                : 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-indigo-500/30'
+            }`}
+          >
+            {isMainnetActive ? (
+              <Flame className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+            ) : (
+              <Settings className="w-3.5 h-3.5 text-indigo-400" />
+            )}
+            <span>{isMainnetActive ? '⚙️ 메인넷 온체인 설정' : '⚙️ 네트워크 및 노드 설정'}</span>
+          </button>
+
           <button
             onClick={() => { fetchNetwork(); fetchContractsData(); }}
             disabled={isLoadingNetwork || isLoadingContracts}
@@ -195,18 +231,27 @@ export default function BlockchainContractControlCenter() {
       {/* ── 2. 핵심 KPI 카드 4열 그리드 ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 네트워크 상태 */}
-        <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-2">
+        <div className={`p-4 rounded-2xl border space-y-2 transition-colors ${
+          isMainnetActive 
+            ? 'bg-purple-950/20 border-purple-800/60' 
+            : 'bg-slate-900/90 border-slate-800'
+        }`}>
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="flex items-center gap-1.5">
-              <Radio className="w-3.5 h-3.5 text-blue-400" />
+              <Radio className={`w-3.5 h-3.5 ${isMainnetActive ? 'text-purple-400' : 'text-blue-400'}`} />
               연결 네트워크
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">
-              ChainID: {networkStatus?.chainId || 80002}
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+              isMainnetActive 
+                ? 'bg-purple-950 text-purple-300 border-purple-700 font-mono' 
+                : 'bg-blue-950 text-blue-300 border-blue-800'
+            }`}>
+              ChainID: {networkStatus?.chainId || (isMainnetActive ? 137 : 80002)}
             </span>
           </div>
-          <div className="text-sm font-black text-white truncate">
-            {networkStatus?.network || 'Polygon Amoy Testnet'}
+          <div className="text-sm font-black text-white truncate flex items-center gap-1.5">
+            {isMainnetActive && <Flame className="w-4 h-4 text-purple-400 flex-shrink-0" />}
+            <span className="truncate">{networkStatus?.network || (isMainnetActive ? 'Polygon PoS Mainnet' : 'Polygon Amoy Testnet')}</span>
           </div>
           <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5">
             <span>최신 블록 높이</span>
@@ -511,6 +556,16 @@ export default function BlockchainContractControlCenter() {
           setSelectedContract(null);
         }}
         contract={selectedContract}
+      />
+
+      {/* ── 7. 블록체인 네트워크 및 노드 설정 모달 (메인넷 ↔ 테스트넷 전환) ── */}
+      <BlockchainConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        onSaved={() => {
+          fetchNetwork();
+          fetchContractsData();
+        }}
       />
     </div>
   );
