@@ -59,6 +59,7 @@ export async function loadCrmData(): Promise<CrmDataStore> {
             totalPaid: row.total_paid,
             feeSchedule: row.fee_schedule || [],
             uploadedFiles: row.uploaded_files || [],
+            documentRequests: row.document_requests || [],
             correctionOrders: row.correction_orders || [],
             courtCase: row.court_case,
             alimtokLogs: row.alimtok_logs || [],
@@ -110,6 +111,7 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
         total_paid: ext.totalPaid,
         fee_schedule: ext.feeSchedule,
         uploaded_files: ext.uploadedFiles,
+        document_requests: ext.documentRequests,
         correction_orders: ext.correctionOrders,
         court_case: ext.courtCase,
         alimtok_logs: ext.alimtokLogs,
@@ -407,10 +409,10 @@ export async function submitClientDocument(
       } : d
     );
 
-    // documentRequests에서 해당 요청 fulfilled 처리
+    // documentRequests에서 해당 요청 fulfilled 처리 (커스텀 요청 id 또는 체크리스트 linkedDocId 매칭)
     if (ext.documentRequests) {
       ext.documentRequests = ext.documentRequests.map(req =>
-        req.linkedDocId === linkedDocId && !req.fulfilled ? {
+        (req.id === linkedDocId || req.linkedDocId === linkedDocId) && !req.fulfilled ? {
           ...req,
           fulfilled: true,
           fulfilledAt: new Date().toISOString(),

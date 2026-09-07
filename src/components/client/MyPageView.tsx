@@ -31,6 +31,7 @@ interface MyPageViewProps {
   requests: ConsultRequest[];
   onNavigateToChat: (reqId?: string) => void;
   isCompact?: boolean;
+  initialSubTab?: 'companion' | 'diagnosis' | 'settings';
 }
 
 export default function MyPageView({
@@ -43,12 +44,19 @@ export default function MyPageView({
   onStartDiagnosis,
   requests,
   onNavigateToChat,
-  isCompact = false
+  isCompact = false,
+  initialSubTab
 }: MyPageViewProps) {
   const dialog = useDialog();
 
-  // 마이페이지 3대 서브 탭 (기본값: 'companion' - 회생완주동행 메인)
-  const [mypageTab, setMypageTab] = useState<'companion' | 'diagnosis' | 'settings'>('companion');
+  // 마이페이지 3대 서브 탭 (기본값: 'companion' - 회생완주동행 메인, initialSubTab 지원)
+  const [mypageTab, setMypageTab] = useState<'companion' | 'diagnosis' | 'settings'>(initialSubTab || 'companion');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setMypageTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // 다중 전달사항 로컬 편집 상태
   const [newNoteInput, setNewNoteInput] = useState('');

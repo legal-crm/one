@@ -459,6 +459,7 @@ export default function ClientRole({
   const [faqOpenId, setFaqOpenId] = useState<number | null>(null);
   const [faqExpanded, setFaqExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [mypageSubTab, setMypageSubTab] = useState<'companion' | 'diagnosis' | 'settings'>('companion');
 
   // [SEO] 탭 전환 시 document.title + meta description 동적 갱신
   const currentMeta = TAB_META[activeTab] || TAB_META.landing;
@@ -2107,6 +2108,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                   setActiveTab('mypage');
                                 }
                               }
+                              if (n.type === 'document_request' || n.linkTab === 'fees') {
+                                setMypageSubTab('diagnosis');
+                              } else if (n.linkTab === 'settings') {
+                                setMypageSubTab('settings');
+                              }
                               setShowNotifDropdown(false);
                               setClientNotifications(loadClientNotifications());
                               window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3166,6 +3172,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         requests={clientRequests}
                         onNavigateToChat={() => setActiveTab('chat')}
                         isCompact={false}
+                        initialSubTab={mypageSubTab}
                       />
                     ) : (
                       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">

@@ -49,6 +49,7 @@ import type { FeeInstallment, IntakeChannel, CorrectionOrder, DocumentFile, Alim
 import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
 import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings } from '../../services/alimtokService';
 import { loadNotificationSettings } from '../../services/notificationService';
+import { addClientNotification } from '../../services/clientNotificationService';
 
 interface CrmTabProps {
   requests: ConsultRequest[];
@@ -3154,6 +3155,13 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                                 if (!newDocRequestLabel.trim()) return toast.error('서류명을 입력해주세요');
                                 const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
                                 await requestDocument(selectedId, { requestedBy: actor.name, documentLabel: newDocRequestLabel.trim(), description: newDocRequestDesc.trim(), isCustom: true });
+                                addClientNotification({
+                                  type: 'document_request',
+                                  title: '추가 서류 제출 요청',
+                                  body: `${actor.name} 변호사님이 [${newDocRequestLabel.trim()}] 서류 제출을 요청했습니다.`,
+                                  emoji: '📁',
+                                  linkTab: 'mypage',
+                                });
                                 setShowDocRequest(false);
                                 setNewDocRequestLabel('');
                                 setNewDocRequestDesc('');
