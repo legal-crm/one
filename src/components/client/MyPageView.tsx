@@ -442,12 +442,38 @@ export default function MyPageView({
 
               {/* 제안서 카드 그리드 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-                {allProposals.map(({ req, proposal }, idx) => (
+                {allProposals.map(({ req, proposal }, idx) => {
+                  const isAIReport = !!(
+                    proposal.proposalData?.aiInsights?.isAIPremium || 
+                    (proposal as any).aiInsights?.isAIPremium ||
+                    proposal.id === 'prop-test-5' ||
+                    proposal.lawyerId === 'test-lawyer-5'
+                  );
+
+                  return (
                   <div 
                     key={proposal.id || idx}
                     className="bg-white/10 hover:bg-white/[0.15] border border-white/10 hover:border-blue-400/40 rounded-2xl p-4.5 transition-all backdrop-blur-sm flex flex-col justify-between gap-3"
                   >
                     <div className="space-y-2.5">
+                      {/* 상단 뱃지: AI 7p 정밀 진단형 vs 변호사 직접 검토형 */}
+                      <div className="flex items-center justify-between gap-2 pb-0.5">
+                        {isAIReport ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10.5px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-xs">
+                            <Sparkles className="w-3 h-3 text-amber-400" />
+                            AI 7p 정밀 진단서 동봉
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30 shadow-xs">
+                            <Scale className="w-3 h-3 text-blue-300" />
+                            변호사 직접 검토 의견서
+                          </span>
+                        )}
+                        <span className="text-[10.5px] text-slate-400 font-medium">
+                          {isAIReport ? '빅데이터 정밀 분석' : '도산 전문 직접 심사'}
+                        </span>
+                      </div>
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           {proposal.lawyerAvatar ? (
@@ -502,15 +528,28 @@ export default function MyPageView({
                       <button
                         type="button"
                         onClick={() => setSelectedProposalForReport(proposal)}
-                        className="flex-1 py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className={`flex-1 py-2.5 px-3 text-white text-xs font-black rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap ${
+                          isAIReport 
+                            ? 'bg-gradient-to-r from-amber-600 via-indigo-600 to-blue-600 hover:from-amber-500 hover:to-blue-500' 
+                            : 'bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 border border-slate-600/50'
+                        }`}
                       >
-                        <FileText className="w-3.5 h-3.5 text-amber-300" />
-                        <span>변호사 검수의견서 & 7p PDF 열람</span>
+                        {isAIReport ? (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>AI 정밀 진단서 & 7p 리포트 열람</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-3.5 h-3.5 text-blue-300" />
+                            <span>변호사 직접 검토 의견서 열람</span>
+                          </>
+                        )}
                       </button>
                       <button
                         type="button"
                         onClick={() => onNavigateToChat(req.id)}
-                        className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
                         title="1:1 채팅으로 이동"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
@@ -518,7 +557,8 @@ export default function MyPageView({
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

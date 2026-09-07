@@ -25,6 +25,7 @@ import {
 } from '../../rehab-chatbot-package/utils/statisticsUtils';
 import { REHAB_STATISTICS_2025, AVERAGE_VALUES } from '../../rehab-chatbot-package/config/rehabStatistics2025';
 import PrintableReportTemplate from '../client/PrintableReportTemplate';
+import PrintableLawyerOpinionTemplate from '../client/PrintableLawyerOpinionTemplate';
 
 export interface PremiumReportData {
   lawyerInfo?: {
@@ -368,7 +369,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       const filePrefix = isAIPremium ? 'AI_7p_정밀진단서' : '변호사_직접검토의견서';
       const fileName = `${filePrefix}_${clientName || '의뢰인'}_${new Date().toISOString().slice(0, 10)}.pdf`;
       pdf.save(fileName);
-      toast.success(isAIPremium ? 'AI 7p 정밀 진단서 PDF가 저장되었습니다.' : '변호사 의견서 PDF가 저장되었습니다.', { id: toastId });
+      toast.success(isAIPremium ? 'AI 7p 정밀 진단서 PDF가 저장되었습니다.' : '변호사 직접 검토 의견서 PDF (2p)가 저장되었습니다.', { id: toastId });
     } catch (error) {
       console.error('PDF Generation Error:', error);
       toast.error('PDF 생성 중 오류가 발생했습니다. 다시 시도해주세요.', { id: toastId });
@@ -408,10 +409,35 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
           opacity: 1
         }}
       >
-        <PrintableReportTemplate
-          result={activeCalcResult}
-          userInput={activeUserInput}
-        />
+        {isAIPremium ? (
+          <PrintableReportTemplate
+            result={activeCalcResult}
+            userInput={activeUserInput}
+          />
+        ) : (
+          <PrintableLawyerOpinionTemplate
+            result={activeCalcResult}
+            userInput={activeUserInput}
+            proposal={proposalProp}
+            lawyerName={lawyerName}
+            lawyerFirmName={lawyerFirmName}
+            clientName={clientName}
+            courtName={courtName}
+            totalDebt={totalDebt}
+            monthlyPayment={monthlyPayment}
+            debtReductionRate={debtReductionRate}
+            estimatedReduction={estimatedReduction}
+            repaymentMonths={repaymentMonths}
+            totalRepayment={totalRepaymentCalculated}
+            lawyerOpinion={lawyerComment}
+            specialNotes={specialNotes}
+            totalFeeWon={totalFeeWon}
+            downPaymentWon={downPaymentWon}
+            monthlyInstallmentWon={monthlyInstallmentWon}
+            installments={installments}
+            additionalCostsNotice={additionalCostsNotice}
+          />
+        )}
       </div>
 
       {/* Main Modal Container */}
@@ -450,9 +476,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                       AI 7p 정밀 진단 & 공인 법률의견서 (유료 동봉판)
                     </span>
                   ) : (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center gap-1.5">
                       <Scale className="w-3.5 h-3.5 text-blue-400" />
-                      변호사 직접 검토 의견서 (약식)
+                      변호사 직접 심사 공인 법률의견서
                     </span>
                   )}
                   <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -462,13 +488,17 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 </div>
                 
                 <h2 id="report-modal-title" className="text-lg sm:text-xl font-black text-white mt-1.5 flex items-center gap-2">
-                  <span>{isAIPremium ? `${clientName}님의 개인회생 AI 7p 정밀 진단서` : `${clientName}님의 변호사 직접 검토 법률 제안·의견서`}</span>
+                  <span>{isAIPremium ? `${clientName}님의 개인회생 AI 7p 정밀 진단서` : `${clientName}님의 변호사 직접 검토 법률의견서`}</span>
                   <span className="text-sm font-normal text-slate-400">· {lawyerName} ({lawyerFirmName})</span>
                 </h2>
                 
                 <p className="text-xs text-slate-400 mt-0.5">
                   수신: <span className="text-slate-200 font-semibold">{clientName}</span> 님 귀하 | 관할: <span className="text-slate-200 font-semibold">{courtName}</span>
-                  {isAIPremium && <span className="text-amber-400 font-semibold ml-2">✦ AI 빅데이터 7p 심층 진단 동봉</span>}
+                  {isAIPremium ? (
+                    <span className="text-amber-400 font-semibold ml-2">✦ AI 빅데이터 7p 심층 진단 동봉</span>
+                  ) : (
+                    <span className="text-emerald-400 font-semibold ml-2">⚖️ 도산 전문 변호사 1:1 직접 심사 완료</span>
+                  )}
                 </p>
 
                 {/* Court Stats Ribbon if available in AI report */}
@@ -493,15 +523,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               <button
                 onClick={handleExportPDF}
                 disabled={isGeneratingPdf}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition border active:scale-[0.98] disabled:opacity-50 ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition border active:scale-[0.98] disabled:opacity-50 whitespace-nowrap ${
                   isAIPremium 
                     ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-300 font-bold shadow-md shadow-amber-400/20' 
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 font-bold'
                 }`}
                 title="진단서 PDF 저장"
               >
-                <Download className={`w-4 h-4 ${isAIPremium ? 'text-slate-950' : 'text-emerald-400'}`} />
-                <span>{isGeneratingPdf ? 'PDF 생성 중...' : isAIPremium ? 'AI 7p 리포트 PDF 저장' : '변호사 의견서 PDF 저장'}</span>
+                <Download className={`w-4 h-4 ${isAIPremium ? 'text-slate-950' : 'text-blue-400'}`} />
+                <span>{isGeneratingPdf ? 'PDF 생성 중...' : isAIPremium ? 'AI 7p 리포트 PDF 저장' : '변호사 의견서 PDF 저장 (2p)'}</span>
               </button>
 
               <button
@@ -551,12 +581,12 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               activeTab === 'overview'
                 ? isAIPremium 
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' 
-                  : 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'bg-slate-900 text-white shadow-md shadow-slate-900/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
             }`}
           >
             {isAIPremium ? <Sparkles className="w-4 h-4" /> : <Scale className="w-4 h-4" />}
-            <span>{isAIPremium ? 'AI 종합 진단' : '핵심 진단 & 소견'}</span>
+            <span>{isAIPremium ? 'AI 종합 진단' : '변호사 직접 검토의견 (전문)'}</span>
           </button>
 
           <button
@@ -565,12 +595,12 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               activeTab === 'financial'
                 ? isAIPremium 
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' 
-                  : 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'bg-slate-900 text-white shadow-md shadow-slate-900/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            <span>소득·재산 & 가계수지</span>
+            <span>{isAIPremium ? '소득·재산 & 가계수지' : '채무조정 변제계획안'}</span>
           </button>
 
           {/* AI 7p 정밀 진단서 전용 탭: 사법연감 통계 백분위 */}
@@ -594,12 +624,12 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               activeTab === 'roadmap'
                 ? isAIPremium 
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' 
-                  : 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'bg-slate-900 text-white shadow-md shadow-slate-900/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
             }`}
           >
             <DollarSign className="w-4 h-4" />
-            <span>수임료 & 사건 로드맵</span>
+            <span>{isAIPremium ? '수임료 & 사건 로드맵' : '수임료 및 사건 진행 절차'}</span>
           </button>
         </div>
 
@@ -610,209 +640,318 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
           {activeTab === 'overview' && (
             <div className="space-y-6">
 
-              {/* [AI 프리미엄 특화] AI 정밀 사건 브리핑: 부채 구조 3분류 & 사전 위험 플래그 진단 */}
-              {isAIPremium && rawAiInsights && (
-                <div className="bg-gradient-to-br from-amber-50/60 via-blue-50/40 to-slate-50 border border-amber-200/80 shadow-sm rounded-2xl p-6 space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-amber-200/60">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-xl bg-amber-400/20 text-amber-900 font-bold">
-                        <Sparkles className="w-5 h-5 text-amber-600" />
-                      </div>
+              {/* [변호사 직접 검토 전용 서식] 공인 법률의견서 정식 서면 */}
+              {!isAIPremium ? (
+                <div className="space-y-6">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-6">
+                    {/* 상단 서면 헤더 및 직인 */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-200 gap-4">
                       <div>
-                        <h4 className="text-base font-black text-slate-900">
-                          AI 정밀 사건 브리핑: 부채 구조 및 사전 위험 진단
-                        </h4>
-                        <p className="text-xs text-slate-500">빅데이터 회생 심사 엔진이 도출한 핵심 부채 분류 및 리스크 요인입니다.</p>
+                        <div className="text-[11px] font-extrabold text-blue-700 tracking-wider uppercase mb-1">
+                          OFFICIAL LEGAL OPINION LETTER
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                          개인회생 신청 법률적 타당성 및 채무조정 검토의견서
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          본 문서는 도산 전문 변호사가 의뢰인의 진술 및 경제상황을 1:1로 직접 면밀히 심사하여 작성한 공인 법률의견서입니다.
+                        </p>
+                      </div>
+
+                      {/* 변호사 직인 도장 그래픽 */}
+                      <div className="flex items-center gap-3 self-end sm:self-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="text-right">
+                          <div className="text-xs font-bold text-slate-900">{lawyerName} 변호사</div>
+                          <div className="text-[10px] text-slate-500">{lawyerFirmName}</div>
+                        </div>
+                        <div className="w-12 h-12 rounded-full border-2 border-red-600 text-red-600 flex items-center justify-center text-[9px] font-black leading-tight text-center rotate-[-5deg] shadow-xs select-none">
+                          변호사<br />{lawyerName.slice(0, 3)}<br />之印
+                        </div>
                       </div>
                     </div>
-                    {rawAiInsights.reviewGrade && (
-                      <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
-                        검토 등급: {rawAiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 정밀 검토 (A+)' : '표준 검토'}
-                      </span>
-                    )}
-                  </div>
 
-                  {/* 부채 구성 3대 분류 */}
-                  {rawAiInsights.debtBreakdown && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center text-xs">
-                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
-                        <div className="text-xs text-slate-500 font-medium mb-1">무담보 신용 채무</div>
-                        <div className="text-base font-black text-slate-900">{formatCurrency(rawAiInsights.debtBreakdown.unsecured)}</div>
-                        <div className="text-xs text-emerald-600 font-bold mt-1">원금 대폭 감면 대상 (주채무)</div>
+                    {/* 핵심 지표 4대 요약 카드 */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-center">
+                        <div className="text-[11px] font-bold text-blue-600">예상 원금 탕감률</div>
+                        <div className="text-lg sm:text-xl font-black text-blue-800 mt-1">{debtReductionRate}%</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">원금 대폭 감면</div>
                       </div>
-                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
-                        <div className="text-xs text-slate-500 font-medium mb-1">담보 대출 채무</div>
-                        <div className="text-base font-black text-slate-900">{formatCurrency(rawAiInsights.debtBreakdown.secured)}</div>
-                        <div className="text-xs text-slate-500 mt-1">별제권 별도 보호 관리</div>
+                      <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center">
+                        <div className="text-[11px] font-bold text-emerald-600">월 예상 변제금</div>
+                        <div className="text-lg sm:text-xl font-black text-emerald-800 mt-1">{formatCurrency(monthlyPayment)}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">{repaymentMonths}개월 균등 분할</div>
                       </div>
-                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
-                        <div className="text-xs text-slate-500 font-medium mb-1">우선변제 (조세·공과금)</div>
-                        <div className="text-base font-black text-amber-600">{formatCurrency(rawAiInsights.debtBreakdown.tax)}</div>
-                        <div className="text-xs text-amber-700 font-bold mt-1">변제계획 1순위 변제</div>
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                        <div className="text-[11px] font-bold text-slate-600">총 탕감 예상액</div>
+                        <div className="text-base sm:text-lg font-black text-slate-900 mt-1">{formatCurrency(estimatedReduction)}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">원금 면책 기준</div>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                        <div className="text-[11px] font-bold text-slate-600">이자 감면율</div>
+                        <div className="text-base sm:text-lg font-black text-slate-900 mt-1">100% 면제</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">장래이자 전액 소멸</div>
                       </div>
                     </div>
-                  )}
 
-                  {/* AI 위험 플래그 진단 */}
-                  {rawAiInsights.riskFlags && rawAiInsights.riskFlags.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <AlertTriangle className="w-4 h-4 text-amber-500" />
-                        <span>AI 사전 위험요인 감지 및 전담 변호사 방어 전략</span>
+                    {/* 1. 변호사 직접 심사 총괄 소견 (전문) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                          <Scale className="w-4 h-4 text-blue-600" />
+                          <span>1. 담당 변호사 직접 심사 총괄 소견</span>
+                        </div>
+                        <span className="text-xs text-slate-500 font-medium">기준 관할법원: {courtName}</span>
                       </div>
-                      <div className="space-y-2">
-                        {rawAiInsights.riskFlags.map((flag: any, idx: number) => (
-                          <div key={idx} className="p-3 bg-white rounded-xl border border-amber-200/70 text-xs text-slate-700 flex items-start gap-2.5 shadow-xs">
-                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-900 text-xs font-black flex items-center justify-center shrink-0 mt-0.5">!</span>
-                            <span className="leading-relaxed">{flag.message}</span>
+                      <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 leading-relaxed space-y-2.5">
+                        <p className="font-bold text-slate-900 text-sm">
+                          "소득 요건 및 부채 규모를 법원 실무 기준에 맞추어 검토하였으며, 법원 보정권고에 가장 안전하게 통과될 수 있는 합리적 변제 계획안입니다."
+                        </p>
+                        <p className="text-slate-700 leading-relaxed">
+                          {lawyerComment}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 2. 보정명령 방어 및 사건 진행 핵심 전략 */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>2. 법원 보정명령 방어 및 직접 소명 전략</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {specialNotes.map((note, idx) => (
+                          <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>전략 0{idx + 1}</span>
+                            </div>
+                            <p className="text-slate-600 leading-relaxed">{note}</p>
                           </div>
                         ))}
                       </div>
                     </div>
+
+                    {/* 법적 안심 보증 서약 박스 */}
+                    <div className="p-3.5 rounded-xl bg-blue-50/40 border border-blue-200/60 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-blue-600" />
+                        <span className="font-semibold">변호사법 제109조 의거 100% 비밀보호 및 1:1 전담 대리</span>
+                      </div>
+                      <span className="text-[11px] text-slate-500">
+                        {lawyerFirmName} · {lawyerName} 변호사 직접 날인 공인
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* [AI 프리미엄 특화] AI 정밀 진단서 기존 뷰 */
+                <>
+                  {/* [AI 프리미엄 특화] AI 정밀 사건 브리핑: 부채 구조 3분류 & 사전 위험 플래그 진단 */}
+                  {rawAiInsights && (
+                    <div className="bg-gradient-to-br from-amber-50/60 via-blue-50/40 to-slate-50 border border-amber-200/80 shadow-sm rounded-2xl p-6 space-y-4">
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-amber-200/60">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-amber-400/20 text-amber-900 font-bold">
+                            <Sparkles className="w-5 h-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <h4 className="text-base font-black text-slate-900">
+                              AI 정밀 사건 브리핑: 부채 구조 및 사전 위험 진단
+                            </h4>
+                            <p className="text-xs text-slate-500">빅데이터 회생 심사 엔진이 도출한 핵심 부채 분류 및 리스크 요인입니다.</p>
+                          </div>
+                        </div>
+                        {rawAiInsights.reviewGrade && (
+                          <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
+                            검토 등급: {rawAiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 정밀 검토 (A+)' : '표준 검토'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 부채 구성 3대 분류 */}
+                      {rawAiInsights.debtBreakdown && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center text-xs">
+                          <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
+                            <div className="text-xs text-slate-500 font-medium mb-1">무담보 신용 채무</div>
+                            <div className="text-base font-black text-slate-900">{formatCurrency(rawAiInsights.debtBreakdown.unsecured)}</div>
+                            <div className="text-xs text-emerald-600 font-bold mt-1">원금 대폭 감면 대상 (주채무)</div>
+                          </div>
+                          <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
+                            <div className="text-xs text-slate-500 font-medium mb-1">담보 대출 채무</div>
+                            <div className="text-base font-black text-slate-900">{formatCurrency(rawAiInsights.debtBreakdown.secured)}</div>
+                            <div className="text-xs text-slate-500 mt-1">별제권 별도 보호 관리</div>
+                          </div>
+                          <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
+                            <div className="text-xs text-slate-500 font-medium mb-1">우선변제 (조세·공과금)</div>
+                            <div className="text-base font-black text-amber-600">{formatCurrency(rawAiInsights.debtBreakdown.tax)}</div>
+                            <div className="text-xs text-amber-700 font-bold mt-1">변제계획 1순위 변제</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* AI 위험 플래그 진단 */}
+                      {rawAiInsights.riskFlags && rawAiInsights.riskFlags.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            <span>AI 사전 위험요인 감지 및 전담 변호사 방어 전략</span>
+                          </div>
+                          <div className="space-y-2">
+                            {rawAiInsights.riskFlags.map((flag: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-white rounded-xl border border-amber-200/70 text-xs text-slate-700 flex items-start gap-2.5 shadow-xs">
+                                <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-900 text-xs font-black flex items-center justify-center shrink-0 mt-0.5">!</span>
+                                <span className="leading-relaxed">{flag.message}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-              
-              {/* Primary Before vs After Visual Comparison Card */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
-                      <TrendingDown className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">개인회생 신청 전후 재무 변화</h3>
-                      <p className="text-xs text-slate-500">법원 인가 시 법적으로 보장받는 채무 조정 결과입니다.</p>
-                    </div>
-                  </div>
-                  <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    원금 {debtReductionRate}% 감면
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Before: Current Debt Burden */}
-                  <div className="p-5 rounded-2xl bg-red-50/60 border border-red-200 relative overflow-hidden">
-                    <div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <AlertTriangle className="w-4 h-4" />
-                      신청 전 현재 상태
-                    </div>
-                    <div className="space-y-2.5 mt-3">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-600">총 원금 채무</span>
-                        <span className="font-bold text-slate-900">{formatCurrency(totalDebt)}</span>
+                  
+                  {/* Primary Before vs After Visual Comparison Card */}
+                  <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
+                          <TrendingDown className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-slate-900">개인회생 신청 전후 재무 변화</h3>
+                          <p className="text-xs text-slate-500">법원 인가 시 법적으로 보장받는 채무 조정 결과입니다.</p>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-600">이자 감면</span>
-                        <span className="font-bold text-red-600">0% (연체이자 누적)</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-600">예상 월 상환 부담</span>
-                        <span className="font-bold text-red-700">{formatCurrency(activeCalcResult.currentMonthlyBurden)}</span>
-                      </div>
-                      <div className="pt-2 border-t border-red-200/80 text-xs text-red-600 font-medium">
-                        채권 추심, 압류 및 독촉 전화 노출 위험
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* After: Rehabilitation Plan */}
-                  <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-300 relative overflow-hidden shadow-sm">
-                    <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      개인회생 인가 후 (법적 보호)
-                    </div>
-                    <div className="space-y-2.5 mt-3">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-600">월 변제금 ({repaymentMonths}개월)</span>
-                        <span className="text-base font-black text-emerald-700">{formatCurrency(monthlyPayment)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-600">이자 감면율</span>
-                        <span className="font-bold text-emerald-700">100% 전액 면제</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-600">총 변제 원금</span>
-                        <span className="font-bold text-slate-900">{formatCurrency(totalRepaymentCalculated)}</span>
-                      </div>
-                      <div className="pt-2 border-t border-emerald-200 text-xs text-emerald-800 font-bold flex items-center justify-between">
-                        <span>총 탕감 금액 (면책)</span>
-                        <span className="text-sm font-black text-emerald-700">{formatCurrency(estimatedReduction)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lawyer's Diagnosis Opinion */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-2xl shrink-0 ${isAIPremium ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>
-                    <Scale className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <h3 className="text-base font-bold text-slate-900">
-                        {lawyerName} 변호사의 {isAIPremium ? 'AI 심층 검토 종합 소견' : '직접 심사 공인 소견'}
-                      </h3>
-                      <span className="text-xs font-medium text-slate-500">
-                        진단 기준 법원: {courtName}
+                      <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        원금 {debtReductionRate}% 감면
                       </span>
                     </div>
 
-                    <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 leading-relaxed">
-                      {lawyerComment}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Before: Current Debt Burden */}
+                      <div className="p-5 rounded-2xl bg-red-50/60 border border-red-200 relative overflow-hidden">
+                        <div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4" />
+                          신청 전 현재 상태
+                        </div>
+                        <div className="space-y-2.5 mt-3">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-600">총 원금 채무</span>
+                            <span className="font-bold text-slate-900">{formatCurrency(totalDebt)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-600">이자 감면</span>
+                            <span className="font-bold text-red-600">0% (연체이자 누적)</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-600">예상 월 상환 부담</span>
+                            <span className="font-bold text-red-700">{formatCurrency(activeCalcResult.currentMonthlyBurden)}</span>
+                          </div>
+                          <div className="pt-2 border-t border-red-200/80 text-xs text-red-600 font-medium">
+                            채권 추심, 압류 및 독촉 전화 노출 위험
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* After: Rehabilitation Plan */}
+                      <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-300 relative overflow-hidden shadow-sm">
+                        <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          개인회생 인가 후 (법적 보호)
+                        </div>
+                        <div className="space-y-2.5 mt-3">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-600">월 변제금 ({repaymentMonths}개월)</span>
+                            <span className="text-base font-black text-emerald-700">{formatCurrency(monthlyPayment)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-600">이자 감면율</span>
+                            <span className="font-bold text-emerald-700">100% 전액 면제</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-600">총 변제 원금</span>
+                            <span className="font-bold text-slate-900">{formatCurrency(totalRepaymentCalculated)}</span>
+                          </div>
+                          <div className="pt-2 border-t border-emerald-200 text-xs text-emerald-800 font-bold flex items-center justify-between">
+                            <span>총 탕감 금액 (면책)</span>
+                            <span className="text-sm font-black text-emerald-700">{formatCurrency(estimatedReduction)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lawyer's Diagnosis Opinion */}
+                  <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <div className={`p-3 rounded-2xl shrink-0 ${isAIPremium ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>
+                        <Scale className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <h3 className="text-base font-bold text-slate-900">
+                            {lawyerName} 변호사의 AI 심층 검토 종합 소견
+                          </h3>
+                          <span className="text-xs font-medium text-slate-500">
+                            진단 기준 법원: {courtName}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 leading-relaxed">
+                          {lawyerComment}
+                        </div>
+
+                        {specialNotes && specialNotes.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            <div className="text-xs font-bold text-slate-700">📌 사건 진행 시 핵심 주의사항 및 방어 전략</div>
+                            <ul className="space-y-1.5">
+                              {specialNotes.map((note, idx) => (
+                                <li key={idx} className="text-xs text-slate-600 flex items-start gap-2">
+                                  <span className="text-emerald-500 font-bold mt-0.5">•</span>
+                                  <span>{note}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Legal Guarantees & Safe Notes */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                        <Shield className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">금지명령 신속 신청</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">접수 후 3~7일 이내 채권 추심 및 가압류 전면 금지</p>
+                      </div>
                     </div>
 
-                    {specialNotes && specialNotes.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <div className="text-xs font-bold text-slate-700">📌 사건 진행 시 핵심 주의사항 및 방어 전략</div>
-                        <ul className="space-y-1.5">
-                          {specialNotes.map((note, idx) => (
-                            <li key={idx} className="text-xs text-slate-600 flex items-start gap-2">
-                              <span className="text-emerald-500 font-bold mt-0.5">•</span>
-                              <span>{note}</span>
-                            </li>
-                          ))}
-                        </ul>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                        <Building2 className="w-4 h-4" />
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">직장 및 가족 비공개</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">회사 통보 없이 안전하고 은밀하게 서류 진행</p>
+                      </div>
+                    </div>
 
-              {/* Legal Guarantees & Safe Notes */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-                    <Shield className="w-4 h-4" />
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-purple-50 text-purple-600 shrink-0">
+                        <Check className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">기각 시 100% 환불 보증</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">귀책 없는 기각 시 수임료 전액 환불 특약 적용</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">금지명령 신속 신청</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">접수 후 3~7일 이내 채권 추심 및 가압류 전면 금지</p>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
-                    <Building2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">직장 및 가족 비공개</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">회사 통보 없이 안전하고 은밀하게 서류 진행</p>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-purple-50 text-purple-600 shrink-0">
-                    <Check className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">기각 시 100% 환불 보증</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">귀책 없는 기각 시 수임료 전액 환불 특약 적용</p>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
 
             </div>
           )}
