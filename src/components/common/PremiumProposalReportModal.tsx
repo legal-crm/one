@@ -282,6 +282,26 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     };
   }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName]);
 
+  const activeUserInput: RehabUserInput = useMemo(() => {
+    if (clientInput) {
+      return {
+        ...clientInput,
+        name: clientInput.name || clientName,
+        totalDebt: clientInput.totalDebt || totalDebt,
+        monthlyIncome: clientInput.monthlyIncome || activeCalcResult.monthlyIncome,
+        familySize: clientInput.familySize || (activeCalcResult.dependentsCount || 1),
+      };
+    }
+    return {
+      address: '서울특별시',
+      employmentType: 'salary',
+      monthlyIncome: activeCalcResult.monthlyIncome,
+      familySize: activeCalcResult.dependentsCount || 1,
+      totalDebt: totalDebt,
+      name: clientName,
+    };
+  }, [clientInput, clientName, activeCalcResult, totalDebt]);
+
   // PDF Export
   const handleExportPDF = async () => {
     if (!printRef.current) return;
@@ -400,8 +420,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         }}
       >
         <PrintableReportTemplate
-          reportId={reportId}
-          data={printableData}
+          result={activeCalcResult}
+          userInput={activeUserInput}
         />
       </div>
 

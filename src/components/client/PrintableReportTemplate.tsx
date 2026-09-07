@@ -7,11 +7,15 @@ import {
 import { RehabCalculationResult, RehabUserInput } from '../../rehab-chatbot-package/services/calculationService';
 
 interface PrintableReportTemplateProps {
-  result: RehabCalculationResult;
-  userInput: RehabUserInput;
+  result?: RehabCalculationResult;
+  userInput?: RehabUserInput;
+  [key: string]: any;
 }
 
-export default function PrintableReportTemplate({ result, userInput }: PrintableReportTemplateProps) {
+export default function PrintableReportTemplate({ result: rawResult, userInput: rawUserInput }: PrintableReportTemplateProps) {
+  const result = rawResult || ({} as RehabCalculationResult);
+  const userInput = rawUserInput || ({} as RehabUserInput);
+
   const formatCurrency = (amount: number | undefined): string => {
     if (amount === undefined || amount === 0) return '0원';
     
@@ -33,7 +37,8 @@ export default function PrintableReportTemplate({ result, userInput }: Printable
 
   const today = new Date();
   const dateString = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-  const docSerial = `RLC-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-${Math.abs((userInput.name || 'CLIENT').split('').reduce((acc, c) => acc + c.charCodeAt(0), 1024) % 9000 + 1000)}`;
+  const clientNameStr = userInput.name || 'CLIENT';
+  const docSerial = `RLC-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-${Math.abs(clientNameStr.split('').reduce((acc, c) => acc + c.charCodeAt(0), 1024) % 9000 + 1000)}`;
 
   const medianIncomes = [
     { size: 1, median: 2564238, minLiving: 1538543 },
