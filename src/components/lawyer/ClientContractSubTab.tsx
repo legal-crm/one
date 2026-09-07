@@ -3,7 +3,7 @@ import {
   FileSignature, CheckCircle2, Clock, Plus, Eye, Printer, 
   Shield, PenTool, AlertCircle, RefreshCw, FileText, Check, 
   Sparkles, Download, ArrowRight, UserCheck, ChevronDown, ChevronUp,
-  Share2
+  Share2, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -16,8 +16,10 @@ import {
   deleteContract, calculateCourtCosts 
 } from '../../services/contractService';
 import { syncContractToCrm } from '../../services/crmService';
+import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import ContractWizard from './ContractWizard';
 import ClientSignShareModal from './ClientSignShareModal';
+import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
 
 interface Props {
   client: ConsultRequest;
@@ -41,6 +43,7 @@ export default function ClientContractSubTab({
   const [previewDoc, setPreviewDoc] = useState<ContractDocument | null>(null);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
 
   const loadClientContracts = async () => {
     const list = await getContractsByClientId(client.id);
@@ -267,7 +270,30 @@ ${d.content}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* 체결 완료 시 법원 제출용 PDF 및 블록체인 검증 바로가기 */}
+          {isCompleted && (
+            <>
+              <button
+                onClick={() => generateCourtSubmissionPdf(contract)}
+                className="flex items-center gap-1 px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs transition-colors cursor-pointer press-scale whitespace-nowrap"
+                title="법원제출용 일체형 전자계약 패키지 다운로드"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                <span>법원PDF</span>
+              </button>
+
+              <button
+                onClick={() => setIsVerifyModalOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold rounded-xl text-xs transition-colors cursor-pointer press-scale whitespace-nowrap"
+                title="Polygon 블록체인 원본 무결성 검증"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                <span>블록체인 검증</span>
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => handlePrintContract(contract)}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer press-scale whitespace-nowrap"
@@ -501,6 +527,13 @@ ${d.content}
         contract={contract}
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
+      />
+
+      {/* 블록체인 공공 원본 검증기 모달 */}
+      <ContractPublicVerifierModal
+        isOpen={isVerifyModalOpen}
+        onClose={() => setIsVerifyModalOpen(false)}
+        contract={contract}
       />
     </div>
   );

@@ -35,6 +35,7 @@ import { notifyAdminAdConfirmed } from '../services/notificationService';
 import { loadAdOrders, updateAdOrder, subscribeToAdOrders } from '../services/adOrderService';
 import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
 import AlimtalkControlCenter from './admin/AlimtalkControlCenter';
+import BlockchainContractControlCenter from './admin/BlockchainContractControlCenter';
 
 interface AdminRoleProps {
   requests: ConsultRequest[];
@@ -102,7 +103,7 @@ export default function AdminRole({
   const dialog = useDialog();
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security'>('dashboard');
-  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice' | 'alimtalk'>('overview');
+  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'active' | 'exited' | 'adorders' | 'taxinvoice' | 'alimtalk' | 'blockchain'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
@@ -2608,6 +2609,14 @@ export default function AdminRole({
                 >
                   <span>💬 알림톡/문자 발송 관제 (Popbill)</span>
                 </button>
+                <button
+                  onClick={() => setBillingSubTab('blockchain')}
+                  className={`pb-2 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                    billingSubTab === 'blockchain' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
+                  }`}
+                >
+                  <span>⛓️ 전자계약 블록체인 관제 (Polygon)</span>
+                </button>
               </div>
 
               {/* OVERVIEW SUBTAB: HIGH-PERFORMANCE LIVE BILLING ANALYTICS DASHBOARD */}
@@ -3589,6 +3598,11 @@ export default function AdminRole({
               {/* ALIMTALK & SMS SUBTAB: POPBILL INTEGRATED CONTROL CENTER */}
               {billingSubTab === 'alimtalk' && (
                 <AlimtalkControlCenter />
+              )}
+
+              {/* BLOCKCHAIN CONTRACT INTEGRITY CONTROL CENTER */}
+              {billingSubTab === 'blockchain' && (
+                <BlockchainContractControlCenter />
               )}
 
             </div>

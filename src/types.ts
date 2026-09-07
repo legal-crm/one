@@ -1926,7 +1926,7 @@ export interface ElectronicContract {
 }
 
 export interface BlockchainAnchorInfo {
-  network: string;          // 'Polygon PoS Mainnet'
+  network: string;          // 'Polygon PoS Mainnet' or 'Polygon Amoy Testnet'
   txHash: string;           // '0x7b4a...' (66자)
   blockNumber: number;      // 블록 번호
   anchoredAt: string;       // 앵커링 완료 시각 (KST / ISO)
@@ -1934,6 +1934,8 @@ export interface BlockchainAnchorInfo {
   verifyUrl: string;        // my김변 자체 공공 진위검증 URL
   contractHash: string;     // 계약 체결본 SHA-256 해시
   smartContractAddress?: string; // 공인 앵커링 스마트 컨트랙트 주소
+  isRealOnChain?: boolean;  // 실제 온체인 트랜잭션 브로드캐스팅 여부
+  relayerAddress?: string;  // 앵커링 트랜잭션 발행 릴레이어 지갑 주소
 }
 
 // ═══════════════════════════════════════════════

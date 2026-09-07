@@ -394,7 +394,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
             </div>
             <div style="display: flex; gap: 14px; align-items: center;">
               <div style="flex: 1; font-size: 10px; line-height: 1.7; color: #1e293b;">
-                <div><strong>기록 네트워크:</strong> Polygon PoS Mainnet (EVM-ChainID: 137)</div>
+                <div><strong>기록 네트워크:</strong> ${anchor?.network || 'Polygon PoS (EVM)'}</div>
                 <div style="font-family: monospace;"><strong>Tx Hash:</strong> ${anchor?.txHash || '0x4a8c90fe32b9183471dfca928371928471923847192837461829374618294a8c'}</div>
                 <div><strong>블록 번호:</strong> Block #${(anchor?.blockNumber || 61845214).toLocaleString()} | 각인일시: ${anchor?.anchoredAt ? anchor.anchoredAt.slice(0, 19).replace('T', ' ') : dateFormatted}</div>
                 <div style="font-size: 9.5px; color: #2563eb; margin-top: 2px;">

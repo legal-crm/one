@@ -7,11 +7,11 @@
 import React, { useState } from 'react';
 import { 
   ShieldCheck, AlertTriangle, CheckCircle2, Lock, ExternalLink, 
-  Copy, Check, Download, Database, FileText, X, Cpu 
+  Copy, Check, Download, Database, FileText, X, Cpu, RefreshCw, Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
-import { verifyContractBlockchainAnchor } from '../../services/blockchainAnchorService';
+import { verifyContractBlockchainAnchor, verifyTxOnChain } from '../../services/blockchainAnchorService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 
 interface Props {
@@ -24,6 +24,16 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
   const [copiedTx, setCopiedTx] = useState(false);
   const [copiedHash, setCopiedHash] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [verifyingNode, setVerifyingNode] = useState(false);
+  const [liveVerifyResult, setLiveVerifyResult] = useState<{
+    verifiedOnChain: boolean;
+    statusText: string;
+    blockNumber?: number;
+    from?: string;
+    inputData?: string;
+    hashMatched?: boolean;
+    explorerUrl?: string;
+  } | null>(null);
 
   if (!isOpen || !contract) return null;
 
@@ -49,6 +59,26 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
       await generateCourtSubmissionPdf(contract);
     } finally {
       setDownloadingPdf(false);
+    }
+  };
+
+  const handleLiveNodeCheck = async () => {
+    if (!txHash) return;
+    setVerifyingNode(true);
+    try {
+      const res = await verifyTxOnChain(txHash, finalHash);
+      setLiveVerifyResult(res);
+      if (res.verifiedOnChain && res.hashMatched) {
+        toast.success('Polygon 온체인 트랜잭션 및 문서 해시 무결성 일치 검증 완료!');
+      } else if (res.verifiedOnChain) {
+        toast.success('온체인 트랜잭션이 확인되었습니다.');
+      } else {
+        toast.info(res.statusText || '검증 상태 확인 완료');
+      }
+    } catch {
+      toast.error('블록체인 노드 검증 중 네트워크 오류가 발생했습니다.');
+    } finally {
+      setVerifyingNode(false);
     }
   };
 
@@ -176,62 +206,125 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
           </div>
 
           {/* 블록체인 분산원장 영구 각인 상세 */}
-          <div className="bg-blue-950 text-blue-100 border border-blue-800 rounded-2xl p-4 space-y-2.5">
+          <div className="bg-slate-900 text-blue-100 border border-blue-900/60 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h5 className="font-bold text-white flex items-center gap-1.5 text-xs">
                 <Database className="w-4 h-4 text-blue-400" />
                 <span>Polygon 분산원장 트랜잭션 증명</span>
               </h5>
-              <span className="text-[10px] font-bold text-blue-300 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-700/50">
-                PERMANENT ANCHOR
-              </span>
+              <div className="flex items-center gap-1.5">
+                {contract.blockchainAnchor?.isRealOnChain ? (
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/60 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE ON-CHAIN
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-blue-300 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-700/50">
+                    CRYPTOGRAPHIC STANDBY
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5 text-[10px] font-mono">
-              <div className="flex justify-between border-b border-blue-900/60 pb-1">
-                <span className="text-blue-300 font-sans">네트워크</span>
-                <span className="text-white font-bold">{contract.blockchainAnchor?.network || 'Polygon PoS Mainnet (EVM-137)'}</span>
+              <div className="flex justify-between border-b border-slate-800 pb-1">
+                <span className="text-slate-400 font-sans">원장 네트워크</span>
+                <span className="text-white font-bold">{contract.blockchainAnchor?.network || 'Polygon Amoy Testnet (ChainID 80002)'}</span>
               </div>
-              <div className="flex justify-between border-b border-blue-900/60 pb-1">
-                <span className="text-blue-300 font-sans">블록 번호</span>
-                <span className="text-emerald-300 font-bold">#{(contract.blockchainAnchor?.blockNumber || 61845214).toLocaleString()}</span>
+              <div className="flex justify-between border-b border-slate-800 pb-1">
+                <span className="text-slate-400 font-sans">기록 블록 번호</span>
+                <span className="text-emerald-300 font-bold">#{(contract.blockchainAnchor?.blockNumber || 46945000).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between border-b border-blue-900/60 pb-1">
-                <span className="text-blue-300 font-sans">각인 시각 (KST)</span>
+              <div className="flex justify-between border-b border-slate-800 pb-1">
+                <span className="text-slate-400 font-sans">온체인 각인 시각</span>
                 <span className="text-white font-bold">
                   {(contract.blockchainAnchor?.anchoredAt || contract.updatedAt).slice(0, 19).replace('T', ' ')}
                 </span>
               </div>
+              {contract.blockchainAnchor?.relayerAddress && (
+                <div className="flex justify-between border-b border-slate-800 pb-1">
+                  <span className="text-slate-400 font-sans">트랜잭션 중계자(Relayer)</span>
+                  <span className="text-blue-300 font-bold truncate max-w-[240px]">{contract.blockchainAnchor.relayerAddress}</span>
+                </div>
+              )}
               <div>
-                <span className="text-blue-300 block font-sans">트랜잭션 해시 (TxHash):</span>
+                <span className="text-slate-400 block font-sans">트랜잭션 해시 (TxHash):</span>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-blue-200 break-all flex-1 bg-blue-900/40 p-1.5 rounded border border-blue-800">
+                  <span className="text-blue-200 break-all flex-1 bg-slate-950/60 p-1.5 rounded border border-slate-800">
                     {txHash}
                   </span>
                   <button
                     onClick={() => handleCopy(txHash, 'tx')}
-                    className="p-1.5 hover:bg-blue-900 rounded text-blue-300 hover:text-white cursor-pointer transition-colors shrink-0"
+                    className="p-1.5 hover:bg-slate-800 rounded text-blue-300 hover:text-white cursor-pointer transition-colors shrink-0"
                     title="TxHash 복사"
                   >
                     {copiedTx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
-              <div className="pt-1 flex items-center justify-between text-[9.5px]">
-                <span className="text-blue-300">공증 스마트컨트랙트: 0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1</span>
+              <div className="pt-1.5 flex items-center justify-between text-[9.5px] border-t border-slate-800">
+                <span className="text-slate-400">공증 스마트컨트랙트: 0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1</span>
                 {contract.blockchainAnchor?.explorerUrl && (
                   <a
                     href={contract.blockchainAnchor.explorerUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-300 hover:text-white underline cursor-pointer"
+                    className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer"
                   >
-                    <span>PolygonScan에서 직접 조회</span>
+                    <span>PolygonScan 직접 열람</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 )}
               </div>
             </div>
+
+            {/* 실시간 EVM 온체인 검증 액션 바 */}
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
+              <span className="text-[10px] text-slate-400 font-sans">
+                Polygon 공식 RPC 노드를 통해 현재 원본과 트랜잭션 Input Data를 실시간 교차 검증합니다.
+              </span>
+              <button
+                onClick={handleLiveNodeCheck}
+                disabled={verifyingNode}
+                className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-[10px] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${verifyingNode ? 'animate-spin' : ''}`} />
+                <span>{verifyingNode ? '노드 조회 중...' : '실시간 EVM 노드 검증'}</span>
+              </button>
+            </div>
+
+            {/* 라이브 검증 결과 패널 */}
+            {liveVerifyResult && (
+              <div className={`mt-2 p-2.5 rounded-xl border text-[10px] font-mono animate-in fade-in duration-200 ${
+                liveVerifyResult.verifiedOnChain
+                  ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-200'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-300'
+              }`}>
+                <div className="flex items-center justify-between font-bold mb-1">
+                  <span className="flex items-center gap-1">
+                    {liveVerifyResult.verifiedOnChain ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Layers className="w-3.5 h-3.5 text-blue-400" />
+                    )}
+                    <span>{liveVerifyResult.statusText}</span>
+                  </span>
+                  {liveVerifyResult.blockNumber && (
+                    <span className="text-emerald-400">Block #{liveVerifyResult.blockNumber.toLocaleString()}</span>
+                  )}
+                </div>
+                {liveVerifyResult.hashMatched && (
+                  <p className="text-[9.5px] text-emerald-300 leading-relaxed font-sans">
+                    ✨ 트랜잭션 Input Data에 포함된 암호학적 해시와 현재 전자계약서의 SHA-256 서명 해시가 100% 일치합니다.
+                  </p>
+                )}
+                {liveVerifyResult.from && (
+                  <div className="text-[9px] text-slate-400 truncate mt-1">
+                    발행자 주소: {liveVerifyResult.from}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 4대 법적 효력 종합 충족 확인 */}

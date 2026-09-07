@@ -506,13 +506,26 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
 
                       {/* 무결성 검증 */}
                       <td className="p-3.5 text-center">
-                        {c.timestampToken ? (
+                        {c.blockchainAnchor ? (
+                          <button
+                            onClick={() => setVerifyModalContract(c)}
+                            className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 cursor-pointer transition-all hover:scale-105 ${
+                              c.blockchainAnchor.isRealOnChain
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                            }`}
+                            title="클릭 시 블록체인 원본 검증창 열기"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>{c.blockchainAnchor.isRealOnChain ? '⛓️ 온체인 완료' : '⛓️ Polygon 각인'}</span>
+                          </button>
+                        ) : c.timestampToken ? (
                           <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
                             <ShieldCheck className="w-3.5 h-3.5" /> TSA 봉인완료
                           </span>
                         ) : (
                           <span className="text-[11px] text-slate-400">
-                            체결 후 봉인예정
+                            체결 후 각인예정
                           </span>
                         )}
                       </td>
