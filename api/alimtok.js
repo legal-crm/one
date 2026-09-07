@@ -6,8 +6,8 @@ import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from './
 
 // 마일스톤별 기본 카카오 알림톡 템플릿 코드 매핑
 const MILESTONE_TEMPLATE_CODES = {
-  consult_booked: 'MYKIM_ATS_01',
-  consultation_received: 'MYKIM_ATS_01',
+  consult_booked: '026090000408',          // 팝빌 등록 템플릿 (상담 접수 안내)
+  consultation_received: '026090000408',   // 팝빌 등록 템플릿 (상담 접수 안내)
   consultation_in_progress: 'MYKIM_ATS_02',
   contract_requested: 'MYKIM_ATS_03',
   contract_signed: 'MYKIM_ATS_04',
