@@ -12,7 +12,7 @@ export default function BankruptcyCompanionDashboard({
   caseData,
   onOpenCrisisModal
 }: BankruptcyCompanionDashboardProps) {
-  const [uploadedFiles, setUploadedFiles] = useState(caseData.documents);
+  const [uploadedFiles, setUploadedFiles] = useState(caseData?.documents || []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,7 +78,7 @@ export default function BankruptcyCompanionDashboard({
         </div>
 
         <div className="space-y-4">
-          {caseData.timelines.map((stage, idx) => {
+          {(caseData.timelines || []).map((stage, idx) => {
             const isDone = stage.status === 'completed';
             const isCurrent = stage.status === 'in_progress';
 

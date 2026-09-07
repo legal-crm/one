@@ -60,6 +60,7 @@ const LawyerProfileModal = React.lazy(() => import('./client/LawyerProfileModal'
 import type { SolutionType } from './client/SolutionDetailModal';
 const SolutionDetailModal = React.lazy(() => import('./client/SolutionDetailModal'));
 const RehabCompanionView = React.lazy(() => import('./client/companion/RehabCompanionView'));
+import TabErrorBoundary from './common/TabErrorBoundary';
 
 
 interface RemedyPreset {
@@ -2097,7 +2098,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                                 markAsRead(n.id);
                                 setUnreadCount(prev => Math.max(0, prev - 1));
                               }
-                              if (n.linkTab) setActiveTab(n.linkTab as any);
+                              if (n.linkTab) {
+                                const targetTab = (n.linkTab === 'fees' || n.linkTab === 'settings') ? 'mypage' : n.linkTab;
+                                const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion'];
+                                if (validTabs.includes(targetTab)) {
+                                  setActiveTab(targetTab as any);
+                                } else {
+                                  setActiveTab('mypage');
+                                }
+                              }
                               setShowNotifDropdown(false);
                               setClientNotifications(loadClientNotifications());
                               window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3113,11 +3122,13 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
           }>
             {/* TAB: 회생동행 (3~5년 변제관리 & 면책 완주) */}
             {activeTab === 'companion' && (
-              <RehabCompanionView
-                userAlias={userAlias}
-                onNavigateToChat={() => setActiveTab('chat')}
-                onNavigateToLawyers={() => setActiveTab('lawyers')}
-              />
+              <TabErrorBoundary tabName="회생동행" onNavigateHome={() => setActiveTab('landing')}>
+                <RehabCompanionView
+                  userAlias={userAlias}
+                  onNavigateToChat={() => setActiveTab('chat')}
+                  onNavigateToLawyers={() => setActiveTab('lawyers')}
+                />
+              </TabErrorBoundary>
             )}
 
             {/* TAB: 탕감액 계산기 */}
@@ -3132,68 +3143,77 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
             {/* TAB: MYPAGE (채무 진단 대시보드 + 개인 설정) */}
             {activeTab === 'mypage' && (
-              <div className="space-y-6">
-                {activeRequest?.financialProfile ? (
-                  <MyPageView
-                    userAlias={userAlias}
-                    setUserAlias={setUserAlias}
-                    isEditingAlias={isEditingAlias}
-                    setIsEditingAlias={setIsEditingAlias}
-                    tempAlias={tempAlias}
-                    setTempAlias={setTempAlias}
-                    activeRequest={activeRequest}
-                    activeResult={activeResult}
-                    onUpdateFinancialProfile={handleUpdateFinancialProfile}
-                    onStartDiagnosis={() => setActiveTab('request')}
-                    requests={clientRequests}
-                    onNavigateToChat={() => setActiveTab('chat')}
-                    isCompact={false}
-                  />
-                ) : (
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-[#EEF4FA] rounded-full flex items-center justify-center">
-                      <FileText className="w-8 h-8 text-[#1E3A5F]" />
-                    </div>
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 확인 내역이 없습니다</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      "내 채무 상황 체크하기"를 통해 나의 채무 현황을 확인해 보세요.
-                    </p>
-                    <button
-                      onClick={() => setActiveTab('request')}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg transition-all"
-                    >
-                      채무 상황 체크하기
-                    </button>
+              <TabErrorBoundary tabName="마이페이지" onNavigateHome={() => setActiveTab('landing')}>
+                <React.Suspense fallback={
+                  <div className="max-w-5xl mx-auto py-12 space-y-6 animate-pulse text-left">
+                    <div className="h-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6"></div>
+                    <div className="h-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6"></div>
                   </div>
-                )}
+                }>
+                  <div className="space-y-6">
+                    {activeRequest?.financialProfile ? (
+                      <MyPageView
+                        userAlias={userAlias}
+                        setUserAlias={setUserAlias}
+                        isEditingAlias={isEditingAlias}
+                        setIsEditingAlias={setIsEditingAlias}
+                        tempAlias={tempAlias}
+                        setTempAlias={setTempAlias}
+                        activeRequest={activeRequest}
+                        activeResult={activeResult}
+                        onUpdateFinancialProfile={handleUpdateFinancialProfile}
+                        onStartDiagnosis={() => setActiveTab('request')}
+                        requests={clientRequests}
+                        onNavigateToChat={() => setActiveTab('chat')}
+                        isCompact={false}
+                      />
+                    ) : (
+                      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">
+                        <div className="w-16 h-16 mx-auto bg-[#EEF4FA] rounded-full flex items-center justify-center">
+                          <FileText className="w-8 h-8 text-[#1E3A5F]" />
+                        </div>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-white">아직 확인 내역이 없습니다</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          "내 채무 상황 체크하기"를 통해 나의 채무 현황을 확인해 보세요.
+                        </p>
+                        <button
+                          onClick={() => setActiveTab('request')}
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E3A5F] hover:bg-[#163152] text-white font-bold rounded-lg transition-all"
+                        >
+                          채무 상황 체크하기
+                        </button>
+                      </div>
+                    )}
 
-                {/* 계정 설정 */}
-                <MySettingsView
-                  isLoggedIn={isLoggedIn}
-                  userAlias={userAlias}
-                  setUserAlias={setUserAlias}
-                  isEditingAlias={isEditingAlias}
-                  setIsEditingAlias={setIsEditingAlias}
-                  tempAlias={tempAlias}
-                  setTempAlias={setTempAlias}
-                  inquiries={inquiries}
-                  onNavigateToTab={setActiveTab}
-                  onShowAuthModal={() => setShowAuthModal(true)}
-                  onLogout={async () => {
-                    await purgeClientSession();
-                    setIsLoggedIn(false);
-                    setUserAlias('');
-                    
-                    // 로컬 상태만 초기화 (Supabase 데이터는 보존 - 다시 로그인하면 복원됨)
-                    setRequests([]);
-                    setMessages([]);
-                    setInquiries([]);
-                    
-                    setShowLogoutSuccessModal(true);
-                    setActiveTab('landing');
-                  }}
-                />
-              </div>
+                    {/* 계정 설정 */}
+                    <MySettingsView
+                      isLoggedIn={isLoggedIn}
+                      userAlias={userAlias}
+                      setUserAlias={setUserAlias}
+                      isEditingAlias={isEditingAlias}
+                      setIsEditingAlias={setIsEditingAlias}
+                      tempAlias={tempAlias}
+                      setTempAlias={setTempAlias}
+                      inquiries={inquiries}
+                      onNavigateToTab={setActiveTab}
+                      onShowAuthModal={() => setShowAuthModal(true)}
+                      onLogout={async () => {
+                        await purgeClientSession();
+                        setIsLoggedIn(false);
+                        setUserAlias('');
+                        
+                        // 로컬 상태만 초기화 (Supabase 데이터는 보존 - 다시 로그인하면 복원됨)
+                        setRequests([]);
+                        setMessages([]);
+                        setInquiries([]);
+                        
+                        setShowLogoutSuccessModal(true);
+                        setActiveTab('landing');
+                      }}
+                    />
+                  </div>
+                </React.Suspense>
+              </TabErrorBoundary>
             )}
 
             {/* TAB: 내 관리방 (3-Zone: 채무대시보드 + 변호사선택 + 채팅) */}

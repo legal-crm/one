@@ -67,9 +67,11 @@ export default function MyPageView({
   // 모든 상담 요청에 포함된 변호사 제안서 취합
   const allProposals = useMemo(() => {
     const list: { req: ConsultRequest; proposal: ConsultProposal }[] = [];
-    const reqs = (requests && requests.length > 0) ? requests : (activeRequest ? [activeRequest] : []);
+    const reqs = (Array.isArray(requests) && requests.length > 0) ? requests : (activeRequest ? [activeRequest] : []);
     reqs.forEach(r => {
+      if (!r) return;
       (r.proposals || []).forEach(p => {
+        if (!p) return;
         list.push({ req: r, proposal: p });
       });
     });
@@ -542,12 +544,14 @@ export default function MyPageView({
         const reqId = activeRequest?.id || requests[0]?.id;
         const crmExt = reqId ? (getCrmData()[reqId] || null) : null;
         const currentStatus: CrmStatus = crmExt?.crmStatus || 'requested';
-        const feeSchedule: FeeInstallment[] = crmExt?.feeSchedule || [];
+        const feeSchedule: FeeInstallment[] = Array.isArray(crmExt?.feeSchedule) ? crmExt.feeSchedule : [];
         const totalFee: number = crmExt?.totalFee || 0;
-        const checklist: DocumentCheckItem[] = crmExt?.documents || [];
-        const uploadedFiles: DocumentFile[] = crmExt?.uploadedFiles || [];
-        const docRequests: DocumentRequest[] = crmExt?.documentRequests || [];
-        const totalPaid = feeSchedule.filter((f: FeeInstallment) => f.status === 'paid').reduce((s: number, f: FeeInstallment) => s + f.amount, 0);
+        const checklist: DocumentCheckItem[] = Array.isArray(crmExt?.documents) ? crmExt.documents : [];
+        const uploadedFiles: DocumentFile[] = Array.isArray(crmExt?.uploadedFiles) ? crmExt.uploadedFiles : [];
+        const docRequests: DocumentRequest[] = Array.isArray(crmExt?.documentRequests) ? crmExt.documentRequests : [];
+        const totalPaid = feeSchedule
+          .filter((f: FeeInstallment) => f && f.status === 'paid')
+          .reduce((s: number, f: FeeInstallment) => s + (f.amount || 0), 0);
 
         const handleFileUpload = async (files: FileList | null, linkedDocId?: string) => {
           if (!files || files.length === 0 || !reqId) return;
@@ -662,7 +666,7 @@ export default function MyPageView({
               <div className="space-y-3">
                 {checklist.map(item => {
                   const status = item.reviewStatus || 'not_submitted';
-                  const config = DOC_REVIEW_STATUS_CONFIG[status];
+                  const config = DOC_REVIEW_STATUS_CONFIG[status] || DOC_REVIEW_STATUS_CONFIG.not_submitted;
                   return (
                     <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl border border-slate-150 bg-slate-50/30">
                       <div className="flex-1 min-w-0">
@@ -822,7 +826,8 @@ export default function MyPageView({
                 {/* 로펌 입금 계좌 안내 및 원클릭 복사 */}
                 {(() => {
                   const feeSettings = loadFeeNotificationSettings();
-                  const { bankName, accountNumber, accountHolder } = feeSettings.bankInfo;
+                  const bankInfo = feeSettings?.bankInfo || { bankName: '신한은행', accountNumber: '110-542-897612', accountHolder: '법무법인 로앤' };
+                  const { bankName = '신한은행', accountNumber = '110-542-897612', accountHolder = '법무법인 로앤' } = bankInfo;
                   const fullAccount = `${bankName} ${accountNumber} (${accountHolder})`;
                   return (
                     <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">

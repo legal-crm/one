@@ -46,8 +46,9 @@ export default function MySettingsView({
   }, [isLoggedIn]);
 
   // Filter inquiries related to the current user's alias
-  const myInquiries = inquiries.filter(
-    (inq) => inq.clientName === userAlias && userAlias !== ''
+  const safeInquiries = Array.isArray(inquiries) ? inquiries : [];
+  const myInquiries = safeInquiries.filter(
+    (inq) => inq && inq.clientName === userAlias && userAlias !== ''
   );
 
   return (

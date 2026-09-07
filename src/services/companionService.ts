@@ -125,15 +125,29 @@ function createDefaultCompanionCase(): RehabCompanionCase {
 
 // 회생동행 사건 불러오기
 export function loadRehabCompanionCase(): RehabCompanionCase {
+  const defaultCase = createDefaultCompanionCase();
   try {
     const raw = localStorage.getItem(COMPANION_STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...defaultCase,
+          ...parsed,
+          cashflow: {
+            ...defaultCase.cashflow,
+            ...(parsed.cashflow || {})
+          },
+          schedules: Array.isArray(parsed.schedules) && parsed.schedules.length > 0
+            ? parsed.schedules
+            : defaultCase.schedules,
+          documents: Array.isArray(parsed.documents) ? parsed.documents : defaultCase.documents,
+        };
+      }
     }
   } catch (err) {
     console.error('Error loading companion case:', err);
   }
-  const defaultCase = createDefaultCompanionCase();
   saveRehabCompanionCase(defaultCase);
   return defaultCase;
 }
@@ -836,13 +850,6 @@ export function getRecommendedBenefits(
 
 // 파산 전용 케이스 불러오기 및 기본값 시딩
 export function loadBankruptcyCase(): BankruptcyCompanionCase {
-  try {
-    const raw = localStorage.getItem(BANKRUPTCY_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (err) {
-    console.error('Error loading bankruptcy case:', err);
-  }
-
   const defaultBankruptcy: BankruptcyCompanionCase = {
     id: 'bankrupt-demo-001',
     alias: '새출발2026',
@@ -902,6 +909,25 @@ export function loadBankruptcyCase(): BankruptcyCompanionCase {
     notificationLevel: 'basic',
     createdAt: '2025-11-10T00:00:00Z',
   };
+
+  try {
+    const raw = localStorage.getItem(BANKRUPTCY_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...defaultBankruptcy,
+          ...parsed,
+          timelines: Array.isArray(parsed.timelines) && parsed.timelines.length > 0
+            ? parsed.timelines
+            : defaultBankruptcy.timelines,
+          documents: Array.isArray(parsed.documents) ? parsed.documents : defaultBankruptcy.documents,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Error loading bankruptcy case:', err);
+  }
 
   try {
     localStorage.setItem(BANKRUPTCY_STORAGE_KEY, JSON.stringify(defaultBankruptcy));

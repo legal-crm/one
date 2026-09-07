@@ -27,11 +27,15 @@ export default function CompanionDashboard({
   onUpdateCashflow,
   onNavigateToSupport
 }: CompanionDashboardProps) {
+  const schedules = Array.isArray(caseData?.schedules) ? caseData.schedules : [];
+
   // 이번 달 납부 예정 회차 찾기
-  const nextRoundIndex = caseData.schedules.findIndex(
+  const nextRoundIndex = schedules.findIndex(
     s => !['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(s.status)
   );
-  const currentTargetRound = nextRoundIndex >= 0 ? caseData.schedules[nextRoundIndex] : caseData.schedules[caseData.schedules.length - 1];
+  const currentTargetRound = nextRoundIndex >= 0 
+    ? schedules[nextRoundIndex] 
+    : (schedules.length > 0 ? schedules[schedules.length - 1] : undefined);
 
   // D-Day 계산
   const calculateDday = (dueDateStr?: string): number => {
@@ -44,27 +48,37 @@ export default function CompanionDashboard({
   const dDay = calculateDday(currentTargetRound?.dueDate);
 
   // 통계 계산
-  const totalRounds = caseData.totalRounds || 36;
-  const completedCount = caseData.schedules.filter(s => 
+  const totalRounds = caseData?.totalRounds || 36;
+  const completedCount = schedules.filter(s => 
     ['court_confirmed', 'receipt_uploaded', 'self_marked'].includes(s.status)
   ).length;
   const progressPercent = totalRounds > 0 ? ((completedCount / totalRounds) * 100).toFixed(1) : '0';
 
-  const courtConfirmedCount = caseData.schedules.filter(s => s.status === 'court_confirmed').length;
-  const receiptCount = caseData.schedules.filter(s => s.status === 'receipt_uploaded').length;
-  const selfMarkedCount = caseData.schedules.filter(s => s.status === 'self_marked').length;
-  const checkNeededCount = caseData.schedules.filter(s => s.status === 'overdue_check_needed').length;
+  const courtConfirmedCount = schedules.filter(s => s.status === 'court_confirmed').length;
+  const receiptCount = schedules.filter(s => s.status === 'receipt_uploaded').length;
+  const selfMarkedCount = schedules.filter(s => s.status === 'self_marked').length;
+  const checkNeededCount = schedules.filter(s => s.status === 'overdue_check_needed').length;
 
-  const totalScheduledAmount = totalRounds * caseData.monthlyRepaymentAmount;
-  const totalConfirmedPaidAmount = completedCount * caseData.monthlyRepaymentAmount;
+  const monthlyRepaymentAmount = caseData?.monthlyRepaymentAmount || 500000;
+  const totalScheduledAmount = totalRounds * monthlyRepaymentAmount;
+  const totalConfirmedPaidAmount = completedCount * monthlyRepaymentAmount;
   const totalRemainingAmount = Math.max(0, totalScheduledAmount - totalConfirmedPaidAmount);
 
   // 30일 생계 밸런서 계산
-  const { monthlyIncome, essentialLivingCost, repaymentAmount, otherFixedExpenses } = caseData.cashflow;
+  const cashflow = caseData?.cashflow || {
+    monthlyIncome: 2500000,
+    essentialLivingCost: 1500000,
+    repaymentAmount: monthlyRepaymentAmount,
+    otherFixedExpenses: 300000,
+  };
+  const monthlyIncome = cashflow.monthlyIncome ?? 2500000;
+  const essentialLivingCost = cashflow.essentialLivingCost ?? 1500000;
+  const repaymentAmount = cashflow.repaymentAmount ?? monthlyRepaymentAmount;
+  const otherFixedExpenses = cashflow.otherFixedExpenses ?? 300000;
   const expectedSurplus = monthlyIncome - (essentialLivingCost + repaymentAmount + otherFixedExpenses);
 
   // 미납 및 폐지 위험도 진단
-  const overdueRisk = evaluateOverdueRisk(caseData);
+  const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
 
   // 대법원 사건검색 딥링크
   const courtDeepLink = getCourtSearchDeepLink(caseData.courtName, caseData.caseNumber);
@@ -359,7 +373,7 @@ export default function CompanionDashboard({
 
         {/* 캘린더 그리드 (6열 or 12열 반응형) */}
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2.5">
-          {caseData.schedules.map((item) => {
+          {schedules.map((item) => {
             const isCourt = item.status === 'court_confirmed';
             const isReceipt = item.status === 'receipt_uploaded';
             const isSelf = item.status === 'self_marked';
