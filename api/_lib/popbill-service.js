@@ -5,10 +5,11 @@ import popbill from 'popbill';
 
 // 팝빌 설정 초기화
 popbill.config({
-  LinkID: process.env.POPBILL_LINK_ID || '',
+  LinkID: process.env.POPBILL_LINK_ID || 'MONSTERLAB',
   SecretKey: process.env.POPBILL_SECRET_KEY || '',
-  IsTest: process.env.POPBILL_IS_TEST === 'true',
-  IPRestrictOnOff: true,
+  // 테스트 환경(test.popbill.com) 기본 활성화 (운영 전환 시 Vercel에서 POPBILL_IS_TEST='false'로 지정)
+  IsTest: process.env.POPBILL_IS_TEST !== 'false',
+  IPRestrictOnOff: false, // Vercel 서버리스 유동 IP 환경 대응
   UseStaticIP: false,
   UseLocalTimeYN: true,
   defaultErrorHandler: (err) => {
@@ -25,18 +26,18 @@ export const SUPPLIER_INFO = {
   bizClass: '소프트웨어 개발 및 공급',
   addr: '',                     // 필요 시 추가
   contactName: '진성호',
-  contactEmail: process.env.POPBILL_CONTACT_EMAIL || '',
-  contactTEL: process.env.POPBILL_CONTACT_TEL || process.env.POPBILL_SENDER_PHONE || '',
+  contactEmail: process.env.POPBILL_CONTACT_EMAIL || '2882@daum.net',
+  contactTEL: process.env.POPBILL_CONTACT_TEL || process.env.POPBILL_SENDER_PHONE || '01026060357',
 };
 
 // 팝빌 카카오/문자 연동 통합 설정
 export const POPBILL_CONFIG = {
   corpNum: process.env.POPBILL_CORP_NUM || SUPPLIER_INFO.corpNum,
-  userId: process.env.POPBILL_USER_ID || 'monsterlab',
-  plusFriendId: process.env.POPBILL_PLUS_FRIEND_ID || '@mykim',
-  senderPhone: process.env.POPBILL_SENDER_PHONE || process.env.POPBILL_CONTACT_TEL || SUPPLIER_INFO.contactTEL || '1544-0000',
-  isConfigured: Boolean(process.env.POPBILL_LINK_ID && process.env.POPBILL_SECRET_KEY),
-  isTest: process.env.POPBILL_IS_TEST === 'true',
+  userId: process.env.POPBILL_USER_ID || 'mykim99',
+  plusFriendId: process.env.POPBILL_PLUS_FRIEND_ID || '@마이김변',
+  senderPhone: process.env.POPBILL_SENDER_PHONE || process.env.POPBILL_CONTACT_TEL || SUPPLIER_INFO.contactTEL || '01026060357',
+  isConfigured: Boolean((process.env.POPBILL_LINK_ID || 'MONSTERLAB') && (process.env.POPBILL_SECRET_KEY || '')),
+  isTest: process.env.POPBILL_IS_TEST !== 'false',
 };
 
 // 서비스 인스턴스
