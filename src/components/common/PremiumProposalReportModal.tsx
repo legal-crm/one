@@ -16,11 +16,6 @@ import {
   formatCurrency, 
   calculateCurrentMonthlyBurden 
 } from '../../rehab-chatbot-package/services/calculationService';
-import { 
-  DonutChart, 
-  AnimatedProgress, 
-  CountUp 
-} from '../../rehab-chatbot-package/components/rehab/animations/ReportAnimations';
 import { ProcedureTimeline } from '../../rehab-chatbot-package/components/rehab/ProcedureTimeline';
 import PrintableReportTemplate from '../client/PrintableReportTemplate';
 
@@ -53,6 +48,7 @@ export interface PremiumReportData {
     isInstallmentAvailable: boolean;
   };
   lawyerComment?: string;
+  lawyerOpinion?: string;
   proposalId?: string;
   createdAt?: string;
   expiresAt?: string;
@@ -62,24 +58,38 @@ export interface PremiumReportData {
   recommendedStrategy?: string;
 }
 
-interface PremiumProposalReportModalProps {
+export interface PremiumProposalReportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  reportData: PremiumReportData;
+  reportData?: PremiumReportData;
+  proposal?: any;
+  clientInfo?: any;
+  userInput?: RehabUserInput;
+  calcResult?: RehabCalculationResult;
   reportId?: string;
   onAcceptProposal?: (proposalId: string) => void;
   onRejectProposal?: (proposalId: string) => void;
   onContactLawyer?: (lawyerInfo: any) => void;
+  onAppointLawyer?: () => void;
+  isClientViewer?: boolean;
+  isAppointed?: boolean;
+  embedded?: boolean;
 }
 
 export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProps> = ({
   isOpen,
   onClose,
   reportData,
+  proposal: proposalProp,
+  clientInfo,
+  userInput: userInputProp,
+  calcResult: calcResultProp,
   reportId = `RPT-${Date.now()}`,
   onAcceptProposal,
   onRejectProposal,
-  onContactLawyer
+  onContactLawyer,
+  onAppointLawyer,
+  embedded = false
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'roadmap'>('overview');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -87,18 +97,19 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
   // Close on Escape key
   useEffect(() => {
+    if (!isOpen || embedded) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, embedded, onClose]);
 
   // Lock body scroll when modal open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !embedded) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -106,83 +117,170 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, embedded]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !embedded) return null;
 
-  const proposal = reportData?.diagnosis || ({} as any);
-  const lawyer = reportData?.lawyerInfo || {
-    name: '김회생 변호사',
-    firmName: '법무법인 케어',
-    avatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=200',
-    phone: '02-1234-5678'
-  };
+  // 1. Unify and normalize props across reportData & proposal & clientInfo
+  const lawyerName = 
+    reportData?.lawyerInfo?.name || 
+    proposalProp?.attorneyReview?.reviewerName || 
+    proposalProp?.lawyerName || 
+    proposalProp?.lawyer?.name || 
+    '김회생 변호사';
 
-  // Helper to normalize values in 원 (KRW).
-  // If a value is < 10,000 and > 0, it was provided in 만원 (e.g. 40 -> 400,000, 160 -> 1,600,000).
+  const lawyerFirmName = 
+    reportData?.lawyerInfo?.firmName || 
+    proposalProp?.attorneyReview?.firmName || 
+    proposalProp?.firmName || 
+    proposalProp?.lawyer?.firmName || 
+    '법무법인 케어';
+
+  const lawyerAvatar = 
+    reportData?.lawyerInfo?.avatar || 
+    proposalProp?.lawyerAvatar || 
+    proposalProp?.lawyer?.avatar || 
+    'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=200';
+
+  const lawyerPhone = 
+    reportData?.lawyerInfo?.phone || 
+    proposalProp?.lawyerPhone || 
+    proposalProp?.lawyer?.phone || 
+    '02-1234-5678';
+
+  const clientName = 
+    reportData?.clientName || 
+    proposalProp?.clientName || 
+    clientInfo?.clientName || 
+    clientInfo?.name || 
+    '의뢰인';
+
+  const rawCourt = 
+    reportData?.diagnosis?.court || 
+    proposalProp?.diagnosis?.court || 
+    proposalProp?.court || 
+    clientInfo?.court || 
+    '서울회생법원';
+  const courtName = rawCourt.includes('법원') ? rawCourt : `${rawCourt}회생법원`;
+
+  // Currency normalizer:
+  // If a value is < 10,000 and > 0, it was entered in '만원' (e.g. 40 -> 400,000, 160 -> 1,600,000).
   const normalizeToWon = (val: number | undefined | null): number => {
     if (!val || isNaN(val)) return 0;
     return val < 10000 ? Math.round(val * 10000) : Math.round(val);
   };
 
-  const calculationResult = reportData?.calculationResult;
-  const clientInput = reportData?.clientInput;
+  const rawTotalDebt = 
+    reportData?.diagnosis?.totalDebt ?? 
+    proposalProp?.diagnosis?.totalDebt ?? 
+    proposalProp?.totalDebt ?? 
+    clientInfo?.totalDebt ?? 
+    clientInfo?.financialProfile?.debtTotal ?? 
+    85000000;
 
-  const monthlyPayment = normalizeToWon(proposal.monthlyPayment || calculationResult?.monthlyPayment || 0);
-  const repaymentMonths = proposal.repaymentMonths || calculationResult?.repaymentMonths || 36;
+  const rawMonthlyPayment = 
+    reportData?.diagnosis?.monthlyPayment ?? 
+    proposalProp?.diagnosis?.monthlyPayment ?? 
+    proposalProp?.monthlyPayment ?? 
+    clientInfo?.monthlyPayment ?? 
+    400000;
+
+  const repaymentMonths = 
+    reportData?.diagnosis?.repaymentMonths || 
+    proposalProp?.diagnosis?.repaymentMonths || 
+    proposalProp?.repaymentMonths || 
+    clientInfo?.repaymentMonths || 
+    36;
+
+  const rawEstimatedReduction = 
+    reportData?.diagnosis?.estimatedReduction ?? 
+    proposalProp?.diagnosis?.estimatedReduction ?? 
+    proposalProp?.estimatedReduction;
+
+  const rawDebtReductionRate = 
+    reportData?.diagnosis?.debtReductionRate ?? 
+    proposalProp?.diagnosis?.debtReductionRate ?? 
+    proposalProp?.debtReductionRate ?? 
+    0;
+
+  const totalDebt = normalizeToWon(rawTotalDebt);
+  const monthlyPayment = normalizeToWon(rawMonthlyPayment);
   const totalRepaymentCalculated = monthlyPayment * repaymentMonths;
-  const totalDebt = normalizeToWon(proposal.totalDebt || calculationResult?.totalDebt || 0);
-  const estimatedReduction = Math.max(0, totalDebt - totalRepaymentCalculated);
+  const estimatedReduction = rawEstimatedReduction !== undefined && rawEstimatedReduction > 0
+    ? normalizeToWon(rawEstimatedReduction)
+    : Math.max(0, totalDebt - totalRepaymentCalculated);
+
   const debtReductionRate = totalDebt > 0 
     ? Math.min(100, Math.max(0, Math.round((estimatedReduction / totalDebt) * 100))) 
-    : (proposal.debtReductionRate || 0);
+    : (rawDebtReductionRate || 0);
 
-  const fees = reportData?.fees || {
-    totalFee: 0,
-    downPayment: 0,
-    installments: 0,
-    monthlyInstallment: 0,
-    courtDeposit: 0,
-    isInstallmentAvailable: true
-  };
+  // Fees
+  const rawFees = reportData?.fees || proposalProp?.fees || proposalProp || {};
+  const rawTotalFee = rawFees.totalFee ?? proposalProp?.totalFee ?? proposalProp?.fee ?? 1600000;
+  const rawDownPayment = rawFees.downPayment ?? proposalProp?.downPayment ?? 400000;
+  const rawMonthlyInstallment = rawFees.monthlyInstallment ?? proposalProp?.monthlyInstallment ?? 300000;
+  const rawCourtDeposit = rawFees.courtDeposit ?? proposalProp?.courtDeposit ?? 0;
+  const installments = rawFees.installments ?? proposalProp?.installments ?? 4;
+  const additionalCostsNotice = rawFees.additionalCostsNotice || proposalProp?.additionalCostsNotice || proposalProp?.feeMemo;
 
-  const totalFeeWon = normalizeToWon(fees.totalFee);
-  const downPaymentWon = normalizeToWon(fees.downPayment);
-  const monthlyInstallmentWon = normalizeToWon(fees.monthlyInstallment);
-  const courtDepositWon = normalizeToWon(fees.courtDeposit);
+  const totalFeeWon = normalizeToWon(rawTotalFee);
+  const downPaymentWon = normalizeToWon(rawDownPayment);
+  const monthlyInstallmentWon = normalizeToWon(rawMonthlyInstallment);
+  const courtDepositWon = normalizeToWon(rawCourtDeposit);
 
-  // Financial calculations
+  // Lawyer Opinion and Special Notes
+  const lawyerComment = 
+    reportData?.lawyerComment || 
+    reportData?.lawyerOpinion || 
+    proposalProp?.lawyerComment || 
+    proposalProp?.lawyerOpinion || 
+    proposalProp?.opinion || 
+    proposalProp?.remark || 
+    '의뢰인님의 현재 소득 대비 부양가족 생계비와 채무 구조를 면밀히 분석한 결과, 개인회생 개시 요건을 충분히 갖추고 계십니다. 신청서 접수 즉시 금지·중지명령을 통해 빚 독촉과 압류를 원천 차단하고, 최적화된 변제계획안으로 인가 결정을 이끌어내겠습니다.';
+
+  const specialNotes: string[] = 
+    reportData?.specialNotes || 
+    proposalProp?.specialNotes || [
+      '신청 접수 후 3~7일 이내 금지명령 결정을 목표로 신속 착수합니다.',
+      '최근 대출금 사용처 소명 자료(금융거래내역 등) 준비를 전담 지원합니다.',
+      '개시결정 시까지 법원 보정권고에 대해 전담 변호사가 직접 대응합니다.'
+    ];
+
+  const proposalId = 
+    reportData?.proposalId || 
+    proposalProp?.id || 
+    proposalProp?.proposalId;
+
+  // Calculation Result Fallback
+  const clientInput = reportData?.clientInput || userInputProp;
+  const calculationResult = reportData?.calculationResult || calcResultProp;
+
   const activeCalcResult: RehabCalculationResult = useMemo(() => {
     if (calculationResult && calculationResult.totalDebt) {
       return calculationResult;
     }
-    const debtWon = totalDebt;
-    const paymentWon = monthlyPayment;
-    const months = repaymentMonths;
-    const reductionWon = estimatedReduction;
-    const rate = debtReductionRate;
     const currentBurden = clientInput 
       ? calculateCurrentMonthlyBurden(clientInput.debtAmount, clientInput.monthlyIncome)
-      : Math.round(debtWon * 0.04);
+      : Math.round(totalDebt * 0.04);
 
     return {
-      monthlyPayment: paymentWon,
-      totalPayment: paymentWon * months,
-      repaymentMonths: months,
-      reductionRate: rate,
-      reductionAmount: reductionWon,
-      totalDebt: debtWon,
+      monthlyPayment: monthlyPayment,
+      totalPayment: totalRepaymentCalculated,
+      repaymentMonths: repaymentMonths,
+      reductionRate: debtReductionRate,
+      reductionAmount: estimatedReduction,
+      totalDebt: totalDebt,
       currentMonthlyBurden: currentBurden,
-      court: proposal.court || '서울회생법원',
-      status: (proposal.status as any) || 'safe',
-      reasons: proposal.statusReason ? [proposal.statusReason] : [],
+      court: courtName,
+      status: 'safe',
+      reasons: [],
       eligibleProcedures: ['individual_rehabilitation'],
       monthlyIncome: normalizeToWon(clientInput?.monthlyIncome) || 2800000,
       recognizedLivingCost: normalizeToWon(clientInput?.monthlyIncome ? Math.round(clientInput.monthlyIncome * 0.6) : 1500000),
       dependentsCount: clientInput?.dependentsCount || 1,
       liquidationValue: 0
     };
-  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, proposal]);
+  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName]);
 
   // PDF Export
   const handleExportPDF = async () => {
@@ -222,7 +320,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         heightLeft -= pageHeight;
       }
 
-      const fileName = `회생진단서_${reportData.clientName || '의뢰인'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const fileName = `회생진단서_${clientName || '의뢰인'}_${new Date().toISOString().slice(0, 10)}.pdf`;
       pdf.save(fileName);
       toast.success('진단서 PDF가 다운로드되었습니다.', { id: toastId });
     } catch (error) {
@@ -235,7 +333,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
   const printableData = {
     client: {
-      name: reportData.clientName || '의뢰인',
+      name: clientName,
       monthlyIncome: activeCalcResult.monthlyIncome,
       dependentsCount: activeCalcResult.dependentsCount || 1,
       totalDebt: totalDebt,
@@ -243,38 +341,49 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       totalAssets: clientInput?.totalAssets ? normalizeToWon(clientInput.totalAssets) : 0,
     },
     lawyer: {
-      name: lawyer.name,
-      firmName: lawyer.firmName || '법률사무소',
-      phone: lawyer.phone || '02-1234-5678',
+      name: lawyerName,
+      firmName: lawyerFirmName,
+      phone: lawyerPhone,
       address: '서울특별시 서초구 서초대로 250',
     },
     diagnosis: {
-      status: proposal.status || 'safe',
-      court: proposal.court || '서울회생법원',
+      status: 'safe',
+      court: courtName,
       monthlyPayment: monthlyPayment,
       repaymentMonths: repaymentMonths,
       totalRepayment: totalRepaymentCalculated,
       reductionAmount: estimatedReduction,
       reductionRate: debtReductionRate,
       livingCost: activeCalcResult.recognizedLivingCost,
-      opinion: reportData.lawyerComment || '의뢰인의 소득과 부양가족 수를 고려하여 산정된 최적의 변제계획입니다. 개시결정까지 신속하고 체계적인 법률 조력을 약속드립니다.',
-      notes: reportData.specialNotes || [],
+      opinion: lawyerComment,
+      notes: specialNotes,
     },
     fees: {
       totalFee: totalFeeWon,
       downPayment: downPaymentWon,
-      installments: fees.installments || 0,
+      installments: installments,
       monthlyInstallment: monthlyInstallmentWon,
       courtDeposit: courtDepositWon,
-      additionalNotice: fees.additionalCostsNotice || '인지대, 송달료, 부채증명발급 등 법원 공과금 실비 포함 여부는 최종 수임계약 시 확인됩니다.',
+      additionalNotice: additionalCostsNotice || '인지대, 송달료, 부채증명발급 등 법원 공과금 실비 포함 여부는 최종 수임계약 시 확인됩니다.',
     },
+  };
+
+  const handleAccept = () => {
+    if (onAcceptProposal && proposalId) {
+      onAcceptProposal(proposalId);
+    } else if (onAppointLawyer) {
+      onAppointLawyer();
+    } else {
+      toast.success('수임 제안이 수락되었습니다. 변호사가 곧 연락드립니다.');
+      onClose();
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       {/* 
         OFF-SCREEN PRINTABLE CONTAINER FOR PDF GENERATION
-        Crucial: Kept off-screen with -99999px position to prevent visual bleed behind modal.
+        Kept off-screen with -99999px position to prevent visual bleed behind modal.
       */}
       <div 
         id="pdf-render-container" 
@@ -311,8 +420,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
             <div className="flex items-center gap-4">
               <div className="relative">
                 <img 
-                  src={lawyer.avatar || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=200'} 
-                  alt={lawyer.name} 
+                  src={lawyerAvatar} 
+                  alt={lawyerName} 
                   className="w-13 h-13 rounded-full object-cover ring-2 ring-emerald-500/50 shadow-md"
                 />
                 <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-slate-950 p-0.5 rounded-full ring-2 ring-slate-950">
@@ -331,11 +440,11 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   </span>
                 </div>
                 <h2 id="report-modal-title" className="text-lg sm:text-xl font-black text-white mt-1 flex items-center gap-2">
-                  <span>{lawyer.name}</span>
-                  <span className="text-sm font-normal text-slate-400">· {lawyer.firmName}</span>
+                  <span>{lawyerName}</span>
+                  <span className="text-sm font-normal text-slate-400">· {lawyerFirmName}</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  수신: <span className="text-slate-200 font-semibold">{reportData.clientName || '의뢰인'}</span> 님 귀하 | 관할: <span className="text-slate-200 font-semibold">{proposal.court || '서울회생법원'}</span>
+                  수신: <span className="text-slate-200 font-semibold">{clientName}</span> 님 귀하 | 관할: <span className="text-slate-200 font-semibold">{courtName}</span>
                 </p>
               </div>
             </div>
@@ -517,25 +626,22 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   <div className="flex-1">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <h3 className="text-base font-bold text-slate-900">
-                        {lawyer.name} 변호사의 전문 종합 소견
+                        {lawyerName} 변호사의 전문 종합 소견
                       </h3>
                       <span className="text-xs font-medium text-slate-500">
-                        진단 기준 법원: {proposal.court || '서울회생법원'}
+                        진단 기준 법원: {courtName}
                       </span>
                     </div>
 
                     <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 leading-relaxed">
-                      {reportData.lawyerComment || (
-                        '의뢰인님의 현재 소득 대비 부양가족 생계비와 채무 구조를 면밀히 분석한 결과, 개인회생 개시 요건을 충분히 갖추고 계십니다. ' +
-                        '신청서 접수 즉시 금지·중지명령을 통해 빚 독촉과 압류를 원천 차단하고, 최적화된 변제계획안으로 인가 결정을 이끌어내겠습니다.'
-                      )}
+                      {lawyerComment}
                     </div>
 
-                    {reportData.specialNotes && reportData.specialNotes.length > 0 && (
+                    {specialNotes && specialNotes.length > 0 && (
                       <div className="mt-4 space-y-2">
                         <div className="text-xs font-bold text-slate-700">📌 사건 진행 시 핵심 주의사항</div>
                         <ul className="space-y-1.5">
-                          {reportData.specialNotes.map((note, idx) => (
+                          {specialNotes.map((note, idx) => (
                             <li key={idx} className="text-xs text-slate-600 flex items-start gap-2">
                               <span className="text-emerald-500 font-bold mt-0.5">•</span>
                               <span>{note}</span>
@@ -700,7 +806,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     <p className="text-xs text-slate-500">숨겨진 추가 비용 없이 계약서에 명시되는 확정 수임료 체계입니다.</p>
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    최대 {fees.installments || 4}개월 분납 가능
+                    최대 {installments}개월 분납 가능
                   </span>
                 </div>
 
@@ -723,7 +829,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
                   <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
                     <div className="text-xs text-emerald-700 font-medium">
-                      월 분납액 ({fees.installments || 0}회 분할)
+                      월 분납액 ({installments}회 분할)
                     </div>
                     <div className="text-xl font-black text-emerald-800 mt-1">
                       {formatCurrency(monthlyInstallmentWon)}
@@ -740,7 +846,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 )}
 
                 <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-                  * {fees.additionalCostsNotice || '법원 예납비용 및 송달료 실비는 채권자 수에 따라 결정되며, 추가 수임료 요구는 일체 없습니다.'}
+                  * {additionalCostsNotice || '법원 예납비용 및 송달료 실비는 채권자 수에 따라 결정되며, 추가 수임료 요구는 일체 없습니다.'}
                 </p>
               </div>
 
@@ -765,9 +871,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            {lawyer.phone && (
+            {lawyerPhone && (
               <a
-                href={`tel:${lawyer.phone}`}
+                href={`tel:${lawyerPhone}`}
                 className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto"
               >
                 <Phone className="w-4 h-4 text-emerald-600" />
@@ -777,7 +883,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
             {onContactLawyer && (
               <button
-                onClick={() => onContactLawyer(lawyer)}
+                onClick={() => onContactLawyer({ name: lawyerName, firmName: lawyerFirmName, phone: lawyerPhone })}
                 className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto shadow-sm"
               >
                 <MessageSquare className="w-4 h-4" />
@@ -785,9 +891,9 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               </button>
             )}
 
-            {onAcceptProposal && reportData.proposalId && (
+            {(onAcceptProposal || onAppointLawyer) && (
               <button
-                onClick={() => onAcceptProposal(reportData.proposalId!)}
+                onClick={handleAccept}
                 className="flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold transition active:scale-[0.98] w-full sm:w-auto shadow-md shadow-emerald-600/20"
               >
                 <CheckCircle2 className="w-4 h-4" />
