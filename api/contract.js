@@ -31,8 +31,8 @@ const CURRENT_CHAIN = IS_MAINNET ? polygon : polygonAmoy;
 const NETWORK_NAME = IS_MAINNET ? 'Polygon PoS Mainnet (EVM-137)' : 'Polygon Amoy Testnet (EVM-80002)';
 const EXPLORER_BASE = IS_MAINNET ? 'https://polygonscan.com' : 'https://amoy.polygonscan.com';
 const RPC_URL = IS_MAINNET 
-  ? (process.env.POLYGON_MAINNET_RPC || 'https://polygon-rpc.com')
-  : (process.env.POLYGON_AMOY_RPC || 'https://rpc-amoy.polygon.technology');
+  ? (process.env.POLYGON_MAINNET_RPC || 'https://polygon.drpc.org')
+  : (process.env.POLYGON_AMOY_RPC || 'https://polygon-amoy.drpc.org');
 
 // 공인 스마트 컨트랙트 또는 공증 주소
 const NOTARY_ADDRESS = process.env.POLYGON_NOTARY_CONTRACT || '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1';
