@@ -13,6 +13,7 @@ import {
 import { 
   mockLawyers, 
   initialConsultRequests, 
+  mockTestProposals,
   initialConsultMessages, 
   initialCases,
   mockNewsArticles,
@@ -220,7 +221,16 @@ export default function App() {
           status: item.status || mockBase.status,
         });
       } else {
-        map.set(item.id, item);
+        // 동적으로 생성된 요청 중, 테스트 변호사 5 또는 6에게 요청을 보낸 상태(또는 proposals가 비어있는 대기 상태)인 경우
+        // 테스트 5변호사(AI 정밀 진단형)와 테스트 6변호사(직접 검토형)의 가상 제안서를 자동 연동
+        const hasTestLawyerRequested = item.selectedLawyerIds?.some(id => id === 'test-lawyer-5' || id === 'test-lawyer-6');
+        const shouldInjectTestProposals = hasTestLawyerRequested && (!item.proposals || item.proposals.length === 0);
+
+        map.set(item.id, {
+          ...item,
+          proposals: shouldInjectTestProposals ? mockTestProposals : item.proposals,
+          status: shouldInjectTestProposals ? 'comparing' : item.status,
+        });
       }
     });
 

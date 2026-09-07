@@ -548,90 +548,144 @@ export default function ChatView({
 
             {currentStep === 2 && !isSelectedLawyer && proposals.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {proposals.map((bid, index) => (
-                  <div key={bid.id} className="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4 hover:border-brand/50 hover:shadow-md transition-all bg-white dark:bg-slate-800">
-                    <div className="flex items-center gap-3">
-                      {bid.lawyerAvatar ? (
-                        <img src={bid.lawyerAvatar} alt={bid.lawyerName} className="w-12 h-12 rounded-full object-cover shadow-sm border border-slate-100" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-lg">{bid.lawyerName.charAt(0)}</div>
-                      )}
-                      <div>
-                        <div className="text-xs text-slate-500 font-semibold">{bid.firmName}</div>
-                        <div className="font-bold text-slate-900 dark:text-white text-base">{bid.lawyerName} 변호사</div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">월 변제금</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{bid.monthlyPayment}만원</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">감면율</span>
-                        <span className="font-bold text-brand">{bid.reductionRate}% 탕감</span>
+                {proposals.map((bid, index) => {
+                  const isAIReport = !!(
+                    bid.proposalData?.aiInsights?.isAIPremium || 
+                    (bid as any).aiInsights?.isAIPremium ||
+                    lawyers.find(l => l.id === bid.lawyerId)?.aiCaseAnalysisEnabled
+                  );
+
+                  return (
+                  <div key={bid.id} className="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4 hover:border-brand/50 hover:shadow-md transition-all bg-white dark:bg-slate-800 flex flex-col justify-between">
+                    <div className="space-y-3.5">
+                      {/* 상단 뱃지: AI 7p 정밀 진단형 vs 변호사 직접 검토형 */}
+                      <div className="flex items-center justify-between gap-2">
+                        {isAIReport ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs">
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            AI 7p 정밀 진단서 동봉
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600">
+                            <Scale className="w-3.5 h-3.5 text-slate-500" />
+                            변호사 직접 검토 의견서
+                          </span>
+                        )}
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {isAIReport ? '빅데이터 정밀 분석' : '도산 전문 직접 심사'}
+                        </span>
                       </div>
 
-                    </div>
-                    
-                    <div className="text-xs text-slate-600 dark:text-slate-400 bg-indigo-50/50 dark:bg-indigo-900/20 p-3 rounded-xl italic">
-                      "{bid.remark}"
+                      {/* 변호사 기본 정보 */}
+                      <div className="flex items-center gap-3">
+                        {bid.lawyerAvatar ? (
+                          <img src={bid.lawyerAvatar} alt={bid.lawyerName} className="w-12 h-12 rounded-full object-cover shadow-sm border border-slate-100" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-lg">{bid.lawyerName.charAt(0)}</div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs text-slate-500 font-semibold truncate">{bid.firmName}</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-base">{bid.lawyerName} 변호사</div>
+                        </div>
+                      </div>
+                      
+                      {/* 변제 조건 요약 박스 */}
+                      <div className="space-y-1.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">예상 월 변제금</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{bid.monthlyPayment}만 원/월</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">예상 원금 탕감률</span>
+                          <span className="font-bold text-brand text-sm">{bid.reductionRate}% 탕감</span>
+                        </div>
+                        {bid.fee && (
+                          <div className="flex justify-between items-center pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                            <span className="text-slate-500">수임료 조건</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              {bid.fee}만 원 {bid.installment ? `(${bid.installment})` : ''}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* 변호사 소견 인용 */}
+                      <div className="text-xs text-slate-600 dark:text-slate-400 bg-indigo-50/50 dark:bg-indigo-900/20 p-3 rounded-xl italic leading-relaxed">
+                        "{bid.remark}"
+                      </div>
                     </div>
 
-                    {/* 변호사 검수 의견서 전체 열람 버튼 */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProposalForReport(bid)}
-                      className="w-full py-2.5 rounded-xl text-xs font-black bg-blue-50 hover:bg-blue-100 text-[#1E3A5F] border border-blue-200 shadow-2xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#1E3A5F]" />
-                      <span>변호사 검수 의견서 & 7p 리포트 열람</span>
-                    </button>
+                    {/* 액션 버튼 그룹 */}
+                    <div className="space-y-2 pt-2">
+                      {/* 변호사 검수 의견서 / AI 정밀 진단서 열람 버튼 */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProposalForReport(bid)}
+                        className={`w-full py-2.5 rounded-xl text-xs font-black border shadow-2xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+                          isAIReport
+                            ? 'bg-blue-50 hover:bg-blue-100 text-[#1E3A5F] border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600'
+                        }`}
+                      >
+                        {isAIReport ? (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            <span>AI 정밀 진단서 & 7p 리포트 열람</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                            <span>변호사 직접 검토 의견서 열람</span>
+                          </>
+                        )}
+                      </button>
 
-                    <button 
-                      onClick={() => {
-                        if (currentRequest) {
-                          if (currentRequest.requestType === 'direct') {
-                            onSetRequests(prev => prev.map(r => 
-                              r.id === currentRequest.id 
-                                ? { ...r, status: 'counseling' as const, selectedLawyerId: bid.lawyerId } 
-                                : r
-                            ));
-                            // 전담 변호사 저장
-                            localStorage.setItem('legal_crm_appointed_lawyer_id', bid.lawyerId);
-                            setAppointedLawyerId(bid.lawyerId);
-                            onAddMessage(
-                              currentRequest.id,
-                              `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
-                              'lawyer', 'system', '시스템 안내'
-                            );
-                          } else {
-                            const newAccepted = Array.from(new Set([...(currentRequest.acceptedLawyerIds || []), bid.lawyerId]));
-                            onSetRequests(prev => prev.map(r => 
-                              r.id === currentRequest.id 
-                                ? { ...r, status: 'comparing' as const, acceptedLawyerIds: newAccepted } 
-                                : r
-                            ));
-                            setActiveChatLawyerId(bid.lawyerId);
-                            onAddMessage(
-                              currentRequest.id,
-                              `${bid.lawyerName} 변호사님과 비교 상담을 시작합니다.`,
-                              'lawyer', 'system', '시스템 안내'
-                            );
+                      <button 
+                        onClick={() => {
+                          if (currentRequest) {
+                            if (currentRequest.requestType === 'direct') {
+                              onSetRequests(prev => prev.map(r => 
+                                r.id === currentRequest.id 
+                                  ? { ...r, status: 'counseling' as const, selectedLawyerId: bid.lawyerId } 
+                                  : r
+                              ));
+                              // 전담 변호사 저장
+                              localStorage.setItem('legal_crm_appointed_lawyer_id', bid.lawyerId);
+                              setAppointedLawyerId(bid.lawyerId);
+                              onAddMessage(
+                                currentRequest.id,
+                                `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
+                                'lawyer', 'system', '시스템 안내'
+                              );
+                            } else {
+                              const newAccepted = Array.from(new Set([...(currentRequest.acceptedLawyerIds || []), bid.lawyerId]));
+                              onSetRequests(prev => prev.map(r => 
+                                r.id === currentRequest.id 
+                                  ? { ...r, status: 'comparing' as const, acceptedLawyerIds: newAccepted } 
+                                  : r
+                              ));
+                              setActiveChatLawyerId(bid.lawyerId);
+                              onAddMessage(
+                                currentRequest.id,
+                                `${bid.lawyerName} 변호사님과 비교 상담을 시작합니다.`,
+                                'lawyer', 'system', '시스템 안내'
+                              );
+                            }
                           }
-                        }
-                      }}
-                      disabled={currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId)}
-                      className={`w-full py-3 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 ${
-                        currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId)
-                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                          : 'bg-brand hover:bg-brand-hover text-white'
-                      }`}
-                    >
-                      <MessageCircle className="w-4 h-4" /> {currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId) ? '💬 상담 진행중' : '💬 상담 시작'}
-                    </button>
+                        }}
+                        disabled={currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId)}
+                        className={`w-full py-3 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 ${
+                          currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId)
+                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 cursor-not-allowed'
+                            : 'bg-brand hover:bg-brand-hover text-white cursor-pointer'
+                        }`}
+                      >
+                        <MessageCircle className="w-4 h-4" /> {currentRequest?.acceptedLawyerIds?.includes(bid.lawyerId) ? '💬 상담 진행중' : '💬 상담 시작'}
+                      </button>
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

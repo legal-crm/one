@@ -459,6 +459,9 @@ export const mockLawyers: User[] = [
     totalCases: 80,
     avgRepaymentRate: 28,
     courtJurisdiction: '서울회생법원',
+    aiCaseAnalysisEnabled: true,
+    aiCaseAnalysisActivatedAt: '2026-08-01T09:00:00Z',
+    aiCaseAnalysisNote: 'AI 사건 정밀 분석 솔루션 도입 (프리미엄)',
   },
   {
     id: 'test-lawyer-6',
@@ -483,6 +486,7 @@ export const mockLawyers: User[] = [
     totalCases: 70,
     avgRepaymentRate: 0,
     courtJurisdiction: '서울회생법원',
+    aiCaseAnalysisEnabled: false,
   },
   {
     id: 'test-lawyer-7',
@@ -658,15 +662,173 @@ export const mockLawyers: User[] = [
   }))
 ];
 
+// ── 테스트 5변호사 (AI 정밀 진단형) & 테스트 6변호사 (일반 직접 검토형) 가상 제안서 ──
+export const mockTestProposals: ConsultProposal[] = [
+  {
+    id: 'prop-test-5',
+    lawyerId: 'test-lawyer-5',
+    lawyerName: '테스트 5변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=256',
+    firmName: '테스트 법무법인',
+    feasibility: '진행 가능 (인가확률 95% 이상)',
+    monthlyPayment: 37,
+    duration: 36,
+    reductionRate: 78,
+    totalReduction: 4668,
+    fee: 160,
+    installment: '착수금 30만원, 5회 무이자 분납 (월 26만원)',
+    remark: '[AI 정밀 진단] 서울회생법원 실무준칙 및 가용소득 시뮬레이션을 통해 월 37만원(탕감율 78%) 확정안을 도출했습니다.',
+    createdAt: new Date().toISOString(),
+    approvalStatus: 'approved',
+    proposalData: {
+      diagnosis: {
+        monthlyPayment: 370000,
+        repaymentMonths: 36,
+        debtReductionRate: 78,
+        totalDebt: 60000000,
+        totalRepayment: 13320000,
+        estimatedReduction: 46680000,
+        status: 'POSSIBLE',
+        statusReason: '서울회생법원 실무준칙 충족 및 청산가치 보장 원칙 만족',
+        court: '서울회생법원',
+      },
+      fees: {
+        totalFee: 1600000,
+        downPayment: 300000,
+        installments: 5,
+        monthlyInstallment: 260000,
+        courtDeposit: 350000,
+        feeMemo: '수임료 5회 무이자 분납 지원 (송달료·인지대 포함)',
+      },
+      lawyerOpinion: '의뢰인의 채무 6,000만원 중 최근 대출 비중 및 생활비 지출 내역을 AI 정밀 엔진으로 분석하였습니다. 서울회생법원 실무준칙 제424조를 적용하여 불필요한 청산가치 반영을 차단하고, 1인 가구 최저생계비(153.8만원)를 100% 보장하여 월 변제금을 37만원으로 최적화하였습니다. 접수 즉시 3일 이내 금지명령을 신청하여 급여 압류 및 채권자 독촉을 완벽히 중단시키겠습니다.',
+      specialNotes: [
+        '[AI 진단 특례] 서울회생법원 준칙 적용: 주식/코인 및 최근 채무 청산가치 과다반영 차단',
+        '[신속 금지명령] 법원 접수 후 3~5일 이내 채권사 독촉 전화 및 급여 압류 전면 금지',
+        '[소명서 전담 대리] 금융거래내역서 사용처 소명 자료 변호사 대리 작성 지원',
+        '[가계 수지 최적화] 필수 주거비 및 생계비를 감안한 월 37만원 고정 변제안'
+      ],
+      clientQnA: [
+        {
+          question: '급여 압류나 회사 통보가 걱정됩니다.',
+          answer: '개인회생은 100% 비공개 법정 절차입니다. 회사나 가족에게 일체 통지되지 않으며, 모든 법원 우편물은 당 법률사무소로 직접 수령됩니다. 접수 즉시 금지명령을 통해 모든 독촉이 멈춥니다.'
+        },
+        {
+          question: '정말 78%까지 탕감받고 37만원만 갚으면 되나요?',
+          answer: '네, 의뢰인의 소득(월 190만원대)에서 법정 최저생계비(153.8만원)를 제외한 가용소득이 약 37만원으로 산출되며, 36개월간 성실 변제 시 남은 원금과 이자는 전액 법적으로 탕감(면책)됩니다.'
+        }
+      ],
+      aiInsights: {
+        isAIPremium: true,
+        reviewGrade: 'ENHANCED_REVIEW',
+        debtBreakdown: {
+          secured: 0,
+          unsecured: 55000000,
+          tax: 5000000,
+        },
+        financialSummary: {
+          monthlyIncome: 1910000,
+          monthlyExpense: 1538543,
+          disposableIncome: 371457,
+          netAssetValue: 10000000,
+        },
+        riskFlags: [
+          { type: 'recent_debt', message: '최근 1년 이내 채무 비중 35% (생활비 대환 사용처 소명 완료 시 무감액 인가 가능)' },
+          { type: 'liquidation_value', message: '청산가치(1,000만원) 대비 3년 총변제액(1,332만원) 상회로 청산가치 보장 원칙 충족' }
+        ],
+        courtStats: {
+          courtName: '서울회생법원',
+          injunctionRate: 94,
+          averageReductionRate: 72,
+          speedRating: 'A+',
+          specialRules: ['주식·가상화폐 손실금 청산가치 제외 특례', '만 30세 미만 청년 24개월 단축 심사']
+        },
+        includeFinancialAnalysis: true,
+        includeRiskReport: true,
+        includeCourtNotes: true,
+      },
+      attorneyReview: {
+        isReviewed: true,
+        reviewerName: '테스트 5변호사',
+        firmName: '테스트 법무법인',
+        reviewedAt: new Date().toISOString(),
+        disclaimerAgreed: true,
+      }
+    }
+  },
+  {
+    id: 'prop-test-6',
+    lawyerId: 'test-lawyer-6',
+    lawyerName: '테스트 6변호사',
+    lawyerAvatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=256',
+    firmName: '테스트 법무법인 서초 분사무소',
+    feasibility: '진행 가능 (회생 개시 요건 완비)',
+    monthlyPayment: 42,
+    duration: 36,
+    reductionRate: 75,
+    totalReduction: 4488,
+    fee: 150,
+    installment: '착수금 20만원, 4회 분납 (월 32.5만원)',
+    remark: '[변호사 직접 검토] 의뢰인 소득 상황을 직접 면밀히 분석하여 법원 보정권고에 안전한 월 42만원 변제안을 제시합니다.',
+    createdAt: new Date().toISOString(),
+    approvalStatus: 'approved',
+    proposalData: {
+      diagnosis: {
+        monthlyPayment: 420000,
+        repaymentMonths: 36,
+        debtReductionRate: 75,
+        totalDebt: 60000000,
+        totalRepayment: 15120000,
+        estimatedReduction: 44880000,
+        status: 'POSSIBLE',
+        statusReason: '소득 및 채무 요건 충족, 통상적인 개인회생 개시 요건 완비',
+        court: '서울회생법원',
+      },
+      fees: {
+        totalFee: 1500000,
+        downPayment: 200000,
+        installments: 4,
+        monthlyInstallment: 325000,
+        courtDeposit: 350000,
+        feeMemo: '착수금 부담 경감 4회 분납 지원 (인지·송달료 별도 실비)',
+      },
+      lawyerOpinion: '담당 변호사가 의뢰인의 진술 내용과 현재 경제적 여건을 직접 검토하였습니다. 현재 채무 6,000만원에 대해 월 42만원씩 36개월간 변제하는 계획안이 법원 심사관 관점에서 보정명령 없이 가장 빠르고 안전하게 통과될 수 있는 현실적 수치입니다. 신청 접수와 동시에 독촉 전면 금지명령을 신청하여 일상생활을 빠르게 안정시켜 드리겠습니다.',
+      specialNotes: [
+        '[변호사 직접 소명] 법원 보정명령 1회 이내 종결을 목표로 한 보수적·안전 변제계획안',
+        '[채권추심 즉시 차단] 접수 즉시 금지명령 신청으로 채권사 독촉 차단',
+        '[1:1 전담 변호사 상담] 사무장이 아닌 변호사가 서류 작성부터 인가까지 직접 챙깁니다'
+      ],
+      clientQnA: [
+        {
+          question: '변호사 사무실을 선택할 때 무엇을 가장 고려해야 하나요?',
+          answer: '도산 사건은 법원의 까다로운 보정권고에 대해 변호사가 얼마나 성실하고 정확하게 소명하느냐가 인가 여부와 최종 탕감률을 결정합니다. 당 사무소는 변호사가 직접 모든 서류를 검토하여 누락이나 기각 위험을 사전에 방지합니다.'
+        },
+        {
+          question: '비용 분납이 가능한가요?',
+          answer: '네, 초기 착수금 20만원으로 사건을 즉시 착수하며, 나머지 수임료는 4개월에 걸쳐 무이자 분할 납부하실 수 있도록 배려해 드립니다.'
+        }
+      ],
+      attorneyReview: {
+        isReviewed: true,
+        reviewerName: '테스트 6변호사',
+        firmName: '테스트 법무법인 서초 분사무소',
+        reviewedAt: new Date().toISOString(),
+        disclaimerAgreed: true,
+      }
+    }
+  }
+];
+
 export const initialConsultRequests: ConsultRequest[] = [
   {
     id: 'req-mock-1',
     clientId: 'client-m1',
     clientName: '용감한사슴_31',
     phone: '010-3456-7890',
-    requestType: 'open',
+    requestType: 'direct_multi',
     maxParticipants: 3,
-    status: 'requested',
+    status: 'comparing',
+    selectedLawyerIds: ['test-lawyer-5', 'test-lawyer-6'],
+    proposals: mockTestProposals,
     createdAt: '2026-08-24T09:30:00Z',
     title: '[긴급] 카드사 5곳 카드론·리볼빙 연체 및 국세 체납 개인회생 상담',
     content: '카드 5개사에서 총 7,200만원 정도 카드론과 리볼빙을 돌려막기하다가 3개월째 최소 납입만 간신히 하고 이번 달부터 연체와 독촉이 시작되었습니다. 추가로 종합소득세 체납 600만원이 있어서 통장 압류 위기입니다. 월급 270만원으로 가족을 부양 중인데 급여 압류 전에 빠른 금지명령과 개인회생 신청이 가능한지 긴급 검토 부탁드립니다.',
@@ -879,7 +1041,37 @@ export const initialConsultRequests: ConsultRequest[] = [
   },
 ];
 
-export const initialConsultMessages: ConsultMessage[] = [];
+export const initialConsultMessages: ConsultMessage[] = [
+  {
+    id: 'msg-mock-sys-1',
+    consultRequestId: 'req-mock-1',
+    senderType: 'system',
+    senderId: 'system',
+    senderName: '시스템 안내',
+    content: '테스트 5변호사, 테스트 6변호사님에게 상담을 요청했습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.',
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    id: 'msg-mock-prop-5',
+    consultRequestId: 'req-mock-1',
+    senderType: 'lawyer',
+    senderId: 'test-lawyer-5',
+    senderName: '테스트 5변호사',
+    content: `안녕하세요, 의뢰인님. 테스트 5변호사입니다.\n\n📋 제안 내용을 안내드립니다:\n• 예상 탕감률: 78%\n• 월 변제금: 37만원/월 (36개월)\n• 수임료: 160만원 (착수금 30만원, 5회 무이자 분납)\n\n💬 소견: 의뢰인의 채무 6,000만원 중 최근 대출 비중 및 생활비 지출 내역을 AI 정밀 엔진으로 분석하였습니다. 서울회생법원 실무준칙 제424조를 적용하여 불필요한 청산가치 반영을 차단하고, 1인 가구 최저생계비(153.8만원)를 100% 보장하여 월 변제금을 37만원으로 최적화하였습니다.\n\n📊 정밀 분석 기반 진단입니다.\n• 채무 구조: 무담보 5,500만원 / 담보 0원 / 조세 500만원\n• 검토 등급: 강화 검토 (AI 7p 정밀 진단서 동봉)\n\n자세한 사항은 상단의 'AI 정밀 진단서 & 7p 리포트 열람'을 확인해 주시기 바랍니다.`,
+    createdAt: new Date(Date.now() - 1800000).toISOString(),
+    targetLawyerId: 'test-lawyer-5',
+  },
+  {
+    id: 'msg-mock-prop-6',
+    consultRequestId: 'req-mock-1',
+    senderType: 'lawyer',
+    senderId: 'test-lawyer-6',
+    senderName: '테스트 6변호사',
+    content: `안녕하세요, 의뢰인님. 테스트 6변호사입니다.\n\n📋 제안 내용을 안내드립니다:\n• 예상 탕감률: 75%\n• 월 변제금: 42만원/월 (36개월)\n• 수임료: 150만원 (착수금 20만원, 4회 분납)\n\n💬 소견: 담당 변호사가 의뢰인의 진술 내용과 현재 경제적 여건을 직접 검토하였습니다. 현재 채무 6,000만원에 대해 월 42만원씩 36개월간 변제하는 계획안이 법원 심사관 관점에서 보정명령 없이 가장 빠르고 안전하게 통과될 수 있는 현실적 수치입니다.\n\n상단의 '변호사 직접 검토 의견서 열람' 버튼을 통해 상세 의견서를 확인하실 수 있습니다.`,
+    createdAt: new Date(Date.now() - 900000).toISOString(),
+    targetLawyerId: 'test-lawyer-6',
+  }
+];
 
 export const initialCases: Case[] = [
   {

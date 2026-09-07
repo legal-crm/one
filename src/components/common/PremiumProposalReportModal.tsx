@@ -179,6 +179,14 @@ export default function PremiumProposalReportModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, embedded, onClose]);
 
+  // AI 미사용 제안서의 경우, AI 전용 탭에 머물러 있지 않도록 'overview'로 자동 리셋
+  useEffect(() => {
+    const isPremium = !!(proposal?.proposalData?.aiInsights?.isAIPremium || proposal?.aiInsights?.isAIPremium || reportData?.aiInsights?.isAIPremium);
+    if (!isPremium && (activeTab === 'statistics' || activeTab === 'simulation' || activeTab === 'debts')) {
+      setActiveTab('overview');
+    }
+  }, [proposal, reportData, activeTab]);
+
   if (!isOpen && !embedded) return null;
 
   // 1. 기본 정보 정규화
@@ -186,6 +194,10 @@ export default function PremiumProposalReportModal({
   const firmName = reportData?.lawyerInfo?.firmName || proposal?.attorneyReview?.firmName || proposal?.firmName || proposal?.lawyer?.firmName || '도산전문 법률사무소';
   const lawyerAvatar = reportData?.lawyerInfo?.avatar || proposal?.lawyerAvatar || proposal?.lawyer?.avatar;
   const clientName = reportData?.clientName || proposal?.clientName || clientInfo?.clientName || clientInfo?.name || '의뢰인';
+
+  // AI 프리미엄 진단 여부 판별
+  const rawAiInsights = proposal?.proposalData?.aiInsights || proposal?.aiInsights || reportData?.aiInsights;
+  const isAIPremium = !!rawAiInsights?.isAIPremium;
 
   const rawCourt = reportData?.diagnosis?.court || proposal?.diagnosis?.court || proposal?.court || clientInfo?.court || '서울회생법원';
   const courtName = rawCourt.includes('법원') ? rawCourt : `${rawCourt}회생법원`;
@@ -452,8 +464,11 @@ export default function PremiumProposalReportModal({
         }
       }
 
-      pdf.save(`AI_개인회생_종합법률의견서_${clientName}_${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success('공인 법률진단서 PDF가 성공적으로 저장되었습니다!');
+      const pdfFileName = isAIPremium 
+        ? `AI_개인회생_7p정밀진단서_${clientName}_${new Date().toISOString().split('T')[0]}.pdf`
+        : `개인회생_변호사직접검토의견서_${clientName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(pdfFileName);
+      toast.success(isAIPremium ? 'AI 공인 정밀진단서 PDF가 성공적으로 저장되었습니다!' : '변호사 공인 법률의견서 PDF가 성공적으로 저장되었습니다!');
     } catch (err) {
       console.error('PDF 생성 실패:', err);
       toast.error('PDF 다운로드 중 오류가 발생했습니다. 인쇄 기능을 이용해 주세요.');
@@ -475,10 +490,17 @@ export default function PremiumProposalReportModal({
         <div className="relative z-10 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <span className="bg-amber-400 text-slate-900 font-black text-[11px] px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs">
-                <Sparkles className="w-3.5 h-3.5" />
-                변호사 검토 공인 법률의견서
-              </span>
+              {isAIPremium ? (
+                <span className="bg-gradient-to-r from-amber-400 to-amber-300 text-slate-950 font-black text-[11px] px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs">
+                  <Sparkles className="w-3.5 h-3.5 text-slate-900" />
+                  AI 7p 정밀 진단 & 공인 법률의견서
+                </span>
+              ) : (
+                <span className="bg-slate-200 text-slate-900 font-extrabold text-[11px] px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs">
+                  <Scale className="w-3.5 h-3.5 text-slate-700" />
+                  변호사 직접 검토 공인 법률의견서 (표준 양식)
+                </span>
+              )}
               <span className="text-xs text-slate-300 font-mono">
                 No. LEGAL-2026-{clientName.substring(0, 3)}-{Math.floor(Math.random() * 8999 + 1000)}
               </span>
@@ -504,10 +526,16 @@ export default function PremiumProposalReportModal({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2 border-t border-slate-700/60">
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {clientName}님 개인회생 종합 법률의견서
+                {isAIPremium 
+                  ? `${clientName}님 개인회생 AI 정밀 진단 및 종합 법률의견서`
+                  : `${clientName}님 개인회생 변호사 직접 검토 법률 제안·의견서`
+                }
               </h1>
               <p className="text-xs text-slate-300 mt-1">
-                본 문서는 담당 변호사가 {courtName} 실무준칙 및 AI 정밀 분석 데이터를 바탕으로 직접 검토·작성한 정식 법률 소견서입니다.
+                {isAIPremium
+                  ? `본 문서는 담당 변호사가 ${courtName} 실무준칙 및 AI 사건 정밀 분석 빅데이터를 바탕으로 직접 검토·작성한 7p 정밀 법률 소견서입니다.`
+                  : `본 문서는 담당 변호사가 의뢰인의 진술 자료 및 ${courtName} 실무준칙을 토대로 직접 면밀히 심사·작성한 정식 법률 의견서입니다.`
+                }
               </p>
             </div>
 
@@ -537,7 +565,7 @@ export default function PremiumProposalReportModal({
         </div>
       </div>
 
-      {/* ── [HEADER 2] 핵심 4대 지표 요약 카드 (월변제금 / 탕감률 / 절약액 / 기간) ── */}
+      {/* ── [HEADER 2] 핵심 4대 지표 요약 카드 ── */}
       <div className="bg-slate-900 text-white p-5 sm:p-6 border-b border-slate-800 shrink-0">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
@@ -548,35 +576,35 @@ export default function PremiumProposalReportModal({
             <div className="text-xl sm:text-2xl font-black text-[#7264FF]">
               <CountUp end={monthlyPayment} delay={0.1} formatter={(v) => `${(v / 10000).toLocaleString()}만`} suffix="원" />
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">월 가용소득 기준</div>
+            <div className="text-[11px] text-slate-400 mt-1">36개월 분할 변제</div>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
             <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1">
               <Percent className="w-3.5 h-3.5 text-emerald-400" />
-              원금 탕감률
+              예상 원금 탕감률
             </div>
             <div className="text-xl sm:text-2xl font-black text-emerald-400">
-              {debtReductionRate}%
+              <CountUp end={debtReductionRate} delay={0.2} suffix="%" />
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">{formatCurrency(estimatedReduction)} 감면</div>
+            <div className="text-[11px] text-slate-400 mt-1">이자 100% 전액 탕감</div>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
             <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
-              변제 기간
+              <TrendingDown className="w-3.5 h-3.5 text-amber-400" />
+              총 채무 감면액
             </div>
-            <div className="text-xl sm:text-2xl font-black text-white">
-              {repaymentMonths}개월
+            <div className="text-xl sm:text-2xl font-black text-amber-400">
+              <CountUp end={estimatedReduction} delay={0.3} formatter={(v) => `${(v / 10000).toLocaleString()}만`} suffix="원" />
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">{repaymentMonths === 24 ? '청년특례 단축' : '법정 기본기간'}</div>
+            <div className="text-[11px] text-slate-400 mt-1">총 채무 {formatCurrency(totalDebt)} 기준</div>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
             <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1">
-              <Landmark className="w-3.5 h-3.5 text-sky-400" />
-              관할 법원
+              <Landmark className="w-3.5 h-3.5 text-sky-300" />
+              관할 회생법원
             </div>
             <div className="text-base sm:text-lg font-black text-sky-300 truncate">
               {courtName}
@@ -586,20 +614,24 @@ export default function PremiumProposalReportModal({
         </div>
       </div>
 
-      {/* ── [NAV] 듀얼 뷰 모드 토글 및 6개 탭 스위처 ── */}
+      {/* ── [NAV] 듀얼 뷰 모드 토글 및 탭 스위처 ── */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shrink-0 shadow-xs px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
           
-          {/* 6개 전문 분석 탭 */}
+          {/* 전문 분석 탭 (AI 진단형 6개 탭 vs 일반 변호사형 3개 탭) */}
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
-            {[
+            {(isAIPremium ? [
               { id: 'overview', label: '종합 분석', icon: Sparkles },
               { id: 'assets', label: '재산·가구', icon: Home },
               { id: 'debts', label: '소득·채무', icon: CreditCard },
               { id: 'statistics', label: '통계 백분위', icon: BarChart3 },
               { id: 'simulation', label: '월 가계수지', icon: Calculator },
               { id: 'guide', label: '변호사 가이드', icon: Scale },
-            ].map((tab) => {
+            ] : [
+              { id: 'overview', label: '변호사 종합소견 & 변제안', icon: FileText },
+              { id: 'assets', label: '소득·재산 기본명세', icon: Home },
+              { id: 'guide', label: '사건 로드맵 & 1:1 Q&A', icon: Scale },
+            ]).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id && viewMode === 'tabbed';
               return (
@@ -623,7 +655,7 @@ export default function PremiumProposalReportModal({
             })}
           </div>
 
-          {/* 듀얼 모드 토글 (탭별 탐색 ↔ 7p 연속 전체 보기) */}
+          {/* 듀얼 모드 토글 (탭별 탐색 ↔ 전체 연속 보기) */}
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
               <button
@@ -643,7 +675,7 @@ export default function PremiumProposalReportModal({
                 }`}
               >
                 <Layers className="w-3 h-3" />
-                전체 연속 보기
+                {isAIPremium ? '7p 전체 연속 보기' : '의견서 전체 연속 보기'}
               </button>
             </div>
 
@@ -762,6 +794,96 @@ export default function PremiumProposalReportModal({
                 </div>
               </div>
             </div>
+
+            {/* ── [AI 프리미엄 특화] AI 정밀 부채 구조 분석 및 사전 위험 플래그 진단 ── */}
+            {isAIPremium && rawAiInsights && (
+              <div className="bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-50 border border-blue-200/80 shadow-sm rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-[#1E3A5F] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    AI 정밀 사건 브리핑: 부채 구조 및 사전 위험 진단
+                  </h4>
+                  {rawAiInsights.reviewGrade && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-300">
+                      검토 등급: {rawAiInsights.reviewGrade === 'ENHANCED_REVIEW' ? '강화 정밀 검토' : '표준 검토'}
+                    </span>
+                  )}
+                </div>
+
+                {/* 부채 구성 3대 분류 */}
+                {rawAiInsights.debtBreakdown && (
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-3 bg-white rounded-xl border border-blue-150 shadow-2xs">
+                      <div className="text-[10px] text-slate-500 font-medium mb-0.5">무담보 신용 채무</div>
+                      <div className="font-black text-slate-900">{formatCurrency(rawAiInsights.debtBreakdown.unsecured)}</div>
+                      <div className="text-[10px] text-emerald-600 font-bold mt-0.5">원금 대폭 감면 대상</div>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-blue-150 shadow-2xs">
+                      <div className="text-[10px] text-slate-500 font-medium mb-0.5">담보 대출 채무</div>
+                      <div className="font-black text-slate-900">{formatCurrency(rawAiInsights.debtBreakdown.secured)}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">별제권 보호 관리</div>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-blue-150 shadow-2xs">
+                      <div className="text-[10px] text-slate-500 font-medium mb-0.5">우선변제 (조세·공과금)</div>
+                      <div className="font-black text-amber-600">{formatCurrency(rawAiInsights.debtBreakdown.tax)}</div>
+                      <div className="text-[10px] text-amber-700 font-bold mt-0.5">전액 우선 변제</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* AI 위험 플래그 진단 */}
+                {rawAiInsights.riskFlags && rawAiInsights.riskFlags.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                      <span>AI 사전 위험요인 감지 및 방어 전략</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {rawAiInsights.riskFlags.map((flag: any, idx: number) => (
+                        <div key={idx} className="p-2.5 bg-white rounded-xl border border-amber-200/70 text-xs text-slate-700 flex items-start gap-2 shadow-2xs">
+                          <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">!</span>
+                          <span className="leading-snug">{flag.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── [일반 변호사형 특화] 변호사 직접 심층 검토 소견 및 1:1 맞춤 Q&A ── */}
+            {!isAIPremium && (
+              <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-150 pb-3">
+                  <h4 className="text-xs font-black text-slate-900 flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-[#1E3A5F]" />
+                    담당 변호사 직접 사건 검토 소견
+                  </h4>
+                  <span className="text-xs text-slate-400 font-medium">검토 책임 변호사: {lawyerName}</span>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">
+                  {lawyerOpinion}
+                </div>
+
+                {specialNotes.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <h5 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      변호사 선정 핵심 사건 진행 전략
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {specialNotes.map((note, idx) => (
+                        <div key={idx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 flex items-start gap-2">
+                          <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                          <span className="leading-snug">{note}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── [다이어그램 3] 탕감률 산출 4단계 인포그래픽 흐름도 ── */}
             <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 space-y-3">
@@ -1058,8 +1180,8 @@ export default function PremiumProposalReportModal({
           </div>
         )}
 
-        {/* ── TAB 3: 소득 및 채무 명세 (Income & Debts) ── */}
-        {(viewMode === 'continuous' || activeTab === 'debts') && (
+        {/* ── TAB 3: 소득 및 채무 명세 (Income & Debts - AI 분석형) ── */}
+        {isAIPremium && (viewMode === 'continuous' || activeTab === 'debts') && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
@@ -1098,8 +1220,8 @@ export default function PremiumProposalReportModal({
           </div>
         )}
 
-        {/* ── TAB 4: 통계 백분위 (Statistics) ── */}
-        {(viewMode === 'continuous' || activeTab === 'statistics') && (
+        {/* ── TAB 4: 통계 백분위 (Statistics - AI 분석형) ── */}
+        {isAIPremium && (viewMode === 'continuous' || activeTab === 'statistics') && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
@@ -1168,8 +1290,8 @@ export default function PremiumProposalReportModal({
           </div>
         )}
 
-        {/* ── TAB 5: 월 가계 시뮬레이션 (Simulation) ── */}
-        {(viewMode === 'continuous' || activeTab === 'simulation') && (
+        {/* ── TAB 5: 월 가계 시뮬레이션 (Simulation - AI 분석형) ── */}
+        {isAIPremium && (viewMode === 'continuous' || activeTab === 'simulation') && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
