@@ -1325,7 +1325,7 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                       color: newRoleColor,
                       bgColor: newRoleBg,
                       borderColor: newRoleBorder,
-                      basePermissions: { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true, manageBilling: false, deleteClients: false, manageCalendar: false },
+                      basePermissions: { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true, manageBilling: false, deleteClients: false, manageCalendar: false, canAssignTasks: false, canManageAllTasks: false, canApproveTasks: false },
                       createdAt: new Date().toISOString(),
                     };
                     registerCustomRole(newRole);

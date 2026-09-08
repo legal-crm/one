@@ -6,7 +6,8 @@ import {
   Plus, Trash2, X, Repeat, Bell, ChevronDown, User, Check,
   Search, ExternalLink, ChevronFirst, ChevronLast, Sparkles,
   ListFilter, CheckSquare, Layers, Send, ThumbsUp,
-  ThumbsDown, RotateCcw, Calculator, ArrowRight, ShieldCheck
+  ThumbsDown, RotateCcw, Calculator, ArrowRight, ShieldCheck,
+  Kanban
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -460,7 +461,7 @@ export default function TasksScheduleTab({
       createdByName: userName,
       createdByRole: userRole,
       recurrence: 'none',
-      reminder: '1d'
+      reminder: '1day'
     });
 
     toast.success(`불변기한 마감일(${calculatedDate})로 할일 및 캘린더가 등록되었습니다.`);
@@ -874,7 +875,7 @@ export default function TasksScheduleTab({
                   }`}
                   title="칸반 보드 뷰"
                 >
-                  <LayoutKanban className="w-3.5 h-3.5" /> 칸반
+                  <Kanban className="w-3.5 h-3.5" /> 칸반
                 </button>
               </div>
             </div>
