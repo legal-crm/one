@@ -452,7 +452,7 @@ export async function syncContractToCrm(
 
   // 계약이 완료/서명진행 상태일 때 CRM 상태를 'contracted' (수임 계약)로 자동 승격
   if (['completed', 'signing', 'pending_sign'].includes(contract.status)) {
-    if (contract.status === 'completed') {
+    if (['requested', 'consulting'].includes(ext.crmStatus) || contract.status === 'completed') {
       ext.crmStatus = 'contracted';
     }
   }

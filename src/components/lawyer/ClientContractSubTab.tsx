@@ -46,7 +46,7 @@ export default function ClientContractSubTab({
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
 
   const loadClientContracts = async () => {
-    const list = await getContractsByClientId(client.id);
+    const list = await getContractsByClientId(client.id, client.clientId, client.phone);
     setContracts(list);
     if (list.length > 0 && !activeContractId) {
       setActiveContractId(list[0].id);
@@ -55,7 +55,7 @@ export default function ClientContractSubTab({
 
   useEffect(() => {
     loadClientContracts();
-  }, [client.id]);
+  }, [client.id, client.clientId]);
 
   const currentContract = useMemo(() => {
     if (!contracts.length) return null;

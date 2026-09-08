@@ -75,7 +75,9 @@ export interface FinancialProfile {
 }
 
 export type RequestType = 'direct' | 'open' | 'direct_multi';
-export type ConsultStatus = 'requested' | 'responding' | 'comparing' | 'counseling' | 'closed' | 'cancelled';
+export type ConsultStatus = 
+  | 'requested' | 'responding' | 'comparing' | 'counseling' | 'closed' | 'cancelled'
+  | 'contracted' | 'document' | 'filed' | 'commenced' | 'repaying' | 'discharged';
 
 // ── CRM 업그레이드 타입 ──
 
@@ -1799,13 +1801,13 @@ export interface NotificationSettings {
 
 export type ContractStatus = 'drafting' | 'pending_sign' | 'client_review' | 'signing' | 'completed' | 'cancelled';
 
-export const CONTRACT_STATUS_CONFIG: Record<ContractStatus, { label: string; emoji: string; color: string; bgColor: string }> = {
-  drafting: { label: '작성중', emoji: '✏️', color: 'text-purple-600', bgColor: 'bg-purple-100' },
-  pending_sign: { label: '서명대기', emoji: '⏳', color: 'text-amber-600', bgColor: 'bg-amber-100' },
-  client_review: { label: '고객확인', emoji: '👁️', color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  signing: { label: '서명진행', emoji: '✍️', color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
-  completed: { label: '서명완료', emoji: '✅', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
-  cancelled: { label: '취소', emoji: '❌', color: 'text-slate-500', bgColor: 'bg-slate-100' },
+export const CONTRACT_STATUS_CONFIG: Record<ContractStatus, { label: string; emoji: string; color: string; bgColor: string; borderColor?: string }> = {
+  drafting: { label: '작성중', emoji: '✏️', color: 'text-purple-600', bgColor: 'bg-purple-100', borderColor: 'border-purple-200' },
+  pending_sign: { label: '서명대기', emoji: '⏳', color: 'text-amber-600', bgColor: 'bg-amber-100', borderColor: 'border-amber-200' },
+  client_review: { label: '고객확인', emoji: '👁️', color: 'text-blue-600', bgColor: 'bg-blue-100', borderColor: 'border-blue-200' },
+  signing: { label: '서명진행', emoji: '✍️', color: 'text-indigo-600', bgColor: 'bg-indigo-100', borderColor: 'border-indigo-200' },
+  completed: { label: '서명완료', emoji: '✅', color: 'text-emerald-600', bgColor: 'bg-emerald-100', borderColor: 'border-emerald-200' },
+  cancelled: { label: '취소', emoji: '❌', color: 'text-slate-500', bgColor: 'bg-slate-100', borderColor: 'border-slate-200' },
 };
 
 export type ContractDocType = 'main_contract' | 'privacy_consent' | 'third_party_consent' | 'power_of_attorney' | 'installment_agreement' | 'procedure_consent' | 'id_confirmation' | 'spouse_consent' | 'custom';
@@ -1843,6 +1845,7 @@ export interface ContractDocument {
 export interface ElectronicContract {
   id: string;
   clientId: string;
+  clientRefId?: string;
   clientName: string;
   clientPhone: string;
   clientAddress?: string;

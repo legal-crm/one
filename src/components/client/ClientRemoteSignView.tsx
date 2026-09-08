@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
 import { getContract, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
+import { syncContractToCrm } from '../../services/crmService';
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import SignatureCanvas from '../lawyer/SignatureCanvas';
@@ -190,6 +191,17 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
         updatedContract = await finalizeContractWithIntegrity(updatedContract, signatureData, lawyerSig);
       } else {
         await saveContract(updatedContract);
+      }
+
+      // CRM 상태 실시간 연동 (수임 계약 체결 반영)
+      try {
+        await syncContractToCrm(updatedContract.clientId, updatedContract, {
+          id: 'client',
+          name: updatedContract.clientName,
+          role: 'CLIENT' as any,
+        });
+      } catch (crmErr) {
+        console.warn('CRM sync warning on client sign:', crmErr);
       }
 
       setContract(updatedContract);

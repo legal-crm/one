@@ -135,8 +135,9 @@ export default function LawyerRole({
   const [adModalMonths, setAdModalMonths] = useState(1);
   const [adModalDepositor, setAdModalDepositor] = useState('');
   const [adModalRegion, setAdModalRegion] = useState('');
-  const [adModalStep, setAdModalStep] = useState<'select' | 'done'>('select');
   const [adOrders, setAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
+  const [crmTargetClientId, setCrmTargetClientId] = useState<string>('');
+  const [crmTargetDetailTab, setCrmTargetDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
 
   // 관리자가 입금 확인/승인 또는 취소 처리 시 변호사 화면 실시간 동기화
   useEffect(() => {
@@ -1646,32 +1647,37 @@ export default function LawyerRole({
 
   const handleContractSuccess = (newCase: Case, newContract: any) => {
     setCases(prev => [newCase, ...prev]);
-    // Promote consultation request to contracted/counseling and ensure lawyer assignment
+    // Promote consultation request to contracted/document and ensure lawyer assignment
     if (contractTargetRequest) {
+      const targetReqId = contractTargetRequest.id;
+      const nextStatus = (newCase.status === 'document' ? 'document' : 'contracted') as ConsultStatus;
       setRequests(prev => prev.map(r => {
-        if (r.id === contractTargetRequest.id) {
+        if (r.id === targetReqId) {
           const accepted = r.acceptedLawyerIds ? [...r.acceptedLawyerIds] : [];
           if (!accepted.includes(activeLawyer.id)) accepted.push(activeLawyer.id);
           return {
             ...r,
-            status: 'counseling',
+            status: nextStatus,
             assignedLawyerId: activeLawyer.id,
             acceptedLawyerIds: accepted
           };
         }
         return r;
       }));
+      setCrmTargetClientId(targetReqId);
+      setCrmTargetDetailTab('contracts');
     }
     setActiveTab('client-crm');
     setContractTargetRequest(null);
 
     // Log activity
+    const feeText = newContract?.totalFee ? `${newContract.totalFee}만 원` : '수임 완료';
     onLogActivity(
       activeLawyer.id,
       activeLawyer.name,
       activeLawyer.role as MemberRole,
       'STATUS_CHANGE',
-      `정식 수임 계약 체결: ${newCase.clientName} 의뢰인 (${newContract?.totalFee ? (newContract.totalFee / 10000) + '만 원' : '수임 완료'}) -> [서류 준비 착수]`
+      `정식 수임 계약 체결: ${newCase.clientName} 의뢰인 (${feeText}) -> [${newCase.status === 'document' ? '서류 준비 착수' : '수임 계약'}]`
     );
   };
 
@@ -4978,6 +4984,8 @@ export default function LawyerRole({
             handleOpenProposalDraft={handleOpenProposalDraft}
             setActiveTab={setActiveTab}
             setCopilotPreselectedReqId={setCopilotPreselectedReqId}
+            initialClientId={crmTargetClientId}
+            initialDetailTab={crmTargetDetailTab}
           />
         )}
 

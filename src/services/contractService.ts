@@ -118,9 +118,16 @@ export async function getContract(id: string): Promise<ElectronicContract | unde
   return contracts.find(c => c.id === id);
 }
 
-export async function getContractsByClientId(clientId: string): Promise<ElectronicContract[]> {
+export async function getContractsByClientId(clientId: string, altId?: string, phone?: string): Promise<ElectronicContract[]> {
   const contracts = await loadContracts();
-  return contracts.filter(c => c.clientId === clientId);
+  const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
+  return contracts.filter(c => {
+    if (c.clientId === clientId) return true;
+    if (altId && (c.clientId === altId || (c as any).clientRefId === altId)) return true;
+    if (clientId && (c as any).clientRefId === clientId) return true;
+    if (cleanPhone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === cleanPhone) return true;
+    return false;
+  });
 }
 
 export async function saveContract(contract: ElectronicContract): Promise<void> {
@@ -156,6 +163,7 @@ export async function deleteContract(id: string): Promise<void> {
 
 export function createContract(data: {
   clientId: string;
+  clientRefId?: string;
   clientName: string;
   clientPhone: string;
   clientAddress?: string;
@@ -187,6 +195,7 @@ export function createContract(data: {
   const contract: ElectronicContract = {
     id,
     clientId: data.clientId,
+    clientRefId: data.clientRefId,
     clientName: data.clientName,
     clientPhone: data.clientPhone,
     clientAddress: data.clientAddress,

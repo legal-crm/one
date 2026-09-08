@@ -61,6 +61,8 @@ interface CrmTabProps {
   setActiveTab?: (tab: string) => void;
   setCopilotPreselectedReqId?: (id: string) => void;
   initialView?: 'leads';
+  initialClientId?: string;
+  initialDetailTab?: 'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment';
 }
 
 type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
@@ -108,7 +110,19 @@ function getCaseTypeBadge(r: ConsultRequest) {
   );
 }
 
-export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, getDisplayPhoneNumber, handleOpenProposalDraft, setActiveTab, setCopilotPreselectedReqId, initialView }: CrmTabProps) {
+export default function CrmTab({ 
+  requests, 
+  lawyers, 
+  activeLawyer, 
+  setRequests, 
+  getDisplayPhoneNumber, 
+  handleOpenProposalDraft, 
+  setActiveTab, 
+  setCopilotPreselectedReqId, 
+  initialView,
+  initialClientId,
+  initialDetailTab
+}: CrmTabProps) {
   const dialog = useDialog();
   // ── 기본 State ──
   const [crmData, setCrmData] = useState<CrmDataStore>({});
@@ -130,7 +144,7 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [perPage, setPerPage] = useState(10);
   
   // ── 선택 ──
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState(initialClientId || '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // ── 상세 패널 편집 ──
@@ -166,7 +180,17 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>(initialDetailTab || 'info');
+
+  // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
+  useEffect(() => {
+    if (initialClientId) {
+      setSelectedId(initialClientId);
+    }
+    if (initialDetailTab) {
+      setDetailTab(initialDetailTab);
+    }
+  }, [initialClientId, initialDetailTab]);
 
   const [showBulkMessage, setShowBulkMessage] = useState(false);
   const [bulkFilter, setBulkFilter] = useState<string>('doc_overdue');
@@ -2154,9 +2178,16 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                       icon: '📝', 
                       count: (() => {
                         try {
-                          const cList = JSON.parse(localStorage.getItem('electronic_contracts') || '[]').filter((c: any) => c.clientId === selectedId);
+                          const cleanPhone = selectedClient?.phone ? selectedClient.phone.replace(/[^0-9]/g, '') : '';
+                          const cList = JSON.parse(localStorage.getItem('electronic_contracts') || '[]').filter((c: any) => {
+                            if (c.clientId === selectedId) return true;
+                            if (selectedClient?.clientId && (c.clientId === selectedClient.clientId || c.clientRefId === selectedClient.clientId)) return true;
+                            if (selectedClient?.id && c.clientRefId === selectedClient.id) return true;
+                            if (cleanPhone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === cleanPhone) return true;
+                            return false;
+                          });
                           if (!cList.length) return null;
-                          return cList[0].status === 'completed' ? '체결' : '진행중';
+                          return cList[0].status === 'completed' ? '체결' : '서명대기';
                         } catch { return null; }
                       })() 
                     },
