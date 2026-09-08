@@ -1907,6 +1907,12 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         monthlyFixedExpenses: Math.round((intakeData.monthlyFixedExpenses || (intakeData.monthlyRent + (intakeData.extraLivingCost?.medical || 0) + (intakeData.extraLivingCost?.education || 0) + (intakeData.extraLivingCost?.specialEducation || 0))) / 10000),
         clientNote: intakeData.notes || undefined,
         clientNotes: intakeData.clientNotes || (intakeData.notes ? [intakeData.notes] : []),
+        debts: (intakeData.debts || []).map(d => ({
+          creditor: d.creditor,
+          amount: Math.round(d.principal / 10000),
+          type: d.type
+        })),
+        assets: intakeData.assets || [],
       },
       entryCategory: entryCategory || { type: 'general', id: 'direct', label: '일반 상담' },
     };
