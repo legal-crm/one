@@ -7,8 +7,8 @@ import popbill from 'popbill';
 popbill.config({
   LinkID: process.env.POPBILL_LINK_ID || 'MONSTERLAB',
   SecretKey: process.env.POPBILL_SECRET_KEY || '',
-  // 테스트 환경(test.popbill.com) 기본 활성화 (운영 전환 시 Vercel에서 POPBILL_IS_TEST='false'로 지정)
-  IsTest: process.env.POPBILL_IS_TEST !== 'false',
+  // 팝빌 운영(Production) 환경 승인 완료 -> 기본값 false (운영 모드)
+  IsTest: process.env.POPBILL_IS_TEST === 'true',
   IPRestrictOnOff: false, // Vercel 서버리스 유동 IP 환경 대응
   UseStaticIP: false,
   UseLocalTimeYN: true,
@@ -37,7 +37,7 @@ export const POPBILL_CONFIG = {
   plusFriendId: process.env.POPBILL_PLUS_FRIEND_ID || '@마이김변',
   senderPhone: process.env.POPBILL_SENDER_PHONE || process.env.POPBILL_CONTACT_TEL || SUPPLIER_INFO.contactTEL || '01026060357',
   isConfigured: Boolean((process.env.POPBILL_LINK_ID || 'MONSTERLAB') && (process.env.POPBILL_SECRET_KEY || '')),
-  isTest: process.env.POPBILL_IS_TEST !== 'false',
+  isTest: process.env.POPBILL_IS_TEST === 'true',
 };
 
 // 서비스 인스턴스
