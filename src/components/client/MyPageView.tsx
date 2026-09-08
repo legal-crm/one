@@ -195,9 +195,38 @@ export default function MyPageView({
     if (!profile) return null;
     return (
       <div className="space-y-5 pt-3 border-t border-slate-150 dark:border-slate-800 animate-fadeIn text-left">
-        {/* 0. 연령 및 거주/근무지 관할 법원 설정 */}
+        {/* 0. 의뢰인 인적사항 및 거주지 / 근무지 관할 법원 설정 */}
         <div className="space-y-3.5">
-          <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 연령 및 거주지 / 근무지 관할 법원 설정</h4>
+          <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">0. 의뢰인 기본 인적사항 및 관할 법원 설정</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">의뢰인 성명 / 안심가명</label>
+              <input 
+                type="text" 
+                value={profile.clientName || profile.name || userAlias || ''} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  handleFieldChange('clientName', val);
+                  handleFieldChange('name', val);
+                  setUserAlias(val);
+                }} 
+                placeholder="홍길동 또는 안심가명"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">연락처 (휴대폰 번호)</label>
+              <input 
+                type="tel" 
+                value={profile.phone || activeRequest?.phone || ''} 
+                onChange={(e) => handleFieldChange('phone', e.target.value)} 
+                placeholder="010-0000-0000"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">나이 (만)</label>
@@ -943,8 +972,122 @@ export default function MyPageView({
     );
   };
 
+  // ══════════════════════════════════════════════════════════════════════
+  // [isCompact 모드] 내 관리방 우측 슬라이드 패널 전용 뷰
+  // (완주동행, 서류함 등 다른 정보 없이, 내상황체크 개인정보 & 현황 채무만 집중 표시)
+  // ══════════════════════════════════════════════════════════════════════
+  if (isCompact) {
+    if (!profile) {
+      return (
+        <div className="p-8 text-center space-y-4 animate-fadeIn text-left">
+          <div className="w-14 h-14 mx-auto bg-brand/10 rounded-full flex items-center justify-center text-brand">
+            <FileText className="w-7 h-7" />
+          </div>
+          <h3 className="font-bold text-base text-slate-900 dark:text-white text-center">아직 자가진단 기록이 없습니다</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed text-center">
+            내 상황 체크하기를 먼저 진행해 주시면 채무 및 인적사항을 바로 확인하고 수정하실 수 있습니다.
+          </p>
+          <div className="text-center pt-2">
+            <button
+              type="button"
+              onClick={onStartDiagnosis}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>1분 채무상황 체크하기</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-4 md:p-6 space-y-6 text-left animate-fadeIn">
+        {/* 상단 안내 배너 */}
+        <div className="bg-gradient-to-r from-brand/10 via-indigo-50/50 to-purple-50/40 dark:from-slate-800 dark:to-slate-850 p-4 rounded-2xl border border-brand/20">
+          <div className="flex items-center gap-2">
+            <Scale className="w-5 h-5 text-brand shrink-0" />
+            <h3 className="font-black text-sm md:text-base text-slate-900 dark:text-white">
+              내 상황체크 자가진단 원안 & 채무 현황
+            </h3>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+            자가진단 시 입력했던 인적사항과 가계 재정, 채무 내역입니다. 수정하시면 상단의 변제율 및 변호사 검토 데이터가 실시간으로 재계산됩니다.
+          </p>
+        </div>
+
+        {/* 4대 주요 지표 카드 */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">총 채무액 (원금)</span>
+            <p className="text-base md:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+              {formatCurrency(totalDebtValue)}
+            </p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/40">
+            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 block">예상 탕감액</span>
+            <p className="text-base md:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+              {activeResult ? formatCurrency(activeResult.totalDebtReduction) : '-'}
+              {activeResult && activeResult.debtReductionRate > 0 && (
+                <span className="text-xs font-bold text-emerald-600 ml-1">({activeResult.debtReductionRate}%)</span>
+              )}
+            </p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-brand/5 dark:bg-brand/10 border border-brand/20">
+            <span className="text-[11px] font-bold text-brand dark:text-brand-light block">예상 월 변제금</span>
+            <p className="text-base md:text-lg font-black text-brand dark:text-brand-light mt-0.5">
+              {activeResult ? formatCurrency(activeResult.monthlyPayment) : '-'}
+            </p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/40">
+            <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 block">인정 생계비</span>
+            <p className="text-base md:text-lg font-black text-purple-600 dark:text-purple-400 mt-0.5">
+              {activeResult ? formatCurrency(activeResult.recognizedLivingCost) : '-'}
+            </p>
+          </div>
+        </div>
+
+        {/* 0~6번 상세 폼 (누락 없이 전부 편집 가능) */}
+        {renderBlueprintEditForm()}
+
+        {/* 7번 의뢰인 특이사항 및 전달 메모 */}
+        {renderClientNotes()}
+
+        {/* 하단 저장 & 닫기 액션 */}
+        <div className="border-t border-slate-200 dark:border-slate-800 pt-5 flex items-center justify-between gap-3 sticky bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md pb-2 z-10">
+          <button
+            type="button"
+            onClick={() => onNavigateToChat()}
+            className="px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+          >
+            닫기
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              confetti({
+                particleCount: 90,
+                spread: 70,
+                origin: { y: 0.8 },
+                colors: ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b']
+              });
+              toast.success('진단 정보가 실시간 저장되었습니다!', {
+                description: '상단의 예상 변제금과 채무조정 지표가 갱신되었습니다.',
+                duration: 3500,
+              });
+            }}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-xs md:text-sm font-extrabold shadow-md hover:shadow-brand-sm transition-all cursor-pointer active:scale-[0.98]"
+          >
+            <Save className="w-4 h-4" />
+            진단서 수정 저장 완료
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={isCompact ? "space-y-6 animate-fadeIn text-left" : "max-w-5xl mx-auto space-y-6 animate-fadeIn text-left"}>
+    <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left">
 
       {/* Header / Stealth Badge & Assigned Lawyer */}
       {!isCompact && (
@@ -1099,7 +1242,7 @@ export default function MyPageView({
       )}
 
       {/* ═══ 탭 1: 회생·파산 완주동행 (메인 허브) ═══ */}
-      {mypageTab === 'companion' && (
+      {!isCompact && mypageTab === 'companion' && (
         <RehabCompanionView
           userAlias={userAlias}
           onNavigateToChat={onNavigateToChat}
@@ -1875,29 +2018,6 @@ export default function MyPageView({
               );
             })()}
 
-            {/* ════ [isCompact 모드] 내 관리방 우측 슬라이드 패널 ════ */}
-            {isCompact && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6 text-left">
-                <div className="border-b border-slate-150 dark:border-slate-800 pb-3 flex justify-between items-center">
-                  <div>
-                    <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Scale className="w-5 h-5 text-brand" />
-                      나의 상세 진단 정보 조회 및 수정
-                    </h3>
-                    <p className="text-[12px] text-slate-600 dark:text-slate-400 mt-0.5">
-                      내용을 자유롭게 수정해 보세요. 변제금 및 채무조정 지표가 실시간으로 갱신됩니다.
-                    </p>
-                  </div>
-                  <span className="text-[11px] bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded font-bold">
-                    단위: 만 원
-                  </span>
-                </div>
-
-                {/* 0~6번 상세 폼 및 전달사항 메모 */}
-                {renderBlueprintEditForm()}
-                {renderClientNotes()}
-              </div>
-            )}
           </div>
         )}
       </div>

@@ -1016,6 +1016,7 @@ export default function ChatView({
                 requests={requests}
                 onNavigateToChat={() => setShowProfilePanel(false)}
                 isCompact={true}
+                initialSubTab="diagnosis"
               />
             </div>
           </div>
