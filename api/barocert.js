@@ -1,9 +1,10 @@
-﻿// Vercel Serverless Function: 링크허브 바로써트(Barocert) 통합 간편인증 API
-// 지원 수단: 카카오 인증 (kakaocert), 네이버 인증 (navercert), PASS 인증 (passcert)
+﻿// Vercel Serverless Function: 링크허브 바로써트(Barocert) 통합 간편인증 및 전자서명 API
+// 지원 수단: 카카오 인증 (kakaocert), 네이버 인증 (navercert), 토스/PASS 인증 (passcert)
+// 지원 모드: 본인인증(identity) 및 공인 전자서명(sign)
 // 지원 액션:
-//   - POST /api/barocert?action=request (본인인증 푸시 요청)
-//   - GET  /api/barocert?action=status  (본인인증 완료 상태 실시간 확인)
-//   - POST /api/barocert?action=verify  (본인인증 최종 검증 및 CI/공인시각 획득)
+//   - POST /api/barocert?action=request (본인인증 / 전자서명 푸시 요청)
+//   - GET  /api/barocert?action=status  (인증/서명 완료 상태 실시간 확인)
+//   - POST /api/barocert?action=verify  (완료 서명 최종 검증 및 CI/공인서명값 획득)
 
 import barocert from 'barocert';
 
@@ -57,18 +58,20 @@ export default async function handler(req, res) {
   const action = req.query?.action || 'status';
 
   // ─────────────────────────────────────────────────────────────
-  // 1. [REQUEST] 본인인증 푸시 요청 (스마트폰 알림 전송)
+  // 1. [REQUEST] 본인인증 또는 전자서명 푸시 요청 (스마트폰 알림 전송)
   // ─────────────────────────────────────────────────────────────
   if (action === 'request') {
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
 
     const {
-      provider = 'kakao',          // 'kakao' | 'naver' | 'pass'
+      mode = 'sign',               // 'sign' (전자서명) 또는 'identity' (본인확인)
+      provider = 'kakao',          // 'kakao' | 'naver' | 'toss' | 'pass'
       receiverName,                // 성명
       receiverHP,                  // 휴대폰번호 (하이픈 제외)
       receiverBirthday,            // 생년월일 8자리 (YYYYMMDD)
       title,                       // 메시지 제목
       extraMessage,                // 추가 안내 문구
+      token,                       // 서명 원문 해시 토큰
       expireIn = 300               // 유효시간(초, 5분)
     } = req.body || {};
 
@@ -78,63 +81,79 @@ export default async function handler(req, res) {
 
     const cleanHP = String(receiverHP).replace(/[^0-9]/g, '');
     const cleanBirthday = receiverBirthday ? String(receiverBirthday).replace(/[^0-9]/g, '') : '19800101';
-    const reqTitle = title || '[my김변] 법률 수임계약 본인확인 및 전자서명';
+    const reqTitle = title || '[my김변] 법률 수임계약 공인 전자서명';
+    const signToken = token || `SHA256-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
     // A. 바로써트 실서버 호출
     const service = provider === 'naver' ? navercertService : (provider === 'pass' ? passcertService : kakaocertService);
 
-    if (SECRET_KEY && service && typeof service.requestIdentity === 'function') {
+    if (SECRET_KEY && service) {
       try {
-        const identityObj = {
+        const signObj = {
           receiverHP: cleanHP,
           receiverName: receiverName.trim(),
           receiverBirthday: cleanBirthday,
+          signTitle: reqTitle,
           reqTitle,
-          extraMessage: extraMessage || '안전한 법률 서비스 계약을 위한 본인인증입니다.',
+          extraMessage: extraMessage || '법적 효력을 갖는 정식 사건위임계약 체결을 위한 공인 전자서명입니다.',
           expireIn,
-          token: `TOKEN-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          token: signToken,
           returnURL: 'https://mykim.kr',
         };
 
+        // requestSign 우선 호출, 없으면 requestIdentity 호출
         const receiptID = await new Promise((resolve, reject) => {
-          service.requestIdentity(
-            CLIENT_CODE,
-            identityObj,
-            (receipt) => resolve(receipt.receiptID || receipt),
-            (err) => reject(err)
-          );
+          if (mode === 'sign' && typeof service.requestSign === 'function') {
+            service.requestSign(
+              CLIENT_CODE,
+              signObj,
+              (receipt) => resolve(receipt.receiptID || receipt),
+              (err) => reject(err)
+            );
+          } else if (typeof service.requestIdentity === 'function') {
+            service.requestIdentity(
+              CLIENT_CODE,
+              signObj,
+              (receipt) => resolve(receipt.receiptID || receipt),
+              (err) => reject(err)
+            );
+          } else {
+            reject(new Error('인증 서비스 인터페이스를 찾을 수 없습니다.'));
+          }
         });
 
         return res.status(200).json({
           ok: true,
           mock: false,
+          mode,
           provider,
           receiptID,
           requestedAt: new Date().toISOString(),
           expireIn,
-          message: `${provider === 'naver' ? '네이버' : (provider === 'pass' ? 'PASS' : '카카오톡')} 앱으로 인증 요청이 전송되었습니다.`
+          message: `${provider === 'naver' ? '네이버' : (provider === 'toss' ? '토스' : '카카오톡')} 앱으로 전자서명 요청이 전송되었습니다.`
         });
       } catch (liveErr) {
         console.warn('[Barocert Live Request Failed -> Fallback to Mock]', liveErr);
       }
     }
 
-    // B. 모의(Mock) 인증 발급 (심사 대기 기간 및 로컬 개발용)
-    const mockReceiptID = `MOCK-BAROCERT-${provider.toUpperCase()}-${Date.now()}`;
+    // B. 모의(Mock) 전자서명 발급 (심사 대기 기간 및 로컬 개발용)
+    const mockReceiptID = `MOCK-BAROCERT-${mode.toUpperCase()}-${provider.toUpperCase()}-${Date.now()}`;
     return res.status(200).json({
       ok: true,
       mock: true,
+      mode,
       provider,
       receiptID: mockReceiptID,
       requestedAt: new Date().toISOString(),
       expireIn,
-      message: `${provider === 'naver' ? '네이버' : (provider === 'pass' ? 'PASS' : '카카오톡')} 앱으로 인증 요청이 전송되었습니다. (심사 승인 전 모의 인증 모드)`,
-      testNotice: '현재 바로써트 API 심사가 진행 중이므로 개발/테스트용 스마트 모의 인증으로 동작합니다.'
+      message: `${provider === 'naver' ? '네이버' : (provider === 'toss' ? '토스' : '카카오톡')} 앱으로 전자서명 요청이 전송되었습니다. (심사 승인 전 스마트 모의 서명 모드)`,
+      testNotice: '현재 바로써트 API 심사가 진행 중이므로 안전한 스마트 모의 전자서명으로 동작합니다.'
     });
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 2. [STATUS] 인증 완료 상태 실시간 조회 (Polling)
+  // 2. [STATUS] 전자서명 완료 상태 실시간 조회 (Polling)
   // ─────────────────────────────────────────────────────────────
   if (action === 'status') {
     const receiptID = req.query?.receiptID || req.body?.receiptID;
@@ -150,7 +169,7 @@ export default async function handler(req, res) {
         ok: true,
         mock: true,
         state: 1, // 1: 서명 완료
-        stateLabel: '인증완료',
+        stateLabel: '전자서명 완료',
         receiptID,
         viewDT: new Date().toISOString(),
         completeDT: new Date().toISOString()
@@ -159,10 +178,13 @@ export default async function handler(req, res) {
 
     const service = provider === 'naver' ? navercertService : (provider === 'pass' ? passcertService : kakaocertService);
 
-    if (service && typeof service.getIdentityStatus === 'function') {
+    if (service) {
       try {
         const statusRes = await new Promise((resolve, reject) => {
-          service.getIdentityStatus(
+          const checkFn = typeof service.getSignStatus === 'function' ? service.getSignStatus : service.getIdentityStatus;
+          if (!checkFn) return resolve({ state: 1 });
+          checkFn.call(
+            service,
             CLIENT_CODE,
             receiptID,
             (resObj) => resolve(resObj),
@@ -187,7 +209,7 @@ export default async function handler(req, res) {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 3. [VERIFY] 본인인증 최종 검증 및 CI / 서명 데이터 획득
+  // 3. [VERIFY] 전자서명 최종 검증 및 CI / 서명값(signedData) 획득
   // ─────────────────────────────────────────────────────────────
   if (action === 'verify') {
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
@@ -208,19 +230,22 @@ export default async function handler(req, res) {
           provider,
           receiverName: targetName || '의뢰인',
           ci: dummyCi,
-          signedData: `BAROCERT_SIGNED_${Date.now()}`,
+          signedData: `BAROCERT_CERTIFIED_SIGNATURE_${Date.now()}`,
           certifiedAt: new Date().toISOString(),
-          providerName: provider === 'naver' ? '네이버 인증' : (provider === 'pass' ? 'PASS 인증' : '카카오페이 간편인증')
+          providerName: provider === 'naver' ? '네이버 공인전자서명' : (provider === 'toss' ? '토스 공인전자서명' : '카카오페이 공인전자서명')
         }
       });
     }
 
     const service = provider === 'naver' ? navercertService : (provider === 'pass' ? passcertService : kakaocertService);
 
-    if (service && typeof service.verifyIdentity === 'function') {
+    if (service) {
       try {
         const verifyRes = await new Promise((resolve, reject) => {
-          service.verifyIdentity(
+          const verifyFn = typeof service.verifySign === 'function' ? service.verifySign : service.verifyIdentity;
+          if (!verifyFn) return reject(new Error('검증 함수를 찾을 수 없습니다.'));
+          verifyFn.call(
+            service,
             CLIENT_CODE,
             receiptID,
             (resObj) => resolve(resObj),
@@ -240,14 +265,14 @@ export default async function handler(req, res) {
             ci: verifyRes.ci,
             signedData: verifyRes.signedData,
             certifiedAt: new Date().toISOString(),
-            providerName: provider === 'naver' ? '네이버 간편인증' : (provider === 'pass' ? '통신사 PASS 인증' : '카카오페이 공인인증')
+            providerName: provider === 'naver' ? '네이버 공인전자서명' : (provider === 'toss' ? '토스 공인전자서명' : '카카오페이 공인전자서명')
           }
         });
       } catch (verifyErr) {
         console.error('[Barocert Verify Error]', verifyErr);
         return res.status(200).json({
           ok: false,
-          error: verifyErr.message || '인증 검증에 실패했습니다.',
+          error: verifyErr.message || '전자서명 검증에 실패했습니다.',
           code: verifyErr.code
         });
       }
