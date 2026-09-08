@@ -1211,8 +1211,15 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                 <DistributionBar
                   title="2025 도산법원 원금 탕감률 분포 내 의뢰인 위치"
                   userValue={debtReductionRate || 68}
-                  distribution={REHAB_STATISTICS_2025.debtReductionRate.distribution}
-                  highlightRange={calculateReductionRatePercentile(debtReductionRate || 68).range}
+                  distribution={REHAB_STATISTICS_2025.debtReductionRateDistribution || []}
+                  highlightRange={(() => {
+                    const rate = debtReductionRate || 68;
+                    if (rate < 10) return '10% 미만';
+                    if (rate >= 90) return '90% 이상';
+                    const lower = Math.floor(rate / 10) * 10;
+                    const upper = lower + 10;
+                    return `${lower}% 이상 ${upper}% 미만`;
+                  })()}
                 />
 
                 <div className="p-4 bg-purple-50/60 rounded-xl border border-purple-200 text-xs text-purple-900 leading-relaxed">
