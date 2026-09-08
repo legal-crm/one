@@ -6,7 +6,6 @@
   "rewrites": [
     { "source": "/api/invoice/:action*", "destination": "/api/invoice?action=:action*" },
     { "source": "/api/contract/:action*", "destination": "/api/contract?action=:action*" },
-    { "source": "/api/barocert/:action*", "destination": "/api/barocert?action=:action*" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/about", "destination": "/about.html" },
     { "source": "/faq", "destination": "/faq.html" },

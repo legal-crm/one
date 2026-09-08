@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
 import { getContract, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
-import { requestBarocertIdentity, checkBarocertStatus, verifyBarocertIdentity } from '../../services/barocertService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import SignatureCanvas from '../lawyer/SignatureCanvas';
 import LegalContractTermsModal, { TermKey, LEGAL_TERMS_DATA } from '../common/LegalContractTermsModal';
@@ -34,17 +33,11 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const [selectedTermKey, setSelectedTermKey] = useState<TermKey | null>(null);
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
 
-  // 본인인증 및 수단 선택 (카카오톡 / 네이버 / 토스 / PASS / SMS)
-  const [authProvider, setAuthProvider] = useState<'kakao' | 'naver' | 'toss' | 'pass' | 'sms'>('kakao');
+  // 본인인증 및 수단 선택 (카카오페이 / PASS 앱 / 토스 / 문자 SMS - 포트원 공식 연동)
+  const [authProvider, setAuthProvider] = useState<'kakao' | 'pass' | 'toss' | 'sms'>('kakao');
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [repMatchMessage, setRepMatchMessage] = useState<string | null>(null);
-
-  // 링크허브 바로써트(Barocert) 실시간 대기 모달 및 폴링 상태
-  const [barocertModalOpen, setBarocertModalOpen] = useState(false);
-  const [barocertReceiptId, setBarocertReceiptId] = useState<string | null>(null);
-  const [barocertCountdown, setBarocertCountdown] = useState(300);
-  const [barocertChecking, setBarocertChecking] = useState(false);
 
   // 블록체인 검증 모달 및 PDF 다운로드 상태
   const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -100,74 +93,6 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
     fetchContract();
   }, [cid, token]);
 
-  // 바로써트 실시간 상태 폴링 (카카오/네이버/토스 앱에서 서명 완료 감지)
-  useEffect(() => {
-    if (!barocertModalOpen || !barocertReceiptId || verified) return;
-
-    let timer: NodeJS.Timeout;
-    let countdownInterval: NodeJS.Timeout;
-
-    countdownInterval = setInterval(() => {
-      setBarocertCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          setBarocertModalOpen(false);
-          toast.error('인증 유효시간(5분)이 만료되었습니다. 다시 시도해 주세요.');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    const checkStatus = async () => {
-      if (barocertChecking) return;
-      setBarocertChecking(true);
-      try {
-        const res = await checkBarocertStatus(barocertReceiptId, authProvider as any);
-        if (res.state === 1) {
-          clearInterval(countdownInterval);
-          clearTimeout(timer);
-
-          const expectedName = contract?.isBusiness 
-            ? (contract.businessInfo?.representativeName || contract.clientName) 
-            : (contract?.clientName || '');
-
-          const verifiedResult = await verifyBarocertIdentity(barocertReceiptId, authProvider as any, expectedName);
-
-          if (contract) {
-            setContract({
-              ...contract,
-              identityVerification: verifiedResult,
-              authorityStatus: 'REPRESENTATIVE_VERIFIED',
-            });
-          }
-          setVerified(true);
-          setBarocertModalOpen(false);
-          toast.success(`${authProvider === 'naver' ? '네이버' : (authProvider === 'toss' ? '토스' : '카카오페이')} 간편인증 및 전자서명이 성공적으로 완료되었습니다!`);
-          return;
-        } else if (res.state === 2) {
-          clearInterval(countdownInterval);
-          setBarocertModalOpen(false);
-          toast.error('스마트폰 앱에서 인증이 취소 또는 거절되었습니다.');
-          return;
-        }
-      } catch (err) {
-        console.warn('[Barocert Polling Error]', err);
-      } finally {
-        setBarocertChecking(false);
-      }
-
-      timer = setTimeout(checkStatus, 2500);
-    };
-
-    timer = setTimeout(checkStatus, 2000);
-
-    return () => {
-      clearInterval(countdownInterval);
-      clearTimeout(timer);
-    };
-  }, [barocertModalOpen, barocertReceiptId, verified, contract, authProvider, barocertChecking]);
-
   const handleIdentityVerification = async () => {
     if (!contract) return;
     setVerifying(true);
@@ -175,34 +100,8 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
       ? (contract.businessInfo?.representativeName || contract.clientName) 
       : contract.clientName;
 
-    // A. 링크허브 바로써트 간편인증 (카카오 / 네이버 / 토스)
-    if (['kakao', 'naver', 'toss'].includes(authProvider)) {
-      try {
-        const reqRes = await requestBarocertIdentity({
-          provider: authProvider as any,
-          receiverName: expectedName,
-          receiverHP: contract.clientPhone || '',
-          title: `[my김변] ${contract.lawFirmName || '법률사무소'} 전자계약 본인확인`
-        });
-        setVerifying(false);
-
-        if (reqRes.ok && reqRes.receiptID) {
-          setBarocertReceiptId(reqRes.receiptID);
-          setBarocertCountdown(300);
-          setBarocertModalOpen(true);
-          toast.info(reqRes.message || '스마트폰 앱으로 인증 요청이 전송되었습니다.');
-        } else {
-          toast.error(reqRes.error || '간편인증 요청에 실패했습니다.');
-        }
-      } catch (e: any) {
-        setVerifying(false);
-        toast.error('간편인증 요청 중 오류가 발생했습니다.');
-      }
-      return;
-    }
-
-    // B. 통신 3사 PASS 앱 또는 휴대폰 SMS 문자 인증 (PortOne)
-    const result = await requestIdentityVerification(expectedName, authProvider as any);
+    // 포트원(PortOne V2) 공식 스마트폰 본인인증 & 전자서명
+    const result = await requestIdentityVerification(expectedName, authProvider);
     setVerifying(false);
 
     if (result.success) {
@@ -726,13 +625,12 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 원하시는 인증 수단을 선택하여 본인확인을 완료해 주십시오. <strong>앱이 없으신 경우 [문자(SMS) 인증]</strong>을 선택하시면 됩니다.
               </p>
 
-              {/* 5대 인증 수단 선택 탭/카드 */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {/* 4대 공인 본인인증 수단 선택 (포트원 V2 공식 연동) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { id: 'kakao' as const, label: '카카오톡', badge: '가장 빠름', icon: '💬', desc: '카카오 간편인증' },
-                  { id: 'naver' as const, label: '네이버', badge: '간편서명', icon: '🟢', desc: '네이버 앱 인증' },
-                  { id: 'toss' as const, label: '토스', badge: '앱인증', icon: '🔷', desc: '토스 앱 인증' },
+                  { id: 'kakao' as const, label: '카카오페이', badge: 'KISA 공인', icon: '💬', desc: '카카오 간편인증' },
                   { id: 'pass' as const, label: 'PASS 앱', badge: '통신 3사', icon: '📱', desc: 'PASS 스마트폰 앱' },
+                  { id: 'toss' as const, label: '토스', badge: 'KISA 공인', icon: '🔷', desc: '토스 간편인증' },
                   { id: 'sms' as const, label: '문자 (SMS)', badge: '안전망', icon: '✉️', desc: '앱 불필요 6자리' },
                 ].map(p => {
                   const isSelected = authProvider === p.id;
@@ -787,16 +685,15 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
                 {verifying ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{authProvider === 'sms' ? '문자(SMS) 인증번호 발송 중...' : '공인 인증 요청 중...'}</span>
+                    <span>{authProvider === 'sms' ? '문자(SMS) 인증번호 발송 중...' : '공인 본인인증 진행 중...'}</span>
                   </>
                 ) : (
                   <>
                     <Smartphone className="w-4 h-4" />
                     <span>
-                      {authProvider === 'kakao' ? '카카오톡으로 1초 간편인증 및 전자서명' :
-                       authProvider === 'naver' ? '네이버 앱으로 1초 간편인증 및 전자서명' :
-                       authProvider === 'toss' ? '토스 앱으로 간편인증 및 전자서명' :
+                      {authProvider === 'kakao' ? '카카오페이로 본인인증 및 전자서명 시작' :
                        authProvider === 'pass' ? '통신 3사 PASS로 본인인증 시작' :
+                       authProvider === 'toss' ? '토스 앱으로 본인인증 시작' :
                        '휴대폰 문자(SMS)로 6자리 인증번호 받기'}
                     </span>
                   </>
@@ -1000,53 +897,6 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           clientName={contract.clientName}
           lawyerName={contract.lawyerName}
         />
-
-        {/* 링크허브 바로써트(Barocert) 카카오/네이버/토스 앱 인증 대기 모달 */}
-        {barocertModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4 animate-scaleUp">
-              <div 
-                className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-sm border border-slate-100" 
-                style={{
-                  backgroundColor: authProvider === 'kakao' ? '#FEE500' : (authProvider === 'naver' ? '#03C75A' : '#3182F6')
-                }}
-              >
-                {authProvider === 'kakao' ? '💬' : (authProvider === 'naver' ? '🟢' : '🔷')}
-              </div>
-
-              <div>
-                <h4 className="text-base font-black text-slate-900">
-                  {authProvider === 'naver' ? '네이버' : (authProvider === 'toss' ? '토스' : '카카오톡')} 앱을 확인해 주세요
-                </h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  의뢰인님의 스마트폰으로 <strong>본인확인 및 전자서명 요청</strong>이 도착했습니다. 앱에서 [인증하기]를 진행해 주세요.
-                </p>
-              </div>
-
-              {/* 실시간 감지 애니메이션 & 타이머 */}
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5">
-                <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-700">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#1E3A5F]" />
-                  <span>스마트폰 서명 완료를 실시간 감지 중...</span>
-                </div>
-                <div className="text-xs font-mono font-black text-rose-500">
-                  남은 유효시간 {String(Math.floor(barocertCountdown / 60)).padStart(2, '0')}:{String(barocertCountdown % 60).padStart(2, '0')}
-                </div>
-              </div>
-
-              <div className="pt-1 flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBarocertModalOpen(false)}
-                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs cursor-pointer transition-colors"
-                >
-                  인증 취소
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   );
