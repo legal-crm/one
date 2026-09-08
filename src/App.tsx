@@ -570,7 +570,7 @@ export default function App() {
   const handleAddMessage = (
     reqId: string, 
     text: string, 
-    sender: 'client' | 'lawyer', 
+    sender: 'client' | 'lawyer' | 'system', 
     senderId: string, 
     name: string,
     targetLawyerId?: string
@@ -589,6 +589,7 @@ export default function App() {
     saveConsultMessage(newMessage).catch(() => {});
 
     // Update the corresponding request status to active 'counseling' & preserve acceptedLawyerIds
+    const isActualChat = (sender === 'client' && senderId !== 'system') || (sender === 'lawyer' && senderId !== 'system');
     setRequests(prev => prev.map(req => {
       if (req.id === reqId) {
         const accepted = req.acceptedLawyerIds || [];
@@ -597,7 +598,7 @@ export default function App() {
         return {
           ...req,
           acceptedLawyerIds: updatedAccepted,
-          status: (req.status === 'requested' || req.status === 'responding') ? 'counseling' : req.status
+          status: (isActualChat && (req.status === 'requested' || req.status === 'responding')) ? 'counseling' : req.status
         };
       }
       return req;

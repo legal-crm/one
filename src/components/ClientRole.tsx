@@ -793,11 +793,20 @@ export default function ClientRole({
 
       if (newlyAdded.length > 0) {
         const newNames = newlyAdded.map(id => mockLawyers.find(x => x.id === id)?.name).filter(Boolean);
+        // 의뢰인 화면 전용 안내문 (targetLawyerId: 'client-only'로 타 변호사 노출 차단)
         onAddMessage(
           existingRequest.id,
           `${newNames.join(', ')} 변호사님에게 상담 요청이 전달되었습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,
-          'lawyer', 'system', '시스템 안내'
+          'system', 'system', '시스템 안내', 'client-only'
         );
+        // 추가된 각 변호사에게 개별 상담 요청 전달 (타 변호사 이름 미노출)
+        newlyAdded.forEach(lawyerId => {
+          onAddMessage(
+            existingRequest.id,
+            '의뢰인으로부터 1:1 상담 요청이 접수되었습니다. 사전 진단 리포트를 검토하고 상담을 진행해 주세요.',
+            'system', 'system', '시스템 안내', lawyerId
+          );
+        });
       }
 
       setActiveTab('chat');
@@ -822,13 +831,26 @@ export default function ClientRole({
     setPendingNewRequest(null);
 
     setTimeout(() => {
+      // 의뢰인 전용 안내문
       onAddMessage(
         finalRequest.id,
         `상담 요청이 선택하신 ${lawyerIds.length}명의 변호사에게 전달되었습니다. 변호사가 고객님의 채무 현황을 검토한 뒤 솔루션 및 비용 제안서를 보내드립니다. 제안서를 확인하신 후 1:1 상담을 시작하실 수 있습니다.`,
-        'lawyer',
         'system',
-        '시스템 안내'
+        'system',
+        '시스템 안내',
+        'client-only'
       );
+      // 각 선택된 변호사에게 개별 상담 요청 전달
+      lawyerIds.forEach(id => {
+        onAddMessage(
+          finalRequest.id,
+          '의뢰인으로부터 1:1 상담 요청이 접수되었습니다. 사전 진단 리포트를 검토하고 상담을 진행해 주세요.',
+          'system',
+          'system',
+          '시스템 안내',
+          id
+        );
+      });
     }, 1000);
 
     setActiveTab('chat');

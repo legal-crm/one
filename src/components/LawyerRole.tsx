@@ -3358,19 +3358,204 @@ export default function LawyerRole({
 
         {/* TAB 3: 상담 채팅 */}
         {activeTab === 'chat' && (() => {
+          // 변호사 어드민 화면에서 본인에게 유효한 메시지만 필터링 및 타 변호사 노출 문구 정제
+          const filterAndSanitizeMessagesForLawyer = (
+            rawMessages: ConsultMessage[],
+            lawyer: User,
+            request?: ConsultRequest | null
+          ): ConsultMessage[] => {
+            if (!rawMessages || rawMessages.length === 0) return [];
+
+            const result: ConsultMessage[] = [];
+            const seenSystemTexts = new Set<string>();
+
+            for (const m of rawMessages) {
+              const isSystem = 
+                m.senderType === 'system' || 
+                m.senderId === 'system' || 
+                m.senderName === '시스템 안내' || 
+                m.senderName === 'System' || 
+                (m as any).senderType === 'admin' || 
+                m.message?.startsWith('[System]');
+
+              // 1. 타 변호사의 일반/제안 메시지 차단
+              if (m.senderType === 'lawyer' && !isSystem) {
+                if (m.senderId !== lawyer.id) {
+                  continue; // 타 변호사 메시지/제안서 숨김
+                }
+                result.push(m);
+                continue;
+              }
+
+              // 2. 의뢰인 메시지
+              if (m.senderType === 'client' && !isSystem) {
+                // 타 변호사 지정(targetLawyerId)된 의뢰인 메시지는 차단
+                if (m.targetLawyerId && m.targetLawyerId !== lawyer.id) {
+                  continue;
+                }
+                result.push(m);
+                continue;
+              }
+
+              // 3. 시스템 메시지
+              if (isSystem) {
+                // 3-1. targetLawyerId가 지정된 경우
+                if (m.targetLawyerId) {
+                  if (m.targetLawyerId === 'client-only') {
+                    continue; // 의뢰인 전용 안내문 숨김
+                  }
+                  if (m.targetLawyerId !== lawyer.id) {
+                    continue; // 타 변호사 대상 시스템 알림 숨김
+                  }
+                  result.push(m);
+                  continue;
+                }
+
+                // 3-2. targetLawyerId가 없는 레거시/공통 브로드캐스트 시스템 메시지
+                const text = m.message || (m as any).content || '';
+
+                // 의뢰인용 안내 문구 차단
+                if (text.includes('상담 요청이 선택하신') || text.includes('변호사가 고객님의 채무 현황을 검토한 뒤')) {
+                  continue;
+                }
+
+                // 다중/추가 상담 요청 안내문 (예: "김우진 변호사, 테스트 1변호사... 추가 상담 요청이 전달되었습니다.")
+                const isConsultRequestNotice = 
+                  text.includes('상담 요청이 전달되었습니다') || 
+                  text.includes('상담을 요청했습니다') ||
+                  text.includes('무료 상담을 요청했습니다');
+
+                if (isConsultRequestNotice) {
+                  const mentionsMe = Boolean(lawyer.name && text.includes(lawyer.name));
+                  const isDirectlySelected = Boolean(
+                    request?.selectedLawyerId === lawyer.id || 
+                    (request?.selectedLawyerIds || []).includes(lawyer.id)
+                  );
+
+                  if (!mentionsMe && !isDirectlySelected) {
+                    continue; // 본인과 무관한 타 변호사 요청문 차단
+                  }
+
+                  // 본인에게 노출하되, 타 변호사 이름은 절대 노출하지 않고 단일 정제 메시지로 치환
+                  const sanitizedText = '의뢰인으로부터 상담 요청이 접수되었습니다. 사전 진단 리포트를 검토하고 상담을 진행해 주세요.';
+                  if (seenSystemTexts.has(sanitizedText)) continue;
+                  seenSystemTexts.add(sanitizedText);
+                  result.push({
+                    ...m,
+                    senderType: 'system',
+                    senderName: '시스템 안내',
+                    message: sanitizedText,
+                  });
+                  continue;
+                }
+
+                // 비교 상담 시작 안내문 (예: "테스트 5변호사 변호사님과 비교 상담을 시작합니다.")
+                if (text.includes('비교 상담을 시작합니다')) {
+                  const mentionsMe = Boolean(lawyer.name && text.includes(lawyer.name));
+                  if (!mentionsMe) {
+                    continue; // 타 변호사 비교 상담 시작문 차단
+                  }
+                  const sanitizedText = '의뢰인과의 1:1 비교 상담을 시작합니다.';
+                  if (seenSystemTexts.has(sanitizedText)) continue;
+                  seenSystemTexts.add(sanitizedText);
+                  result.push({
+                    ...m,
+                    senderType: 'system',
+                    senderName: '시스템 안내',
+                    message: sanitizedText,
+                  });
+                  continue;
+                }
+
+                // 제안서 수락 안내문
+                if (text.includes('제안서를 수락하셨습니다')) {
+                  const mentionsMe = Boolean(lawyer.name && text.includes(lawyer.name));
+                  if (!mentionsMe) {
+                    continue;
+                  }
+                  const sanitizedText = '의뢰인이 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 진행하실 수 있습니다.';
+                  if (seenSystemTexts.has(sanitizedText)) continue;
+                  seenSystemTexts.add(sanitizedText);
+                  result.push({
+                    ...m,
+                    senderType: 'system',
+                    senderName: '시스템 안내',
+                    message: sanitizedText,
+                  });
+                  continue;
+                }
+
+                // 상담 요청 취소 안내문
+                if (text.includes('상담 요청을 취소하였습니다')) {
+                  if (text.includes('모든 변호사')) {
+                    result.push(m);
+                    continue;
+                  }
+                  const mentionsMe = Boolean(lawyer.name && text.includes(lawyer.name));
+                  if (!mentionsMe) {
+                    continue; // 타 변호사 취소문 차단
+                  }
+                  const sanitizedText = '의뢰인이 상담 요청을 취소하였습니다.';
+                  if (seenSystemTexts.has(sanitizedText)) continue;
+                  seenSystemTexts.add(sanitizedText);
+                  result.push({
+                    ...m,
+                    senderType: 'system',
+                    senderName: '시스템 안내',
+                    message: sanitizedText,
+                  });
+                  continue;
+                }
+
+                // 타 변호사 전담 선임 알림
+                if (text.includes('다른 변호사를 전담으로 선임하였습니다')) {
+                  if (request?.selectedLawyerId === lawyer.id) {
+                    continue;
+                  }
+                  result.push(m);
+                  continue;
+                }
+
+                // 기타 시스템 메시지 중 타 변호사 이름이 포함된 경우 차단
+                if (text.includes('변호사님') || text.includes('변호사가')) {
+                  const mentionsMe = Boolean(lawyer.name && text.includes(lawyer.name));
+                  if (!mentionsMe) {
+                    continue;
+                  }
+                }
+
+                if (seenSystemTexts.has(text)) continue;
+                seenSystemTexts.add(text);
+                result.push(m);
+              }
+            }
+
+            return result;
+          };
+
+          const getLawyerVisibleMsgs = (reqId: string, req?: ConsultRequest | null) => {
+            const reqMsgs = messages.filter(m => m.consultRequestId === reqId);
+            return filterAndSanitizeMessagesForLawyer(reqMsgs, activeLawyer, req);
+          };
+
           const chatThreads = requests
             .filter(r => {
               if ((r as any).isSoftDeleted) return false;
               const hasMyProposal = (r.proposals || []).some((p: any) => p.lawyerId === activeLawyer.id);
               const isAccepted = (r.acceptedLawyerIds || []).includes(activeLawyer.id);
               const isSelected = r.selectedLawyerId === activeLawyer.id || (r.selectedLawyerIds || []).includes(activeLawyer.id);
-              const hasMessages = messages.some(m => m.consultRequestId === r.id);
+              const myMsgs = getLawyerVisibleMsgs(r.id, r);
+              const hasMyMessages = myMsgs.some(m => m.senderId === activeLawyer.id || m.targetLawyerId === activeLawyer.id || m.senderType === 'client');
               const isCounselingOrActive = ['comparing', 'counseling', 'contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'].includes(r.status);
-              return hasMyProposal || isAccepted || isSelected || (hasMessages && isCounselingOrActive);
+              return hasMyProposal || isAccepted || isSelected || (hasMyMessages && isCounselingOrActive);
             })
             .sort((a, b) => {
-              const lastMsgA = messages.filter(m => m.consultRequestId === a.id).slice(-1)[0];
-              const lastMsgB = messages.filter(m => m.consultRequestId === b.id).slice(-1)[0];
+              const reqA = requests.find(r => r.id === a.id);
+              const reqB = requests.find(r => r.id === b.id);
+              const msgsA = getLawyerVisibleMsgs(a.id, reqA);
+              const msgsB = getLawyerVisibleMsgs(b.id, reqB);
+              const lastMsgA = msgsA.slice(-1)[0];
+              const lastMsgB = msgsB.slice(-1)[0];
               const timeA = lastMsgA ? new Date(lastMsgA.createdAt).getTime() : new Date(a.createdAt).getTime();
               const timeB = lastMsgB ? new Date(lastMsgB.createdAt).getTime() : new Date(b.createdAt).getTime();
               return timeB - timeA;
@@ -3378,7 +3563,7 @@ export default function LawyerRole({
 
           const selectedThread = (activeChatReqId && requests.find(r => r.id === activeChatReqId)) || chatThreads[0] || null;
           const activeThreadId = selectedThread?.id || activeChatReqId;
-          const currentMsgs = selectedThread ? messages.filter(m => m.consultRequestId === selectedThread.id) : [];
+          const currentMsgs = selectedThread ? getLawyerVisibleMsgs(selectedThread.id, selectedThread) : [];
 
           const chatEndRef = React.createRef<HTMLDivElement>();
           return (
@@ -3399,7 +3584,7 @@ export default function LawyerRole({
               <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
                 {chatThreads.map(r => {
                     const isSelected = r.id === activeThreadId;
-                    const lastMsg = messages.filter(m => m.consultRequestId === r.id).slice(-1)[0];
+                    const lastMsg = getLawyerVisibleMsgs(r.id, r).slice(-1)[0];
                     return (
                       <div 
                         key={r.id}
@@ -3510,13 +3695,20 @@ export default function LawyerRole({
 
                     {currentMsgs.map(m => {
                       const isMe = m.senderId === activeLawyer.id;
-                      const isSystem = (m as any).senderType === 'admin' || m.senderName === 'System' || m.message.startsWith('[System]');
+                      const isSystem = 
+                        m.senderType === 'system' || 
+                        m.senderId === 'system' || 
+                        m.senderName === '시스템 안내' || 
+                        m.senderName === 'System' || 
+                        (m as any).senderType === 'admin' || 
+                        m.message?.startsWith('[System]');
                       
                       if (isSystem) {
+                        const cleanText = m.message.replace(/^\[System\]\s*/, '');
                         return (
-                          <div key={m.id} className="flex justify-center">
-                            <span className="bg-slate-100 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
-                              {m.message.replace('[System] ', '')}
+                          <div key={m.id} className="flex justify-center my-2">
+                            <span className="bg-slate-100 text-slate-600 text-xs px-3.5 py-1.5 rounded-full border border-slate-200 font-medium tracking-tight max-w-lg text-center shadow-2xs">
+                              {cleanText}
                             </span>
                           </div>
                         );

@@ -815,7 +815,7 @@ export interface ConsultParticipant {
 export interface ConsultMessage {
   id: string;
   consultRequestId: string;
-  senderType: 'client' | 'lawyer';
+  senderType: 'client' | 'lawyer' | 'system';
   senderId: string;
   senderName: string;
   message: string;

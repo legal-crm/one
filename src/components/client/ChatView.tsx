@@ -245,8 +245,14 @@ export default function ChatView({
   const activeChatMessages = messages.filter(m => {
     if (m.consultRequestId !== (currentRequest?.id || activeChatReqId)) return false;
     if ((isComparing || currentRequest?.status === 'counseling') && hasMultipleAccepted && activeChatLawyerId) {
-      // 변호사 메시지: 해당 변호사 또는 시스템 메시지만 표시
-      if (m.senderType === 'lawyer') return m.senderId === activeChatLawyerId || m.senderId === 'system';
+      // 시스템 메시지: 'client-only'이거나 공통 메시지면 모든 탭 표시, targetLawyerId가 특정 변호사면 해당 변호사 탭만 표시
+      if (m.senderType === 'system' || m.senderId === 'system') {
+        if (m.targetLawyerId === 'client-only') return true;
+        if (m.targetLawyerId) return m.targetLawyerId === activeChatLawyerId;
+        return true;
+      }
+      // 변호사 메시지: 해당 변호사만 표시
+      if (m.senderType === 'lawyer') return m.senderId === activeChatLawyerId;
       // 의뢰인 메시지: targetLawyerId가 있으면 해당 변호사 탭에서만, 없으면 모든 탭에서 표시 (하위 호환)
       if (m.senderType === 'client') return !m.targetLawyerId || m.targetLawyerId === activeChatLawyerId;
     }
@@ -655,7 +661,7 @@ export default function ChatView({
                               onAddMessage(
                                 currentRequest.id,
                                 `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
-                                'lawyer', 'system', '시스템 안내'
+                                'system', 'system', '시스템 안내', bid.lawyerId
                               );
                             } else {
                               const newAccepted = Array.from(new Set([...(currentRequest.acceptedLawyerIds || []), bid.lawyerId]));
@@ -668,7 +674,7 @@ export default function ChatView({
                               onAddMessage(
                                 currentRequest.id,
                                 `${bid.lawyerName} 변호사님과 비교 상담을 시작합니다.`,
-                                'lawyer', 'system', '시스템 안내'
+                                'system', 'system', '시스템 안내', bid.lawyerId
                               );
                             }
                           }
@@ -860,12 +866,16 @@ export default function ChatView({
 
               <div ref={chatFeedRef} className="h-[450px] overflow-y-auto p-5 space-y-6 scrollbar-hide bg-slate-50/[0.15] dark:bg-slate-950/[0.05]">
                 {activeChatMessages.map(m => {
-                  const isSystem = m.message.startsWith('[System]');
+                  const isSystem = 
+                    m.message.startsWith('[System]') || 
+                    m.senderType === 'system' || 
+                    m.senderId === 'system' || 
+                    m.senderName === '시스템 안내';
                   if (isSystem) {
                     return (
                       <div key={m.id} className="flex justify-center my-2">
                         <div className="bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full py-1.5 px-4.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-semibold tracking-tight text-center max-w-md">
-                          {m.message.replace('[System] ', '')}
+                          {m.message.replace(/^\[System\]\s*/, '')}
                         </div>
                       </div>
                     );
@@ -926,7 +936,7 @@ export default function ChatView({
                       onAddMessage(
                         currentRequest.id,
                         `[System] 🎉 의뢰인이 귀하를 전담 변호사로 선임하였습니다!`,
-                        'client', activeChatLawyerId, '시스템 안내'
+                        'system', 'system', '시스템 안내', activeChatLawyerId
                       );
 
                       const otherLawyers = (currentRequest.acceptedLawyerIds || []).filter(id => id !== activeChatLawyerId);
@@ -934,7 +944,7 @@ export default function ChatView({
                         onAddMessage(
                           currentRequest.id,
                           `[System] 📋 의뢰인이 다른 변호사를 전담으로 선임하였습니다. 상담에 참여해 주셔서 감사합니다.`,
-                          'client', otherId, '시스템 안내'
+                          'system', 'system', '시스템 안내', otherId
                         );
                       });
                       toast.success('전담 변호사로 선임되었습니다!');
@@ -1085,14 +1095,20 @@ export default function ChatView({
                         : r
                     ));
                     
-                    // 3. 시스템 메시지 (고객 + 변호사 양쪽에 표시)
-                    onAddMessage(
-                      currentRequest.id, 
-                      allCancelled 
-                        ? `의뢰인이 모든 변호사에 대한 상담 요청을 취소하였습니다.`
-                        : `의뢰인이 ${cancelTargetLawyer.name} 변호사님에 대한 상담 요청을 취소하였습니다.`, 
-                      'lawyer', 'system', '시스템 안내'
-                    );
+                    // 3. 시스템 메시지
+                    if (allCancelled) {
+                      onAddMessage(
+                        currentRequest.id, 
+                        `의뢰인이 모든 변호사에 대한 상담 요청을 취소하였습니다.`, 
+                        'system', 'system', '시스템 안내'
+                      );
+                    } else {
+                      onAddMessage(
+                        currentRequest.id, 
+                        `의뢰인이 ${cancelTargetLawyer.name} 변호사님에 대한 상담 요청을 취소하였습니다.`, 
+                        'system', 'system', '시스템 안내', cancelTargetLawyer.id
+                      );
+                    }
                   }
                   setCancelTargetLawyer(null);
                 }}
@@ -1305,11 +1321,20 @@ export default function ChatView({
                             ? { ...r, selectedLawyerIds: selectedFavLawyers, status: 'requested' as const, requestType: 'direct_multi' as const }
                             : r
                         ));
+                        // 의뢰인 화면 전용 안내문 (타 변호사 어드민 노출 차단)
                         onAddMessage(
                           currentRequest.id,
                           `${selectedNames.join(', ')} 변호사님에게 상담을 요청했습니다. 변호사님의 검토 후 제안서가 도착할 예정입니다.`,
-                          'lawyer', 'system', '시스템 안내'
+                          'system', 'system', '시스템 안내', 'client-only'
                         );
+                        // 각 선택된 변호사에게 1:1 상담 요청 개별 전달
+                        selectedFavLawyers.forEach(id => {
+                          onAddMessage(
+                            currentRequest.id,
+                            '의뢰인으로부터 1:1 상담 요청이 접수되었습니다. 사전 진단 리포트를 검토하고 상담을 진행해 주세요.',
+                            'system', 'system', '시스템 안내', id
+                          );
+                        });
                       }
                       setRequestedLawyerIds(selectedFavLawyers);
                       setShowFavLawyerModal(false);
