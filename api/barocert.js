@@ -1,4 +1,4 @@
-﻿// Vercel Serverless Function: 링크허브 바로써트(Barocert) 통합 간편인증 및 전자서명 API
+// Vercel Serverless Function: 링크허브 바로써트(Barocert) 통합 간편인증 및 전자서명 API
 // 지원 수단: 카카오 인증 (kakaocert), 네이버 인증 (navercert), 토스/PASS 인증 (passcert)
 // 지원 모드: 본인인증(identity) 및 공인 전자서명(sign)
 // 지원 액션:
@@ -29,10 +29,31 @@ if (LINK_ID && SECRET_KEY) {
   }
 }
 
-// 서비스 인스턴스
+// 서비스 인스턴스 (카카오, 네이버, 토스, PASS)
 const kakaocertService = barocert.KakaocertService ? barocert.KakaocertService() : null;
 const navercertService = barocert.NavercertService ? barocert.NavercertService() : null;
+const tosscertService = barocert.TosscertService ? barocert.TosscertService() : null;
 const passcertService = barocert.PasscertService ? barocert.PasscertService() : null;
+
+function getService(provider) {
+  if (provider === 'naver') return navercertService;
+  if (provider === 'toss') return tosscertService;
+  if (provider === 'pass') return passcertService;
+  return kakaocertService;
+}
+
+// SDK 공식 규격: 수신자 개인정보 및 토큰은 AES-256(_encrypt) 암호화 필요
+function enc(service, val) {
+  if (!val) return '';
+  if (service && typeof service._encrypt === 'function') {
+    try {
+      return service._encrypt(String(val));
+    } catch (e) {
+      console.warn('[Barocert _encrypt warning]', e);
+    }
+  }
+  return String(val);
+}
 
 // CORS 설정
 function setCors(req, res) {
@@ -85,21 +106,50 @@ export default async function handler(req, res) {
     const signToken = token || `SHA256-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
     // A. 바로써트 실서버 호출
-    const service = provider === 'naver' ? navercertService : (provider === 'pass' ? passcertService : kakaocertService);
+    const service = getService(provider);
+    const hasValidClientCode = CLIENT_CODE && CLIENT_CODE.length === 12 && !isNaN(CLIENT_CODE);
 
-    if (SECRET_KEY && service) {
+    if (SECRET_KEY && service && hasValidClientCode) {
       try {
-        const signObj = {
-          receiverHP: cleanHP,
-          receiverName: receiverName.trim(),
-          receiverBirthday: cleanBirthday,
-          signTitle: reqTitle,
-          reqTitle,
-          extraMessage: extraMessage || '법적 효력을 갖는 정식 사건위임계약 체결을 위한 공인 전자서명입니다.',
-          expireIn,
-          token: signToken,
-          returnURL: 'https://mykim.kr',
-        };
+        let signObj;
+        if (provider === 'naver') {
+          signObj = {
+            receiverHP: enc(service, cleanHP),
+            receiverName: enc(service, receiverName.trim()),
+            receiverBirthday: enc(service, cleanBirthday),
+            reqTitle,
+            reqMessage: enc(service, extraMessage || '사건위임계약 공인 전자서명 요청입니다.'),
+            callCenterNum: process.env.POPBILL_SENDER_PHONE || '01026060357',
+            tokenType: 'TEXT',
+            token: enc(service, signToken),
+            expireIn,
+            returnURL: 'https://mykim.kr'
+          };
+        } else if (provider === 'toss') {
+          signObj = {
+            receiverHP: enc(service, cleanHP),
+            receiverName: enc(service, receiverName.trim()),
+            receiverBirthday: enc(service, cleanBirthday),
+            reqTitle,
+            tokenType: 'TEXT',
+            token: enc(service, signToken),
+            expireIn
+          };
+        } else {
+          // kakao / pass
+          signObj = {
+            receiverHP: enc(service, cleanHP),
+            receiverName: enc(service, receiverName.trim()),
+            receiverBirthday: enc(service, cleanBirthday),
+            signTitle: reqTitle,
+            reqTitle,
+            extraMessage: enc(service, extraMessage || '법적 효력을 갖는 정식 사건위임계약 체결을 위한 공인 전자서명입니다.'),
+            expireIn,
+            tokenType: 'TEXT',
+            token: enc(service, signToken),
+            returnURL: 'https://mykim.kr',
+          };
+        }
 
         // requestSign 우선 호출, 없으면 requestIdentity 호출
         const receiptID = await new Promise((resolve, reject) => {
@@ -176,7 +226,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const service = provider === 'naver' ? navercertService : (provider === 'pass' ? passcertService : kakaocertService);
+    const service = getService(provider);
 
     if (service) {
       try {
@@ -237,7 +287,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const service = provider === 'naver' ? navercertService : (provider === 'pass' ? passcertService : kakaocertService);
+    const service = getService(provider);
 
     if (service) {
       try {
