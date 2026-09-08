@@ -432,22 +432,22 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
           logging: false,
           backgroundColor: '#ffffff',
           windowWidth: 850,
-          scrollX: 0,
-          scrollY: 0,
+          windowHeight: Math.max(1500, (pageEl.offsetTop || 0) + (pageEl.offsetHeight || 1123) + 200),
         });
 
         if (i > 0) {
           pdf.addPage();
         }
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
       }
 
       const filePrefix = isAIPremium ? 'AI_7p_정밀진단서' : '변호사_직접검토의견서';
       const sanitizedName = (clientName || '의뢰인').replace(/[^a-zA-Z0-9가-힣_]/g, '');
       const dateStr = new Date().toISOString().slice(0, 10);
       const fileName = `${filePrefix}_${sanitizedName}_${dateStr}.pdf`;
+
       pdf.save(fileName);
 
       toast.success(
@@ -458,7 +458,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       );
     } catch (error: any) {
       console.error('PDF Generation Error:', error);
-      toast.error(`PDF 생성 중 오류가 발생했습니다: ${error?.message || '다시 시도해주세요.'}`, { id: toastId });
+      toast.error(`PDF 생성 중 오류가 발생했습니다: ${error?.message || error || '다시 시도해주세요.'}`, { id: toastId });
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -479,7 +479,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       {/* 
         OFF-SCREEN PRINTABLE CONTAINER FOR PDF GENERATION
-        Rendered at (0, 0) behind modal backdrop (z-index: -9999) to ensure clean html2canvas capture.
+        Rendered at left: -9999px to ensure clean html2canvas capture without visible backdrop bleed.
       */}
       <div 
         id="pdf-render-container" 
@@ -488,11 +488,10 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         style={{
           position: 'fixed',
           top: 0,
-          left: 0,
+          left: '-9999px',
           width: '794px',
           zIndex: -9999,
           pointerEvents: 'none',
-          opacity: 1
         }}
       >
         {isAIPremium ? (
@@ -729,105 +728,120 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
               {/* [변호사 직접 검토 전용 서식] 공인 법률의견서 정식 서면 */}
               {!isAIPremium ? (
                 <div className="space-y-6">
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-6">
-                    {/* 상단 서면 헤더 및 직인 */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-200 gap-4">
-                      <div>
-                        <div className="text-[11px] font-extrabold text-blue-700 tracking-wider uppercase mb-1">
-                          OFFICIAL LEGAL OPINION LETTER
+                  {/* 1. 담당 변호사 직접 심사 총괄 소견 카드 */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0">
+                          <Scale className="w-5 h-5" />
                         </div>
-                        <h3 className="text-lg sm:text-xl font-black text-slate-900">
-                          개인회생 신청 법률적 타당성 및 채무조정 검토의견서
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1">
-                          본 문서는 도산 전문 변호사가 의뢰인의 진술 및 경제상황을 1:1로 직접 면밀히 심사하여 작성한 공인 법률의견서입니다.
-                        </p>
-                      </div>
-
-                      {/* 변호사 직인 도장 그래픽 */}
-                      <div className="flex items-center gap-3 self-end sm:self-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                        <div className="text-right">
-                          <div className="text-xs font-bold text-slate-900">{lawyerName} 변호사</div>
-                          <div className="text-[10px] text-slate-500">{lawyerFirmName}</div>
-                        </div>
-                        <div className="w-12 h-12 rounded-full border-2 border-red-600 text-red-600 flex items-center justify-center text-[9px] font-black leading-tight text-center rotate-[-5deg] shadow-xs select-none">
-                          변호사<br />{lawyerName.slice(0, 3)}<br />之印
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 핵심 지표 4대 요약 카드 */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-center">
-                        <div className="text-[11px] font-bold text-blue-600">예상 원금 탕감률</div>
-                        <div className="text-lg sm:text-xl font-black text-blue-800 mt-1">{debtReductionRate}%</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">원금 대폭 감면</div>
-                      </div>
-                      <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center">
-                        <div className="text-[11px] font-bold text-emerald-600">월 예상 변제금</div>
-                        <div className="text-lg sm:text-xl font-black text-emerald-800 mt-1">{formatCurrency(monthlyPayment)}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">{repaymentMonths}개월 균등 분할</div>
-                      </div>
-                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                        <div className="text-[11px] font-bold text-slate-600">총 탕감 예상액</div>
-                        <div className="text-base sm:text-lg font-black text-slate-900 mt-1">{formatCurrency(estimatedReduction)}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">원금 면책 기준</div>
-                      </div>
-                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                        <div className="text-[11px] font-bold text-slate-600">이자 감면율</div>
-                        <div className="text-base sm:text-lg font-black text-slate-900 mt-1">100% 면제</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">장래이자 전액 소멸</div>
-                      </div>
-                    </div>
-
-                    {/* 1. 변호사 직접 심사 총괄 소견 (전문) */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
-                          <Scale className="w-4 h-4 text-blue-600" />
-                          <span>1. 담당 변호사 직접 심사 총괄 소견</span>
-                        </div>
-                        <span className="text-xs text-slate-500 font-medium">기준 관할법원: {courtName}</span>
-                      </div>
-                      <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 leading-relaxed space-y-2.5">
-                        <p className="font-bold text-slate-900 text-sm">
-                          "소득 요건 및 부채 규모를 법원 실무 기준에 맞추어 검토하였으며, 법원 보정권고에 가장 안전하게 통과될 수 있는 합리적 변제 계획안입니다."
-                        </p>
-                        <p className="text-slate-700 leading-relaxed">
-                          {lawyerComment}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 2. 보정명령 방어 및 사건 진행 핵심 전략 */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                        <span>2. 법원 보정명령 방어 및 직접 소명 전략</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {specialNotes.map((note, idx) => (
-                          <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
-                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>전략 0{idx + 1}</span>
-                            </div>
-                            <p className="text-slate-600 leading-relaxed">{note}</p>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                              공인 법률검토의견
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium">
+                              관할: <strong className="text-slate-700">{courtName}</strong>
+                            </span>
                           </div>
-                        ))}
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
+                            {lawyerName} 변호사의 직접 심사 총괄 소견
+                          </h3>
+                        </div>
+                      </div>
+
+                      {/* 공인 날인 미니 뱃지 */}
+                      <div className="flex items-center gap-2 self-end sm:self-auto bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                        <span className="text-xs font-semibold text-slate-700">{lawyerFirmName}</span>
+                        <div className="w-6 h-6 rounded-full border border-red-500 text-red-600 flex items-center justify-center text-[8px] font-black leading-none rotate-[-5deg]">
+                          印
+                        </div>
                       </div>
                     </div>
 
-                    {/* 법적 안심 보증 서약 박스 */}
-                    <div className="p-3.5 rounded-xl bg-blue-50/40 border border-blue-200/60 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-blue-600" />
-                        <span className="font-semibold">변호사법 제109조 의거 100% 비밀보호 및 1:1 전담 대리</span>
+                    {/* 핵심 변호사 코멘트 및 소견 */}
+                    <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-slate-200 text-slate-800 leading-relaxed space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-blue-600 text-2xl font-serif font-black leading-none select-none">“</span>
+                        <p className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
+                          소득 요건 및 부채 규모를 법원 실무 기준에 맞추어 검토하였으며, 법원 보정권고에 가장 안전하게 통과될 수 있는 최적의 변제 계획안입니다.
+                        </p>
                       </div>
-                      <span className="text-[11px] text-slate-500">
-                        {lawyerFirmName} · {lawyerName} 변호사 직접 날인 공인
+                      <p className="text-sm text-slate-700 leading-relaxed pl-5 whitespace-pre-line">
+                        {lawyerComment}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 2. 법원 보정명령 방어 및 직접 소명 3대 전략 */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                        <h4 className="text-sm sm:text-base font-extrabold text-slate-900">
+                          법원 보정명령 최소화 및 직접 소명 3대 전략
+                        </h4>
+                      </div>
+                      <span className="text-xs text-slate-500">1:1 전담 대리</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {specialNotes.map((note, idx) => (
+                        <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-2">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="text-slate-900 font-extrabold">전략 0{idx + 1}</span>
+                          </div>
+                          <p className="text-slate-600 leading-relaxed">{note}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. 의뢰인 안심 3대 법적 보증 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3 shadow-xs">
+                      <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                        <Shield className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-900">100% 비밀보호 (스텔스)</h5>
+                        <p className="text-[11px] text-slate-500 mt-0.5">직장 및 가족에게 일체 통보 없이 안전하게 비공개 진행</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3 shadow-xs">
+                      <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-900">변호사 1:1 직접 수행</h5>
+                        <p className="text-[11px] text-slate-500 mt-0.5">사무장 대리 없는 공인 변호사 책임 전담제</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-start gap-3 shadow-xs">
+                      <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 shrink-0">
+                        <Check className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-900">기각 시 100% 환불 특약</h5>
+                        <p className="text-[11px] text-slate-500 mt-0.5">귀책 없는 기각 시 수임료 전액 환불 안심 보증</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. 법적 신뢰 인증 씰 바 */}
+                  <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-200/70 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-blue-600" />
+                      <span className="font-semibold text-slate-800">
+                        변호사법 제109조 및 비밀유지 의무에 의거하여 작성된 정식 법률문서입니다.
                       </span>
                     </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {lawyerFirmName} · {lawyerName} 변호사 직접 공인 날인
+                    </span>
                   </div>
                 </div>
               ) : (
