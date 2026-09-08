@@ -374,7 +374,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     };
   }, [clientInput, clientName, activeCalcResult, totalDebt]);
 
-  // PDF Export
+  // PDF Export - 격리된 Sandbox Iframe / Clean Body-Mount 하이브리드 엔진
+  // "Unable to find element in cloned iframe" 및 React 전역 트리 간섭 원천 방지
   const handleExportPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
@@ -409,9 +410,11 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         const directChildren = Array.from(container.firstElementChild?.children || []);
         if (directChildren.length > 0) {
           pageElements = directChildren as HTMLElement[];
-        } else {
-          pageElements = [container];
         }
+      }
+
+      if (pageElements.length === 0) {
+        throw new Error('진단서 페이지 요소를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
       }
 
       // 3. jsPDF 인스턴스 초기화 (A4: 210mm x 297mm)
@@ -423,24 +426,117 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       const imgWidth = 210;
       const imgHeight = 297;
 
-      // 4. 각 페이지별 개별 캔버스 캡처 및 PDF 삽입 (메모리 절약 및 깨짐 방지)
+      // 4. 격리 Sandbox 렌더러 함수
+      const capturePage = async (pageEl: HTMLElement): Promise<HTMLCanvasElement> => {
+        // Strategy 1: Isolated sandbox iframe (100% immune to React DOM & extensions interference)
+        try {
+          const iframe = document.createElement('iframe');
+          iframe.style.position = 'fixed';
+          iframe.style.top = '-99999px';
+          iframe.style.left = '-99999px';
+          iframe.style.width = '850px';
+          iframe.style.height = '1250px';
+          iframe.style.border = '0';
+          iframe.style.opacity = '0';
+          iframe.style.pointerEvents = 'none';
+          iframe.setAttribute('aria-hidden', 'true');
+          document.body.appendChild(iframe);
+
+          try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc) {
+              iframeDoc.open();
+              iframeDoc.write('<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#ffffff;"></body></html>');
+              iframeDoc.close();
+
+              // Copy styles from main document
+              Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(styleEl => {
+                try {
+                  iframeDoc.head.appendChild(styleEl.cloneNode(true));
+                } catch {}
+              });
+
+              // Clone page into iframe body
+              const clonedPage = pageEl.cloneNode(true) as HTMLElement;
+              clonedPage.style.position = 'static';
+              clonedPage.style.margin = '0';
+              clonedPage.style.boxSizing = 'border-box';
+              iframeDoc.body.appendChild(clonedPage);
+
+              if (iframeDoc.fonts && iframeDoc.fonts.ready) {
+                await iframeDoc.fonts.ready;
+              }
+              await new Promise(r => setTimeout(r, 60));
+
+              const canvas = await html2canvas(clonedPage, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                windowWidth: 850,
+                ignoreElements: (el) => el.tagName === 'IFRAME'
+              });
+
+              return canvas;
+            }
+          } finally {
+            if (iframe.parentNode) {
+              iframe.parentNode.removeChild(iframe);
+            }
+          }
+        } catch (iframeErr) {
+          console.warn('[PDF Export] Sandbox iframe capture failed, trying direct body mount:', iframeErr);
+        }
+
+        // Strategy 2: Direct Body Mount Fallback
+        const tempHost = document.createElement('div');
+        tempHost.style.position = 'fixed';
+        tempHost.style.top = '-99999px';
+        tempHost.style.left = '-99999px';
+        tempHost.style.width = '850px';
+        tempHost.style.zIndex = '-9999';
+        tempHost.style.backgroundColor = '#ffffff';
+        document.body.appendChild(tempHost);
+
+        try {
+          const clonedPage = pageEl.cloneNode(true) as HTMLElement;
+          clonedPage.style.position = 'static';
+          clonedPage.style.margin = '0';
+          tempHost.appendChild(clonedPage);
+
+          if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+          }
+          await new Promise(r => setTimeout(r, 60));
+
+          const canvas = await html2canvas(clonedPage, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            windowWidth: 850,
+            ignoreElements: (el) => el.tagName === 'IFRAME'
+          });
+
+          return canvas;
+        } finally {
+          if (tempHost.parentNode) {
+            tempHost.parentNode.removeChild(tempHost);
+          }
+        }
+      };
+
+      // 5. 각 페이지별 격리 캡처 및 PDF 삽입
       for (let i = 0; i < pageElements.length; i++) {
         const pageEl = pageElements[i];
-        const canvas = await html2canvas(pageEl, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          windowWidth: 850,
-          windowHeight: Math.max(1500, (pageEl.offsetTop || 0) + (pageEl.offsetHeight || 1123) + 200),
-        });
+        const canvas = await capturePage(pageEl);
 
         if (i > 0) {
           pdf.addPage();
         }
 
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
       }
 
       const filePrefix = isAIPremium ? 'AI_7p_정밀진단서' : '변호사_직접검토의견서';
