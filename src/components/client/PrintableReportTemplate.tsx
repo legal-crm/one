@@ -17,7 +17,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
   const userInput = rawUserInput || ({} as RehabUserInput);
 
   const formatCurrency = (amount: number | undefined): string => {
-    if (amount === undefined || amount === 0) return '0원';
+    if (amount === undefined || amount === 0 || isNaN(amount)) return '0원';
     
     const absAmount = Math.abs(amount);
     const eok = Math.floor(absAmount / 100000000);
@@ -31,7 +31,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
   };
 
   const formatNumber = (num: number | undefined): string => {
-    if (num === undefined) return '0';
+    if (num === undefined || isNaN(num)) return '0';
     return num.toLocaleString();
   };
 
@@ -53,6 +53,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
   const PageWrapper = ({ children, pageNumber }: { children: React.ReactNode; pageNumber: number }) => (
     <div
       id={`pdf-page-${pageNumber}`}
+      className="pdf-page-item"
       style={{
         width: '794px',
         height: '1123px',
@@ -565,10 +566,10 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}>
                 <span style={{ color: '#059669' }}>② 인정 최저생계비 (법정보호 생계비)</span>
-                <span style={{ color: '#059669' }}>{formatCurrency(result.recognizedLivingCost)} ({userInput.monthlyIncome ? Math.round((result.recognizedLivingCost / userInput.monthlyIncome) * 100) : 0}%)</span>
+                <span style={{ color: '#059669' }}>{formatCurrency(result.recognizedLivingCost)} ({userInput.monthlyIncome && result.recognizedLivingCost ? Math.round((result.recognizedLivingCost / userInput.monthlyIncome) * 100) : 0}%)</span>
               </div>
               <div style={{ height: '18px', backgroundColor: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min(100, userInput.monthlyIncome ? (result.recognizedLivingCost / userInput.monthlyIncome) * 100 : 0)}%`, height: '100%', backgroundColor: '#10b981' }} />
+                <div style={{ width: `${Math.min(100, Math.max(0, userInput.monthlyIncome && result.recognizedLivingCost ? (result.recognizedLivingCost / userInput.monthlyIncome) * 100 : 0))}%`, height: '100%', backgroundColor: '#10b981' }} />
               </div>
             </div>
 
@@ -576,10 +577,10 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, marginBottom: '4px' }}>
                 <span style={{ color: '#4338ca' }}>③ 순 가용소득 (월 변제금 산정 기준액 = ① - ②)</span>
-                <span style={{ color: '#4338ca' }}>{formatCurrency(result.availableIncome)} ({userInput.monthlyIncome ? Math.round((result.availableIncome / userInput.monthlyIncome) * 100) : 0}%)</span>
+                <span style={{ color: '#4338ca' }}>{formatCurrency(result.availableIncome || result.monthlyPayment)} ({userInput.monthlyIncome && (result.availableIncome || result.monthlyPayment) ? Math.round(((result.availableIncome || result.monthlyPayment) / userInput.monthlyIncome) * 100) : 0}%)</span>
               </div>
               <div style={{ height: '18px', backgroundColor: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min(100, userInput.monthlyIncome ? (result.availableIncome / userInput.monthlyIncome) * 100 : 0)}%`, height: '100%', backgroundColor: '#4338ca' }} />
+                <div style={{ width: `${Math.min(100, Math.max(0, userInput.monthlyIncome && (result.availableIncome || result.monthlyPayment) ? ((result.availableIncome || result.monthlyPayment) / userInput.monthlyIncome) * 100 : 0))}%`, height: '100%', backgroundColor: '#4338ca' }} />
               </div>
             </div>
           </div>
@@ -760,7 +761,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             gap: '6px'
           }}>
             <CheckCircle2 size={14} color="#059669" />
-            <span>총 변제액이 청산가치보다 약 {formatCurrency(Math.max(0, result.totalRepayment - result.liquidationValue))}원 많아 청산가치 보장 요건을 완벽히 충족합니다.</span>
+            <span>총 변제액이 청산가치보다 약 {formatCurrency(Math.max(0, (result.totalRepayment || result.totalPayment || 0) - (result.liquidationValue || 0)))}원 많아 청산가치 보장 요건을 완벽히 충족합니다.</span>
           </div>
         </div>
       </PageWrapper>
@@ -790,7 +791,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
                 <div style={{ fontSize: '10px', color: '#4338ca' }}>월 세후 소득에서 인정 최저생계비를 차감한 순수 여유 자금</div>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 900, color: '#4338ca' }}>
-                {formatCurrency(result.availableIncome)} / 월
+                {formatCurrency(result.availableIncome || result.monthlyPayment)} / 월
               </div>
             </div>
 
@@ -801,7 +802,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
                 <div style={{ fontSize: '10px', color: '#64748b' }}>재산 가치 총액을 36개월간 균등 상환하기 위한 하한선</div>
               </div>
               <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
-                {formatCurrency(Math.ceil(result.liquidationValue / (result.repaymentMonths || 36)))} / 월
+                {formatCurrency(Math.ceil((result.liquidationValue || 0) / (result.repaymentMonths || 36)))} / 월
               </div>
             </div>
 
@@ -812,7 +813,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
                 <div style={{ fontSize: '10px', color: '#64748b' }}>채무자회생법상 채무 원금의 최소 3~5% 변제 충족 요건</div>
               </div>
               <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569' }}>
-                {formatCurrency(Math.ceil((userInput.totalDebt * 0.05) / (result.repaymentMonths || 36)))} / 월
+                {formatCurrency(Math.ceil(((userInput.totalDebt || 0) * 0.05) / (result.repaymentMonths || 36)))} / 월
               </div>
             </div>
           </div>
@@ -883,14 +884,14 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
                 원금 탕감 효과 종합 분석
               </div>
               <div style={{ fontSize: '10.5px', color: '#15803d' }}>
-                채무 원금 {formatCurrency(userInput.totalDebt)} 중 {formatCurrency(result.totalDebtReduction)} 탕감
+                채무 원금 {formatCurrency(userInput.totalDebt)} 중 {formatCurrency(result.totalDebtReduction || result.reductionAmount || 0)} 탕감
               </div>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '11px', color: '#166534', fontWeight: 700 }}>탕감률</span>
             <div style={{ fontSize: '20px', fontWeight: 900, color: '#15803d' }}>
-              약 {result.debtReductionRate}%
+              약 {result.debtReductionRate || result.reductionRate || 0}%
             </div>
           </div>
         </div>

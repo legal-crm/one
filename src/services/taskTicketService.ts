@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // 업무 할당 티켓 서비스
 // Supabase DB + localStorage 폴백
 // ============================================================
@@ -38,6 +38,10 @@ export async function createTask(
     description?: string;
     priority?: TaskPriority;
     dueDate?: string;
+    subtasks?: { id: string; title: string; completed: boolean }[];
+    requiresApproval?: boolean;
+    templateId?: string;
+    caseStage?: string;
   }
 ): Promise<TaskTicket> {
   const ticket: TaskTicket = {
@@ -54,6 +58,10 @@ export async function createTask(
     priority: data.priority || 'NORMAL',
     status: 'PENDING',
     dueDate: data.dueDate,
+    subtasks: data.subtasks || [],
+    requiresApproval: data.requiresApproval || false,
+    templateId: data.templateId,
+    caseStage: data.caseStage,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -74,6 +82,9 @@ export async function createTask(
         priority: ticket.priority,
         status: ticket.status,
         due_date: ticket.dueDate,
+        requires_approval: ticket.requiresApproval,
+        template_id: ticket.templateId,
+        case_stage: ticket.caseStage,
       });
       if (error) throw error;
     } catch (err) {
@@ -100,6 +111,19 @@ export async function createTask(
   });
 
   return ticket;
+}
+
+/** 템플릿 패키지 등을 통한 여러 업무 일괄 생성 */
+export async function createTaskBatch(
+  tenantId: string,
+  items: Parameters<typeof createTask>[1][]
+): Promise<TaskTicket[]> {
+  const createdList: TaskTicket[] = [];
+  for (const item of items) {
+    const t = await createTask(tenantId, item);
+    createdList.push(t);
+  }
+  return createdList;
 }
 
 /** 업무 목록 조회 (사건/상담별) */
@@ -257,6 +281,139 @@ export async function updateTaskStatus(
   return true;
 }
 
+/** 업무 검토 요청 (수행자 -> 지시자 컨펌 요청) */
+export async function requestTaskReview(
+  tenantId: string, taskId: string, reviewNote?: string
+): Promise<boolean> {
+  const now = new Date().toISOString();
+  const updates: any = {
+    status: 'REVIEW_REQUESTED',
+    review_note: reviewNote || '',
+    updated_at: now
+  };
+
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('task_tickets').update(updates).eq('tenant_id', tenantId).eq('id', taskId);
+    } catch {
+      updateInStorage(tenantId, taskId, updates);
+    }
+  } else {
+    updateInStorage(tenantId, taskId, updates);
+  }
+
+  const task = await getTask(tenantId, taskId);
+  if (task) {
+    await createNotification(tenantId, task.assignerId, {
+      type: 'TASK_ASSIGNED',
+      title: `검토 요청: ${task.title}`,
+      body: `${task.assigneeName}님이 작업 완료 후 승인을 요청했습니다.${reviewNote ? ` "${reviewNote}"` : ''}`,
+      senderId: task.assigneeId,
+      senderName: task.assigneeName,
+      linkType: task.targetType,
+      linkId: task.targetId,
+    });
+  }
+  return true;
+}
+
+/** 업무 승인 완료 (지시자 -> 최종 완료 처리) */
+export async function approveTask(
+  tenantId: string, taskId: string, approvalNote?: string
+): Promise<boolean> {
+  const now = new Date().toISOString();
+  const updates: any = {
+    status: 'COMPLETED',
+    completed_at: now,
+    approval_note: approvalNote || '승인 완료',
+    updated_at: now
+  };
+
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('task_tickets').update(updates).eq('tenant_id', tenantId).eq('id', taskId);
+    } catch {
+      updateInStorage(tenantId, taskId, updates);
+    }
+  } else {
+    updateInStorage(tenantId, taskId, updates);
+  }
+
+  const task = await getTask(tenantId, taskId);
+  if (task) {
+    await createNotification(tenantId, task.assigneeId, {
+      type: 'TASK_COMPLETED',
+      title: `업무 승인 완료: ${task.title}`,
+      body: `${task.assignerName}님이 업무를 최종 승인했습니다.${approvalNote ? ` "${approvalNote}"` : ''}`,
+      senderId: task.assignerId,
+      senderName: task.assignerName,
+      linkType: task.targetType,
+      linkId: task.targetId,
+    });
+  }
+  return true;
+}
+
+/** 업무 반려 / 재검토 요청 (지시자 -> 보완 지시) */
+export async function rejectTask(
+  tenantId: string, taskId: string, rejectionNote: string
+): Promise<boolean> {
+  const now = new Date().toISOString();
+  const updates: any = {
+    status: 'IN_PROGRESS',
+    approval_note: `[수정보완 요청] ${rejectionNote}`,
+    updated_at: now
+  };
+
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('task_tickets').update(updates).eq('tenant_id', tenantId).eq('id', taskId);
+    } catch {
+      updateInStorage(tenantId, taskId, updates);
+    }
+  } else {
+    updateInStorage(tenantId, taskId, updates);
+  }
+
+  const task = await getTask(tenantId, taskId);
+  if (task) {
+    await createNotification(tenantId, task.assigneeId, {
+      type: 'TASK_ASSIGNED',
+      title: `업무 보완 요청: ${task.title}`,
+      body: `${task.assignerName}님이 수정보완을 요청했습니다: "${rejectionNote}"`,
+      senderId: task.assignerId,
+      senderName: task.assignerName,
+      linkType: task.targetType,
+      linkId: task.targetId,
+    });
+  }
+  return true;
+}
+
+/** 서브태스크 완료 여부 토글 */
+export async function toggleSubtask(
+  tenantId: string, taskId: string, subtaskId: string
+): Promise<boolean> {
+  const task = await getTask(tenantId, taskId);
+  if (!task || !task.subtasks) return false;
+
+  const newSubtasks = task.subtasks.map(st =>
+    st.id === subtaskId ? { ...st, completed: !st.completed } : st
+  );
+
+  const updates = { subtasks: newSubtasks, updated_at: new Date().toISOString() };
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('task_tickets').update(updates).eq('tenant_id', tenantId).eq('id', taskId);
+    } catch {
+      updateInStorage(tenantId, taskId, updates);
+    }
+  } else {
+    updateInStorage(tenantId, taskId, updates);
+  }
+  return true;
+}
+
 /** 업무 단건 조회 */
 export async function getTask(tenantId: string, taskId: string): Promise<TaskTicket | null> {
   if (isSupabaseConfigured) {
@@ -281,8 +438,11 @@ function updateInStorage(tenantId: string, taskId: string, updates: any) {
     all[idx] = {
       ...all[idx],
       status: updates.status || all[idx].status,
-      completedAt: updates.completed_at,
-      completionNote: updates.completion_note,
+      completedAt: updates.completed_at !== undefined ? updates.completed_at : all[idx].completedAt,
+      completionNote: updates.completion_note !== undefined ? updates.completion_note : all[idx].completionNote,
+      reviewNote: updates.review_note !== undefined ? updates.review_note : all[idx].reviewNote,
+      approvalNote: updates.approval_note !== undefined ? updates.approval_note : all[idx].approvalNote,
+      subtasks: updates.subtasks !== undefined ? updates.subtasks : all[idx].subtasks,
       updatedAt: updates.updated_at || new Date().toISOString(),
     };
     saveToStorage(tenantId, all);
@@ -306,6 +466,12 @@ function mapDbRow(row: any): TaskTicket {
     dueDate: row.due_date,
     completedAt: row.completed_at,
     completionNote: row.completion_note,
+    subtasks: typeof row.subtasks === 'string' ? JSON.parse(row.subtasks || '[]') : (row.subtasks || []),
+    requiresApproval: !!row.requires_approval,
+    reviewNote: row.review_note,
+    approvalNote: row.approval_note,
+    templateId: row.template_id,
+    caseStage: row.case_stage,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

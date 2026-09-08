@@ -283,30 +283,76 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
   const activeCalcResult: RehabCalculationResult = useMemo(() => {
     if (calculationResult && calculationResult.totalDebt) {
-      return calculationResult;
+      return {
+        ...calculationResult,
+        monthlyPayment: calculationResult.monthlyPayment || monthlyPayment,
+        totalRepayment: calculationResult.totalRepayment || totalRepaymentCalculated,
+        totalPayment: calculationResult.totalPayment || totalRepaymentCalculated,
+        repaymentMonths: calculationResult.repaymentMonths || repaymentMonths,
+        debtReductionRate: calculationResult.debtReductionRate ?? debtReductionRate,
+        reductionRate: calculationResult.reductionRate ?? debtReductionRate,
+        totalDebtReduction: calculationResult.totalDebtReduction ?? estimatedReduction,
+        reductionAmount: calculationResult.reductionAmount ?? estimatedReduction,
+        totalDebt: calculationResult.totalDebt || totalDebt,
+        courtName: calculationResult.courtName || courtName,
+        court: calculationResult.court || courtName,
+        courtDescription: calculationResult.courtDescription || `${courtName} 실무준칙 종합 적용`,
+        status: calculationResult.status || 'POSSIBLE',
+        statusReason: calculationResult.statusReason || '개인회생 개시 요건 양호 및 청산가치 충족',
+        availableIncome: calculationResult.availableIncome || monthlyPayment,
+        recognizedLivingCost: calculationResult.recognizedLivingCost || 1538543,
+        baseLivingCost: calculationResult.baseLivingCost || 1538543,
+        additionalLivingCost: calculationResult.additionalLivingCost || 0,
+        liquidationValue: calculationResult.liquidationValue || 0,
+        processingMonths: calculationResult.processingMonths || 6,
+        aiAdvice: calculationResult.aiAdvice || [
+          `${courtName} 실무준칙에 따라 최적화된 변제계획안을 도출했습니다.`,
+          `월 예상 변제금 ${formatCurrency(monthlyPayment)}원 기준 36개월간 원금 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면 계획입니다.`
+        ],
+        riskWarnings: calculationResult.riskWarnings || []
+      };
     }
     const currentBurden = clientInput 
       ? calculateCurrentMonthlyBurden(clientInput.debtAmount, clientInput.monthlyIncome)
       : Math.round(totalDebt * 0.04);
 
+    const monthlyIncome = normalizeToWon(clientInput?.monthlyIncome) || 2800000;
+    const recognizedLivingCost = normalizeToWon(clientInput?.monthlyIncome ? Math.round(clientInput.monthlyIncome * 0.6) : 1538543);
+    const availableIncome = Math.max(0, monthlyIncome - recognizedLivingCost) || monthlyPayment;
+
     return {
       monthlyPayment: monthlyPayment,
       totalPayment: totalRepaymentCalculated,
+      totalRepayment: totalRepaymentCalculated,
       repaymentMonths: repaymentMonths,
+      debtReductionRate: debtReductionRate,
       reductionRate: debtReductionRate,
+      totalDebtReduction: estimatedReduction,
       reductionAmount: estimatedReduction,
       totalDebt: totalDebt,
       currentMonthlyBurden: currentBurden,
       court: courtName,
-      status: 'safe',
+      courtName: courtName,
+      courtDescription: `${courtName} 실무준칙 종합 적용`,
+      status: 'POSSIBLE',
+      statusReason: '개인회생 개시 요건 양호 및 청산가치 충족',
       reasons: [],
       eligibleProcedures: ['individual_rehabilitation'],
-      monthlyIncome: normalizeToWon(clientInput?.monthlyIncome) || 2800000,
-      recognizedLivingCost: normalizeToWon(clientInput?.monthlyIncome ? Math.round(clientInput.monthlyIncome * 0.6) : 1500000),
+      monthlyIncome: monthlyIncome,
+      recognizedLivingCost: recognizedLivingCost,
+      baseLivingCost: recognizedLivingCost,
+      additionalLivingCost: 0,
+      availableIncome: availableIncome,
       dependentsCount: clientInput?.dependentsCount || 1,
-      liquidationValue: 0
+      liquidationValue: 0,
+      processingMonths: 6,
+      aiAdvice: [
+        `${courtName} 실무준칙에 따라 최적화된 변제계획안을 도출했습니다.`,
+        `월 예상 변제금 ${formatCurrency(monthlyPayment)}원 기준 36개월간 원금 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면 계획입니다.`
+      ],
+      riskWarnings: []
     };
-  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName]);
+  }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName, totalRepaymentCalculated]);
 
   const activeUserInput: RehabUserInput = useMemo(() => {
     if (clientInput) {
@@ -335,44 +381,84 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     const toastId = toast.loading('고해상도 진단서를 PDF로 변환하고 있습니다...');
 
     try {
-      const element = printRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
+      // 1. 폰트 및 DOM 렌더링 완료 대기
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      const imgData = canvas.toDataURL('image/png');
+      // 2. 페이지 요소 수집 (.pdf-page-item 우선, fallback id 기반)
+      const container = printRef.current;
+      let pageElements = Array.from(container.querySelectorAll<HTMLElement>('.pdf-page-item'));
+
+      if (pageElements.length === 0) {
+        if (isAIPremium) {
+          for (let p = 1; p <= 7; p++) {
+            const el = document.getElementById(`pdf-page-${p}`);
+            if (el) pageElements.push(el);
+          }
+        } else {
+          for (let p = 1; p <= 2; p++) {
+            const el = document.getElementById(`pdf-lawyer-page-${p}`);
+            if (el) pageElements.push(el);
+          }
+        }
+      }
+
+      if (pageElements.length === 0) {
+        const directChildren = Array.from(container.firstElementChild?.children || []);
+        if (directChildren.length > 0) {
+          pageElements = directChildren as HTMLElement[];
+        } else {
+          pageElements = [container];
+        }
+      }
+
+      // 3. jsPDF 인스턴스 초기화 (A4: 210mm x 297mm)
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
-
       const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      const imgHeight = 297;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pageHeight;
+      // 4. 각 페이지별 개별 캔버스 캡처 및 PDF 삽입 (메모리 절약 및 깨짐 방지)
+      for (let i = 0; i < pageElements.length; i++) {
+        const pageEl = pageElements[i];
+        const canvas = await html2canvas(pageEl, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 850,
+          scrollX: 0,
+          scrollY: 0,
+        });
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
       }
 
       const filePrefix = isAIPremium ? 'AI_7p_정밀진단서' : '변호사_직접검토의견서';
-      const fileName = `${filePrefix}_${clientName || '의뢰인'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const sanitizedName = (clientName || '의뢰인').replace(/[^a-zA-Z0-9가-힣_]/g, '');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const fileName = `${filePrefix}_${sanitizedName}_${dateStr}.pdf`;
       pdf.save(fileName);
-      toast.success(isAIPremium ? 'AI 7p 정밀 진단서 PDF가 저장되었습니다.' : '변호사 직접 검토 의견서 PDF (2p)가 저장되었습니다.', { id: toastId });
-    } catch (error) {
+
+      toast.success(
+        isAIPremium 
+          ? `AI 7p 정밀 진단서 PDF가 저장되었습니다. (${pageElements.length}p)` 
+          : `변호사 직접 검토 의견서 PDF가 저장되었습니다. (${pageElements.length}p)`, 
+        { id: toastId }
+      );
+    } catch (error: any) {
       console.error('PDF Generation Error:', error);
-      toast.error('PDF 생성 중 오류가 발생했습니다. 다시 시도해주세요.', { id: toastId });
+      toast.error(`PDF 생성 중 오류가 발생했습니다: ${error?.message || '다시 시도해주세요.'}`, { id: toastId });
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -393,7 +479,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
       {/* 
         OFF-SCREEN PRINTABLE CONTAINER FOR PDF GENERATION
-        Kept off-screen with -99999px position to prevent visual bleed behind modal.
+        Rendered at (0, 0) behind modal backdrop (z-index: -9999) to ensure clean html2canvas capture.
       */}
       <div 
         id="pdf-render-container" 
@@ -401,8 +487,8 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         aria-hidden="true"
         style={{
           position: 'fixed',
-          top: '-99999px',
-          left: '-99999px',
+          top: 0,
+          left: 0,
           width: '794px',
           zIndex: -9999,
           pointerEvents: 'none',

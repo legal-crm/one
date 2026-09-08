@@ -1450,6 +1450,10 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
                   <h5 className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><Shield className="w-4 h-4 text-brand" /> 개별 권한 설정</h5>
                   <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
                     {([
+                      { key: 'canAssignTasks' as keyof StaffPermissions, label: '업무 지시 및 배정', desc: '다른 직원에게 업무를 지시하고 진행 상태를 모니터링합니다.' },
+                      { key: 'canApproveTasks' as keyof StaffPermissions, label: '업무 검토 및 승인 (컨펌)', desc: '직원이 완료 보고한 업무를 최종 승인하거나 반려합니다.' },
+                      { key: 'canManageAllTasks' as keyof StaffPermissions, label: '사무소 전체 업무 총괄', desc: '사무소의 모든 업무를 조회, 수정 및 재배정합니다.' },
+                      { key: 'manageCalendar' as keyof StaffPermissions, label: '전체 공유 일정 관리', desc: '사무소 공용 일정 및 재판 기일을 등록/수정/삭제합니다.' },
                       { key: 'viewAllClients' as keyof StaffPermissions, label: '전체 고객 조회', desc: '모든 고객 정보를 열람할 수 있습니다.' },
                       { key: 'editClientInfo' as keyof StaffPermissions, label: '고객 정보 수정', desc: '고객의 연락처, 이름 등을 수정합니다.' },
                       { key: 'changeStatus' as keyof StaffPermissions, label: '상태 변경', desc: 'CRM 상태를 변경할 수 있습니다.' },

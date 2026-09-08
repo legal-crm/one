@@ -485,14 +485,17 @@ export interface StaffPermissions {
   manageBilling: boolean;      // 수임료 관리
   deleteClients: boolean;      // 고객 삭제
   manageCalendar: boolean;     // 전체 공유 일정 관리
+  canAssignTasks: boolean;     // 업무 지시 및 배정 권한 (대표, 담당변호사, 사무국장 등)
+  canManageAllTasks: boolean;  // 사무소 전체 업무 관제/재배정 권한
+  canApproveTasks: boolean;    // 완료된 업무 검토/승인(컨펌) 권한
 }
 
 const BUILTIN_DEFAULT_PERMISSIONS: Record<string, StaffPermissions> = {
-  OWNER:       { viewAllClients: true,  editClientInfo: true,  changeStatus: true,  assignCases: true,  manageStaff: true,  writeNotes: true,  manageBilling: true,  deleteClients: true,  manageCalendar: true },
-  LAWYER:      { viewAllClients: false, editClientInfo: true,  changeStatus: true,  assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false },
-  CONSULTANT:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false },
-  STAFF:       { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false },
-  ACCOUNTING:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: false, manageBilling: true,  deleteClients: false, manageCalendar: false },
+  OWNER:       { viewAllClients: true,  editClientInfo: true,  changeStatus: true,  assignCases: true,  manageStaff: true,  writeNotes: true,  manageBilling: true,  deleteClients: true,  manageCalendar: true,  canAssignTasks: true,  canManageAllTasks: true,  canApproveTasks: true },
+  LAWYER:      { viewAllClients: false, editClientInfo: true,  changeStatus: true,  assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false, canAssignTasks: true,  canManageAllTasks: false, canApproveTasks: true },
+  CONSULTANT:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false, canAssignTasks: false, canManageAllTasks: false, canApproveTasks: false },
+  STAFF:       { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: true,  manageBilling: false, deleteClients: false, manageCalendar: false, canAssignTasks: false, canManageAllTasks: false, canApproveTasks: false },
+  ACCOUNTING:  { viewAllClients: false, editClientInfo: false, changeStatus: false, assignCases: false, manageStaff: false, writeNotes: false, manageBilling: true,  deleteClients: false, manageCalendar: false, canAssignTasks: false, canManageAllTasks: false, canApproveTasks: false },
 };
 
 export const DEFAULT_PERMISSIONS: Record<string, StaffPermissions> = new Proxy(

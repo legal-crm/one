@@ -20,6 +20,7 @@ interface TaskTicketTabProps {
   actorName: string;
   actorRole: string;
   staffMembers: StaffMember[];
+  canAssignTasks?: boolean;
 }
 
 function timeAgo(dateStr: string): string {
@@ -33,7 +34,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function TaskTicketTab({
-  tenantId, targetType, targetId, actorId, actorName, actorRole, staffMembers
+  tenantId, targetType, targetId, actorId, actorName, actorRole, staffMembers, canAssignTasks = false
 }: TaskTicketTabProps) {
   const dialog = useDialog();
   const [tasks, setTasks] = useState<TaskTicket[]>([]);
@@ -49,7 +50,7 @@ export default function TaskTicketTab({
   const [newPriority, setNewPriority] = useState<TaskPriority>('NORMAL');
   const [newDueDate, setNewDueDate] = useState('');
 
-  const canAssign = actorRole === 'OWNER' || actorRole === 'LAWYER';
+  const canAssign = actorRole === 'OWNER' || actorRole === 'LAWYER' || canAssignTasks;
 
   const refresh = useCallback(async () => {
     const all = await getTasksByTarget(tenantId, targetType, targetId);

@@ -4,16 +4,22 @@ import {
   Calendar, ChevronLeft, ChevronRight, Activity,
   ListCheck, Briefcase, MessageSquare, FolderHeart,
   Plus, Trash2, X, Repeat, Bell, ChevronDown, User, Check,
-  Search, ExternalLink, ChevronFirst, ChevronLast, Sparkles
+  Search, ExternalLink, ChevronFirst, ChevronLast, Sparkles,
+  ListFilter, CheckSquare, Layers, Send, ThumbsUp,
+  ThumbsDown, RotateCcw, Calculator, ArrowRight, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import {
   getMyTasks, getMyAssignedTasks, getAllTenantTasks,
-  createTask, updateTaskStatus, deleteTask
+  createTask, createTaskBatch, updateTaskStatus, deleteTask,
+  requestTaskReview, approveTask, rejectTask, toggleSubtask
 } from '../../services/taskTicketService';
-import type { TaskTicket, TaskPriority, TaskStatus, MessageTargetType } from '../../types/communication';
+import type { TaskTicket, TaskPriority, TaskStatus, MessageTargetType, TaskSubtask } from '../../types/communication';
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from '../../types/communication';
+import {
+  TASK_PACKAGE_TEMPLATES, calculateCourtDeadline, type TaskPackageTemplate
+} from '../../services/taskTemplateService';
 import {
   getVisibleEvents, createEvent, deleteEvent, canDeleteEvent,
   getAvailableVisibilities, getDefaultVisibility,
@@ -27,7 +33,10 @@ interface TasksScheduleTabProps {
   userId: string;
   userName: string;
   userRole: string;
-  hasManageCalendar: boolean;
+  hasManageCalendar?: boolean;
+  canAssignTasks?: boolean;
+  canManageAllTasks?: boolean;
+  canApproveTasks?: boolean;
   requests: any[];
   cases: any[];
   qas: any[] | undefined;
@@ -37,8 +46,9 @@ interface TasksScheduleTabProps {
 }
 
 type SubTab = 'tasks' | 'calendar' | 'activity';
+type TaskViewMode = 'list' | 'kanban';
 type TaskScope = 'my' | 'assigned' | 'all';
-type TaskFilter = 'all' | 'pending' | 'in_progress' | 'completed';
+type TaskFilter = 'all' | 'pending' | 'in_progress' | 'review_requested' | 'completed';
 type CalView = 'month' | 'week';
 type ActivityFilterType = 'all' | 'request' | 'counseling' | 'case' | 'task' | 'qna';
 type ActivityPeriodType = 'all' | 'today' | '7days' | '30days';
@@ -99,18 +109,30 @@ function dDay(dateStr: string): number {
 }
 
 export default function TasksScheduleTab({
-  tenantId, userId, userName, userRole, hasManageCalendar,
+  tenantId, userId, userName, userRole, hasManageCalendar = false,
+  canAssignTasks = false, canManageAllTasks = false, canApproveTasks = false,
   requests, cases, qas, activeLawyerId,
   staffMembers = [], lawyers = []
 }: TasksScheduleTabProps) {
   const dialog = useDialog();
   const [sub, setSub] = useState<SubTab>('tasks');
+  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>('list');
   const [tasks, setTasks] = useState<TaskTicket[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [taskScope, setTaskScope] = useState<TaskScope>('my');
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completionNote, setCompletionNote] = useState('');
+  
+  // 2단계 검토 & 승인/반려 상태
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approvalNoteInput, setApprovalNoteInput] = useState('');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionNoteInput, setRejectionNoteInput] = useState('');
+
+  // 캘린더 상태
   const [calMonth, setCalMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   
@@ -131,9 +153,29 @@ export default function TasksScheduleTab({
   });
   const [visFilter, setVisFilter] = useState<'all' | EventVisibility>('all');
 
-  // 모달 상태
+  // 모달 및 위젯 상태
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showDeadlineCalculator, setShowDeadlineCalculator] = useState(false);
+
+  // 불변기한 계산기 상태
+  const [calcStartDate, setCalcStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [calcDays, setCalcDays] = useState(7);
+  const [calcTitle, setCalcTitle] = useState('법원 보정서 제출');
+  const [calcTargetId, setCalcTargetId] = useState('general');
+
+  // 템플릿 패키지 일괄 생성 모달 상태
+  const [selectedTemplate, setSelectedTemplate] = useState<TaskPackageTemplate>(TASK_PACKAGE_TEMPLATES[0]);
+  const [templateAssigneeId, setTemplateAssigneeId] = useState(userId);
+  const [templateTargetId, setTemplateTargetId] = useState('general');
+  const [templateBaseDate, setTemplateBaseDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // 권한 체계 정밀 계산
+  const isLawyerOrOwner = userRole === 'OWNER' || userRole === 'LAWYER';
+  const hasAssignPerm = isLawyerOrOwner || canAssignTasks;
+  const hasManageAllPerm = isLawyerOrOwner || canManageAllTasks;
+  const hasApprovePerm = isLawyerOrOwner || canApproveTasks;
 
   const defaultVis = getDefaultVisibility(userRole, hasManageCalendar);
   const availableVis = getAvailableVisibilities(userRole, hasManageCalendar);
@@ -146,7 +188,7 @@ export default function TasksScheduleTab({
     recurrence: 'none' as RecurrenceType, reminder: 'none' as ReminderType
   });
 
-  // 새 할일 상태
+  // 새 할일 상태 (서브태스크 및 승인필요 플래그 추가)
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -155,9 +197,10 @@ export default function TasksScheduleTab({
     dueDate: '',
     targetType: 'general' as MessageTargetType,
     targetId: 'general',
+    requiresApproval: false,
+    subtasks: [] as { id: string; title: string; completed: boolean }[],
   });
-
-  const isLawyerOrOwner = userRole === 'OWNER' || userRole === 'LAWYER';
+  const [newSubtaskInput, setNewSubtaskInput] = useState('');
 
   // 모든 멤버 목록 (변호사 + 활성 스태프)
   const assignableMembers = useMemo(() => {
@@ -177,14 +220,14 @@ export default function TasksScheduleTab({
     const list: { type: MessageTargetType; id: string; label: string }[] = [
       { type: 'general', id: 'general', label: '📌 일반 업무 (특정 고객 없음)' }
     ];
-    (requests || []).slice(0, 15).forEach(r => {
+    (requests || []).slice(0, 20).forEach(r => {
       list.push({
         type: 'consult_request',
         id: r.id,
         label: `💬 상담: ${r.clientName || '익명'} (${r.category || '회생/파산'})`
       });
     });
-    (cases || []).slice(0, 15).forEach(c => {
+    (cases || []).slice(0, 25).forEach(c => {
       list.push({
         type: 'case',
         id: c.id,
@@ -218,6 +261,7 @@ export default function TasksScheduleTab({
     refreshEvents();
   }, [refreshTasks, refreshEvents]);
 
+  // ── 태스크 액션 핸들러 ──
   const handleStartTask = async (id: string) => {
     await updateTaskStatus(tenantId, id, 'IN_PROGRESS');
     toast.success('업무를 시작했습니다');
@@ -229,6 +273,43 @@ export default function TasksScheduleTab({
     toast.success('업무를 완료 처리했습니다');
     setCompletingId(null);
     setCompletionNote('');
+    refreshTasks();
+  };
+
+  // 검토 요청 핸들러
+  const handleRequestReview = async (id: string) => {
+    await requestTaskReview(tenantId, id, reviewNote);
+    toast.success('지시자에게 검토(승인)를 요청했습니다');
+    setReviewingId(null);
+    setReviewNote('');
+    refreshTasks();
+  };
+
+  // 승인 완료 핸들러
+  const handleApproveTask = async (id: string) => {
+    await approveTask(tenantId, id, approvalNoteInput);
+    toast.success('업무가 최종 승인 완료되었습니다');
+    setApprovingId(null);
+    setApprovalNoteInput('');
+    refreshTasks();
+  };
+
+  // 반려 / 수정보완 핸들러
+  const handleRejectTask = async (id: string) => {
+    if (!rejectionNoteInput.trim()) {
+      toast.error('수정보완 요청 사유를 입력해주세요');
+      return;
+    }
+    await rejectTask(tenantId, id, rejectionNoteInput.trim());
+    toast.warning('업무가 반려되어 보완 요청되었습니다');
+    setRejectingId(null);
+    setRejectionNoteInput('');
+    refreshTasks();
+  };
+
+  // 서브태스크 완료 토글
+  const handleToggleSubtask = async (taskId: string, subtaskId: string) => {
+    await toggleSubtask(tenantId, taskId, subtaskId);
     refreshTasks();
   };
 
@@ -246,7 +327,27 @@ export default function TasksScheduleTab({
     refreshTasks();
   };
 
-  // 새 할일 생성
+  // 새 서브태스크 추가 핸들러
+  const handleAddSubtaskDraft = () => {
+    if (!newSubtaskInput.trim()) return;
+    setNewTask(p => ({
+      ...p,
+      subtasks: [
+        ...p.subtasks,
+        { id: `st-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, title: newSubtaskInput.trim(), completed: false }
+      ]
+    }));
+    setNewSubtaskInput('');
+  };
+
+  const handleRemoveSubtaskDraft = (stId: string) => {
+    setNewTask(p => ({
+      ...p,
+      subtasks: p.subtasks.filter(s => s.id !== stId)
+    }));
+  };
+
+  // 새 단일 할일 생성
   const handleCreateTask = async () => {
     if (!newTask.title.trim()) {
       toast.error('업무 제목을 입력해주세요');
@@ -269,6 +370,8 @@ export default function TasksScheduleTab({
       description: newTask.description.trim() || undefined,
       priority: newTask.priority,
       dueDate: newTask.dueDate || undefined,
+      subtasks: newTask.subtasks,
+      requiresApproval: newTask.requiresApproval,
     });
 
     toast.success('새 할일이 성공적으로 등록되었습니다');
@@ -281,8 +384,89 @@ export default function TasksScheduleTab({
       dueDate: '',
       targetType: 'general',
       targetId: 'general',
+      requiresApproval: false,
+      subtasks: [],
     });
     refreshTasks();
+  };
+
+  // 템플릿 패키지 일괄 등록 핸들러
+  const handleApplyTemplatePackage = async () => {
+    const assignee = assignableMembers.find(m => m.id === templateAssigneeId);
+    const targetOpt = targetOptions.find(o => o.id === templateTargetId);
+
+    const itemsToCreate = selectedTemplate.tasks.map(t => {
+      const calcDue = calculateCourtDeadline(templateBaseDate, t.offsetDays);
+      return {
+        targetType: targetOpt ? targetOpt.type : 'general' as MessageTargetType,
+        targetId: templateTargetId,
+        assignerId: userId,
+        assignerName: userName,
+        assigneeId: templateAssigneeId,
+        assigneeName: assignee ? assignee.name.replace(' (본인)', '') : userName,
+        title: `[${selectedTemplate.name.split(' ')[0]}] ${t.title}`,
+        description: t.description,
+        priority: t.priority,
+        dueDate: calcDue,
+        requiresApproval: t.requiresApproval,
+        templateId: selectedTemplate.id,
+        subtasks: t.subtasks.map(st => ({
+          id: `st-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          title: st,
+          completed: false
+        }))
+      };
+    });
+
+    await createTaskBatch(tenantId, itemsToCreate);
+    toast.success(`'${selectedTemplate.name}'의 ${itemsToCreate.length}개 표준 업무가 일괄 등록되었습니다.`);
+    setShowTemplateModal(false);
+    refreshTasks();
+  };
+
+  // 불변기한 계산 결과로 즉시 할일 + 캘린더 등록 핸들러
+  const handleCreateDeadlineTask = async () => {
+    const calculatedDate = calculateCourtDeadline(calcStartDate, calcDays);
+    const targetOpt = targetOptions.find(o => o.id === calcTargetId);
+
+    // 1. 업무 티켓 생성
+    await createTask(tenantId, {
+      targetType: targetOpt ? targetOpt.type : 'general',
+      targetId: calcTargetId,
+      assignerId: userId,
+      assignerName: userName,
+      assigneeId: userId,
+      assigneeName: userName,
+      title: `⚖️ [불변기한 D-${calcDays}] ${calcTitle}`,
+      description: `송달일: ${calcStartDate} / 법정만료일: ${calculatedDate} (민법 제161조 공휴일 연장 적용)`,
+      priority: 'URGENT',
+      dueDate: calculatedDate,
+      requiresApproval: true,
+      subtasks: [
+        { id: `st-${Date.now()}-1`, title: '소명 및 보정서류 완비', completed: false },
+        { id: `st-${Date.now()}-2`, title: '변호사 최종 검토(컨펌)', completed: false },
+        { id: `st-${Date.now()}-3`, title: '전자소송 접수 및 접수증 출력', completed: false }
+      ]
+    });
+
+    // 2. 캘린더에도 불변기한 일정 동시 등록
+    await createEvent(tenantId, {
+      title: `⚖️ [기한] ${calcTitle}`,
+      date: calculatedDate,
+      type: 'deadline',
+      visibility: defaultVis,
+      description: `송달일(${calcStartDate})로부터 ${calcDays}일 불변기한`,
+      createdBy: userId,
+      createdByName: userName,
+      createdByRole: userRole,
+      recurrence: 'none',
+      reminder: '1d'
+    });
+
+    toast.success(`불변기한 마감일(${calculatedDate})로 할일 및 캘린더가 등록되었습니다.`);
+    setShowDeadlineCalculator(false);
+    refreshTasks();
+    refreshEvents();
   };
 
   // 새 일정 생성
@@ -391,8 +575,19 @@ export default function TasksScheduleTab({
     if (filter === 'all') return tasks.filter(t => t.status !== 'COMPLETED');
     if (filter === 'pending') return tasks.filter(t => t.status === 'PENDING');
     if (filter === 'in_progress') return tasks.filter(t => t.status === 'IN_PROGRESS');
-    return tasks.filter(t => t.status === 'COMPLETED').slice(0, 20);
+    if (filter === 'review_requested') return tasks.filter(t => t.status === 'REVIEW_REQUESTED');
+    return tasks.filter(t => t.status === 'COMPLETED').slice(0, 40);
   }, [tasks, filter]);
+
+  // 칸반 컬럼별 할일
+  const kanbanColumns = useMemo(() => {
+    return {
+      PENDING: tasks.filter(t => t.status === 'PENDING'),
+      IN_PROGRESS: tasks.filter(t => t.status === 'IN_PROGRESS'),
+      REVIEW_REQUESTED: tasks.filter(t => t.status === 'REVIEW_REQUESTED'),
+      COMPLETED: tasks.filter(t => t.status === 'COMPLETED').slice(0, 20),
+    };
+  }, [tasks]);
 
   // ══════════════════════════════════════════════════════════════════
   // ── Activity 데이터 수집 및 안전한 파싱
@@ -608,19 +803,20 @@ export default function TasksScheduleTab({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          ══ 1. Tasks (할일 목록)
+          ══ 1. Tasks (할일 목록 & 칸반 보드)
          ══════════════════════════════════════════════════════════════════ */}
       {sub === 'tasks' && (
         <div className="space-y-4">
           {/* 상단 컨트롤 바 */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
-              {isLawyerOrOwner && (
+              {/* 스코프 필터 (지시 권한이 있는 경우) */}
+              {hasAssignPerm && (
                 <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
                   {([
                     { key: 'my' as const, label: '내 담당 업무' },
                     { key: 'assigned' as const, label: '내가 지시한 업무' },
-                    { key: 'all' as const, label: '사무소 전체' },
+                    ...(hasManageAllPerm ? [{ key: 'all' as const, label: '사무소 전체' }] : []),
                   ]).map(sc => (
                     <button
                       key={sc.key}
@@ -643,6 +839,7 @@ export default function TasksScheduleTab({
                   { key: 'all' as const, label: '전체' },
                   { key: 'pending' as const, label: '대기' },
                   { key: 'in_progress' as const, label: '진행중' },
+                  { key: 'review_requested' as const, label: '검토요청' },
                   { key: 'completed' as const, label: '완료' },
                 ]).map(f => (
                   <button
@@ -658,167 +855,566 @@ export default function TasksScheduleTab({
                   </button>
                 ))}
               </div>
+
+              {/* 뷰 모드 토글 (리스트 / 칸반) */}
+              <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                <button
+                  onClick={() => setTaskViewMode('list')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer transition-all ${
+                    taskViewMode === 'list' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="리스트 뷰"
+                >
+                  <ListCheck className="w-3.5 h-3.5" /> 리스트
+                </button>
+                <button
+                  onClick={() => setTaskViewMode('kanban')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer transition-all ${
+                    taskViewMode === 'kanban' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="칸반 보드 뷰"
+                >
+                  <LayoutKanban className="w-3.5 h-3.5" /> 칸반
+                </button>
+              </div>
             </div>
 
-            {/* 새 할일 추가 버튼 */}
-            <button
-              onClick={() => {
-                setNewTask({
-                  title: '',
-                  description: '',
-                  assigneeId: userId,
-                  priority: 'NORMAL',
-                  dueDate: '',
-                  targetType: 'general',
-                  targetId: 'general',
-                });
-                setShowAddTaskModal(true);
-              }}
-              className="bg-brand text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-brand/90 cursor-pointer active:scale-[0.98] transition-all shadow-sm whitespace-nowrap shrink-0"
-            >
-              <Plus className="w-4 h-4" /> 새 할일 추가
-            </button>
+            {/* 우측 퀵 액션 버튼들 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* 법원 불변기한 계산기 버튼 */}
+              <button
+                onClick={() => setShowDeadlineCalculator(true)}
+                className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-[0.98] transition-all shadow-xs"
+                title="민법 제161조 기준 법원 보정기한 계산 및 즉시 등록"
+              >
+                <Calculator className="w-3.5 h-3.5 text-amber-600" />
+                <span>⚖️ 불변기한 계산기</span>
+              </button>
+
+              {/* 회생/파산 템플릿 패키지 등록 버튼 (지시 권한자용) */}
+              {hasAssignPerm && (
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-[0.98] transition-all shadow-xs"
+                  title="회생/파산 표준 5단계 업무 세트 일괄 등록"
+                >
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>📦 회생·파산 템플릿</span>
+                </button>
+              )}
+
+              {/* 새 할일 추가 / 업무 지시 버튼 */}
+              {hasAssignPerm ? (
+                <button
+                  onClick={() => {
+                    setNewTask({
+                      title: '',
+                      description: '',
+                      assigneeId: userId,
+                      priority: 'NORMAL',
+                      dueDate: '',
+                      targetType: 'general',
+                      targetId: 'general',
+                      requiresApproval: false,
+                      subtasks: [],
+                    });
+                    setShowAddTaskModal(true);
+                  }}
+                  className="bg-brand text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-brand/90 cursor-pointer active:scale-[0.98] transition-all shadow-sm whitespace-nowrap shrink-0"
+                >
+                  <Plus className="w-4 h-4" /> 업무 지시 / 새 할일
+                </button>
+              ) : (
+                <span className="text-xs text-slate-400 italic">업무 수행 모드</span>
+              )}
+            </div>
           </div>
 
-          {/* 할일 목록 컨테이너 */}
-          {filteredTasks.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-16 text-center space-y-4">
-              <CalendarCheck className="w-12 h-12 text-slate-200 mx-auto" />
-              <div className="space-y-1">
-                <p className="text-base font-bold text-slate-700">할당된 업무가 없습니다</p>
-                <p className="text-xs text-slate-400">
-                  사무실 업무를 직접 등록하거나 직원을 지정하여 업무를 지시하세요.
-                </p>
+          {/* ══════════ A. 리스트 뷰 (List View) ══════════ */}
+          {taskViewMode === 'list' && (
+            filteredTasks.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-16 text-center space-y-4">
+                <CalendarCheck className="w-12 h-12 text-slate-200 mx-auto" />
+                <div className="space-y-1">
+                  <p className="text-base font-bold text-slate-700">해당 조건의 업무가 없습니다</p>
+                  <p className="text-xs text-slate-400">
+                    사무실 업무를 등록하거나 회생·파산 템플릿 패키지로 표준 업무를 일괄 등록해보세요.
+                  </p>
+                </div>
+                {hasAssignPerm && (
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <button
+                      onClick={() => setShowTemplateModal(true)}
+                      className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-xl text-xs font-bold hover:bg-indigo-100 active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      <Layers className="w-3.5 h-3.5" /> 템플릿으로 시작
+                    </button>
+                    <button
+                      onClick={() => setShowAddTaskModal(true)}
+                      className="inline-flex items-center gap-1.5 bg-brand text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand/90 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> 직접 업무 등록
+                    </button>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => setShowAddTaskModal(true)}
-                className="inline-flex items-center gap-1.5 bg-brand/10 text-brand px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand/20 active:scale-[0.98] transition-all cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" /> 지금 새 할일 등록하기
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredTasks.map(task => {
-                const pri = TASK_PRIORITY_CONFIG[task.priority];
-                const st = TASK_STATUS_CONFIG[task.status];
-                const overdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'COMPLETED';
-                const isAssignee = task.assigneeId === userId;
-                const isAssigner = task.assignerId === userId || isLawyerOrOwner;
+            ) : (
+              <div className="space-y-3">
+                {filteredTasks.map(task => {
+                  const pri = TASK_PRIORITY_CONFIG[task.priority];
+                  const st = TASK_STATUS_CONFIG[task.status] || TASK_STATUS_CONFIG.PENDING;
+                  const isCompleted = task.status === 'COMPLETED';
+                  const isAssignee = task.assigneeId === userId;
+                  const isAssigner = task.assignerId === userId || isLawyerOrOwner;
+                  
+                  // D-Day 신호등 계산
+                  const dDayVal = task.dueDate ? dDay(task.dueDate) : null;
+                  const isOverdue = dDayVal !== null && dDayVal < 0 && !isCompleted;
+                  const isDDayToday = dDayVal === 0 && !isCompleted;
+                  const isUrgentDue = dDayVal !== null && dDayVal > 0 && dDayVal <= 3 && !isCompleted;
 
-                return (
-                  <div
-                    key={task.id}
-                    className={`bg-white rounded-2xl border shadow-sm p-4 transition-all ${
-                      overdue ? 'border-red-200 bg-red-50/20' : 'border-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${pri.bgColor} ${pri.color}`}>
-                            {pri.emoji} {pri.label}
-                          </span>
-                          <span className={`text-[10px] font-bold ${st.color}`}>
-                            {st.emoji} {st.label}
-                          </span>
-                          {overdue && (
-                            <span className="text-[10px] text-red-500 font-bold flex items-center gap-0.5 bg-red-50 px-1.5 py-0.5 rounded-md">
-                              <AlertTriangle className="w-3 h-3" /> 기한 초과
+                  // 서브태스크 완료율
+                  const subtasksTotal = task.subtasks?.length || 0;
+                  const subtasksDone = task.subtasks?.filter(s => s.completed).length || 0;
+                  const subtaskProgress = subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={`bg-white rounded-2xl border shadow-sm p-4 transition-all ${
+                        isOverdue
+                          ? 'border-red-300 bg-red-50/20'
+                          : isDDayToday
+                          ? 'border-orange-300 bg-orange-50/20 ring-1 ring-orange-200'
+                          : task.status === 'REVIEW_REQUESTED'
+                          ? 'border-indigo-300 bg-indigo-50/20'
+                          : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {/* 상단 뱃지 라인 */}
+                          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                            {/* 우선순위 */}
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${pri.bgColor} ${pri.color}`}>
+                              {pri.emoji} {pri.label}
                             </span>
-                          )}
-                          {task.targetType !== 'general' && (
-                            <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-lg">
-                              {task.targetType === 'case' ? '📁 사건 연동' : '💬 상담 연동'}
+
+                            {/* 상태 뱃지 */}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${st.bgColor} ${st.color}`}>
+                              {st.emoji} {st.label}
                             </span>
-                          )}
-                        </div>
 
-                        <p className={`text-sm font-bold ${task.status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
-                          {task.title}
-                        </p>
-                        {task.description && (
-                          <p className="text-xs text-slate-500 mt-1 leading-relaxed whitespace-pre-wrap">
-                            {task.description}
-                          </p>
-                        )}
-
-                        <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-slate-400" />
-                            <strong className="text-slate-600">{task.assignerName}</strong> → <strong className="text-slate-700">{task.assigneeName}</strong>
-                          </span>
-                          {task.dueDate && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-400" />
-                              마감: <span className={overdue ? 'text-red-500 font-bold' : 'text-slate-600 font-medium'}>{task.dueDate}</span>
-                            </span>
-                          )}
-                          <span>등록: {timeAgo(parseSafeDate(task.createdAt))}</span>
-                        </div>
-
-                        {task.completionNote && (
-                          <div className="mt-2 bg-green-50/80 border border-green-200/50 rounded-xl px-3 py-1.5 text-xs text-green-700 flex items-center gap-1.5">
-                            <Check className="w-3.5 h-3.5 shrink-0" />
-                            <span>완료 메모: {task.completionNote}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {task.status !== 'COMPLETED' && (
-                          <>
-                            {task.status === 'PENDING' && (
-                              <button
-                                onClick={() => handleStartTask(task.id)}
-                                className="bg-blue-50 text-blue-600 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-blue-100 active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer"
-                              >
-                                시작
-                              </button>
+                            {/* D-Day 신호등 관제 */}
+                            {isOverdue && (
+                              <span className="text-[10px] text-red-600 font-extrabold flex items-center gap-1 bg-red-100 px-2 py-0.5 rounded-lg animate-pulse">
+                                <AlertTriangle className="w-3 h-3" /> 기한 초과 ({Math.abs(dDayVal!)}일 지남)
+                              </span>
                             )}
+                            {isDDayToday && (
+                              <span className="text-[10px] text-orange-700 font-extrabold flex items-center gap-1 bg-orange-100 px-2 py-0.5 rounded-lg animate-pulse">
+                                🚨 오늘 마감 (D-Day)
+                              </span>
+                            )}
+                            {isUrgentDue && (
+                              <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-lg">
+                                ⏰ 마감 임박 (D-{dDayVal})
+                              </span>
+                            )}
+
+                            {/* 검토 필수 뱃지 */}
+                            {task.requiresApproval && (
+                              <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3 text-indigo-600" /> 컨펌 필수
+                              </span>
+                            )}
+
+                            {/* 연동 사건/상담 뱃지 */}
+                            {task.targetType !== 'general' && (
+                              <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-lg">
+                                {task.targetType === 'case' ? '📁 사건 연동' : '💬 상담 연동'}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* 업무 제목 */}
+                          <p className={`text-sm font-bold ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                            {task.title}
+                          </p>
+
+                          {/* 업무 설명 */}
+                          {task.description && (
+                            <p className="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap">
+                              {task.description}
+                            </p>
+                          )}
+
+                          {/* 서브태스크 (체크리스트) */}
+                          {subtasksTotal > 0 && (
+                            <div className="mt-3 bg-slate-50/80 rounded-xl p-3 border border-slate-200/70 space-y-2">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-bold text-slate-700 flex items-center gap-1">
+                                  <CheckSquare className="w-3.5 h-3.5 text-brand" /> 서브태스크 ({subtasksDone}/{subtasksTotal})
+                                </span>
+                                <span className="font-extrabold text-brand">{subtaskProgress}%</span>
+                              </div>
+                              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-brand h-full rounded-full transition-all duration-300"
+                                  style={{ width: `${subtaskProgress}%` }}
+                                />
+                              </div>
+                              <div className="space-y-1.5 pt-1">
+                                {task.subtasks!.map(st => (
+                                  <div
+                                    key={st.id}
+                                    onClick={() => handleToggleSubtask(task.id, st.id)}
+                                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900 select-none"
+                                  >
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                      st.completed ? 'bg-brand border-brand text-white' : 'border-slate-300 bg-white'
+                                    }`}>
+                                      {st.completed && <Check className="w-3 h-3" />}
+                                    </div>
+                                    <span className={st.completed ? 'line-through text-slate-400' : ''}>
+                                      {st.title}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 메타데이터 라인 (지시자, 수행자, 기한, 등록시각) */}
+                          <div className="flex items-center gap-3 mt-3 text-[11px] text-slate-400 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <User className="w-3 h-3 text-slate-400" />
+                              지시: <strong className="text-slate-700">{task.assignerName}</strong> ➔ 담당: <strong className="text-brand font-bold">{task.assigneeName}</strong>
+                            </span>
+                            {task.dueDate && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                마감일: <span className={isOverdue ? 'text-red-600 font-bold' : isDDayToday ? 'text-orange-600 font-bold' : 'text-slate-700 font-medium'}>{task.dueDate}</span>
+                              </span>
+                            )}
+                            <span>등록: {timeAgo(parseSafeDate(task.createdAt))}</span>
+                          </div>
+
+                          {/* 검토 요청 메모 / 승인 반려 메모 표시 */}
+                          {task.reviewNote && task.status === 'REVIEW_REQUESTED' && (
+                            <div className="mt-2 bg-indigo-50 border border-indigo-200/70 rounded-xl px-3 py-1.5 text-xs text-indigo-800 flex items-center gap-1.5">
+                              <Send className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
+                              <span><strong>검토 요청 메모:</strong> {task.reviewNote}</span>
+                            </div>
+                          )}
+                          {task.approvalNote && (
+                            <div className={`mt-2 rounded-xl px-3 py-1.5 text-xs flex items-center gap-1.5 border ${
+                              task.approvalNote.includes('[수정보완 요청]')
+                                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                            }`}>
+                              <Check className="w-3.5 h-3.5 shrink-0" />
+                              <span>{task.approvalNote}</span>
+                            </div>
+                          )}
+                          {task.completionNote && !task.approvalNote && (
+                            <div className="mt-2 bg-emerald-50 border border-emerald-200/50 rounded-xl px-3 py-1.5 text-xs text-emerald-800 flex items-center gap-1.5">
+                              <Check className="w-3.5 h-3.5 shrink-0" />
+                              <span>완료 메모: {task.completionNote}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 우측 조작 버튼 그룹 (2단계 검토 & 상태 변경) */}
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                          {/* 1. 대기(PENDING) 상태 ➔ 시작 */}
+                          {task.status === 'PENDING' && (
                             <button
-                              onClick={() => setCompletingId(completingId === task.id ? null : task.id)}
-                              className="bg-green-50 text-green-600 rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-green-100 active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer"
+                              onClick={() => handleStartTask(task.id)}
+                              className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl px-3 py-1.5 text-xs font-bold active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer shadow-2xs"
                             >
-                              완료
+                              업무 시작
                             </button>
-                          </>
-                        )}
-                        {isAssigner && (
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 active:scale-[0.98] transition-all cursor-pointer"
-                            title="업무 삭제"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                          )}
+
+                          {/* 2. 진행중(IN_PROGRESS) 상태 ➔ 검토요청 or 완료 */}
+                          {task.status === 'IN_PROGRESS' && (
+                            task.requiresApproval ? (
+                              <button
+                                onClick={() => setReviewingId(reviewingId === task.id ? null : task.id)}
+                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl px-3 py-1.5 text-xs font-bold active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer shadow-2xs flex items-center gap-1"
+                              >
+                                <Send className="w-3 h-3" /> 검토 요청
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setCompletingId(completingId === task.id ? null : task.id)}
+                                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl px-3 py-1.5 text-xs font-bold active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer shadow-2xs flex items-center gap-1"
+                              >
+                                <Check className="w-3 h-3" /> 완료
+                              </button>
+                            )
+                          )}
+
+                          {/* 3. 검토요청(REVIEW_REQUESTED) 상태 ➔ 지시자/승인권자의 승인 or 반려 */}
+                          {task.status === 'REVIEW_REQUESTED' && (
+                            (hasApprovePerm || isAssigner) ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setApprovingId(approvingId === task.id ? null : task.id)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-3 py-1.5 text-xs font-bold active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer shadow-xs flex items-center gap-1"
+                                >
+                                  <ThumbsUp className="w-3 h-3" /> 승인(완료)
+                                </button>
+                                <button
+                                  onClick={() => setRejectingId(rejectingId === task.id ? null : task.id)}
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl px-2.5 py-1.5 text-xs font-bold active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer flex items-center gap-1"
+                                >
+                                  <ThumbsDown className="w-3 h-3" /> 반려
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                                🔬 승인 대기중
+                              </span>
+                            )
+                          )}
+
+                          {/* 삭제 버튼 (지시자 또는 대표변호사) */}
+                          {isAssigner && (
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 active:scale-[0.98] transition-all cursor-pointer ml-1"
+                              title="업무 삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {/* 인라인 입력창 1: 일반 완료 확인 */}
+                      {completingId === task.id && (
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2 animate-fadeIn">
+                          <input
+                            value={completionNote}
+                            onChange={e => setCompletionNote(e.target.value)}
+                            placeholder="완료 메모를 입력하세요 (선택 사항)"
+                            autoFocus
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
+                          />
+                          <button
+                            onClick={() => handleCompleteTask(task.id)}
+                            className="bg-emerald-600 text-white rounded-xl px-4 py-2 text-xs font-bold cursor-pointer active:scale-[0.98] hover:bg-emerald-700 transition-all shadow-xs"
+                          >
+                            완료 확인
+                          </button>
+                          <button
+                            onClick={() => { setCompletingId(null); setCompletionNote(''); }}
+                            className="bg-slate-100 text-slate-500 rounded-xl px-3 py-2 text-xs font-bold hover:bg-slate-200 active:scale-[0.98]"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 인라인 입력창 2: 검토 요청 메모 */}
+                      {reviewingId === task.id && (
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2 animate-fadeIn bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
+                          <input
+                            value={reviewNote}
+                            onChange={e => setReviewNote(e.target.value)}
+                            placeholder="지시자에게 전달할 작업 요약 및 승인 요청 메모"
+                            autoFocus
+                            className="flex-1 bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20"
+                          />
+                          <button
+                            onClick={() => handleRequestReview(task.id)}
+                            className="bg-indigo-600 text-white rounded-xl px-4 py-2 text-xs font-bold cursor-pointer active:scale-[0.98] hover:bg-indigo-700 transition-all shadow-xs flex items-center gap-1"
+                          >
+                            <Send className="w-3 h-3" /> 제출
+                          </button>
+                          <button
+                            onClick={() => { setReviewingId(null); setReviewNote(''); }}
+                            className="bg-slate-100 text-slate-500 rounded-xl px-3 py-2 text-xs font-bold hover:bg-slate-200 active:scale-[0.98]"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 인라인 입력창 3: 최종 승인 메모 */}
+                      {approvingId === task.id && (
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2 animate-fadeIn bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
+                          <input
+                            value={approvalNoteInput}
+                            onChange={e => setApprovalNoteInput(e.target.value)}
+                            placeholder="승인 의견 및 격려 메모 (예: 잘 작성되었습니다. 최종 제출 승인합니다.)"
+                            autoFocus
+                            className="flex-1 bg-white border border-emerald-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-600"
+                          />
+                          <button
+                            onClick={() => handleApproveTask(task.id)}
+                            className="bg-emerald-600 text-white rounded-xl px-4 py-2 text-xs font-bold cursor-pointer active:scale-[0.98] hover:bg-emerald-700 transition-all shadow-xs flex items-center gap-1"
+                          >
+                            <Check className="w-3 h-3" /> 최종 승인
+                          </button>
+                          <button
+                            onClick={() => { setApprovingId(null); setApprovalNoteInput(''); }}
+                            className="bg-slate-100 text-slate-500 rounded-xl px-3 py-2 text-xs font-bold hover:bg-slate-200 active:scale-[0.98]"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 인라인 입력창 4: 반려 및 수정보완 요청 메모 */}
+                      {rejectingId === task.id && (
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2 animate-fadeIn bg-rose-50/50 p-2.5 rounded-xl border border-rose-100">
+                          <input
+                            value={rejectionNoteInput}
+                            onChange={e => setRejectionNoteInput(e.target.value)}
+                            placeholder="보완이 필요한 항목을 구체적으로 적어주세요 (예: 최근 6개월 거래내역 소명 추가 필요)"
+                            autoFocus
+                            className="flex-1 bg-white border border-rose-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-rose-600"
+                          />
+                          <button
+                            onClick={() => handleRejectTask(task.id)}
+                            className="bg-rose-600 text-white rounded-xl px-4 py-2 text-xs font-bold cursor-pointer active:scale-[0.98] hover:bg-rose-700 transition-all shadow-xs flex items-center gap-1"
+                          >
+                            <RotateCcw className="w-3 h-3" /> 보완 요청 전송
+                          </button>
+                          <button
+                            onClick={() => { setRejectingId(null); setRejectionNoteInput(''); }}
+                            className="bg-slate-100 text-slate-500 rounded-xl px-3 py-2 text-xs font-bold hover:bg-slate-200 active:scale-[0.98]"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {/* ══════════ B. 칸반 보드 뷰 (Kanban Board View) ══════════ */}
+          {taskViewMode === 'kanban' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 animate-fadeIn">
+              {([
+                { status: 'PENDING' as TaskStatus, label: '대기 (To-Do)', icon: Clock, count: kanbanColumns.PENDING.length, bg: 'bg-slate-50', headerColor: 'text-slate-700 border-slate-200' },
+                { status: 'IN_PROGRESS' as TaskStatus, label: '진행중 (In Progress)', icon: RotateCcw, count: kanbanColumns.IN_PROGRESS.length, bg: 'bg-blue-50/40', headerColor: 'text-blue-800 border-blue-200' },
+                { status: 'REVIEW_REQUESTED' as TaskStatus, label: '검토요청 (Review)', icon: Send, count: kanbanColumns.REVIEW_REQUESTED.length, bg: 'bg-indigo-50/40', headerColor: 'text-indigo-800 border-indigo-200' },
+                { status: 'COMPLETED' as TaskStatus, label: '완료됨 (Done)', icon: CheckCircle2, count: kanbanColumns.COMPLETED.length, bg: 'bg-emerald-50/30', headerColor: 'text-emerald-800 border-emerald-200' },
+              ]).map(col => {
+                const colTasks = kanbanColumns[col.status];
+                return (
+                  <div key={col.status} className={`${col.bg} rounded-2xl border border-slate-200/80 p-3 flex flex-col min-h-[500px]`}>
+                    {/* 컬럼 헤더 */}
+                    <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-200/80">
+                      <div className="flex items-center gap-1.5">
+                        <col.icon className="w-4 h-4 text-slate-500" />
+                        <span className="text-xs font-extrabold text-slate-800">{col.label}</span>
+                      </div>
+                      <span className="text-[11px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">
+                        {col.count}
+                      </span>
                     </div>
 
-                    {completingId === task.id && (
-                      <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
-                        <input
-                          value={completionNote}
-                          onChange={e => setCompletionNote(e.target.value)}
-                          placeholder="완료 메모를 입력하세요 (선택 사항)"
-                          autoFocus
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
-                        />
-                        <button
-                          onClick={() => handleCompleteTask(task.id)}
-                          className="bg-green-600 text-white rounded-xl px-4 py-2 text-xs font-bold cursor-pointer active:scale-[0.98] hover:bg-green-700 transition-all shadow-xs"
-                        >
-                          완료 확인
-                        </button>
-                        <button
-                          onClick={() => { setCompletingId(null); setCompletionNote(''); }}
-                          className="bg-slate-100 text-slate-500 rounded-xl px-3 py-2 text-xs font-bold hover:bg-slate-200 active:scale-[0.98]"
-                        >
-                          취소
-                        </button>
-                      </div>
-                    )}
+                    {/* 카드 목록 */}
+                    <div className="space-y-2.5 flex-1 overflow-y-auto">
+                      {colTasks.length === 0 ? (
+                        <div className="py-12 text-center text-xs text-slate-400">
+                          업무가 없습니다
+                        </div>
+                      ) : (
+                        colTasks.map(t => {
+                          const pri = TASK_PRIORITY_CONFIG[t.priority];
+                          const dDayVal = t.dueDate ? dDay(t.dueDate) : null;
+                          const isOverdue = dDayVal !== null && dDayVal < 0 && t.status !== 'COMPLETED';
+                          const subDone = t.subtasks?.filter(s => s.completed).length || 0;
+                          const subTotal = t.subtasks?.length || 0;
+
+                          return (
+                            <div
+                              key={t.id}
+                              className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs hover:shadow-xs transition-all space-y-2"
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${pri.bgColor} ${pri.color}`}>
+                                  {pri.emoji} {pri.label}
+                                </span>
+                                {isOverdue ? (
+                                  <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1 py-0.5 rounded">
+                                    기한초과
+                                  </span>
+                                ) : dDayVal !== null && dDayVal <= 3 && t.status !== 'COMPLETED' ? (
+                                  <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded">
+                                    D-{dDayVal}
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              <p className="text-xs font-bold text-slate-900 line-clamp-2">
+                                {t.title}
+                              </p>
+
+                              {subTotal > 0 && (
+                                <div className="text-[10px] text-slate-500 font-medium flex items-center justify-between">
+                                  <span>체크리스트: {subDone}/{subTotal}</span>
+                                  <span className="font-bold text-brand">{Math.round((subDone / subTotal) * 100)}%</span>
+                                </div>
+                              )}
+
+                              <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="truncate max-w-[90px]">
+                                  {t.assigneeName}
+                                </span>
+                                {t.dueDate && <span>{t.dueDate.slice(5)}</span>}
+                              </div>
+
+                              {/* 빠른 다음 단계 액션 버튼 */}
+                              <div className="pt-1 flex items-center justify-end gap-1">
+                                {t.status === 'PENDING' && (
+                                  <button
+                                    onClick={() => handleStartTask(t.id)}
+                                    className="w-full py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg cursor-pointer"
+                                  >
+                                    시작 ➔
+                                  </button>
+                                )}
+                                {t.status === 'IN_PROGRESS' && (
+                                  t.requiresApproval ? (
+                                    <button
+                                      onClick={() => handleRequestReview(t.id)}
+                                      className="w-full py-1 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg cursor-pointer"
+                                    >
+                                      검토 요청 ➔
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleCompleteTask(t.id)}
+                                      className="w-full py-1 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg cursor-pointer"
+                                    >
+                                      완료하기 ✓
+                                    </button>
+                                  )
+                                )}
+                                {t.status === 'REVIEW_REQUESTED' && (hasApprovePerm || t.assignerId === userId) && (
+                                  <button
+                                    onClick={() => handleApproveTask(t.id)}
+                                    className="w-full py-1 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer shadow-2xs"
+                                  >
+                                    승인 완료 ✓
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1556,6 +2152,67 @@ export default function TasksScheduleTab({
                 </div>
               </div>
 
+              {/* 컨펌 필수 옵션 */}
+              <div className="bg-indigo-50/70 border border-indigo-200/60 rounded-xl p-3 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                    <span>완료 시 지시자의 최종 승인(컨펌) 필요</span>
+                  </div>
+                  <p className="text-[11px] text-indigo-700">
+                    체크 시 담당자가 바로 완료할 수 없으며, 검토 요청 후 지시자가 승인해야 최종 완료됩니다.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={newTask.requiresApproval}
+                  onChange={e => setNewTask(p => ({ ...p, requiresApproval: e.target.checked }))}
+                  className="w-4 h-4 rounded text-brand focus:ring-brand accent-indigo-600 cursor-pointer"
+                />
+              </div>
+
+              {/* 서브태스크 (체크리스트) 동적 추가 영역 */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-600 block">
+                  서브태스크 체크리스트 (선택)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={newSubtaskInput}
+                    onChange={e => setNewSubtaskInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubtaskDraft(); } }}
+                    placeholder="세부 수행 항목을 입력 후 [추가] (Enter)"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-brand"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddSubtaskDraft}
+                    className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl active:scale-[0.98] transition-all cursor-pointer shrink-0"
+                  >
+                    추가
+                  </button>
+                </div>
+                {newTask.subtasks.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    {newTask.subtasks.map(st => (
+                      <div key={st.id} className="flex items-center justify-between bg-slate-100/80 px-3 py-1.5 rounded-xl text-xs text-slate-700">
+                        <span className="flex items-center gap-1.5">
+                          <CheckSquare className="w-3.5 h-3.5 text-slate-400" />
+                          {st.title}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSubtaskDraft(st.id)}
+                          className="text-slate-400 hover:text-red-500 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-slate-600 mb-1 block">
                   상세 요청사항 (선택)
@@ -1564,7 +2221,7 @@ export default function TasksScheduleTab({
                   value={newTask.description}
                   onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))}
                   placeholder="담당자가 처리해야 할 상세 내용 및 주의사항을 적어주세요."
-                  rows={3}
+                  rows={2}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 resize-none"
                 />
               </div>
@@ -1582,6 +2239,318 @@ export default function TasksScheduleTab({
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-brand text-white hover:bg-brand/90 cursor-pointer active:scale-[0.98] transition-all shadow-sm"
               >
                 할일 등록
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          ══ Modal 1-B: 회생·파산 4대 표준 템플릿 패키지 일괄 등록 모달
+         ══════════════════════════════════════════════════════════════════ */}
+      {showTemplateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={() => setShowTemplateModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-5 animate-fadeIn"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    회생·파산 표준 업무 패키지 일괄 등록
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    검증된 실무 5단계 업무 프로세스를 원클릭으로 일괄 자동 생성합니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTemplateModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 cursor-pointer text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 1. 템플릿 선택 4개 카드 */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 mb-2 block">
+                템플릿 패키지 선택
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {TASK_PACKAGE_TEMPLATES.map(tpl => {
+                  const isSelected = selectedTemplate.id === tpl.id;
+                  return (
+                    <div
+                      key={tpl.id}
+                      onClick={() => setSelectedTemplate(tpl)}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-600/20 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-extrabold text-slate-900">{tpl.name}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+                          {tpl.badge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        {tpl.description}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. 대상 사건 / 담당자 / 기준일 설정 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <div>
+                <label className="text-xs font-bold text-slate-600 mb-1 block">
+                  연결 사건 / 의뢰인
+                </label>
+                <select
+                  value={templateTargetId}
+                  onChange={e => setTemplateTargetId(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-brand"
+                >
+                  {targetOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 mb-1 block">
+                  수행 담당자
+                </label>
+                <select
+                  value={templateAssigneeId}
+                  onChange={e => setTemplateAssigneeId(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-brand"
+                >
+                  {assignableMembers.map(m => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.roleLabel})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 mb-1 block">
+                  기준 시작일
+                </label>
+                <input
+                  type="date"
+                  value={templateBaseDate}
+                  onChange={e => setTemplateBaseDate(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-brand"
+                />
+              </div>
+            </div>
+
+            {/* 3. 패키지에 포함된 표준 업무 미리보기 */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
+                <span>포함된 표준 업무 ({selectedTemplate.tasks.length}개)</span>
+                <span className="text-[11px] text-indigo-600 font-normal">기준일로부터 마감기한 자동 계산됨</span>
+              </label>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {selectedTemplate.tasks.map((t, idx) => {
+                  const pri = TASK_PRIORITY_CONFIG[t.priority];
+                  const calcDue = calculateCourtDeadline(templateBaseDate, t.offsetDays);
+                  return (
+                    <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-start justify-between gap-3 text-xs">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <span className="font-extrabold text-slate-400">Step {idx + 1}</span>
+                          <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${pri.bgColor} ${pri.color}`}>
+                            {pri.label}
+                          </span>
+                          {t.requiresApproval && (
+                            <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.2 rounded">
+                              컨펌 필수
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-slate-900 truncate">{t.title}</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">{t.description}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">체크리스트: {t.subtasks.join(' · ')}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg">
+                          D+{t.offsetDays} ({calcDue.slice(5)})
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setShowTemplateModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer active:scale-[0.98]"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleApplyTemplatePackage}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Check className="w-4 h-4" /> {selectedTemplate.tasks.length}개 업무 일괄 발행하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          ══ Modal 1-C: ⚖️ 법원 불변기한 & 보정명령 계산기 모달
+         ══════════════════════════════════════════════════════════════════ */}
+      {showDeadlineCalculator && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={() => setShowDeadlineCalculator(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5 animate-fadeIn"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
+                  <Calculator className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    법원 불변기한 & 보정명령 계산기
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    민법 제161조에 따라 토/일/공휴일 익일 만료가 자동 적용됩니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDeadlineCalculator(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 cursor-pointer text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">
+                  보정명령 송달 일자
+                </label>
+                <input
+                  type="date"
+                  value={calcStartDate}
+                  onChange={e => setCalcStartDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none focus:border-brand"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                  법정 보정 기간 선택
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: '7일 (통상 보정)', val: 7 },
+                    { label: '14일 (상세 소명)', val: 14 },
+                    { label: '30일 (특별 기한)', val: 30 },
+                  ].map(item => (
+                    <button
+                      key={item.val}
+                      type="button"
+                      onClick={() => setCalcDays(item.val)}
+                      className={`py-2 px-1 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        calcDays === item.val
+                          ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-300/30 font-extrabold'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">
+                  관련 사건 / 의뢰인
+                </label>
+                <select
+                  value={calcTargetId}
+                  onChange={e => setCalcTargetId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold outline-none focus:border-brand"
+                >
+                  {targetOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">
+                  업무 및 일정 제목
+                </label>
+                <input
+                  value={calcTitle}
+                  onChange={e => setCalcTitle(e.target.value)}
+                  placeholder="예: 서울회생법원 보정명령 답변서 제출"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold outline-none focus:border-brand"
+                />
+              </div>
+
+              {/* 실시간 계산 결과 박스 */}
+              {(() => {
+                const finalDate = calculateCourtDeadline(calcStartDate, calcDays);
+                const dd = dDay(finalDate);
+                const dObj = new Date(finalDate + 'T00:00:00');
+                const dow = ['일','월','화','수','목','금','토'][dObj.getDay()];
+                return (
+                  <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 space-y-1.5 animate-fadeIn">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-amber-900 font-medium">최종 법정 제출 만료일</span>
+                      <span className="text-xs font-black bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-md">
+                        {dd >= 0 ? `D-${dd} 남음` : `${Math.abs(dd)}일 초과`}
+                      </span>
+                    </div>
+                    <p className="text-lg font-black text-amber-950">
+                      {finalDate} ({dow}요일) 23:59까지
+                    </p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      ※ 기간의 말일이 토요일/공휴일인 경우 그 익일(다음 평일)로 자동 만료 처리되었습니다.
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setShowDeadlineCalculator(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer active:scale-[0.98]"
+              >
+                닫기
+              </button>
+              <button
+                onClick={handleCreateDeadlineTask}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <CalendarCheck className="w-4 h-4" /> 할일 & 캘린더 동시 등록
               </button>
             </div>
           </div>

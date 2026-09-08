@@ -87,11 +87,18 @@ export const VISIBILITY_CONFIG: Record<MessageVisibility, { label: string; emoji
 
 // ── 업무 할당 티켓 ──
 
+/** 서브태스크 (체크리스트) */
+export interface TaskSubtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 /** 업무 우선순위 */
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
 /** 업무 상태 */
-export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'REVIEW_REQUESTED' | 'COMPLETED' | 'CANCELLED';
 
 /** 업무 할당 티켓 */
 export interface TaskTicket {
@@ -125,6 +132,18 @@ export interface TaskTicket {
   completedAt?: string;
   /** 완료 메모 */
   completionNote?: string;
+  /** 서브태스크 목록 */
+  subtasks?: TaskSubtask[];
+  /** 완료 시 승인(컨펌) 필요 여부 */
+  requiresApproval?: boolean;
+  /** 검토 요청 시 메모 */
+  reviewNote?: string;
+  /** 승인/반려 시 메모 */
+  approvalNote?: string;
+  /** 템플릿 패키지 ID */
+  templateId?: string;
+  /** 관련 사건 단계 (예: '서류준비', '신청서접수', '보정권고', '개시결정', '인가결정') */
+  caseStage?: string;
   /** 생성 시각 */
   createdAt: string;
   /** 수정 시각 */
@@ -140,11 +159,12 @@ export const TASK_PRIORITY_CONFIG: Record<TaskPriority, { label: string; emoji: 
 };
 
 /** 상태별 설정 */
-export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; emoji: string; color: string }> = {
-  PENDING: { label: '대기', emoji: '⏳', color: 'text-slate-500' },
-  IN_PROGRESS: { label: '진행중', emoji: '🔄', color: 'text-blue-600' },
-  COMPLETED: { label: '완료', emoji: '✅', color: 'text-green-600' },
-  CANCELLED: { label: '취소', emoji: '❌', color: 'text-slate-400' },
+export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; emoji: string; color: string; bgColor: string }> = {
+  PENDING: { label: '대기', emoji: '⏳', color: 'text-slate-600', bgColor: 'bg-slate-100' },
+  IN_PROGRESS: { label: '진행중', emoji: '🔄', color: 'text-blue-600', bgColor: 'bg-blue-50' },
+  REVIEW_REQUESTED: { label: '검토요청', emoji: '🔬', color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+  COMPLETED: { label: '완료', emoji: '✅', color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+  CANCELLED: { label: '취소', emoji: '❌', color: 'text-slate-400', bgColor: 'bg-slate-50' },
 };
 
 // ── 인앱 알림 ──

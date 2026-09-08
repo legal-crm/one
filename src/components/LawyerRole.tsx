@@ -4513,6 +4513,10 @@ export default function LawyerRole({
               userId={activeStaffMember?.id || activeLawyer.id}
               userName={activeStaffMember?.name || activeLawyer.name}
               userRole={activeStaffMember?.role || 'OWNER'}
+              hasManageCalendar={!activeStaffMember || activeStaffMember.role === 'OWNER' || activeStaffMember.role === 'LAWYER' || permissionCtx.hasPermission('manageCalendar')}
+              canAssignTasks={!activeStaffMember || activeStaffMember.role === 'OWNER' || activeStaffMember.role === 'LAWYER' || permissionCtx.hasPermission('canAssignTasks')}
+              canManageAllTasks={!activeStaffMember || activeStaffMember.role === 'OWNER' || permissionCtx.hasPermission('canManageAllTasks')}
+              canApproveTasks={!activeStaffMember || activeStaffMember.role === 'OWNER' || activeStaffMember.role === 'LAWYER' || permissionCtx.hasPermission('canApproveTasks')}
               requests={requests}
               cases={cases}
               qas={qas}

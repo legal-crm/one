@@ -2878,6 +2878,22 @@ export default function CrmTab({ requests, lawyers, activeLawyer, setRequests, g
                     </div>
                   )}
 
+                  {/* ══════════ [4] 업무 지시 탭 ══════════ */}
+                  {detailTab === 'tasks' && (
+                    <div className="space-y-4">
+                      <TaskTicketTab
+                        tenantId={activeLawyer.lawFirmId || activeLawyer.id}
+                        targetType={selectedClient.category === 'case' ? 'case' : 'consult_request'}
+                        targetId={selectedId}
+                        actorId={activeStaff?.id || activeLawyer.id}
+                        actorName={activeStaff?.name || activeLawyer.name}
+                        actorRole={activeStaff?.role || 'OWNER'}
+                        staffMembers={staffMembers}
+                        canAssignTasks={!activeStaff || activeStaff.role === 'OWNER' || activeStaff.role === 'LAWYER' || !!currentPermissions.canAssignTasks}
+                      />
+                    </div>
+                  )}
+
                   {/* ══════════ [5] 수임료 탭 ══════════ */}
                   {detailTab === 'fees' && (() => {
                     const ext = getCrmExt(selectedId);

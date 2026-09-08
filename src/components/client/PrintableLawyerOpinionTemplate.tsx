@@ -83,6 +83,7 @@ export default function PrintableLawyerOpinionTemplate({
   const PageWrapper = ({ children, pageNumber }: { children: React.ReactNode; pageNumber: number }) => (
     <div
       id={`pdf-lawyer-page-${pageNumber}`}
+      className="pdf-page-item"
       style={{
         width: '794px',
         height: '1123px',
