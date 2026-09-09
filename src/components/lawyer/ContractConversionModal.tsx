@@ -43,7 +43,7 @@ export default function ContractConversionModal({
   // 서류 준비 패키지 동시 발송 체크
   const [sendDocPackage, setSendDocPackage] = useState<boolean>(true);
   // 계약 체결 알림톡 발송 체크
-  const [sendAlimtok, setSendAlimtok] = useState<boolean>(true);
+  const [shouldSendAlimtok, setShouldSendAlimtok] = useState<boolean>(true);
 
   // 분납 스케줄 계산
   const remainingFee = Math.max(0, totalFee - initialFee);
@@ -240,7 +240,7 @@ export default function ContractConversionModal({
       }
 
       // 6. 알림톡 / 문자 자동 전송 기록 (선택 시)
-      if (sendAlimtok) {
+      if (shouldSendAlimtok) {
         try {
           const clientPhone = request.phone || '010-0000-0000';
           const alimtokText = contractMethod === 'electronic'
@@ -477,8 +477,8 @@ export default function ContractConversionModal({
             <label className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-all">
               <input
                 type="checkbox"
-                checked={sendAlimtok}
-                onChange={(e) => setSendAlimtok(e.target.checked)}
+                checked={shouldSendAlimtok}
+                onChange={(e) => setShouldSendAlimtok(e.target.checked)}
                 className="mt-0.5 rounded text-brand focus:ring-brand w-4 h-4"
               />
               <div className="flex-1 text-xs">

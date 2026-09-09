@@ -4984,7 +4984,7 @@ export default function LawyerRole({
             setRequests={setRequests}
             getDisplayPhoneNumber={getDisplayPhoneNumber}
             handleOpenProposalDraft={handleOpenProposalDraft}
-            setActiveTab={setActiveTab}
+            setActiveTab={(tab: any) => setActiveTab(tab)}
             setCopilotPreselectedReqId={setCopilotPreselectedReqId}
             initialClientId={crmTargetClientId}
             initialDetailTab={crmTargetDetailTab}
@@ -5079,7 +5079,7 @@ export default function LawyerRole({
           <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand/20 border-t-brand rounded-full" /></div>}>
             <ContractManagementTab 
               lawyerName={activeLawyer.name} 
-              lawFirmName={activeLawyer.lawFirmName || '법무법인'} 
+              lawFirmName={activeLawyer.firmName || activeLawyer.firm || '법무법인'} 
               onNavigateToCrm={() => setActiveTab('client-crm')}
             />
           </React.Suspense>

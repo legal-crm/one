@@ -532,6 +532,7 @@ export interface CrmActivityLog {
   description: string;
   metadata?: Record<string, string>;
   createdAt: string;
+  timestamp?: string; // 호환성 별칭
 }
 
 // 직원 관리 활동 로그
@@ -551,6 +552,7 @@ export interface StaffActivityLog {
   description: string;
   metadata?: Record<string, string>;
   createdAt: string;
+  timestamp?: string; // 호환성 별칭
 }
 
 // CRM 메모 카테고리
@@ -700,6 +702,7 @@ export interface CrmClientExtension {
   documentRequests?: DocumentRequest[];  // 변호사 추가 서류 요청 목록
   // ── 보정명령 ──
   correctionOrders?: CorrectionOrder[];
+  corrections?: CorrectionOrder[]; // correctionOrders 호환성 별칭
   // ── 대법원 연동 ──
   courtCase?: CourtCaseLink;
   // ── 알림톡 이력 ──

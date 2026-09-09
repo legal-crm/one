@@ -76,10 +76,15 @@ export interface RehabUserInput {
     // 투기성 손실
     speculativeLoss?: number;  // 주식/코인 손실금
     gamblingLoss?: number;     // 도박 채무/손실금
+    gamblingDebt?: number;     // 도박/투자 채무 별칭 (호환성)
     riskFactor?: 'none' | 'recent_loan' | 'investment' | 'gambling'; // 채무 유형
 
     // 24개월 특례 조건
     specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud';
+
+    // 부양가족 호환성
+    dependentsCount?: number;
+    elderlyParentCount?: number;
 
     // 연락처
     name?: string;             // 고객명

@@ -325,7 +325,9 @@ export const RULE_SOURCE_TYPE_CONFIG: Record<RuleSourceType, { label: string; em
   OFFICIAL: { label: '공식', emoji: '🏛️', color: 'text-blue-500' },
   PUBLISHED: { label: '출판됨', emoji: '📚', color: 'text-green-500' },
   FIRM_EXPERIENCE: { label: '로펌 경험', emoji: '💼', color: 'text-orange-500' },
-  UNVERIFIED: { label: '미검증', emoji: '❓', color: 'text-gray-500' }
+  UNVERIFIED: { label: '미검증', emoji: '❓', color: 'text-gray-500' },
+  STATUTE: { label: '법령/조항', emoji: '⚖️', color: 'text-indigo-500' },
+  PRACTICE_MANUAL: { label: '실무준칙', emoji: '📋', color: 'text-purple-500' }
 };
 
 /** 플래그 유형 설정 */
