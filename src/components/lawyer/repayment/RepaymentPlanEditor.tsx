@@ -12,13 +12,15 @@ import type {
   RepaymentPlanData, 
   RepaymentCreditor, 
   RepaymentAsset,
+  AssetCategory,
   IncomeAndExpenseInput,
   RepaymentFormType 
 } from '../../../services/repayment/repaymentTypes';
 import { 
   buildRepaymentPlan,
   calculateLivingExpenseAndDisposableIncome,
-  calculateTotalLiquidationValue
+  calculateTotalLiquidationValue,
+  calculateAssetLiquidationValue
 } from '../../../services/repayment/repaymentCalculationEngine';
 import { exportCourtRepaymentScheduleExcel } from '../../../services/repayment/repaymentExcelExporter';
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
@@ -339,6 +341,78 @@ export default function RepaymentPlanEditor({
         .map((c, idx) => ({ ...c, creditorNumber: idx + 1 }))
     );
     toast.info('채권자가 삭제되었습니다.');
+  };
+
+  // ── 재산 목록 수동 미세 조정 CRUD ──
+  // 신규 재산 항목 추가
+  const handleAddNewAsset = () => {
+    const newId = `asset_${Date.now()}`;
+    const newAsset: RepaymentAsset = {
+      id: newId,
+      category: 'DEPOSIT',
+      name: '새 예금/자산',
+      marketValue: 1000000,
+      encumbrance: 0,
+      statutoryDeduction: 1850000,
+      liquidationValue: 0,
+    };
+    setAssets((prev) => [...prev, newAsset]);
+    setIsManualMode(true);
+    toast.success('새 재산 항목이 추가되었습니다.');
+  };
+
+  // 재산 항목 삭제
+  const handleDeleteAsset = (assetId: string) => {
+    if (assets.length <= 1) {
+      toast.error('최소 1개 이상의 재산 항목이 필요합니다.');
+      return;
+    }
+    setAssets((prev) => prev.filter((a) => a.id !== assetId));
+    setIsManualMode(true);
+    toast.info('재산 항목이 삭제되었습니다.');
+  };
+
+  // 재산 항목 필드 업데이트
+  const handleUpdateAsset = (assetId: string, updates: Partial<RepaymentAsset>) => {
+    setIsManualMode(true);
+    setAssets((prev) =>
+      prev.map((a) => {
+        if (a.id === assetId) {
+          const merged = { ...a, ...updates };
+
+          // 카테고리 변경 시 법정 공제액 자동 제안
+          if (updates.category && updates.category !== a.category) {
+            if (updates.category === 'DEPOSIT') {
+              merged.statutoryDeduction = 1850000;
+            } else if (updates.category === 'INSURANCE') {
+              merged.statutoryDeduction = 1500000;
+            } else if (updates.category === 'HOUSING_DEPOSIT') {
+              merged.statutoryDeduction = incomeExpense.region === 'SEOUL' ? 55000000 : 48000000;
+            } else if (updates.category === 'RETIREMENT') {
+              merged.statutoryDeduction = Math.round(merged.marketValue * 0.5);
+            } else {
+              merged.statutoryDeduction = 0;
+            }
+          }
+
+          // 청산가치 계산: max(0, marketValue - encumbrance - statutoryDeduction)
+          let calculatedLiquidation = 0;
+          if (merged.category === 'RETIREMENT' && merged.isRetirementPension) {
+            calculatedLiquidation = 0;
+          } else if (merged.category === 'ADDITIONAL_INCLUSION') {
+            calculatedLiquidation = merged.marketValue;
+          } else {
+            calculatedLiquidation = Math.max(0, merged.marketValue - merged.encumbrance - merged.statutoryDeduction);
+          }
+
+          return {
+            ...merged,
+            liquidationValue: calculatedLiquidation,
+          };
+        }
+        return a;
+      })
+    );
   };
 
   // 자동 추천안으로 전체 리셋
@@ -1346,20 +1420,36 @@ export default function RepaymentPlanEditor({
         {/* ── SECTION 3: 재산 목록 및 청산가치(J) ── */}
         {activeSection === 'assets' && (
           <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-200/80 space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-black text-slate-900">
-                  재산 목록 및 청산가치 산정표
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-slate-900">
+                    재산 목록 및 청산가치 산정표
+                  </h3>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                    실무자 직접 수정 가능
+                  </span>
+                </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  예금 185만 원, 보험 150만 원, 주거 소액보증금 법정 공제 및 퇴직금 50%가 자동 반영됩니다.
+                  각 자산의 시가, 담보액, 법정 공제액을 직접 입력하거나 새 자산을 추가할 수 있습니다.
                 </p>
               </div>
-              <div className="text-right">
-                <span className="text-xs text-slate-500">총 청산가치(J): </span>
-                <span className="text-base font-black text-slate-900 font-mono">
-                  {plan.totalLiquidationValue.toLocaleString()}원
-                </span>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleAddNewAsset}
+                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ 재산 항목 추가</span>
+                </button>
+                <div className="text-right pl-3 border-l border-slate-200">
+                  <span className="text-xs text-slate-500">총 청산가치(J): </span>
+                  <span className="text-base font-black text-slate-900 font-mono">
+                    {plan.totalLiquidationValue.toLocaleString()}원
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1367,34 +1457,103 @@ export default function RepaymentPlanEditor({
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="py-3 px-4">재산 구분</th>
-                    <th className="py-3 px-4">항목명</th>
-                    <th className="py-3 px-3 text-right">시가/평가액</th>
-                    <th className="py-3 px-3 text-right">담보/채무액</th>
-                    <th className="py-3 px-3 text-right">법정 공제액</th>
-                    <th className="py-3 px-4 text-right">청산가치 반영액</th>
+                    <th className="py-3 px-3 w-44">재산 구분</th>
+                    <th className="py-3 px-3 min-w-[140px]">항목명</th>
+                    <th className="py-3 px-3 text-right w-32">시가/평가액 (원)</th>
+                    <th className="py-3 px-3 text-right w-32">담보/채무액 (원)</th>
+                    <th className="py-3 px-3 text-right w-32">법정 공제액 (원)</th>
+                    <th className="py-3 px-3 text-right w-32">청산가치 반영액</th>
+                    <th className="py-3 px-2 text-center w-12">삭제</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {assets.map((a) => (
-                    <tr key={a.id} className="hover:bg-slate-50/80">
-                      <td className="py-3 px-4 font-bold text-slate-800">
-                        {a.category}
+                    <tr key={a.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* 재산 구분 */}
+                      <td className="py-2.5 px-3">
+                        <select
+                          value={a.category}
+                          onChange={(e) => handleUpdateAsset(a.id, { category: e.target.value as AssetCategory })}
+                          className="w-full px-2 py-1.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none"
+                        >
+                          <option value="DEPOSIT">예금/적금 (185만 공제)</option>
+                          <option value="INSURANCE">보험환급금 (150만 공제)</option>
+                          <option value="HOUSING_DEPOSIT">주거 임차보증금</option>
+                          <option value="CAR">자동차</option>
+                          <option value="REAL_ESTATE">부동산</option>
+                          <option value="RETIREMENT">퇴직금/퇴직연금</option>
+                          <option value="ADDITIONAL_INCLUSION">가산재산 (주식/코인)</option>
+                          <option value="OTHER">기타 재산</option>
+                        </select>
                       </td>
-                      <td className="py-3 px-4 font-medium text-slate-900">
-                        {a.name}
+
+                      {/* 항목명 */}
+                      <td className="py-2.5 px-3">
+                        <input
+                          type="text"
+                          value={a.name}
+                          onChange={(e) => handleUpdateAsset(a.id, { name: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-xs font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none"
+                          placeholder="항목명 입력"
+                        />
+                        {a.category === 'RETIREMENT' && (
+                          <label className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-600 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!a.isRetirementPension}
+                              onChange={(e) => handleUpdateAsset(a.id, { isRetirementPension: e.target.checked })}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span>퇴직연금(DB/DC/IRP) 전액 비반영(0원)</span>
+                          </label>
+                        )}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono">
-                        {a.marketValue.toLocaleString()}원
+
+                      {/* 시가/평가액 */}
+                      <td className="py-2.5 px-3 text-right">
+                        <input
+                          type="number"
+                          value={a.marketValue}
+                          onChange={(e) => handleUpdateAsset(a.id, { marketValue: Number(e.target.value) || 0 })}
+                          className="w-full px-2 py-1.5 text-right font-mono font-bold text-xs text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none"
+                        />
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-400">
-                        {a.encumbrance.toLocaleString()}원
+
+                      {/* 담보/채무액 */}
+                      <td className="py-2.5 px-3 text-right">
+                        <input
+                          type="number"
+                          value={a.encumbrance}
+                          onChange={(e) => handleUpdateAsset(a.id, { encumbrance: Number(e.target.value) || 0 })}
+                          className="w-full px-2 py-1.5 text-right font-mono text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none"
+                        />
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-500">
-                        {a.statutoryDeduction.toLocaleString()}원
+
+                      {/* 법정 공제액 */}
+                      <td className="py-2.5 px-3 text-right">
+                        <input
+                          type="number"
+                          value={a.statutoryDeduction}
+                          onChange={(e) => handleUpdateAsset(a.id, { statutoryDeduction: Number(e.target.value) || 0 })}
+                          className="w-full px-2 py-1.5 text-right font-mono text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none"
+                        />
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-blue-900">
+
+                      {/* 청산가치 반영액 */}
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-900 text-sm">
                         {a.liquidationValue.toLocaleString()}원
+                      </td>
+
+                      {/* 삭제 버튼 */}
+                      <td className="py-2.5 px-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAsset(a.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="재산 항목 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1402,14 +1561,43 @@ export default function RepaymentPlanEditor({
                 <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
                   <tr>
                     <td colSpan={5} className="py-3 px-4 text-right text-slate-700">
-                      총 청산가치 (J)
+                      총 청산가치 (J) 합계
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-sm">
+                    <td className="py-3 px-3 text-right font-mono font-black text-slate-900 text-sm">
                       {plan.totalLiquidationValue.toLocaleString()}원
                     </td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
+            </div>
+
+            {/* 법정 공제 기준 안내 카드 */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-slate-600 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+              <div className="space-y-1">
+                <span className="font-bold text-slate-900 text-[11px]">💰 예금 압류금지 공제</span>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  민사집행법 제246조에 따라 금융기관별 개인 예금 총 185만 원까지 공제
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="font-bold text-slate-900 text-[11px]">🛡️ 보장성보험 환급금 공제</span>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  보장성 보험 해약환급금 중 150만 원 한도 내 면제재산 자동 공제
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="font-bold text-slate-900 text-[11px]">🏠 소액임차보증금 공제</span>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  주택임대차보호법상 서울 5,500만 / 과밀 4,800만 / 광역시 2,800만 공제
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="font-bold text-slate-900 text-[11px]">🏢 퇴직금 / 가산재산</span>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  일반퇴직금은 50% 반영, IRP 등 퇴직연금은 0원. 주식·코인 손실액은 전액 합산
+                </p>
+              </div>
             </div>
 
           </div>
