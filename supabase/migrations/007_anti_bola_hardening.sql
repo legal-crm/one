@@ -1,7 +1,12 @@
 -- 007_anti_bola_hardening.sql
 -- 강남언니 개인정보 유출(BOLA/IDOR) 사고 대응: 객체 수준 권한 검증(Row-Level Ownership) 강화
--- 기존의 위험한 "authenticated USING (true)" 정책을 제거하고,
--- 데이터의 소유자(의뢰인), 배정된 변호사, 최고 관리자만 조회/수정할 수 있도록 제한합니다.
+-- 데이터 소유자(의뢰인), 배정된 변호사, 최고 관리자만 조회/수정할 수 있도록 제한합니다.
+
+-- ==========================================
+-- Step 0: 누락된 컬럼 안전 추가 (Schema Fix)
+-- ==========================================
+ALTER TABLE consult_requests ADD COLUMN IF NOT EXISTS accepted_lawyer_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE consult_requests ADD COLUMN IF NOT EXISTS selected_lawyer_ids JSONB DEFAULT '[]'::jsonb;
 
 -- ==========================================
 -- 1. consult_requests (상담 요청 및 금융 정보)
@@ -13,7 +18,7 @@ DROP POLICY IF EXISTS "anti_bola_select_consult_requests" ON consult_requests;
 DROP POLICY IF EXISTS "anti_bola_insert_consult_requests" ON consult_requests;
 DROP POLICY IF EXISTS "anti_bola_update_consult_requests" ON consult_requests;
 
--- SELECT: 의뢰인 본인, 배정/참여 변호사, 오픈 매칭 대기 요청, 최고 관리자만 조회 가능
+-- SELECT: 의뢰인 본인, 배정/수락 변호사, 오픈 매칭 대기 요청, 최고 관리자만 조회 가능
 CREATE POLICY "anti_bola_select_consult_requests" ON consult_requests
 FOR SELECT TO authenticated
 USING (
@@ -25,8 +30,9 @@ USING (
   OR (accepted_lawyer_ids IS NOT NULL AND accepted_lawyer_ids ? auth.uid()::text)
   -- 4) 변호사들이 상담을 검토할 수 있도록 공개된 오픈 매칭 대기 요청
   OR (status = 'requested' AND request_type = 'open')
-  -- 5) 관리자 권한 (app_metadata 확인)
+  -- 5) 관리자 권한 (app_metadata 또는 members 테이블 확인)
   OR ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  OR EXISTS (SELECT 1 FROM members WHERE members.id = auth.uid()::text AND members.role = 'ADMIN')
 );
 
 -- INSERT: 본인의 client_id로 등록하거나, 신규 비로그인 세션(client-temp) 허용
@@ -105,7 +111,7 @@ DROP POLICY IF EXISTS "anti_bola_modify_cases" ON cases;
 CREATE POLICY "anti_bola_select_cases" ON cases
 FOR SELECT TO authenticated
 USING (
-  lawyer_id = auth.uid()::text
+  assigned_lawyer_id = auth.uid()::text
   OR client_id = auth.uid()::text
   OR ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
 );
@@ -114,7 +120,7 @@ USING (
 CREATE POLICY "anti_bola_modify_cases" ON cases
 FOR ALL TO authenticated
 USING (
-  lawyer_id = auth.uid()::text
+  assigned_lawyer_id = auth.uid()::text
   OR ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
 )
 WITH CHECK (true);
@@ -130,8 +136,7 @@ DROP POLICY IF EXISTS "anti_bola_all_client_memos" ON client_memos;
 CREATE POLICY "anti_bola_all_client_memos" ON client_memos
 FOR ALL TO authenticated
 USING (
-  auth.uid()::text = author_id
-  OR ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
   OR EXISTS (
     SELECT 1 FROM members m
     WHERE m.id = auth.uid()::text AND m.role IN ('LAWYER', 'ADMIN', 'STAFF')
@@ -146,11 +151,12 @@ WITH CHECK (true);
 DROP POLICY IF EXISTS "authenticated_select_alimtok_logs" ON alimtok_logs;
 DROP POLICY IF EXISTS "anti_bola_select_alimtok_logs" ON alimtok_logs;
 
--- 일반 고객의 타인 알림톡 열람 전면 차단 (관리자 및 담당 변호사/직원만)
+-- 일반 고객의 타인 알림톡 열람 전면 차단 (본인 알림톡 또는 관리자/변호사만)
 CREATE POLICY "anti_bola_select_alimtok_logs" ON alimtok_logs
 FOR SELECT TO authenticated
 USING (
-  ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  client_id = auth.uid()::text
+  OR ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
   OR EXISTS (
     SELECT 1 FROM members m
     WHERE m.id = auth.uid()::text AND m.role IN ('LAWYER', 'ADMIN', 'STAFF')
