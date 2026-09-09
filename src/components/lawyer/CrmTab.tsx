@@ -794,7 +794,7 @@ export default function CrmTab({
         return { 
           ...d, 
           checked, 
-          reviewStatus: checked ? 'approved' : 'not_submitted',
+          reviewStatus: (checked ? 'approved' : 'not_submitted') as DocumentReviewStatus,
           checkedBy: checked ? actor.name : undefined, 
           checkedAt: checked ? new Date().toISOString() : undefined 
         };

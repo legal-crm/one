@@ -104,6 +104,11 @@ export interface RehabUserInput {
     retirementPay?: number;                                 // 예상 퇴직금 총액
     clientNote?: string;                                    // 의뢰인 추가 메모/특이사항
     clientNotes?: string[];                                   // 의뢰인 추가 메모 리스트
+    recentDebtRatio?: number;                               // 최근 대출 비중
+    monthlyRent?: number;                                   // 월세 별칭
+    monthlyMedical?: number;                                // 의료비 별칭
+    monthlyEducation?: number;                              // 교육비 별칭
+    rentalDeposit?: number;                                 // 임차보증금 별칭
 }
 
 /**

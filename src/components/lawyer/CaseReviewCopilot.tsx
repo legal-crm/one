@@ -1307,8 +1307,8 @@ export default function CaseReviewCopilot({
           aiAnalysis={factOutput && ruleOutput ? {
             factSummary: factOutput.factSummary,
             riskFlags: ruleOutput.flags,
-            missingFields: factOutput.missingFields,
-            conflicts: factOutput.conflicts,
+            missingFields: factOutput.missingFields ? factOutput.missingFields.map((f: any) => typeof f === 'string' ? f : (f.label || f.field || f.name || String(f))) : [],
+            conflicts: factOutput.conflicts ? factOutput.conflicts.map((c: any) => typeof c === 'string' ? c : (c.message || c.field || String(c))) : [],
             reviewGrade: ruleOutput.reviewGrade,
             courtPracticeNotes: ruleOutput.courtPracticeNotes,
           } : undefined}

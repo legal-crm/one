@@ -79,6 +79,7 @@ interface StepSnapshot {
     spouseInsuranceLoanCheck?: 'yes' | 'no' | null;
     tempOwnedValue?: number;
     tempOwnedMortgage?: number;
+    ownedOwnerType?: 'self' | 'spouse' | 'joint' | any;
     unemployedReason?: 'illness' | 'none' | null;
     currentDebtTypeIndex?: number;
     debtTypeValues?: Record<string, number>;
@@ -3975,7 +3976,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
         // client_note 단계 처리
         if (currentStep === 'client_note') {
-            processStep('client_note', value);
+            processStep('client_note', value instanceof Date ? value.toISOString().split('T')[0] : value);
             return;
         }
 

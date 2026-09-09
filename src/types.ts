@@ -16,7 +16,7 @@ export interface FinancialProfile {
   debtTotal: number;   // Total debt in ten thousand KRW (만 원)
   assetsTotal: number; // Total assets in ten thousand KRW (만 원)
   dependents: number;  // Number of dependents (명)
-  maritalStatus: 'SINGLE' | 'MARRIED' | 'DIVORCED';
+  maritalStatus: 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'single' | 'married' | 'divorced' | 'divorced_receiving' | 'divorced_sending' | string;
   debtTypes: {
     banks: number;
     cards: number;
@@ -27,7 +27,7 @@ export interface FinancialProfile {
   riskFlags: string[]; // ['최근 1년 이내 대출 과다', '사행성 채무(코인/토토)', '소득 대비 과다 채무']
   
   // New Individual Rehabilitation Fields
-  jobType?: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';
+  jobType?: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER' | string;
   companyName?: string;
   companyNameMasked?: string;
   employmentDate?: string;
@@ -36,7 +36,7 @@ export interface FinancialProfile {
   spouseIncome?: number;
   hasRecentJobChange?: boolean;
   rentalDeposit?: number;
-  debtCause?: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'GAMBLING' | 'OTHER';
+  debtCause?: 'LIVING' | 'BUSINESS' | 'INVESTMENT' | 'GUARANTEE' | 'GAMBLING' | 'OTHER' | string;
   harassmentLevel?: 'CALL' | 'LETTER' | 'LAWSUIT' | 'SEIZURE' | 'NONE';
   creditorCount?: number;
   speculativeLoss?: number; // 1년 이내 투자 손실 (만 원 단위)
@@ -154,19 +154,21 @@ export type IntakeChannel =
   | 'phone'       // 전화 문의
   | 'visit'       // 방문 상담
   | 'repeat'      // 기존 의뢰인 재의뢰
+  | 'portal_search' // 포털 검색
   | 'other';      // 기타
 
 export const INTAKE_CHANNEL_CONFIG: Record<IntakeChannel, { label: string; emoji: string; color: string; bgColor: string }> = {
-  mykim:     { label: '마이김변',     emoji: '🏠', color: 'text-brand',       bgColor: 'bg-brand/10' },
-  naver_ad:  { label: '네이버 광고',  emoji: '🔍', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-  blog:      { label: '블로그',       emoji: '📝', color: 'text-sky-500',     bgColor: 'bg-sky-500/10' },
-  youtube:   { label: '유튜브',       emoji: '▶️', color: 'text-red-500',     bgColor: 'bg-red-500/10' },
-  lawtalk:   { label: '로톡',         emoji: '⚖️', color: 'text-indigo-500',  bgColor: 'bg-indigo-500/10' },
-  referral:  { label: '지인 소개',    emoji: '🤝', color: 'text-amber-500',   bgColor: 'bg-amber-500/10' },
-  phone:     { label: '전화 문의',    emoji: '📞', color: 'text-teal-500',    bgColor: 'bg-teal-500/10' },
-  visit:     { label: '방문 상담',    emoji: '🚶', color: 'text-purple-500',  bgColor: 'bg-purple-500/10' },
-  repeat:    { label: '재의뢰',       emoji: '🔄', color: 'text-orange-500',  bgColor: 'bg-orange-500/10' },
-  other:     { label: '기타',         emoji: '📌', color: 'text-slate-500',   bgColor: 'bg-slate-500/10' },
+  mykim:         { label: '마이김변',     emoji: '🏠', color: 'text-brand',       bgColor: 'bg-brand/10' },
+  naver_ad:      { label: '네이버 광고',  emoji: '🔍', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+  blog:          { label: '블로그',       emoji: '📝', color: 'text-sky-500',     bgColor: 'bg-sky-500/10' },
+  youtube:       { label: '유튜브',       emoji: '▶️', color: 'text-red-500',     bgColor: 'bg-red-500/10' },
+  lawtalk:       { label: '로톡',         emoji: '⚖️', color: 'text-indigo-500',  bgColor: 'bg-indigo-500/10' },
+  referral:      { label: '지인 소개',    emoji: '🤝', color: 'text-amber-500',   bgColor: 'bg-amber-500/10' },
+  phone:         { label: '전화 문의',    emoji: '📞', color: 'text-teal-500',    bgColor: 'bg-teal-500/10' },
+  visit:         { label: '방문 상담',    emoji: '🚶', color: 'text-purple-500',  bgColor: 'bg-purple-500/10' },
+  repeat:        { label: '재의뢰',       emoji: '🔄', color: 'text-orange-500',  bgColor: 'bg-orange-500/10' },
+  portal_search: { label: '포털 검색',    emoji: '🌐', color: 'text-blue-500',    bgColor: 'bg-blue-500/10' },
+  other:         { label: '기타',         emoji: '📌', color: 'text-slate-500',   bgColor: 'bg-slate-500/10' },
 };
 
 // ── 수임료 분납 관리 ──
@@ -268,6 +270,9 @@ export interface CorrectionOrder {
   status: 'pending' | 'submitted' | 'extended' | 'overdue';
   detail?: string;
   templateType?: string;
+  round?: number | string;
+  dueDate?: string;
+  content?: string;
 }
 
 // ── 문서 관리 시스템 (DMS) ──
@@ -878,7 +883,7 @@ export interface User {
   approved?: boolean; // Admin approval status for lawyers
   licenseImageData?: string; // 변호사 등록증 이미지 (Base64 Data URL)
   licenseNumber?: string; // 변호사 등록번호
-  licenseStatus?: 'pending' | 'verified' | 'rejected'; // 자격 심사 상태
+  licenseStatus?: 'pending' | 'verified' | 'rejected' | 'suspended'; // 자격 심사 상태
   avatarData?: string; // 프로필 사진 (Base64 Data URL, 파일 업로드 시)
   // ── 미니홈피 프로필 확장 필드 ──
   catchphrase?: string; // 한줄 캐치프레이즈
@@ -1332,6 +1337,8 @@ export interface DepositRule {
 export interface AssetExemptionRules {
   deposit: number;
   insurance: number;
+  smallDeposit?: number;
+  basicLivingCost?: number;
 }
 
 export interface EducationCostRules {
@@ -1425,12 +1432,12 @@ export interface NewsArticle {
   excerpt: string;
   content: string;
   category: string;
-  badge: 'HOT' | 'NEW' | 'BEST' | null;
-  authorId: string;
+  badge?: 'HOT' | 'NEW' | 'BEST' | string | null;
+  authorId?: string;
   authorName: string;
   authorAvatar: string;
   views: number;
-  date: string;
+  date?: string;
   imageUrl: string;
 }
 
@@ -1812,7 +1819,7 @@ export interface NotificationSettings {
 // 전자 계약 (E-Contract) 시스템
 // ═══════════════════════════════════════════════
 
-export type ContractStatus = 'drafting' | 'pending_sign' | 'client_review' | 'signing' | 'completed' | 'cancelled';
+export type ContractStatus = 'drafting' | 'pending_sign' | 'client_review' | 'signing' | 'completed' | 'cancelled' | 'signed';
 
 export const CONTRACT_STATUS_CONFIG: Record<ContractStatus, { label: string; emoji: string; color: string; bgColor: string; borderColor?: string }> = {
   drafting: { label: '작성중', emoji: '✏️', color: 'text-purple-600', bgColor: 'bg-purple-100', borderColor: 'border-purple-200' },
@@ -1820,6 +1827,7 @@ export const CONTRACT_STATUS_CONFIG: Record<ContractStatus, { label: string; emo
   client_review: { label: '고객확인', emoji: '👁️', color: 'text-blue-600', bgColor: 'bg-blue-100', borderColor: 'border-blue-200' },
   signing: { label: '서명진행', emoji: '✍️', color: 'text-indigo-600', bgColor: 'bg-indigo-100', borderColor: 'border-indigo-200' },
   completed: { label: '서명완료', emoji: '✅', color: 'text-emerald-600', bgColor: 'bg-emerald-100', borderColor: 'border-emerald-200' },
+  signed: { label: '서명완료', emoji: '✅', color: 'text-emerald-600', bgColor: 'bg-emerald-100', borderColor: 'border-emerald-200' },
   cancelled: { label: '취소', emoji: '❌', color: 'text-slate-500', bgColor: 'bg-slate-100', borderColor: 'border-slate-200' },
 };
 
@@ -1871,6 +1879,11 @@ export interface ElectronicContract {
   documents: ContractDocument[];
   status: ContractStatus;
   contractDate: string;
+  contractNumber?: string;
+  caseType?: string;
+  title?: string;
+  signedAt?: string;
+  contractUrl?: string;
   
   // ── 4대 법적 효력 고도화 필드 ──
   // 1. 사업자 및 권한성(Right)
@@ -1889,18 +1902,20 @@ export interface ElectronicContract {
   // 2. 당사자성(Who) 본인인증
   identityVerification?: { 
     method: string; 
-    verifiedAt: string; 
-    provider?: 'pass' | 'kakao' | 'toss' | 'sms'; // 인증 제공자
+    verifiedAt?: string; 
+    provider?: 'pass' | 'kakao' | 'toss' | 'sms' | string; // 인증 제공자
     providerName?: string; // 인증 기관/방식 표시명 (예: 카카오페이 전자서명인증)
     name?: string; // 통신사 인증 실명
     birthDate?: string; // 생년월일 (YYYYMMDD)
     phoneMasked?: string;
+    phoneNumber?: string;
     carrier?: string; // SKT, KT, LGU+, 알뜰폰, 카카오페이 등
     txId?: string; // 통신사 공인 거래번호
     certifiedAt?: string; // 통신사 공인 서버 시각
     ci?: string; 
-    deviceInfo: string; 
-    ipAddress: string; 
+    deviceInfo?: string; 
+    ipAddress?: string; 
+    [key: string]: any;
   };
 
   // 3. 의사성(Intent) 강제 스크롤 및 동의 기록

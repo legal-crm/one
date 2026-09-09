@@ -509,7 +509,7 @@ export function addAuditLog(contract: ElectronicContract, action: string, actor:
 export function updateContractStatus(contract: ElectronicContract, status: ContractStatus): ElectronicContract {
   const statusLabels: Record<ContractStatus, string> = {
     drafting: '작성중', pending_sign: '서명대기', client_review: '고객확인',
-    signing: '서명진행', completed: '서명완료', cancelled: '취소',
+    signing: '서명진행', completed: '서명완료', signed: '서명완료', cancelled: '취소',
   };
   const updated = addAuditLog(contract, `상태 변경: ${statusLabels[status]}`, 'system');
   return { ...updated, status };

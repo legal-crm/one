@@ -840,7 +840,7 @@ export default function AdminRole({
           return {
             ...l,
             approved: true,
-            licenseStatus: 'verified',
+            licenseStatus: 'verified' as const,
             recentActivity: '자격 승인 검토 완료 (정식 활동 개시)'
           };
         }
@@ -871,7 +871,7 @@ export default function AdminRole({
           return {
             ...l,
             approved: false,
-            licenseStatus: 'suspended',
+            licenseStatus: 'suspended' as const,
             recentActivity: '운영정책 위반으로 승인 정지 처리됨'
           };
         }
@@ -3985,8 +3985,8 @@ export default function AdminRole({
                                     setFormExcerpt(art.excerpt);
                                     setFormContent(art.content);
                                     setFormCategory(art.category);
-                                    setFormBadge(art.badge);
-                                    setFormAuthorId(art.authorId);
+                                    setFormBadge(art.badge as any);
+                                    setFormAuthorId(art.authorId || '');
                                     setFormImageUrl(art.imageUrl);
                                   }}
                                   className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"

@@ -396,7 +396,7 @@ ${d.content}
 
         <div className="space-y-2.5">
           {contract.documents.filter(d => d.included).map((doc, idx) => {
-            const docCfg = CONTRACT_DOC_TYPES[doc.type] || { label: doc.title, emoji: '📄' };
+            const docCfg = CONTRACT_DOC_TYPES[doc.type] || { label: doc.title, emoji: '📄', required: false };
             const isClientSigned = !!doc.clientSignature;
             const isLawyerSigned = !!doc.lawyerSignature;
             const isFullySigned = doc.signatureRequired === 'client' ? isClientSigned :

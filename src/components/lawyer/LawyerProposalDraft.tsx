@@ -32,10 +32,10 @@ export interface AIAnalysisData {
     flagType: string;
     message: string;
   }>;
-  missingFields: string[];
-  conflicts: string[];
+  missingFields?: Array<string | any>;
+  conflicts?: string[];
   reviewGrade?: string;
-  courtPracticeNotes?: string;
+  courtPracticeNotes?: string | any[];
 }
 
 export interface ProposalData {

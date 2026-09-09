@@ -502,7 +502,7 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
           <div>
             <label className={labelClass}>혼인 상태</label>
-            <select className={inputClass} value={familyData.maritalStatus} onChange={e => setFamilyData({...familyData, maritalStatus: e.target.value})}><option value="single">미혼/미혼 1인가구</option><option value="married">법률 기혼</option><option value="divorced">이혼/사실혼 파탄</option></select>
+            <select className={inputClass} value={familyData.maritalStatus} onChange={e => setFamilyData({...familyData, maritalStatus: e.target.value as any})}><option value="single">미혼/미혼 1인가구</option><option value="married">법률 기혼</option><option value="divorced">이혼/사실혼 파탄</option></select>
           </div>
           <div>
             <label className={labelClass}>부양 미성년 자녀 수</label>

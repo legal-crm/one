@@ -53,7 +53,8 @@ export interface PremiumReportData {
     monthlyInstallment: number;
     courtDeposit: number;
     additionalCostsNotice?: string;
-    isInstallmentAvailable: boolean;
+    isInstallmentAvailable?: boolean;
+    feeMemo?: string;
   };
   lawyerComment?: string;
   lawyerOpinion?: string;
@@ -64,6 +65,7 @@ export interface PremiumReportData {
   calculationResult?: RehabCalculationResult;
   specialNotes?: string[];
   recommendedStrategy?: string;
+  clientQnA?: Array<{ question: string; answer: string; }>;
   aiInsights?: any;
 }
 
@@ -282,35 +284,39 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
   const calculationResult = reportData?.calculationResult || calcResultProp;
 
   const activeCalcResult: RehabCalculationResult = useMemo(() => {
-    if (calculationResult && calculationResult.totalDebt) {
+    const cr = calculationResult as any;
+    if (cr && (cr.totalDebt || cr.monthlyPayment)) {
       return {
-        ...calculationResult,
-        monthlyPayment: calculationResult.monthlyPayment || monthlyPayment,
-        totalRepayment: calculationResult.totalRepayment || totalRepaymentCalculated,
-        totalPayment: calculationResult.totalPayment || totalRepaymentCalculated,
-        repaymentMonths: calculationResult.repaymentMonths || repaymentMonths,
-        debtReductionRate: calculationResult.debtReductionRate ?? debtReductionRate,
-        reductionRate: calculationResult.reductionRate ?? debtReductionRate,
-        totalDebtReduction: calculationResult.totalDebtReduction ?? estimatedReduction,
-        reductionAmount: calculationResult.reductionAmount ?? estimatedReduction,
-        totalDebt: calculationResult.totalDebt || totalDebt,
-        courtName: calculationResult.courtName || courtName,
-        court: calculationResult.court || courtName,
-        courtDescription: calculationResult.courtDescription || `${courtName} 실무준칙 종합 적용`,
-        status: calculationResult.status || 'POSSIBLE',
-        statusReason: calculationResult.statusReason || '개인회생 개시 요건 양호 및 청산가치 충족',
-        availableIncome: calculationResult.availableIncome || monthlyPayment,
-        recognizedLivingCost: calculationResult.recognizedLivingCost || 1538543,
-        baseLivingCost: calculationResult.baseLivingCost || 1538543,
-        additionalLivingCost: calculationResult.additionalLivingCost || 0,
-        liquidationValue: calculationResult.liquidationValue || 0,
-        processingMonths: calculationResult.processingMonths || 6,
-        aiAdvice: calculationResult.aiAdvice || [
+        ...cr,
+        monthlyPayment: cr.monthlyPayment || monthlyPayment,
+        totalRepayment: cr.totalRepayment || cr.totalPayment || totalRepaymentCalculated,
+        totalPayment: cr.totalPayment || cr.totalRepayment || totalRepaymentCalculated,
+        repaymentMonths: cr.repaymentMonths || repaymentMonths,
+        debtReductionRate: cr.debtReductionRate ?? cr.reductionRate ?? debtReductionRate,
+        reductionRate: cr.reductionRate ?? cr.debtReductionRate ?? debtReductionRate,
+        totalDebtReduction: cr.totalDebtReduction ?? cr.reductionAmount ?? estimatedReduction,
+        reductionAmount: cr.reductionAmount ?? cr.totalDebtReduction ?? estimatedReduction,
+        totalDebt: cr.totalDebt || totalDebt,
+        courtName: cr.courtName || courtName,
+        court: cr.court || courtName,
+        courtDescription: cr.courtDescription || `${courtName} 실무준칙 종합 적용`,
+        status: cr.status || 'POSSIBLE',
+        statusReason: cr.statusReason || '개인회생 개시 요건 양호 및 청산가치 충족',
+        availableIncome: cr.availableIncome || monthlyPayment,
+        recognizedLivingCost: cr.recognizedLivingCost || 1538543,
+        baseLivingCost: cr.baseLivingCost || 1538543,
+        additionalLivingCost: cr.additionalLivingCost || 0,
+        liquidationValue: cr.liquidationValue || 0,
+        processingMonths: cr.processingMonths || 6,
+        aiAdvice: cr.aiAdvice || [
           `${courtName} 실무준칙에 따라 최적화된 변제계획안을 도출했습니다.`,
           `월 예상 변제금 ${formatCurrency(monthlyPayment)}원 기준 36개월간 원금 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면 계획입니다.`
         ],
-        riskWarnings: calculationResult.riskWarnings || []
-      };
+        riskWarnings: cr.riskWarnings || [],
+        exemptDeposit: cr.exemptDeposit || 0,
+        regionGroup: cr.regionGroup || 'etc',
+        alerts: cr.alerts || [],
+      } as RehabCalculationResult;
     }
     const currentBurden = clientInput 
       ? calculateCurrentMonthlyBurden(clientInput as any)
@@ -350,8 +356,11 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         `${courtName} 실무준칙에 따라 최적화된 변제계획안을 도출했습니다.`,
         `월 예상 변제금 ${formatCurrency(monthlyPayment)}원 기준 36개월간 원금 ${debtReductionRate}%(${formatCurrency(estimatedReduction)}원) 감면 계획입니다.`
       ],
-      riskWarnings: []
-    };
+      riskWarnings: [],
+      exemptDeposit: 0,
+      regionGroup: 'etc',
+      alerts: [],
+    } as RehabCalculationResult;
   }, [calculationResult, totalDebt, monthlyPayment, repaymentMonths, estimatedReduction, debtReductionRate, clientInput, courtName, totalRepaymentCalculated]);
 
   const activeUserInput: RehabUserInput = useMemo(() => {

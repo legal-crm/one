@@ -94,9 +94,10 @@ const PROCEDURE_STEPS: ProcedureStep[] = [
 
 interface ProcedureTimelineProps {
     processingMonths?: number;
+    currentStage?: number;
 }
 
-export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processingMonths }) => {
+export const ProcedureTimeline: React.FC<ProcedureTimelineProps> = ({ processingMonths, currentStage }) => {
     const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
     const toggleStep = (stepId: number) => {

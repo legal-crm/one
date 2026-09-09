@@ -1,18 +1,6 @@
 import React, { useState } from 'react';
 import { BookOpen, ChevronRight, Search } from 'lucide-react';
-
-interface NewsArticle {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  category: string;
-  imageUrl: string;
-  authorName: string;
-  authorAvatar: string;
-  views: number;
-  badge?: string;
-}
+import { NewsArticle } from '../../types';
 
 const NEWS_CATEGORIES = ['전체', '개인회생', '개인파산', '금지명령/추심', '변제금/생계비'];
 const ITEMS_PER_PAGE = 6;

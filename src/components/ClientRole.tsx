@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
-import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig } from '../types';
+import { Client, FinancialProfile, ConsultRequest, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig, LawyerInquiry } from '../types';
 import { CustomerIntake } from './CustomerIntake';
 import { migrateAnonymousRequests } from '../services/consultService';
 import { calculateRehabPlan } from '../rehabEngine';
@@ -406,6 +406,8 @@ interface ClientRoleProps {
   inquiries: ClientInquiry[];
   setInquiries: React.Dispatch<React.SetStateAction<ClientInquiry[]>>;
   popupConfig?: PopupConfig;
+  lawyerInquiries?: LawyerInquiry[];
+  setLawyerInquiries?: React.Dispatch<React.SetStateAction<LawyerInquiry[]>>;
 }
 
 export default function ClientRole({
@@ -432,19 +434,21 @@ export default function ClientRole({
   platformConfig,
   inquiries,
   setInquiries,
-  popupConfig
+  popupConfig,
+  lawyerInquiries,
+  setLawyerInquiries
 }: ClientRoleProps) {
   const dialog = useDialog();
   // Sub-navigation for user
-  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry' | 'guide' | 'companion'>(() => {
+  const [activeTab, setActiveTab] = useState<'landing' | 'request' | 'lawyers' | 'chat' | 'calculator' | 'reviews' | 'qna' | 'mypage' | 'news' | 'notices' | 'inquiry' | 'guide' | 'companion' | 'company'>(() => {
     if (typeof window === 'undefined') return 'landing';
     // [SEO] 클린 URL 경로를 탭으로 매핑
-    const pathTabMap: Record<string, string> = { '/check': 'request', '/lawyers': 'lawyers', '/reviews': 'reviews', '/qna': 'qna', '/news': 'news', '/companion': 'companion' };
+    const pathTabMap: Record<string, string> = { '/check': 'request', '/lawyers': 'lawyers', '/reviews': 'reviews', '/qna': 'qna', '/news': 'news', '/companion': 'companion', '/company': 'company' };
     const mapped = pathTabMap[window.location.pathname];
     if (mapped) return mapped as any;
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion'];
+    const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'];
     if (tabParam && validTabs.includes(tabParam)) {
       return tabParam as any;
     }
@@ -1869,7 +1873,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         assetsTotal: assetsManWon,
         dependents: result.client.dependents,
         minorChildren: intakeData.minorChildren || 0,
-        maritalStatus: intakeData.maritalStatus === 'single' ? 'SINGLE' : intakeData.maritalStatus === 'married' ? 'MARRIED' : 'DIVORCED',
+        maritalStatus: (intakeData.maritalStatus === 'single' ? 'SINGLE' : intakeData.maritalStatus === 'married' ? 'MARRIED' : 'DIVORCED') as any,
         debtTypes: {
           banks,
           cards,
@@ -1895,7 +1899,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         depositLoan: Math.round((intakeData.depositLoan || 0) / 10000),
         housingType: intakeData.housingType,
         housingContractHolder: intakeData.housingContractHolder,
-        debtCause: intakeData.speculativeLoss ? 'INVESTMENT' : (intakeData.gamblingLoss ? 'GAMBLING' : 'LIVING'),
+        debtCause: (intakeData.speculativeLoss ? 'INVESTMENT' : (intakeData.gamblingLoss ? 'GAMBLING' : 'LIVING')) as any,
         harassmentLevel,
         creditorCount: intakeData.debts.length || 3,
         priorityDebt: Math.round((intakeData.debts.find(d => d.type === 'tax')?.principal || 0) / 10000),
@@ -3231,7 +3235,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                       tempAlias={tempAlias}
                       setTempAlias={setTempAlias}
                       inquiries={inquiries}
-                      onNavigateToTab={setActiveTab}
+                      onNavigateToTab={(tab: string) => setActiveTab(tab as any)}
                       onShowAuthModal={() => setShowAuthModal(true)}
                       onLogout={async () => {
                         await purgeClientSession();
@@ -3274,7 +3278,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                   phoneConsultNum={phoneConsultNum} useSafeNumber050={useSafeNumber050} isLoggedIn={isLoggedIn} userAlias={userAlias}
                   debtBanks={debtBanks} debtCards={debtCards} debtPersonals={debtPersonals}
                   onSetActiveChatReqId={setActiveChatReqId} onSetChatInput={setChatInput} onSetPhoneConsultNum={setPhoneConsultNum}
-                  onSetUseSafeNumber050={setUseSafeNumber050} onSetActiveTab={setActiveTab} onSetRequests={setRequests}
+                  onSetUseSafeNumber050={setUseSafeNumber050} onSetActiveTab={(tab: string) => setActiveTab(tab as any)} onSetRequests={setRequests}
                   onSendChat={handleSendChat} onAddMessage={onAddMessage}
                   activeRequest={activeRequest} activeResult={activeResult} onUpdateFinancialProfile={handleUpdateFinancialProfile}
                   setUserAlias={setUserAlias} isEditingAlias={isEditingAlias} setIsEditingAlias={setIsEditingAlias}
@@ -3288,7 +3292,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             )}
 
             {/* TAB: LEGAL NEWS & TIPS BOARD */}
-            {activeTab === 'news' && (<NewsView newsArticles={newsArticles} onSelectArticle={(art) => setSelectedArticle(art)} onUpdateViews={(id) => setNewsArticles(prev => prev.map(x => x.id === id ? {...x, views: x.views+1} : x))} />)}
+            {activeTab === 'news' && (<NewsView newsArticles={newsArticles} onSelectArticle={(art: any) => setSelectedArticle(art)} onUpdateViews={(id) => setNewsArticles(prev => prev.map(x => x.id === id ? {...x, views: x.views+1} : x))} />)}
 
 
             {/* TAB: LIVE Q&A CASE STUDIES */}
@@ -3463,7 +3467,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         </React.Suspense>
       )}
 
-      <MobileGNB activeTab={activeTab} onSetActiveTab={setActiveTab} onRequestConsult={handleStartDiagnosisClick} onStartDiagnosis={handleStartDiagnosisClick} onNavigateToLawyers={() => { setActiveTab('lawyers'); }} onNavigateToQna={() => { setActiveTab('qna'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭'); }} isHidden={isChatbotActive || isGnbHidden} />
+      <MobileGNB activeTab={activeTab} onSetActiveTab={(tab: string) => setActiveTab(tab as any)} onRequestConsult={handleStartDiagnosisClick} onStartDiagnosis={handleStartDiagnosisClick} onNavigateToLawyers={() => { setActiveTab('lawyers'); }} onNavigateToQna={() => { setActiveTab('qna'); onLogActivity('client-temp', '익명 의뢰인', 'CLIENT', 'QNA_BROWSE', 'GNB [고민상담 Q&A] 메뉴 클릭'); }} isHidden={isChatbotActive || isGnbHidden} />
 
       {activeRemedyCategory && remedyData[activeRemedyCategory] && (
         <React.Suspense fallback={null}>
