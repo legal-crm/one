@@ -57,6 +57,48 @@ export default function CourtCaseTab({
   const [courtDetail, setCourtDetail] = useState<ScourtCaseDetail | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'progress' | 'deliveries' | 'repayment'>('overview');
 
+  // 관련사건 멀티탭 트래커 상태 (Ch 9-2)
+  interface RelatedCourtCase {
+    id: string;
+    type: '본안' | '금지' | '중지' | '타채(압류)' | '종전';
+    court: string;
+    caseNo: string;
+    statusBadge: string;
+    statusColor: string;
+  }
+
+  const [relatedCases, setRelatedCases] = useState<RelatedCourtCase[]>([
+    {
+      id: 'rc-1',
+      type: '본안',
+      court: defaultCourt,
+      caseNo: defaultCaseNumber || '2025개회108492',
+      statusBadge: '접수/심리중',
+      statusColor: 'bg-blue-100 text-blue-800 border-blue-200'
+    },
+    {
+      id: 'rc-2',
+      type: '금지',
+      court: defaultCourt,
+      caseNo: '2025개금5012',
+      statusBadge: '인용결정',
+      statusColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+    },
+    {
+      id: 'rc-3',
+      type: '타채(압류)',
+      court: '서울동부지방법원',
+      caseNo: '2025타채54321',
+      statusBadge: '중지신청완료',
+      statusColor: 'bg-amber-100 text-amber-800 border-amber-200'
+    }
+  ]);
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('rc-1');
+  const [showAddCaseModal, setShowAddCaseModal] = useState(false);
+  const [newCaseType, setNewCaseType] = useState<'본안' | '금지' | '중지' | '타채(압류)' | '종전'>('중지');
+  const [newCaseCourt, setNewCaseCourt] = useState(defaultCourt);
+  const [newCaseNo, setNewCaseNo] = useState('');
+
   // 마운트 또는 사건번호 변경 시 캐시 로드
   useEffect(() => {
     if (caseNumber.trim()) {
@@ -176,6 +218,157 @@ export default function CourtCaseTab({
 
   return (
     <div className="space-y-5 text-left animate-fadeIn">
+      {/* ── 0. 관련사건 멀티탭 트래커 (Ch 9-2) ── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+              📁 관련사건 멀티탭 동시 트래커 (본안 · 금지명령 · 중지명령 · 압류집행)
+            </span>
+            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
+              총 {relatedCases.length}건 연동
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddCaseModal(true)}
+            className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-xl border border-blue-200 cursor-pointer press-scale whitespace-nowrap"
+          >
+            + 관련사건 추가
+          </button>
+        </div>
+
+        {/* 멀티탭 리스트 */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {relatedCases.map(rc => {
+            const isSelected = selectedCaseId === rc.id;
+            return (
+              <button
+                key={rc.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCaseId(rc.id);
+                  setCourtName(rc.court);
+                  setCaseNumber(rc.caseNo);
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap min-w-[180px] ${
+                  isSelected 
+                    ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20 shadow-xs' 
+                    : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1.5 mb-1">
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
+                    {rc.type}
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${rc.statusColor}`}>
+                    {rc.statusBadge}
+                  </span>
+                </div>
+                <div className="font-mono font-extrabold text-xs text-slate-900 truncate">
+                  {rc.caseNo}
+                </div>
+                <div className="text-[10px] text-slate-500 truncate">
+                  {rc.court}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 관련사건 추가 간이 모달 */}
+      {showAddCaseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                <span>➕ 신규 관련사건 등록 (타채/금지/중지)</span>
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setShowAddCaseModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">사건 유형</label>
+                <select 
+                  value={newCaseType}
+                  onChange={(e) => setNewCaseType(e.target.value as any)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold"
+                >
+                  <option value="금지">금지명령 (개금)</option>
+                  <option value="중지">중지명령 (개중)</option>
+                  <option value="타채(압류)">강제집행 (타채/타경 압류추심)</option>
+                  <option value="종전">과거 회생/파산 종전사건</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">관할 법원</label>
+                <select 
+                  value={newCaseCourt}
+                  onChange={(e) => setNewCaseCourt(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2"
+                >
+                  {COURTS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">사건번호</label>
+                <input 
+                  type="text"
+                  value={newCaseNo}
+                  onChange={(e) => setNewCaseNo(e.target.value)}
+                  placeholder="예: 2026타채12345"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-mono font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button 
+                type="button"
+                onClick={() => setShowAddCaseModal(false)}
+                className="px-3 py-1.5 text-xs text-slate-500 font-bold"
+              >
+                취소
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  if (!newCaseNo.trim()) return toast.error('사건번호를 입력해주세요');
+                  const newEntry: RelatedCourtCase = {
+                    id: `rc-${Date.now()}`,
+                    type: newCaseType,
+                    court: newCaseCourt,
+                    caseNo: newCaseNo.trim(),
+                    statusBadge: '등록완료',
+                    statusColor: 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                  };
+                  setRelatedCases(prev => [...prev, newEntry]);
+                  setSelectedCaseId(newEntry.id);
+                  setCourtName(newCaseCourt);
+                  setCaseNumber(newCaseNo.trim());
+                  setShowAddCaseModal(false);
+                  setNewCaseNo('');
+                  toast.success(`'${newEntry.caseNo}' 관련사건이 등록되었습니다.`);
+                }}
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs press-scale"
+              >
+                등록 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── 1. 대법원 사건 연동 컨트롤 패널 ── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">

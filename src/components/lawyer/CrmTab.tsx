@@ -26,6 +26,11 @@ import TaskTicketTab from './TaskTicketTab';
 import CourtCaseTab from './CourtCaseTab';
 import DebtCertificateTab from './repayment/DebtCertificateTab';
 import RepaymentPlanEditor from './repayment/RepaymentPlanEditor';
+import ComprehensiveCorrectionCenter from './correction/ComprehensiveCorrectionCenter';
+import BatchFilingPackagingModal from './filing/BatchFilingPackagingModal';
+import BankruptcyManagementTab from './bankruptcy/BankruptcyManagementTab';
+import AncillaryPetitionsModal from './petitions/AncillaryPetitionsModal';
+import PostCommencementManagementModal from './postcare/PostCommencementManagementModal';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -68,7 +73,7 @@ interface CrmTabProps {
   setCopilotPreselectedReqId?: (id: string) => void;
   initialView?: 'leads';
   initialClientId?: string;
-  initialDetailTab?: 'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'corrections' | 'court';
+  initialDetailTab?: 'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'bankruptcy' | 'corrections' | 'court';
 }
 
 type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
@@ -189,7 +194,12 @@ export default function CrmTab({
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'corrections' | 'court'>(initialDetailTab || 'info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'bankruptcy' | 'corrections' | 'court'>(initialDetailTab || 'info');
+
+  // ── 리걸플로 벤치마킹 실무 모달 상태 ──
+  const [showBatchFilingModal, setShowBatchFilingModal] = useState(false);
+  const [showAncillaryModal, setShowAncillaryModal] = useState(false);
+  const [showPostCareModal, setShowPostCareModal] = useState(false);
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -2173,49 +2183,87 @@ export default function CrmTab({
               {/* ══════════ 우측 메인 영역: Deep Analysis & Workspace Canvas ══════════ */}
               <div className="flex-1 min-w-0 bg-white">
                 
+                {/* ══════════ 리걸플로 벤치마킹: 3대 실무 원클릭 도구 툴바 ══════════ */}
+                {selectedClient && (() => {
+                  const isBankruptcyCase = (selectedClient.financialProfile?.income || 0) === 0 || (selectedClient.financialProfile?.debtTotal || 0) > 50000;
+                  return (
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-bold text-slate-400">⚡ 실무 원클릭:</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowBatchFilingModal(true)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                        >
+                          <span>⚖️ 전자소송 일괄 패키징 & CSV</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAncillaryModal(true)}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                        >
+                          <span>📋 부수신청서 (중지·면제·압류해제)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowPostCareModal(true)}
+                          className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                        >
+                          <span>🏦 개시·사후관리 (가상계좌·집회)</span>
+                        </button>
+                      </div>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                        {isBankruptcyCase ? '🏛️ 개인파산·면책 사건' : '⚖️ 개인회생 사건'}
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 {/* 스마트 서브탭 바 (카운트 뱃지 탑재) */}
                 <div className="flex border-b border-slate-200/80 overflow-x-auto no-scrollbar px-4 bg-slate-50/30">
-                  {[
-                    { key: 'info', label: '종합 정보', icon: '👤', count: null },
-                    { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
-                    { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
-                    { key: 'tasks', label: '업무 지시', icon: '📋', count: null },
-                    { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
-                    { 
-                      key: 'contracts', 
-                      label: '전자계약', 
-                      icon: '📝', 
-                      count: (() => {
-                        try {
-                          const cleanPhone = selectedClient?.phone ? selectedClient.phone.replace(/[^0-9]/g, '') : '';
-                          const cList = JSON.parse(localStorage.getItem('electronic_contracts') || '[]').filter((c: any) => {
-                            if (c.clientId === selectedId) return true;
-                            if (selectedClient?.clientId && (c.clientId === selectedClient.clientId || c.clientRefId === selectedClient.clientId)) return true;
-                            if (selectedClient?.id && c.clientRefId === selectedClient.id) return true;
-                            if (cleanPhone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === cleanPhone) return true;
-                            return false;
-                          });
-                          if (!cList.length) return null;
-                          return cList[0].status === 'completed' ? '체결' : '서명대기';
-                        } catch { return null; }
-                      })() 
-                    },
-                    { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },
-                    { 
-                      key: 'debt-certs', 
-                      label: '부채증명서', 
-                      icon: '📜', 
-                      count: (selectedExt.debtCertificateOrders?.[0]?.items || []).length > 0 ? (selectedExt.debtCertificateOrders?.[0]?.items || []).length : null 
-                    },
-                    { 
-                      key: 'repayment', 
-                      label: '변제계획안', 
-                      icon: '⚖️', 
-                      count: selectedExt.repaymentPlan ? `${selectedExt.repaymentPlan.totalRepaymentRate}%` : null 
-                    },
-                    { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.corrections || []).length > 0 ? (selectedExt.corrections || []).length : null },
-                    { key: 'court', label: '법원', icon: '🏛️', count: null },
-                  ].map(tab => (
+                  {(() => {
+                    const isBankruptcyCase = (selectedClient?.financialProfile?.income || 0) === 0 || (selectedClient?.financialProfile?.debtTotal || 0) > 50000;
+                    return [
+                      { key: 'info', label: '종합 정보', icon: '👤', count: null },
+                      { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
+                      { key: 'timeline', label: '타임라인', icon: '📅', count: selectedExt.activities.length },
+                      { key: 'tasks', label: '업무 지시', icon: '📋', count: null },
+                      { key: 'fees', label: '수임료', icon: '💰', count: (selectedExt.feeSchedule || []).length > 0 ? `${(selectedExt.feeSchedule || []).filter(f => f.status === 'paid').length}/${(selectedExt.feeSchedule || []).length}` : null },
+                      { 
+                        key: 'contracts', 
+                        label: '전자계약', 
+                        icon: '📝', 
+                        count: (() => {
+                          try {
+                            const cleanPhone = selectedClient?.phone ? selectedClient.phone.replace(/[^0-9]/g, '') : '';
+                            const cList = JSON.parse(localStorage.getItem('electronic_contracts') || '[]').filter((c: any) => {
+                              if (c.clientId === selectedId) return true;
+                              if (selectedClient?.clientId && (c.clientId === selectedClient.clientId || c.clientRefId === selectedClient.clientId)) return true;
+                              if (selectedClient?.id && c.clientRefId === selectedClient.id) return true;
+                              if (cleanPhone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === cleanPhone) return true;
+                              return false;
+                            });
+                            if (!cList.length) return null;
+                            return cList[0].status === 'completed' ? '체결' : '서명대기';
+                          } catch { return null; }
+                        })() 
+                      },
+                      { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },
+                      { 
+                        key: 'debt-certs', 
+                        label: '부채증명서', 
+                        icon: '📜', 
+                        count: (selectedExt.debtCertificateOrders?.[0]?.items || []).length > 0 ? (selectedExt.debtCertificateOrders?.[0]?.items || []).length : null 
+                      },
+                      ...(isBankruptcyCase ? [
+                        { key: 'bankruptcy', label: '개인파산·면책', icon: '🏛️', count: '파산' }
+                      ] : [
+                        { key: 'repayment', label: '변제계획안', icon: '⚖️', count: selectedExt.repaymentPlan ? `${selectedExt.repaymentPlan.totalRepaymentRate}%` : null }
+                      ]),
+                      { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.corrections || []).length > 0 ? (selectedExt.corrections || []).length : null },
+                      { key: 'court', label: '법원', icon: '🏛️', count: null },
+                    ];
+                  })().map(tab => (
                     <button 
                       key={tab.key} 
                       onClick={() => setDetailTab(tab.key as typeof detailTab)}
@@ -3508,35 +3556,22 @@ export default function CrmTab({
                     );
                   })()}
 
-                  {/* ══════════ [7] 보정 탭 ══════════ */}
-                  {detailTab === 'corrections' && (() => {
-                    const ext = getCrmExt(selectedId);
-                    const list = ext.corrections || [];
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                            📮 법원 보정 권고 / 명령 관리
-                          </h4>
-                        </div>
-                        {list.length > 0 ? (
-                          <div className="space-y-3">
-                            {list.map(c => (
-                              <div key={c.id} className="p-4 rounded-2xl border border-amber-200 bg-amber-50/40 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-amber-900">제{c.round}차 보정 권고</span>
-                                  <span className="text-[11px] font-mono text-slate-500">기한: {c.dueDate}</span>
-                                </div>
-                                <p className="text-xs text-slate-800 whitespace-pre-line leading-relaxed">{c.content}</p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-10 text-slate-400 text-xs">등록된 보정 권고가 없습니다.</div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  {/* ══════════ [7] 보정 탭 (ComprehensiveCorrectionCenter) ══════════ */}
+                  {detailTab === 'corrections' && selectedClient && (
+                    <ComprehensiveCorrectionCenter
+                      clientId={selectedId}
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      onUpdateCrmExt={async (updates) => {
+                        await updateCrmExt(selectedId, updates);
+                      }}
+                      activeLawyerName={activeLawyer.name}
+                      onNavigateToRepayment={() => {
+                        const isBk = (selectedClient.financialProfile?.income || 0) === 0 || (selectedClient.financialProfile?.debtTotal || 0) > 50000;
+                        setDetailTab(isBk ? 'bankruptcy' : 'repayment');
+                      }}
+                    />
+                  )}
 
                   {/* ══════════ [8] 법원 탭 ══════════ */}
                   {detailTab === 'court' && selectedClient && (
@@ -3564,7 +3599,7 @@ export default function CrmTab({
                     />
                   )}
 
-                  {/* ══════════ [10] 2026 변제계획안 에디터 탭 ══════════ */}
+                  {/* ══════════ [10] 2026 변제계획안 에디터 탭 (개인회생) ══════════ */}
                   {detailTab === 'repayment' && selectedClient && (
                     <RepaymentPlanEditor
                       clientId={selectedId}
@@ -3574,6 +3609,20 @@ export default function CrmTab({
                         await updateCrmExt(selectedId, updates);
                       }}
                       activeLawyerName={activeLawyer.name}
+                    />
+                  )}
+
+                  {/* ══════════ [11] 개인파산 및 면책 동시신청 종합 관리 탭 (개인파산) ══════════ */}
+                  {detailTab === 'bankruptcy' && selectedClient && (
+                    <BankruptcyManagementTab
+                      clientId={selectedId}
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      onUpdateCrmExt={async (updates) => {
+                        await updateCrmExt(selectedId, updates);
+                      }}
+                      activeLawyerName={activeLawyer.name}
+                      onOpenBatchFiling={() => setShowBatchFilingModal(true)}
                     />
                   )}
 
@@ -4012,6 +4061,42 @@ export default function CrmTab({
             setShowBulkMessage(false);
             setBulkSendModalConfig(null);
           }}
+        />
+      )}
+
+      {/* ── 1. 전자소송 순서정렬 일괄 패키징 & CSV 모달 ── */}
+      {showBatchFilingModal && selectedClient && (
+        <BatchFilingPackagingModal
+          isOpen={showBatchFilingModal}
+          onClose={() => setShowBatchFilingModal(false)}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          isBankruptcy={(selectedClient.financialProfile?.income || 0) === 0 || (selectedClient.financialProfile?.debtTotal || 0) > 50000}
+        />
+      )}
+
+      {/* ── 2. 기타 법원 신청서 (중지/면제/압류해제/금지) 모달 ── */}
+      {showAncillaryModal && selectedClient && (
+        <AncillaryPetitionsModal
+          isOpen={showAncillaryModal}
+          onClose={() => setShowAncillaryModal(false)}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          activeLawyerName={activeLawyer.name}
+        />
+      )}
+
+      {/* ── 3. 개시결정 이후 사후관리 (가상계좌/집회/이의대응) 모달 ── */}
+      {showPostCareModal && selectedClient && (
+        <PostCommencementManagementModal
+          isOpen={showPostCareModal}
+          onClose={() => setShowPostCareModal(false)}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
+          activeLawyerName={activeLawyer.name}
         />
       )}
     </div>
