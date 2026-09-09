@@ -3257,7 +3257,7 @@ export default function CrmTab({
                                   if (file.type.startsWith('image/')) {
                                     try {
                                       const watermarked = await applyCourtSubmissionWatermark(dataUrl, {
-                                        clientName: selectedClient?.name || '신청인',
+                                        clientName: selectedClient?.clientName || '신청인',
                                         requestId: selectedId,
                                         isIdCardOrSeal: true
                                       });
@@ -3533,7 +3533,7 @@ export default function CrmTab({
                         <MobileScanner
                           isOpen={showDocScanner}
                           onClose={() => setShowDocScanner(false)}
-                          clientName={selectedClient?.name || '신청인'}
+                          clientName={selectedClient?.clientName || '신청인'}
                           requestId={selectedId}
                           onCapture={async (scanned) => {
                             const newDoc: DocumentFile = {

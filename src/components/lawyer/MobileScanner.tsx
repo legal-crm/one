@@ -11,7 +11,13 @@ interface MobileScannerProps {
   requestId?: string;
 }
 
-export default function MobileScanner({ isOpen, onClose, onCapture }: MobileScannerProps) {
+export default function MobileScanner({ 
+  isOpen, 
+  onClose, 
+  onCapture,
+  clientName = '신청인',
+  requestId = ''
+}: MobileScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
