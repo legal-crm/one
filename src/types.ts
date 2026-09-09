@@ -1,3 +1,5 @@
+import type { DebtCertificateOrder, RepaymentPlanData } from './services/repayment/repaymentTypes';
+
 export interface Client {
   id: string;
   name: string;
@@ -724,6 +726,10 @@ export interface CrmClientExtension {
   preInfo?: string;              // 사전 수집 정보
   // ── 배정 지시 이력 ──
   assignmentDirectives?: AssignmentDirective[];
+  // ── 부채증명서 발급 대행 관리 ──
+  debtCertificateOrders?: DebtCertificateOrder[];
+  // ── 2026 변제계획안 (D5110/D5111) ──
+  repaymentPlan?: RepaymentPlanData;
 }
 
 export interface RepaymentEntry {

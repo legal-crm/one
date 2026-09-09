@@ -138,7 +138,7 @@ export default function LawyerRole({
   const [adModalRegion, setAdModalRegion] = useState('');
   const [adOrders, setAdOrders] = useState<AdOrder[]>(() => loadAdOrders());
   const [crmTargetClientId, setCrmTargetClientId] = useState<string>('');
-  const [crmTargetDetailTab, setCrmTargetDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>('info');
+  const [crmTargetDetailTab, setCrmTargetDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'corrections' | 'court'>('info');
 
   // 관리자가 입금 확인/승인 또는 취소 처리 시 변호사 화면 실시간 동기화
   useEffect(() => {

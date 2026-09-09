@@ -24,6 +24,8 @@ import BulkMessageSendModal from './BulkMessageSendModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import CourtCaseTab from './CourtCaseTab';
+import DebtCertificateTab from './repayment/DebtCertificateTab';
+import RepaymentPlanEditor from './repayment/RepaymentPlanEditor';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -66,7 +68,7 @@ interface CrmTabProps {
   setCopilotPreselectedReqId?: (id: string) => void;
   initialView?: 'leads';
   initialClientId?: string;
-  initialDetailTab?: 'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment';
+  initialDetailTab?: 'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'corrections' | 'court';
 }
 
 type SortField = 'clientName' | 'createdAt' | 'debtTotal' | 'crmStatus' | 'lastActivity' | 'income' | 'reminderCount';
@@ -187,7 +189,7 @@ export default function CrmTab({
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'corrections' | 'court' | 'repayment'>(initialDetailTab || 'info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'corrections' | 'court'>(initialDetailTab || 'info');
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -2199,8 +2201,20 @@ export default function CrmTab({
                       })() 
                     },
                     { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },
+                    { 
+                      key: 'debt-certs', 
+                      label: '부채증명서', 
+                      icon: '📜', 
+                      count: (selectedExt.debtCertificateOrders?.[0]?.items || []).length > 0 ? (selectedExt.debtCertificateOrders?.[0]?.items || []).length : null 
+                    },
+                    { 
+                      key: 'repayment', 
+                      label: '변제계획안', 
+                      icon: '⚖️', 
+                      count: selectedExt.repaymentPlan ? `${selectedExt.repaymentPlan.totalRepaymentRate}%` : null 
+                    },
                     { key: 'corrections', label: '보정', icon: '📮', count: (selectedExt.corrections || []).length > 0 ? (selectedExt.corrections || []).length : null },
-                    { key: 'court', label: '법원', icon: '⚖️', count: null },
+                    { key: 'court', label: '법원', icon: '🏛️', count: null },
                   ].map(tab => (
                     <button 
                       key={tab.key} 
@@ -3527,6 +3541,32 @@ export default function CrmTab({
                   {/* ══════════ [8] 법원 탭 ══════════ */}
                   {detailTab === 'court' && selectedClient && (
                     <CourtCaseTab
+                      clientId={selectedId}
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      onUpdateCrmExt={async (updates) => {
+                        await updateCrmExt(selectedId, updates);
+                      }}
+                      activeLawyerName={activeLawyer.name}
+                    />
+                  )}
+
+                  {/* ══════════ [9] 부채증명서 발급 대행 탭 ══════════ */}
+                  {detailTab === 'debt-certs' && selectedClient && (
+                    <DebtCertificateTab
+                      clientId={selectedId}
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      onUpdateCrmExt={async (updates) => {
+                        await updateCrmExt(selectedId, updates);
+                      }}
+                      onNavigateToRepayment={() => setDetailTab('repayment')}
+                    />
+                  )}
+
+                  {/* ══════════ [10] 2026 변제계획안 에디터 탭 ══════════ */}
+                  {detailTab === 'repayment' && selectedClient && (
+                    <RepaymentPlanEditor
                       clientId={selectedId}
                       clientRequest={selectedClient}
                       crmExt={selectedExt}
