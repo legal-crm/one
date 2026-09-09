@@ -14,17 +14,73 @@ import { BANK_ACCOUNT_INFO } from '../data';
 
 const SETTINGS_KEY = 'notification_settings';
 const LOGS_KEY = 'notification_logs';
+const SESSION_SMTP_PASS_KEY = 'legal_crm_smtp_pass';
+const SESSION_TG_BOT_TOKEN_KEY = 'legal_crm_tg_token';
 
 export function loadNotificationSettings(): NotificationSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // [SECURITY] 기존 localStorage에 남아있던 평문 비밀번호 및 토큰 자동 정화
+      let needsResave = false;
+      if (parsed.email?.senderAppPassword) {
+        sessionStorage.setItem(SESSION_SMTP_PASS_KEY, parsed.email.senderAppPassword);
+        parsed.email.senderAppPassword = '';
+        needsResave = true;
+      }
+      if (parsed.telegram?.botToken) {
+        sessionStorage.setItem(SESSION_TG_BOT_TOKEN_KEY, parsed.telegram.botToken);
+        parsed.telegram.botToken = '';
+        needsResave = true;
+      }
+      if (needsResave) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+      }
+
+      // 현재 탭 세션 동안만 sessionStorage에서 복원
+      const sessionSmtpPass = sessionStorage.getItem(SESSION_SMTP_PASS_KEY) || '';
+      const sessionTgToken = sessionStorage.getItem(SESSION_TG_BOT_TOKEN_KEY) || '';
+
+      return {
+        ...getDefaultSettings(),
+        ...parsed,
+        email: {
+          ...parsed.email,
+          senderAppPassword: sessionSmtpPass,
+        },
+        telegram: {
+          ...parsed.telegram,
+          botToken: sessionTgToken,
+        }
+      };
+    }
   } catch { /* ignore */ }
   return getDefaultSettings();
 }
 
 export function saveNotificationSettings(settings: NotificationSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  // [SECURITY] localStorage에는 비밀번호 및 토큰을 제외하고 저장 (영구 평문 노출 원천 차단)
+  const safeSettings = {
+    ...settings,
+    email: {
+      ...settings.email,
+      senderAppPassword: '',
+    },
+    telegram: {
+      ...settings.telegram,
+      botToken: '',
+    }
+  };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(safeSettings));
+
+  // 현재 브라우저 탭 세션(sessionStorage)에만 임시 보관 (탭/브라우저 종료 시 자동 소멸)
+  if (settings.email?.senderAppPassword) {
+    sessionStorage.setItem(SESSION_SMTP_PASS_KEY, settings.email.senderAppPassword);
+  }
+  if (settings.telegram?.botToken) {
+    sessionStorage.setItem(SESSION_TG_BOT_TOKEN_KEY, settings.telegram.botToken);
+  }
 }
 
 export function getDefaultSettings(): NotificationSettings {

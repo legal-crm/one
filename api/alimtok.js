@@ -113,6 +113,17 @@ export default async function handler(req, res) {
         kakaoService.listATSTemplate(corpNum, (res) => resolve(res), (err) => reject(err));
       }).catch(() => []);
 
+      // [SECURITY] 비인가 사용자는 민감한 사업자번호 및 실시간 잔액 은닉
+      const hasAuth = Boolean(req.headers.authorization && req.headers.authorization.startsWith('Bearer '));
+      if (!hasAuth) {
+        return res.status(200).json({
+          ok: true,
+          configured: true,
+          channelStatus: plusFriends.length > 0 ? 'CONNECTED' : 'STANDBY',
+          statusMessage: '알림톡 발송 서비스 가동 중'
+        });
+      }
+
       return res.status(200).json({
         ok: true,
         configured: true,
@@ -165,7 +176,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: '수신번호(phone)는 필수입니다.' });
   }
 
-  // [BOT DEFENSE] Cloudflare Turnstile 토큰 검증 (토큰이 동봉된 경우 봇 여부 확인)
+  // [BOT DEFENSE] Cloudflare Turnstile 토큰 검증 (비로그인 요청 시 필수화)
   const cfToken = req.body?.turnstileToken || req.body?.cfToken;
   if (cfToken) {
     const cfCheck = await verifyTurnstileToken(cfToken, ip);
@@ -173,6 +184,8 @@ export default async function handler(req, res) {
       console.warn(`[SECURITY Turnstile Bot Blocked] IP: ${ip}, Error: ${cfCheck.error}`);
       return res.status(403).json({ ok: false, error: cfCheck.error || '비정상적인 접근(봇)으로 감지되었습니다.' });
     }
+  } else if (!req.headers.authorization) {
+    return res.status(403).json({ ok: false, error: '보안 정책에 따라 봇 방지 인증(Turnstile Token)이 필요합니다.' });
   }
 
   // 전화번호 정규화 (하이픈 제거) 및 엄격 검증

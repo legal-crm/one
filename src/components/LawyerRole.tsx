@@ -784,6 +784,12 @@ export default function LawyerRole({
       return;
     }
 
+    // [SECURITY] 프로덕션 환경에서는 test-lawyer 테스트 계정의 간이 로그인 전면 차단
+    if (import.meta.env.PROD && found.id.startsWith('test-lawyer')) {
+      setLoginError('테스트 대리인 계정은 상용 프로덕션 환경에서 로그인이 비활성화되어 있습니다.');
+      return;
+    }
+
     // [SECURITY] Bypass password check for simple bypass accounts ONLY in DEV
     const bypassIds = ['1', '2', '3', '4', '5', '6', '7'];
     if (import.meta.env.DEV && bypassIds.includes(cleanedLoginId)) {

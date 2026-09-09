@@ -13,10 +13,17 @@ async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
-  const { senderGmail, senderAppPassword, recipients, subject, htmlBody } = req.body;
+  const { senderGmail: reqSender, senderAppPassword: reqPass, recipients, subject, htmlBody } = req.body || {};
+
+  // 서버 환경변수(기본 플랫폼 발신 계정) 또는 요청자 지정 계정 사용
+  const senderGmail = reqSender || process.env.GMAIL_SMTP_USER;
+  const senderAppPassword = reqPass || process.env.GMAIL_SMTP_APP_PASSWORD;
 
   if (!senderGmail || !senderAppPassword || !recipients || !subject) {
-    return res.status(400).json({ ok: false, error: 'senderGmail, senderAppPassword, recipients, subject are required' });
+    return res.status(400).json({ 
+      ok: false, 
+      error: '발신 Gmail 계정 및 인증 정보(앱 비밀번호), 수신인, 제목은 필수입니다.' 
+    });
   }
 
   try {

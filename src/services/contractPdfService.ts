@@ -7,6 +7,7 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 import type { ElectronicContract } from '../types';
 import { generateQrCodeDataUrl } from './blockchainAnchorService';
 
@@ -31,8 +32,13 @@ export async function generateCourtSubmissionPdf(contract: ElectronicContract): 
     container.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', sans-serif";
     container.style.zIndex = '-9999';
 
-    // HTML 구조 빌드
-    container.innerHTML = buildCourtPdfHtml(contract, qrCodeDataUrl);
+    // HTML 구조 빌드 (DOMPurify 기반 XSS 방어)
+    const rawHtml = buildCourtPdfHtml(contract, qrCodeDataUrl);
+    container.innerHTML = DOMPurify.sanitize(rawHtml, {
+      ADD_TAGS: ['style'],
+      ADD_ATTR: ['style', 'class'],
+      ALLOW_DATA_ATTR: true
+    });
     document.body.appendChild(container);
 
     // 폰트 및 이미지 로딩 보장

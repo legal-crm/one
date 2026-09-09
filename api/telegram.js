@@ -46,13 +46,16 @@ export default async function handler(req, res) {
     cfToken,
   } = req.body || {};
 
-  // [BOT DEFENSE] Cloudflare Turnstile 검증
+  // [BOT DEFENSE] 서버 환경변수 봇 사용 시 봇 방어 강제 (임의 스크립트 스팸 방지)
+  const isUsingServerToken = !reqBotToken && Boolean(process.env.TELEGRAM_ADMIN_BOT_TOKEN);
   const token = turnstileToken || cfToken;
   if (token) {
     const cfCheck = await verifyTurnstileToken(token, ip);
     if (!cfCheck.success) {
       return res.status(403).json({ ok: false, error: cfCheck.error || '봇 방지 검증에 실패했습니다.' });
     }
+  } else if (isUsingServerToken && !req.headers.authorization) {
+    return res.status(403).json({ ok: false, error: '공공 알림 발송을 위해 봇 방지 인증(Turnstile Token)이 필요합니다.' });
   }
 
   // 1. 텔레그램 토큰/채팅ID 결정 (요청값 -> telegram 객체 -> 서버 환경변수 순서)
@@ -60,13 +63,26 @@ export default async function handler(req, res) {
   const chatId = reqChatId || telegram?.chatId || process.env.TELEGRAM_ADMIN_CHAT_ID;
   const contentText = markdown || text || message || '';
 
-  // 2. 슬랙 웹훅 결정
-  const slackUrl = reqSlackUrl || process.env.SLACK_ADMIN_WEBHOOK_URL;
-
   const results = {
     telegram: { attempted: false, ok: false },
     slack: { attempted: false, ok: false },
   };
+
+  // 2. 슬랙 웹훅 결정 (SSRF 방어: 오직 공식 hooks.slack.com 도메인만 허용)
+  let slackUrl = reqSlackUrl || process.env.SLACK_ADMIN_WEBHOOK_URL;
+  if (slackUrl) {
+    try {
+      const parsed = new URL(slackUrl);
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'hooks.slack.com' || !parsed.pathname.startsWith('/services/')) {
+        console.warn(`[SECURITY SSRF Blocked] Invalid Slack Webhook: ${slackUrl}`);
+        slackUrl = null;
+        results.slack.error = '허용되지 않은 웹훅 도메인입니다. (Slack 공식 도메인만 허용)';
+      }
+    } catch {
+      slackUrl = null;
+      results.slack.error = '유효하지 않은 웹훅 URL입니다.';
+    }
+  }
 
   // --- Telegram 전송 ---
   if (botToken && chatId && contentText) {
