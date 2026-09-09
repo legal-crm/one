@@ -1,11 +1,71 @@
 -- ============================================================
 -- 008_contracts_calendar_messages_bola_hardening.sql
 -- "모두의 창업" 개인정보 유출 사고(Over-fetching 및 소유권 검증 누락) 대응
--- 1. electronic_contracts: 전체 덤프 방어, 소유자/변호사 격리 RLS, 원격 서명 보안 RPC
--- 2. calendar_events: 개인 비공개 일정(personal) DB 레벨 격리
--- 3. internal_messages: 변호사 전용/지정 비밀 메시지 인가 검증
--- 4. crm_clients: CRM 재정/상담 확장 데이터 RLS 격리
+-- 1. Step 0: 누락된 테이블 및 컬럼 안전 추가 (Schema Guard)
+-- 2. electronic_contracts: 전체 덤프 방어, 소유자/변호사 격리 RLS, 원격 서명 보안 RPC
+-- 3. calendar_events: 개인 비공개 일정(personal) DB 레벨 격리
+-- 4. internal_messages: 변호사 전용/지정 비밀 메시지 인가 검증
+-- 5. crm_clients: CRM 재정/상담 확장 데이터 RLS 격리
 -- ============================================================
+
+-- ============================================================
+-- Step 0: 필수 스키마 및 컬럼 안전 보강 (Schema Fix)
+-- ============================================================
+
+-- 1. calendar_events 테이블 및 data 컬럼 보강
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL DEFAULT 'default',
+  title TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL,
+  time TEXT DEFAULT '',
+  category TEXT DEFAULT 'general',
+  client_id TEXT,
+  client_name TEXT DEFAULT '',
+  court_name TEXT DEFAULT '',
+  case_number TEXT DEFAULT '',
+  memo TEXT DEFAULT '',
+  assigned_staff_id TEXT,
+  visibility TEXT DEFAULT 'firm',
+  data JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'firm';
+
+-- 2. electronic_contracts 테이블 컬럼 보강
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS remote_sign_token TEXT;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS blockchain_anchor JSONB;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS document_hashes JSONB;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS timestamp_token JSONB;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS identity_verification JSONB;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS intent_verification JSONB;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS is_business BOOLEAN DEFAULT false;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS business_info JSONB;
+ALTER TABLE electronic_contracts ADD COLUMN IF NOT EXISTS authority_status TEXT DEFAULT 'UNVERIFIED';
+
+-- 3. internal_messages 테이블 생성 보장
+CREATE TABLE IF NOT EXISTS internal_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  parent_id UUID,
+  author_id TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  author_role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  visibility TEXT NOT NULL DEFAULT 'all_staff',
+  designated_user_ids TEXT[] DEFAULT '{}',
+  mentions TEXT[] DEFAULT '{}',
+  is_pinned BOOLEAN DEFAULT FALSE,
+  is_edited BOOLEAN DEFAULT FALSE,
+  edited_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 
 -- ============================================================
 -- 1. electronic_contracts (전자계약서 - 실명, 주소, 수임료, 서명)
@@ -124,11 +184,11 @@ USING (
   assigned_staff_id = auth.uid()::text
   -- 2) 관리자
   OR ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
-  -- 3) 전체 공유 일정 (JSON data->>'visibility'가 'firm'이거나 미지정)
-  OR (COALESCE(data->>'visibility', 'firm') = 'firm')
+  -- 3) 전체 공유 일정 (JSON data->>'visibility'가 'firm'이거나 visibility 컬럼이 'firm')
+  OR (COALESCE(visibility, data->>'visibility', 'firm') = 'firm')
   -- 4) 변호사 전용 일정인 경우 변호사/오너만 허용
   OR (
-    (data->>'visibility' = 'lawyers')
+    (COALESCE(visibility, data->>'visibility') = 'lawyers')
     AND EXISTS (
       SELECT 1 FROM members m 
       WHERE m.id = auth.uid()::text AND m.role IN ('LAWYER', 'ADMIN', 'OWNER')
