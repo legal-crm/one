@@ -98,6 +98,7 @@ export default async function handler(req, res) {
             text: contentText,
             parse_mode: parseMode,
           }),
+          signal: AbortSignal.timeout(8000),
         }
       );
       const data = await telegramRes.json();
@@ -106,8 +107,9 @@ export default async function handler(req, res) {
         results.telegram.error = data.description || 'Telegram API 오류';
       }
     } catch (err) {
+      console.error('[Telegram API Exception]', err);
       results.telegram.ok = false;
-      results.telegram.error = err.message || 'Telegram 전송 실패';
+      results.telegram.error = 'Telegram 알림 전송 중 오류가 발생했습니다.';
     }
   }
 
@@ -119,14 +121,16 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: contentText }),
+        signal: AbortSignal.timeout(8000),
       });
       results.slack.ok = slackRes.ok;
       if (!slackRes.ok) {
         results.slack.error = await slackRes.text();
       }
     } catch (err) {
+      console.error('[Slack Webhook Exception]', err);
       results.slack.ok = false;
-      results.slack.error = err.message || 'Slack 전송 실패';
+      results.slack.error = 'Slack 알림 전송 중 오류가 발생했습니다.';
     }
   }
 

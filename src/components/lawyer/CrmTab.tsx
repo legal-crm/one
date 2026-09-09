@@ -24,6 +24,7 @@ import BulkMessageSendModal from './BulkMessageSendModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import { getContractsByClientId } from '../../services/contractService';
+import { validateUploadFile } from '../../utils/fileSecurity';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog, CrmActivityType,
@@ -3170,9 +3171,14 @@ export default function CrmTab({
                             <label className="text-xs font-bold text-white bg-slate-800 px-3 py-2 rounded-xl hover:bg-slate-700 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-sm">
                               <Upload className="w-3.5 h-3.5" />
                               직접 업로드
-                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={async (e) => {
+                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.hwp,.hwpx" onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
+                                const validation = validateUploadFile(file);
+                                if (!validation.isValid) {
+                                  toast.error(validation.error);
+                                  return;
+                                }
                                 const reader = new FileReader();
                                 reader.onload = async () => {
                                   const newDoc: DocumentFile = {

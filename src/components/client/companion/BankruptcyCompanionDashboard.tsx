@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BankruptcyCompanionCase } from '../../../types';
 import { Scale, CheckCircle2, Clock, Calendar, FileText, Upload, AlertCircle, ShieldCheck, UserCheck, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
+import { validateUploadFile } from '../../../utils/fileSecurity';
 
 interface BankruptcyCompanionDashboardProps {
   caseData: BankruptcyCompanionCase;
@@ -17,6 +18,12 @@ export default function BankruptcyCompanionDashboard({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const validation = validateUploadFile(file);
+    if (!validation.isValid) {
+      toast.error(validation.error);
+      return;
+    }
 
     const newDoc = {
       id: `b-doc-${Date.now()}`,

@@ -28,7 +28,8 @@ export default async function handler(req, res) {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
         },
-        body: 'grant_type=client_credentials&scope=read'
+        body: 'grant_type=client_credentials&scope=read',
+        signal: AbortSignal.timeout(8000)
       });
 
       if (tokenRes.ok) {
@@ -46,7 +47,8 @@ export default async function handler(req, res) {
             courtCode: courtName,
             caseNumber: caseNumber,
             clientName: clientName
-          })
+          }),
+          signal: AbortSignal.timeout(10000)
         });
 
         if (codefRes.ok) {

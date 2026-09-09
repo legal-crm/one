@@ -176,10 +176,16 @@ const PopupContainer: React.FC<PopupContainerProps> = ({ config, landingId, isPr
             return;
         }
         if (currentItem.linkUrl) {
-            if (currentItem.openInNewWindow) {
-                window.open(currentItem.linkUrl, '_blank');
+            const rawUrl = currentItem.linkUrl.trim();
+            // javascript:, data:, vbscript: 실행 차단 및 안전한 URL 스킴만 허용
+            if (/^(https?:\/\/|\/|#)/i.test(rawUrl)) {
+                if (currentItem.openInNewWindow) {
+                    window.open(rawUrl, '_blank', 'noopener,noreferrer');
+                } else {
+                    window.location.href = rawUrl;
+                }
             } else {
-                window.location.href = currentItem.linkUrl;
+                console.warn('[Security] 차단된 안전하지 않은 팝업 링크 스킴:', rawUrl);
             }
         }
     };

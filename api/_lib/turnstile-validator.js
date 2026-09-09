@@ -37,6 +37,7 @@ export async function verifyTurnstileToken(token, remoteIp = '') {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
+      signal: AbortSignal.timeout(6000),
     });
 
     const data = await res.json();

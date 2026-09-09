@@ -3,6 +3,7 @@ import { X, Check, Upload, FileText, AlertCircle, Calendar, ShieldCheck, CheckCi
 import { RepaymentRoundItem, RepaymentVerificationStatus } from '../../../types';
 import { updateRepaymentRound } from '../../../services/companionService';
 import { toast } from 'sonner';
+import { validateUploadFile } from '../../../utils/fileSecurity';
 
 interface RepaymentPaymentModalProps {
   isOpen: boolean;
@@ -35,6 +36,12 @@ export default function RepaymentPaymentModal({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const validation = validateUploadFile(file);
+    if (!validation.isValid) {
+      toast.error(validation.error);
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {

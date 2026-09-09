@@ -36,6 +36,9 @@ async function handler(req, res) {
         user: senderGmail,
         pass: senderAppPassword,
       },
+      connectionTimeout: 8000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
 
     const mailOptions = {

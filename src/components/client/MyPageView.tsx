@@ -15,6 +15,7 @@ import { loadContractsLocal } from '../../services/contractService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import RehabCompanionView from './companion/RehabCompanionView';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
+import { validateUploadFile } from '../../utils/fileSecurity';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -1405,8 +1406,15 @@ export default function MyPageView({
 
               const handleFileUpload = async (files: FileList | null, linkedDocId?: string) => {
                 if (!files || files.length === 0 || !reqId) return;
+                let validCount = 0;
                 for (let i = 0; i < files.length; i++) {
                   const file = files[i];
+                  const validation = validateUploadFile(file);
+                  if (!validation.isValid) {
+                    toast.error(`[${file.name}] ${validation.error}`);
+                    continue;
+                  }
+                  validCount++;
                   const reader = new FileReader();
                   reader.onload = async (e) => {
                     const dataUrl = e.target?.result as string;
@@ -1425,7 +1433,9 @@ export default function MyPageView({
                   };
                   reader.readAsDataURL(file);
                 }
-                toast.success(`${files.length}개 파일이 제출되었습니다`);
+                if (validCount > 0) {
+                  toast.success(`${validCount}개 파일이 안전하게 제출되었습니다`);
+                }
               };
 
               const submittedCount = checklist.filter(d => ['submitted', 'approved', 'under_review', 'resubmitted'].includes(d.reviewStatus || '')).length;
