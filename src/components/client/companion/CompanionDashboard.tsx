@@ -8,6 +8,7 @@ import {
   ExternalLink, Search, Award
 } from 'lucide-react';
 import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
+import CourtCaseModal from './CourtCaseModal';
 import { toast } from 'sonner';
 
 interface CompanionDashboardProps {
@@ -77,16 +78,14 @@ export default function CompanionDashboard({
   const otherFixedExpenses = cashflow.otherFixedExpenses ?? 300000;
   const expectedSurplus = monthlyIncome - (essentialLivingCost + repaymentAmount + otherFixedExpenses);
 
+  const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
+
   // 미납 및 폐지 위험도 진단
   const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
 
-  // 대법원 사건검색 딥링크
-  const courtDeepLink = getCourtSearchDeepLink(caseData.courtName, caseData.caseNumber);
-
+  // 대법원 사건검색 모달 열기
   const handleOpenCourtSearch = () => {
-    navigator.clipboard.writeText(courtDeepLink.copySummaryText);
-    toast.success(`'${courtDeepLink.copySummaryText}'가 복사되었습니다. 대법원 모바일 사이트로 연결합니다.`);
-    window.open(courtDeepLink.mobileUrl, '_blank', 'noopener,noreferrer');
+    setIsCourtModalOpen(true);
   };
 
   // 가상계좌 복사
@@ -568,6 +567,14 @@ export default function CompanionDashboard({
         </div>
       </div>
 
+      {/* 대법원 실시간 사건 조회 모달 */}
+      <CourtCaseModal
+        isOpen={isCourtModalOpen}
+        onClose={() => setIsCourtModalOpen(false)}
+        courtName={caseData.courtName}
+        caseNumber={caseData.caseNumber}
+        clientName={caseData.alias}
+      />
     </div>
   );
 }

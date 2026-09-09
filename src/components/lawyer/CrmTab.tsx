@@ -23,6 +23,7 @@ import FeeAlimtokModal from './FeeAlimtokModal';
 import BulkMessageSendModal from './BulkMessageSendModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
+import CourtCaseTab from './CourtCaseTab';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -3524,29 +3525,16 @@ export default function CrmTab({
                   })()}
 
                   {/* ══════════ [8] 법원 탭 ══════════ */}
-                  {detailTab === 'court' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                          ⚖️ 법원 사건 연동 정보
-                        </h4>
-                      </div>
-                      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-3 text-xs text-slate-700">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-slate-400 block mb-1">관할 법원</span>
-                            <span className="font-bold text-slate-900 text-sm">서울회생법원</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block mb-1">사건 번호</span>
-                            <span className="font-mono font-bold text-slate-900 text-sm">2026개회108422 (접수예정)</span>
-                          </div>
-                        </div>
-                        <div className="pt-3 border-t border-slate-200 text-slate-500 text-[11px] leading-relaxed">
-                          대법원 나의사건검색 스크래핑 연동 대기 중입니다. 법원 접수 후 사건번호를 등록하면 기일 및 보정명령이 자동 동기화됩니다.
-                        </div>
-                      </div>
-                    </div>
+                  {detailTab === 'court' && selectedClient && (
+                    <CourtCaseTab
+                      clientId={selectedId}
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      onUpdateCrmExt={async (updates) => {
+                        await updateCrmExt(selectedId, updates);
+                      }}
+                      activeLawyerName={activeLawyer.name}
+                    />
                   )}
 
                 </div>

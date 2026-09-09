@@ -10,6 +10,7 @@ import {
   parseCaseDocumentOcr, 
   getCourtSearchDeepLink 
 } from '../../../services/companionService';
+import { fetchCourtCase } from '../../../services/scourtService';
 import { toast } from 'sonner';
 
 interface CaseRegistrationModalProps {
@@ -63,9 +64,51 @@ export default function CaseRegistrationModal({
   // 소득/생계비
   const [monthlyIncome, setMonthlyIncome] = useState<number>(2800000);
   const [essentialLivingCost, setEssentialLivingCost] = useState<number>(1750000);
-  const [otherFixedExpenses, setOtherFixedExpenses] = useState<number>(320000);
+  const [isScourtAutofilling, setIsScourtAutofilling] = useState(false);
 
   if (!isOpen) return null;
+
+  // 대법원 사건검색 API 연동으로 폼 자동완성
+  const handleAutofillFromScourt = async () => {
+    if (!caseNumber.trim()) {
+      toast.error('사건번호를 먼저 입력해 주세요 (예: 2024개회108492)');
+      return;
+    }
+
+    setIsScourtAutofilling(true);
+    try {
+      const courtDetail = await fetchCourtCase({
+        courtName,
+        caseNumber: caseNumber.trim(),
+        clientName: initialAlias || '홍길동',
+        forceRefresh: false
+      });
+
+      if (courtDetail.courtName) setCourtName(courtDetail.courtName);
+      if (courtDetail.finalResult) {
+        if (courtDetail.finalResult.includes('인가') || courtDetail.finalResult.includes('개시')) {
+          setCaseStage('approved');
+        } else {
+          setCaseStage('filed');
+        }
+      }
+
+      // 변제내역이 있으면 최근 납부 회차 및 월 변제금 동기화
+      if (courtDetail.repayments.length > 0) {
+        const first = courtDetail.repayments[0];
+        if (first.amount) setMonthlyRepaymentAmount(first.amount);
+        const paidCount = courtDetail.repayments.filter(r => r.paidDate).length;
+        setCompletedRounds(paidCount);
+      }
+
+      setOcrStatus('success');
+      toast.success('🎉 대법원 전산망에서 사건 정보가 성공적으로 자동완성되었습니다!');
+    } catch (err: any) {
+      toast.error(err.message || '대법원 정보 조회에 실패했습니다.');
+    } finally {
+      setIsScourtAutofilling(false);
+    }
+  };
 
   // 스마트 문서 OCR 비동기 파싱
   const handleOcrUpload = async (file: File) => {
@@ -535,24 +578,36 @@ export default function CaseRegistrationModal({
                       </span>
                     )}
                   </label>
-                  <input
-                    id="case-number-input"
-                    type="text"
-                    value={caseNumber}
-                    onChange={(e) => {
-                      setCaseNumber(e.target.value);
-                      if (ocrStatus === 'failed' && e.target.value.trim().length > 3) {
-                        setOcrStatus('idle');
-                      }
-                    }}
-                    placeholder="예: 2024개회108492"
-                    required
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all focus:outline-none ${
-                      ocrStatus === 'failed'
-                        ? 'border-amber-400 bg-amber-50/30 dark:bg-amber-950/30 ring-2 ring-amber-400/60 text-slate-900 dark:text-white'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-1 focus:ring-brand'
-                    }`}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      id="case-number-input"
+                      type="text"
+                      value={caseNumber}
+                      onChange={(e) => {
+                        setCaseNumber(e.target.value);
+                        if (ocrStatus === 'failed' && e.target.value.trim().length > 3) {
+                          setOcrStatus('idle');
+                        }
+                      }}
+                      placeholder="예: 2024개회108492"
+                      required
+                      className={`flex-1 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all focus:outline-none ${
+                        ocrStatus === 'failed'
+                          ? 'border-amber-400 bg-amber-50/30 dark:bg-amber-950/30 ring-2 ring-amber-400/60 text-slate-900 dark:text-white'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-1 focus:ring-brand'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAutofillFromScourt}
+                      disabled={isScourtAutofilling || !caseNumber.trim()}
+                      className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer disabled:opacity-40 flex items-center gap-1 active:scale-[0.98]"
+                      title="대법원 전산망 조회 후 폼 자동완성"
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${isScourtAutofilling ? 'animate-spin' : ''}`} />
+                      <span>{isScourtAutofilling ? '조회중...' : '대법원 자동완성'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

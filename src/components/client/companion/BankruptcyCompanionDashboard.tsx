@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { BankruptcyCompanionCase } from '../../../types';
-import { Scale, CheckCircle2, Clock, Calendar, FileText, Upload, AlertCircle, ShieldCheck, UserCheck, MessageSquare } from 'lucide-react';
+import { Scale, CheckCircle2, Clock, Calendar, FileText, Upload, AlertCircle, ShieldCheck, UserCheck, MessageSquare, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateUploadFile } from '../../../utils/fileSecurity';
+import CourtCaseModal from './CourtCaseModal';
 
 interface BankruptcyCompanionDashboardProps {
   caseData: BankruptcyCompanionCase;
@@ -14,6 +15,7 @@ export default function BankruptcyCompanionDashboard({
   onOpenCrisisModal
 }: BankruptcyCompanionDashboardProps) {
   const [uploadedFiles, setUploadedFiles] = useState(caseData?.documents || []);
+  const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,17 +60,31 @@ export default function BankruptcyCompanionDashboard({
           </p>
         </div>
 
-        <div className="bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 p-4 rounded-2xl shrink-0 w-full md:w-72 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300">
-            <Clock className="w-4 h-4" />
-            <span>다음 주요 기일 D-Day</span>
+        <div className="flex flex-col gap-2 shrink-0 w-full md:w-72">
+          <div className="bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 p-4 rounded-2xl space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+              <Clock className="w-4 h-4" />
+              <span>다음 주요 기일 D-Day</span>
+            </div>
+            <p className="text-sm font-black text-slate-900 dark:text-white">
+              2026.09.25 (보정검토)
+            </p>
+            <span className="text-[11px] text-slate-500 block">
+              파산관재인 소명자료 추가 제출 기한
+            </span>
           </div>
-          <p className="text-sm font-black text-slate-900 dark:text-white">
-            2026.09.25 (보정검토)
-          </p>
-          <span className="text-[11px] text-slate-500 block">
-            파산관재인 소명자료 추가 제출 기한
-          </span>
+
+          <button
+            type="button"
+            onClick={() => setIsCourtModalOpen(true)}
+            className="w-full px-4 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-2xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-purple-400 dark:text-purple-600" />
+              <span>대법원 파산사건 실시간 조회</span>
+            </div>
+            <Scale className="w-3.5 h-3.5 text-slate-400" />
+          </button>
         </div>
       </div>
 
@@ -173,6 +189,14 @@ export default function BankruptcyCompanionDashboard({
         </div>
       </div>
 
+      {/* 대법원 실시간 파산사건 조회 모달 */}
+      <CourtCaseModal
+        isOpen={isCourtModalOpen}
+        onClose={() => setIsCourtModalOpen(false)}
+        courtName={caseData.courtName}
+        caseNumber={caseData.caseNumberMasked.replace(/\*/g, '0')}
+        clientName={caseData.alias}
+      />
     </div>
   );
 }
