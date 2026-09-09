@@ -3744,6 +3744,21 @@ export default function CrmTab({
             const bulkFilteredClients = requests.filter(r => {
               const ext = getCrmExt(r.id);
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
+              if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
+              if (bulkFilter === 'hearing_month') return true;
+              if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
+              return false;
+            }).map(r => ({
+              id: r.id,
+              clientName: r.clientName || '의뢰인',
+              phone: r.phone || '',
+              subText: (r.financialProfile?.debtTotal || (r as any).debtTotal) ? `${r.financialProfile?.debtTotal || (r as any).debtTotal}만원` : undefined
+            }));
+
+            return (
+              <>
+                <div className="bg-slate-50 p-3 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500">
                     발송 대상 의뢰인: <span className="font-black text-sm text-slate-800">{bulkFilteredClients.length}명</span>
                   </p>
                   <span className="text-[11px] text-slate-400">
@@ -3885,9 +3900,9 @@ export default function CrmTab({
             id: r.id,
             clientName: r.clientName || '의뢰인',
             phone: r.phone || '',
-            subText: r.debtTotal ? `${r.debtTotal}만원` : undefined
+            subText: (r.financialProfile?.debtTotal || (r as any).debtTotal) ? `${r.financialProfile?.debtTotal || (r as any).debtTotal}만원` : undefined
           }))}
-          firmName={activeLawyer.lawFirmName || activeLawyer.firm || '법무법인'}
+          firmName={activeLawyer.firmName || '법무법인'}
           lawyerName={activeLawyer.name || '담당 변호사'}
           onConfirmSend={async (message, channel) => {
             const targets = requests.filter(r => {
@@ -3899,14 +3914,21 @@ export default function CrmTab({
               return false;
             });
             const channelName = channel === 'alimtok' ? '카카오 알림톡' : 'SMS';
+            const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
             for (const t of targets) {
-              await createActivityLog(
+              const ext = getCrmExt(t.id);
+              const logEntry = createActivityLog(
                 t.id,
-                'COMMUNICATION',
+                actor.id,
+                actor.name,
+                actor.role,
+                'communication',
                 `타겟 대량 메시지 발송 완료 (${channelName})`,
-                activeStaff?.name || activeLawyer.name,
                 { filter: bulkFilter, snippet: message.slice(0, 40) }
               );
+              await updateCrmExt(t.id, {
+                activities: [...(ext.activities || []), logEntry]
+              });
             }
             toast.success(`총 ${targets.length}명의 의뢰인에게 ${channelName} 대량 발송이 완료되었습니다.`);
             setShowBulkMessage(false);
