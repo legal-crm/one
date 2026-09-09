@@ -188,6 +188,12 @@ export default function RepaymentPlanEditor({
   const [adjusterMemo, setAdjusterMemo] = useState<string>(
     crmExt.repaymentPlan?.adjusterMemo || ''
   );
+  const [startYearMonth, setStartYearMonth] = useState<string>(
+    crmExt.repaymentPlan?.startYearMonth || '2026-12'
+  );
+  const [paymentDayOfMonth, setPaymentDayOfMonth] = useState<number>(
+    crmExt.repaymentPlan?.paymentDayOfMonth || 25
+  );
 
   // 우선권 채권 2단계 자동 분할 배분 모드 (기본 18개월)
   const [isTwoStageRepayment, setIsTwoStageRepayment] = useState<boolean>(
@@ -209,6 +215,8 @@ export default function RepaymentPlanEditor({
       clientName: clientRequest.clientName || '의뢰인',
       courtName: (clientRequest as any).court || clientRequest.financialProfile?.selectedCourt || '서울회생법원',
       caseNumber: crmExt.courtCase?.caseNumber || '',
+      startYearMonth,
+      paymentDayOfMonth,
       incomeExpense,
       assets,
       creditors,
@@ -229,6 +237,8 @@ export default function RepaymentPlanEditor({
     (clientRequest as any).court,
     clientRequest.financialProfile?.selectedCourt,
     crmExt.courtCase?.caseNumber,
+    startYearMonth,
+    paymentDayOfMonth,
     incomeExpense,
     assets,
     creditors,
@@ -793,9 +803,12 @@ export default function RepaymentPlanEditor({
                     </label>
                     <input
                       type="month"
-                      value={plan.startYearMonth}
-                      onChange={(e) => {}}
-                      className="w-full px-3 py-2 text-xs text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:border-purple-500 focus:bg-white outline-none"
+                      value={startYearMonth}
+                      onChange={(e) => {
+                        setIsManualMode(true);
+                        setStartYearMonth(e.target.value);
+                      }}
+                      className="w-full px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:border-purple-500 focus:bg-white outline-none"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -803,8 +816,11 @@ export default function RepaymentPlanEditor({
                       매월 납부일
                     </label>
                     <select
-                      value={plan.paymentDayOfMonth}
-                      onChange={(e) => {}}
+                      value={paymentDayOfMonth}
+                      onChange={(e) => {
+                        setIsManualMode(true);
+                        setPaymentDayOfMonth(Number(e.target.value));
+                      }}
                       className="w-full px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:border-purple-500 focus:bg-white outline-none"
                     >
                       <option value="5">매월 5일</option>
