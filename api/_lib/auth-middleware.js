@@ -43,6 +43,11 @@ export function withAuth(handler, options = {}) {
       return handler(req, res);
     }
 
+    // [MONITORING & TRACING] X-Request-ID 전파 및 추적 헤더 설정
+    const requestId = req.headers['x-request-id'] || `srv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+    res.setHeader('X-Request-ID', requestId);
+    req.requestId = requestId;
+
     // [ANTI-BOLA / ANTI-SCRAPING] Rate Limit 선제 적용 (분당 60회 기본)
     const forwarded = req.headers['x-forwarded-for'];
     const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');

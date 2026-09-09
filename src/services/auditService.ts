@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { getActiveRequestId } from '../utils/tracking';
 
 // ============================================================
 // [SECURITY Phase 2] 감사 로그 서비스
@@ -42,12 +43,15 @@ export interface AuditEntry {
  * Supabase 미설정 시 콘솔에만 출력합니다 (비차단).
  */
 export async function writeAuditLog(entry: AuditEntry): Promise<void> {
+  const reqId = getActiveRequestId();
+
   // [SECURITY M-2] 개발 환경에서만 비민감 메타데이터 로그 출력 (개인정보/상세 페이로드 제외)
   if (import.meta.env.DEV) {
     console.log('[AUDIT]', entry.action, {
       actor_role: entry.actor_role,
       target_type: entry.target_type,
       target_id: entry.target_id,
+      request_id: reqId,
     });
   }
 
@@ -62,7 +66,10 @@ export async function writeAuditLog(entry: AuditEntry): Promise<void> {
       action: entry.action,
       target_type: entry.target_type || null,
       target_id: entry.target_id || null,
-      detail: entry.detail || {},
+      detail: {
+        ...(entry.detail || {}),
+        request_id: reqId,
+      },
       user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       created_at: new Date().toISOString(),
     });

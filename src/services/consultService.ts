@@ -1,5 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { ConsultRequest, ConsultMessage } from '../types';
+import { encryptField, decryptField } from '../utils/cryptoField';
+import { validateAndSanitizeConsultRequest } from '../schemas/consultSchema';
 
 // ============================================================
 // Consult Supabase Service Layer
@@ -29,8 +31,10 @@ function logSupabaseError(operation: string, error: any) {
 }
 
 
-// ConsultRequest → DB row 변환 (undefined를 null로, NOT NULL 필드에 기본값 보장)
-function requestToRow(request: ConsultRequest) {
+// ConsultRequest → DB row 변환 (financial_profile AES-256-GCM 암호화 저장)
+async function requestToRow(request: ConsultRequest) {
+  const encryptedProfile = await encryptField(request.financialProfile || {});
+
   return {
     id: request.id,
     client_id: request.clientId || 'client-temp',
@@ -46,7 +50,7 @@ function requestToRow(request: ConsultRequest) {
     proposals: request.proposals || [],
     title: request.title || '',
     content: request.content || '',
-    financial_profile: request.financialProfile || {},
+    financial_profile: encryptedProfile,
     phone_consultation_requested: request.phoneConsultationRequested ?? false,
     safe_number: request.safeNumber || null,
     safe_number_assigned_at: request.safeNumberAssignedAt || null,
@@ -57,8 +61,10 @@ function requestToRow(request: ConsultRequest) {
   };
 }
 
-// DB row → ConsultRequest 변환
-function rowToRequest(row: any): ConsultRequest {
+// DB row → ConsultRequest 변환 (financial_profile 자동 복호화)
+async function rowToRequest(row: any): Promise<ConsultRequest> {
+  const decryptedProfile = await decryptField<any>(row.financial_profile);
+
   return {
     id: row.id,
     clientId: row.client_id,
@@ -74,7 +80,7 @@ function rowToRequest(row: any): ConsultRequest {
     proposals: row.proposals,
     title: row.title,
     content: row.content,
-    financialProfile: row.financial_profile,
+    financialProfile: decryptedProfile || {},
     phoneConsultationRequested: row.phone_consultation_requested,
     safeNumber: row.safe_number,
     safeNumberAssignedAt: row.safe_number_assigned_at,
@@ -125,9 +131,8 @@ export async function loadConsultRequests(filter?: string | ConsultRequestFilter
       if (error) {
         logSupabaseError('loadConsultRequests', error);
       } else if (data) {
-        return data
-          .map(rowToRequest)
-          .filter((req: ConsultRequest) => req.id !== 'req-1' && req.id !== 'req-2' && req.id !== 'req-3');
+        const mapped = await Promise.all(data.map(rowToRequest));
+        return mapped.filter((req: ConsultRequest) => req.id !== 'req-1' && req.id !== 'req-2' && req.id !== 'req-3');
       }
     } catch (e) {
       logSupabaseError('loadConsultRequests (exception)', e);
@@ -151,18 +156,25 @@ export async function loadConsultRequests(filter?: string | ConsultRequestFilter
 }
 
 export async function saveConsultRequest(request: ConsultRequest): Promise<void> {
-  // Always save to localStorage
+  // [SECURITY Zod Validation] 런타임 스키마 검증 및 XSS 태그 정제
+  const validation = validateAndSanitizeConsultRequest(request);
+  const safeRequest: ConsultRequest = validation.success && validation.data 
+    ? ({ ...request, ...validation.data } as ConsultRequest) 
+    : request;
+
+  // Always save to localStorage (클라이언트 메모리/세션은 즉각적인 반응성을 위해 평문 객체 유지)
   const requests = getLocalData<ConsultRequest[]>(REQUESTS_STORAGE_KEY, []);
-  const idx = requests.findIndex(r => r.id === request.id);
-  if (idx >= 0) requests[idx] = request;
-  else requests.push(request);
+  const idx = requests.findIndex(r => r.id === safeRequest.id);
+  if (idx >= 0) requests[idx] = safeRequest;
+  else requests.push(safeRequest);
   setLocalData(REQUESTS_STORAGE_KEY, requests);
 
-  // Also persist to Supabase if configured
+  // Also persist to Supabase if configured (DB 전송 시 financial_profile AES-256-GCM 암호화)
   if (isSupabaseConfigured) {
     try {
+      const row = await requestToRow(safeRequest);
       const { error } = await supabase.from('consult_requests').upsert(
-        requestToRow(request),
+        row,
         { onConflict: 'id' }
       );
       if (error) {
@@ -180,7 +192,7 @@ export async function saveAllConsultRequests(requests: ConsultRequest[]): Promis
   
   if (isSupabaseConfigured && requests.length > 0) {
     try {
-      const payload = requests.map(requestToRow);
+      const payload = await Promise.all(requests.map(requestToRow));
       const { error } = await supabase.from('consult_requests').upsert(payload, { onConflict: 'id' });
       if (error) {
         logSupabaseError('saveAllConsultRequests', error);
