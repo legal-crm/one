@@ -16,6 +16,7 @@ import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import RehabCompanionView from './companion/RehabCompanionView';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { validateUploadFile } from '../../utils/fileSecurity';
+import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 
 interface MyPageViewProps {
   userAlias: string;
@@ -1417,13 +1418,32 @@ export default function MyPageView({
                   validCount++;
                   const reader = new FileReader();
                   reader.onload = async (e) => {
-                    const dataUrl = e.target?.result as string;
+                    let dataUrl = e.target?.result as string;
+                    let fileSize = file.size;
+                    let mimeType = file.type;
+
+                    // 신분증/인감 등 이미지 서류인 경우 법원 제출용 비가역 반투명 워터마크 자동 합성 (주민번호 13자리 온전 보존)
+                    if (file.type.startsWith('image/')) {
+                      try {
+                        const watermarked = await applyCourtSubmissionWatermark(dataUrl, {
+                          clientName: userAlias || activeRequest?.name || '신청인',
+                          requestId: reqId,
+                          isIdCardOrSeal: true
+                        });
+                        dataUrl = watermarked.dataUrl;
+                        fileSize = watermarked.fileSize;
+                        mimeType = watermarked.mimeType;
+                      } catch (wmErr) {
+                        console.warn('[Watermark Synthesis Error]', wmErr);
+                      }
+                    }
+
                     const fileObj = {
                       name: file.name,
                       category: 'other',
                       uploadedAt: new Date().toISOString(),
-                      fileSize: file.size,
-                      mimeType: file.type,
+                      fileSize,
+                      mimeType,
                       dataUrl,
                       uploadSource: 'client',
                       linkedDocId
@@ -1799,6 +1819,8 @@ export default function MyPageView({
                       <MobileScanner
                         isOpen={showScanner}
                         onClose={() => setShowScanner(false)}
+                        clientName={userAlias || activeRequest?.name || '신청인'}
+                        requestId={reqId}
                         onCapture={async (scanned) => {
                           const docFile: DocumentFile = {
                             id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

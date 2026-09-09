@@ -7,6 +7,8 @@
 
 // 민감 데이터 키 목록 (sessionStorage 사용)
 const SENSITIVE_KEYS = new Set([
+  'legal_crm_data',           // CRM 상세 데이터 (신분증 및 서류 첨부 포함)
+  'legal_crm_staff',          // 직원/구성원 정보
   'legal_crm_requests',       // 상담 요청 (재무 프로필 포함)
   'legal_crm_messages',       // 상담 메시지 (비밀 대화)
   'legal_crm_cases',          // 사건 데이터

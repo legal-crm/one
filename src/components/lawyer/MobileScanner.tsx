@@ -1,11 +1,14 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, X, RotateCcw, Check, FileText } from 'lucide-react';
+import { Camera, X, RotateCcw, Check, FileText, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 
 interface MobileScannerProps {
   isOpen: boolean;
   onClose: () => void;
   onCapture: (file: { name: string; dataUrl: string; mimeType: string; fileSize: number }) => void;
+  clientName?: string;
+  requestId?: string;
 }
 
 export default function MobileScanner({ isOpen, onClose, onCapture }: MobileScannerProps) {
@@ -64,22 +67,45 @@ export default function MobileScanner({ isOpen, onClose, onCapture }: MobileScan
     startCamera();
   }, [startCamera]);
 
-  const confirm = useCallback(() => {
+  const confirm = useCallback(async () => {
     if (!capturedImage) return;
     const name = docName.trim() || `스캔_${new Date().toISOString().split('T')[0]}_${Date.now().toString(36)}`;
-    // Estimate file size from base64
-    const sizeEstimate = Math.round((capturedImage.length * 3) / 4);
-    onCapture({
-      name: `${name}.jpg`,
-      dataUrl: capturedImage,
-      mimeType: 'image/jpeg',
-      fileSize: sizeEstimate,
-    });
-    setCapturedImage(null);
-    setDocName('');
-    onClose();
-    toast.success('서류가 스캔되었습니다.');
-  }, [capturedImage, docName, onCapture, onClose]);
+    
+    try {
+      // 법원 제출용 반투명(Alpha 0.15) 비가역 워터마크 자동 합성 (주민번호 13자리 온전 보존)
+      const watermarked = await applyCourtSubmissionWatermark(capturedImage, {
+        clientName,
+        requestId,
+        isIdCardOrSeal: true
+      });
+
+      onCapture({
+        name: `${name}.jpg`,
+        dataUrl: watermarked.dataUrl,
+        mimeType: watermarked.mimeType,
+        fileSize: watermarked.fileSize,
+      });
+
+      setCapturedImage(null);
+      setDocName('');
+      onClose();
+      toast.success('보안 워터마크가 합성된 서류가 안전하게 등록되었습니다.');
+    } catch (err) {
+      console.error('[Watermark Error]', err);
+      // 폴백 처리
+      const sizeEstimate = Math.round((capturedImage.length * 3) / 4);
+      onCapture({
+        name: `${name}.jpg`,
+        dataUrl: capturedImage,
+        mimeType: 'image/jpeg',
+        fileSize: sizeEstimate,
+      });
+      setCapturedImage(null);
+      setDocName('');
+      onClose();
+      toast.success('서류가 스캔되었습니다.');
+    }
+  }, [capturedImage, docName, onCapture, onClose, clientName, requestId]);
 
   React.useEffect(() => {
     if (isOpen && !capturedImage) {

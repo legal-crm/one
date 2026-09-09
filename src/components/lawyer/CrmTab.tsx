@@ -6,7 +6,7 @@ import {
   FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
   Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
   Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
-  ShieldCheck, FileCheck2, ExternalLink, Camera
+  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -25,6 +25,8 @@ import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
+import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
+import SecureDocumentViewerModal from '../common/SecureDocumentViewerModal';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
   CrmNote, CrmNoteCategory, DocumentCheckItem, CrmActivityLog, CrmActivityType,
@@ -175,6 +177,9 @@ export default function CrmTab({
   const [showStaffPanel, setShowStaffPanel] = useState(false);
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<StaffRole>('CONSULTANT');
+
+  // ── 초민감 서류 보안 뷰어 ──
+  const [viewingDoc, setViewingDoc] = useState<DocumentFile | null>(null);
   
   // ── 일괄 작업 ──
   const [bulkStatus, setBulkStatus] = useState<CrmStatus>('consulting');
@@ -3181,15 +3186,35 @@ export default function CrmTab({
                                 }
                                 const reader = new FileReader();
                                 reader.onload = async () => {
+                                  let dataUrl = reader.result as string;
+                                  let fileSize = file.size;
+                                  let mimeType = file.type;
+
+                                  // 이미지 서류인 경우 법원 제출용 비가역 반투명 워터마크 자동 합성 (주민번호 13자리 온전 보존)
+                                  if (file.type.startsWith('image/')) {
+                                    try {
+                                      const watermarked = await applyCourtSubmissionWatermark(dataUrl, {
+                                        clientName: selectedClient?.name || '신청인',
+                                        requestId: selectedId,
+                                        isIdCardOrSeal: true
+                                      });
+                                      dataUrl = watermarked.dataUrl;
+                                      fileSize = watermarked.fileSize;
+                                      mimeType = watermarked.mimeType;
+                                    } catch (wmErr) {
+                                      console.warn('[Watermark Synthesis Error]', wmErr);
+                                    }
+                                  }
+
                                   const newDoc: DocumentFile = {
                                     id: `doc-${Date.now()}`, name: file.name,
                                     category: 'other', uploadedAt: new Date().toISOString(),
-                                    uploadedBy: activeLawyer.name, fileSize: file.size,
-                                    mimeType: file.type, dataUrl: reader.result as string,
+                                    uploadedBy: activeLawyer.name, fileSize,
+                                    mimeType, dataUrl,
                                     uploadSource: 'lawyer'
                                   };
                                   await updateCrmExt(selectedId, { ...ext, uploadedFiles: [...files, newDoc] });
-                                  toast.success(`${file.name} 업로드 완료`);
+                                  toast.success(`${file.name} 보안 워터마크 합성 및 업로드 완료`);
                                 };
                                 reader.readAsDataURL(file);
                               }} />
@@ -3406,14 +3431,19 @@ export default function CrmTab({
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 ml-2">
-                                      <a href={f.dataUrl} download={f.name} className="text-brand hover:text-brand-hover text-xs font-bold flex items-center gap-0.5 p-1 rounded-lg hover:bg-brand/5 transition-colors" title="다운로드">
-                                        <Download className="w-3.5 h-3.5" />
-                                      </a>
+                                      <button 
+                                        onClick={() => setViewingDoc(f)} 
+                                        className="text-brand hover:text-brand-hover text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand/5 hover:bg-brand/10 border border-brand/15 transition-colors cursor-pointer press-scale"
+                                        title="화면 도촬 방지 포렌식 워터마크 보안 열람실 실행"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>보안열람</span>
+                                      </button>
                                       <button onClick={async () => {
                                         const latestExt = getCrmExt(selectedId);
                                         await updateCrmExt(selectedId, { ...latestExt, uploadedFiles: (latestExt.uploadedFiles || []).filter(item => item.id !== f.id) });
                                         toast.success('파일이 삭제되었습니다.');
-                                      }} className="text-slate-300 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="삭제">
+                                      }} className="text-slate-300 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="삭제">
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
@@ -3424,10 +3454,24 @@ export default function CrmTab({
                           </div>
                         ) : null}
 
+                        {/* 초민감 서류(신분증/인감) 포렌식 워터마크 보안 뷰어 모달 */}
+                        <SecureDocumentViewerModal
+                          isOpen={Boolean(viewingDoc)}
+                          onClose={() => setViewingDoc(null)}
+                          documentName={viewingDoc?.name || '서류 열람'}
+                          dataUrl={viewingDoc?.dataUrl || ''}
+                          mimeType={viewingDoc?.mimeType}
+                          viewerName={activeLawyer.name}
+                          viewerRole={activeStaff?.role || 'LAWYER'}
+                          clientId={selectedId}
+                        />
+
                         {/* 변호사용 MobileScanner 모달 */}
                         <MobileScanner
                           isOpen={showDocScanner}
                           onClose={() => setShowDocScanner(false)}
+                          clientName={selectedClient?.name || '신청인'}
+                          requestId={selectedId}
                           onCapture={async (scanned) => {
                             const newDoc: DocumentFile = {
                               id: `doc-${Date.now()}`,

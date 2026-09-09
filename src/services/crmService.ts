@@ -5,26 +5,27 @@ import type {
   DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus, ElectronicContract
 } from '../types';
 import { DEFAULT_REHAB_DOCUMENTS } from '../types';
+import { secureGetItem, secureSetItem } from '../utils/secureStorage';
 
 // ============================================================
 // CRM Supabase Service Layer
-// Supabase 미설정 시 localStorage 폴백으로 동작
+// Supabase 미설정 시 secureStorage (sessionStorage 격리) 폴백으로 동작
 // ============================================================
 
 const CRM_STORAGE_KEY = 'legal_crm_data';
 const STAFF_STORAGE_KEY = 'legal_crm_staff';
 
-// ── 유틸리티 ──
+// ── 유틸리티 (단말 보호: sessionStorage 격리 및 탭 종료 시 자동 소멸) ──
 
 function getLocalData<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = secureGetItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch { return fallback; }
 }
 
 function setLocalData<T>(key: string, data: T): void {
-  localStorage.setItem(key, JSON.stringify(data));
+  secureSetItem(key, JSON.stringify(data));
 }
 
 // ── CRM Client Extension 관리 ──
