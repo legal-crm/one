@@ -1863,6 +1863,34 @@ export interface ContractDocument {
   confirmedAt?: string;              // 확약 입력 일시
 }
 
+export interface BankAccountInfo {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+}
+
+export interface SuccessFeeAgreement {
+  enabled: boolean;
+  type: 'fixed' | 'reduction_rate' | 'custom';
+  amount?: number;            // 고정 정액 (원)
+  ratePercent?: number;       // 탕감액 대비 요율 (%)
+  targetType?: 'principal' | 'total_debt'; // 원금 탕감액 vs 총 채무 감면액
+  description?: string;       // 약정 상세 조건
+  dueDateCondition?: string;  // 결제 시점 (예: 개시결정 시, 인가결정 시, 면책결정 시)
+}
+
+export interface CourtCosts {
+  creditorCount: number;
+  deliveryFee: number;
+  stampFee: number;
+  miscFee: number;
+  debtCertFee?: number;        // 부채증명서 발급 대행비 (채권자수 * 단가)
+  debtCertUnitFee?: number;    // 채권자 1곳당 발급 단가 (기본: 15,000원)
+  deliveryUnitFee?: number;    // 채권자 1곳당 송달료 단가 (2026 기본: 5,200원)
+  provisionalDeposit?: number; // 법원 변제예납금
+  isCustomized?: boolean;      // 사무실 수기 수정 여부
+}
+
 export interface ElectronicContract {
   id: string;
   clientId: string;
@@ -1874,16 +1902,25 @@ export interface ElectronicContract {
   lawFirmName: string;
   assignedLawyerId?: string;
   totalFee: number;
-  courtCosts: { creditorCount: number; deliveryFee: number; stampFee: number; miscFee: number };
+  courtCosts: CourtCosts;
   feeSchedule: FeeInstallment[];
   documents: ContractDocument[];
   status: ContractStatus;
   contractDate: string;
   contractNumber?: string;
   caseType?: string;
+  caseCategory?: 'individual_rehab' | 'individual_bankruptcy' | 'other';
   title?: string;
   signedAt?: string;
   contractUrl?: string;
+
+  // ── 실무 비용 및 계좌/성공보수 확장 ──
+  vatIncluded?: boolean;
+  feeAccount?: BankAccountInfo;
+  courtCostAccount?: BankAccountInfo;
+  sameAsFeeAccount?: boolean;
+  successFee?: SuccessFeeAgreement;
+  linkedDiagnosisId?: string;
   
   // ── 4대 법적 효력 고도화 필드 ──
   // 1. 사업자 및 권한성(Right)

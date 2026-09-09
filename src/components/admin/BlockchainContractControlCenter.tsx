@@ -35,7 +35,11 @@ import {
   verifyTxOnChain,
   verifyContractBlockchainAnchor,
   getBlockchainConfig,
-  BlockchainNetworkStatus 
+  BlockchainNetworkStatus,
+  fetchCircuitBreakerStatus,
+  freezeCircuitBreaker,
+  unfreezeCircuitBreaker,
+  CircuitBreakerStatus
 } from '../../services/blockchainAnchorService';
 import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
 import BlockchainConfigModal from './BlockchainConfigModal';
@@ -45,6 +49,10 @@ export default function BlockchainContractControlCenter() {
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [networkStatus, setNetworkStatus] = useState<BlockchainNetworkStatus | null>(null);
   const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
+
+  // [SECURITY] 서킷 브레이커 실시간 동결/감시 상태
+  const [circuitStatus, setCircuitStatus] = useState<CircuitBreakerStatus | null>(null);
+  const [isUpdatingCircuit, setIsUpdatingCircuit] = useState(false);
 
   // 전수 감사 스캔 상태
   const [isAuditingAll, setIsAuditingAll] = useState(false);
@@ -87,10 +95,61 @@ export default function BlockchainContractControlCenter() {
     }
   }, []);
 
+  // [SECURITY] 서킷 브레이커 상태 주기적 동기화
+  const fetchCircuitData = useCallback(async () => {
+    const status = await fetchCircuitBreakerStatus();
+    if (status) {
+      setCircuitStatus(status);
+    }
+  }, []);
+
   useEffect(() => {
     fetchNetwork();
     fetchContractsData();
-  }, [fetchNetwork, fetchContractsData]);
+    fetchCircuitData();
+
+    // 10초마다 노드 및 서킷 브레이커 상태 자동 감시
+    const interval = setInterval(() => {
+      fetchCircuitData();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchNetwork, fetchContractsData, fetchCircuitData]);
+
+  // 서킷 브레이커 즉시 해제 핸들러 (Unfreeze)
+  const handleUnfreeze = async () => {
+    setIsUpdatingCircuit(true);
+    try {
+      const res = await unfreezeCircuitBreaker();
+      if (res.ok) {
+        toast.success('서킷 브레이커가 해제되었습니다. 블록체인 온체인 각인이 정상화되었습니다.');
+        await fetchCircuitData();
+      } else {
+        toast.error(`동결 해제 실패: ${res.error || '알 수 없는 오류'}`);
+      }
+    } finally {
+      setIsUpdatingCircuit(false);
+    }
+  };
+
+  // 관리자 수동 긴급 정지 핸들러 (Freeze)
+  const handleManualFreeze = async () => {
+    if (!window.confirm('🚨 긴급 정지(Emergency Freeze) 발동 확인\n\n모든 신규 전자계약의 Polygon 온체인 앵커링이 30분간 즉시 일시 정지(동결)됩니다.\n릴레이어 가스비 소모 및 트랜잭션 전송이 전면 차단됩니다.\n\n정말 긴급 정지를 발동하시겠습니까?')) {
+      return;
+    }
+    setIsUpdatingCircuit(true);
+    try {
+      const res = await freezeCircuitBreaker('관리자 관제탑에서 수동 긴급 정지 발동');
+      if (res.ok) {
+        toast.warning('🚨 긴급 정지가 발동되었습니다. 온체인 각인이 일시 동결되었습니다.');
+        await fetchCircuitData();
+      } else {
+        toast.error(`긴급 정지 발동 실패: ${res.error || '알 수 없는 오류'}`);
+      }
+    } finally {
+      setIsUpdatingCircuit(false);
+    }
+  };
 
   // 2. 전사 계약서 위변조 전수 스캔 (Audit All)
   const handleAuditAllContracts = async () => {
@@ -153,6 +212,44 @@ export default function BlockchainContractControlCenter() {
 
   return (
     <div className="space-y-6 text-slate-100 animate-fadeIn">
+      {/* ── 0. 비상 서킷 브레이커 긴급 경고 배너 (동결 시 자동 표시) ── */}
+      {circuitStatus?.isFrozen && (
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-red-950/95 via-rose-950/90 to-amber-950/95 border-2 border-red-500 text-white shadow-2xl shadow-red-950/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-pulse">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 rounded-2xl bg-red-600/30 border border-red-400/80 text-red-300 flex-shrink-0">
+              <AlertTriangle className="w-6 h-6 text-red-400 animate-bounce" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-red-600 text-white uppercase tracking-wider">
+                  SECURITY EMERGENCY FREEZE
+                </span>
+                <span className="text-xs font-bold text-amber-300">
+                  자동 복구 대기: 약 {Math.ceil((circuitStatus.retryAfter || 0) / 60)}분 ({circuitStatus.retryAfter || 0}초) 남음
+                </span>
+              </div>
+              <h3 className="text-sm md:text-base font-black text-white mt-1">
+                🚨 비상 서킷 브레이커 발동: 비정상 무리한 호출 감지로 온체인 각인이 일시 정지(동결)되었습니다.
+              </h3>
+              <p className="text-xs text-red-200 mt-0.5">
+                사유: {circuitStatus.reason || '비인가 호출 및 공격 시도 급증 감지'} (릴레이어 가스비 소모 100% 방어 중)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto flex-shrink-0">
+            <button
+              onClick={handleUnfreeze}
+              disabled={isUpdatingCircuit}
+              className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg shadow-emerald-950/50 cursor-pointer transition-all disabled:opacity-50 press-scale whitespace-nowrap"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{isUpdatingCircuit ? '해제 처리 중...' : '동결 즉시 해제 및 정상화 (Unfreeze)'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── 1. 헤더 및 종합 상태 대시보드 ── */}
       <div className={`p-6 rounded-3xl border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors ${
         isMainnetActive 
@@ -209,7 +306,7 @@ export default function BlockchainContractControlCenter() {
           </button>
 
           <button
-            onClick={() => { fetchNetwork(); fetchContractsData(); }}
+            onClick={() => { fetchNetwork(); fetchContractsData(); fetchCircuitData(); }}
             disabled={isLoadingNetwork || isLoadingContracts}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 cursor-pointer transition-colors"
           >
@@ -225,6 +322,28 @@ export default function BlockchainContractControlCenter() {
             <ShieldCheck className={`w-4 h-4 ${isAuditingAll ? 'animate-spin text-amber-300' : 'text-emerald-300'}`} />
             <span>{isAuditingAll ? '전수 무결성 대조 중...' : '전사 위·변조 전수 스캔 (Audit All)'}</span>
           </button>
+
+          {/* 비상 서킷 브레이커 수동 제어 버튼 (동결/해제 토글) */}
+          {circuitStatus?.isFrozen ? (
+            <button
+              onClick={handleUnfreeze}
+              disabled={isUpdatingCircuit}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold border border-emerald-400 cursor-pointer transition-all shadow-md shadow-emerald-950/40 press-scale whitespace-nowrap"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{isUpdatingCircuit ? '해제 중...' : '동결 즉시 해제'}</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleManualFreeze}
+              disabled={isUpdatingCircuit}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-950/60 hover:bg-red-900/80 text-red-300 text-xs font-bold border border-red-700/60 cursor-pointer transition-all hover:text-white press-scale whitespace-nowrap"
+              title="비정상 트래픽 발생 시 온체인 앵커링을 수동으로 긴급 정지합니다."
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+              <span>{isUpdatingCircuit ? '처리 중...' : '긴급 정지 (Freeze)'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -261,26 +380,30 @@ export default function BlockchainContractControlCenter() {
           </div>
         </div>
 
-        {/* 릴레이어 지갑 가스비 */}
+        {/* 릴레이어 지갑 가스비 & 서킷 브레이커 가드 */}
         <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="flex items-center gap-1.5">
               <Cpu className="w-3.5 h-3.5 text-purple-400" />
               온체인 릴레이어 가스
             </span>
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-              networkStatus?.hasRelayerKey ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+              circuitStatus?.isFrozen
+                ? 'bg-red-950 text-red-300 border-red-700 font-mono animate-pulse'
+                : networkStatus?.hasRelayerKey 
+                  ? 'bg-emerald-950 text-emerald-300 border-emerald-800' 
+                  : 'bg-amber-950 text-amber-300 border-amber-800'
             }`}>
-              {networkStatus?.hasRelayerKey ? '릴레이어 가동중' : '암호학적 안전망 모드'}
+              {circuitStatus?.isFrozen ? '🚨 비상 동결됨' : (networkStatus?.hasRelayerKey ? '릴레이어 가동중' : '암호학적 안전망 모드')}
             </span>
           </div>
           <div className="text-sm font-black text-white truncate">
             {networkStatus?.relayerBalance || '무료 Amoy 네트워크 (0원 가스)'}
           </div>
           <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1.5 truncate">
-            <span>릴레이어 주소</span>
-            <span className="font-mono text-[10px] text-slate-300">
-              {networkStatus?.relayerAddress ? `${networkStatus.relayerAddress.slice(0, 6)}...${networkStatus.relayerAddress.slice(-4)}` : '내장 공증 스마트컨트랙트'}
+            <span>보안 서킷브레이커</span>
+            <span className={`text-[10px] font-bold ${circuitStatus?.isFrozen ? 'text-red-400 font-mono' : 'text-emerald-400'}`}>
+              {circuitStatus?.isFrozen ? `일시정지 중 (가스비 방어)` : '정상 보호 중 (어뷰징 감시)'}
             </span>
           </div>
         </div>

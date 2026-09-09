@@ -3,16 +3,20 @@ import { checkRateLimit } from './rate-limiter.js';
 
 // Supabase 클라이언트 생성 (서버 환경 변수 사용)
 // 보안을 위해 서비스 롤 키를 사용하여 어드민 권한으로 확인
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function verifyAuth(req, requiredRole = null) {
   // Authorization 헤더에서 Bearer 토큰 추출
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new Error('인증 토큰이 누락되었습니다.');
+  }
+
+  if (!process.env.SUPABASE_URL && !process.env.VITE_SUPABASE_URL) {
+    throw new Error('서버 Supabase 설정이 구성되지 않았습니다.');
   }
 
   const token = authHeader.split(' ')[1];

@@ -45,6 +45,13 @@ function contractToRow(c: ElectronicContract) {
     timestamp_token: c.timestampToken || null,
     blockchain_anchor: c.blockchainAnchor || null,
     remote_sign_token: c.remoteSignToken || null,
+    vat_included: c.vatIncluded ?? false,
+    fee_account: c.feeAccount || null,
+    court_cost_account: c.courtCostAccount || null,
+    same_as_fee_account: c.sameAsFeeAccount ?? true,
+    success_fee: c.successFee || null,
+    case_category: c.caseCategory || 'individual_rehab',
+    linked_diagnosis_id: c.linkedDiagnosisId || null,
     created_at: c.createdAt || new Date().toISOString(),
     updated_at: c.updatedAt || new Date().toISOString(),
   };
@@ -76,6 +83,13 @@ function rowToContract(row: any): ElectronicContract {
     timestampToken: row.timestamp_token,
     blockchainAnchor: row.blockchain_anchor,
     remoteSignToken: row.remote_sign_token,
+    vatIncluded: row.vat_included ?? false,
+    feeAccount: row.fee_account || undefined,
+    courtCostAccount: row.court_cost_account || undefined,
+    sameAsFeeAccount: row.same_as_fee_account ?? true,
+    successFee: row.success_fee || undefined,
+    caseCategory: row.case_category || 'individual_rehab',
+    linkedDiagnosisId: row.linked_diagnosis_id || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -275,8 +289,15 @@ export function createContract(data: {
   lawFirmName: string;
   assignedLawyerId?: string;
   totalFee?: number;
-  courtCosts?: { creditorCount: number; deliveryFee: number; stampFee: number; miscFee: number };
+  courtCosts?: CourtCosts;
   feeSchedule?: FeeInstallment[];
+  vatIncluded?: boolean;
+  feeAccount?: BankAccountInfo;
+  courtCostAccount?: BankAccountInfo;
+  sameAsFeeAccount?: boolean;
+  successFee?: SuccessFeeAgreement;
+  caseCategory?: 'individual_rehab' | 'individual_bankruptcy' | 'other';
+  linkedDiagnosisId?: string;
   isBusiness?: boolean;
   businessInfo?: {
     businessNumber: string;
@@ -307,8 +328,25 @@ export function createContract(data: {
     lawFirmName: data.lawFirmName,
     assignedLawyerId: data.assignedLawyerId,
     totalFee: data.totalFee ?? 0,
-    courtCosts: data.courtCosts ?? { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0 },
+    courtCosts: data.courtCosts ? {
+      creditorCount: data.courtCosts.creditorCount ?? 0,
+      deliveryFee: data.courtCosts.deliveryFee ?? 0,
+      stampFee: data.courtCosts.stampFee ?? 30000,
+      miscFee: data.courtCosts.miscFee ?? 0,
+      debtCertFee: data.courtCosts.debtCertFee ?? 0,
+      debtCertUnitFee: data.courtCosts.debtCertUnitFee ?? 15000,
+      deliveryUnitFee: data.courtCosts.deliveryUnitFee ?? 5200,
+      provisionalDeposit: data.courtCosts.provisionalDeposit ?? 0,
+      isCustomized: data.courtCosts.isCustomized ?? false,
+    } : { creditorCount: 0, deliveryFee: 0, stampFee: 30000, miscFee: 0, debtCertFee: 0, debtCertUnitFee: 15000, deliveryUnitFee: 5200, provisionalDeposit: 0 },
     feeSchedule: data.feeSchedule ?? [],
+    vatIncluded: data.vatIncluded ?? false,
+    feeAccount: data.feeAccount,
+    courtCostAccount: data.courtCostAccount,
+    sameAsFeeAccount: data.sameAsFeeAccount ?? true,
+    successFee: data.successFee,
+    caseCategory: data.caseCategory || 'individual_rehab',
+    linkedDiagnosisId: data.linkedDiagnosisId,
     documents,
     status: 'drafting',
     contractDate: new Date().toISOString().split('T')[0],
@@ -316,7 +354,7 @@ export function createContract(data: {
     businessInfo: data.businessInfo,
     authorityStatus: data.isBusiness ? (data.businessInfo?.ntsStatus === 'VALID' ? 'REPRESENTATIVE_VERIFIED' : 'UNVERIFIED') : 'REPRESENTATIVE_VERIFIED',
     remoteSignToken,
-    auditTrail: [{ action: '계약서 작성 시작 (4대 법적 효력 검증 준비)', timestamp: now, actor: 'lawyer' }],
+    auditTrail: [{ action: '계약서 작성 시작 (회생·파산 특화 전자계약)', timestamp: now, actor: 'lawyer' }],
     createdAt: now,
     updatedAt: now,
   };
@@ -438,12 +476,25 @@ ${firmName}은 위임 사무 처리를 위해 아래 의뢰인의 신분증 사�
   return templates[type] || `${CONTRACT_DOC_TYPES[type]?.label || '문서'}\n\n본 문서의 내용을 확인하고 동의합니다.`;
 }
 
-// ── 법원 비용 자동 산출 ──
+// ── 법원 비용 및 실비 자동 산출 ──
 
-export function calculateCourtCosts(creditorCount: number): { deliveryFee: number; stampFee: number; total: number } {
-  const deliveryFee = creditorCount * 5200; // 2026년 기준 송달료
-  const stampFee = 30000; // 개인회생 기본 인지대
-  return { deliveryFee, stampFee, total: deliveryFee + stampFee };
+export function calculateCourtCosts(
+  creditorCount: number,
+  debtCertUnitFee: number = 15000,
+  deliveryUnitFee: number = 5200,
+  baseStampFee: number = 30000
+): { deliveryFee: number; stampFee: number; debtCertFee: number; total: number; courtOnlyTotal: number } {
+  const deliveryFee = creditorCount * deliveryUnitFee; // 2026년 기준 송달료 (채권자당 5,200원 기본, 사무실별 수정 가능)
+  const stampFee = baseStampFee; // 2026년 기준 인지대 (30,000원 기본, 전자소송 27,000원 등 수정 가능)
+  const debtCertFee = creditorCount * debtCertUnitFee; // 부채증명서 발급 대행비 (채권자당 기본 15,000원, 수정 가능)
+  const courtOnlyTotal = deliveryFee + stampFee;
+  return { 
+    deliveryFee, 
+    stampFee, 
+    debtCertFee, 
+    courtOnlyTotal, 
+    total: courtOnlyTotal + debtCertFee 
+  };
 }
 
 // ── 분납 스케줄 자동 생성 ──

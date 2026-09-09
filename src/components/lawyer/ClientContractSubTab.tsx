@@ -83,7 +83,11 @@ export default function ClientContractSubTab({
         creditorCount,
         deliveryFee: costs.deliveryFee,
         stampFee: costs.stampFee,
-        miscFee: 0
+        miscFee: 0,
+        debtCertFee: costs.debtCertFee,
+        debtCertUnitFee: 15000,
+        deliveryUnitFee: 5200,
+        provisionalDeposit: 0,
       },
     });
 

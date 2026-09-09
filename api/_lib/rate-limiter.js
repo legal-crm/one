@@ -165,3 +165,169 @@ export function withMultiTierRateLimit(handler, tier = RATE_LIMIT_TIERS.STRICT) 
     return handler(req, res);
   };
 }
+
+// ─────────────────────────────────────────────────────────────
+// [SECURITY Circuit Breaker] 글로벌 비상 일시 정지(Emergency Freeze) 엔진
+// 특정 핵심 API(예: 블록체인 온체인 앵커링)에 무리한 비인가 호출이 집중될 때
+// RPC 노드 연결 및 트랜잭션 전송을 전면 동결하여 가스비와 시스템을 보호합니다.
+// ─────────────────────────────────────────────────────────────
+
+const circuitBreakers = new Map();
+
+/**
+ * 특정 시스템 키의 현재 서킷 브레이커 동결 상태를 확인합니다.
+ */
+export function checkCircuitBreaker(systemKey) {
+  const now = Date.now();
+  const cb = circuitBreakers.get(systemKey);
+  if (!cb) return { isFrozen: false, retryAfter: 0, reason: null };
+
+  if (cb.isFrozen && now < cb.frozenUntil) {
+    const retryAfter = Math.ceil((cb.frozenUntil - now) / 1000);
+    return {
+      isFrozen: true,
+      retryAfter,
+      frozenUntil: new Date(cb.frozenUntil).toISOString(),
+      reason: cb.reason,
+      failureCount: cb.failureTimestamps.length,
+    };
+  }
+
+  // 동결 기간이 만료되었으면 자동으로 정상 복구
+  if (cb.isFrozen && now >= cb.frozenUntil) {
+    cb.isFrozen = false;
+    cb.frozenUntil = 0;
+    cb.reason = null;
+    cb.failureTimestamps = [];
+    circuitBreakers.set(systemKey, cb);
+    console.info(`[SECURITY CircuitBreaker] System ${systemKey} auto-recovered from emergency freeze.`);
+  }
+
+  return { isFrozen: false, retryAfter: 0, reason: null };
+}
+
+/**
+ * 비인가 호출, 비정상 해시 공격, 인증 실패 등을 기록하고 임계치 초과 시 서킷 브레이커를 자동 발동합니다.
+ */
+export function recordCircuitFailure(
+  systemKey, 
+  threshold = 10, 
+  freezeDurationMs = 30 * 60 * 1000, 
+  reason = '비정상적인 무리한 호출 및 보안 위반 급증 감지'
+) {
+  const now = Date.now();
+  let cb = circuitBreakers.get(systemKey) || {
+    isFrozen: false,
+    frozenUntil: 0,
+    reason: null,
+    failureTimestamps: [],
+  };
+
+  // 10분 윈도우 내의 실패 타임스탬프만 유지
+  const windowMs = 10 * 60 * 1000;
+  cb.failureTimestamps = (cb.failureTimestamps || []).filter(t => now - t < windowMs);
+  cb.failureTimestamps.push(now);
+
+  console.warn(`[SECURITY CircuitBreaker Failure] ${systemKey}: ${cb.failureTimestamps.length}/${threshold} failures in 10m`);
+
+  // 임계치(기본 10회) 초과 시 서킷 브레이커 즉시 발동
+  if (cb.failureTimestamps.length >= threshold && !cb.isFrozen) {
+    cb.isFrozen = true;
+    cb.frozenUntil = now + freezeDurationMs;
+    cb.reason = `${reason} (10분 내 ${cb.failureTimestamps.length}회 비정상 호출 감지)`;
+    circuitBreakers.set(systemKey, cb);
+
+    const retryAfter = Math.ceil(freezeDurationMs / 1000);
+    console.error(`🚨 [SECURITY CircuitBreaker TRIGGERED] System ${systemKey} is FROZEN for ${retryAfter}s! Reason: ${cb.reason}`);
+
+    return {
+      triggered: true,
+      isFrozen: true,
+      retryAfter,
+      reason: cb.reason,
+    };
+  }
+
+  circuitBreakers.set(systemKey, cb);
+  return {
+    triggered: false,
+    isFrozen: cb.isFrozen,
+    currentFailures: cb.failureTimestamps.length,
+    threshold,
+  };
+}
+
+/**
+ * 관리자가 직접 수동으로 비상 정지(동결)를 발동합니다.
+ */
+export function manualFreeze(systemKey, durationMs = 30 * 60 * 1000, reason = '관리자에 의한 수동 긴급 정지 발동') {
+  const now = Date.now();
+  let cb = circuitBreakers.get(systemKey) || {
+    isFrozen: false,
+    frozenUntil: 0,
+    reason: null,
+    failureTimestamps: [],
+  };
+
+  cb.isFrozen = true;
+  cb.frozenUntil = now + durationMs;
+  cb.reason = reason;
+  circuitBreakers.set(systemKey, cb);
+
+  const retryAfter = Math.ceil(durationMs / 1000);
+  console.warn(`[SECURITY CircuitBreaker Manual Freeze] System ${systemKey} manually frozen for ${retryAfter}s. Reason: ${reason}`);
+
+  return {
+    isFrozen: true,
+    retryAfter,
+    frozenUntil: new Date(cb.frozenUntil).toISOString(),
+    reason,
+  };
+}
+
+/**
+ * 관리자가 서킷 브레이커를 즉시 해제하고 시스템을 정상화합니다.
+ */
+export function manualUnfreeze(systemKey) {
+  let cb = circuitBreakers.get(systemKey) || {
+    isFrozen: false,
+    frozenUntil: 0,
+    reason: null,
+    failureTimestamps: [],
+  };
+
+  cb.isFrozen = false;
+  cb.frozenUntil = 0;
+  cb.reason = null;
+  cb.failureTimestamps = [];
+  circuitBreakers.set(systemKey, cb);
+
+  console.info(`[SECURITY CircuitBreaker Manual Unfreeze] System ${systemKey} has been UNFROZEN by administrator.`);
+
+  return {
+    isFrozen: false,
+    message: '서킷 브레이커가 해제되어 시스템이 정상 가동 상태로 복구되었습니다.',
+  };
+}
+
+/**
+ * 서킷 브레이커 전체 상태 요약 조회 (관리자 대시보드 모니터링용)
+ */
+export function getCircuitBreakerStatus(systemKey) {
+  const check = checkCircuitBreaker(systemKey);
+  const cb = circuitBreakers.get(systemKey);
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  const recentFailures = (cb?.failureTimestamps || []).filter(t => now - t < windowMs).length;
+
+  return {
+    systemKey,
+    isFrozen: check.isFrozen,
+    retryAfter: check.retryAfter,
+    frozenUntil: check.frozenUntil || null,
+    reason: check.reason || null,
+    recentFailures,
+    failureThreshold: 10,
+    statusText: check.isFrozen ? 'EMERGENCY_FROZEN' : 'NORMAL_PROTECTED',
+  };
+}

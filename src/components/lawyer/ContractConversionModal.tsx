@@ -106,7 +106,11 @@ export default function ContractConversionModal({
           creditorCount,
           deliveryFee: courtCosts.deliveryFee,
           stampFee: courtCosts.stampFee,
-          miscFee: 0
+          miscFee: 0,
+          debtCertFee: courtCosts.debtCertFee,
+          debtCertUnitFee: 15000,
+          deliveryUnitFee: 5200,
+          provisionalDeposit: 0,
         },
         feeSchedule
       });

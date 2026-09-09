@@ -8,7 +8,16 @@ import { createPublicClient, createWalletClient, http, formatEther } from 'viem'
 import { polygon, polygonAmoy } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import crypto from 'crypto';
-import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { 
+  checkMultiTierRateLimit, 
+  RATE_LIMIT_TIERS,
+  checkCircuitBreaker,
+  recordCircuitFailure,
+  manualFreeze,
+  manualUnfreeze,
+  getCircuitBreakerStatus
+} from './_lib/rate-limiter.js';
+import { verifyAuth, supabase } from './_lib/auth-middleware.js';
 
 function setCorsHeaders(req, res) {
   const allowedOrigins = [
@@ -81,14 +90,52 @@ export default async function handler(req, res) {
   // 액션 파싱
   let action = req.query?.action;
   if (!action && req.body?.action) action = req.body.action;
-  if (!action) {
+  if (!action && req.url) {
     try {
       const url = new URL(req.url, 'https://mykim.kr');
-      const parts = url.pathname.replace(/^\/api\/contract\/?/, '').split('/').filter(Boolean);
-      if (parts.length > 0) action = parts[0];
+      action = url.searchParams.get('action');
+      if (!action) {
+        const parts = url.pathname.replace(/^\/api\/contract\/?/, '').split('/').filter(Boolean);
+        if (parts.length > 0) action = parts[0];
+      }
     } catch (_) {}
   }
   if (!action) action = 'status';
+
+  // ─────────────────────────────────────────────────────────────
+  // 0. [CIRCUIT BREAKER CONTROL & STATUS] 서킷 브레이커 상태 및 관리자 수동 제어
+  // ─────────────────────────────────────────────────────────────
+  if (action === 'circuit-status') {
+    const status = getCircuitBreakerStatus('blockchain_anchor');
+    return res.status(200).json({ ok: true, data: status });
+  }
+
+  if (action === 'freeze') {
+    if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    try {
+      const user = await verifyAuth(req, 'admin');
+      const { durationMs, reason } = req.body || {};
+      const result = manualFreeze(
+        'blockchain_anchor', 
+        durationMs || (30 * 60 * 1000), 
+        reason || `관리자(${user.email || user.id})에 의한 수동 긴급 정지 발동`
+      );
+      return res.status(200).json({ ok: true, data: result });
+    } catch (authErr) {
+      return res.status(403).json({ ok: false, error: authErr.message || '통합 관리자 권한이 필요합니다.' });
+    }
+  }
+
+  if (action === 'unfreeze') {
+    if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    try {
+      await verifyAuth(req, 'admin');
+      const result = manualUnfreeze('blockchain_anchor');
+      return res.status(200).json({ ok: true, data: result });
+    } catch (authErr) {
+      return res.status(403).json({ ok: false, error: authErr.message || '통합 관리자 권한이 필요합니다.' });
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────
   // 1. [STATUS] 블록체인 노드 연결 및 릴레이어 지갑 상태 조회
@@ -149,14 +196,77 @@ export default async function handler(req, res) {
   if (action === 'anchor') {
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
 
-    const { contractId, documentHash, clientName, lawyerName } = req.body || {};
+    // [SECURITY 1. Circuit Breaker] 비상 일시 정지(동결) 상태 선제 검사
+    const cbCheck = checkCircuitBreaker('blockchain_anchor');
+    if (cbCheck.isFrozen) {
+      console.warn(`[SECURITY CircuitBreaker Active] Anchor rejected for IP ${ip}. Freeze expires in ${cbCheck.retryAfter}s`);
+      return res.status(503).json({
+        ok: false,
+        error: `[보안 긴급 정지] 비정상적인 무리한 호출 감지로 블록체인 온체인 각인이 일시 동결되었습니다. (약 ${Math.ceil(cbCheck.retryAfter / 60)}분 후 자동 복구 또는 관리자 해제 필요)`,
+        circuitBreaker: true,
+        frozen: true,
+        retryAfter: cbCheck.retryAfter,
+        reason: cbCheck.reason,
+      });
+    }
+
+    const { contractId, documentHash, clientName, lawyerName, remoteSignToken } = req.body || {};
+
+    // [SECURITY 2. Authentication Guard] 권한 검증: 관리자/변호사 세션 또는 정당한 1회용 원격서명 토큰
+    let isAuthorized = false;
+    let authUser = null;
+
+    // A. Bearer 토큰(Supabase 세션) 확인
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try {
+        authUser = await verifyAuth(req);
+        if (authUser) isAuthorized = true;
+      } catch (authErr) {
+        console.warn(`[Contract Anchor Auth Failed] IP ${ip}:`, authErr.message);
+      }
+    }
+
+    // B. 비로그인 원격 서명(ClientRemoteSign)인 경우: remoteSignToken과 contractId 검증
+    if (!isAuthorized && remoteSignToken && contractId) {
+      try {
+        const { data: contractRow, error: cErr } = await supabase
+          .from('electronic_contracts')
+          .select('id, remote_sign_token')
+          .eq('id', contractId)
+          .maybeSingle();
+
+        if (!cErr && contractRow && contractRow.remote_sign_token === remoteSignToken) {
+          isAuthorized = true;
+        }
+      } catch (dbErr) {
+        console.warn(`[Contract RemoteSignToken DB Check Error]:`, dbErr.message);
+      }
+    }
+
+    // C. 무인가 요청 차단 및 서킷 브레이커 위반 누적
+    if (!isAuthorized) {
+      const penalty = recordCircuitFailure(
+        'blockchain_anchor', 
+        10, 
+        30 * 60 * 1000, 
+        '무인가 온체인 앵커링 공격 시도 급증 감지'
+      );
+      return res.status(401).json({
+        ok: false,
+        error: '접근 권한이 없습니다. 유효한 로그인 세션(Authorization) 또는 1회용 전자서명 토큰이 필요합니다.',
+        circuitBreakerTriggered: penalty.triggered,
+      });
+    }
+
+    // [SECURITY 3. Input Validation] contractId 및 64자리 SHA-256 해시 엄격 검증
     if (!contractId || !documentHash) {
       return res.status(400).json({ ok: false, error: 'contractId와 documentHash는 필수입니다.' });
     }
 
     const cleanHash = documentHash.replace(/^0x/, '').toLowerCase();
-    if (cleanHash.length !== 64) {
-      return res.status(400).json({ ok: false, error: '유효한 32바이트(64자리) SHA-256 해시여야 합니다.' });
+    if (cleanHash.length !== 64 || !/^[0-9a-f]{64}$/.test(cleanHash)) {
+      recordCircuitFailure('blockchain_anchor', 10, 30 * 60 * 1000, '비정상 해시 문자열 공격 시도');
+      return res.status(400).json({ ok: false, error: '유효한 32바이트(64자리) 16진수 SHA-256 해시여야 합니다.' });
     }
 
     const { isMainnet, currentChain, networkName, explorerBase, rpcUrl, notaryAddress, client } = resolveNetworkConfig(req);

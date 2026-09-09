@@ -6,6 +6,7 @@
 import QRCode from 'qrcode';
 import type { ElectronicContract, BlockchainAnchorInfo } from '../types';
 import { calculateSha256 } from './integrityService';
+import { supabase } from '../supabaseClient';
 
 // 공인 블록체인 문서 공증 스마트 컨트랙트 규격
 export const POLYGON_NOTARY_CONTRACT = '0x3a82F56D2dE8B90b5C60105E7bFe7eA5C808E5C1';
@@ -158,14 +159,23 @@ export async function anchorContractToBlockchain(
 
   // 1. 서버리스 온체인 릴레이어 엔드포인트 호출 (/api/contract?action=anchor)
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+    } catch (_) {}
+
     const response = await fetch('/api/contract?action=anchor', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         contractId: contract.id,
         documentHash: finalHash,
         clientName: contract.clientName,
         lawyerName: contract.lawyerName,
+        remoteSignToken: contract.remoteSignToken || undefined,
         network: config.network,
         rpcUrl: config.rpcUrl || undefined,
         notaryContract: notaryContract,
@@ -331,4 +341,90 @@ export function verifyContractBlockchainAnchor(
     hashMatched: true,
     isRealOnChain: anchor.isRealOnChain,
   };
+}
+
+// ─────────────────────────────────────────────────────────────
+// [SECURITY Circuit Breaker Client] 서킷 브레이커 상태 조회 및 관리자 제어 API
+// ─────────────────────────────────────────────────────────────
+
+export interface CircuitBreakerStatus {
+  systemKey: string;
+  isFrozen: boolean;
+  retryAfter: number;
+  frozenUntil: string | null;
+  reason: string | null;
+  recentFailures: number;
+  failureThreshold: number;
+  statusText: 'EMERGENCY_FROZEN' | 'NORMAL_PROTECTED';
+}
+
+/**
+ * 서킷 브레이커 현재 동결 상태 조회
+ */
+export async function fetchCircuitBreakerStatus(): Promise<CircuitBreakerStatus | null> {
+  try {
+    const res = await fetch('/api/contract?action=circuit-status');
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data as CircuitBreakerStatus;
+  } catch (e) {
+    console.warn('[CircuitBreaker] 상태 조회 실패:', e);
+    return null;
+  }
+}
+
+/**
+ * 관리자 전용: 온체인 앵커링 긴급 수동 정지 (Freeze)
+ */
+export async function freezeCircuitBreaker(
+  reason: string = '관리자에 의한 수동 긴급 정지 발동',
+  durationMs: number = 30 * 60 * 1000
+): Promise<{ ok: boolean; error?: string; data?: any }> {
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    const res = await fetch('/api/contract?action=freeze', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ reason, durationMs }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.ok) {
+      return { ok: false, error: json.error || '긴급 정지 요청 실패' };
+    }
+    return { ok: true, data: json.data };
+  } catch (e: any) {
+    return { ok: false, error: e.message || '네트워크 오류' };
+  }
+}
+
+/**
+ * 관리자 전용: 서킷 브레이커 즉시 해제 및 정상 복구 (Unfreeze)
+ */
+export async function unfreezeCircuitBreaker(): Promise<{ ok: boolean; error?: string; data?: any }> {
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    const res = await fetch('/api/contract?action=unfreeze', {
+      method: 'POST',
+      headers,
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.ok) {
+      return { ok: false, error: json.error || '동결 해제 요청 실패' };
+    }
+    return { ok: true, data: json.data };
+  } catch (e: any) {
+    return { ok: false, error: e.message || '네트워크 오류' };
+  }
 }

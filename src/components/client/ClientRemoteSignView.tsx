@@ -52,6 +52,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false); // 리걸플로 벤치마킹: 최종 체결 확정 컨펌 팝업
 
   // 문서 상세 펼침
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
@@ -348,7 +349,24 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
   }
 
   const includedDocs = contract.documents.filter(d => d.included);
-  const feeFormatted = ((contract.totalFee || 0) * 10000).toLocaleString();
+  const baseFee = (contract.totalFee || 0) * 10000;
+  const vatAmount = contract.vatIncluded ? Math.round(baseFee * 0.1) : 0;
+  const totalFeeWithVat = baseFee + vatAmount;
+
+  const credCount = contract.courtCosts?.creditorCount || 0;
+  const deliveryFee = contract.courtCosts?.deliveryFee || 0;
+  const stampFee = contract.courtCosts?.stampFee || 0;
+  const debtCertFee = contract.courtCosts?.debtCertFee || 0;
+  const miscFee = contract.courtCosts?.miscFee || 0;
+  const provisionalDeposit = contract.courtCosts?.provisionalDeposit || 0;
+  const totalCourtCosts = deliveryFee + stampFee + debtCertFee + miscFee + provisionalDeposit;
+  const grandTotal = totalFeeWithVat + totalCourtCosts;
+
+  // 4단계 서명 진행 상태 계산 (리걸플로 벤치마킹)
+  const isStep1Done = true; // 계약내용 확인
+  const isStep2Done = agreePrivacy && agreeThirdParty && agreeProcedure && agreeLegalEffect; // 약관동의
+  const isStep3Done = verified; // 스마트폰 본인인증
+  const isStep4Done = Boolean(signatureData); // 전자서명
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6">
@@ -358,7 +376,7 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
           <div className="flex items-center gap-2 text-brand mb-2">
             <ShieldCheck className="w-5 h-5 text-[#1E3A5F]" />
-            <span className="text-xs font-black tracking-wider uppercase text-[#1E3A5F]">안전 전자위임계약</span>
+            <span className="text-xs font-black tracking-wider uppercase text-[#1E3A5F]">안전 모바일 전자위임계약</span>
           </div>
           <h1 className="text-xl font-black text-slate-900">
             {contract.lawFirmName} 위임계약서 서명
@@ -368,7 +386,32 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           </p>
         </div>
 
-        {/* 계약 기본 정보 카드 */}
+        {/* 4단계 스텝 인디케이터 (리걸플로 벤치마킹 그림 4-4) */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
+          <div className="grid grid-cols-4 gap-1 text-center">
+            {[
+              { step: 1, label: '계약내용', done: isStep1Done },
+              { step: 2, label: '약관동의', done: isStep2Done },
+              { step: 3, label: '본인인증', done: isStep3Done },
+              { step: 4, label: '전자서명', done: isStep4Done },
+            ].map((s) => (
+              <div key={s.step} className="flex flex-col items-center">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                  s.done 
+                    ? 'bg-emerald-600 text-white shadow-2xs' 
+                    : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {s.done ? <Check className="w-4 h-4" /> : s.step}
+                </div>
+                <span className={`text-[11px] font-bold mt-1 ${s.done ? 'text-slate-800' : 'text-slate-400'}`}>
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 계약 기본 정보 및 상세 실비 요약 카드 */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
           <h3 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-2 flex items-center justify-between">
             <span>계약 요약 정보</span>
@@ -393,15 +436,60 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
               </span>
             </div>
 
-            <div className="col-span-2 bg-slate-50 p-3 rounded-xl flex items-center justify-between">
-              <div>
-                <span className="text-slate-400 block text-[11px]">총 수임료</span>
-                <span className="font-black text-slate-900 text-base">{feeFormatted}원</span>
+            <div className="col-span-2 bg-slate-50 p-3.5 rounded-xl space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">변호사 보수 (수임료)</span>
+                  <span className="font-black text-slate-900 text-base">{totalFeeWithVat.toLocaleString()}원</span>
+                  {contract.vatIncluded && <span className="text-[10px] text-indigo-700 ml-1 font-bold">(VAT 포함)</span>}
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-400 block text-[11px]">분할 납부</span>
+                  <span className="font-bold text-slate-700">{contract.feeSchedule.length}회차 분납</span>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-slate-400 block text-[11px]">분할 납부</span>
-                <span className="font-bold text-slate-700">{contract.feeSchedule.length}회차 분납</span>
+
+              {/* 법원비용 및 실비 상세 (리걸플로 벤치마킹) */}
+              <div className="text-[11px] text-slate-600 space-y-1 pt-1">
+                <div className="flex justify-between">
+                  <span>송달료 (법원 실비, 채권자 {credCount}곳):</span>
+                  <span className="font-bold">{deliveryFee.toLocaleString()}원</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>인지대 (정부수입인지):</span>
+                  <span className="font-bold">{stampFee.toLocaleString()}원</span>
+                </div>
+                {debtCertFee > 0 && (
+                  <div className="flex justify-between text-indigo-900 font-bold">
+                    <span>부채증명서 발급 대행비 ({credCount}곳):</span>
+                    <span>{debtCertFee.toLocaleString()}원</span>
+                  </div>
+                )}
+                {provisionalDeposit > 0 && (
+                  <div className="flex justify-between">
+                    <span>변제예납금 (법원 보관금):</span>
+                    <span className="font-bold">{provisionalDeposit.toLocaleString()}원</span>
+                  </div>
+                )}
+                {miscFee > 0 && (
+                  <div className="flex justify-between">
+                    <span>기타 공과금 및 실비:</span>
+                    <span className="font-bold">{miscFee.toLocaleString()}원</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-1 border-t border-slate-200 text-xs font-black text-[#1E3A5F]">
+                  <span>총 공급대가 (수임료 + 실비 합계):</span>
+                  <span>{grandTotal.toLocaleString()}원</span>
+                </div>
               </div>
+
+              {/* 입금 계좌 안내 */}
+              {contract.feeAccount && (
+                <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500">
+                  <span>수임료 입금계좌: </span>
+                  <strong className="text-slate-700">{contract.feeAccount.bankName} {contract.feeAccount.accountNumber} ({contract.feeAccount.accountHolder})</strong>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -869,11 +957,25 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
           )}
         </div>
 
-        {/* 최종 제출 버튼 */}
+        {/* 최종 제출 버튼 (리걸플로 벤치마킹: 컨펌 팝업 트리거) */}
         <div className="pt-2">
           <button
             type="button"
-            onClick={handleSubmitSignature}
+            onClick={() => {
+              if (!verified) {
+                toast.error('스마트폰 본인인증을 먼저 완료해 주세요.');
+                return;
+              }
+              if (!agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect) {
+                toast.error('4대 법적 필수 약관에 모두 동의해 주세요.');
+                return;
+              }
+              if (!signatureData) {
+                toast.error('자필 서명을 먼저 입력해 주세요.');
+                return;
+              }
+              setShowConfirmModal(true);
+            }}
             disabled={submitting || !verified || !signatureData || !agreePrivacy || !agreeThirdParty || !agreeProcedure || !agreeLegalEffect}
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold rounded-xl text-sm cursor-pointer shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-h-[48px]"
           >
@@ -893,6 +995,57 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
             제출 시 전자서명법 및 관련 법령에 따라 법적 구속력을 가지는 계약이 체결됩니다.
           </p>
         </div>
+
+        {/* 리걸플로 벤치마킹: 계약 최종 확정 확인 팝업 모달 */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4 animate-scaleUp">
+              <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto">
+                <Lock className="w-6 h-6 text-[#1E3A5F]" />
+              </div>
+              
+              <div className="text-center space-y-1.5">
+                <h3 className="text-lg font-black text-slate-900">계약을 최종 확정하시겠습니까?</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  위임인 <strong className="text-slate-800">{contract.clientName}</strong>님의 본인인증 및 자필 서명으로 사건위임계약이 최종 체결됩니다.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                <p className="font-bold text-slate-800 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>법적 효력 및 사후 위·변조 방지 안내</span>
+                </p>
+                <p className="text-slate-500 leading-normal">
+                  체결 완료 후에는 전자서명법 제3조 규정에 따라 계약 내용의 수정이 영구적으로 불가(Lock)하며, 분산원장에 해시가 각인됩니다.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={submitting}
+                  className="flex-1 py-3 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer transition-colors"
+                >
+                  취소 (다시 확인)
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowConfirmModal(false);
+                    await handleSubmitSignature();
+                  }}
+                  disabled={submitting}
+                  className="flex-1 py-3 text-xs font-bold text-white bg-[#1E3A5F] hover:bg-[#162d4a] rounded-xl cursor-pointer shadow-md transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>계약 확정 체결</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 정식 법률 조항 전문 팝업 모달 */}
         <LegalContractTermsModal
