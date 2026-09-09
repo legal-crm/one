@@ -86,12 +86,38 @@ function rowToRequest(row: any): ConsultRequest {
 
 // ── 상담 요청 (ConsultRequest) 관리 ──
 
-export async function loadConsultRequests(clientId?: string): Promise<ConsultRequest[]> {
+export interface ConsultRequestFilter {
+  clientId?: string;
+  lawyerId?: string;
+  includeOpen?: boolean;
+  isAdmin?: boolean;
+}
+
+export async function loadConsultRequests(filter?: string | ConsultRequestFilter): Promise<ConsultRequest[]> {
+  const options: ConsultRequestFilter = typeof filter === 'string' 
+    ? { clientId: filter } 
+    : (filter || {});
+
+  // [ANTI-BOLA 보안 가드]
+  // clientId, lawyerId, isAdmin 중 아무런 스코프도 제공되지 않은 경우,
+  // 타인 상담 대량 유출(BOLA/IDOR)을 방지하기 위해 쿼리를 즉시 차단합니다.
+  if (!options.clientId && !options.lawyerId && !options.isAdmin) {
+    console.warn('[SECURITY Anti-BOLA] loadConsultRequests 호출 시 소유자 또는 역할 스코프가 지정되지 않아 쿼리가 차단되었습니다.');
+    return [];
+  }
+
   if (isSupabaseConfigured) {
     try {
       let query = supabase.from('consult_requests').select('*').order('created_at', { ascending: false });
-      if (clientId) {
-        query = query.eq('client_id', clientId);
+      
+      if (options.clientId) {
+        query = query.eq('client_id', options.clientId);
+      } else if (options.lawyerId) {
+        if (options.includeOpen) {
+          query = query.or(`selected_lawyer_id.eq.${options.lawyerId},accepted_lawyer_ids.cs.{${options.lawyerId}},and(status.eq.requested,request_type.eq.open)`);
+        } else {
+          query = query.or(`selected_lawyer_id.eq.${options.lawyerId},accepted_lawyer_ids.cs.{${options.lawyerId}}`);
+        }
       }
       
       const { data, error } = await query;
@@ -108,10 +134,19 @@ export async function loadConsultRequests(clientId?: string): Promise<ConsultReq
     }
   }
   
-  // LocalStorage Fallback
+  // LocalStorage Fallback (소유자 기반 스코프 필터링)
   const allRequests = getLocalData<ConsultRequest[]>(REQUESTS_STORAGE_KEY, []);
   return allRequests
-    .filter(r => !clientId || r.clientId === clientId)
+    .filter(r => {
+      if (options.clientId) return r.clientId === options.clientId;
+      if (options.lawyerId) {
+        const isAssigned = r.selectedLawyerId === options.lawyerId || (r.acceptedLawyerIds || []).includes(options.lawyerId);
+        const isOpen = options.includeOpen && r.status === 'requested' && r.requestType === 'open';
+        return isAssigned || isOpen;
+      }
+      if (options.isAdmin) return true;
+      return false;
+    })
     .filter(r => r.id !== 'req-1' && r.id !== 'req-2' && r.id !== 'req-3');
 }
 
@@ -175,14 +210,18 @@ export async function deleteConsultRequest(requestId: string): Promise<void> {
 // ── 상담 메시지 (ConsultMessage) 관리 ──
 
 export async function loadConsultMessages(requestIds?: string[]): Promise<ConsultMessage[]> {
+  // [ANTI-BOLA 보안 가드]
+  // 특정 상담 ID 목록이 제공되지 않은 경우, 전체 메시지 덤프를 방지하기 위해 빈 배열을 즉시 반환합니다.
+  if (!requestIds || requestIds.length === 0) {
+    return [];
+  }
+
   if (isSupabaseConfigured) {
     try {
-      let query = supabase.from('consult_messages').select('*');
-      if (requestIds && requestIds.length > 0) {
-        query = query.in('consult_request_id', requestIds);
-      }
-      
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from('consult_messages')
+        .select('*')
+        .in('consult_request_id', requestIds);
       
       if (error) {
         logSupabaseError('loadConsultMessages', error);
@@ -203,7 +242,7 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
   }
   
   const allMessages = getLocalData<ConsultMessage[]>(MESSAGES_STORAGE_KEY, []);
-  return allMessages.filter(m => !requestIds || requestIds.includes(m.consultRequestId));
+  return allMessages.filter(m => requestIds.includes(m.consultRequestId));
 }
 
 export async function saveConsultMessage(message: ConsultMessage): Promise<void> {

@@ -304,17 +304,37 @@ export default function App() {
     return [];
   });
 
-  // Async load from Supabase + 5초 간격 폴링 동기화
+  // Async load from Supabase + 5초 간격 폴링 동기화 (역할 및 본인 세션에 한정하여 BOLA 원천 차단)
   useEffect(() => {
     let isMounted = true;
 
     const syncFromDb = async () => {
       try {
-        const [dbRequests, dbMessages] = await Promise.all([
-          loadConsultRequests(),
-          loadConsultMessages(),
-        ]);
+        let dbRequests: ConsultRequest[] = [];
+        
+        if (currentRole === 'client') {
+          // [ANTI-BOLA] 의뢰인은 본인의 상담 요청만 조회
+          const currentClientId = secureGetItem('legal_crm_client_id') || 'client-temp';
+          dbRequests = await loadConsultRequests({ clientId: currentClientId });
+        } else if (currentRole === 'lawyer') {
+          // [ANTI-BOLA] 변호사는 본인에게 배정된 상담 + 신규 오픈 상담만 조회
+          const lawyerId = sessionStorage.getItem('legal_crm_lawyer_session') || undefined;
+          dbRequests = await loadConsultRequests({ lawyerId, includeOpen: true });
+        } else if (currentRole === 'admin') {
+          // [ANTI-BOLA] 관리자는 검증된 어드민 세션인 경우에만 조회
+          const adminSession = secureGetItem('legal_crm_admin_session');
+          if (adminSession) {
+            dbRequests = await loadConsultRequests({ isAdmin: true });
+          }
+        }
+
         if (!isMounted) return;
+
+        // 상담 메시지는 현재 사용자에게 인가된 상담 요청 ID들에 한해서만 로드
+        const reqIds = dbRequests.map(r => r.id);
+        const dbMessages = reqIds.length > 0 ? await loadConsultMessages(reqIds) : [];
+        if (!isMounted) return;
+
         if (dbRequests.length > 0) {
           _setRequests(prev => {
             const merged = mergeConsultRequests(prev, dbRequests);
@@ -342,7 +362,7 @@ export default function App() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [mergeConsultRequests, mergeConsultMessages]);
+  }, [mergeConsultRequests, mergeConsultMessages, currentRole]);
 
   const setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>> = React.useCallback((action) => {
     _setMessages(prev => {

@@ -1,5 +1,5 @@
-// api/lib/auth-middleware.js
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit } from './rate-limiter.js';
 
 // Supabase 클라이언트 생성 (서버 환경 변수 사용)
 // 보안을 위해 서비스 롤 키를 사용하여 어드민 권한으로 확인
@@ -36,11 +36,27 @@ export async function verifyAuth(req, requiredRole = null) {
 }
 
 export function withAuth(handler, options = {}) {
-  // 기존 핸들러를 감싸서 인증 로직 추가
+  // 기존 핸들러를 감싸서 인증 및 Rate Limit 로직 추가
   return async (req, res) => {
     // OPTIONS 요청(CORS 프리플라이트)은 인증 생략
     if (req.method === 'OPTIONS') {
       return handler(req, res);
+    }
+
+    // [ANTI-BOLA / ANTI-SCRAPING] Rate Limit 선제 적용 (분당 60회 기본)
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+    const path = req.url?.split('?')[0] || 'api';
+    const limit = checkRateLimit(`${ip}:${path}`, options.maxRequests || 60, options.windowMs || 60000);
+
+    res.setHeader('X-RateLimit-Limit', options.maxRequests || 60);
+    res.setHeader('X-RateLimit-Remaining', limit.remaining);
+
+    if (limit.isLimited) {
+      return res.status(429).json({
+        ok: false,
+        error: 'Too Many Requests: 요청 횟수가 초과되었습니다. 잠시 후 다시 시도해 주세요.'
+      });
     }
 
     try {
