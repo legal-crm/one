@@ -97,35 +97,57 @@ function generateId(): string {
   return `evt-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
 }
 
-/** 모든 일정 조회 (Supabase 우선, localStorage 폴백) */
-export async function getEvents(tenantId: string): Promise<CalendarEvent[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('calendar_events').select('*').eq('tenant_id', tenantId).order('date', { ascending: true });
-      if (error) logSupabaseError('getEvents', error);
-      else if (data) {
-        const events = data.map((row: any) => row.data || row);
-        saveToStorage(tenantId, events);
-        return events;
-      }
-    } catch (e) { logSupabaseError('getEvents (exception)', e); }
-  }
-  return loadFromStorage(tenantId);
-}
-
-/** 가시성 기반 필터링된 일정 조회 */
+/**
+ * 가시성 기반 안전 일정 조회 (Zero Over-fetching)
+ * 타인의 비공개 개인 일정(personal)이 네트워크 응답이나 localStorage에 절대 남지 않도록
+ * DB RLS와 런타임 권한 필터를 이중 적용하고, 인가된 일정만 로컬 캐시에 저장합니다.
+ */
 export async function getVisibleEvents(
   tenantId: string,
   userId: string,
   userRole: string
 ): Promise<CalendarEvent[]> {
-  const all = await getEvents(tenantId);
-  return all.filter(e => {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('date', { ascending: true });
+
+      if (error) {
+        logSupabaseError('getVisibleEvents', error);
+      } else if (data) {
+        const events = data
+          .map((row: any) => row.data || row)
+          .filter((e: CalendarEvent) => {
+            if (e.visibility === 'firm') return true;
+            if (e.visibility === 'lawyers') return userRole === 'OWNER' || userRole === 'LAWYER';
+            if (e.visibility === 'personal') return e.createdBy === userId;
+            return false;
+          });
+
+        // 로컬 스토리지에 타인 비공개 개인 일정이 유출되지 않도록 인가된 데이터만 저장
+        saveToStorage(tenantId, events);
+        return events;
+      }
+    } catch (e) {
+      logSupabaseError('getVisibleEvents (exception)', e);
+    }
+  }
+
+  const local = loadFromStorage(tenantId);
+  return local.filter(e => {
     if (e.visibility === 'firm') return true;
     if (e.visibility === 'lawyers') return userRole === 'OWNER' || userRole === 'LAWYER';
     if (e.visibility === 'personal') return e.createdBy === userId;
-    return true;
+    return false;
   });
+}
+
+/** @deprecated getVisibleEvents 사용 권장 (BOLA 방어) */
+export async function getEvents(tenantId: string): Promise<CalendarEvent[]> {
+  return getVisibleEvents(tenantId, '', 'OWNER');
 }
 
 /** 일정 삭제 권한 확인 */

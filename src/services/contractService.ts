@@ -92,10 +92,14 @@ export function loadContractsLocal(): ElectronicContract[] {
   }
 }
 
-export async function loadContracts(): Promise<ElectronicContract[]> {
+export async function loadContracts(scope?: { clientId?: string; assignedLawyerId?: string }): Promise<ElectronicContract[]> {
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from('electronic_contracts').select('*').order('created_at', { ascending: false });
+      let query = supabase.from('electronic_contracts').select('*');
+      if (scope?.clientId) query = query.eq('client_id', scope.clientId);
+      if (scope?.assignedLawyerId) query = query.eq('assigned_lawyer_id', scope.assignedLawyerId);
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) logSupabaseError('loadContracts', error);
       else if (data && data.length > 0) return data.map(rowToContract);
     } catch (e) { logSupabaseError('loadContracts (exception)', e); }
@@ -113,15 +117,115 @@ export async function saveContracts(contracts: ElectronicContract[]): Promise<vo
   }
 }
 
+/**
+ * 단건 계약서 조회 (Zero Over-fetching)
+ * DB 전체 덤프를 전면 제거하고 해당 ID의 계약서 1건만 단건 쿼리합니다.
+ */
 export async function getContract(id: string): Promise<ElectronicContract | undefined> {
-  const contracts = await loadContracts();
-  return contracts.find(c => c.id === id);
+  if (!id) return undefined;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('electronic_contracts')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) {
+        logSupabaseError('getContract', error);
+      } else if (data) {
+        return rowToContract(data);
+      }
+    } catch (e) {
+      logSupabaseError('getContract (exception)', e);
+    }
+  }
+
+  const localContracts = loadContractsLocal();
+  return localContracts.find(c => c.id === id);
 }
 
+/**
+ * 원격 서명용 단건 계약서 조회 (토큰 일치 강제)
+ * 비인가 열거형 스크래핑을 원천 차단하기 위해 ID와 토큰이 정확히 일치할 때만 1건 반환
+ */
+export async function getContractForRemoteSign(contractId: string, token: string): Promise<ElectronicContract | undefined> {
+  if (!contractId || !token) return undefined;
+
+  if (isSupabaseConfigured) {
+    try {
+      // 1. 보안 RPC 함수 호출 시도
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_contract_by_remote_token', {
+        p_contract_id: contractId,
+        p_token: token,
+      });
+      if (!rpcError && rpcData) {
+        return rowToContract(rpcData);
+      }
+
+      // 2. 단건 조회 (토큰 일치 강제)
+      const { data, error } = await supabase
+        .from('electronic_contracts')
+        .select('*')
+        .eq('id', contractId)
+        .eq('remote_sign_token', token)
+        .maybeSingle();
+
+      if (error) {
+        logSupabaseError('getContractForRemoteSign', error);
+      } else if (data) {
+        return rowToContract(data);
+      }
+    } catch (e) {
+      logSupabaseError('getContractForRemoteSign (exception)', e);
+    }
+  }
+
+  const localContracts = loadContractsLocal();
+  return localContracts.find(c => c.id === contractId && c.remoteSignToken === token);
+}
+
+/**
+ * 특정 의뢰인 계약서 조회 (Server-side Filtered)
+ * DB 전체를 브라우저로 덤프한 후 JS 메모리에서 거르던 취약 패턴을 제거하고
+ * 서버에 직접 client_id 조건을 명시하여 필요한 데이터만 전송받습니다.
+ */
 export async function getContractsByClientId(clientId: string, altId?: string, phone?: string): Promise<ElectronicContract[]> {
-  const contracts = await loadContracts();
+  if (!clientId && !altId && !phone) return [];
+
+  if (isSupabaseConfigured) {
+    try {
+      let query = supabase.from('electronic_contracts').select('*');
+      const orConditions: string[] = [];
+      if (clientId) orConditions.push(`client_id.eq.${clientId}`);
+      if (altId) orConditions.push(`client_id.eq.${altId}`);
+      if (phone) {
+        const clean = phone.replace(/[^0-9]/g, '');
+        if (clean.length >= 8) {
+          orConditions.push(`client_phone.ilike.%${clean.slice(-8)}%`);
+        }
+      }
+
+      if (orConditions.length > 0) {
+        query = query.or(orConditions.join(','));
+      } else {
+        query = query.eq('client_id', clientId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) {
+        logSupabaseError('getContractsByClientId', error);
+      } else if (data && data.length > 0) {
+        return data.map(rowToContract);
+      }
+    } catch (e) {
+      logSupabaseError('getContractsByClientId (exception)', e);
+    }
+  }
+
+  const localContracts = loadContractsLocal();
   const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
-  return contracts.filter(c => {
+  return localContracts.filter(c => {
     if (c.clientId === clientId) return true;
     if (altId && (c.clientId === altId || (c as any).clientRefId === altId)) return true;
     if (clientId && (c as any).clientRefId === clientId) return true;

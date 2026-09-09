@@ -103,12 +103,19 @@ export async function getMessages(
   tenantId: string, targetType: MessageTargetType, targetId: string,
   viewerRole: string, viewerId: string
 ): Promise<InternalMessage[]> {
-  let messages: InternalMessage[];
+  let messages: InternalMessage[] = [];
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from('internal_messages').select('*')
+      let query = supabase.from('internal_messages').select('*')
         .eq('tenant_id', tenantId).eq('target_type', targetType).eq('target_id', targetId)
-        .is('parent_id', null).order('created_at', { ascending: false });
+        .is('parent_id', null);
+
+      // 변호사/오너가 아닌 일반 직원은 서버 쿼리 단계에서 lawyers_only 원천 배제 (Zero Over-fetching)
+      if (viewerRole !== 'OWNER' && viewerRole !== 'LAWYER') {
+        query = query.neq('visibility', 'lawyers_only');
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       messages = (data || []).map(mapDbRow);
     } catch {
@@ -125,12 +132,17 @@ export async function getMessages(
 export async function getReplies(
   tenantId: string, parentId: string, viewerRole: string, viewerId: string
 ): Promise<InternalMessage[]> {
-  let replies: InternalMessage[];
+  let replies: InternalMessage[] = [];
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from('internal_messages').select('*')
-        .eq('tenant_id', tenantId).eq('parent_id', parentId)
-        .order('created_at', { ascending: true });
+      let query = supabase.from('internal_messages').select('*')
+        .eq('tenant_id', tenantId).eq('parent_id', parentId);
+
+      if (viewerRole !== 'OWNER' && viewerRole !== 'LAWYER') {
+        query = query.neq('visibility', 'lawyers_only');
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: true });
       if (error) throw error;
       replies = (data || []).map(mapDbRow);
     } catch {

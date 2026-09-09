@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
-import { getContract, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
+import { getContractForRemoteSign, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
 import { syncContractToCrm } from '../../services/crmService';
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
@@ -59,9 +59,9 @@ export default function ClientRemoteSignView({ cid, token }: Props) {
     async function fetchContract() {
       setLoading(true);
       try {
-        const found = await getContract(cid);
+        const found = await getContractForRemoteSign(cid, token);
         if (!found) {
-          setError('해당 전자계약서를 찾을 수 없습니다. 링크를 다시 확인해주세요.');
+          setError('해당 전자계약서를 찾을 수 없거나 유효하지 않은 서명 링크입니다. 링크를 다시 확인해주세요.');
           setLoading(false);
           return;
         }

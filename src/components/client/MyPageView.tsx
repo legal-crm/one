@@ -100,7 +100,7 @@ export default function MyPageView({
         (reqId && (c.clientId === reqId || c.clientRefId === reqId)) ||
         (profile?.phone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === profile.phone.replace(/[^0-9]/g, '')) ||
         (c.clientName && (profile?.name || userAlias) && (c.clientName === profile?.name || c.clientName === userAlias))
-      ) || contracts[0] || null;
+      ) || null;
     } catch {
       return null;
     }
