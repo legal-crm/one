@@ -81,6 +81,16 @@ export const sendAlimtok = async (
       }),
     });
 
+    if (response.status === 429) {
+      const errData = await response.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: errData.error || '알림톡 발송 요청 한도를 초과하여 일시 차단되었습니다. 잠시 후 다시 시도해 주세요.',
+        sentAt: new Date().toISOString(),
+        rendered
+      };
+    }
+
     if (response.status === 404) {
       return { 
         ok: true, 

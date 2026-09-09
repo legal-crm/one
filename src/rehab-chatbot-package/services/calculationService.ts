@@ -66,6 +66,7 @@ export interface RehabUserInput {
 
     // 본인 재산
     myAssets: number;          // 본인 재산 총액
+    totalAssets?: number;       // 본인 재산 총액 별칭 (호환성)
 
     // 채무 정보
     creditCardDebt?: number;   // 신용카드 채무

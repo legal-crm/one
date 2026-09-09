@@ -3,6 +3,8 @@
 // POST /api/alimtok               -> 알림톡 발송 (실패 시 LMS/SMS 자동 대체 발송)
 
 import { kakaoService, messageService, POPBILL_CONFIG, setCorsHeaders } from './_lib/popbill-service.js';
+import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 
 // 마일스톤별 기본 카카오 알림톡 템플릿 코드 매핑
 const MILESTONE_TEMPLATE_CODES = {
@@ -43,6 +45,27 @@ export default async function handler(req, res) {
   } catch (_) {}
 
   const isStatus = req.method === 'GET' || isStatusQuery || req.query?.action === 'status' || req.body?.action === 'status';
+
+  // [SECURITY] Multi-Tier Rate Limiting (1분 3회, 10분 5회, 30분 10회 + 30분 Jail)
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+  const tier = isStatus ? RATE_LIMIT_TIERS.STANDARD : RATE_LIMIT_TIERS.STRICT;
+  const rateLimit = checkMultiTierRateLimit(`alimtok:${ip}`, tier);
+
+  res.setHeader('X-RateLimit-Limit', tier.minute.max);
+  res.setHeader('X-RateLimit-Remaining', rateLimit.remaining);
+  if (rateLimit.retryAfter > 0) {
+    res.setHeader('Retry-After', rateLimit.retryAfter);
+  }
+
+  if (rateLimit.isLimited) {
+    console.warn(`[SECURITY Alimtok RateLimit] Blocked ${ip} (reason: ${rateLimit.reason}, retryAfter: ${rateLimit.retryAfter}s)`);
+    return res.status(429).json({
+      ok: false,
+      error: `Too Many Requests: 알림톡 발송 요청 한도를 초과하여 보안 격리되었습니다. (${Math.ceil(rateLimit.retryAfter / 60)}분 후 재시도 가능)`,
+      retryAfter: rateLimit.retryAfter,
+    });
+  }
 
   // ─────────────────────────────────────────────────────────────
   // A. [STATUS / 잔액 조회] 팝빌 연동 상태 및 잔여 포인트 확인
@@ -142,10 +165,28 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: '수신번호(phone)는 필수입니다.' });
   }
 
-  // 전화번호 정규화 (하이픈 제거)
+  // [BOT DEFENSE] Cloudflare Turnstile 토큰 검증 (토큰이 동봉된 경우 봇 여부 확인)
+  const cfToken = req.body?.turnstileToken || req.body?.cfToken;
+  if (cfToken) {
+    const cfCheck = await verifyTurnstileToken(cfToken, ip);
+    if (!cfCheck.success) {
+      console.warn(`[SECURITY Turnstile Bot Blocked] IP: ${ip}, Error: ${cfCheck.error}`);
+      return res.status(403).json({ ok: false, error: cfCheck.error || '비정상적인 접근(봇)으로 감지되었습니다.' });
+    }
+  }
+
+  // 전화번호 정규화 (하이픈 제거) 및 엄격 검증
   const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+  if (cleanPhone.length < 10 || cleanPhone.length > 11 || !cleanPhone.startsWith('01')) {
+    return res.status(400).json({ ok: false, error: '유효한 국내 휴대폰 번호(010...)가 아닙니다.' });
+  }
+
   const cleanSender = String(sender || POPBILL_CONFIG.senderPhone).replace(/[^0-9]/g, '');
   const content = (customText && customText.trim() !== '') ? customText.trim() : (template || '');
+  if (content.length > 2000) {
+    return res.status(400).json({ ok: false, error: '메시지 내용이 너무 깁니다. (최대 2,000자)' });
+  }
+
   const finalTemplateCode = reqTemplateCode || (milestone ? MILESTONE_TEMPLATE_CODES[milestone] : null) || 'MYKIM_ATS_01';
   const finalReceiverName = receiverName || '의뢰인';
   const finalAltSubject = altSubject || '[my김변 법률센터] 안내';

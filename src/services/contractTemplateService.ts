@@ -407,7 +407,7 @@ export function loadLawyerCustomTemplates(): LawyerContractTemplate[] {
   }
 }
 
-export function saveLawyerCustomTemplate(tpl: Omit<LawyerContractTemplate, 'createdAt' | 'updatedAt'> & { id?: string }): LawyerContractTemplate {
+export function saveLawyerCustomTemplate(tpl: Omit<LawyerContractTemplate, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): LawyerContractTemplate {
   const list = loadLawyerCustomTemplates();
   const now = new Date().toISOString();
   const id = tpl.id || `custom-tpl-${Date.now()}`;

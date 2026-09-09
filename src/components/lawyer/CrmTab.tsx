@@ -2914,7 +2914,7 @@ export default function CrmTab({
                     <div className="space-y-4">
                       <TaskTicketTab
                         tenantId={activeLawyer.lawFirmId || activeLawyer.id}
-                        targetType={selectedClient.category === 'case' ? 'case' : 'consult_request'}
+                        targetType={(selectedClient as any)?.category === 'case' ? 'case' : 'consult_request'}
                         targetId={selectedId}
                         actorId={activeStaff?.id || activeLawyer.id}
                         actorName={activeStaff?.name || activeLawyer.name}
@@ -3744,21 +3744,6 @@ export default function CrmTab({
             const bulkFilteredClients = requests.filter(r => {
               const ext = getCrmExt(r.id);
               if (bulkFilter === 'doc_overdue') return ext.documents?.some((d: any) => !d.checked);
-              if (bulkFilter === 'fee_overdue') return (ext.feeSchedule || []).filter((f: any) => f.status === 'overdue').length >= 2;
-              if (bulkFilter === 'hearing_month') return true;
-              if (bulkFilter === 'correction_urgent') return (ext.correctionOrders || []).some((c: any) => c.status === 'pending');
-              return false;
-            }).map(r => ({
-              id: r.id,
-              clientName: r.clientName || '의뢰인',
-              phone: r.phone || '',
-              subText: r.debtTotal ? `${r.debtTotal}만원` : undefined
-            }));
-
-            return (
-              <>
-                <div className="bg-slate-50 p-3 rounded-xl flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500">
                     발송 대상 의뢰인: <span className="font-black text-sm text-slate-800">{bulkFilteredClients.length}명</span>
                   </p>
                   <span className="text-[11px] text-slate-400">

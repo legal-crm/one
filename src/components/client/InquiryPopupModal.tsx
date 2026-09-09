@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { X, Paperclip, Send, FileText, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { ClientInquiry, ClientInquiryCategory, InquiryAttachment } from '../../types';
+import TurnstileWidget from '../common/TurnstileWidget';
 
 interface InquiryPopupModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export default function InquiryPopupModal({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState<{ file: File; dataUrl?: string }[]>([]);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -187,6 +189,7 @@ export default function InquiryPopupModal({
           </div>
 
           <form id="inquiry-popup-form" onSubmit={handleSubmit} className="space-y-6">
+            <TurnstileWidget onSuccess={setTurnstileToken} action="inquiry" />
             
             {/* Category Selection */}
             <div className="space-y-2">

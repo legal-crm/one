@@ -18,7 +18,7 @@ export type CaseReviewStatus =
 export type RuleSetStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ARCHIVED';
 
 /** 규칙 출처 유형 */
-export type RuleSourceType = 'OFFICIAL' | 'PUBLISHED' | 'FIRM_EXPERIENCE' | 'UNVERIFIED';
+export type RuleSourceType = 'OFFICIAL' | 'PUBLISHED' | 'FIRM_EXPERIENCE' | 'UNVERIFIED' | 'STATUTE' | 'PRACTICE_MANUAL';
 
 /** 규칙 출력 유형 */
 export type RuleOutputType = 'REVIEW_FLAG' | 'ADDITIONAL_QUESTION' | 'REQUIRED_DOCUMENT' | 'CAUTION' | 'HIGH_RISK';

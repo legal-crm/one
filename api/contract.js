@@ -8,6 +8,7 @@ import { createPublicClient, createWalletClient, http, formatEther } from 'viem'
 import { polygon, polygonAmoy } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import crypto from 'crypto';
+import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
 
 function setCorsHeaders(req, res) {
   const allowedOrigins = [
@@ -56,6 +57,26 @@ function resolveNetworkConfig(req) {
 export default async function handler(req, res) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // [SECURITY] Multi-Tier Rate Limiting (1분 10회, 10분 30회, 30분 60회 + 15분 Jail)
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+  const rateLimit = checkMultiTierRateLimit(`contract:${ip}`, RATE_LIMIT_TIERS.STANDARD);
+
+  res.setHeader('X-RateLimit-Limit', RATE_LIMIT_TIERS.STANDARD.minute.max);
+  res.setHeader('X-RateLimit-Remaining', rateLimit.remaining);
+  if (rateLimit.retryAfter > 0) {
+    res.setHeader('Retry-After', rateLimit.retryAfter);
+  }
+
+  if (rateLimit.isLimited) {
+    console.warn(`[SECURITY Contract RateLimit] Blocked ${ip} (reason: ${rateLimit.reason}, retryAfter: ${rateLimit.retryAfter}s)`);
+    return res.status(429).json({
+      ok: false,
+      error: `Too Many Requests: 요청 한도를 초과하여 잠시 차단되었습니다. (${Math.ceil(rateLimit.retryAfter / 60)}분 후 재시도 가능)`,
+      retryAfter: rateLimit.retryAfter,
+    });
+  }
 
   // 액션 파싱
   let action = req.query?.action;

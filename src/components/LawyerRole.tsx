@@ -132,6 +132,7 @@ export default function LawyerRole({
   };
   // Ad order modal states
   const [adModalProduct, setAdModalProduct] = useState<any>(null);
+  const [adModalStep, setAdModalStep] = useState<'select' | 'done'>('select');
   const [adModalMonths, setAdModalMonths] = useState(1);
   const [adModalDepositor, setAdModalDepositor] = useState('');
   const [adModalRegion, setAdModalRegion] = useState('');
@@ -4294,8 +4295,10 @@ export default function LawyerRole({
                         employmentType: profile.jobType === 'SALARIED' ? 'salary' : profile.jobType === 'BUSINESS' ? 'business' : profile.jobType === 'DAILY' ? 'daily' : profile.jobType === 'FREELANCER' ? 'freelancer' : 'salary',
                         monthlyIncome: Math.max(0, (profile.income || 0) * 10000),
                         familySize: Math.max(1, (profile.dependents || 0) + 1),
-                        spouseAssets: Math.max(0, (profile.spouseAsset || 0) * 10000),
+                        isMarried: profile.maritalStatus === 'MARRIED',
+                        deposit: Math.max(0, (profile.rentalDeposit || 0) * 10000),
                         totalDebt: Math.max(0, (profile.debtTotal || 0) * 10000),
+                        myAssets: Math.max(0, (profile.assetsTotal || profile.myAssets || 0) * 10000),
                         totalAssets: Math.max(0, (profile.assetsTotal || profile.myAssets || 0) * 10000),
                         hasMortgage: false,
                         specialCondition: profile.specialCondition || 'none',

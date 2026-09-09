@@ -2,6 +2,8 @@
 // POST /api/telegram
 
 import { setCorsHeaders } from './_lib/popbill-service.js';
+import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.js';
+import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(req, res);
@@ -9,6 +11,26 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
+  // [SECURITY] Multi-Tier Rate Limiting (1분 3회, 10분 5회, 30분 10회 + 30분 Jail)
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+  const rateLimit = checkMultiTierRateLimit(`telegram:${ip}`, RATE_LIMIT_TIERS.STRICT);
+
+  res.setHeader('X-RateLimit-Limit', RATE_LIMIT_TIERS.STRICT.minute.max);
+  res.setHeader('X-RateLimit-Remaining', rateLimit.remaining);
+  if (rateLimit.retryAfter > 0) {
+    res.setHeader('Retry-After', rateLimit.retryAfter);
+  }
+
+  if (rateLimit.isLimited) {
+    console.warn(`[SECURITY Telegram RateLimit] Blocked ${ip} (reason: ${rateLimit.reason}, retryAfter: ${rateLimit.retryAfter}s)`);
+    return res.status(429).json({
+      ok: false,
+      error: `Too Many Requests: 알림 발송 한도를 초과하여 차단되었습니다. (${Math.ceil(rateLimit.retryAfter / 60)}분 후 재시도 가능)`,
+      retryAfter: rateLimit.retryAfter,
+    });
   }
 
   const {
@@ -20,7 +42,18 @@ export default async function handler(req, res) {
     parseMode = 'Markdown',
     slackWebhookUrl: reqSlackUrl,
     telegram,
+    turnstileToken,
+    cfToken,
   } = req.body || {};
+
+  // [BOT DEFENSE] Cloudflare Turnstile 검증
+  const token = turnstileToken || cfToken;
+  if (token) {
+    const cfCheck = await verifyTurnstileToken(token, ip);
+    if (!cfCheck.success) {
+      return res.status(403).json({ ok: false, error: cfCheck.error || '봇 방지 검증에 실패했습니다.' });
+    }
+  }
 
   // 1. 텔레그램 토큰/채팅ID 결정 (요청값 -> telegram 객체 -> 서버 환경변수 순서)
   const botToken = reqBotToken || telegram?.botToken || process.env.TELEGRAM_ADMIN_BOT_TOKEN;

@@ -72,6 +72,10 @@ export interface FinancialProfile {
   debts?: Array<{ creditor: string; amount: number; type: string }>; // 개별 채무 내역 리스트
   assets?: Array<any>; // 개별 자산 목록
   childSupportCost?: number; // 양육비 비용 (만 원 단위)
+  monthlyIncome?: number;    // 월 소득 별칭 (호환성)
+  totalDebt?: number;        // 총 채무 별칭 (호환성)
+  phone?: string;            // 연락처 별칭 (호환성)
+  incomeType?: string;       // 소득 유형 별칭 (호환성)
 }
 
 export type RequestType = 'direct' | 'open' | 'direct_multi';
@@ -852,6 +856,7 @@ export interface User {
   lawFirmId: string;
   teamId: string;
   name: string;
+  email?: string; // 이메일 주소
   firmName?: string; // 소속 법률사무소/법인 명칭 (직접 설정 가능)
   firmType?: LawyerFirmType; // 1인 개인 | 법무법인 대표 | 소속 변호사
   businessNumber?: string; // 소속 사무소 사업자등록번호
@@ -892,6 +897,8 @@ export interface User {
   aiCaseAnalysisDeactivatedAt?: string;  // 비활성화 일시
   aiCaseAnalysisNote?: string;           // 어드민 메모 (계약 조건, 기간 등)
 }
+
+export type Lawyer = User;
 
 export type CaseStatus = 'document' | 'filing' | 'commencement' | 'approval' | 'discharge';
 

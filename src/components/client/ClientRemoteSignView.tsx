@@ -5,8 +5,8 @@ import {
   ExternalLink, ChevronDown, ChevronUp, ShieldAlert, Highlighter,
   Download, Database, MessageSquare, Mail 
 } from 'lucide-react';
-import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
+import { CONTRACT_DOC_TYPES } from '../../types';
 import { getContractForRemoteSign, saveContract, addAuditLog, finalizeContractWithIntegrity } from '../../services/contractService';
 import { syncContractToCrm } from '../../services/crmService';
 import { requestIdentityVerification, isPortOneConfigured, verifyRepresentativeMatch } from '../../services/portoneService';

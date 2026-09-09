@@ -50,5 +50,5 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   }
 });
 
-// Supabase 연결 상태 확인 유틸리티
-export const isSupabaseConfigured = true;
+// Supabase 연결 상태 확인 유틸리티 (환경변수 존재 여부 동적 검증)
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
