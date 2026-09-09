@@ -331,15 +331,16 @@ export async function exportDebtAgencyZipPackage(
 
   for (const file of clientUploadedFiles) {
     const fileName = (file.name || '').toLowerCase();
-    const isId = fileName.includes('신분증') || fileName.includes('주민등록') || file.category === 'id';
-    const isSeal = fileName.includes('인감') || fileName.includes('본인서명') || file.category === 'seal';
+    const isId = fileName.includes('신분증') || fileName.includes('주민등록') || file.category === 'id_doc';
+    const isSeal = fileName.includes('인감') || fileName.includes('본인서명') || file.category === 'other';
+    const fileContentUrl = file.dataUrl || (file as any).url;
 
-    if (isId && !idDocFound && file.url) {
+    if (isId && !idDocFound && fileContentUrl) {
       idDocFound = true;
       try {
         const ext = file.name.split('.').pop() || 'png';
-        if (file.url.startsWith('data:')) {
-          const base64Content = file.url.split(',')[1];
+        if (fileContentUrl.startsWith('data:')) {
+          const base64Content = fileContentUrl.split(',')[1];
           zip.file(`01_신분증사본_${safeClient}.${ext}`, base64Content, { base64: true });
         }
       } catch (err) {
@@ -347,12 +348,12 @@ export async function exportDebtAgencyZipPackage(
       }
     }
 
-    if (isSeal && !sealDocFound && file.url) {
+    if (isSeal && !sealDocFound && fileContentUrl) {
       sealDocFound = true;
       try {
         const ext = file.name.split('.').pop() || 'pdf';
-        if (file.url.startsWith('data:')) {
-          const base64Content = file.url.split(',')[1];
+        if (fileContentUrl.startsWith('data:')) {
+          const base64Content = fileContentUrl.split(',')[1];
           zip.file(`02_인감증명서_${safeClient}.${ext}`, base64Content, { base64: true });
         }
       } catch (err) {

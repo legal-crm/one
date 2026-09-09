@@ -86,6 +86,7 @@ export interface RepaymentCreditor {
   allocationRatio: number;         // 안분 비율 (0.0 ~ 1.0)
   monthlyRepayment: number;        // 채권자별 월 변제예정액 (원 미만 올림)
   totalRepayment: number;          // 변제기간 동안 총 변제예정액 (monthly * months)
+  repaymentRate: number;           // 변제율 (%)
   // 2단계 분할 변제 (우선권 세금 등 회차별 분할)
   stage1MonthlyRepayment?: number; // 1단계 월 변제예정액 (예: 1~18회차)
   stage2MonthlyRepayment?: number; // 2단계 월 변제예정액 (예: 19~36회차)

@@ -3,7 +3,8 @@ import {
   Scale, Calculator, FileSpreadsheet, Printer, RotateCcw, AlertTriangle, 
   CheckCircle2, Info, ChevronDown, ChevronUp, Sliders, Edit3, Lock, 
   Unlock, Save, Sparkles, Building2, Coins, ArrowRight, ShieldCheck,
-  Calendar, Users, Home, HeartPulse, GraduationCap, DollarSign, Download
+  Calendar, Users, Home, HeartPulse, GraduationCap, DollarSign, Download,
+  Trash2, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
