@@ -4,7 +4,7 @@ import {
   CheckCircle2, Info, ChevronDown, ChevronUp, Sliders, Edit3, Lock, 
   Unlock, Save, Sparkles, Building2, Coins, ArrowRight, ShieldCheck,
   Calendar, Users, Home, HeartPulse, GraduationCap, DollarSign, Download,
-  Trash2, Plus
+  Trash2, Plus, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -21,6 +21,7 @@ import {
   calculateTotalLiquidationValue
 } from '../../../services/repayment/repaymentCalculationEngine';
 import { exportCourtRepaymentScheduleExcel } from '../../../services/repayment/repaymentExcelExporter';
+import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
 import PrintableRepaymentPlanModal from './PrintableRepaymentPlanModal';
 import SecuredDebtCalculatorModal from './SecuredDebtCalculatorModal';
 import { REGION_CONFIG_2026, RegionType } from '../../../services/repayment/repaymentConstants2026';
@@ -365,6 +366,19 @@ export default function RepaymentPlanEditor({
     }
   };
 
+  // 부채증명서 발급 대행 데이터 동기화
+  const handleSyncFromDebtCerts = () => {
+    const debtOrders = crmExt.debtCertificateOrders;
+    if (!debtOrders || debtOrders.length === 0 || debtOrders[0].items.length === 0) {
+      toast.error('등록된 부채증명서 발급 내역이 없습니다. 먼저 [부채증명서] 탭에서 채권사를 등록해 주세요.');
+      return;
+    }
+    const syncedCreditors = convertDebtItemsToRepaymentCreditors(debtOrders[0].items);
+    setCreditors(syncedCreditors);
+    setCustomCreditorMonthly({});
+    toast.success(`부채증명서 발급 탭에서 ${syncedCreditors.length}개 채권사의 최신 원금·이자 내역을 불러왔습니다!`);
+  };
+
   // 변제계획안 CRM 저장
   const handleSavePlan = async () => {
     try {
@@ -628,6 +642,45 @@ export default function RepaymentPlanEditor({
         )}
       </div>
 
+      {/* ── 데이터 연동 및 작성 프로세스 파이프라인 안내 ── */}
+      <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-4 rounded-2xl border border-blue-200/70 text-xs text-slate-700 space-y-2.5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-bold text-slate-900">
+            <Sparkles className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-black">법원 변제계획안 데이터 파이프라인 안내</span>
+          </div>
+          <span className="text-[11px] text-blue-800 font-bold bg-white/90 px-2.5 py-0.5 rounded-full border border-blue-200 self-start sm:self-auto">
+            실무 연동 가이드
+          </span>
+        </div>
+        <p className="leading-relaxed text-slate-600 text-xs">
+          의뢰인의 최초 <strong>"내 상황 체크하기"</strong> 정보는 상담 접수용 추정치입니다. 실제 법원(전자소송) 제출 서식은 아래 3개 워크스페이스에서 <strong>[부채증명서 발급 확정액]</strong>, <strong>[소득 및 추가생계비 증빙]</strong>, <strong>[재산공제 후 청산가치]</strong>를 정밀 확정하여 100% 자동 완성됩니다.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+          <div className="bg-white/90 p-3 rounded-xl border border-blue-100/80 shadow-2xs flex items-start gap-2.5">
+            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
+            <div>
+              <div className="font-bold text-slate-900 text-xs">부채증명서 발급 대행 연동</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">금융사별 확정원금·개시전이자·담보권·우선권 자동 반영</div>
+            </div>
+          </div>
+          <div className="bg-white/90 p-3 rounded-xl border border-emerald-100/80 shadow-2xs flex items-start gap-2.5">
+            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
+            <div>
+              <div className="font-bold text-slate-900 text-xs">2026 생계비 & 가용소득</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">중위 60% 기초생계비 + 주거·의료·교육비 정밀 산정</div>
+            </div>
+          </div>
+          <div className="bg-white/90 p-3 rounded-xl border border-purple-100/80 shadow-2xs flex items-start gap-2.5">
+            <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[11px] shrink-0">3</span>
+            <div>
+              <div className="font-bold text-slate-900 text-xs">청산가치 보장 & 현가 검증</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">압류금지·소액임차 공제 및 라이프니쯔 현가 실시간 판정</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── 3. 하단 섹션 탭 & 워크스페이스 ── */}
       <div className="space-y-4">
         
@@ -833,6 +886,15 @@ export default function RepaymentPlanEditor({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSyncFromDebtCerts}
+                    className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    title="[부채증명서] 탭에서 대행업체를 통해 발급 완료된 채권사 및 확정 금액을 불러옵니다"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>부채증명서 내역 불러오기</span>
+                  </button>
                   <button
                     onClick={handleAddNewCreditor}
                     className="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"

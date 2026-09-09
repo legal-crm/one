@@ -246,9 +246,14 @@ export default function DebtCertificateTab({
   const handleSyncToRepayment = async () => {
     const repaymentCreditors = convertDebtItemsToRepaymentCreditors(order.items);
     
-    // CRM 확장에 동기화 저장
+    // CRM 확장에 동기화 저장 (기존 plan이 있는 경우 creditors도 함께 갱신)
+    const existingPlan = crmExt.repaymentPlan;
     await onUpdateCrmExt({
       debtCertificateOrders: [order],
+      repaymentPlan: existingPlan ? {
+        ...existingPlan,
+        creditors: repaymentCreditors,
+      } : undefined,
     });
 
     toast.success(`${repaymentCreditors.length}개 채권자의 부채증명서 데이터가 변제계획안으로 동기화되었습니다!`);
