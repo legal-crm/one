@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, ShieldCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
 
 interface AuthModalProps {
@@ -17,7 +18,7 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
 
   const handleSocialLogin = async (provider: string) => {
     if (!authConsent) {
-      alert('필수 개인정보 및 마이데이터 수집 이용 동의를 체크해 주세요.');
+      toast.error('필수 개인정보 및 마이데이터 수집 이용 동의를 체크해 주세요.');
       return;
     }
     const supabaseProvider = provider === 'Google' ? 'google' : 'kakao';
@@ -42,7 +43,7 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
       setIsLoadingProvider(null);
       localStorage.removeItem('pending_oauth_login');
       sessionStorage.removeItem('pending_oauth_login');
-      alert(`${provider} 로그인 시작 실패: ${err.message || err}`);
+      toast.error(`${provider} 로그인 시작 실패: ${err.message || err}`);
     }
   };
 

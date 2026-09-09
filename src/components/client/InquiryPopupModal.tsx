@@ -41,6 +41,7 @@ export default function InquiryPopupModal({
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState<{ file: File; dataUrl?: string }[]>([]);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -81,6 +82,7 @@ export default function InquiryPopupModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!title.trim() || !content.trim()) {
       toast.error('문의 제목과 내용을 모두 입력해 주세요');
@@ -98,45 +100,48 @@ export default function InquiryPopupModal({
       }
     }
 
-    const clientId = isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || 'client-temp') : `non-member-${Date.now()}`;
+    setIsSubmitting(true);
+    try {
+      const clientId = isLoggedIn ? (localStorage.getItem('legal_crm_client_id') || 'client-temp') : `non-member-${Date.now()}`;
 
-    // Generate inquiry object, casting as any to append extra properties mentioned in prompt 
-    // that might not exist in the base ClientInquiry interface in types.ts.
-    const newInquiry = {
-      id: `inquiry-popup-${Date.now()}`,
-      clientId,
-      clientName: isLoggedIn ? (userAlias || '의뢰인') : nickname.trim(),
-      title: title.trim(),
-      content: content.trim(),
-      createdAt: new Date().toISOString(),
-      status: 'pending' as const,
-      category,
-      source: 'popup_modal' as const,
-      contactInfo: contact.trim() || undefined,
-      tempPassword: !isLoggedIn ? tempPassword : undefined,
-      attachments: attachments.map((a, i) => ({
-        id: `att-${Date.now()}-${i}`,
-        fileName: a.file.name,
-        fileSize: a.file.size,
-        fileType: a.file.type,
-        dataUrl: a.dataUrl || ''
-      }))
-    };
+      const newInquiry = {
+        id: `inquiry-popup-${Date.now()}`,
+        clientId,
+        clientName: isLoggedIn ? (userAlias || '의뢰인') : nickname.trim(),
+        title: title.trim(),
+        content: content.trim(),
+        createdAt: new Date().toISOString(),
+        status: 'pending' as const,
+        category,
+        source: 'popup_modal' as const,
+        contactInfo: contact.trim() || undefined,
+        tempPassword: !isLoggedIn ? tempPassword : undefined,
+        attachments: attachments.map((a, i) => ({
+          id: `att-${Date.now()}-${i}`,
+          fileName: a.file.name,
+          fileSize: a.file.size,
+          fileType: a.file.type,
+          dataUrl: a.dataUrl || ''
+        }))
+      };
 
-    setInquiries(prev => [newInquiry, ...prev]);
-    toast.success('문의가 정상적으로 접수되었습니다');
-    
-    // Reset form
-    setCategory('site_usage');
-    if (!isLoggedIn) {
-      setNickname('');
-      setTempPassword('');
+      setInquiries(prev => [newInquiry, ...prev]);
+      toast.success('문의가 정상적으로 접수되었습니다');
+      
+      // Reset form
+      setCategory('site_usage');
+      if (!isLoggedIn) {
+        setNickname('');
+        setTempPassword('');
+      }
+      setContact('');
+      setTitle('');
+      setContent('');
+      setAttachments([]);
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-    setContact('');
-    setTitle('');
-    setContent('');
-    setAttachments([]);
-    onClose();
   };
 
   return (
@@ -339,10 +344,11 @@ export default function InquiryPopupModal({
           <button 
             type="submit" 
             form="inquiry-popup-form"
-            className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-3.5 rounded-xl text-base transition-all shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 min-h-[44px]"
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white font-bold py-3.5 rounded-xl text-base transition-all shadow-sm hover:shadow-brand-sm active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
-            <span>문의 제출하기</span>
+            <span>{isSubmitting ? '문의 제출 중...' : '문의 제출하기'}</span>
           </button>
         </div>
 

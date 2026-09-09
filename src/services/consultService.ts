@@ -159,7 +159,7 @@ export async function saveConsultRequest(request: ConsultRequest): Promise<void>
   // [SECURITY Zod Validation] 런타임 스키마 검증 및 XSS 태그 정제
   const validation = validateAndSanitizeConsultRequest(request);
   const safeRequest: ConsultRequest = validation.success && validation.data 
-    ? ({ ...request, ...validation.data } as ConsultRequest) 
+    ? ({ ...request, ...validation.data } as unknown as ConsultRequest) 
     : request;
 
   // Always save to localStorage (클라이언트 메모리/세션은 즉각적인 반응성을 위해 평문 객체 유지)

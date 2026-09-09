@@ -450,7 +450,7 @@ export interface InviteToken {
 }
 
 // 인증 제공자 타입
-export type AuthProvider = 'email' | 'google';
+export type AuthProvider = 'email' | 'google' | 'kakao';
 
 // 법무법인 직원
 export interface StaffMember {
@@ -519,7 +519,8 @@ export const DEFAULT_PERMISSIONS: Record<string, StaffPermissions> = new Proxy(
 // CRM 활동 로그
 export type CrmActivityType = 
   | 'status_change' | 'assigned' | 'transferred' | 'note_added' 
-  | 'document_checked' | 'contract_signed' | 'payment_received' | 'created';
+  | 'document_checked' | 'contract_signed' | 'payment_received' | 'created'
+  | 'communication' | 'message_sent';
 
 export interface CrmActivityLog {
   id: string;
@@ -825,6 +826,7 @@ export interface ConsultMessage {
   senderId: string;
   senderName: string;
   message: string;
+  content?: string; // 호환성 별칭
   createdAt: string;
   targetLawyerId?: string; // 비교 상담 모드에서 의뢰인 메시지의 대상 변호사 식별용
 }
@@ -858,6 +860,7 @@ export interface User {
   name: string;
   email?: string; // 이메일 주소
   firmName?: string; // 소속 법률사무소/법인 명칭 (직접 설정 가능)
+  firm?: string;     // firmName 호환성 별칭
   firmType?: LawyerFirmType; // 1인 개인 | 법무법인 대표 | 소속 변호사
   businessNumber?: string; // 소속 사무소 사업자등록번호
   ntsStatus?: string; // 국세청 검증 상태 ('VALID' | 'INVALID' | 'UNCHECKED')

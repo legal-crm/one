@@ -313,7 +313,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
       };
     }
     const currentBurden = clientInput 
-      ? calculateCurrentMonthlyBurden(clientInput.debtAmount, clientInput.monthlyIncome)
+      ? calculateCurrentMonthlyBurden(clientInput as any)
       : Math.round(totalDebt * 0.04);
 
     const monthlyIncome = normalizeToWon(clientInput?.monthlyIncome) || 2800000;
@@ -360,15 +360,19 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
         ...clientInput,
         name: clientInput.name || clientName,
         totalDebt: clientInput.totalDebt || totalDebt,
-        monthlyIncome: clientInput.monthlyIncome || activeCalcResult.monthlyIncome,
-        familySize: clientInput.familySize || (activeCalcResult.dependentsCount || 1),
+        monthlyIncome: clientInput.monthlyIncome || (activeCalcResult as any).monthlyIncome || 2800000,
+        familySize: clientInput.familySize || ((activeCalcResult as any).dependentsCount || 1),
       };
     }
     return {
       address: '서울특별시',
       employmentType: 'salary',
-      monthlyIncome: activeCalcResult.monthlyIncome,
-      familySize: activeCalcResult.dependentsCount || 1,
+      isMarried: false,
+      deposit: 0,
+      myAssets: 0,
+      spouseAssets: 0,
+      monthlyIncome: (activeCalcResult as any).monthlyIncome || 2800000,
+      familySize: (activeCalcResult as any).dependentsCount || 1,
       totalDebt: totalDebt,
       name: clientName,
     };
@@ -528,7 +532,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
       // 5. 각 페이지별 격리 캡처 및 PDF 삽입
       for (let i = 0; i < pageElements.length; i++) {
-        const pageEl = pageElements[i];
+        const pageEl = pageElements[i] as HTMLElement;
         const canvas = await capturePage(pageEl);
 
         if (i > 0) {
@@ -1164,7 +1168,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                     <p className="text-xs text-slate-500">월 소득에서 법원 기준 인정 생계비를 제외한 금액이 월 변제금으로 산정됩니다.</p>
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
-                    부양가족 {activeCalcResult.dependentsCount || 1}인 기준
+                    부양가족 {(activeCalcResult as any).dependentsCount || 1}인 기준
                   </span>
                 </div>
 
@@ -1172,7 +1176,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <div className="text-xs text-slate-500 font-medium">월 평균 실수령 소득</div>
                     <div className="text-lg font-black text-slate-900 mt-1">
-                      {formatCurrency(activeCalcResult.monthlyIncome)}
+                      {formatCurrency((activeCalcResult as any).monthlyIncome || 2800000)}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-0.5">급여/사업 소득 공제 후</div>
                   </div>
@@ -1196,7 +1200,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
 
                 {/* Formula Bar */}
                 <div className="mt-5 p-4 rounded-xl bg-slate-100 text-xs text-slate-600 flex items-center justify-between flex-wrap gap-2">
-                  <span>📐 <strong>산정 공식</strong>: 월 소득({formatCurrency(activeCalcResult.monthlyIncome)}) - 최저생계비({formatCurrency(activeCalcResult.recognizedLivingCost)}) = <strong>월 변제금({formatCurrency(monthlyPayment)})</strong></span>
+                  <span>📐 <strong>산정 공식</strong>: 월 소득({formatCurrency((activeCalcResult as any).monthlyIncome || 2800000)}) - 최저생계비({formatCurrency(activeCalcResult.recognizedLivingCost)}) = <strong>월 변제금({formatCurrency(monthlyPayment)})</strong></span>
                   <span className="text-slate-400">※ 부양가족 추가 인정 시 월 변제금이 더 낮아질 수 있습니다.</span>
                 </div>
               </div>

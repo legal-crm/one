@@ -387,7 +387,7 @@ interface ClientRoleProps {
   messages: ConsultMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: LawyerType[];
-  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer', senderId: string, name: string, targetLawyerId?: string) => void;
+  onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer' | 'system', senderId: string, name: string, targetLawyerId?: string) => void;
   newsArticles: NewsArticle[];
   setNewsArticles: React.Dispatch<React.SetStateAction<NewsArticle[]>>;
   qas: ClientQA[];
@@ -485,12 +485,13 @@ export default function ClientRole({
 
     const handlePopState = (event: PopStateEvent) => {
       isPopStateRef.current = true;
-      if (event.state && event.state.tab) {
+      if (event.state && event.state.tab && ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'].includes(event.state.tab)) {
         setActiveTab(event.state.tab);
       } else {
         const params = new URLSearchParams(window.location.search);
         const tabParam = params.get('tab');
-        if (tabParam) {
+        const validTabs = ['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'];
+        if (tabParam && validTabs.includes(tabParam)) {
           setActiveTab(tabParam as any);
         } else {
           setActiveTab('landing');
@@ -3378,6 +3379,32 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
 
 
 
+            {/* 404 Not Found Fallback View */}
+            {!['landing', 'request', 'lawyers', 'chat', 'calculator', 'reviews', 'qna', 'mypage', 'news', 'notices', 'inquiry', 'guide', 'companion', 'company'].includes(activeTab) && (
+              <div className="py-20 text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-3xl">
+                  🔍
+                </div>
+                <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
+                  요청하신 페이지를 찾을 수 없습니다
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  입력하신 주소가 잘못되었거나 변경되었습니다. 메인 홈으로 이동해 주세요.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('landing');
+                      window.history.pushState({ tab: 'landing' }, '', '?tab=landing');
+                    }}
+                    className="px-6 py-3 bg-brand text-white font-bold text-sm rounded-xl hover:bg-brand/90 transition-all cursor-pointer shadow-md press-scale"
+                  >
+                    홈으로 돌아가기
+                  </button>
+                </div>
+              </div>
+            )}
           </React.Suspense>
         </div>
         )}

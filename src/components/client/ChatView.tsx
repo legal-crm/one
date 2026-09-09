@@ -96,7 +96,7 @@ interface ChatViewProps {
   onSetActiveTab: (tab: string) => void;
   onSetRequests: React.Dispatch<React.SetStateAction<ConsultRequest[]>>;
   onSendChat: (targetLawyerId?: string) => void;
-  onAddMessage: (requestId: string, message: string, senderType: 'client' | 'lawyer' | 'admin', senderId: string, senderName: string, targetLawyerId?: string) => void;
+  onAddMessage: (requestId: string, message: string, senderType: 'client' | 'lawyer' | 'admin' | 'system', senderId: string, senderName: string, targetLawyerId?: string) => void;
 
   activeRequest?: ConsultRequest;
   activeResult?: RehabCalculationResult;

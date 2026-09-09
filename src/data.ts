@@ -1,4 +1,4 @@
-import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, LawyerInquiry, PlatformConfig, PopupConfig, AdBanner, AdOrder } from './types';
+import { LawFirm, Team, User, ConsultRequest, Case, ConsultMessage, ConsultProposal, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, ClientInquiry, LawyerInquiry, PlatformConfig, PopupConfig, AdBanner, AdOrder } from './types';
 import type { LawyerAppointment } from './types';
 
 

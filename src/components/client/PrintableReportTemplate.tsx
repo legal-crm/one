@@ -761,7 +761,7 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
             gap: '6px'
           }}>
             <CheckCircle2 size={14} color="#059669" />
-            <span>총 변제액이 청산가치보다 약 {formatCurrency(Math.max(0, (result.totalRepayment || result.totalPayment || 0) - (result.liquidationValue || 0)))}원 많아 청산가치 보장 요건을 완벽히 충족합니다.</span>
+            <span>총 변제액이 청산가치보다 약 {formatCurrency(Math.max(0, (result.totalRepayment || (result as any).totalPayment || 0) - (result.liquidationValue || 0)))}원 많아 청산가치 보장 요건을 완벽히 충족합니다.</span>
           </div>
         </div>
       </PageWrapper>
@@ -884,14 +884,14 @@ export default function PrintableReportTemplate({ result: rawResult, userInput: 
                 원금 탕감 효과 종합 분석
               </div>
               <div style={{ fontSize: '10.5px', color: '#15803d' }}>
-                채무 원금 {formatCurrency(userInput.totalDebt)} 중 {formatCurrency(result.totalDebtReduction || result.reductionAmount || 0)} 탕감
+                채무 원금 {formatCurrency(userInput.totalDebt)} 중 {formatCurrency(result.totalDebtReduction || (result as any).reductionAmount || 0)} 탕감
               </div>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '11px', color: '#166534', fontWeight: 700 }}>탕감률</span>
             <div style={{ fontSize: '20px', fontWeight: 900, color: '#15803d' }}>
-              약 {result.debtReductionRate || result.reductionRate || 0}%
+              약 {result.debtReductionRate || (result as any).reductionRate || 0}%
             </div>
           </div>
         </div>

@@ -7,7 +7,9 @@ export interface ConfirmOptions {
   title?: string;
   message: string;
   confirmText?: string;
+  confirmLabel?: string; // 호환성 별칭
   cancelText?: string;
+  cancelLabel?: string;  // 호환성 별칭
   variant?: DialogVariant;
 }
 
@@ -91,8 +93,8 @@ export const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         type: 'confirm',
         title: opts.title,
         message: opts.message,
-        confirmText: opts.confirmText || '확인',
-        cancelText: opts.cancelText || '취소',
+        confirmText: opts.confirmText || opts.confirmLabel || '확인',
+        cancelText: opts.cancelText || opts.cancelLabel || '취소',
         variant: opts.variant || 'primary',
         resolve,
       });

@@ -144,7 +144,7 @@ export default function ContractConversionModal({
         clientId: request.id,
         clientName: request.clientName,
         phone: request.phone || '010-0000-0000',
-        status: sendDocPackage ? 'document' : 'contracted',
+        status: 'document',
         assignedLawyerId: activeLawyer.id,
         assignedLawyerName: activeLawyer.name,
         debtTotal: request.financialProfile?.debtTotal || 0,

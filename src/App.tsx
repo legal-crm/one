@@ -737,9 +737,10 @@ export default function App() {
                 if (pinError) setPinError(false);
               }}
               placeholder="••••••"
+              aria-label="보고서 비밀번호 6자리"
               className={`w-full text-center text-3xl tracking-[0.6em] font-bold py-3.5 border-2 ${
                 pinError ? 'border-red-500 bg-red-500/5 focus:border-red-500' : 'border-slate-800 bg-slate-950 focus:border-[#7264FF]'
-              } rounded-xl outline-none transition-colors placeholder:text-slate-700`}
+              } rounded-xl outline-none transition-colors placeholder:text-slate-500 text-white`}
               onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
             />
 

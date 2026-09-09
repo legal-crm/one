@@ -1531,10 +1531,10 @@ export default function MyPageView({
                         <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-150 dark:border-slate-800/80">
                           <span className="text-[11px] text-slate-400 block">월 평균 소득</span>
                           <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-0.5 block">
-                            {(profile?.monthlyIncome || 0).toLocaleString()}만원
+                            {(profile?.monthlyIncome || profile?.income || 0).toLocaleString()}만원
                           </span>
                           <span className="text-[10px] text-slate-400 block mt-0.5">
-                            {profile?.incomeType === 'salary' ? '근로소득자' : profile?.incomeType === 'business' ? '사업소득자' : profile?.incomeType === 'freelancer' ? '프리랜서' : '기타'}
+                            {(profile?.incomeType || profile?.employmentType || profile?.jobType) === 'salary' || (profile?.jobType === 'SALARIED') ? '근로소득자' : (profile?.incomeType || profile?.employmentType || profile?.jobType) === 'business' || (profile?.jobType === 'BUSINESS') ? '사업소득자' : (profile?.incomeType || profile?.employmentType || profile?.jobType) === 'freelancer' || (profile?.jobType === 'FREELANCER') ? '프리랜서' : '소득자'}
                           </span>
                         </div>
                         <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-150 dark:border-slate-800/80">

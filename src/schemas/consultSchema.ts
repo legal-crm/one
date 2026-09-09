@@ -42,7 +42,7 @@ export const ConsultRequestSchema = z.object({
   acceptedLawyerIds: z.array(z.string()).default([]),
   title: z.string().max(200).transform(sanitizeString).default(''),
   content: z.string().max(10000).transform(sanitizeString).default(''),
-  financialProfile: FinancialProfileSchema.default({}),
+  financialProfile: FinancialProfileSchema.optional().default(() => FinancialProfileSchema.parse({})),
   phoneConsultationRequested: z.boolean().default(false),
   safeNumber: z.string().nullable().optional(),
   entryCategory: z.any().nullable().optional(),
