@@ -1864,11 +1864,19 @@ export default function AdminRole({
                       })()}
 
                       <div className="space-y-3.5 text-sm text-slate-500">
-                        {/* Legal warning */}
-                        <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40 space-y-1.5">
-                          <span className="text-sm font-extrabold text-indigo-400 block uppercase">⚖️ 법률 데이터 무결성 보호 안내</span>
-                          <p className="leading-relaxed text-[13px]">
-                            개인정보 보호법 및 변호사법 준수에 근거하여 관리자는 의뢰인의 원본 기재 금융 채무 구조 금액을 임의 수정할 수 없습니다. 아래 정보는 읽기 전용 상태로 안전하게 렌더링됩니다.
+                        {/* Legal warning & Zero-Knowledge banner */}
+                        <div className="bg-[#0B0F19] p-3.5 rounded-xl border border-indigo-500/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5 uppercase">
+                              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                              <span>Zero-Knowledge 법률 데이터 무결성 보호</span>
+                            </span>
+                            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                              서류 열람 원천 차단
+                            </span>
+                          </div>
+                          <p className="leading-relaxed text-[12.5px] text-slate-400">
+                            변호사법 제26조(비밀유지의무) 및 개인정보 보호법에 의거하여, 의뢰인의 민감 제출 서류(신분증, 인감, 부채증명원 등) 및 1:1 비밀 상담 대화는 <strong>사건 당사자(의뢰인 및 담당 배정 변호사)만 접근</strong>할 수 있으며, 최고관리자 계정에서도 조회가 원천 격리(Zero-Knowledge)되어 안전하게 보호됩니다.
                           </p>
                         </div>
 

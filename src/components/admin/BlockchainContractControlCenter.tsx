@@ -29,7 +29,7 @@ import {
   Globe
 } from 'lucide-react';
 import type { ElectronicContract } from '../../types';
-import { loadContracts } from '../../services/contractService';
+import { loadAdminContractAnchors } from '../../services/contractService';
 import { 
   fetchBlockchainNetworkStatus, 
   verifyTxOnChain,
@@ -86,7 +86,7 @@ export default function BlockchainContractControlCenter() {
   const fetchContractsData = useCallback(async () => {
     setIsLoadingContracts(true);
     try {
-      const list = await loadContracts();
+      const list = await loadAdminContractAnchors();
       setContracts(list || []);
     } catch {
       toast.error('전자계약 목록 로드 실패');

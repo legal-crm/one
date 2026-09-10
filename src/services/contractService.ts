@@ -121,6 +121,40 @@ export async function loadContracts(scope?: { clientId?: string; assignedLawyerI
   return loadContractsLocal();
 }
 
+/**
+ * [Zero-Knowledge] 관리자 전용 온체인 앵커링 관제 데이터 로드
+ * 변호사법 제26조(비밀유지의무) 및 개인정보보호법에 의거하여,
+ * 최고관리자는 의뢰인의 주민등록상 주소, 전화번호, 계좌번호, 서명 이미지, 첨부 서류 등
+ * 민감 개인정보를 열람할 수 없으며,
+ * 오직 온체인 블록체인 검증에 필요한 메타데이터(ID, 해시, 폴리곤 TX, 상태 등)만 조회합니다.
+ */
+export async function loadAdminContractAnchors(): Promise<ElectronicContract[]> {
+  if (isSupabaseConfigured) {
+    try {
+      // 1. 보안 RPC 함수 get_admin_contract_anchors 호출 시도
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_contract_anchors');
+      if (!rpcError && rpcData && Array.isArray(rpcData)) {
+        return rpcData.map(rowToContract);
+      }
+
+      // 2. RPC 미배포 또는 폴백 시 보안 제한 컬럼만 조회 (민감 서류/서명/주소 제외)
+      const { data, error } = await supabase
+        .from('electronic_contracts')
+        .select('id, client_id, client_name, lawyer_name, law_firm_name, assigned_lawyer_id, status, contract_date, is_business, document_hashes, blockchain_anchor, created_at, updated_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        logSupabaseError('loadAdminContractAnchors', error);
+      } else if (data && data.length > 0) {
+        return data.map(rowToContract);
+      }
+    } catch (e) {
+      logSupabaseError('loadAdminContractAnchors (exception)', e);
+    }
+  }
+  return loadContractsLocal();
+}
+
 export async function saveContracts(contracts: ElectronicContract[]): Promise<void> {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
   if (isSupabaseConfigured && contracts.length > 0) {

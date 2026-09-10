@@ -54,6 +54,10 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract 
   };
 
   const handleDownloadPdf = async () => {
+    if (!contract.documents || contract.documents.length === 0) {
+      toast.info('🛡️ [Zero-Knowledge 보안 격리] 변호사법 제26조에 따라 통합관리자 화면에서는 계약서 서명 원문 PDF 다운로드가 차단됩니다. (사건 당사자인 의뢰인 및 담당 변호사만 다운로드 가능)');
+      return;
+    }
     setDownloadingPdf(true);
     try {
       await generateCourtSubmissionPdf(contract);
