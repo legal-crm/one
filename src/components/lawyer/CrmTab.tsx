@@ -31,6 +31,7 @@ import BatchFilingPackagingModal from './filing/BatchFilingPackagingModal';
 import BankruptcyManagementTab from './bankruptcy/BankruptcyManagementTab';
 import AncillaryPetitionsModal from './petitions/AncillaryPetitionsModal';
 import PostCommencementManagementModal from './postcare/PostCommencementManagementModal';
+import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -194,7 +195,7 @@ export default function CrmTab({
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'repayment' | 'bankruptcy' | 'corrections' | 'court'>(initialDetailTab || 'info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court'>(initialDetailTab || 'info');
 
   // ── 리걸플로 벤치마킹 실무 모달 상태 ──
   const [showBatchFilingModal, setShowBatchFilingModal] = useState(false);
@@ -2350,6 +2351,12 @@ export default function CrmTab({
                         icon: '📜', 
                         count: (selectedExt.debtCertificateOrders?.[0]?.items || []).length > 0 ? (selectedExt.debtCertificateOrders?.[0]?.items || []).length : null 
                       },
+                      { 
+                        key: 'statement', 
+                        label: '진술서', 
+                        icon: '🎙️', 
+                        count: selectedExt.courtStatement?.status === 'client_completed' ? '제출' : selectedExt.courtStatement ? '작성중' : null 
+                      },
                       ...(isBankruptcyCase ? [
                         { key: 'bankruptcy', label: '개인파산·면책', icon: '🏛️', count: selectedExt.bankruptcyData?.isSimultaneousDismissalEligible ? '동시폐지' : '파산' }
                       ] : [
@@ -3697,6 +3704,19 @@ export default function CrmTab({
                       </div>
                     );
                   })()}
+
+                  {/* ══════════ [진술서] 법원 진술서 탭 (고객 작성 & AI 정제 & 전자소송 자동 첨부) ══════════ */}
+                  {detailTab === 'statement' && selectedClient && (
+                    <LawyerStatementReviewSection
+                      clientId={selectedId}
+                      clientRequest={selectedClient}
+                      crmExt={selectedExt}
+                      onUpdateCrmExt={async (updates) => {
+                        await updateCrmExt(selectedId, updates);
+                      }}
+                      activeLawyerName={activeLawyer.name}
+                    />
+                  )}
 
                   {/* ══════════ [7] 보정 탭 (ComprehensiveCorrectionCenter) ══════════ */}
                   {detailTab === 'corrections' && selectedClient && (

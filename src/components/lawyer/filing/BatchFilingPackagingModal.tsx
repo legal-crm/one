@@ -41,19 +41,31 @@ export default function BatchFilingPackagingModal({
   const [slots, setSlots] = useState<FilingDocumentSlot[]>(() => {
     const uploaded = crmExt.uploadedFiles || [];
     return standardTemplates.map(t => {
-      // 업로드 서류 중 매칭되는 파일 탐색
+      // 1. linkedDocId 매칭
+      // 2. 파일명 키워드 매칭
+      // 3. 법원 진술서(R10, B02) 고객 작성 데이터 매칭
+      const isStatementSlot = t.code === 'R10' || t.code === 'B02';
+      const hasCompletedStatement = isStatementSlot && (crmExt.courtStatement?.status === 'client_completed' || !!crmExt.courtStatement?.story?.initialCauseDetail);
+
       const matched = uploaded.find(u => 
+        (u as any).linkedDocId === t.code ||
+        (isStatementSlot && u.name.includes('진술서')) ||
         u.name.toLowerCase().includes(t.title.split('.')[1]?.trim().slice(0, 4).toLowerCase() || '')
       );
 
+      const isReady = !!matched || hasCompletedStatement;
+
       return {
         ...t,
-        status: matched ? 'READY' : (t.isRequired ? 'MISSING' : 'OPTIONAL_SKIPPED'),
+        status: isReady ? 'READY' : (t.isRequired ? 'MISSING' : 'OPTIONAL_SKIPPED'),
         file: matched ? {
           name: matched.name,
           dataUrl: matched.dataUrl,
           mimeType: matched.mimeType
-        } : undefined
+        } : (hasCompletedStatement ? {
+          name: `[고객작성완료]_${isBankruptcy ? '개인파산' : '개인회생'}_진술서_${clientName}.pdf`,
+          mimeType: 'application/pdf'
+        } : undefined)
       };
     });
   });

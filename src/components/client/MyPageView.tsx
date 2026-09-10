@@ -17,6 +17,7 @@ import RehabCompanionView from './companion/RehabCompanionView';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
+const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 
 interface MyPageViewProps {
   userAlias: string;
@@ -73,6 +74,8 @@ export default function MyPageView({
   
   // 진단서 상세 항목 수정 폼 접기/펼치기 상태 (컴팩트 모드에서는 항상 펼침)
   const [isEditingBlueprint, setIsEditingBlueprint] = useState(false);
+  // 법원 진술서 모달 열림 상태
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   
   const feeSettings = useMemo(() => loadFeeNotificationSettings(), []);
 
@@ -1697,10 +1700,44 @@ export default function MyPageView({
 
                     {/* 2. 필수 서류 제출 */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
+                      
+                      {/* 🌟 법원 진술서 고객 간편 작성 (음성 STT + Gemini AI 도우미) 배너 */}
+                      <div className="p-5 md:p-6 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 rounded-3xl text-white shadow-lg space-y-4 border border-indigo-700/40">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-2xl shrink-0">
+                              🎙️
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-base md:text-lg text-white">
+                                  말로 편하게 작성하는 법원 진술서
+                                </h4>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-400 text-slate-950 font-sans">
+                                  Gemini 2.5 AI
+                                </span>
+                              </div>
+                              <p className="text-xs text-indigo-200 mt-0.5 leading-relaxed">
+                                진술서는 고객님이 직접 작성해야 하는 유일한 서류입니다. 마이크를 켜고 편하게 말씀하시면 제미나이가 법원 양식으로 완성하여 변호사에게 자동 전달합니다.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsStatementModalOpen(true)}
+                            className="px-5 py-3 bg-white text-indigo-950 hover:bg-indigo-50 font-black text-xs md:text-sm rounded-2xl shadow-md transition-all cursor-pointer press-scale shrink-0 flex items-center justify-center gap-2"
+                          >
+                            <span>🎙️ 진술서 말로 작성하기</span>
+                            <ChevronRight className="w-4 h-4 text-indigo-600" />
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="flex items-center justify-between">
                         <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-purple-50 text-purple-500 dark:bg-purple-950/40"><FileText className="w-5 h-5" /></div>
-                          필수 서류 제출
+                          관공서 필수 서류 발급 제출
                         </h3>
                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">{submittedCount} / 15 제출 완료</span>
                       </div>
@@ -2063,6 +2100,25 @@ export default function MyPageView({
       proposal={selectedProposalForReport}
       clientInfo={activeRequest || requests[0]}
     />
+  )}
+
+  {/* 🎙️ 법원 제출용 진술서 작성 모달 (Gemini AI 도우미) */}
+  {isStatementModalOpen && (
+    <React.Suspense fallback={null}>
+      <ClientStatementModal
+        isOpen={isStatementModalOpen}
+        onClose={() => setIsStatementModalOpen(false)}
+        clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
+        clientName={profile?.name || userAlias || '신청인'}
+        caseType={activeRequest?.caseType === 'bankruptcy' || activeRequest?.category === 'individual_bankruptcy' ? 'bankruptcy' : 'rehab'}
+        courtName={activeRequest?.court || '서울회생법원'}
+        totalDebtAmount={profile?.debtTotal || 5000}
+        monthlyIncome={profile?.income || 250}
+        onSuccessSubmitted={() => {
+          setRefreshTick(c => c + 1);
+        }}
+      />
+    </React.Suspense>
   )}
 </div>
   );

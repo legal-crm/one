@@ -751,6 +751,8 @@ export interface CrmClientExtension {
   repaymentPlan?: RepaymentPlanData;
   // ── 2026 개인파산 및 면책 동시신청 종합 데이터 ──
   bankruptcyData?: BankruptcyFullCaseData;
+  // ── 2026 법원 제출용 진술서 (개인회생/파산 고객 작성 및 AI 연동) ──
+  courtStatement?: import('./types/statementTypes').CourtStatementData;
 }
 
 export interface RepaymentEntry {
