@@ -804,9 +804,11 @@ export interface ConsultRequest {
   maxParticipants: number;
   status: ConsultStatus;
   assignedLawyerId?: string; // 배정된 변호사 ID
+  assignedLawyerEmail?: string; // 배정된 변호사 이메일
   assigneeId?: string;       // 담당 직원/변호사 ID
   selectedLawyerId?: string; // If 'direct' — 채팅이 개시된 변호사 ID
   selectedLawyerIds?: string[]; // 의뢰인이 지정한 변호사 ID 목록 (최대 3명)
+  selectedLawyerEmails?: string[]; // 의뢰인이 지정한 변호사 이메일 목록
   proposals?: ConsultProposal[]; // 변호사들이 제출한 솔루션/비용 제안서 목록
   acceptedLawyerIds?: string[];   // 제안서 수락 → 상담 활성화된 변호사 목록
   rejectionNotified?: boolean;    // 미매칭 알림 발송 완료 여부

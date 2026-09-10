@@ -384,8 +384,10 @@ export default function App() {
     try {
       const saved = secureGetItem('legal_crm_lawyers');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.length >= mockLawyers.length) return parsed;
+        const parsed: LawyerType[] = JSON.parse(saved);
+        if (parsed.length >= mockLawyers.length) {
+          return parsed.map(l => l.id === 'lawyer-1' && !l.email ? { ...l, email: 'amjone8@gmail.com' } : l);
+        }
       }
     } catch {}
     return mockLawyers.map(l => ({ ...l, password: '1234' }));
@@ -532,7 +534,8 @@ export default function App() {
     }
 
     if (savedLawyers && JSON.parse(savedLawyers).length >= mockLawyers.length) {
-      setLawyers(JSON.parse(savedLawyers));
+      const parsed: LawyerType[] = JSON.parse(savedLawyers);
+      setLawyers(parsed.map(l => l.id === 'lawyer-1' && !l.email ? { ...l, email: 'amjone8@gmail.com' } : l));
     } else {
       // Set initial passwords to '1234' for easy mockup login
       const lawyersWithPass = mockLawyers.map(l => ({ ...l, password: '1234' }));

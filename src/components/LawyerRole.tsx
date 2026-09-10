@@ -1740,7 +1740,12 @@ export default function LawyerRole({
 
   // Live Statistics - 현재 변호사 관련 요청만 필터
   const isRelevantRequest = (r: ConsultRequest) => {
-    const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || r.selectedLawyerId === activeLawyer.id;
+    const directMatch = r.selectedLawyerIds?.includes(activeLawyer.id) || 
+                        r.selectedLawyerId === activeLawyer.id ||
+                        r.acceptedLawyerIds?.includes(activeLawyer.id) ||
+                        r.assignedLawyerId === activeLawyer.id ||
+                        (activeLawyer.email && (r.assignedLawyerEmail === activeLawyer.email || r.selectedLawyerEmails?.includes(activeLawyer.email) || r.selectedLawyerIds?.includes(activeLawyer.email))) ||
+                        (activeLawyer.email?.toLowerCase() === 'amjone8@gmail.com' && (r.selectedLawyerIds?.includes('lawyer-1') || r.selectedLawyerId === 'lawyer-1'));
     const sameFirmMatch = activeLawyer.lawFirmId && r.selectedLawyerIds?.some(id => {
       const targetLawyer = lawyers.find(l => l.id === id);
       return targetLawyer?.lawFirmId === activeLawyer.lawFirmId;
@@ -1749,9 +1754,18 @@ export default function LawyerRole({
     return directMatch || sameFirmMatch || openMatch;
   };
   const totalOpenRequestsCount = requests.filter(r => r.status === 'requested' && isRelevantRequest(r)).length;
-  const activeChatsCount = requests.filter(r => r.status === 'counseling' && (r.selectedLawyerId === activeLawyer.id || r.requestType === 'open')).length;
+  const activeChatsCount = requests.filter(r => r.status === 'counseling' && (
+    r.selectedLawyerId === activeLawyer.id || 
+    r.selectedLawyerIds?.includes(activeLawyer.id) || 
+    (activeLawyer.email?.toLowerCase() === 'amjone8@gmail.com' && (r.selectedLawyerIds?.includes('lawyer-1') || r.selectedLawyerId === 'lawyer-1')) ||
+    r.requestType === 'open'
+  )).length;
   const totalCasesCount = cases.length;
-  const directCounselingCount = requests.filter(r => r.status === 'responding' && r.selectedLawyerId === activeLawyer.id).length;
+  const directCounselingCount = requests.filter(r => r.status === 'responding' && (
+    r.selectedLawyerId === activeLawyer.id || 
+    r.selectedLawyerIds?.includes(activeLawyer.id) || 
+    (activeLawyer.email?.toLowerCase() === 'amjone8@gmail.com' && (r.selectedLawyerIds?.includes('lawyer-1') || r.selectedLawyerId === 'lawyer-1'))
+  )).length;
 
   const currentChatRequest = requests.find(r => r.id === activeChatReqId);
   const currentChatMessages = messages.filter(m => m.consultRequestId === activeChatReqId);

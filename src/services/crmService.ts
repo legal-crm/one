@@ -259,16 +259,202 @@ export function deleteCrmClient(clientId: string): void {
   } catch { /* ignore */ }
 }
 
+// ── amjone8@gmail.com 전용 가상 상담 5선 사전 설정 CRM 프로필 ──
+const PREDEFINED_AMJONE_PROFILES: Record<string, Partial<CrmClientExtension>> = {
+  'req-amjone-1': {
+    crmStatus: 'document',
+    caseType: 'bankruptcy',
+    intakeChannel: 'mykim',
+    preInfo: '무릎 관절염 수술 후 식당 일용직 근로 중단. 성인 자녀 명의 원룸에 친족 무상거주 중. 파산관재인 15대 필수서류 심사 및 1,110만 원 면제재산 동시폐지 신청 준비 중.',
+    courtCase: {
+      courtName: '서울회생법원',
+      status: '서류 취합 중',
+    },
+    notes: [
+      {
+        id: 'note-amj-1-1',
+        clientId: 'req-amjone-1',
+        authorId: 'lawyer-1',
+        authorName: '김우진 변호사',
+        authorRole: 'OWNER',
+        content: '1차 전화상담 완료: 만 58세 여성, 무릎 수술 후 근로능력 현저히 부족함. 2년 전 반환보증금 1,000만원 전액 수술비 영수증 확보 완료. 소명 완료 시 동시폐지(관재인 보수 절약) 유력.',
+        createdAt: '2026-09-08T11:00:00Z',
+        category: 'consultation'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-amj-1-1',
+        clientId: 'req-amjone-1',
+        actorId: 'system',
+        actorName: '시스템',
+        actorRole: 'OWNER',
+        type: 'created',
+        description: '마이김변 플랫폼을 통해 [개인파산] 무료상담이 접수되었습니다.',
+        createdAt: '2026-09-08T10:15:00Z'
+      },
+      {
+        id: 'act-amj-1-2',
+        clientId: 'req-amjone-1',
+        actorId: 'lawyer-1',
+        actorName: '김우진 변호사',
+        actorRole: 'OWNER',
+        type: 'status_change',
+        description: '진행 상태를 [서류 수집]으로 변경하였습니다. (파산관재인 15대 필수서류 리스트 알림톡 발송)',
+        createdAt: '2026-09-08T11:40:00Z'
+      }
+    ]
+  },
+  'req-amjone-2': {
+    crmStatus: 'consulting',
+    caseType: 'individual_rehab',
+    intakeChannel: 'naver_ad',
+    intakeChannelDetail: '네이버 검색광고: "코인 손실 개인회생"',
+    preInfo: '2024년 해외선물 및 알트코인 투자 손실 9천만 원. IT 개발자(월 310만원). 서울회생법원 주식/가상자산 손실금 청산가치 불반영 및 청년 24개월 변제 특례 검토 중.',
+    notes: [
+      {
+        id: 'note-amj-2-1',
+        clientId: 'req-amjone-2',
+        authorId: 'lawyer-1',
+        authorName: '김우진 변호사',
+        authorRole: 'OWNER',
+        content: '서울회생법원 준칙 제408호 적용 대상. 해외선물 거래내역서 및 업비트 거래내역 분석 중. 직장 통보 방지 요청 철저 관리 요망.',
+        createdAt: '2026-09-08T16:00:00Z',
+        category: 'general'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-amj-2-1',
+        clientId: 'req-amjone-2',
+        actorId: 'system',
+        actorName: '시스템',
+        actorRole: 'OWNER',
+        type: 'created',
+        description: '네이버 파워링크 검색을 통해 [개인회생] 상담이 접수되었습니다.',
+        createdAt: '2026-09-08T15:30:00Z'
+      }
+    ]
+  },
+  'req-amjone-3': {
+    crmStatus: 'contracted',
+    caseType: 'bankruptcy',
+    intakeChannel: 'youtube',
+    intakeChannelDetail: '유튜브: 파산회생 A to Z 채널',
+    preInfo: '치킨 호프집 6년 운영 후 폐업. 부채 2억 4천만 원(신보, 은행, 물품대금). 상가보증금 반환 600만 원 영수증 소명 완료. 당뇨 합병증으로 무자력 파산.',
+    contractDate: '2026-09-09',
+    contractAmount: 2500000,
+    totalFee: 2500000,
+    totalPaid: 1000000,
+    feeSchedule: [
+      { id: 'fee-1', round: 1, amount: 1000000, dueDate: '2026-09-09', paidDate: '2026-09-09', status: 'paid', paymentMethod: '계좌이체' },
+      { id: 'fee-2', round: 2, amount: 800000, dueDate: '2026-10-09', status: 'pending' },
+      { id: 'fee-3', round: 3, amount: 700000, dueDate: '2026-11-09', status: 'pending' }
+    ],
+    courtCase: {
+      courtName: '수원회생법원',
+      status: '수임 계약 체결 / 접수 준비',
+    },
+    notes: [
+      {
+        id: 'note-amj-3-1',
+        clientId: 'req-amjone-3',
+        authorId: 'lawyer-1',
+        authorName: '김우진 변호사',
+        authorRole: 'OWNER',
+        content: '수임계약 체결 완료. 착수금 100만원 수납. 유체동산 압류 통지서 송달되었으므로 파산신청과 동시에 강제집행 중지명령 신청서 함께 제출 예정.',
+        createdAt: '2026-09-09T10:30:00Z',
+        category: 'contract'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-amj-3-1',
+        clientId: 'req-amjone-3',
+        actorId: 'lawyer-1',
+        actorName: '김우진 변호사',
+        actorRole: 'OWNER',
+        type: 'contract',
+        description: '전자 수임계약 체결 완료 (총 수임료 250만원 / 착수금 100만원 수납)',
+        createdAt: '2026-09-09T10:20:00Z'
+      }
+    ]
+  },
+  'req-amjone-4': {
+    crmStatus: 'filed',
+    caseType: 'individual_rehab',
+    intakeChannel: 'referral',
+    intakeChannelDetail: '기존 인가 의뢰인 소개',
+    preInfo: '빌라왕 전세사기 피해자(전세대출 1억 8,000만 원 미반환). 서울회생법원 2026개회104921 접수 완료. 금지명령 인용 완료(2026.09.10).',
+    contractDate: '2026-08-28',
+    contractAmount: 2200000,
+    totalFee: 2200000,
+    totalPaid: 2200000,
+    courtCase: {
+      courtName: '서울회생법원',
+      caseNumber: '2026개회104921',
+      status: '금지명령 인용 / 개시 대기',
+    },
+    notes: [
+      {
+        id: 'note-amj-4-1',
+        clientId: 'req-amjone-4',
+        authorId: 'lawyer-1',
+        authorName: '김우진 변호사',
+        authorRole: 'OWNER',
+        content: '서울회생법원 2026개회104921 접수 완료. 금지명령 인용 결정문 송달되어 시중은행 독촉 즉시 전면 중단됨. HUG 안심전세대출 구제 특례 적용 진행 중.',
+        createdAt: '2026-09-10T09:30:00Z',
+        category: 'court'
+      }
+    ],
+    activities: [
+      {
+        id: 'act-amj-4-1',
+        clientId: 'req-amjone-4',
+        actorId: 'lawyer-1',
+        actorName: '김우진 변호사',
+        actorRole: 'OWNER',
+        type: 'court_case',
+        description: '서울회생법원 금지명령 인용 결정 (사건번호: 2026개회104921)',
+        createdAt: '2026-09-10T09:15:00Z'
+      }
+    ]
+  },
+  'req-amjone-5': {
+    crmStatus: 'requested',
+    caseType: 'individual_rehab',
+    intakeChannel: 'blog',
+    intakeChannelDetail: '네이버 블로그: "급여 압류 막는 법" 칼럼 유입',
+    preInfo: '제조업 생산직(월 260만 원, 4인 가족). 모친 암 수술비로 대부업체 3곳 2,800만 원 등 총 6,200만 원 채무. 연체 직전 추심원 방문 예고 수신. 당일 긴급 전화상담 요청.',
+    notes: [],
+    activities: [
+      {
+        id: 'act-amj-5-1',
+        clientId: 'req-amjone-5',
+        actorId: 'system',
+        actorName: '시스템',
+        actorRole: 'OWNER',
+        type: 'created',
+        description: '블로그 콘텐츠를 통해 [신규 상담 신청]이 접수되었습니다. (긴급 전화상담 요청)',
+        createdAt: '2026-09-10T08:50:00Z'
+      }
+    ]
+  }
+};
+
 // ── CrmClientExtension 초기화 헬퍼 ──
 
 export function createDefaultCrmExtension(clientId: string, caseType: 'individual_rehab' | 'bankruptcy' = 'individual_rehab'): CrmClientExtension {
-  const docs = caseType === 'bankruptcy' ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
+  const predefined = PREDEFINED_AMJONE_PROFILES[clientId] || {};
+  const effectiveCaseType = (predefined.caseType as any) || caseType;
+  const docs = effectiveCaseType === 'bankruptcy' ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
+  
   return {
-    crmStatus: 'requested',
-    caseType,
-    documents: (docs || []).map((d: any) => ({ ...d, reviewStatus: d.reviewStatus || 'not_submitted' })),
-    notes: [],
-    activities: [{
+    crmStatus: predefined.crmStatus || 'requested',
+    caseType: effectiveCaseType,
+    documents: predefined.documents || (docs || []).map((d: any) => ({ ...d, reviewStatus: d.reviewStatus || 'not_submitted' })),
+    notes: predefined.notes || [],
+    activities: predefined.activities || [{
       id: `act-init-${Date.now()}`,
       clientId,
       actorId: 'system',
@@ -278,15 +464,21 @@ export function createDefaultCrmExtension(clientId: string, caseType: 'individua
       description: '상담 신청이 접수되었습니다.',
       createdAt: new Date().toISOString(),
     }],
-    lastActivityAt: new Date().toISOString(),
-    // ── 다채널 CRM 기본값 ──
-    intakeChannel: 'mykim',
-    isExternalClient: false,
-    feeSchedule: [],
-    uploadedFiles: [],
-    correctionOrders: [],
-    alimtokLogs: [],
-    documentRequests: [],
+    lastActivityAt: predefined.lastActivityAt || new Date().toISOString(),
+    intakeChannel: predefined.intakeChannel || 'mykim',
+    intakeChannelDetail: predefined.intakeChannelDetail,
+    isExternalClient: predefined.isExternalClient || false,
+    preInfo: predefined.preInfo,
+    courtCase: predefined.courtCase,
+    contractDate: predefined.contractDate,
+    contractAmount: predefined.contractAmount,
+    totalFee: predefined.totalFee,
+    totalPaid: predefined.totalPaid,
+    feeSchedule: predefined.feeSchedule || [],
+    uploadedFiles: predefined.uploadedFiles || [],
+    correctionOrders: predefined.correctionOrders || [],
+    alimtokLogs: predefined.alimtokLogs || [],
+    documentRequests: predefined.documentRequests || [],
   };
 }
 

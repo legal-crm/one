@@ -145,7 +145,10 @@ export async function loadConsultRequests(filter?: string | ConsultRequestFilter
     .filter(r => {
       if (options.clientId) return r.clientId === options.clientId;
       if (options.lawyerId) {
-        const isAssigned = r.selectedLawyerId === options.lawyerId || (r.acceptedLawyerIds || []).includes(options.lawyerId);
+        const isAssigned = r.selectedLawyerId === options.lawyerId || 
+                           (r.acceptedLawyerIds || []).includes(options.lawyerId) ||
+                           (r.selectedLawyerIds || []).includes(options.lawyerId) ||
+                           (options.lawyerId === 'amjone8@gmail.com' && (r.selectedLawyerId === 'lawyer-1' || (r.selectedLawyerIds || []).includes('lawyer-1')));
         const isOpen = options.includeOpen && r.status === 'requested' && r.requestType === 'open';
         return isAssigned || isOpen;
       }
