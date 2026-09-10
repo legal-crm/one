@@ -44,7 +44,7 @@ import type {
 } from '../../types';
 import { 
   CRM_STATUS_CONFIG, STAFF_ROLE_CONFIG, CRM_NOTE_CATEGORIES, 
-  DEFAULT_REHAB_DOCUMENTS, DEFAULT_PERMISSIONS, OUTCOME_CONFIG,
+  DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS, DEFAULT_PERMISSIONS, OUTCOME_CONFIG,
   DIRECTIVE_PRIORITY_CONFIG, DOC_REVIEW_STATUS_CONFIG
 } from '../../types';
 import { 
@@ -535,6 +535,67 @@ export default function CrmTab({
   const handleSaveClientInfo = () => {
     if (!selectedId || !editName.trim()) return;
     setRequests(prev => prev.map(r => r.id === selectedId ? { ...r, clientName: editName.trim(), phone: editPhone.trim() } : r));
+  };
+
+  /** 사건 담당 변호사/직원 전용 사건 유형 전환 (개인회생 <-> 개인파산·면책) */
+  const handleSwitchCaseType = async (newType: 'individual_rehab' | 'bankruptcy') => {
+    if (!selectedId) return;
+    const ext = getCrmExt(selectedId);
+    const currentIsBk = ext.caseType === 'bankruptcy' || ext.caseType === 'individual_bankruptcy';
+    if ((newType === 'bankruptcy' && currentIsBk) || (newType === 'individual_rehab' && !currentIsBk)) {
+      return;
+    }
+
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    const targetLabel = newType === 'bankruptcy' ? '개인파산·면책' : '개인회생';
+    
+    const activity = createActivityLog(
+      selectedId,
+      actor.id,
+      actor.name,
+      actor.role,
+      'status_change',
+      `사건 유형을 [${targetLabel}]으로 전환하였습니다.`
+    );
+
+    const updatedActivities = [activity, ...(ext.activities || [])];
+
+    const targetDocs = newType === 'bankruptcy' ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
+    const existingDocs = ext.documents || [];
+    // 진행된 서류(체크되었거나 검토요청/승인된 서류)가 없으면 해당 사건 유형의 표준 서류함으로 자동 전환
+    const hasProgress = existingDocs.some(d => d.checked || (d.reviewStatus && d.reviewStatus !== 'not_submitted'));
+    let updatedDocuments = existingDocs;
+    if (!hasProgress || existingDocs.length === 0) {
+      updatedDocuments = targetDocs.map(d => ({ ...d, reviewStatus: 'not_submitted' as DocumentReviewStatus }));
+    }
+
+    await updateCrmExt(selectedId, {
+      caseType: newType,
+      activities: updatedActivities,
+      documents: updatedDocuments
+    });
+
+    // requests 목록 상태도 동기화
+    setRequests(prev => prev.map(r => {
+      if (r.id === selectedId) {
+        return {
+          ...r,
+          caseType: newType,
+          category: newType === 'bankruptcy' ? 'bankruptcy' : 'rehab',
+          caseCategory: newType === 'bankruptcy' ? 'individual_bankruptcy' : 'individual_rehab'
+        };
+      }
+      return r;
+    }));
+
+    // 탭 자동 전환
+    if (newType === 'bankruptcy' && detailTab === 'repayment') {
+      setDetailTab('bankruptcy');
+    } else if (newType === 'individual_rehab' && detailTab === 'bankruptcy') {
+      setDetailTab('repayment');
+    }
+
+    toast.success(`사건 유형이 [${targetLabel}]으로 전환되었습니다.`);
   };
 
   const handleSaveAssignment = async () => {
@@ -2185,7 +2246,7 @@ export default function CrmTab({
                 
                 {/* ══════════ 리걸플로 벤치마킹: 3대 실무 원클릭 도구 툴바 ══════════ */}
                 {selectedClient && (() => {
-                  const isBankruptcyCase = (selectedClient.financialProfile?.income || 0) === 0 || (selectedClient.financialProfile?.debtTotal || 0) > 50000;
+                  const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                   return (
                     <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -2212,9 +2273,39 @@ export default function CrmTab({
                           <span>🏦 개시·사후관리 (가상계좌·집회)</span>
                         </button>
                       </div>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
-                        {isBankruptcyCase ? '🏛️ 개인파산·면책 사건' : '⚖️ 개인회생 사건'}
-                      </span>
+
+                      {/* 사건 담당 변호사/직원 전용 사건 유형 전환 스위처 */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400">사건 유형:</span>
+                        <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-xl p-0.5 shadow-inner">
+                          <button
+                            type="button"
+                            onClick={() => handleSwitchCaseType('individual_rehab')}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                              !isBankruptcyCase
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                            title="개인회생 사건으로 전환 (변제계획안 모드)"
+                          >
+                            <span>⚖️ 개인회생</span>
+                            {!isBankruptcyCase && <span className="w-1.5 h-1.5 rounded-full bg-blue-200 animate-pulse" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSwitchCaseType('bankruptcy')}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isBankruptcyCase
+                                ? 'bg-purple-600 text-white shadow-xs'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                            title="개인파산·면책 사건으로 전환 (파산 관리 센터 모드)"
+                          >
+                            <span>🏛️ 개인파산·면책</span>
+                            {isBankruptcyCase && <span className="w-1.5 h-1.5 rounded-full bg-purple-200 animate-pulse" />}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
@@ -2222,7 +2313,7 @@ export default function CrmTab({
                 {/* 스마트 서브탭 바 (카운트 뱃지 탑재) */}
                 <div className="flex border-b border-slate-200/80 overflow-x-auto no-scrollbar px-4 bg-slate-50/30">
                   {(() => {
-                    const isBankruptcyCase = (selectedClient?.financialProfile?.income || 0) === 0 || (selectedClient?.financialProfile?.debtTotal || 0) > 50000;
+                    const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                     return [
                       { key: 'info', label: '종합 정보', icon: '👤', count: null },
                       { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
@@ -2256,7 +2347,7 @@ export default function CrmTab({
                         count: (selectedExt.debtCertificateOrders?.[0]?.items || []).length > 0 ? (selectedExt.debtCertificateOrders?.[0]?.items || []).length : null 
                       },
                       ...(isBankruptcyCase ? [
-                        { key: 'bankruptcy', label: '개인파산·면책', icon: '🏛️', count: '파산' }
+                        { key: 'bankruptcy', label: '개인파산·면책', icon: '🏛️', count: selectedExt.bankruptcyData?.isSimultaneousDismissalEligible ? '동시폐지' : '파산' }
                       ] : [
                         { key: 'repayment', label: '변제계획안', icon: '⚖️', count: selectedExt.repaymentPlan ? `${selectedExt.repaymentPlan.totalRepaymentRate}%` : null }
                       ]),
@@ -2344,7 +2435,15 @@ export default function CrmTab({
                       
                       {/* 법원 진행 현황 바 (수임 이후) */}
                       {['contracted','document','filed','commenced','repaying','discharged'].includes(selectedExt.crmStatus) && (() => {
-                        const steps = [
+                        const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
+                        const steps = isBk ? [
+                          { key: 'contracted', label: '수임계약', short: '수임' },
+                          { key: 'document', label: '서류준비', short: '서류' },
+                          { key: 'filed', label: '파산접수', short: '접수' },
+                          { key: 'commenced', label: '파산선고(관재인)', short: '선고' },
+                          { key: 'repaying', label: '의견청취기일', short: '집회' },
+                          { key: 'discharged', label: '면책결정', short: '면책' },
+                        ] : [
                           { key: 'contracted', label: '수임계약', short: '수임' },
                           { key: 'document', label: '서류준비', short: '서류' },
                           { key: 'filed', label: '법원접수', short: '접수' },
@@ -3206,8 +3305,31 @@ export default function CrmTab({
                     
                     const progressPercent = totalDocs === 0 ? 0 : Math.round((approvedCount / totalDocs) * 100);
 
+                    const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
+
                     return (
                       <div className="space-y-4">
+                        {isBankruptcyCase && (
+                          <div className="bg-purple-50/80 border border-purple-200 rounded-2xl p-4 flex items-start justify-between gap-3 text-xs shadow-xs animate-fadeIn">
+                            <div className="space-y-1">
+                              <div className="font-bold text-purple-900 flex items-center gap-1.5">
+                                <span>🏛️ 개인파산 사건 안내: 파산관재인 15대 필수자료 제출 규격</span>
+                              </div>
+                              <p className="text-purple-700 leading-relaxed">
+                                본 사건은 <strong>개인파산·면책 사건</strong>으로 지정되어 있습니다. 회생과 달리 파산관재인의 과거 5~10년 재산처분 추적(지적전산, 과세증명, 전 계좌내역) 및 8대 불허가사유 소명이 핵심입니다.
+                                [개인파산·면책] 탭의 <strong>15대 필수서류함</strong> 및 <strong>1,110만 원 면제재산 계산기</strong>에서 통합 관리하실 수 있습니다.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setDetailTab('bankruptcy')}
+                              className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold cursor-pointer press-scale shrink-0 whitespace-nowrap shadow-xs"
+                            >
+                              파산 관리 센터 바로가기 →
+                            </button>
+                          </div>
+                        )}
+
                         {/* Progress Dashboard */}
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
                           <div className="flex items-center justify-between mb-2">
@@ -3315,15 +3437,31 @@ export default function CrmTab({
 
                         {/* 기본 필수 서류 체크리스트 (2단 그리드 배치) */}
                         <div className="bg-slate-50/80 rounded-2xl border border-slate-200 p-4 space-y-3">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
                             <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                               <span>✓</span>
-                              <span>회생/파산 기본 필수 서류 체크</span>
+                              <span>{isBankruptcyCase ? '🏛️ 개인파산 15대 필수 서류 체크 (파산관재인 심문 대비)' : '⚖️ 개인회생 15종 필수 서류 체크 (소득·가용소득 검증)'}</span>
                               <span className="text-[11px] font-normal text-slate-500">
                                 ({docs.filter(d => d.checked).length}/{docs.length} 완료)
                               </span>
                             </span>
-                            <span className="text-[11px] text-slate-400 font-medium">클릭하여 체크 및 승인/반려</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const targetDocs = isBankruptcyCase ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
+                                  await updateCrmExt(selectedId, {
+                                    documents: targetDocs.map(d => ({ ...d, reviewStatus: 'not_submitted' as DocumentReviewStatus }))
+                                  });
+                                  toast.success(isBankruptcyCase ? '파산 15대 필수 서류 규격으로 초기화되었습니다.' : '개인회생 표준 서류 규격으로 초기화되었습니다.');
+                                }}
+                                className="text-[11px] font-bold text-slate-500 hover:text-slate-900 underline cursor-pointer"
+                                title="사건 유형에 맞는 표준 서류 목록으로 갱신합니다."
+                              >
+                                🔄 {isBankruptcyCase ? '파산 15대 규격으로 목록 갱신' : '회생 서류 규격으로 목록 갱신'}
+                              </button>
+                              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">| 클릭하여 체크 및 승인/반려</span>
+                            </div>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             {docs.map(doc => {
@@ -3567,7 +3705,7 @@ export default function CrmTab({
                       }}
                       activeLawyerName={activeLawyer.name}
                       onNavigateToRepayment={() => {
-                        const isBk = (selectedClient.financialProfile?.income || 0) === 0 || (selectedClient.financialProfile?.debtTotal || 0) > 50000;
+                        const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                         setDetailTab(isBk ? 'bankruptcy' : 'repayment');
                       }}
                     />

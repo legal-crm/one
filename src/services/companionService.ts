@@ -935,3 +935,14 @@ export function loadBankruptcyCase(): BankruptcyCompanionCase {
 
   return defaultBankruptcy;
 }
+
+export function saveBankruptcyCase(data: Partial<BankruptcyCompanionCase>): void {
+  try {
+    const current = loadBankruptcyCase();
+    const merged = { ...current, ...data };
+    localStorage.setItem(BANKRUPTCY_STORAGE_KEY, JSON.stringify(merged));
+  } catch (err) {
+    console.error('Error saving bankruptcy case:', err);
+  }
+}
+

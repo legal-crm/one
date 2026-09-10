@@ -1,6 +1,6 @@
 /**
  * 개인파산 및 면책 동시신청 종합 데이터 타입 정의
- * 대법원 및 서울회생법원 개인파산·면책 실무준칙 규격 반영
+ * 대법원 및 서울회생법원 개인파산·면책 실무준칙 + 리걸플로 실무 규격 반영
  */
 
 // 1. 파산 및 면책 신청서 (Petition)
@@ -10,6 +10,8 @@ export interface BankruptcyPetition {
   debtorName: string;
   debtorRrn: string;
   debtorAddress: string;
+  registeredDomicile?: string;  // 등록기준지 (가족관계증명서 기준)
+  serviceAddress?: string;      // 송달장소 (대리인 사무소 등)
   courtName: string;            // 관할 법원 (예: 서울회생법원)
   filingDate: string;           // 신청일자
   attorneyName: string;         // 대리인 변호사
@@ -56,6 +58,8 @@ export interface BankruptcyStatement {
 
   // 생활 상황 변천사
   livingHistory: string;        // 채무가 늘어나게 된 과정 및 현재 상황
+  debtorStoryRaw?: string;      // 의뢰인 사전 입력 원본 진술 (모바일 연동)
+  debtorStoryPolished?: string; // 변호사 감수 및 정리 완료된 법률 진술문
 
   // 채무자회생법 제564조 면책불허가사유 8대 항목 자가진단
   disallowanceScreening: {
@@ -70,15 +74,116 @@ export interface BankruptcyStatement {
   };
 
   screeningNotes: Record<string, string>; // 항목별 방어 논리 및 소명 메모
+  
+  // 과거 법적 이력 체크
   pastDischargeHistory?: {
     hasPastDischarge: boolean;
     caseNumber?: string;
     dischargeDate?: string;
     isElapsedEligible: boolean; // 7년 경과 여부
   };
+  concurrentFamilyBankruptcy?: {
+    hasConcurrent: boolean;
+    relation?: string;
+    caseNumber?: string;
+  };
+  criminalRecordForFraud?: {
+    hasRecord: boolean;
+    detail?: string;
+  };
 }
 
-// 3. 현재의 생활상황표 & 가계수지표 (Living Conditions & Budget)
+// 3. 채권자목록 & 소송/가압류 이력
+export interface BankruptcyCreditorItem {
+  id: string;
+  creditorName: string;
+  debtCause: 'CASH_LOAN' | 'CREDIT_CARD' | 'PURCHASE_GOODS' | 'INDEMNITY' | 'GUARANTEE' | 'PRIVATE_LOAN' | 'OTHER';
+  debtCauseDetail: string;      // 대출금, 카드대금, 물품대금 등
+  borrowedDate: string;         // 최초 발생일자
+  principal: number;            // 원금
+  interest: number;             // 이자
+  isNonDischargeable: boolean;  // 비면책 채권 여부 (조세, 양육비, 벌금, 불법행위 손해배상)
+  lawsuitInfo?: {
+    hasLawsuit: boolean;
+    lawsuitType?: 'LOAN_LAWSUIT' | 'PAYMENT_ORDER' | 'SEIZURE_COLLECTION' | 'CHATTEL_SEIZURE' | 'AUCTION' | 'OTHER';
+    courtName?: string;
+    caseNumber?: string;
+    statusText?: string;
+  };
+}
+
+// 4. 파산관재인 5대 심층 조사재산 (리걸플로 핵심 벤치마킹)
+export interface DisposedAssetItem {
+  id: string;
+  itemTitle: string;            // 처분 품목 (예: 경기 안양시 아파트, 승용차)
+  disposedDate: string;         // 처분 일자
+  disposedAmount: number;       // 매각/처분 금액 (원)
+  counterparty: string;         // 매수인/상대방 (친인척 여부)
+  usageDetail: string;          // 매각대금 사용처 소명 (금융기관 상환, 생활비 등)
+}
+
+export interface ReturnedDepositItem {
+  id: string;
+  housingAddress: string;       // 종전 임차지 주소
+  returnedDate: string;         // 보증금 수령 일자
+  returnedAmount: number;       // 반환받은 보증금 (원)
+  usageDetail: string;          // 반환금 사용처 소명 (월세/의료비/타채무변제)
+}
+
+export interface DivorceDivisionItem {
+  hasDivorceWithin2Years: boolean;
+  divorceDate?: string;
+  divorceType?: 'CONSENSUS' | 'JUDICIAL';
+  propertyDivisionAmount?: number; // 재산분할 금액 (원)
+  alimonyAmount?: number;          // 위자료 (원)
+  divisionDetail?: string;         // 재산분할 내역 및 소명
+}
+
+export interface InheritanceItem {
+  hasInheritance: boolean;
+  decedentRelation?: string;       // 망인과의 관계 (부, 모, 배우자 등)
+  dateOfDeath?: string;            // 사망일자 (상속개시일)
+  inheritanceAssetsDetail?: string;// 상속 재산 내역 (토지/주택 등)
+  divisionStatus?: 'WAIVED' | 'AGREED_DIVISION' | 'LEGAL_PORTION' | 'NONE'; // 상속포기, 협의분할, 법정상속분, 없음
+  waiverCourtAndDate?: string;     // 상속포기·한정승인 수리 법원 및 일자
+  notes?: string;
+}
+
+export interface SeverancePayItem {
+  hasSeverance: boolean;
+  companyName?: string;
+  expectedTotalAmount: number;     // 예상 퇴직금 총액 (원)
+  exemptAmount: number;            // 1/2 압류금지액 (원)
+  liquidationAmount: number;       // 파산재단 환가 대상액 (원)
+}
+
+export interface BankruptcyInvestigationAssets {
+  disposedAssets1Year: DisposedAssetItem[];       // 1. 최근 1년 내 처분재산
+  returnedDeposits2Years: ReturnedDepositItem[];   // 2. 최근 2년 내 반환 임차보증금
+  divorceProperty2Years: DivorceDivisionItem;     // 3. 최근 2년 내 이혼 재산분할
+  inheritanceProperty: InheritanceItem;           // 4. 친족 사망 상속재산
+  severancePay: SeverancePayItem;                 // 5. 퇴직금 (1/2 압류금지)
+}
+
+// 5. 현재의 생활상황표 & 가계수지표 (주거 6분류 & 비면책 조세 체납표)
+export type BankruptcyResidenceType = 
+  | 'APPLICANT_OWNED'      // 1. 신청인 소유 부동산
+  | 'DORMITORY'            // 2. 사택 또는 기숙사
+  | 'RENT_LEASE'           // 3. 임차(전·월세) 주택
+  | 'RELATIVE_FREE'        // 4. 친족 소유 주택에 무상거주
+  | 'NON_RELATIVE_FREE'    // 5. 친족 외 소유 주택에 무상거주
+  | 'OTHER';               // 6. 기타
+
+export interface BankruptcyResidenceDetail {
+  residenceType: BankruptcyResidenceType;
+  startDate: string;            // 거주시작 시점
+  deposit: number;              // 보증금 (원)
+  monthlyRent: number;          // 월세 (원)
+  ownerName?: string;           // 소유자 성명
+  ownerRelation?: string;       // 소유자와의 관계 (부, 모, 지인 등)
+  freeStayReason?: string;      // 무상거주 사유
+}
+
 export interface FamilyMemberItem {
   id: string;
   relationship: string;         // 배우자, 자녀, 모 등
@@ -90,6 +195,16 @@ export interface FamilyMemberItem {
   isDependent: boolean;         // 부양 여부
 }
 
+export interface TaxArrearsDetail {
+  incomeTax: number;            // 소득세/국세
+  localIncomeTax: number;       // 주민세/지방소득세
+  propertyTax: number;          // 재산세/자동차세
+  healthInsurance: number;      // 건강보험료 체납
+  nationalPension: number;      // 국민연금 체납
+  otherTax: number;             // 기타 공과금
+  totalArrears: number;         // 비면책 조세 총 체납액 (자동 합계)
+}
+
 export interface MonthlyBudgetLedger {
   // 수입
   earnedIncome: number;         // 본인 근로소득
@@ -97,13 +212,15 @@ export interface MonthlyBudgetLedger {
   familySupport: number;        // 가족 지원금
   totalIncome: number;          // 총 월수입 (A)
 
-  // 필수 지출 (가계수지)
-  housingRent: number;          // 주거비 (월세)
-  medicalExpenses: number;      // 정기 의료비/약값
-  foodAndDailySupplies: number; // 식비 및 생필품비
-  utilitiesAndCommunication: number; // 공과금, 전기/가스, 통신비
-  educationExpenses: number;    // 자녀 공교육비
-  transportation: number;       // 대중교통비
+  // 필수 지출 (가계수지 기본 8개 항목)
+  housingRent: number;          // 주거비 (월세, 관리비)
+  foodAndDailySupplies: number; // 식비 (외식비 포함)
+  educationExpenses: number;    // 교육비
+  utilitiesAndCommunication: number; // 전기·가스·수도·통신비
+  transportation: number;       // 교통비 (차량유지비 포함)
+  clothingExpenses?: number;    // 피복비
+  medicalExpenses: number;      // 의료비 / 약값
+  otherLivingExpense?: number;  // 기타 필수비용
   totalLivingExpense: number;   // 총 필수지출 (B)
 
   // 가용소득 검증
@@ -111,7 +228,7 @@ export interface MonthlyBudgetLedger {
   isDisposableZeroOrNegative: boolean;
 }
 
-// 4. 파산 재산목록 및 1,110만 원 면제재산 계산기 (Bankruptcy Assets)
+// 6. 기본 파산 재산목록 (1,110만 원 면제재산 계산기)
 export interface BankruptcyAssetItem {
   id: string;
   assetName: string;            // 예: 서울 보증금 4,500만, 신한은행 잔고 80만
@@ -128,7 +245,7 @@ export interface BankruptcyAssetItem {
   evidenceDocName?: string;
 }
 
-// 5. 파산 15대 필수자료제출목록 체크리스트 (Required Documents)
+// 7. 파산 15대 필수자료제출목록 체크리스트 (Required Documents)
 export interface BankruptcyRequiredDoc {
   id: string;
   itemNumber: number;           // 1 ~ 15
@@ -137,7 +254,7 @@ export interface BankruptcyRequiredDoc {
   detailDescription: string;
   isMandatory: boolean;
   status: 'PREPARING' | 'SUBMITTED' | 'UNOBTAINABLE'; // 준비중, 제출완료, 발급불가(사유서대체)
-  unobtainableReason?: string;  // 발급 불가 사유 (예: 금융기관 파산폐쇄, 사실조회 신청 등)
+  unobtainableReason?: string;  // 발급 불가 또는 일부 제출 사유 (리걸플로 실무 양식)
   fileUrl?: string;
   fileName?: string;
 }
@@ -146,8 +263,12 @@ export interface BankruptcyRequiredDoc {
 export interface BankruptcyFullCaseData {
   petition: BankruptcyPetition;
   statement: BankruptcyStatement;
+  creditors?: BankruptcyCreditorItem[];
+  investigationAssets?: BankruptcyInvestigationAssets; // 파산관재인 5대 심층 조사재산
   livingCondition: {
+    residence?: BankruptcyResidenceDetail;
     familyMembers: FamilyMemberItem[];
+    taxArrears?: TaxArrearsDetail;
     budgetLedger: MonthlyBudgetLedger;
   };
   assets: BankruptcyAssetItem[];

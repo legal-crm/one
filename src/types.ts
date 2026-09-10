@@ -1,4 +1,5 @@
 import type { DebtCertificateOrder, RepaymentPlanData } from './services/repayment/repaymentTypes';
+import type { BankruptcyFullCaseData } from './types/bankruptcyTypes';
 
 export interface Client {
   id: string;
@@ -128,7 +129,7 @@ export type DropOffReason = typeof DROP_OFF_REASONS[number];
 // ── 사건 유형 (Case Type) ──
 
 export const CASE_TYPES = ['개인회생', '파산', '새출발기금', '신용회복'] as const;
-export type CaseType = typeof CASE_TYPES[number] | 'individual_rehab' | 'rehab' | 'bankruptcy' | 'workout' | 'reset';
+export type CaseType = typeof CASE_TYPES[number] | 'individual_rehab' | 'rehab' | 'bankruptcy' | 'individual_bankruptcy' | 'workout' | 'reset';
 
 // ── 직업 유형 ──
 
@@ -640,6 +641,24 @@ export const DEFAULT_REHAB_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'che
   { id: 'doc-15', label: '퇴직금산정서류', checked: false, reviewStatus: 'not_submitted' },
 ];
 
+export const DEFAULT_BANKRUPTCY_DOCUMENTS: Omit<DocumentCheckItem, 'checkedBy' | 'checkedAt'>[] = [
+  { id: 'bdoc-01', label: '주민등록초본 (말소 및 10년 주소변동 포함)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-02', label: '가족관계증명서 (상세) 및 혼인관계증명서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-03', label: '소득금액증명원 (최근 3년 / 무소득 시 사실증명)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-04', label: '건강보험료 납부확인서 및 자격득실확인서 (최근 3년)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-05', label: '계좌정보통합관리(어카운트인포 전 계좌/카드 내역)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-06', label: '전체 은행 입출금거래내역서 (최근 1~2년)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-07', label: '지적전산자료조회결과 (전국 부동산 소유현황)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-08', label: '자동차등록원부 (갑/을부)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-09', label: '임대차계약서 사본 또는 무상거주사실확인서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-10', label: '생명·손해보험협회 보험가입내역조회서', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-11', label: '보험 해약환급금 확인서 (전 보험사)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-12', label: '부채증명서 (금융기관별 원금/이자 구분)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-13', label: '신용정보원 본인신용정보조회서 (크레딧포유)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-14', label: '소명자료 (진단서/장애인증명/폐업사실증명)', checked: false, reviewStatus: 'not_submitted' },
+  { id: 'bdoc-15', label: '소송위임장 및 인감증명서', checked: false, reviewStatus: 'not_submitted' },
+];
+
 // ── 변호사 → 고객 서류 요청 ──
 
 export interface DocumentRequest {
@@ -730,6 +749,8 @@ export interface CrmClientExtension {
   debtCertificateOrders?: DebtCertificateOrder[];
   // ── 2026 변제계획안 (D5110/D5111) ──
   repaymentPlan?: RepaymentPlanData;
+  // ── 2026 개인파산 및 면책 동시신청 종합 데이터 ──
+  bankruptcyData?: BankruptcyFullCaseData;
 }
 
 export interface RepaymentEntry {
@@ -772,6 +793,12 @@ export interface ConsultRequest {
   id: string;
   clientId: string;
   clientName: string;
+  name?: string;
+  court?: string;
+  region?: string;
+  caseType?: CaseType;
+  category?: string;
+  caseCategory?: 'individual_rehab' | 'individual_bankruptcy' | 'other';
   phone: string;
   requestType: RequestType;
   maxParticipants: number;

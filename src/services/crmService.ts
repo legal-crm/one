@@ -4,7 +4,7 @@ import type {
   CrmNote, CrmNoteCategory, CrmClientExtension, StaffActivityLog, StaffActivityType, StaffMemberStatus,
   DocumentFile, DocumentRequest, DocumentCheckItem, DocumentReviewStatus, ElectronicContract
 } from '../types';
-import { DEFAULT_REHAB_DOCUMENTS } from '../types';
+import { DEFAULT_REHAB_DOCUMENTS, DEFAULT_BANKRUPTCY_DOCUMENTS } from '../types';
 import { secureGetItem, secureSetItem } from '../utils/secureStorage';
 
 // ============================================================
@@ -261,10 +261,11 @@ export function deleteCrmClient(clientId: string): void {
 
 // ── CrmClientExtension 초기화 헬퍼 ──
 
-export function createDefaultCrmExtension(clientId: string): CrmClientExtension {
-  const docs = DEFAULT_REHAB_DOCUMENTS;
+export function createDefaultCrmExtension(clientId: string, caseType: 'individual_rehab' | 'bankruptcy' = 'individual_rehab'): CrmClientExtension {
+  const docs = caseType === 'bankruptcy' ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
   return {
     crmStatus: 'requested',
+    caseType,
     documents: (docs || []).map((d: any) => ({ ...d, reviewStatus: d.reviewStatus || 'not_submitted' })),
     notes: [],
     activities: [{
