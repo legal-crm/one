@@ -20,6 +20,7 @@ interface BatchFilingPackagingModalProps {
   clientRequest: ConsultRequest;
   crmExt: CrmClientExtension;
   isBankruptcy?: boolean;
+  onOpenDocHub?: () => void;
 }
 
 export default function BatchFilingPackagingModal({
@@ -27,7 +28,8 @@ export default function BatchFilingPackagingModal({
   onClose,
   clientRequest,
   crmExt,
-  isBankruptcy = false
+  isBankruptcy = false,
+  onOpenDocHub
 }: BatchFilingPackagingModalProps) {
   if (!isOpen) return null;
 
@@ -221,6 +223,17 @@ export default function BatchFilingPackagingModal({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {onOpenDocHub && (
+              <button
+                onClick={onOpenDocHub}
+                className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer press-scale whitespace-nowrap"
+                title="80여 종 서식 허브에서 부속서류 작성 및 모바일 요청"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                <span>⚡ 서식 허브</span>
+              </button>
+            )}
+
             {/* 1. 채권자목록 CSV */}
             <button
               onClick={handleDownloadCreditorCsv}

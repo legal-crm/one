@@ -32,6 +32,7 @@ import BankruptcyManagementTab from './bankruptcy/BankruptcyManagementTab';
 import AncillaryPetitionsModal from './petitions/AncillaryPetitionsModal';
 import PostCommencementManagementModal from './postcare/PostCommencementManagementModal';
 import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
+import LegalDocHubModal from './documents/LegalDocHubModal';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -201,6 +202,7 @@ export default function CrmTab({
   const [showBatchFilingModal, setShowBatchFilingModal] = useState(false);
   const [showAncillaryModal, setShowAncillaryModal] = useState(false);
   const [showPostCareModal, setShowPostCareModal] = useState(false);
+  const [showDocHubModal, setShowDocHubModal] = useState(false);
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -3362,6 +3364,13 @@ export default function CrmTab({
                             📁 의뢰인 제출 서류 관리
                           </h4>
                           <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setShowDocHubModal(true)} 
+                              className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-xl press-scale cursor-pointer whitespace-nowrap flex items-center gap-1.5 shadow-xs"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                              스마트 서식 허브 (80종)
+                            </button>
                             <button onClick={() => setShowDocScanner(true)} className="text-xs font-bold text-slate-700 bg-white px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 press-scale cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-xs">
                               <Camera className="w-3.5 h-3.5 text-slate-500" />
                               서류 스캔
@@ -4240,6 +4249,10 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           isBankruptcy={(selectedClient.financialProfile?.income || 0) === 0 || (selectedClient.financialProfile?.debtTotal || 0) > 50000}
+          onOpenDocHub={() => {
+            setShowBatchFilingModal(false);
+            setShowDocHubModal(true);
+          }}
         />
       )}
 
@@ -4265,6 +4278,39 @@ export default function CrmTab({
             await updateCrmExt(selectedId, updates);
           }}
           activeLawyerName={activeLawyer.name}
+        />
+      )}
+
+      {/* ── 4. 스마트 법원 서식 허브 (80종 라이브러리 & 전자소송 자동화) 모달 ── */}
+      {showDocHubModal && selectedClient && (
+        <LegalDocHubModal
+          isOpen={showDocHubModal}
+          onClose={() => setShowDocHubModal(false)}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          activeLawyerName={activeLawyer.name}
+          onOpenBatchFiling={() => {
+            setShowBatchFilingModal(true);
+          }}
+          onAttachDocToPackage={async (docTitle) => {
+            const newDoc: DocumentFile = {
+              id: `doc-${Date.now()}`,
+              name: `[완성본]_${docTitle}_${selectedClient.clientName || '신청인'}.pdf`,
+              category: 'petition',
+              uploadedAt: new Date().toISOString(),
+              uploadedBy: activeLawyer.name,
+              fileSize: 1024 * 50,
+              mimeType: 'application/pdf',
+              uploadSource: 'lawyer',
+              dataUrl: `data:application/pdf;base64,mock_${Date.now()}`
+            };
+            const currentFiles = selectedExt.uploadedFiles || [];
+            await updateCrmExt(selectedId, {
+              ...selectedExt,
+              uploadedFiles: [...currentFiles, newDoc]
+            });
+            toast.success(`'${docTitle}'이(가) 사건 제출 서류함에 저장되었습니다.`);
+          }}
         />
       )}
     </div>
