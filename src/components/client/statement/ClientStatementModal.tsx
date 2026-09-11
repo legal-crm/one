@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Mic, MicOff, Sparkles, Scale, FileText, CheckCircle2, 
   AlertTriangle, ArrowRight, ArrowLeft, RefreshCw, Send, 
-  Printer, ShieldCheck, HelpCircle, Plus, Trash2, Edit3, Volume2 
+  Printer, ShieldCheck, HelpCircle, Plus, Trash2, Edit3, Volume2,
+  Building2, MessageSquare 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
@@ -15,6 +16,8 @@ import { StatementService } from '../../../services/statementService';
 import { StatementAiService } from '../../../services/statementAiService';
 import { useSpeechRecognition } from '../../../hooks/useSpeechRecognition';
 import PrintableCourtStatementModal from './PrintableCourtStatementModal';
+import JobHistoryImportModal from './JobHistoryImportModal';
+import VoiceInterviewSection from './VoiceInterviewSection';
 
 interface ClientStatementModalProps {
   isOpen: boolean;
@@ -65,6 +68,10 @@ export default function ClientStatementModal({
   // AI 옵션
   const [selectedTone, setSelectedTone] = useState<'formal' | 'emotional' | 'concise'>('formal');
   const [safetyWarnings, setSafetyWarnings] = useState<string[]>([]);
+
+  // 신규: 공단 경력 불러오기 모달 및 대화형 인터뷰 탭 상태
+  const [isJobImportOpen, setIsJobImportOpen] = useState(false);
+  const [storyInputTab, setStoryInputTab] = useState<'interview' | 'free'>('interview');
 
   // 음성 인식 STT 훅
   const {
@@ -145,12 +152,31 @@ export default function ClientStatementModal({
     });
   };
 
+  // 공단 경력 일괄 추가 핸들러
+  const handleImportJobs = (importedItems: JobHistoryItem[]) => {
+    if (!statement) return;
+    const existingNonEmpty = statement.jobHistories.filter(j => j.companyName && j.companyName.trim().length > 0);
+    const merged = [...existingNonEmpty, ...importedItems];
+    const updatedStatement: CourtStatementData = {
+      ...statement,
+      jobHistories: merged.length > 0 ? merged : importedItems
+    };
+    setStatement(updatedStatement);
+    StatementService.saveStatement(updatedStatement);
+    toast.success(`${importedItems.length}건의 직장 경력이 성공적으로 추가되었습니다.`);
+  };
+
   // Gemini AI 진술서 자동 생성 실행
   const handleGenerateAiStatement = async () => {
     if (!statement) return;
     const rawInput = transcript || statement.story.rawCustomerNotes || '';
-    if (!rawInput && statement.story.initialCauseKeywords.length === 0) {
-      toast.error('마이크로 말씀하시거나, 사유 키워드를 1개 이상 선택해 주세요.');
+    const interviewAnswers = statement.story.lifeInterviewAnswers;
+    const hasInterviewAnswers = interviewAnswers && Object.values(interviewAnswers).some(
+      v => typeof v === 'string' && v.trim().length > 0
+    );
+
+    if (!rawInput && statement.story.initialCauseKeywords.length === 0 && !hasInterviewAnswers) {
+      toast.error('음성 인터뷰 질문에 답변하시거나, 키워드/사연을 입력해 주세요.');
       return;
     }
 
@@ -167,7 +193,8 @@ export default function ClientStatementModal({
         totalDebtAmount,
         monthlyIncome,
         tone: selectedTone,
-        courtName: statement.courtName
+        courtName: statement.courtName,
+        interviewAnswers: statement.story.lifeInterviewAnswers
       });
 
       if (res && res.ok) {
@@ -345,24 +372,39 @@ export default function ClientStatementModal({
 
               {/* 직업 경력 목록 */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    과거 및 현재 직업 경력 (최근 2~3개)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = [
-                        ...statement.jobHistories,
-                        { period: '2019.01 ~ 2021.02', companyName: '', position: '직원', reasonForLeaving: '퇴직' }
-                      ];
-                      setStatement({ ...statement, jobHistories: updated });
-                    }}
-                    className="text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>경력 추가</span>
-                  </button>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      과거 및 현재 직업 경력 (최근 2~3개)
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      기억이 잘 안 나시면 공단 조회를 통해 과거 경력을 한 번에 불러올 수 있습니다.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsJobImportOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand to-indigo-600 hover:from-brand/90 hover:to-indigo-500 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>🏢 공단 경력 한 번에 불러오기</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = [
+                          ...statement.jobHistories,
+                          { period: '2019.01 ~ 2021.02', companyName: '', position: '직원', reasonForLeaving: '퇴직' }
+                        ];
+                        setStatement({ ...statement, jobHistories: updated });
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>직접 추가</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2.5">
@@ -581,165 +623,260 @@ export default function ClientStatementModal({
           )}
 
           {/* ────────────────────────────────────────
-              STEP 3: 말로 사연 입력 (음성 STT + 키워드) - 핵심!
+              STEP 3: 말로 사연 입력 (AI 음성 인터뷰 or 자유 음성) - 핵심!
           ──────────────────────────────────────── */}
           {currentStep === 3 && (
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h4 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <span className="w-6 h-6 rounded-lg bg-brand/10 text-brand flex items-center justify-center text-xs">3</span>
-                  마이크를 켜고 편하게 말씀해 주세요 (말로 입력하기)
+                  어떻게 빚이 생기셨나요? 편하게 말씀해 주세요
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
-                  타자를 칠 필요 없이, 어떻게 빚이 생겼고 왜 갚기 어려워졌는지 편한 말투로 이야기하시면 제미나이가 법원 양식으로 정리해 드립니다.
+                  글쓰기 부담 없이 질문에 답하시면 제미나이가 법원 표준 4단 양식(발생원인·증대경위·지급불능·재기다짐)으로 완벽하게 정리해 드립니다.
                 </p>
               </div>
 
-              {/* 1) 채무 사유 키워드 칩 */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <span>해당되는 사유를 선택해 주세요 (다중 선택 가능)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {CAUSE_KEYWORDS.map(kw => {
-                    const isSelected = statement.story.initialCauseKeywords?.includes(kw);
-                    return (
-                      <button
-                        key={kw}
-                        type="button"
-                        onClick={() => toggleKeyword(kw)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-brand text-white shadow-xs scale-102'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                        }`}
-                      >
-                        {isSelected && <span>✓</span>}
-                        <span>{kw}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2) 음성 마이크 녹음 컨트롤러 */}
-              <div className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center justify-center text-center gap-4 ${
-                isListening 
-                  ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20' 
-                  : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30'
-              }`}>
-                {/* 마이크 버튼 */}
+              {/* 탭 모드 전환: [🎙️ AI 대화형 음성 인터뷰 (6문 6답 · 추천)] vs [📝 자유 음성/직접 메모 입력] */}
+              <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
-                  onClick={toggleListening}
-                  className={`w-20 h-20 rounded-full flex items-center justify-center text-white transition-all shadow-xl cursor-pointer press-scale relative ${
-                    isListening
-                      ? 'bg-rose-500 hover:bg-rose-600 ring-8 ring-rose-200 dark:ring-rose-950/60'
-                      : 'bg-indigo-600 hover:bg-indigo-700 ring-4 ring-indigo-100 dark:ring-indigo-950/40'
+                  onClick={() => setStoryInputTab('interview')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    storyInputTab === 'interview'
+                      ? 'bg-white dark:bg-slate-900 text-brand shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
-                  title={isListening ? '음성 녹음 중지' : '음성 녹음 시작'}
                 >
-                  {isListening ? (
-                    <>
-                      <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-75"></span>
-                      <MicOff className="w-8 h-8 relative z-10" />
-                    </>
-                  ) : (
-                    <Mic className="w-8 h-8" />
-                  )}
+                  <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>AI 대화형 음성 인터뷰 (6문 6답 · 추천)</span>
                 </button>
-
-                <div className="space-y-1">
-                  <p className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    {isListening 
-                      ? '🔴 듣고 있습니다. 편안하게 말씀해 주세요...' 
-                      : '마이크 버튼을 누르고 말씀하세요 (모바일/PC 지원)'}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    예: "2021년에 식당을 열었는데 코로나 때문에 손님이 줄어서 월세 내려고 카드 돌려막기 하다가 빚이 7천만 원까지 늘어났고 결국 작년에 폐업했습니다..."
-                  </p>
-                </div>
-
-                {speechError && (
-                  <p className="text-xs text-rose-500 font-bold bg-rose-100 dark:bg-rose-900/30 px-3 py-1.5 rounded-xl">
-                    ⚠️ {speechError}
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setStoryInputTab('free')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    storyInputTab === 'free'
+                      ? 'bg-white dark:bg-slate-900 text-brand shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Mic className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>자유 음성녹음 / 직접 메모 입력</span>
+                </button>
               </div>
 
-              {/* 3) 실시간 음성 자막 / 텍스트 편집 영역 */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Volume2 className="w-4 h-4 text-indigo-500" />
-                    <span>음성 인식 결과 및 메모 (키보드로 직접 수정하실 수 있습니다)</span>
-                  </label>
-                  {transcript && (
+              {/* 모드 1: 대화형 인터뷰 */}
+              {storyInputTab === 'interview' ? (
+                <div className="space-y-5">
+                  <VoiceInterviewSection
+                    answers={statement.story.lifeInterviewAnswers || {}}
+                    onChangeAnswers={(updated) => {
+                      setStatement({
+                        ...statement,
+                        story: {
+                          ...statement.story,
+                          lifeInterviewAnswers: updated
+                        }
+                      });
+                    }}
+                    onCompleteInterview={handleGenerateAiStatement}
+                    isAiGenerating={isAiGenerating}
+                  />
+
+                  {/* AI 문체 톤 선택 및 생성 버튼 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 whitespace-nowrap">법원 제출 문체:</span>
+                      <div className="flex gap-1">
+                        {[
+                          { id: 'formal', label: '정중·격식' },
+                          { id: 'emotional', label: '진솔·호소력' },
+                          { id: 'concise', label: '간결·명확' }
+                        ].map(t => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setSelectedTone(t.id as any)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                              selectedTone === t.id
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <button
                       type="button"
-                      onClick={() => setTranscript('')}
-                      className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      onClick={handleGenerateAiStatement}
+                      disabled={isAiGenerating}
+                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer press-scale disabled:opacity-50 whitespace-nowrap"
                     >
-                      내용 지우기
+                      {isAiGenerating ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>제미나이가 6대 문답을 법원 서식으로 엮는 중...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-yellow-300" />
+                          <span>✨ 인터뷰 답변으로 법원 진술서 완성하기</span>
+                        </>
+                      )}
                     </button>
-                  )}
-                </div>
-
-                <textarea
-                  rows={4}
-                  value={transcript + (interimTranscript ? ` (${interimTranscript})` : '')}
-                  onChange={e => setTranscript(e.target.value)}
-                  placeholder="마이크로 말씀하시거나, 직접 글을 입력하셔도 좋습니다. 문맥이 매끄럽지 않아도 제미나이가 법원 양식에 맞춰 완벽하게 다듬어 드립니다."
-                  className="w-full p-4 text-xs font-sans bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-brand focus:outline-hidden leading-relaxed"
-                />
-              </div>
-
-              {/* 4) AI 문체 톤 선택 및 생성 실행 버튼 */}
-              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 whitespace-nowrap">문체 톤:</span>
-                  <div className="flex gap-1">
-                    {[
-                      { id: 'formal', label: '정중·격식' },
-                      { id: 'emotional', label: '진솔·호소력' },
-                      { id: 'concise', label: '간결·명확' }
-                    ].map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setSelectedTone(t.id as any)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                          selectedTone === t.id
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
                   </div>
                 </div>
+              ) : (
+                /* 모드 2: 기존 자유 음성 녹음 및 키워드/메모 입력 */
+                <div className="space-y-6">
+                  {/* 1) 채무 사유 키워드 칩 */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <span>해당되는 사유를 선택해 주세요 (다중 선택 가능)</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {CAUSE_KEYWORDS.map(kw => {
+                        const isSelected = statement.story.initialCauseKeywords?.includes(kw);
+                        return (
+                          <button
+                            key={kw}
+                            type="button"
+                            onClick={() => toggleKeyword(kw)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-brand text-white shadow-xs scale-102'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            }`}
+                          >
+                            {isSelected && <span>✓</span>}
+                            <span>{kw}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={handleGenerateAiStatement}
-                  disabled={isAiGenerating}
-                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer press-scale disabled:opacity-50 whitespace-nowrap"
-                >
-                  {isAiGenerating ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>제미나이가 법원 문장으로 다듬는 중...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-yellow-300" />
-                      <span>✨ 제미나이로 법원 진술서 완성하기</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                  {/* 2) 음성 마이크 녹음 컨트롤러 */}
+                  <div className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center justify-center text-center gap-4 ${
+                    isListening 
+                      ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20' 
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30'
+                  }`}>
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`w-20 h-20 rounded-full flex items-center justify-center text-white transition-all shadow-xl cursor-pointer press-scale relative ${
+                        isListening
+                          ? 'bg-rose-500 hover:bg-rose-600 ring-8 ring-rose-200 dark:ring-rose-950/60'
+                          : 'bg-indigo-600 hover:bg-indigo-700 ring-4 ring-indigo-100 dark:ring-indigo-950/40'
+                      }`}
+                      title={isListening ? '음성 녹음 중지' : '음성 녹음 시작'}
+                    >
+                      {isListening ? (
+                        <>
+                          <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-75"></span>
+                          <MicOff className="w-8 h-8 relative z-10" />
+                        </>
+                      ) : (
+                        <Mic className="w-8 h-8" />
+                      )}
+                    </button>
 
+                    <div className="space-y-1">
+                      <p className="font-extrabold text-sm text-slate-900 dark:text-white">
+                        {isListening 
+                          ? '🔴 듣고 있습니다. 편안하게 말씀해 주세요...' 
+                          : '마이크 버튼을 누르고 말씀하세요 (모바일/PC 지원)'}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        예: "2021년에 식당을 열었는데 코로나 때문에 손님이 줄어서 월세 내려고 카드 돌려막기 하다가 빚이 7천만 원까지 늘어났고 결국 작년에 폐업했습니다..."
+                      </p>
+                    </div>
+
+                    {speechError && (
+                      <p className="text-xs text-rose-500 font-bold bg-rose-100 dark:bg-rose-900/30 px-3 py-1.5 rounded-xl">
+                        ⚠️ {speechError}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 3) 실시간 음성 자막 / 텍스트 편집 영역 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Volume2 className="w-4 h-4 text-indigo-500" />
+                        <span>음성 인식 결과 및 메모 (키보드로 직접 수정하실 수 있습니다)</span>
+                      </label>
+                      {transcript && (
+                        <button
+                          type="button"
+                          onClick={() => setTranscript('')}
+                          className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        >
+                          내용 지우기
+                        </button>
+                      )}
+                    </div>
+
+                    <textarea
+                      rows={4}
+                      value={transcript + (interimTranscript ? ` (${interimTranscript})` : '')}
+                      onChange={e => setTranscript(e.target.value)}
+                      placeholder="마이크로 말씀하시거나, 직접 글을 입력하셔도 좋습니다. 문맥이 매끄럽지 않아도 제미나이가 법원 양식에 맞춰 완벽하게 다듬어 드립니다."
+                      className="w-full p-4 text-xs font-sans bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-brand focus:outline-hidden leading-relaxed"
+                    />
+                  </div>
+
+                  {/* 4) AI 문체 톤 선택 및 생성 실행 버튼 */}
+                  <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 whitespace-nowrap">문체 톤:</span>
+                      <div className="flex gap-1">
+                        {[
+                          { id: 'formal', label: '정중·격식' },
+                          { id: 'emotional', label: '진솔·호소력' },
+                          { id: 'concise', label: '간결·명확' }
+                        ].map(t => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setSelectedTone(t.id as any)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                              selectedTone === t.id
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleGenerateAiStatement}
+                      disabled={isAiGenerating}
+                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer press-scale disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {isAiGenerating ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>제미나이가 법원 문장으로 다듬는 중...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-yellow-300" />
+                          <span>✨ 제미나이로 법원 진술서 완성하기</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -978,6 +1115,14 @@ export default function ClientStatementModal({
         </div>
 
       </div>
+
+      {/* 공단 과거 직장 경력 일괄 불러오기 모달 */}
+      <JobHistoryImportModal
+        isOpen={isJobImportOpen}
+        onClose={() => setIsJobImportOpen(false)}
+        clientName={statement.applicantName}
+        onConfirmImport={handleImportJobs}
+      />
 
       {/* 대법원 정식 서식 인쇄/PDF 저장 모달 */}
       <PrintableCourtStatementModal

@@ -57,6 +57,16 @@ export interface DebtGrowthStory {
   voiceTranscript?: string;                // 고객이 말로 녹음한 음성 텍스트
   rawCustomerNotes?: string;               // 고객이 입력한 거친 메모/키워드
   
+  // 6대 심층 인생 Q&A 인터뷰 답변 (성장환경, 질병, 첫채무, 증대과정, 지급불능, 다짐)
+  lifeInterviewAnswers?: {
+    upbringing?: string;                   // Q1. 성장 환경 및 가정 배경
+    healthAndMedical?: string;             // Q2. 건강 및 질병/간병 사정
+    firstDebtCause?: string;               // Q3. 첫 채무 발생 계기
+    debtGrowthProcess?: string;            // Q4. 채무 증대 과정
+    insolvencyCrisis?: string;             // Q5. 더 이상 갚을 수 없게 된 결정적 순간
+    futureResolution?: string;             // Q6. 회생/파산을 통한 재기 다짐
+  };
+
   // Gemini AI 보조 결과물
   aiDraftStatement?: string;               // AI가 생성한 전체 추천 진술서
   aiPolishedAt?: string;                   // AI 생성 일시
@@ -113,6 +123,14 @@ export interface GenerateStatementAiPayload {
   monthlyIncome?: number;                  // 월 소득 (만원)
   tone?: 'formal' | 'emotional' | 'concise';
   courtName?: string;
+  interviewAnswers?: {
+    upbringing?: string;                   // Q1. 성장 환경 및 가정 배경
+    healthAndMedical?: string;             // Q2. 건강 및 질병/간병 사정
+    firstDebtCause?: string;               // Q3. 첫 채무 발생 계기
+    debtGrowthProcess?: string;            // Q4. 채무 증대 과정
+    insolvencyCrisis?: string;             // Q5. 더 이상 갚을 수 없게 된 결정적 순간
+    futureResolution?: string;             // Q6. 회생/파산을 통한 재기 다짐
+  };
 }
 
 export interface GenerateStatementAiResponse {

@@ -23,10 +23,13 @@ export default async function handler(req, res) {
     totalDebtAmount = 0,
     monthlyIncome = 0,
     tone = 'formal',
-    courtName = '회생법원'
+    courtName = '회생법원',
+    interviewAnswers = null
   } = req.body || {};
 
-  if (!rawVoiceOrText && (!selectedKeywords || selectedKeywords.length === 0)) {
+  const hasInterviewAnswers = interviewAnswers && Object.values(interviewAnswers).some(v => typeof v === 'string' && v.trim().length > 0);
+
+  if (!rawVoiceOrText && (!selectedKeywords || selectedKeywords.length === 0) && !hasInterviewAnswers) {
     return res.status(400).json({ ok: false, error: '입력된 내용 또는 선택된 키워드가 없습니다.' });
   }
 
@@ -36,16 +39,24 @@ export default async function handler(req, res) {
   const generateRuleBasedFallback = () => {
     const isRehab = caseType === 'rehab';
     const kwText = selectedKeywords.length > 0 ? selectedKeywords.join(', ') : '생계 곤란 및 불가피한 지출';
+    const ia = interviewAnswers || {};
     
-    const initialCause = `신청인 ${applicantName}은(는) 과거 성실히 생활하던 중, ${kwText} 등으로 인해 가계 수지 및 생계 유지가 급격히 악화되었습니다. 예상치 못한 지출과 소득 감소를 메우기 위하여 부득이하게 금융기관 대출 및 신용카드를 최초로 이용하게 되었습니다.`;
+    const upbringingPart = ia.upbringing ? `신청인은 과거 ${ia.upbringing}의 환경 속에서 자라며 성실히 생활하고자 하였으나, ` : '';
+    const medicalPart = ia.healthAndMedical && !ia.healthAndMedical.includes('문제 없음') ? `또한 ${ia.healthAndMedical} 등의 심각한 건강 및 의료비 지출이 겹치면서 ` : '';
+    const firstDebtPart = ia.firstDebtCause ? `${ia.firstDebtCause} 등의 사유로 인하여 ` : `${kwText} 등으로 인해 `;
     
-    const growthProcess = `그러나 이후 경기 침체 및 이자 부담이 가중되면서, 매월 발생하는 원리금을 정상적으로 감당하기 어려운 상황에 직면하였습니다. 기존 채무의 연체를 막고자 대출 돌려막기와 카드론을 추가로 이용하게 되었으며, 이로 인해 채무 원금과 고율의 이자가 눈덩이처럼 증대되었습니다.`;
+    const initialCause = `${upbringingPart}${medicalPart}신청인 ${applicantName}은(는) ${firstDebtPart}가계 수지 및 생계 유지가 급격히 악화되었고, 부족한 생활비와 고정지출을 충당하고자 부득이하게 최초 금융기관 대출 및 신용카드를 이용하게 되었습니다.`;
     
-    const insolvencyTrigger = `결국 원리금 상환액이 월 가용소득을 훨씬 초과하게 되었고, 일상적인 최저생계비조차 유지하기 힘든 한계 상황에 도달하였습니다. 더 이상의 추가 대출이나 사적 변제가 불가능하여 최종적으로 지급불능 상태에 이르게 되었습니다.`;
+    const growthPart = ia.debtGrowthProcess ? `${ia.debtGrowthProcess} 등으로 인하여 ` : '기존 채무의 연체를 막고자 대출 돌려막기와 카드론을 추가로 이용하게 되었으며, ';
+    const growthProcess = `그러나 이후 경기 침체 및 이자 부담이 가중되면서, 매월 발생하는 원리금을 정상적으로 감당하기 어려운 상황에 직면하였습니다. ${growthPart}이로 인해 채무 원금과 고율의 이자가 눈덩이처럼 증대되었습니다.`;
     
+    const crisisPart = ia.insolvencyCrisis ? `${ia.insolvencyCrisis} 등의 상황에 직면하여 ` : '';
+    const insolvencyTrigger = `결국 ${crisisPart}원리금 상환액이 월 가용소득을 훨씬 초과하게 되었고, 일상적인 최저생계비조차 유지하기 힘든 한계 상황에 도달하였습니다. 더 이상의 추가 대출이나 사적 변제가 불가능하여 최종적으로 지급불능 상태에 이르게 되었습니다.`;
+    
+    const resPart = ia.futureResolution ? `${ia.futureResolution} 등의 각오로 ` : '';
     const resolution = isRehab
-      ? `신청인은 자신의 부주의와 능력 부족으로 채권자분들께 큰 심려와 경제적 피해를 끼쳐드린 점을 뼈저리게 반성하고 있습니다. 법원에서 인가하여 주시는 변제계획에 따라 어떠한 어려움이 있더라도 매월 변제금을 성실히 납부하여 채무를 완제하고 갱생할 것을 엄숙히 서약합니다.`
-      : `신청인은 감당할 수 없는 채무로 인해 채권자분들께 막대한 고통과 피해를 드리게 된 점을 머리 숙여 사죄드립니다. 현재의 건강 상태와 경제적 여건으로는 도저히 채무를 변제할 길이 없어 부득이 파산 및 면책을 신청하오니, 다시금 사회의 일원으로 재기할 수 있도록 부디 선처하여 주시기를 간곡히 호소합니다.`;
+      ? `신청인은 자신의 부주의와 능력 부족으로 채권자분들께 큰 심려와 경제적 피해를 끼쳐드린 점을 뼈저리게 반성하고 있습니다. ${resPart}법원에서 인가하여 주시는 변제계획에 따라 어떠한 어려움이 있더라도 매월 변제금을 성실히 납부하여 채무를 완제하고 갱생할 것을 엄숙히 서약합니다.`
+      : `신청인은 감당할 수 없는 채무로 인해 채권자분들께 막대한 고통과 피해를 드리게 된 점을 머리 숙여 사죄드립니다. ${resPart}현재의 건강 상태와 경제적 여건으로는 도저히 채무를 변제할 길이 없어 부득이 파산 및 면책을 신청하오니, 다시금 사회의 일원으로 재기할 수 있도록 부디 선처하여 주시기를 간곡히 호소합니다.`;
 
     const fullFormattedText = `[지급불능에 이르게 된 구체적 사정]
 
@@ -95,8 +106,17 @@ ${resolution}`;
 
 [고객이 말로 이야기한 원본 사연 / 메모]:
 """
-${rawVoiceOrText || '(키워드 기반 작성)'}
+${rawVoiceOrText || '(키워드 및 인터뷰 기반 작성)'}
 """
+${hasInterviewAnswers ? `
+[신청인 6대 심층 인생 Q&A 인터뷰 답변]:
+- Q1. 성장 환경 및 가정 배경: ${interviewAnswers.upbringing || '특이사항 없음'}
+- Q2. 건강 및 질병/의료비 간병 사정: ${interviewAnswers.healthAndMedical || '특이사항 없음'}
+- Q3. 첫 경제활동 및 채무 발생 계기: ${interviewAnswers.firstDebtCause || '특이사항 없음'}
+- Q4. 채무 증대 과정 (돌려막기, 고금리 등): ${interviewAnswers.debtGrowthProcess || '특이사항 없음'}
+- Q5. 더 이상 갚을 수 없게 된 결정적 순간 (지급불능): ${interviewAnswers.insolvencyCrisis || '특이사항 없음'}
+- Q6. 회생/파산을 통한 갱생과 재기 다짐: ${interviewAnswers.futureResolution || '특이사항 없음'}
+` : ''}
 
 [작성 및 심사 지침]:
 1. 대법원 및 회생법원 정식 서식 기준에 맞추어 다음 4단 섹션으로 구분하여 작성하세요:

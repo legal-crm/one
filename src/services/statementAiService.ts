@@ -68,8 +68,17 @@ export class StatementAiService {
 
 [고객의 음성 녹음 내용 / 사연 메모]:
 """
-${payload.rawVoiceOrText || '(키워드 기반 작성)'}
+${payload.rawVoiceOrText || '(키워드 및 인터뷰 기반 작성)'}
 """
+${payload.interviewAnswers ? `
+[신청인 6대 심층 인생 Q&A 인터뷰 답변]:
+- Q1. 성장 환경 및 가정 배경: ${payload.interviewAnswers.upbringing || '특이사항 없음'}
+- Q2. 건강 및 질병/의료비 간병 사정: ${payload.interviewAnswers.healthAndMedical || '특이사항 없음'}
+- Q3. 첫 경제활동 및 채무 발생 계기: ${payload.interviewAnswers.firstDebtCause || '특이사항 없음'}
+- Q4. 채무 증대 과정 (돌려막기, 고금리 등): ${payload.interviewAnswers.debtGrowthProcess || '특이사항 없음'}
+- Q5. 더 이상 갚을 수 없게 된 결정적 순간 (지급불능): ${payload.interviewAnswers.insolvencyCrisis || '특이사항 없음'}
+- Q6. 회생/파산을 통한 갱생과 재기 다짐: ${payload.interviewAnswers.futureResolution || '특이사항 없음'}
+` : ''}
 
 [지침]:
 1. 대법원 양식에 맞추어 다음 4단 섹션으로 구분하여 유효한 JSON으로만 작성하세요 (마크다운 없이 순수 JSON):
@@ -142,15 +151,23 @@ ${payload.rawVoiceOrText || '(키워드 기반 작성)'}
       safetyWarnings.push('신용사기(사기죄) 주의: 대출 당시 허위 재직이나 소득을 기재한 진술은 면책불허가 및 형사적 위험이 있으므로 정확한 사실관계로 수정해야 합니다.');
     }
 
-    const initialCause = `신청인 ${name}은(는) 성실하게 일상을 영위해오던 중, ${keywords} 등의 사유로 인하여 감당하기 어려운 경제적 타격을 입게 되었습니다. 당시 소득만으로는 기본적인 생활비와 필수 고정지출을 충당하기 불가능하여, 부득이하게 제1금융권 및 신용카드 대출을 최초로 실행하게 되었습니다.`;
+    const ia = payload.interviewAnswers || {};
+    const upbringingPart = ia.upbringing ? `신청인은 과거 ${ia.upbringing}의 환경 속에서 자라며 성실히 생활하고자 하였으나, ` : '';
+    const medicalPart = ia.healthAndMedical && !ia.healthAndMedical.includes('문제 없음') ? `또한 ${ia.healthAndMedical} 등의 심각한 건강 및 의료비 지출이 겹치면서 ` : '';
+    const firstDebtPart = ia.firstDebtCause ? `${ia.firstDebtCause} 등의 사유로 인하여 ` : `${keywords} 등의 사유로 인하여 `;
 
-    const growthProcess = `그러나 악화된 경제 여건이 쉽게 회복되지 못하였고, 기존 대출금의 원리금 상환 부담이 매월 눈덩이처럼 불어나기 시작했습니다. 채무 연체로 인한 가압류와 신용불량을 방지하고자 불가피하게 카드론 및 저축은행·대부업체 고금리 대출로 돌려막기를 거듭하게 되었고, 이로 인해 채무 원금과 이자가 급격히 증대되었습니다.`;
+    const initialCause = `${upbringingPart}${medicalPart}신청인 ${name}은(는) ${firstDebtPart}가계 수지 및 생계 유지가 급격히 악화되었고, 부족한 생활비와 고정지출을 충당하고자 부득이하게 최초 금융기관 대출 및 신용카드를 이용하게 되었습니다.`;
 
-    const insolvencyTrigger = `현재 신청인의 월 소득으로는 법정 최저생계비를 유지하기도 빠듯하여, 매월 청구되는 막대한 원리금과 고율의 이자를 상환할 수 있는 능력이 완전히 고갈되었습니다. 모든 금융거래가 한계에 봉착하여 자력으로는 도저히 채무를 변제할 수 없는 지급불능 상태에 이르게 되었습니다.`;
+    const growthPart = ia.debtGrowthProcess ? `${ia.debtGrowthProcess} 등으로 인하여 ` : '채무 연체로 인한 가압류와 신용불량을 방지하고자 불가피하게 카드론 및 저축은행·대부업체 고금리 대출로 돌려막기를 거듭하게 되었고, ';
+    const growthProcess = `그러나 악화된 경제 여건이 쉽게 회복되지 못하였고, 기존 대출금의 원리금 상환 부담이 매월 눈덩이처럼 불어나기 시작했습니다. ${growthPart}이로 인해 채무 원금과 이자가 급격히 증대되었습니다.`;
 
+    const crisisPart = ia.insolvencyCrisis ? `${ia.insolvencyCrisis} 등의 상황에 직면하여 ` : '';
+    const insolvencyTrigger = `현재 신청인의 월 소득으로는 법정 최저생계비를 유지하기도 빠듯하여, ${crisisPart}매월 청구되는 막대한 원리금과 고율의 이자를 상환할 수 있는 능력이 완전히 고갈되었습니다. 모든 금융거래가 한계에 봉착하여 자력으로는 도저히 채무를 변제할 수 없는 지급불능 상태에 이르게 되었습니다.`;
+
+    const resPart = ia.futureResolution ? `${ia.futureResolution} 등의 각오로 ` : '';
     const resolution = isRehab
-      ? `신청인은 자신의 미숙함과 부주의로 인하여 채권자분들께 큰 경제적 손실을 끼쳐드리게 된 점을 깊이 뉘우치며 진심으로 사죄드립니다. 법원에서 인가하여 주시는 변제계획에 따라 어떠한 어려움이 따르더라도 정해진 기간 동안 성실히 변제금을 납부하여 갱생할 것을 굳게 다짐하오니 부디 선처하여 주시기를 간곡히 부탁드립니다.`
-      : `신청인은 감당할 수 없는 채무로 채권자분들께 피해를 끼치게 된 점을 머리 숙여 사죄드립니다. 현재의 신체적·경제적 여건으로는 도저히 정상적인 채무 변제가 불가능하여 부득이 파산 및 면책을 신청하오니, 다시금 성실한 사회의 일원으로 새출발할 수 있도록 부디 자비를 베풀어 주시기를 간절히 호소합니다.`;
+      ? `신청인은 자신의 미숙함과 부주의로 인하여 채권자분들께 큰 경제적 손실을 끼쳐드리게 된 점을 깊이 뉘우치며 진심으로 사죄드립니다. ${resPart}법원에서 인가하여 주시는 변제계획에 따라 어떠한 어려움이 따르더라도 정해진 기간 동안 성실히 변제금을 납부하여 갱생할 것을 굳게 다짐하오니 부디 선처하여 주시기를 간곡히 부탁드립니다.`
+      : `신청인은 감당할 수 없는 채무로 채권자분들께 피해를 끼치게 된 점을 머리 숙여 사죄드립니다. ${resPart}현재의 신체적·경제적 여건으로는 도저히 정상적인 채무 변제가 불가능하여 부득이 파산 및 면책을 신청하오니, 다시금 성실한 사회의 일원으로 새출발할 수 있도록 부디 자비를 베풀어 주시기를 간절히 호소합니다.`;
 
     const fullFormattedText = `[지급불능에 이르게 된 구체적 사정]
 
