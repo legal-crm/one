@@ -34,6 +34,7 @@ import PostCommencementManagementModal from './postcare/PostCommencementManageme
 import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
 import LegalDocHubModal from './documents/LegalDocHubModal';
 import IncomeExpenseModal from './repayment/IncomeExpenseModal';
+import PropertyValuationModal from './assets/PropertyValuationModal';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -205,6 +206,7 @@ export default function CrmTab({
   const [showPostCareModal, setShowPostCareModal] = useState(false);
   const [showDocHubModal, setShowDocHubModal] = useState(false);
   const [showIncomeExpenseModal, setShowIncomeExpenseModal] = useState(false);
+  const [showPropertyValuationModal, setShowPropertyValuationModal] = useState(false);
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -2289,6 +2291,14 @@ export default function CrmTab({
                         >
                           <span>💰 수입·지출목록 (D5103)</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowPropertyValuationModal(true)}
+                          className="px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                          title="대법원 전산양식 D5102 재산목록 (부동산·자동차·보험·퇴직금 11대 자산 가치 산정)"
+                        >
+                          <span>🏛️ 재산목록 (D5102)</span>
+                        </button>
                       </div>
 
                       {/* 사건 담당 변호사/직원 전용 사건 유형 전환 스위처 */}
@@ -4267,6 +4277,10 @@ export default function CrmTab({
             setShowBatchFilingModal(false);
             setShowIncomeExpenseModal(true);
           }}
+          onOpenPropertyModal={() => {
+            setShowBatchFilingModal(false);
+            setShowPropertyValuationModal(true);
+          }}
         />
       )}
 
@@ -4345,6 +4359,32 @@ export default function CrmTab({
           activeLawyerName={activeLawyer.name}
           onOpenBatchFiling={() => {
             setShowBatchFilingModal(true);
+          }}
+        />
+      )}
+
+      {/* ── 6. 대법원 전산양식 D5102 재산목록 및 자산 가치 산정 모달 ── */}
+      {showPropertyValuationModal && selectedClient && (
+        <PropertyValuationModal
+          isOpen={showPropertyValuationModal}
+          onClose={() => setShowPropertyValuationModal(false)}
+          clientId={selectedId}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
+          onSyncToRepaymentPlan={async (syncedAssets, totalLiquidation) => {
+            const currentPlan = selectedExt.repaymentPlan;
+            if (currentPlan) {
+              await updateCrmExt(selectedId, {
+                repaymentPlan: {
+                  ...currentPlan,
+                  assets: syncedAssets,
+                  totalLiquidationValue: totalLiquidation,
+                }
+              });
+            }
           }}
         />
       )}

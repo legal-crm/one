@@ -48,6 +48,18 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     defaultPurpose: '신청인에 대하여 개인회생절차를 개시한다. 라는 결정을 구합니다.'
   },
   {
+    docCode: 'D5102',
+    title: '개인회생 재산목록',
+    caseScope: 'COMMON',
+    category: 'CORE',
+    subCategoryText: '자동작성',
+    courtOrderSlot: 'R06',
+    priorityLevel: 'CRITICAL',
+    description: '청산가치 보장의 원칙 기준이 되는 보유 부동산, 차량, 예금, 보험, 임차보증금 목록 (대법원 전산양식 D5102)',
+    defaultPurpose: '채무자 회생 및 파산에 관한 법률 제589조 제2항 제2호에 의하여 별지와 같이 재산목록을 제출합니다.',
+    defaultReasonTemplate: '신청인의 부동산(KB시세/공시가 130%), 자동차(중고시세), 임차보증금(소액보증금 공제) 등 객관적 평가 기준에 의하여 성실히 작성하였습니다.'
+  },
+  {
     docCode: 'D5103',
     title: '채무자의 수입 및 지출에 관한 목록',
     caseScope: 'COMMON',

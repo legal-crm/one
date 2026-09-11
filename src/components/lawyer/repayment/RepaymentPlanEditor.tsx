@@ -27,6 +27,7 @@ import { convertDebtItemsToRepaymentCreditors } from '../../../services/repaymen
 import PrintableRepaymentPlanModal from './PrintableRepaymentPlanModal';
 import SecuredDebtCalculatorModal from './SecuredDebtCalculatorModal';
 import IncomeExpenseModal from './IncomeExpenseModal';
+import PropertyValuationModal from '../assets/PropertyValuationModal';
 import { REGION_CONFIG_2026, RegionType } from '../../../services/repayment/repaymentConstants2026';
 
 interface RepaymentPlanEditorProps {
@@ -210,6 +211,7 @@ export default function RepaymentPlanEditor({
   // 모달 제어
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isD5103ModalOpen, setIsD5103ModalOpen] = useState(false);
+  const [isD5102ModalOpen, setIsD5102ModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'plan' | 'income' | 'assets'>('plan');
 
   // ── 3. 핵심 엔진 연산 실행 (2026 Engine + Fine-tuning) ──
@@ -539,6 +541,15 @@ export default function RepaymentPlanEditor({
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>변제예정액표 엑셀 다운로드</span>
+            </button>
+
+            <button
+              onClick={() => setIsD5102ModalOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+              title="대법원 [전산양식 D5102] 재산목록 편집 및 11대 자산 가치 산정 허브"
+            >
+              <Building2 className="w-4 h-4 text-indigo-600" />
+              <span>D5102 자산·재산목록</span>
             </button>
 
             <button
@@ -1490,6 +1501,32 @@ export default function RepaymentPlanEditor({
               </div>
             </div>
 
+            {/* D5102 정밀 연동 배너 */}
+            <div className="p-4 bg-indigo-50/70 rounded-2xl border border-indigo-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">
+                  🏛️
+                </span>
+                <div>
+                  <h4 className="text-xs font-black text-indigo-950">
+                    대법원 공식 [전산양식 D5102] 재산목록 & 11대 자산 가치 산정 허브
+                  </h4>
+                  <p className="text-[11px] text-indigo-800 mt-0.5">
+                    KB부동산 시세, 공시가격 130% 공식, 엔카/보험개발원 중고차 시세, 2026 소액임차보증금 공제를 적용하여 청산가치를 원클릭으로 동기화합니다.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsD5102ModalOpen(true)}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale shadow-xs whitespace-nowrap"
+              >
+                <span>D5102 자산조회 & 동기화 허브 열기</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
@@ -1673,6 +1710,22 @@ export default function RepaymentPlanEditor({
           crmExt={crmExt}
           onUpdateCrmExt={onUpdateCrmExt}
           activeLawyerName={activeLawyerName}
+        />
+      )}
+
+      {/* ── 7. 대법원 전산양식 D5102 재산목록 및 자산 가치 산정 모달 ── */}
+      {isD5102ModalOpen && (
+        <PropertyValuationModal
+          isOpen={isD5102ModalOpen}
+          onClose={() => setIsD5102ModalOpen(false)}
+          clientId={clientId}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          onUpdateCrmExt={onUpdateCrmExt}
+          onSyncToRepaymentPlan={(syncedAssets) => {
+            setAssets(syncedAssets);
+            setIsD5102ModalOpen(false);
+          }}
         />
       )}
 

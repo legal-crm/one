@@ -20,6 +20,7 @@ import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import DocFormEditorModal from './DocFormEditorModal';
 import MobileDocFillView from '../../client/MobileDocFillView';
 import IncomeExpenseModal from '../repayment/IncomeExpenseModal';
+import PropertyValuationModal from '../assets/PropertyValuationModal';
 
 interface LegalDocHubModalProps {
   isOpen: boolean;
@@ -542,8 +543,17 @@ export default function LegalDocHubModal({
 
       </div>
 
-      {/* 서식 에디터 모달 (D5103 전용 에디터 및 범용 에디터 분기) */}
-      {editingDoc && editingDoc.docCode === 'D5103' ? (
+      {/* 서식 에디터 모달 (D5102, D5103 전용 에디터 및 범용 에디터 분기) */}
+      {editingDoc && editingDoc.docCode === 'D5102' ? (
+        <PropertyValuationModal
+          isOpen={!!editingDoc}
+          onClose={() => setEditingDoc(null)}
+          clientId={clientRequest.id}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          onUpdateCrmExt={onUpdateCrmExt || (async () => {})}
+        />
+      ) : editingDoc && editingDoc.docCode === 'D5103' ? (
         <IncomeExpenseModal
           isOpen={!!editingDoc}
           onClose={() => setEditingDoc(null)}

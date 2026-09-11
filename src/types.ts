@@ -755,6 +755,8 @@ export interface CrmClientExtension {
   courtStatement?: import('./types/statementTypes').CourtStatementData;
   // ── 대법원 전산양식 D5103 수입 및 지출에 관한 목록 ──
   incomeExpenseD5103?: import('./types/incomeExpenseTypes').IncomeExpenseD5103Data;
+  // ── 대법원 전산양식 D5102 재산목록 (11대 자산 가치 평가) ──
+  propertyListD5102?: import('./types/propertyTypes').PropertyListD5102Data;
 }
 
 export interface RepaymentEntry {
