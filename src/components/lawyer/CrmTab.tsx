@@ -35,6 +35,12 @@ import LawyerStatementReviewSection from './statement/LawyerStatementReviewSecti
 import LegalDocHubModal from './documents/LegalDocHubModal';
 import IncomeExpenseModal from './repayment/IncomeExpenseModal';
 import PropertyValuationModal from './assets/PropertyValuationModal';
+import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
+import Stage1ContractView from './pipeline/Stage1ContractView';
+import Stage2DocumentsHubView from './pipeline/Stage2DocumentsHubView';
+import Stage3FilingBundleView from './pipeline/Stage3FilingBundleView';
+import Stage4CorrectionCenterView from './pipeline/Stage4CorrectionCenterView';
+import Stage5PostCareDischargeView from './pipeline/Stage5PostCareDischargeView';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -199,6 +205,9 @@ export default function CrmTab({
 
   // ── 활동 탭 ──
   const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court'>(initialDetailTab || 'info');
+  // ── 5단계 실무 파이프라인 상태 ──
+  const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
+  const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>('pipeline');
 
   // ── 리걸플로 벤치마킹 실무 모달 상태 ──
   const [showBatchFilingModal, setShowBatchFilingModal] = useState(false);
@@ -521,6 +530,18 @@ export default function CrmTab({
       setEditConsultantId(selectedExt.assignedConsultantId || '');
       setEditStaffId(selectedExt.assignedStaffId || '');
       setDetailTab('info');
+      // 상태 기반 파이프라인 단계 자동 동기화
+      if (['requested', 'consulting'].includes(selectedExt.crmStatus)) {
+        setPipelineStage(1);
+      } else if (['contracted', 'document'].includes(selectedExt.crmStatus)) {
+        setPipelineStage(2);
+      } else if (selectedExt.crmStatus === 'filed') {
+        setPipelineStage(3);
+      } else if (selectedExt.crmStatus === 'commenced') {
+        setPipelineStage(4);
+      } else if (['repaying', 'discharged'].includes(selectedExt.crmStatus)) {
+        setPipelineStage(5);
+      }
     }
   }, [selectedId]);
 
@@ -2337,10 +2358,75 @@ export default function CrmTab({
                   );
                 })()}
 
-                {/* 스마트 서브탭 바 (카운트 뱃지 탑재) */}
-                <div className="flex border-b border-slate-200/80 overflow-x-auto no-scrollbar px-4 bg-slate-50/30">
-                  {(() => {
-                    const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
+                {/* 5단계 워크플로우 파이프라인 스테퍼 */}
+                <WorkflowPipelineStepper
+                  currentStage={pipelineStage}
+                  onSelectStage={(stage) => setPipelineStage(stage)}
+                  clientRequest={selectedClient}
+                  crmExt={selectedExt}
+                  isBankruptcy={selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy'}
+                  viewMode={pipelineViewMode}
+                  onToggleViewMode={(mode) => setPipelineViewMode(mode)}
+                />
+
+                {/* 5단계 파이프라인 중심 뷰 또는 기존 상세 서브탭 뷰 조건부 렌더링 */}
+                {pipelineViewMode === 'pipeline' ? (
+                  <div className="bg-slate-50/40 min-h-[600px]">
+                    {pipelineStage === 1 && (
+                      <Stage1ContractView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        activeLawyer={activeLawyer}
+                        onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
+                        onAdvanceToNextStage={() => setPipelineStage(2)}
+                        onOpenContractSubTab={() => {
+                          setPipelineViewMode('subtabs');
+                          setDetailTab('contracts');
+                        }}
+                      />
+                    )}
+                    {pipelineStage === 2 && (
+                      <Stage2DocumentsHubView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onAdvanceToNextStage={() => setPipelineStage(3)}
+                        onOpenDocScanner={() => setShowDocScanner(true)}
+                      />
+                    )}
+                    {pipelineStage === 3 && (
+                      <Stage3FilingBundleView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onAdvanceToNextStage={() => setPipelineStage(4)}
+                        onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
+                        onOpenAncillaryModal={() => setShowAncillaryModal(true)}
+                      />
+                    )}
+                    {pipelineStage === 4 && (
+                      <Stage4CorrectionCenterView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onAdvanceToNextStage={() => setPipelineStage(5)}
+                        onOpenComprehensiveCorrectionModal={() => {
+                          setPipelineViewMode('subtabs');
+                          setDetailTab('corrections');
+                        }}
+                      />
+                    )}
+                    {pipelineStage === 5 && (
+                      <Stage5PostCareDischargeView
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onOpenPostCareModal={() => setShowPostCareModal(true)}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* 스마트 서브탭 바 (카운트 뱃지 탑재) */}
+                    <div className="flex border-b border-slate-200/80 overflow-x-auto no-scrollbar px-4 bg-slate-50/30">
+                      {(() => {
+                        const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                     return [
                       { key: 'info', label: '종합 정보', icon: '👤', count: null },
                       { key: 'notes', label: '상담 메모', icon: '📝', count: selectedExt.notes.length },
@@ -3818,6 +3904,8 @@ export default function CrmTab({
                   )}
 
                 </div>
+              </>
+            )}
               </div>
             </div>
           </div>
