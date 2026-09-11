@@ -135,3 +135,35 @@ export interface CreditorsMeetingPlan {
     status: 'RECEIVED' | 'ANSWERED' | 'SETTLED';
   }[];
 }
+
+// 7. 법원별 미납 폐지 실무 기준 및 임계치
+export interface CourtRepealThreshold {
+  courtName: string;
+  cautionRounds: number;       // 1~2회 주의
+  warningRounds: number;       // 3회 경고 (폐지예고 통지서)
+  repealRiskRounds: number;    // 폐지 착수 임계치 (서울 4~5회, 수원/부산 3회, 지방 3회 즉시)
+  leniencyLevel: 'HIGH_FLEXIBLE' | 'MODERATE' | 'STRICT'; // 서울(유연) / 수원·부산(보통) / 지방(엄격)
+  description: string;
+  goldenTimeNotice: string;
+}
+
+// 8. 미납·폐지방어 3대 법원 서식 구분
+export type RepealDefensePetitionType = 
+  | 'REPAYMENT_PLAN_MODIFICATION' // 변제계획 변경신청서 (급여감소, 실직, 부양가족)
+  | 'SPECIAL_DISCHARGE'           // 채무자회생법 제624조 제2항 특별면책신청서
+  | 'IMMEDIATE_APPEAL';           // 폐지결정에 대한 즉시항고장 (14일 이내)
+
+// 9. 변제금 미납·폐지방어 종합 플랜
+export interface OverdueDefensePlan {
+  courtName: string;
+  overdueCount: number;
+  unpaidRoundNumbers: number[];
+  monthlyRepayment: number;
+  totalOverdueAmount: number;
+  threshold: CourtRepealThreshold;
+  riskStage: 'SAFE' | 'CAUTION_1_2' | 'WARNING_3' | 'REPEAL_RISK_4' | 'REPEALED_APPEAL';
+  repealedDate?: string;
+  immediateAppealDeadline?: string; // 공고일로부터 14일 불변기간
+  liquidationValue?: number;         // 특별면책 검토용 청산가치
+  totalPaidAmount?: number;          // 기납부 변제액
+}

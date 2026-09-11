@@ -10,6 +10,7 @@ import {
   SupportCategoryType,
   CaseOcrParseResult
 } from '../types';
+import { CourtRepealThreshold } from '../types/courtPetitionTypes';
 
 const COMPANION_STORAGE_KEY = 'mykim_rehab_companion_case';
 const CRISIS_STORAGE_KEY = 'mykim_life_crisis_reports';
@@ -501,31 +502,110 @@ export async function fetchLiveBenefitsFromApi(
 export interface OverdueRiskEvaluation {
   overdueCount: number;
   unpaidRoundNumbers: number[];
-  riskLevel: 'safe' | 'caution' | 'danger_repeal_risk';
+  riskLevel: 'safe' | 'caution' | 'warning' | 'danger_repeal_risk';
   message: string;
   recommendedAction: string;
+  courtThreshold: CourtRepealThreshold;
+  stageInfo: {
+    stageNumber: 1 | 2 | 3;
+    stageName: string;
+    description: string;
+    actionTip: string;
+  };
+}
+
+/**
+ * 법원별 미납 폐지 실무 기준 조회
+ * - 서울회생법원: 실무상 4~5회 연체 시까지 유예/독촉 기회 부여 (유연)
+ * - 수원/부산회생법원: 3회 이상 연체 시 폐지 착수 (보통)
+ * - 기타 지방법원: 3회 연체 즉시 엄격 직권 폐지 심리 (엄격)
+ */
+export function getCourtRepealStandard(courtName: string = ''): CourtRepealThreshold {
+  const norm = (courtName || '').trim();
+  if (norm.includes('서울')) {
+    return {
+      courtName: '서울회생법원',
+      cautionRounds: 2,
+      warningRounds: 3,
+      repealRiskRounds: 4,
+      leniencyLevel: 'HIGH_FLEXIBLE',
+      description: '서울회생법원은 실무상 4~5회차 연체 시까지 폐지 예고 및 유예 기회를 비교적 폭넓게 부여합니다.',
+      goldenTimeNotice: '폐지결정 공고일로부터 14일 이내 즉시항고장 제출 및 완납 시 부활 가능'
+    };
+  }
+  if (norm.includes('수원') || norm.includes('부산')) {
+    const name = norm.includes('수원') ? '수원회생법원' : '부산회생법원';
+    return {
+      courtName: name,
+      cautionRounds: 2,
+      warningRounds: 3,
+      repealRiskRounds: 3,
+      leniencyLevel: 'MODERATE',
+      description: `${name}은 3회 이상 연체 시 폐지 예고 통지서 발송 및 직권 폐지 심리에 착수합니다.`,
+      goldenTimeNotice: '폐지결정 공고일로부터 14일 이내 즉시항고장 제출 및 완납 시 부활 가능'
+    };
+  }
+  return {
+    courtName: norm || '지방법원',
+    cautionRounds: 1,
+    warningRounds: 2,
+    repealRiskRounds: 3,
+    leniencyLevel: 'STRICT',
+    description: '기타 지방법원은 3회 연체 시 유예 없이 즉각 폐지 결정을 내리는 엄격한 실무 경향을 보입니다.',
+    goldenTimeNotice: '폐지결정 공고일로부터 14일 이내 즉시항고장 제출 및 완납 시 부활 가능'
+  };
 }
 
 export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEvaluation {
   const overdueRounds = (caseData.schedules || []).filter(s => s.status === 'overdue_check_needed');
   const count = overdueRounds.length;
   const roundNumbers = overdueRounds.map(r => r.round);
+  const threshold = getCourtRepealStandard(caseData.courtName);
 
-  if (count >= 3) {
+  if (count >= 4 || (count >= 3 && threshold.leniencyLevel === 'STRICT')) {
     return {
       overdueCount: count,
       unpaidRoundNumbers: roundNumbers,
       riskLevel: 'danger_repeal_risk',
-      message: '🚨 변제금 3회 이상 미납 감지: 법원의 개인회생 폐지(기각) 결정 위험이 매우 높습니다.',
-      recommendedAction: '즉시 전담 변호사와 상의하여 변제계획 변경신청 또는 상환유예 신청을 진행해야 합니다.'
+      courtThreshold: threshold,
+      stageInfo: {
+        stageNumber: 3,
+        stageName: '폐지착수 (4회이상)',
+        description: `법원의 개인회생 직권 폐지 결정 위험 임계치(${threshold.courtName} 기준 ${threshold.repealRiskRounds}회)를 초과했습니다.`,
+        actionTip: '미납금 즉시 분납 또는 긴급 변제계획 변경신청·특별면책 검토가 시급합니다.'
+      },
+      message: `🚨 변제금 ${count}회차 미납: ${threshold.courtName} 직권 폐지 결정 위험이 최고조에 달했습니다.`,
+      recommendedAction: '폐지 결정 전 즉시 담당 변호사와 상의하여 가상계좌 분납, 변제계획 변경신청 또는 특별면책(법 제624조)을 진행해야 합니다.'
+    };
+  } else if (count >= 3) {
+    return {
+      overdueCount: count,
+      unpaidRoundNumbers: roundNumbers,
+      riskLevel: 'warning',
+      courtThreshold: threshold,
+      stageInfo: {
+        stageNumber: 2,
+        stageName: '경고 (3회)',
+        description: '법원의 개인회생 폐지 예고 통지서가 발송되는 위험 단계입니다.',
+        actionTip: '가능한 범위에서 가상계좌로 분할 입금하거나 급여감소 등 사정변경 소명을 준비하세요.'
+      },
+      message: `⚠️ 변제금 3회차 미납 경고: ${threshold.courtName} 폐지예고 통지서 발송 단계입니다.`,
+      recommendedAction: '법원 가상계좌는 1만원 단위 분납이 가능하므로 가용 자금부터 입금하거나, 소득감소 시 변제계획 변경신청을 요청하세요.'
     };
   } else if (count >= 1) {
     return {
       overdueCount: count,
       unpaidRoundNumbers: roundNumbers,
       riskLevel: 'caution',
-      message: `⚠️ 변제금 ${count}회 미납 주의: 3회 누적 시 개인회생 절차가 폐지될 수 있습니다.`,
-      recommendedAction: '가용 자금을 확인하시거나 이번 달 생활위기 SOS를 통해 납부 대책을 검토하세요.'
+      courtThreshold: threshold,
+      stageInfo: {
+        stageNumber: 1,
+        stageName: '주의 (1~2회)',
+        description: '단순 납부 지연 단계입니다. 연체이자는 발생하지 않으나 누적 방지가 필수적입니다.',
+        actionTip: '법원 가상계좌로 소액이라도 분납 입금하시면 폐지 위험을 선제적으로 예방할 수 있습니다.'
+      },
+      message: `⚡ 변제금 ${count}회 미납 주의: 3회 이상 누적 시 법원 폐지 절차가 개시될 수 있습니다.`,
+      recommendedAction: '법원 가상계좌로 분할 납부하시거나 이번 달 생활위기 SOS를 통해 사전 납부대책을 수립하세요.'
     };
   }
 
@@ -533,6 +613,13 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
     overdueCount: 0,
     unpaidRoundNumbers: [],
     riskLevel: 'safe',
+    courtThreshold: threshold,
+    stageInfo: {
+      stageNumber: 1,
+      stageName: '안전 (0회)',
+      description: '정상 성실 변제 수행 중',
+      actionTip: '매월 지정일 자동이체 유지 및 대법원 나의사건검색 대조를 권장합니다.'
+    },
     message: '🟢 성실 납부 진행 중: 인가된 일정대로 안전하게 상환되고 있습니다.',
     recommendedAction: '정기적인 납부일 확인과 영수증 등록을 유지해 주세요.'
   };

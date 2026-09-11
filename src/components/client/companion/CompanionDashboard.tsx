@@ -5,10 +5,11 @@ import {
   TrendingUp, AlertTriangle, ShieldCheck, Copy, 
   ChevronRight, ArrowUpRight, Sparkles, Upload, 
   Layers, Percent, Activity, RefreshCw, Send, Check,
-  ExternalLink, Search, Award
+  ExternalLink, Search, Award, AlertOctagon
 } from 'lucide-react';
 import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
 import CourtCaseModal from './CourtCaseModal';
+import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
 import { toast } from 'sonner';
 
 interface CompanionDashboardProps {
@@ -79,6 +80,7 @@ export default function CompanionDashboard({
   const expectedSurplus = monthlyIncome - (essentialLivingCost + repaymentAmount + otherFixedExpenses);
 
   const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
+  const [isDefenseGuideModalOpen, setIsDefenseGuideModalOpen] = useState(false);
 
   // 미납 및 폐지 위험도 진단
   const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
@@ -107,19 +109,36 @@ export default function CompanionDashboard({
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-600 text-white">
+                  {overdueRisk.stageInfo?.stageName || '위험 단계'}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                  {overdueRisk.courtThreshold?.courtName} 기준: {overdueRisk.courtThreshold?.repealRiskRounds}회 이상 시 폐지 심리
+                </span>
+              </div>
               <h4 className="text-sm font-black tracking-tight">{overdueRisk.message}</h4>
               <p className="text-xs text-red-600/90 dark:text-red-300/90 mt-1 leading-relaxed">
                 {overdueRisk.recommendedAction}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onOpenCrisisModal}
-            className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-xl transition-all shadow-md shrink-0 cursor-pointer active:scale-[0.98]"
-          >
-            🚨 긴급 사정변경 SOS 신청
-          </button>
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setIsDefenseGuideModalOpen(true)}
+              className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98] whitespace-nowrap"
+            >
+              🚨 3대 대처법 & 폐지방어
+            </button>
+            <button
+              type="button"
+              onClick={onOpenCrisisModal}
+              className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-xl transition-all shadow-md cursor-pointer active:scale-[0.98] whitespace-nowrap"
+            >
+              위기 SOS 접수
+            </button>
+          </div>
         </div>
       )}
 
@@ -217,6 +236,34 @@ export default function CompanionDashboard({
           </button>
         </div>
       )}
+
+      {/* ═══ 1.6. 신우법무사 기준 미납·폐지방어 상시 안내 가이드 배너 ═══ */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-rose-950 text-white border border-slate-700/60 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
+              도산 전문 실무 가이드
+            </span>
+            <span className="text-xs text-slate-300 font-medium">
+              신우법무사 기준 인가 후 변제금 관리 수칙
+            </span>
+          </div>
+          <h4 className="text-sm md:text-base font-black text-white">
+            변제금 미납 시 폐지 기준과 3대 대처 방안 (분납·변제계획변경·특별면책)
+          </h4>
+          <p className="text-xs text-slate-300/90 leading-relaxed">
+            법원 가상계좌 분할 입금 요령(무이자)부터 {overdueRisk.courtThreshold?.courtName} 폐지 기준, 폐지 시 14일 즉시항고 골든타임까지 실전 매뉴얼을 확인하세요.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsDefenseGuideModalOpen(true)}
+          className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md shrink-0 cursor-pointer active:scale-[0.98] whitespace-nowrap flex items-center justify-center gap-1.5"
+        >
+          <span>실전 대처 가이드 열기</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
 
       {/* ═══ 2. Hero D-Day & 이번 달 납부 현황 배너 ═══ */}
       <div className="bg-gradient-to-br from-brand/90 to-brand-hover text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -574,6 +621,14 @@ export default function CompanionDashboard({
         courtName={caseData.courtName}
         caseNumber={caseData.caseNumber}
         clientName={caseData.alias}
+      />
+
+      {/* 개인회생 변제금 미납 폐지 기준 & 3대 대처방안 모달 */}
+      <OverdueDefenseGuideModal
+        isOpen={isDefenseGuideModalOpen}
+        onClose={() => setIsDefenseGuideModalOpen(false)}
+        caseData={caseData}
+        onOpenCrisisModal={onOpenCrisisModal}
       />
     </div>
   );
