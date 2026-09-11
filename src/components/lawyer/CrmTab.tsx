@@ -33,6 +33,7 @@ import AncillaryPetitionsModal from './petitions/AncillaryPetitionsModal';
 import PostCommencementManagementModal from './postcare/PostCommencementManagementModal';
 import LawyerStatementReviewSection from './statement/LawyerStatementReviewSection';
 import LegalDocHubModal from './documents/LegalDocHubModal';
+import IncomeExpenseModal from './repayment/IncomeExpenseModal';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -203,6 +204,7 @@ export default function CrmTab({
   const [showAncillaryModal, setShowAncillaryModal] = useState(false);
   const [showPostCareModal, setShowPostCareModal] = useState(false);
   const [showDocHubModal, setShowDocHubModal] = useState(false);
+  const [showIncomeExpenseModal, setShowIncomeExpenseModal] = useState(false);
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -2279,6 +2281,14 @@ export default function CrmTab({
                         >
                           <span>🏦 개시·사후관리 (가상계좌·집회)</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowIncomeExpenseModal(true)}
+                          className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                          title="대법원 전산양식 D5103 수입 및 지출에 관한 목록 (가용소득 산출표) 작성 및 인쇄"
+                        >
+                          <span>💰 수입·지출목록 (D5103)</span>
+                        </button>
                       </div>
 
                       {/* 사건 담당 변호사/직원 전용 사건 유형 전환 스위처 */}
@@ -4253,6 +4263,10 @@ export default function CrmTab({
             setShowBatchFilingModal(false);
             setShowDocHubModal(true);
           }}
+          onOpenIncomeExpenseModal={() => {
+            setShowBatchFilingModal(false);
+            setShowIncomeExpenseModal(true);
+          }}
         />
       )}
 
@@ -4289,6 +4303,9 @@ export default function CrmTab({
           clientRequest={selectedClient}
           crmExt={selectedExt}
           activeLawyerName={activeLawyer.name}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
           onOpenBatchFiling={() => {
             setShowBatchFilingModal(true);
           }}
@@ -4296,7 +4313,7 @@ export default function CrmTab({
             const newDoc: DocumentFile = {
               id: `doc-${Date.now()}`,
               name: `[완성본]_${docTitle}_${selectedClient.clientName || '신청인'}.pdf`,
-              category: 'petition',
+              category: 'court_filing',
               uploadedAt: new Date().toISOString(),
               uploadedBy: activeLawyer.name,
               fileSize: 1024 * 50,
@@ -4310,6 +4327,24 @@ export default function CrmTab({
               uploadedFiles: [...currentFiles, newDoc]
             });
             toast.success(`'${docTitle}'이(가) 사건 제출 서류함에 저장되었습니다.`);
+          }}
+        />
+      )}
+
+      {/* ── 5. 대법원 전산양식 D5103 수입 및 지출에 관한 목록 모달 ── */}
+      {showIncomeExpenseModal && selectedClient && (
+        <IncomeExpenseModal
+          isOpen={showIncomeExpenseModal}
+          onClose={() => setShowIncomeExpenseModal(false)}
+          clientId={selectedId}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
+          activeLawyerName={activeLawyer.name}
+          onOpenBatchFiling={() => {
+            setShowBatchFilingModal(true);
           }}
         />
       )}

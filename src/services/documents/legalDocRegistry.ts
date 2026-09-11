@@ -48,6 +48,18 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     defaultPurpose: '신청인에 대하여 개인회생절차를 개시한다. 라는 결정을 구합니다.'
   },
   {
+    docCode: 'D5103',
+    title: '채무자의 수입 및 지출에 관한 목록',
+    caseScope: 'COMMON',
+    category: 'CORE',
+    subCategoryText: '자동작성',
+    courtOrderSlot: 'R08',
+    priorityLevel: 'CRITICAL',
+    description: '개인회생 변제금 산정의 기준이 되는 월평균 순소득 및 법정 생계비 목록 (대법원 전산양식 D5103)',
+    defaultPurpose: '채무자 회생 및 파산에 관한 법률 제589조 제2항 제3호에 의하여 별지와 같이 수입 및 지출에 관한 목록을 제출합니다.',
+    defaultReasonTemplate: '신청인의 계속적·반복적 수입 및 부양가족 수에 따른 2026년 기준 법정생계비를 반영하여 월 가용소득을 성실히 산출하였습니다.'
+  },
+  {
     docCode: '100002',
     title: '파산 및 면책신청서',
     caseScope: 'BANKRUPTCY',
@@ -1050,7 +1062,7 @@ export function getSmartRecommendedDocs(
   reasonMap: Record<string, string>;
 } {
   const profile = request.financialProfile;
-  const status = crmExt?.status || request.status;
+  const status = crmExt?.crmStatus || request.status;
   const reasonMap: Record<string, string> = {};
 
   const isBankruptcy = (profile?.income || 0) === 0 || (profile?.debtTotal || 0) > 50000;

@@ -753,6 +753,8 @@ export interface CrmClientExtension {
   bankruptcyData?: BankruptcyFullCaseData;
   // ── 2026 법원 제출용 진술서 (개인회생/파산 고객 작성 및 AI 연동) ──
   courtStatement?: import('./types/statementTypes').CourtStatementData;
+  // ── 대법원 전산양식 D5103 수입 및 지출에 관한 목록 ──
+  incomeExpenseD5103?: import('./types/incomeExpenseTypes').IncomeExpenseD5103Data;
 }
 
 export interface RepaymentEntry {

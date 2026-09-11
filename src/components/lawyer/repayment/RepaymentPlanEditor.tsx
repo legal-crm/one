@@ -26,6 +26,7 @@ import { exportCourtRepaymentScheduleExcel } from '../../../services/repayment/r
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
 import PrintableRepaymentPlanModal from './PrintableRepaymentPlanModal';
 import SecuredDebtCalculatorModal from './SecuredDebtCalculatorModal';
+import IncomeExpenseModal from './IncomeExpenseModal';
 import { REGION_CONFIG_2026, RegionType } from '../../../services/repayment/repaymentConstants2026';
 
 interface RepaymentPlanEditorProps {
@@ -208,6 +209,7 @@ export default function RepaymentPlanEditor({
 
   // 모달 제어
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isD5103ModalOpen, setIsD5103ModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'plan' | 'income' | 'assets'>('plan');
 
   // ── 3. 핵심 엔진 연산 실행 (2026 Engine + Fine-tuning) ──
@@ -537,6 +539,15 @@ export default function RepaymentPlanEditor({
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>변제예정액표 엑셀 다운로드</span>
+            </button>
+
+            <button
+              onClick={() => setIsD5103ModalOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+              title="대법원 [전산양식 D5103] 수입 및 지출에 관한 목록 편집 및 서식 출력"
+            >
+              <FileText className="w-4 h-4 text-amber-600" />
+              <span>D5103 수입·지출</span>
             </button>
 
             <button
@@ -1295,6 +1306,32 @@ export default function RepaymentPlanEditor({
               </p>
             </div>
 
+            {/* D5103 정밀 연동 배너 */}
+            <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-sm">
+                  📄
+                </span>
+                <div>
+                  <h4 className="text-xs font-black text-amber-950">
+                    대법원 공식 [전산양식 D5103] 수입 및 지출에 관한 목록 정밀 에디터
+                  </h4>
+                  <p className="text-[11px] text-amber-800 mt-0.5">
+                    급여·상여금·세금공제 상세, 피부양자 동거 가족관계 명세를 정밀 편집하고 법원 제출용 A4 서식을 즉시 출력할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsD5103ModalOpen(true)}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale shadow-xs whitespace-nowrap"
+              >
+                <span>D5103 정밀 편집 / 서식 출력</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 block">
@@ -1625,6 +1662,19 @@ export default function RepaymentPlanEditor({
         onClose={() => setIsPrintModalOpen(false)}
         lawyerName={activeLawyerName}
       />
+
+      {/* ── 6. 대법원 전산양식 D5103 수입 및 지출에 관한 목록 모달 ── */}
+      {isD5103ModalOpen && (
+        <IncomeExpenseModal
+          isOpen={isD5103ModalOpen}
+          onClose={() => setIsD5103ModalOpen(false)}
+          clientId={clientId}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          onUpdateCrmExt={onUpdateCrmExt}
+          activeLawyerName={activeLawyerName}
+        />
+      )}
 
     </div>
   );

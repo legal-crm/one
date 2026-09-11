@@ -19,6 +19,7 @@ import {
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import DocFormEditorModal from './DocFormEditorModal';
 import MobileDocFillView from '../../client/MobileDocFillView';
+import IncomeExpenseModal from '../repayment/IncomeExpenseModal';
 
 interface LegalDocHubModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ interface LegalDocHubModalProps {
   activeLawyerName?: string;
   onOpenBatchFiling?: () => void;
   onAttachDocToPackage?: (docName: string, textContent: string) => void;
+  onUpdateCrmExt?: (updates: Partial<CrmClientExtension>) => Promise<void>;
 }
 
 export default function LegalDocHubModal({
@@ -37,7 +39,8 @@ export default function LegalDocHubModal({
   crmExt,
   activeLawyerName = '김변호',
   onOpenBatchFiling,
-  onAttachDocToPackage
+  onAttachDocToPackage,
+  onUpdateCrmExt
 }: LegalDocHubModalProps) {
   if (!isOpen) return null;
 
@@ -539,8 +542,19 @@ export default function LegalDocHubModal({
 
       </div>
 
-      {/* 서식 에디터 모달 */}
-      {editingDoc && (
+      {/* 서식 에디터 모달 (D5103 전용 에디터 및 범용 에디터 분기) */}
+      {editingDoc && editingDoc.docCode === 'D5103' ? (
+        <IncomeExpenseModal
+          isOpen={!!editingDoc}
+          onClose={() => setEditingDoc(null)}
+          clientId={clientRequest.id}
+          clientRequest={clientRequest}
+          crmExt={crmExt}
+          onUpdateCrmExt={onUpdateCrmExt || (async () => {})}
+          activeLawyerName={activeLawyerName}
+          onOpenBatchFiling={onOpenBatchFiling}
+        />
+      ) : editingDoc && (
         <DocFormEditorModal
           isOpen={!!editingDoc}
           onClose={() => setEditingDoc(null)}

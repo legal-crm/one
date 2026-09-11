@@ -21,6 +21,7 @@ interface BatchFilingPackagingModalProps {
   crmExt: CrmClientExtension;
   isBankruptcy?: boolean;
   onOpenDocHub?: () => void;
+  onOpenIncomeExpenseModal?: () => void;
 }
 
 export default function BatchFilingPackagingModal({
@@ -29,7 +30,8 @@ export default function BatchFilingPackagingModal({
   clientRequest,
   crmExt,
   isBankruptcy = false,
-  onOpenDocHub
+  onOpenDocHub,
+  onOpenIncomeExpenseModal
 }: BatchFilingPackagingModalProps) {
   if (!isOpen) return null;
 
@@ -46,16 +48,21 @@ export default function BatchFilingPackagingModal({
       // 1. linkedDocId 매칭
       // 2. 파일명 키워드 매칭
       // 3. 법원 진술서(R10, B02) 고객 작성 데이터 매칭
+      // 4. 수입 및 지출에 관한 목록(R08, B08) D5103 데이터 매칭
       const isStatementSlot = t.code === 'R10' || t.code === 'B02';
       const hasCompletedStatement = isStatementSlot && (crmExt.courtStatement?.status === 'client_completed' || !!crmExt.courtStatement?.story?.initialCauseDetail);
+
+      const isIncomeExpenseSlot = t.code === 'R08' || t.code === 'B08';
+      const hasIncomeExpenseData = isIncomeExpenseSlot && (!!crmExt.incomeExpenseD5103 || !!crmExt.repaymentPlan);
 
       const matched = uploaded.find(u => 
         (u as any).linkedDocId === t.code ||
         (isStatementSlot && u.name.includes('진술서')) ||
+        (isIncomeExpenseSlot && (u.name.includes('수입') || u.name.includes('D5103'))) ||
         u.name.toLowerCase().includes(t.title.split('.')[1]?.trim().slice(0, 4).toLowerCase() || '')
       );
 
-      const isReady = !!matched || hasCompletedStatement;
+      const isReady = !!matched || hasCompletedStatement || hasIncomeExpenseData;
 
       return {
         ...t,
@@ -64,10 +71,13 @@ export default function BatchFilingPackagingModal({
           name: matched.name,
           dataUrl: matched.dataUrl,
           mimeType: matched.mimeType
+        } : (hasIncomeExpenseData ? {
+          name: `[전산양식_D5103]_수입및지출목록_${clientName}.pdf`,
+          mimeType: 'application/pdf'
         } : (hasCompletedStatement ? {
           name: `[고객작성완료]_${isBankruptcy ? '개인파산' : '개인회생'}_진술서_${clientName}.pdf`,
           mimeType: 'application/pdf'
-        } : undefined)
+        } : undefined))
       };
     });
   });
@@ -345,6 +355,15 @@ export default function BatchFilingPackagingModal({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    {(slot.code === 'R08' || slot.code === 'B08') && onOpenIncomeExpenseModal && (
+                      <button
+                        type="button"
+                        onClick={onOpenIncomeExpenseModal}
+                        className="text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-xl border border-amber-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1 shadow-xs"
+                      >
+                        <span>💰 D5103 작성</span>
+                      </button>
+                    )}
                     <label className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-xl border border-slate-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1">
                       <Upload className="w-3 h-3 text-slate-500" />
                       <span>{slot.file ? '파일 변경' : '파일 연결'}</span>
