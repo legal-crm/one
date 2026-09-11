@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   AlertTriangle, Calendar, Clock, Plus, Trash2, CheckCircle2, 
   FileText, Send, RefreshCw, Printer, Download, Sparkles, 
-  ChevronRight, ArrowRight, ShieldAlert, Check, X, Building2, HelpCircle
+  ChevronRight, ArrowRight, ShieldAlert, Check, X, Building2, HelpCircle,
+  FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { 
@@ -18,6 +19,7 @@ import type {
 } from '../../../types/correctionTypes';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import CorrectionBriefModal from './CorrectionBriefModal';
+import BankStatementAuditModal from '../../common/BankStatementAuditModal';
 
 interface ComprehensiveCorrectionCenterProps {
   clientId: string;
@@ -171,6 +173,8 @@ export default function ComprehensiveCorrectionCenter({
   const [showPrintModal, setShowPrintModal] = useState(false);
   // 기한연장신청서 모달 상태
   const [showExtensionModal, setShowExtensionModal] = useState(false);
+  // 통장 및 카드 거래내역 소명 자동화 모달 상태
+  const [showBankAuditModal, setShowBankAuditModal] = useState(false);
 
   // 통합 보정 데이터 객체 생성
   const fullBriefData: CorrectionBriefData = useMemo(() => ({
@@ -252,6 +256,16 @@ export default function ComprehensiveCorrectionCenter({
                 </button>
               ))}
             </div>
+
+            {/* 통장·카드 거래내역 소명 자동화 허브 */}
+            <button
+              onClick={() => setShowBankAuditModal(true)}
+              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+              title="1년치 통장 및 카드 거래내역을 엑셀로 업로드하여 30만/50만원 이상을 자동 추출하고 소명합니다"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-700" />
+              <span>⚡ 통장·카드 소명기 (30만/50만)</span>
+            </button>
 
             {/* 1개월 기한연장 신청 버튼 */}
             <button
@@ -539,7 +553,17 @@ export default function ComprehensiveCorrectionCenter({
             {/* 2. 신용카드 사용내역 */}
             {explanationSubTab === 'card' && (
               <div className="space-y-3">
-                <span className="text-xs font-bold text-slate-700">신용카드 결제내역 및 생활필수지출 소명</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">신용카드 결제내역 및 생활필수지출 소명</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBankAuditModal(true)}
+                    className="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>⚡ 엑셀 업로드로 30만·50만 원 이상 자동 추출 소명 →</span>
+                  </button>
+                </div>
                 <div className="p-4 bg-slate-50 rounded-2xl text-xs space-y-2 border border-slate-200">
                   {creditCards.map(c => (
                     <div key={c.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200">
@@ -557,7 +581,17 @@ export default function ComprehensiveCorrectionCenter({
             {/* 3. 50만 이상 거래 */}
             {explanationSubTab === 'high_trans' && (
               <div className="space-y-3">
-                <span className="text-xs font-bold text-slate-700">50만 원 이상 계좌 이체/출금 거래내역 소명</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">50만 원 이상 계좌 이체/출금 거래내역 소명</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBankAuditModal(true)}
+                    className="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>⚡ 엑셀 업로드로 50만 원 이상 자동 추출 소명 →</span>
+                  </button>
+                </div>
                 <div className="p-4 bg-slate-50 rounded-2xl text-xs space-y-2 border border-slate-200">
                   {highValueTrans.map(t => (
                     <div key={t.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200">
@@ -796,6 +830,51 @@ export default function ComprehensiveCorrectionCenter({
           </div>
         </div>
       )}
+
+      {/* 통장 및 신용카드 거래내역 소명 자동화 모달 */}
+      <BankStatementAuditModal
+        isOpen={showBankAuditModal}
+        onClose={() => setShowBankAuditModal(false)}
+        clientName={clientName}
+        caseNumber={caseNumber}
+        courtName={courtName}
+        onSyncToCrmCorrection={(resolvedItems) => {
+          // 고액 계좌 출금 건 반영
+          const newHighTrans = resolvedItems
+            .filter(i => i.transactionType === 'WITHDRAWAL' || i.transactionType === 'ATM_CASH')
+            .map(i => ({
+              id: `trans-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              transDate: i.date,
+              bankName: i.bankOrCard,
+              transType: 'WITHDRAWAL' as const,
+              amount: i.amount,
+              counterparty: i.counterparty,
+              purposeDetail: i.explanation,
+              evidenceDocName: i.evidenceType || '계좌이체확인증'
+            }));
+
+          // 카드 결제 건 반영
+          const newCards = resolvedItems
+            .filter(i => i.transactionType === 'CARD_PAYMENT')
+            .map(i => ({
+              id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              transactionDate: i.date,
+              cardCompany: i.bankOrCard,
+              merchantName: i.counterparty,
+              amount: i.amount,
+              purpose: i.explanation,
+              isLuxuryOrGambling: i.riskCategory === 'DANGER_LUXURY' || i.riskCategory === 'DANGER_SPECULATION',
+              evidenceNote: i.evidenceType || '카드 영수증'
+            }));
+
+          if (newHighTrans.length > 0) {
+            setHighValueTrans(prev => [...prev, ...newHighTrans]);
+          }
+          if (newCards.length > 0) {
+            setCreditCards(prev => [...prev, ...newCards]);
+          }
+        }}
+      />
     </div>
   );
 }

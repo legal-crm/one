@@ -5,11 +5,12 @@ import {
   TrendingUp, AlertTriangle, ShieldCheck, Copy, 
   ChevronRight, ArrowUpRight, Sparkles, Upload, 
   Layers, Percent, Activity, RefreshCw, Send, Check,
-  ExternalLink, Search, Award, AlertOctagon
+  ExternalLink, Search, Award, AlertOctagon, FileSpreadsheet
 } from 'lucide-react';
 import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
 import CourtCaseModal from './CourtCaseModal';
 import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
+import BankStatementAuditModal from '../../common/BankStatementAuditModal';
 import { toast } from 'sonner';
 
 interface CompanionDashboardProps {
@@ -81,6 +82,7 @@ export default function CompanionDashboard({
 
   const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
   const [isDefenseGuideModalOpen, setIsDefenseGuideModalOpen] = useState(false);
+  const [isBankAuditModalOpen, setIsBankAuditModalOpen] = useState(false);
 
   // 미납 및 폐지 위험도 진단
   const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
@@ -262,6 +264,34 @@ export default function CompanionDashboard({
         >
           <span>실전 대처 가이드 열기</span>
           <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* ═══ 1.7. 법원 1차 보정 통장·카드 거래내역 소명 도우미 ═══ */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border border-emerald-500/30 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950">
+              보정명령 필수 준비 도구
+            </span>
+            <span className="text-xs text-emerald-300 font-medium">
+              30만원 / 50만원 이상 거래처 자동 소명기
+            </span>
+          </div>
+          <h4 className="text-sm md:text-base font-black text-white">
+            1차 보정 대비: 통장 및 카드 거래내역 엑셀 업로드 & 사용처 소명서 작성
+          </h4>
+          <p className="text-xs text-slate-300/90 leading-relaxed">
+            통장·카드 거래내역을 업로드하거나 붙여넣으면 30만/50만 원 이상 건을 자동 추출하고, 사행성·현금인출·생활비 등 표준 법원 소명 문구를 원클릭으로 입력해 법원 제출용 소명서를 완성할 수 있습니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsBankAuditModalOpen(true)}
+          className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black rounded-xl transition-all shadow-md shrink-0 cursor-pointer active:scale-[0.98] whitespace-nowrap flex items-center justify-center gap-1.5"
+        >
+          <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+          <span>통장·카드 소명기 열기</span>
         </button>
       </div>
 
@@ -629,6 +659,16 @@ export default function CompanionDashboard({
         onClose={() => setIsDefenseGuideModalOpen(false)}
         caseData={caseData}
         onOpenCrisisModal={onOpenCrisisModal}
+      />
+
+      {/* 법원 1차 보정 통장/카드 거래내역 소명 모달 */}
+      <BankStatementAuditModal
+        isOpen={isBankAuditModalOpen}
+        onClose={() => setIsBankAuditModalOpen(false)}
+        clientName={caseData.alias}
+        caseNumber={caseData.caseNumber}
+        courtName={caseData.courtName}
+        isClientMode={true}
       />
     </div>
   );
