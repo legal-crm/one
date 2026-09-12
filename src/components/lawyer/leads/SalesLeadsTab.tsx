@@ -22,6 +22,7 @@ import ImportLeadsModal from './ImportLeadsModal';
 import LeadConversionModal from './LeadConversionModal';
 import StatusVisibilityModal from './StatusVisibilityModal';
 import SalesSettingsModal from './SalesSettingsModal';
+import LeadDetailModal from './LeadDetailModal';
 
 interface SalesLeadsTabProps {
   activeLawyer: User;
@@ -52,6 +53,7 @@ export default function SalesLeadsTab({
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false);
   const [conversionTargetLead, setConversionTargetLead] = useState<SalesLead | null>(null);
+  const [detailModalLead, setDetailModalLead] = useState<SalesLead | null>(null);
 
   // 숨김 상태 (localStorage)
   const [hiddenStatuses, setHiddenStatuses] = useState<string[]>(() => {
@@ -361,53 +363,85 @@ export default function SalesLeadsTab({
                       </p>
                     </div>
 
-                    {/* Primary Action Button */}
-                    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                      {lead.status === 'converted' ? (
+                      {/* Primary Action Button */}
+                      <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                        {lead.status === 'converted' ? (
+                          <button
+                            type="button"
+                            onClick={() => lead.convertedClientId && onNavigateToCrm && onNavigateToCrm(lead.convertedClientId)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>고객 CRM 조회</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConversionTargetLead(lead)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer press-scale active:scale-[0.98]"
+                          >
+                            <Sparkles size={13} />
+                            <span>고객 관리로 이전</span>
+                          </button>
+                        )}
+
+                        {/* ✏️ Real-time Detail Editor Button */}
                         <button
                           type="button"
-                          onClick={() => lead.convertedClientId && onNavigateToCrm && onNavigateToCrm(lead.convertedClientId)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
+                          onClick={() => setDetailModalLead(lead)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer press-scale"
+                          title="고객과 통화하면서 상세 정보를 입력하고 실시간으로 수정합니다"
                         >
-                          <CheckCircle2 size={13} />
-                          <span>고객 CRM 조회</span>
+                          <FileText size={13} />
+                          <span>상담·정보입력/수정</span>
                         </button>
-                      ) : (
+
+                        <a
+                          href={`tel:${lead.phone}`}
+                          onClick={() => handleCallDisposition(lead.id, 'connected', '전화 연결 시도')}
+                          className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-colors cursor-pointer"
+                          title="전화 걸기"
+                        >
+                          <Phone size={14} />
+                        </a>
+
                         <button
                           type="button"
-                          onClick={() => setConversionTargetLead(lead)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer press-scale active:scale-[0.98]"
+                          onClick={() => setExpandedLeadId(isExpanded ? null : lead.id)}
+                          className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-colors"
                         >
-                          <Sparkles size={13} />
-                          <span>고객 관리로 이전</span>
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
-                      )}
-
-                      <a
-                        href={`tel:${lead.phone}`}
-                        onClick={() => handleCallDisposition(lead.id, 'connected', '전화 연결 시도')}
-                        className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-colors cursor-pointer"
-                        title="전화 걸기"
-                      >
-                        <Phone size={14} />
-                      </a>
-
-                      <button
-                        type="button"
-                        onClick={() => setExpandedLeadId(isExpanded ? null : lead.id)}
-                        className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-colors"
-                      >
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Expanded Detail Panel */}
-                {isExpanded && (
-                  <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-4">
-                    {/* 1. 딥 슬레이트 고객 종합 브리핑 보드 (복사 기능 포함) */}
-                    <CaseBriefingBanner data={briefingData} />
+                  {/* Expanded Detail Panel */}
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-4">
+                      {/* 빠른 진입 배너 */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-50/90 rounded-2xl border border-blue-200">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                          <span className="text-xs font-black text-blue-950">
+                            통화 중 실시간 정보 수정 워크스페이스
+                          </span>
+                          <span className="text-[11px] text-blue-700 hidden md:inline">
+                            (인적사항, 소득, 채무, 주거, 자산, 과거이력, 통화메모 실시간 입력)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDetailModalLead(lead)}
+                          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-sm transition-all cursor-pointer press-scale"
+                        >
+                          <FileText size={14} />
+                          <span>✏️ 통화 중 고객 정보 5대 영역 실시간 입력/수정 창 열기</span>
+                        </button>
+                      </div>
+
+                      {/* 1. 딥 슬레이트 고객 종합 브리핑 보드 (복사 기능 포함) */}
+                      <CaseBriefingBanner data={briefingData} />
 
                     {/* 2. 고속 콜 디스포지션 툴바 */}
                     <div className="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2">
@@ -567,6 +601,25 @@ export default function SalesLeadsTab({
         <SalesSettingsModal
           isOpen={isSettingsModalOpen}
           onClose={() => setIsSettingsModalOpen(false)}
+        />
+      )}
+
+      {Boolean(detailModalLead) && (
+        <LeadDetailModal
+          isOpen={!!detailModalLead}
+          onClose={() => setDetailModalLead(null)}
+          lead={detailModalLead}
+          onUpdateLead={updatedLead => {
+            saveSalesLead(updatedLead);
+            setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+            setDetailModalLead(updatedLead);
+          }}
+          onPromoteToClient={leadToConvert => {
+            setConversionTargetLead(leadToConvert);
+            setDetailModalLead(null);
+          }}
+          activeLawyer={activeLawyer}
+          existingRequests={requests}
         />
       )}
     </div>
