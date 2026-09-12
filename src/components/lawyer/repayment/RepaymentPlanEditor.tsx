@@ -15,8 +15,10 @@ import type {
   RepaymentAsset,
   AssetCategory,
   IncomeAndExpenseInput,
-  RepaymentFormType 
+  RepaymentFormType,
+  CreditorAnnexDocType
 } from '../../../services/repayment/repaymentTypes';
+import { ANNEX_DOC_CONFIG } from '../../../services/repayment/repaymentTypes';
 import { 
   buildRepaymentPlan,
   calculateLivingExpenseAndDisposableIncome,
@@ -1230,8 +1232,18 @@ export default function RepaymentPlanEditor({
                   >
                     <span>+ 채권자 추가</span>
                   </button>
-                  <div className="text-xs font-bold text-slate-600">
-                    채권자 총 {plan.creditors.length}개사 | 원금: {(plan.totalPrincipal / 10000).toLocaleString()}만원
+                  <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5 flex-wrap">
+                    <span>채권자 총 {plan.creditors.length}개사</span>
+                    <span className="text-slate-300">|</span>
+                    <span>원금: {(plan.totalPrincipal / 10000).toLocaleString()}만원</span>
+                    {plan.creditors.filter(c => c.annexDocType && c.annexDocType !== 'NONE').length > 0 && (
+                      <>
+                        <span className="text-slate-300">|</span>
+                        <span className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                          부속서류 대상: {plan.creditors.filter(c => c.annexDocType && c.annexDocType !== 'NONE').length}건
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1447,6 +1459,47 @@ export default function RepaymentPlanEditor({
                                   <Calculator className="w-3 h-3" />
                                   <span>부족액 계산</span>
                                 </button>
+                              )}
+                            </div>
+
+                            {/* [신규: 매뉴얼 7-3 준용] 부속서류 1~4 법원 표준 분류 선택기 */}
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <select
+                                value={c.annexDocType || 'NONE'}
+                                onChange={(e) => {
+                                  const val = e.target.value as CreditorAnnexDocType;
+                                  handleUpdateCreditorField(c.id, 'annexDocType', val);
+                                  if (val !== 'NONE' && !c.annexDetail) {
+                                    const defaultHint = val === 'ANNEX_1_DEPOSIT' ? '변제공탁 채권 (유보금)'
+                                      : val === 'ANNEX_2_STATUTE_OF_LIMITATIONS' ? '소멸시효 완성 의심 채권'
+                                      : val === 'ANNEX_3_ASSIGNMENT_ORDER' ? '급여/예금 압류 전부명령 확정'
+                                      : '보증인 구상권 또는 채권액 다툼';
+                                    handleUpdateCreditorField(c.id, 'annexDetail', defaultHint);
+                                  }
+                                }}
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg border outline-none cursor-pointer transition-colors ${
+                                  c.annexDocType && c.annexDocType !== 'NONE'
+                                    ? ANNEX_DOC_CONFIG[c.annexDocType].badgeColor
+                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300'
+                                }`}
+                                title="매뉴얼 7-3 준용: 개인회생 채권자목록 부속서류 1~4 지정"
+                              >
+                                <option value="NONE">부속서류 없음</option>
+                                <option value="ANNEX_1_DEPOSIT">부속 1호: 변제공탁</option>
+                                <option value="ANNEX_2_STATUTE_OF_LIMITATIONS">부속 2호: 시효완성</option>
+                                <option value="ANNEX_3_ASSIGNMENT_ORDER">부속 3호: 전부명령</option>
+                                <option value="ANNEX_4_DISPUTED">부속 4호: 다툼/보증</option>
+                              </select>
+
+                              {c.annexDocType && c.annexDocType !== 'NONE' && (
+                                <input
+                                  type="text"
+                                  value={c.annexDetail || ''}
+                                  onChange={(e) => handleUpdateCreditorField(c.id, 'annexDetail', e.target.value)}
+                                  placeholder="부속서류 사유 요약 (예: 5년 상사시효 완성)"
+                                  className="text-[10px] px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-700 outline-none focus:border-indigo-500 flex-1 min-w-[130px]"
+                                  title="부속서류 소명 및 기재 사유"
+                                />
                               )}
                             </div>
 

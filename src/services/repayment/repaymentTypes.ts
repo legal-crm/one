@@ -139,7 +139,54 @@ export interface RepaymentCreditor {
   bizNumber?: string;              // 법인/사업자/주민등록번호
   debtCauseDetail?: string;        // 차용원인 (예: 대여금 / 신용대출)
   borrowedDate?: string;           // 차용일자 (YYYY-MM-DD)
+
+  // 대법원 개인회생 채권자목록 부속서류 1~4 규격 (매뉴얼 7-3 준용)
+  annexDocType?: CreditorAnnexDocType;
+  annexDetail?: string;            // 부속서류 기재 사유 (예: 5년 시효완성 의심, OO지법 전부명령 등)
 }
+
+// ══════════════════════════════════════════════════════════════════
+// 개인회생 채권자목록 부속서류 1~4 법원 표준 분류 규격
+// ══════════════════════════════════════════════════════════════════
+export type CreditorAnnexDocType = 
+  | 'NONE'
+  | 'ANNEX_1_DEPOSIT'               // 부속서류 1: 변제공탁 채권
+  | 'ANNEX_2_STATUTE_OF_LIMITATIONS' // 부속서류 2: 시효완성 채권
+  | 'ANNEX_3_ASSIGNMENT_ORDER'      // 부속서류 3: 전부명령 채권
+  | 'ANNEX_4_DISPUTED';             // 부속서류 4: 다툼이 있는 채권 (보증인/주채무자 등)
+
+export const ANNEX_DOC_CONFIG: Record<CreditorAnnexDocType, { label: string; shortLabel: string; badgeColor: string; description: string }> = {
+  NONE: { 
+    label: '해당없음 (일반채권)', 
+    shortLabel: '일반', 
+    badgeColor: 'bg-slate-100 text-slate-600',
+    description: '부속서류 작성이 불필요한 통상 채권' 
+  },
+  ANNEX_1_DEPOSIT: { 
+    label: '부속서류 1: 변제공탁 채권', 
+    shortLabel: '부속 1호(공탁)', 
+    badgeColor: 'bg-purple-100 text-purple-700 border-purple-300',
+    description: '변제공탁 채권 (채권자목록 기재 시 자동 반영)' 
+  },
+  ANNEX_2_STATUTE_OF_LIMITATIONS: { 
+    label: '부속서류 2: 시효완성 채권', 
+    shortLabel: '부속 2호(시효)', 
+    badgeColor: 'bg-amber-100 text-amber-700 border-amber-300',
+    description: '채권자와 채무액 다툼 또는 소멸시효 완성 채권' 
+  },
+  ANNEX_3_ASSIGNMENT_ORDER: { 
+    label: '부속서류 3: 전부명령 채권', 
+    shortLabel: '부속 3호(전부)', 
+    badgeColor: 'bg-rose-100 text-rose-700 border-rose-300',
+    description: '급여·예금에 유효한 전부명령 확정 압류 채권' 
+  },
+  ANNEX_4_DISPUTED: { 
+    label: '부속서류 4: 다툼이 있는 채권', 
+    shortLabel: '부속 4호(다툼/보증)', 
+    badgeColor: 'bg-blue-100 text-blue-700 border-blue-300',
+    description: '보증인 구상금, 손해배상 등 1~3호 외 분쟁 채권' 
+  },
+};
 
 export type AssetCategory = 
   | 'DEPOSIT'              // 예금 / 적금 (185만 원 공제)

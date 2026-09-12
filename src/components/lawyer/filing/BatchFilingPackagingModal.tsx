@@ -9,7 +9,9 @@ import {
   CourtBatchFilingService, 
   REHAB_14_STANDARD_ORDER, 
   BANKRUPTCY_10_STANDARD_ORDER,
-  type FilingDocumentSlot 
+  REHAB_7_BUNDLE_SPEC,
+  type FilingDocumentSlot,
+  type FilingBundleItem
 } from '../../../services/court/CourtBatchFilingService';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepaymentCreditor } from '../../../services/repayment/repaymentTypes';
@@ -96,6 +98,7 @@ export default function BatchFilingPackagingModal({
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [processLabel, setProcessLabel] = useState('');
+  const [viewMode, setViewMode] = useState<'SLOTS_14' | 'BUNDLES_7'>('SLOTS_14');
 
   // 채권자 목록 추출 (변제계획안 ➔ 부채증명서 발급목록 ➔ 상담 채권자 순으로 fallback)
   const creditors: RepaymentCreditor[] = useMemo(() => {
@@ -195,6 +198,28 @@ export default function BatchFilingPackagingModal({
       toast.success('📊 대법원 전자소송 호환 채권자목록 CSV(UTF-8 BOM) 파일이 다운로드되었습니다!');
     } catch (err: any) {
       toast.error('CSV 생성 실패: ' + (err?.message || ''));
+    }
+  };
+
+  // 4. [신규: 매뉴얼 7-1 준용] 전자소송 7대 묶음 PDF 일괄 압축 다운로드
+  const handleDownload7BundleZip = async () => {
+    setIsProcessing(true);
+    setProcessLabel('매뉴얼 7-1 규격 전자소송 7대 묶음 PDF 결합 및 압축 중...');
+    try {
+      const zipBlob = await CourtBatchFilingService.exportCourt7BundleZip(
+        slots,
+        clientName,
+        crmExt.uploadedFiles || []
+      );
+      const filename = `[전자소송7대묶음]_개인회생_${clientName}.zip`;
+      CourtBatchFilingService.downloadZip(zipBlob, filename);
+      toast.success('🎉 법원 매뉴얼(7-1) 규격 전자소송 7대 묶음 ZIP 파일이 다운로드되었습니다!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('7대 묶음 ZIP 생성 중 오류가 발생했습니다: ' + (err?.message || ''));
+    } finally {
+      setIsProcessing(false);
+      setProcessLabel('');
     }
   };
 
@@ -310,7 +335,20 @@ export default function BatchFilingPackagingModal({
               <span>번호순 ZIP 다운로드</span>
             </button>
 
-            {/* 3. 통합 단일 PDF 결합 */}
+            {/* 3. [신규: 매뉴얼 7-1 준용] 전자소송 7대 묶음 ZIP */}
+            {!isBankruptcy && (
+              <button
+                onClick={handleDownload7BundleZip}
+                disabled={isProcessing}
+                className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer press-scale whitespace-nowrap disabled:opacity-50"
+                title="매뉴얼 7-1 규격: 전자소송 등록용 7대 그룹 묶음 PDF 일괄 압축"
+              >
+                <Layers className="w-3.5 h-3.5 text-purple-600" />
+                <span>전자소송 7대 묶음 ZIP</span>
+              </button>
+            )}
+
+            {/* 4. 통합 단일 PDF 결합 */}
             <button
               onClick={handleDownloadMergedPdf}
               disabled={isProcessing}
@@ -331,6 +369,33 @@ export default function BatchFilingPackagingModal({
           </div>
         </div>
 
+        {/* [신규] 뷰 모드 탭 스위처 (14종 슬롯 vs 매뉴얼 7-1 전자소송 7대 묶음) */}
+        {!isBankruptcy && (
+          <div className="px-6 pt-2.5 bg-white border-b border-slate-200 flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('SLOTS_14')}
+              className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+                viewMode === 'SLOTS_14'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              대법원 표준 14종 개별 슬롯
+            </button>
+            <button
+              onClick={() => setViewMode('BUNDLES_7')}
+              className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'BUNDLES_7'
+                  ? 'border-purple-600 text-purple-700 font-extrabold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span>⭐ 전자소송 7대 그룹 묶음(Bundle) 규격</span>
+              <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded-full font-bold">실무 7-1</span>
+            </button>
+          </div>
+        )}
+
         {isProcessing && (
           <div className="px-6 py-2 bg-blue-50 border-b border-blue-100 text-xs font-bold text-blue-800 flex items-center gap-2 animate-pulse">
             <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
@@ -338,105 +403,204 @@ export default function BatchFilingPackagingModal({
           </div>
         )}
 
-        {/* 서류 번호순 슬롯 리스트 */}
+        {/* 서류 리스트 영역 (14종 슬롯 또는 7대 그룹 묶음) */}
         <div className="p-6 overflow-y-auto space-y-2.5 flex-1">
-          <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              대법원 전자소송 제출 표준 순서 목록
-            </span>
-            <span className="text-[11px] text-slate-400">
-              * 미첨부 서류는 결합 시 법원 표준 "서류 간지(Cover Sheet)"가 자동 대체 삽입됩니다.
-            </span>
-          </div>
+          {viewMode === 'BUNDLES_7' && !isBankruptcy ? (
+            // ── 매뉴얼 7-1 전자소송 7대 묶음 뷰 ──
+            <div className="space-y-3">
+              <div className="p-3 bg-purple-50/70 rounded-2xl border border-purple-200 text-purple-900 text-xs flex items-start gap-2.5">
+                <Layers className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-purple-950">
+                    법원 실무 매뉴얼 (7-1) 규격: 전자소송 등록용 7개 그룹 묶음 스캔 체계
+                  </p>
+                  <p className="text-[11px] text-purple-800 leading-relaxed">
+                    개인회생 신청 시 법원 전자소송 포털에 제출 서류를 올릴 때는 아래 7개 표준 PDF 파일로 그룹화하여 스캔·등록합니다.
+                    상단의 <strong>[전자소송 7대 묶음 ZIP]</strong> 버튼을 누르면 각 묶음별로 자동 병합된 7개의 표준 파일이 일괄 다운로드됩니다.
+                  </p>
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            {slots.map((slot) => {
-              const isReady = slot.status === 'READY';
-              return (
-                <div 
-                  key={slot.order}
-                  className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                    isReady 
-                      ? 'bg-white border-slate-200 hover:border-blue-200' 
-                      : slot.isRequired 
-                        ? 'bg-rose-50/50 border-rose-200' 
-                        : 'bg-slate-50/70 border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={`w-7 h-7 rounded-xl font-mono text-xs font-extrabold flex items-center justify-center shrink-0 ${
-                      isReady ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {slot.order}
-                    </span>
+              <div className="space-y-2.5">
+                {REHAB_7_BUNDLE_SPEC.map((bundle) => {
+                  // 매칭된 슬롯 및 업로드 파일 확인
+                  const matchedSlots = slots.filter(s => bundle.slotCodes.includes(s.code) && s.file);
+                  const matchedUploads = (crmExt.uploadedFiles || []).filter(u => {
+                    const uName = (u.name || '').toLowerCase();
+                    return bundle.sourceKeywords.some(kw => uName.includes(kw.toLowerCase()));
+                  });
+                  const totalMatchedDocs = matchedSlots.length + matchedUploads.length;
+                  const isReady = totalMatchedDocs > 0;
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-800 truncate">
-                          {slot.title}
+                  return (
+                    <div 
+                      key={bundle.bundleOrder}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        isReady 
+                          ? 'bg-white border-purple-200 hover:border-purple-300 shadow-2xs' 
+                          : bundle.isRequired 
+                            ? 'bg-amber-50/40 border-amber-200' 
+                            : 'bg-slate-50/70 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className={`w-8 h-8 rounded-xl font-mono text-xs font-extrabold flex items-center justify-center shrink-0 mt-0.5 ${
+                          isReady ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          #{bundle.bundleOrder}
                         </span>
-                        {slot.isRequired ? (
-                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-sm bg-rose-100 text-rose-700 whitespace-nowrap">
-                            필수
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-sm bg-slate-100 text-slate-500 whitespace-nowrap">
-                            선택
-                          </span>
-                        )}
+
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-slate-900">
+                              {bundle.title}
+                            </span>
+                            <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200">
+                              📄 {bundle.bundleFileName}
+                            </span>
+                            {bundle.isRequired ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-sm bg-rose-100 text-rose-700">
+                                필수 묶음
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-sm bg-slate-100 text-slate-500">
+                                해당시 제출
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            {bundle.description}
+                          </p>
+
+                          <div className="flex items-center gap-2 pt-0.5 text-[11px]">
+                            {isReady ? (
+                              <span className="text-emerald-700 font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>구비 서류 {totalMatchedDocs}건 연결 완료 (자동 병합 대상)</span>
+                              </span>
+                            ) : (
+                              <span className="text-amber-700 font-medium flex items-center gap-1">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                <span>첨부 서류 대기중 (ZIP 추출 시 법원 규격 안내 간지 자동 생성)</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
-                      {slot.file ? (
-                        <p className="text-[11px] text-slate-500 font-mono truncate mt-0.5 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                          <span>연결 파일: {slot.file.name}</span>
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-rose-500 font-medium mt-0.5 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
-                          <span>미제출 상태 (결합 시 번호순 간지 자동 생성)</span>
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          Slot: {bundle.slotCodes.join(', ')}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            // ── 대법원 표준 14종 개별 슬롯 뷰 (기존) ──
+            <>
+              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  대법원 전자소송 제출 표준 순서 목록
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  * 미첨부 서류는 결합 시 법원 표준 "서류 간지(Cover Sheet)"가 자동 대체 삽입됩니다.
+                </span>
+              </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {(slot.code === 'R06' || slot.code === 'B06') && onOpenPropertyModal && (
-                      <button
-                        type="button"
-                        onClick={onOpenPropertyModal}
-                        className="text-[11px] font-bold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl border border-indigo-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1 shadow-xs"
-                      >
-                        <span>🏛️ D5102 작성</span>
-                      </button>
-                    )}
-                    {(slot.code === 'R08' || slot.code === 'B08') && onOpenIncomeExpenseModal && (
-                      <button
-                        type="button"
-                        onClick={onOpenIncomeExpenseModal}
-                        className="text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-xl border border-amber-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1 shadow-xs"
-                      >
-                        <span>💰 D5103 작성</span>
-                      </button>
-                    )}
-                    <label className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-xl border border-slate-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1">
-                      <Upload className="w-3 h-3 text-slate-500" />
-                      <span>{slot.file ? '파일 변경' : '파일 연결'}</span>
-                      <input 
-                        type="file" 
-                        accept=".pdf,.jpg,.jpeg,.png" 
-                        className="hidden" 
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handleSlotFileUpload(slot.order, f);
-                        }} 
-                      />
-                    </label>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+              <div className="space-y-2">
+                {slots.map((slot) => {
+                  const isReady = slot.status === 'READY';
+                  return (
+                    <div 
+                      key={slot.order}
+                      className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                        isReady 
+                          ? 'bg-white border-slate-200 hover:border-blue-200' 
+                          : slot.isRequired 
+                            ? 'bg-rose-50/50 border-rose-200' 
+                            : 'bg-slate-50/70 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`w-7 h-7 rounded-xl font-mono text-xs font-extrabold flex items-center justify-center shrink-0 ${
+                          isReady ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {slot.order}
+                        </span>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-800 truncate">
+                              {slot.title}
+                            </span>
+                            {slot.isRequired ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-sm bg-rose-100 text-rose-700 whitespace-nowrap">
+                                필수
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-sm bg-slate-100 text-slate-500 whitespace-nowrap">
+                                선택
+                              </span>
+                            )}
+                          </div>
+
+                          {slot.file ? (
+                            <p className="text-[11px] text-slate-500 font-mono truncate mt-0.5 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>연결 파일: {slot.file.name}</span>
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-rose-500 font-medium mt-0.5 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3 shrink-0" />
+                              <span>미제출 상태 (결합 시 번호순 간지 자동 생성)</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {(slot.code === 'R06' || slot.code === 'B06') && onOpenPropertyModal && (
+                          <button
+                            type="button"
+                            onClick={onOpenPropertyModal}
+                            className="text-[11px] font-bold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl border border-indigo-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1 shadow-xs"
+                          >
+                            <span>🏛️ D5102 작성</span>
+                          </button>
+                        )}
+                        {(slot.code === 'R08' || slot.code === 'B08') && onOpenIncomeExpenseModal && (
+                          <button
+                            type="button"
+                            onClick={onOpenIncomeExpenseModal}
+                            className="text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-xl border border-amber-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1 shadow-xs"
+                          >
+                            <span>💰 D5103 작성</span>
+                          </button>
+                        )}
+                        <label className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-xl border border-slate-200 cursor-pointer press-scale whitespace-nowrap flex items-center gap-1">
+                          <Upload className="w-3 h-3 text-slate-500" />
+                          <span>{slot.file ? '파일 변경' : '파일 연결'}</span>
+                          <input 
+                            type="file" 
+                            accept=".pdf,.jpg,.jpeg,.png" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleSlotFileUpload(slot.order, f);
+                            }} 
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         {/* 하단 푸터 안내 */}

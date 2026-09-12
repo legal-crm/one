@@ -40,6 +40,93 @@ export const REHAB_14_STANDARD_ORDER: Omit<FilingDocumentSlot, 'file' | 'status'
   { order: 14, code: 'R14', title: '14. 소송위임장 및 대한변협 경유증표', category: 'POWER_OF_ATTORNEY', isRequired: true },
 ];
 
+// ══════════════════════════════════════════════════════════════════
+// 매뉴얼 7-1 준용: 법원 전자소송 제출용 「7대 그룹 묶음(Bundle) PDF」 표준 규격
+// ══════════════════════════════════════════════════════════════════
+export interface FilingBundleItem {
+  bundleOrder: number;
+  bundleCode: string;
+  bundleFileName: string;       // 전자소송 표준 파일명 (예: "최신 주민등록초본.pdf")
+  title: string;                // 표시 제목
+  description: string;          // 포함 서류 설명
+  sourceKeywords: string[];     // 자동 매칭 키워드
+  slotCodes: string[];          // REHAB_14 슬롯 매핑
+  isRequired: boolean;
+}
+
+export const REHAB_7_BUNDLE_SPEC: FilingBundleItem[] = [
+  {
+    bundleOrder: 1,
+    bundleCode: 'BUNDLE_01_RESIDENT',
+    bundleFileName: '최신 주민등록초본.pdf',
+    title: '1. 주민등록등본 및 초본',
+    description: '최신 주민등록초본(말소 및 주소변동 전체 포함) 및 등본',
+    sourceKeywords: ['초본', '등본', '주민등록'],
+    slotCodes: ['R01'],
+    isRequired: true,
+  },
+  {
+    bundleOrder: 2,
+    bundleCode: 'BUNDLE_02_FAMILY',
+    bundleFileName: '가족관계증명서 혼인관계증명서.pdf',
+    title: '2. 가족관계증명서 및 혼인관계증명서',
+    description: '가족관계증명서(상세) 및 혼인관계증명서(상세) (제3자 주민번호 뒷자리 마스킹 필수)',
+    sourceKeywords: ['가족관계', '혼인관계'],
+    slotCodes: ['R02'],
+    isRequired: true,
+  },
+  {
+    bundleOrder: 3,
+    bundleCode: 'BUNDLE_03_BANK_ACCOUNT',
+    bundleFileName: '신청인 본인의 예금계좌 사본.pdf',
+    title: '3. 신청인 본인의 예금계좌 사본',
+    description: '환급금 수령용 신청인 본인 명의 계좌 사본 (통장 표지/모바일 통장사본)',
+    sourceKeywords: ['계좌', '통장사본', '환급계좌'],
+    slotCodes: ['R03'],
+    isRequired: true,
+  },
+  {
+    bundleOrder: 4,
+    bundleCode: 'BUNDLE_04_DEBT_CERT',
+    bundleFileName: '채권자 보유 소명자료.pdf',
+    title: '4. 채권자 보유 소명자료 (부채증명서철)',
+    description: '금융기관별 부채증명서 원본 및 채권양도통지서 일체',
+    sourceKeywords: ['부채증명', '채권자', '양도통지'],
+    slotCodes: ['R05'],
+    isRequired: true,
+  },
+  {
+    bundleOrder: 5,
+    bundleCode: 'BUNDLE_05_ASSET_EVIDENCE',
+    bundleFileName: '재산 목록 소명자료.pdf',
+    title: '5. 재산 목록 소명자료',
+    description: '금융거래내역서, 계좌정보통합관리원(어카운트인포), 보험해약환급금, 지방세 세목별과세증명서, 지적전산자료(K-Geo), 자동차등록원부, 부동산등기부 등',
+    sourceKeywords: ['재산', '보험', '어카운트인포', '과세증명', '자동차', '등기', '지적', '임대차', '계좌내역'],
+    slotCodes: ['R07'],
+    isRequired: true,
+  },
+  {
+    bundleOrder: 6,
+    bundleCode: 'BUNDLE_06_INCOME_EVIDENCE',
+    bundleFileName: '거주자의 수입 및 지출에 관한 목록 소명 자료.pdf',
+    title: '6. 거주자의 수입 및 지출에 관한 목록 소명 자료',
+    description: '재직증명서, 근로계약서, 근로소득원천징수영수증, 소득금액증명원, 최근 1년 급여명세/급여통장, 건강보험자격득실, 부가세과세표준(사업소득) 등',
+    sourceKeywords: ['소득', '재직', '원천징수', '급여', '건강보험자격', '부가세', '수입지출', '사업소득'],
+    slotCodes: ['R09'],
+    isRequired: true,
+  },
+  {
+    bundleOrder: 7,
+    bundleCode: 'BUNDLE_07_STATEMENT_EVIDENCE',
+    bundleFileName: '진술서 소명자료.pdf',
+    title: '7. 진술서 소명자료',
+    description: '무상거주사실확인서, 국민기초생활수급자증명서, 장애인증명서, 진료비영수증/진단서, 폐업사실증명원 등',
+    sourceKeywords: ['진술서', '무상거주', '수급자', '장애인', '진료비', '진단서', '폐업'],
+    slotCodes: ['R11'],
+    isRequired: false,
+  },
+];
+
 // 개인파산·면책 10종 법원 표준 제출 순서 규격
 export const BANKRUPTCY_10_STANDARD_ORDER: Omit<FilingDocumentSlot, 'file' | 'status'>[] = [
   { order: 1, code: 'B01', title: '01. 개인파산 및 면책신청서', category: 'CORE_FORM', isRequired: true },
@@ -269,6 +356,142 @@ export class CourtBatchFilingService {
 
     // UTF-8 BOM (\uFEFF)을 포함하여 엑셀에서 한글 깨짐 방지
     return '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+  }
+
+  /**
+   * 3. 법원 매뉴얼(7-1) 준용: 전자소송 7대 묶음(Bundle) PDF 일괄 결합 및 ZIP 압축
+   */
+  static async exportCourt7BundleZip(
+    slots: FilingDocumentSlot[],
+    clientName: string,
+    uploadedFiles: any[] = []
+  ): Promise<Blob> {
+    const zip = new JSZip();
+    const folder = zip.folder(`[전자소송7대묶음]_개인회생_${clientName}`);
+
+    for (const bundle of REHAB_7_BUNDLE_SPEC) {
+      // 해당 번들에 매칭되는 슬롯 서류 및 업로드 파일 수집
+      const matchedSlots = slots.filter(s => bundle.slotCodes.includes(s.code) && s.file);
+      const matchedUploads = uploadedFiles.filter(u => {
+        const uName = (u.name || '').toLowerCase();
+        return bundle.sourceKeywords.some(kw => uName.includes(kw.toLowerCase()));
+      });
+
+      const bundlePdf = await PDFDocument.create();
+      const font = await bundlePdf.embedFont(StandardFonts.Helvetica);
+      let hasPage = false;
+
+      // 슬롯 파일 병합
+      for (const slot of matchedSlots) {
+        if (slot.file?.dataUrl && slot.file.dataUrl.includes('application/pdf')) {
+          try {
+            const bytes = dataUrlToUint8Array(slot.file.dataUrl);
+            const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+            const pages = await bundlePdf.copyPages(srcDoc, srcDoc.getPageIndices());
+            pages.forEach(p => bundlePdf.addPage(p));
+            hasPage = true;
+          } catch (e) {
+            console.warn(`[7대묶음] 슬롯 PDF 병합 실패: ${slot.title}`, e);
+          }
+        }
+      }
+
+      // 업로드 파일 중 아직 병합되지 않은 추가 서류 병합
+      for (const file of matchedUploads) {
+        if (file.dataUrl && file.dataUrl.includes('application/pdf')) {
+          try {
+            const bytes = dataUrlToUint8Array(file.dataUrl);
+            const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+            const pages = await bundlePdf.copyPages(srcDoc, srcDoc.getPageIndices());
+            pages.forEach(p => bundlePdf.addPage(p));
+            hasPage = true;
+          } catch (e) {
+            console.warn(`[7대묶음] 업로드 PDF 병합 실패: ${file.name}`, e);
+          }
+        }
+      }
+
+      // 첨부 서류가 없는 경우 법원 제출용 표준 간지(Cover Sheet) 삽입
+      if (!hasPage) {
+        const page = bundlePdf.addPage([595.28, 841.89]); // A4
+        const { width, height } = page.getSize();
+
+        // 상단 헤더 박스
+        page.drawRectangle({
+          x: 40,
+          y: height - 120,
+          width: width - 80,
+          height: 70,
+          borderColor: rgb(0.12, 0.23, 0.37),
+          borderWidth: 1.5,
+          color: rgb(0.96, 0.98, 1.0),
+        });
+
+        page.drawText(`[COURT ELECTRONIC FILING - BUNDLE #${bundle.bundleOrder}]`, {
+          x: 55,
+          y: height - 75,
+          size: 10,
+          font,
+          color: rgb(0.15, 0.3, 0.55),
+        });
+
+        page.drawText(`${bundle.bundleFileName}`, {
+          x: 55,
+          y: height - 98,
+          size: 14,
+          font,
+          color: rgb(0.08, 0.12, 0.2),
+        });
+
+        // 본문 안내 영역
+        page.drawRectangle({
+          x: 40,
+          y: 200,
+          width: width - 80,
+          height: 480,
+          borderColor: rgb(0.85, 0.88, 0.92),
+          borderWidth: 1,
+          color: rgb(1, 1, 1),
+        });
+
+        page.drawText(`DOCUMENT GROUP: ${bundle.title}`, {
+          x: 60,
+          y: 640,
+          size: 12,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+
+        page.drawText(`APPLICANT: ${clientName}`, {
+          x: 60,
+          y: 615,
+          size: 10,
+          font,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+
+        page.drawText(`DESCRIPTION: ${bundle.description}`, {
+          x: 60,
+          y: 585,
+          size: 9,
+          font,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+
+        page.drawText(`* Electronic filing scan cover sheet for Seoul/District Court.`, {
+          x: 60,
+          y: 550,
+          size: 8,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+      }
+
+      const pdfBytes = await bundlePdf.save();
+      folder?.file(bundle.bundleFileName, pdfBytes);
+    }
+
+    return await zip.generateAsync({ type: 'blob' });
   }
 
   /** CSV 브라우저 다운로드 헬퍼 */
