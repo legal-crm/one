@@ -30,7 +30,7 @@ export default function BankStatementAuditModal({
   isOpen,
   onClose,
   clientName = '신청인',
-  caseNumber = '2026개회 108492호',
+  caseNumber = '사건 접수 준비중',
   courtName = '서울회생법원',
   onSyncToCrmCorrection,
   isClientMode = false

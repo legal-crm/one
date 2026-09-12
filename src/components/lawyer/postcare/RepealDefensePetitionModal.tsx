@@ -33,7 +33,7 @@ export default function RepealDefensePetitionModal({
   const [copied, setCopied] = useState(false);
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const caseNumber = crmExt.courtCase?.caseNumber || '2026개회 108492호';
+  const caseNumber = crmExt.courtCase?.caseNumber || (clientRequest as any).caseNumber || '2026개회 (접수 준비중)';
   const monthlyPayment = crmExt.repaymentPlan?.monthlyRepaymentTotal || 480000;
   const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 

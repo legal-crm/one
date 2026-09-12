@@ -26,6 +26,27 @@ function getLocalData<T>(key: string, fallback: T): T {
 
 function setLocalData<T>(key: string, data: T): void {
   secureSetItem(key, JSON.stringify(data));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('legal_crm_data_updated', { detail: { key } }));
+  }
+}
+
+/** 동기식으로 특정 고객의 CRM 확장 데이터를 조회 (secureGetItem 사용) */
+export function getCrmClientSync(clientId: string): CrmClientExtension | null {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  return store[clientId] || null;
+}
+
+/** 특정 고객의 CRM 데이터를 부분 업데이트하고 저장 및 브로드캐스트 */
+export async function updateCrmClientExtension(clientId: string, updates: Partial<CrmClientExtension>): Promise<void> {
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const current = store[clientId] || createDefaultCrmExtension(clientId);
+  const updated: CrmClientExtension = {
+    ...current,
+    ...updates,
+    lastActivityAt: new Date().toISOString()
+  };
+  await saveCrmClient(clientId, updated);
 }
 
 // ── CRM Client Extension 관리 ──

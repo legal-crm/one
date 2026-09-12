@@ -13,6 +13,7 @@ import { useDialog } from '../common/DialogProvider';
 import type { ElectronicContract, ContractDocument, ContractDocType, FeeInstallment, CourtCosts, BankAccountInfo, SuccessFeeAgreement } from '../../types';
 import { CONTRACT_DOC_TYPES } from '../../types';
 import { calculateCourtCosts, generateFeeSchedule, saveContract, getContract, addAuditLog, updateContractStatus, finalizeContractWithIntegrity } from '../../services/contractService';
+import { syncContractToCrm } from '../../services/crmService';
 import { validateBusinessRegistration } from '../../services/ntsService';
 import { 
   STANDARD_LEGAL_TEMPLATES, 
@@ -166,9 +167,16 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
   const update = (patch: Partial<ElectronicContract>) => setC(prev => ({ ...prev, ...patch, updatedAt: new Date().toISOString() }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updated = addAuditLog(c, '계약서 임시 저장', 'lawyer');
-    saveContract(updated);
+    await saveContract(updated);
+    if (c.clientId) {
+      try {
+        await syncContractToCrm(c.clientId, updated);
+      } catch (err) {
+        console.warn('syncContractToCrm error:', err);
+      }
+    }
     onSave(updated);
     toast.success('계약서가 저장되었습니다');
   };

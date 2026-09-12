@@ -27,14 +27,22 @@ export default function Stage1ContractView({
   onOpenContractSubTab,
 }: Stage1ContractViewProps) {
   const [creditorCount, setCreditorCount] = useState<number>(() => {
-    return (crmExt?.debtCertificateOrders?.[0]?.items || []).length || 6;
+    return (crmExt?.debtCertificateOrders?.[0]?.items || []).length || (clientRequest as any)?.creditorCount || 5;
   });
-  const [isBusinessDebtor, setIsBusinessDebtor] = useState(false);
-  const [retainerFee, setRetainerFee] = useState<number>(500000);
-  const [monthlyFee, setMonthlyFee] = useState<number>(300000);
-  const [installmentMonths, setInstallmentMonths] = useState<number>(4);
+  const [isBusinessDebtor, setIsBusinessDebtor] = useState(() => {
+    return (clientRequest as any)?.category === 'business' || (clientRequest as any)?.jobType === 'business';
+  });
+  const [retainerFee, setRetainerFee] = useState<number>(() => {
+    return crmExt?.feeSchedule?.[0]?.amount || (crmExt?.totalFee ? Math.round(crmExt.totalFee * 0.3) : 500000);
+  });
+  const [monthlyFee, setMonthlyFee] = useState<number>(() => {
+    return crmExt?.feeSchedule?.[1]?.amount || 300000;
+  });
+  const [installmentMonths, setInstallmentMonths] = useState<number>(() => {
+    return crmExt?.feeSchedule?.length ? Math.max(1, crmExt.feeSchedule.length - 1) : 4;
+  });
   const [isContractSigned, setIsContractSigned] = useState(() => {
-    return crmExt?.crmStatus !== 'requested' && crmExt?.crmStatus !== 'consulting';
+    return crmExt?.crmStatus === 'contracted' || crmExt?.crmStatus === 'preparing' || crmExt?.crmStatus === 'completed' || !!crmExt?.contractDate;
   });
 
   // 법원 실비 계산 공식 (2026 전자소송 기준)

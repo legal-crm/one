@@ -20,6 +20,7 @@ import RepaymentPaymentModal from './RepaymentPaymentModal';
 import LifeCrisisModal from './LifeCrisisModal';
 import { Sparkles, Scale, HeartHandshake, BookOpen, Layers, ShieldCheck, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { secureGetItem } from '../../../utils/secureStorage';
 
 interface RehabCompanionViewProps {
   userAlias?: string;
@@ -41,7 +42,8 @@ export default function RehabCompanionView({
     // CRM에 연동된 실제 사건 데이터가 있다면 우선 동기화
     if (clientId) {
       try {
-        const crmData = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
+        const raw = secureGetItem('legal_crm_data');
+        const crmData = raw ? JSON.parse(raw) : {};
         const ext = crmData[clientId];
         if (ext && (ext.courtCase || ext.decisionSummary || ext.repaymentPlan)) {
           return syncCompanionWithCrmCase(clientId, ext, userAlias);
@@ -53,17 +55,29 @@ export default function RehabCompanionView({
   const [bankruptcyCase, setBankruptcyCase] = useState<BankruptcyCompanionCase>(() => loadBankruptcyCase());
 
   useEffect(() => {
-    if (clientId) {
-      try {
-        const crmData = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
-        const ext = crmData[clientId];
-        if (ext && (ext.courtCase || ext.decisionSummary || ext.repaymentPlan)) {
-          setRehabCase(syncCompanionWithCrmCase(clientId, ext, userAlias));
-          return;
-        }
-      } catch { /* ignore */ }
-    }
-    setRehabCase(loadRehabCompanionCaseForClient(clientId));
+    const handleCrmUpdate = () => {
+      if (clientId) {
+        try {
+          const raw = secureGetItem('legal_crm_data');
+          const crmData = raw ? JSON.parse(raw) : {};
+          const ext = crmData[clientId];
+          if (ext && (ext.courtCase || ext.decisionSummary || ext.repaymentPlan)) {
+            setRehabCase(syncCompanionWithCrmCase(clientId, ext, userAlias));
+            return;
+          }
+        } catch { /* ignore */ }
+      }
+      setRehabCase(loadRehabCompanionCaseForClient(clientId));
+    };
+
+    handleCrmUpdate();
+
+    window.addEventListener('legal_crm_data_updated', handleCrmUpdate);
+    window.addEventListener('storage', handleCrmUpdate);
+    return () => {
+      window.removeEventListener('legal_crm_data_updated', handleCrmUpdate);
+      window.removeEventListener('storage', handleCrmUpdate);
+    };
   }, [clientId, userAlias]);
   
   // 모달 상태

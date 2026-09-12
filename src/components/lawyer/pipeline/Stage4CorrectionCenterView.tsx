@@ -21,12 +21,26 @@ export default function Stage4CorrectionCenterView({
   onAdvanceToNextStage,
   onOpenComprehensiveCorrectionModal,
 }: Stage4CorrectionCenterViewProps) {
-  const [caseNumber, setCaseNumber] = useState(crmExt?.courtCase?.caseNumber || '2026개회 108492');
-  const [courtName, setCourtName] = useState(crmExt?.courtCase?.courtName || '서울회생법원');
-  const [isProhibitionGranted, setIsProhibitionGranted] = useState(true);
+  const [caseNumber, setCaseNumber] = useState(crmExt?.courtCase?.caseNumber || clientRequest.caseNumber || '사건 접수 준비중');
+  const [courtName, setCourtName] = useState(crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원');
+  const isProhibitionGranted = crmExt?.courtCase?.prohibitionStatus === 'granted' || !!crmExt?.courtCase?.prohibitionGrantedDate;
+  const prohibitionDate = crmExt?.courtCase?.prohibitionGrantedDate || '발령 완료';
   const [selectedTableTab, setSelectedTableTab] = useState<number>(3); // 최근대출금 사용처 소명
 
   const clientName = clientRequest.clientName || '신청인';
+
+  const activeCorrection = (crmExt?.correctionOrders && crmExt.correctionOrders.length > 0)
+    ? crmExt.correctionOrders[0]
+    : (crmExt?.corrections && crmExt.corrections.length > 0)
+    ? crmExt.corrections[0]
+    : null;
+
+  const dDayInfo = activeCorrection?.deadline ? (() => {
+    const diff = Math.ceil((new Date(activeCorrection.deadline).getTime() - Date.now()) / 86400000);
+    if (diff > 0) return { text: `제출기한 D-${diff} (${activeCorrection.deadline}까지)`, isUrgent: diff <= 3 };
+    if (diff === 0) return { text: `제출기한 D-Day (오늘 마감)`, isUrgent: true };
+    return { text: `기한 ${Math.abs(diff)}일 경과 (${activeCorrection.deadline})`, isUrgent: true };
+  })() : { text: '제출기한 심리중', isUrgent: false };
 
   // 7대 표 템플릿 정의 (리걸플로 Ch 10~11 매뉴얼 기반)
   const templateTables = [
@@ -119,20 +133,28 @@ export default function Stage4CorrectionCenterView({
       </div>
 
       {/* 금지명령 인용 결과 & 안심 알림톡 발송 배너 */}
-      <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex items-center justify-between gap-4 text-xs shadow-xs">
+      <div className={`p-4 rounded-2xl border text-xs shadow-xs flex items-center justify-between gap-4 ${
+        isProhibitionGranted 
+          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' 
+          : 'bg-amber-50/80 border-amber-200 text-amber-950'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500 text-white">
+          <div className={`p-2.5 rounded-xl ${isProhibitionGranted ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="font-extrabold text-sm text-emerald-900 flex items-center gap-2">
-              <span>금지명령 인용 결정 (신청 5일 만에 발령 완료)</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-200/70 font-bold text-emerald-900">
-                효력 발생중
+            <div className="font-extrabold text-sm flex items-center gap-2">
+              <span>{isProhibitionGranted ? `금지명령 인용 결정 (${prohibitionDate})` : '금지명령 심리 진행중'}</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                isProhibitionGranted ? 'bg-emerald-200/70 text-emerald-900' : 'bg-amber-200/70 text-amber-900'
+              }`}>
+                {isProhibitionGranted ? '효력 발생중' : '법원 심리중'}
               </span>
             </div>
             <p className="text-slate-600 text-[11px] mt-0.5">
-              2026. 09. 15. 채권자 8곳에 금지명령정본 송달 완료. 채권자의 일체 독촉 전화, 방문, 통장/급여 압류가 법적으로 차단되었습니다.
+              {isProhibitionGranted
+                ? `${courtName} 금지명령 결정 정본 송달 완료. 채권자의 일체 독촉 전화, 방문, 통장/급여 압류가 법적으로 전면 차단되었습니다.`
+                : '접수 후 3~7일 이내 금지명령 결정이 내려지며 채권자의 독촉·압류가 전면 금지됩니다.'}
             </p>
           </div>
         </div>
@@ -151,20 +173,36 @@ export default function Stage4CorrectionCenterView({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-black text-slate-900">
-              회생위원 제1차 보정권고문 심리 (기한 관리)
+              {activeCorrection?.title || '회생위원 제1차 보정권고문 심리 (기한 관리)'}
             </span>
-            <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-rose-50 text-rose-600 border border-rose-200">
-              제출기한 D-7 (2026-09-19까지)
+            <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+              dDayInfo.isUrgent 
+                ? 'bg-rose-50 text-rose-600 border-rose-200' 
+                : 'bg-amber-50 text-amber-700 border-amber-200'
+            }`}>
+              {dDayInfo.text}
             </span>
           </div>
-          <span className="text-xs text-slate-500">담당 회생위원: 박회생 조사관</span>
+          <span className="text-xs text-slate-500">
+            담당 회생위원: {activeCorrection?.courtOfficer || '박회생 조사관'}
+          </span>
         </div>
 
         <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1.5 leading-relaxed font-sans">
           <span className="font-bold text-slate-900 block">주요 보정 요구 사항:</span>
-          <p>1. 신청인이 2025년 하반기 대출받은 신한카드 1,850만원의 구체적인 사용처를 별지 표 3 양식으로 정리하고 계좌 이체증을 첨부할 것.</p>
-          <p>2. 신청인의 최근 1년간 모든 통장 거래내역 중 100만원 이상 인출된 건에 관하여 별지 표 1에 기재하여 소명할 것.</p>
-          <p>3. 부양가족 중 배우자의 소득 증빙(소득금액증명원)을 추가로 제출할 것.</p>
+          {activeCorrection?.requirements && activeCorrection.requirements.length > 0 ? (
+            activeCorrection.requirements.map((req, idx) => (
+              <p key={idx}>{idx + 1}. {req}</p>
+            ))
+          ) : activeCorrection?.details ? (
+            <p className="whitespace-pre-line">{activeCorrection.details}</p>
+          ) : (
+            <>
+              <p>1. 신청인이 2025년 하반기 대출받은 신한카드 1,850만원의 구체적인 사용처를 별지 표 3 양식으로 정리하고 계좌 이체증을 첨부할 것.</p>
+              <p>2. 신청인의 최근 1년간 모든 통장 거래내역 중 100만원 이상 인출된 건에 관하여 별지 표 1에 기재하여 소명할 것.</p>
+              <p>3. 부양가족 중 배우자의 소득 증빙(소득금액증명원)을 추가로 제출할 것.</p>
+            </>
+          )}
         </div>
       </div>
 

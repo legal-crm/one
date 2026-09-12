@@ -20,24 +20,43 @@ export default function Stage5PostCareDischargeView({
   onAdvanceToNextStage,
   onOpenPostCareModal,
 }: Stage5PostCareDischargeViewProps) {
+  const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원';
+  const defaultMonthly = crmExt?.decisionSummary?.monthlyPayment 
+    || crmExt?.decisionSummary?.monthlyRepayment 
+    || clientRequest.financialProfile?.monthlyRepayment 
+    || 650000;
+  const defaultTotalMonths = crmExt?.decisionSummary?.repaymentPeriodMonths || 36;
+  const paidCount = crmExt?.repaymentSchedule 
+    ? crmExt.repaymentSchedule.filter(r => r.status === 'paid').length 
+    : 12;
+
   const [isConditionalApproval, setIsConditionalApproval] = useState(false);
-  const [hasCreditorObjection, setHasCreditorObjection] = useState(true);
-  const [paidMonths, setPaidMonths] = useState(12);
-  const [totalMonths, setTotalMonths] = useState(36);
-  const [monthlyPayment, setMonthlyPayment] = useState(650000);
+  const [hasCreditorObjection, setHasCreditorObjection] = useState(false);
+  const [paidMonths, setPaidMonths] = useState(paidCount);
+  const [totalMonths, setTotalMonths] = useState(defaultTotalMonths);
+  const [monthlyPayment, setMonthlyPayment] = useState(defaultMonthly);
   const [isDischargeFiled, setIsDischargeFiled] = useState(false);
 
   const clientName = clientRequest.clientName || '신청인';
-  const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원';
+
+  const virtualAccount = crmExt?.courtCase?.courtVirtualAccount 
+    || crmExt?.repaymentSchedule?.[0]?.virtualAccount 
+    || '법원 가상계좌 (인가결정 후 발급 예정)';
+  const virtualAccountDepositor = `${courtName} 회생위원`;
+
+  const meetingDateStr = crmExt?.courtCase?.creditorMeetingDate || '기일 지정 대기중';
+  const meetingLocationStr = crmExt?.courtCase?.creditorMeetingDate 
+    ? `${courtName} 제3별관 204호` 
+    : '법원 심리 후 개시결정문에 기재 예정';
 
   // 가상계좌 알림톡 발송
   const handleSendVirtualAccount = () => {
-    toast.success(`${clientName}님께 법원 가상계좌 및 인가 전 적립금 납부 스케줄 안내 알림톡이 발송되었습니다.`);
+    toast.success(`${clientName}님께 법원 가상계좌(${virtualAccount}) 및 인가 전 적립금 납부 스케줄 안내 알림톡이 발송되었습니다.`);
   };
 
   // 집회 출석 지도 알림톡 발송
   const handleSendCreditorMeetingNotice = () => {
-    toast.success(`${clientName}님께 채권자집회 기일(2026-10-24 14:00) 출석 지도 및 준비물 안내 알림톡이 발송되었습니다.`);
+    toast.success(`${clientName}님께 채권자집회 기일(${meetingDateStr}) 출석 지도 및 준비물 안내 알림톡이 발송되었습니다.`);
   };
 
   // 대법원 제출용 면책신청서 원클릭 생성
@@ -133,7 +152,7 @@ export default function Stage5PostCareDischargeView({
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">회생위원 지정 가상계좌</span>
                 <span className="font-mono font-bold text-slate-900 text-sm">
-                  신한은행 110-384-910283 (예금주: 서울회생법원 회생위원)
+                  {virtualAccount} {virtualAccount.includes('발급 예정') ? '' : `(예금주: ${virtualAccountDepositor})`}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -210,7 +229,7 @@ export default function Stage5PostCareDischargeView({
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                 <span className="text-slate-500 block">채권자집회 일시 및 장소</span>
                 <span className="font-extrabold text-slate-900 text-sm block">
-                  2026-10-24 14:00 서울회생법원 제3별관 204호
+                  {meetingDateStr} {meetingDateStr !== '기일 지정 대기중' ? meetingLocationStr : ''}
                 </span>
                 <p className="text-slate-500 text-[11px] pt-1">
                   * 본인 신분증 필참. 결의 절차가 아니므로 채권자 불출석 시에도 인가 요건 확인 후 20분 내 종료.

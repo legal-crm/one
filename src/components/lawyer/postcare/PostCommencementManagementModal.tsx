@@ -31,7 +31,7 @@ export default function PostCommencementManagementModal({
 
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const caseNumber = crmExt.courtCase?.caseNumber || '2026개회 108492호';
+  const caseNumber = crmExt.courtCase?.caseNumber || (clientRequest as any).caseNumber || '2026개회 (접수 준비중)';
   const monthlyRepayment = crmExt.repaymentPlan?.monthlyRepaymentTotal || 1246666;
 
   const [activeTab, setActiveTab] = useState<'virtual_account' | 'meeting' | 'objections' | 'repeal_defense'>('virtual_account');

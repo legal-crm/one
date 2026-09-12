@@ -361,41 +361,86 @@ export default function Stage2DocumentsHubView({
       </div>
 
       {/* 하단: 부채증명서 발급 대행 현황 카드 */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-slate-900">
-              금융기관 부채증명서 발급 대행 현황
-            </span>
-            <span className="text-xs text-slate-500 font-medium">
-              (총 {(crmExt?.debtCertificateOrders?.[0]?.items || []).length}개 채권처 조회)
-            </span>
-          </div>
-          <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            대행 발급 완료 100%
-          </span>
-        </div>
+      {(() => {
+        const debtOrderItems = crmExt?.debtCertificateOrders?.[0]?.items || [];
+        const completedDebtCount = debtOrderItems.filter(i => i.status === 'completed').length;
+        const isAllDebtCompleted = debtOrderItems.length > 0 && completedDebtCount === debtOrderItems.length;
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          {(crmExt?.debtCertificateOrders?.[0]?.items || [
-            { creditorName: '신한카드(주)', balance: 18500000, status: 'completed' },
-            { creditorName: '국민은행(주)', balance: 35000000, status: 'completed' },
-            { creditorName: '현대캐피탈(주)', balance: 12000000, status: 'completed' }
-          ]).map((item: any, idx: number) => (
-            <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
-              <div>
-                <span className="font-extrabold text-slate-900 block">{item.creditorName}</span>
-                <span className="text-slate-500 text-[11px] mt-0.5 block">
-                  원리금: {(item.balance || 0).toLocaleString()}원
+        if (debtOrderItems.length === 0) {
+          return (
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-slate-900">
+                    금융기관 부채증명서 발급 대행 현황
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    (발급 대행 접수 대기)
+                  </span>
+                </div>
+                <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                  신청 대기중
                 </span>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800">
-                발급완료
+
+              <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500 space-y-2">
+                <p className="font-medium">현재 등록된 부채증명서 발급 대행 내역이 없습니다.</p>
+                <p className="text-[11px] text-slate-400">
+                  사건 위임 완료 후 채권자 목록 확정을 위해 금융기관별 부채증명서 발급 대행을 접수하세요.
+                </p>
+                <button
+                  onClick={() => toast.info('부채증명서 발급 대행 신청 창이 열립니다.')}
+                  className="px-3 py-1.5 bg-brand text-white font-bold text-xs rounded-lg hover:bg-brand-dark transition-all inline-flex items-center gap-1 cursor-pointer"
+                >
+                  + 부채증명서 발급 대행 접수
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-slate-900">
+                  금융기관 부채증명서 발급 대행 현황
+                </span>
+                <span className="text-xs text-slate-500 font-medium">
+                  (총 {debtOrderItems.length}개 채권처 조회)
+                </span>
+              </div>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold border ${
+                isAllDebtCompleted 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                  : 'bg-blue-50 text-blue-700 border-blue-200'
+              }`}>
+                {isAllDebtCompleted ? '대행 발급 완료 100%' : `발급 진행중 (${completedDebtCount}/${debtOrderItems.length})`}
               </span>
             </div>
-          ))}
-        </div>
-      </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              {debtOrderItems.map((item: any, idx: number) => (
+                <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                  <div>
+                    <span className="font-extrabold text-slate-900 block">{item.creditorName}</span>
+                    <span className="text-slate-500 text-[11px] mt-0.5 block">
+                      원리금: {(item.balance || 0).toLocaleString()}원
+                    </span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                    item.status === 'completed'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {item.status === 'completed' ? '발급완료' : '발급대기'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── 리걸플로 벤치마킹 1: 신청서류 마스터 설정 모달 (그림 2-10) ── */}
       <ApplicationDocSettingsModal

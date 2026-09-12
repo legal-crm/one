@@ -7,8 +7,9 @@ import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount } from '../../services/clientNotificationService';
-import type { ClientNotification } from '../../services/clientNotificationService';
-import { submitClientDocument } from '../../services/crmService';
+import { submitClientDocument, updateCrmClientExtension } from '../../services/crmService';
+import { secureGetItem } from '../../utils/secureStorage';
+import { mockLawyers } from '../../data';
 import MobileScanner from '../lawyer/MobileScanner';
 import { loadFeeNotificationSettings } from '../../services/alimtokService';
 import { loadContractsLocal } from '../../services/contractService';
@@ -67,6 +68,17 @@ export default function MyPageView({
       setMypageTab(initialSubTab);
     }
   }, [initialSubTab]);
+
+  // CRM 변경 이벤트 및 스토리지 변경 수신 시 마이페이지 실시간 자동 갱신
+  useEffect(() => {
+    const handleCrmChange = () => setRefreshTick(t => t + 1);
+    window.addEventListener('legal_crm_data_updated', handleCrmChange);
+    window.addEventListener('storage', handleCrmChange);
+    return () => {
+      window.removeEventListener('legal_crm_data_updated', handleCrmChange);
+      window.removeEventListener('storage', handleCrmChange);
+    };
+  }, []);
 
   // 다중 전달사항 로컬 편집 상태
   const [newNoteInput, setNewNoteInput] = useState('');
@@ -1652,33 +1664,47 @@ export default function MyPageView({
           </p>
         </div>
 
-        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-2xl p-4 shrink-0 flex flex-col justify-between gap-3 w-full md:w-[280px]">
-          <div className="space-y-1">
-            <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block">전담 지정 변호인</span>
-            <div className="flex items-center gap-2">
-              <img 
-                src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=256" 
-                alt="이소민 변호사" 
-                className="w-8 h-8 rounded-lg object-cover" 
-              />
-              <div className="text-left">
-                <span className="text-xs font-bold text-slate-900 dark:text-white block">이소민 변호사</span>
-                <span className="text-[11px] text-[#7e7e8f] font-semibold block">서울/경기 도산 전문</span>
+        {(() => {
+          // 전담 지정 변호사 동적 매핑
+          const reqId = activeRequest?.id || requests[0]?.id;
+          const rawCrm = (() => { try { const raw = secureGetItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
+          const curCrmExt = reqId ? rawCrm[reqId] : null;
+          const targetLawyerId = curCrmExt?.assigneeId || curCrmExt?.assignedLawyerId || activeRequest?.selectedLawyerId || (activeRequest?.selectedLawyerIds?.[0]);
+          const foundLawyer = mockLawyers.find(l => l.id === targetLawyerId || l.name === clientContract?.lawyerName) || mockLawyers[0];
+          const lawyerName = clientContract?.lawyerName || foundLawyer?.name || '도산 전담 변호사';
+          const lawyerTitle = foundLawyer?.bio || foundLawyer?.specialty || '서울/경기 도산 전문';
+          const lawyerAvatar = foundLawyer?.avatarUrl || foundLawyer?.profileImage || "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=256";
+
+          return (
+            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-2xl p-4 shrink-0 flex flex-col justify-between gap-3 w-full md:w-[280px]">
+              <div className="space-y-1">
+                <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block">전담 지정 변호인</span>
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={lawyerAvatar} 
+                    alt={lawyerName} 
+                    className="w-8 h-8 rounded-lg object-cover" 
+                  />
+                  <div className="text-left min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block truncate">{lawyerName} 변호사</span>
+                    <span className="text-[11px] text-[#7e7e8f] font-semibold block truncate">{lawyerTitle}</span>
+                  </div>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const req = activeRequest || requests[0];
+                  onNavigateToChat(req?.id);
+                }}
+                className="w-full text-center py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>1:1 비공개 상담방 입장</span>
+              </button>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const req = requests[0];
-              onNavigateToChat(req?.id);
-            }}
-            className="w-full text-center py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>1:1 비공개 상담방 입장</span>
-          </button>
-        </div>
+          );
+        })()}
       </div>
       )}
 
@@ -1881,15 +1907,21 @@ export default function MyPageView({
           <div className="space-y-8 animate-fadeIn">
             {/* ════ [!isCompact 모드] 마이페이지 본연의 3대 자산·서류 보관함 ════ */}
             {!isCompact && (() => {
-              // CRM 데이터 읽기 (변호사 CRM과 동일 localStorage 공유)
+              // CRM 데이터 읽기 (변호사 CRM과 동일 sessionStorage/localStorage 공유)
               const getCrmData = () => {
-                try { return JSON.parse(localStorage.getItem('legal_crm_data') || '{}'); } catch { return {}; }
+                try { 
+                  const raw = secureGetItem('legal_crm_data');
+                  return raw ? JSON.parse(raw) : {}; 
+                } catch { return {}; }
               };
               const reqId = activeRequest?.id || requests[0]?.id;
               const crmExt = reqId ? (getCrmData()[reqId] || null) : null;
-              const currentStatus: CrmStatus = crmExt?.crmStatus || 'requested';
-              const feeSchedule: FeeInstallment[] = Array.isArray(crmExt?.feeSchedule) ? crmExt.feeSchedule : [];
-              const totalFee: number = crmExt?.totalFee || 0;
+              const currentStatus: CrmStatus = crmExt?.crmStatus || activeRequest?.status || 'requested';
+              // 수임료 분납 스케줄: CRM 확장 데이터 우선, 미등록 시 체결된 전자계약서(clientContract) 자동 폴백
+              const feeSchedule: FeeInstallment[] = (Array.isArray(crmExt?.feeSchedule) && crmExt.feeSchedule.length > 0)
+                ? crmExt.feeSchedule 
+                : (clientContract?.feeSchedule || []);
+              const totalFee: number = crmExt?.totalFee || clientContract?.totalFee || 0;
               const checklist: DocumentCheckItem[] = Array.isArray(crmExt?.documents) ? crmExt.documents : [];
               const uploadedFiles: DocumentFile[] = Array.isArray(crmExt?.uploadedFiles) ? crmExt.uploadedFiles : [];
               const docRequests: DocumentRequest[] = Array.isArray(crmExt?.documentRequests) ? crmExt.documentRequests : [];
@@ -2246,7 +2278,7 @@ export default function MyPageView({
                                   </span>
                                 </div>
                                 <p className="text-xs text-emerald-200 mt-0.5">
-                                  {crmExt?.courtCase?.courtName || '서울회생법원'} · 사건번호: <span className="font-mono font-bold text-white">{crmExt?.courtCase?.caseNumber || '2026개회108492'}</span>
+                                  {crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원'} · 사건번호: <span className="font-mono font-bold text-white">{crmExt?.courtCase?.caseNumber || '사건 접수 준비중'}</span>
                                 </p>
                               </div>
                             </div>
@@ -2254,9 +2286,10 @@ export default function MyPageView({
                             <button
                               type="button"
                               onClick={() => {
-                                const court = crmExt?.courtCase?.courtName || '서울회생법원';
-                                const cNo = crmExt?.courtCase?.caseNumber || '2026개회108492';
-                                const msg = `[개인회생 금지명령 송달 안내]\n본인은 ${court}에 개인회생(사건번호: ${cNo})을 정식 접수하여 법원으로부터 금지명령을 송달받았습니다.\n채무자회생법 제593조에 따라 일체의 변제요구, 전화/방문 추심 및 급여·통장 압류가 법적으로 전면 금지됩니다.\n모든 문의는 본인의 법률대리인(법무법인 로앤)으로 연락 바랍니다.`;
+                                const court = crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원';
+                                const cNo = crmExt?.courtCase?.caseNumber || '사건번호 발급 예정';
+                                const lawFirm = clientContract?.lawFirmName || '법률대리인 사무소';
+                                const msg = `[개인회생 금지명령 송달 안내]\n본인은 ${court}에 개인회생(사건번호: ${cNo})을 정식 접수하여 법원으로부터 금지명령을 송달받았습니다.\n채무자회생법 제593조에 따라 일체의 변제요구, 전화/방문 추심 및 급여·통장 압류가 법적으로 전면 금지됩니다.\n모든 문의는 본인의 법률대리인(${lawFirm})으로 연락 바랍니다.`;
                                 navigator.clipboard.writeText(msg);
                                 toast.success('1초 독촉방어 문자가 클립보드에 복사되었습니다! 채권자 전화/문자에 바로 전송하세요.');
                               }}
@@ -2273,66 +2306,76 @@ export default function MyPageView({
                       )}
 
                       {/* ═══ [기능 2] 법원 보정권고 (14일 기한) 긴급 소명자료 협업 창구 ═══ */}
-                      {(crmExt?.thirteenStage === 'correction_period' || (crmExt?.correctionOrders && crmExt.correctionOrders.length > 0)) && (
-                        <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 space-y-4 animate-fadeIn">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
-                                <AlertTriangle className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-extrabold text-sm md:text-base text-amber-950 dark:text-amber-200">
-                                    법원 회생위원 보정권고 심리 진행중
-                                  </h4>
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
-                                    제출 기한: D-10
-                                  </span>
+                      {(crmExt?.thirteenStage === 'correction_period' || (crmExt?.correctionOrders && crmExt.correctionOrders.length > 0) || (crmExt?.corrections && crmExt.corrections.length > 0)) && (() => {
+                        const firstOrder = crmExt?.correctionOrders?.[0] || crmExt?.corrections?.[0];
+                        let dDayText = '제출 기한: D-10';
+                        if (firstOrder?.deadline) {
+                          const diff = Math.ceil((new Date(firstOrder.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                          dDayText = diff > 0 ? `제출 기한: D-${diff}` : (diff === 0 ? '제출 기한: D-Day (금일 마감)' : `제출 기한: ${Math.abs(diff)}일 경과`);
+                        }
+                        const orderNotice = firstOrder?.detail || firstOrder?.content || firstOrder?.title || '회생위원이 제출 서류에 대한 구체적 소명(최근 1년 대출금 사용처, 100만원 이상 통장 거래내역, 배우자 소득 증빙 등)을 요청했습니다.';
+
+                        return (
+                          <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 space-y-4 animate-fadeIn">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
+                                  <AlertTriangle className="w-5 h-5" />
                                 </div>
-                                <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
-                                  회생위원이 제출 서류에 대한 구체적 소명(최근 1년 대출금 사용처, 100만원 이상 통장 거래내역, 카드사용내역 등)을 요청했습니다.
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-extrabold text-sm md:text-base text-amber-950 dark:text-amber-200">
+                                      법원 회생위원 보정권고 심리 진행중
+                                    </h4>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
+                                      {dDayText}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                                    {orderNotice}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setIsCorrectionUploadOpen(prev => !prev)}
+                                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale shrink-0"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>{isCorrectionUploadOpen ? '소명창 닫기' : '소명자료 즉시 제출하기'}</span>
+                              </button>
+                            </div>
+
+                            {isCorrectionUploadOpen && (
+                              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 space-y-3 animate-fadeIn">
+                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                                  📂 변호사 요청 보정 소명 증빙파일 첨부 (영수증, 통장 사본, 메모 등)
+                                </span>
+                                <div className="flex items-center gap-3">
+                                  <label className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/20 cursor-pointer transition-all">
+                                    <Upload className="w-4 h-4 text-amber-600" />
+                                    <span className="text-xs font-bold text-amber-700 dark:text-amber-300">소명 파일 선택 (사진 또는 PDF)</span>
+                                    <input 
+                                      type="file" 
+                                      className="hidden" 
+                                      accept="image/*,.pdf" 
+                                      multiple 
+                                      onChange={(e) => {
+                                        handleFileUpload(e.target.files, 'correction_proof');
+                                        toast.success('보정 소명자료가 담당 변호사 사무소로 즉시 전달되었습니다.');
+                                      }} 
+                                    />
+                                  </label>
+                                </div>
+                                <p className="text-[10px] text-slate-500 leading-tight">
+                                  * 업로드하신 소명자료는 담당 변호사가 법원 제출용 7대 소명표에 반영하여 법원에 보정서로 접수합니다.
                                 </p>
                               </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => setIsCorrectionUploadOpen(prev => !prev)}
-                              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale shrink-0"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              <span>{isCorrectionUploadOpen ? '소명창 닫기' : '소명자료 즉시 제출하기'}</span>
-                            </button>
+                            )}
                           </div>
-
-                          {isCorrectionUploadOpen && (
-                            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 space-y-3 animate-fadeIn">
-                              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                                📂 변호사 요청 보정 소명 증빙파일 첨부 (영수증, 통장 사본, 메모 등)
-                              </span>
-                              <div className="flex items-center gap-3">
-                                <label className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/20 cursor-pointer transition-all">
-                                  <Upload className="w-4 h-4 text-amber-600" />
-                                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">소명 파일 선택 (사진 또는 PDF)</span>
-                                  <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    accept="image/*,.pdf" 
-                                    multiple 
-                                    onChange={(e) => {
-                                      handleFileUpload(e.target.files, 'correction_proof');
-                                      toast.success('보정 소명자료가 담당 변호사 사무소로 즉시 전달되었습니다.');
-                                    }} 
-                                  />
-                                </label>
-                              </div>
-                              <p className="text-[10px] text-slate-500 leading-tight">
-                                * 업로드하신 소명자료는 담당 변호사가 법원 제출용 7대 소명표에 반영하여 법원에 보정서로 접수합니다.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* ═══ [기능 5] 채권자집회 출석 안내 카드 ═══ */}
                       {(crmExt?.thirteenStage === 'creditor_meeting') && (
@@ -2873,7 +2916,11 @@ export default function MyPageView({
         onClose={() => setIsPropertyIntakeModalOpen(false)}
         clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
         clientName={profile?.name || userAlias || '신청인'}
-        onSyncToLawyerCrm={() => {
+        onSyncToLawyerCrm={async (updates) => {
+          const targetId = activeRequest?.id || requests[0]?.id || 'client-self';
+          if (updates) {
+            await updateCrmClientExtension(targetId, updates);
+          }
           setRefreshTick(c => c + 1);
         }}
       />
@@ -2884,8 +2931,8 @@ export default function MyPageView({
   <CreditorMeetingGuideModal
     isOpen={isCreditorMeetingModalOpen}
     onClose={() => setIsCreditorMeetingModalOpen(false)}
-    courtName={activeRequest?.court || '서울회생법원'}
-    caseNumber={(activeRequest as any)?.caseNumber || '2026개회108492'}
+    courtName={crmExt?.courtCase?.courtName || activeRequest?.court || '서울회생법원'}
+    caseNumber={crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || '사건 접수 준비중'}
   />
 </div>
   );

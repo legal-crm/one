@@ -11,6 +11,7 @@ import {
   CaseOcrParseResult
 } from '../types';
 import { CourtRepealThreshold } from '../types/courtPetitionTypes';
+import { mockLawyers } from '../data';
 
 const COMPANION_STORAGE_KEY = 'mykim_rehab_companion_case';
 const CRISIS_STORAGE_KEY = 'mykim_life_crisis_reports';
@@ -87,7 +88,7 @@ function createDefaultCompanionCase(): RehabCompanionCase {
     completedRounds: 14,
     startRepaymentDate: '2025-07',
     courtVirtualAccount: '신한은행 110-***-849201 (서울회생법원)',
-    assignedLawyerName: '이소민 변호사 (도산 전문)',
+    assignedLawyerName: '도산 전문 배정 변호사',
     cashflow: {
       monthlyIncome: 2800000,
       essentialLivingCost: 1750000,
@@ -178,7 +179,11 @@ export function syncCompanionWithCrmCase(
   clientName: string = '의뢰인'
 ): RehabCompanionCase {
   const courtName = crmExt.courtCase?.courtName || crmExt.decisionSummary?.courtName || '서울회생법원';
-  const caseNumber = crmExt.courtCase?.caseNumber || crmExt.decisionSummary?.caseNumber || '2026개회108492';
+  const realCaseNumber = crmExt.courtCase?.caseNumber || crmExt.decisionSummary?.caseNumber || '';
+  const caseNumber = realCaseNumber || '사건 접수 준비중';
+  const caseNumberMasked = realCaseNumber 
+    ? (realCaseNumber.length > 6 ? `${realCaseNumber.slice(0, -4)}****` : realCaseNumber)
+    : '접수 준비중';
   const monthlyRepayment = crmExt.decisionSummary?.monthlyPayment || (crmExt.repaymentPlan?.monthlyPayment) || 500000;
   const courtAccount = crmExt.decisionSummary?.courtVirtualAccount || crmExt.courtCase?.courtVirtualAccount || '';
   const totalRounds = crmExt.decisionSummary?.totalRounds || crmExt.repaymentPlan?.totalRounds || 36;
@@ -211,6 +216,13 @@ export function syncCompanionWithCrmCase(
     completedRounds
   );
 
+  const matchedLawyer = crmExt.assigneeId 
+    ? mockLawyers.find(l => l.id === crmExt.assigneeId) 
+    : null;
+  const assignedLawyerName = crmExt.decisionSummary?.assignedLawyerName || 
+                             crmExt.assignedLawyerName || 
+                             (matchedLawyer ? `${matchedLawyer.name} (${matchedLawyer.firm || '전담 대리인'})` : (crmExt.assigneeId ? '배정 변호사' : '도산 전문 법률대리인'));
+
   const syncedCase: RehabCompanionCase = {
     id: `case-crm-${clientId}`,
     alias: clientName,
@@ -219,14 +231,14 @@ export function syncCompanionWithCrmCase(
     caseStage: companionStage,
     courtName,
     caseNumber,
-    caseNumberMasked: caseNumber.length > 6 ? `${caseNumber.slice(0, -4)}****` : caseNumber,
+    caseNumberMasked,
     monthlyRepaymentAmount: monthlyRepayment,
     repaymentDay,
     totalRounds,
     completedRounds,
     startRepaymentDate: startYearMonth,
-    courtVirtualAccount: courtAccount || '신한은행 (법원 가상계좌 발급 대기)',
-    assignedLawyerName: crmExt.decisionSummary?.assignedLawyerName || '도산 전문 법률대리인',
+    courtVirtualAccount: courtAccount || '법원 가상계좌 (인가결정 후 발급 예정)',
+    assignedLawyerName,
     cashflow: {
       monthlyIncome: crmExt.decisionSummary?.monthlyIncome || 2500000,
       essentialLivingCost: crmExt.decisionSummary?.essentialLivingCost || 1500000,

@@ -13,6 +13,7 @@ import {
   loadContracts, loadContractsLocal, saveContract, deleteContract, 
   seedMockContracts 
 } from '../../services/contractService';
+import { syncContractToCrm } from '../../services/crmService';
 import ContractWizard from './ContractWizard';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import ApplicationDocSettingsModal from './documents/ApplicationDocSettingsModal';
@@ -157,6 +158,9 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
     };
 
     await saveContract(updatedContract);
+    if (updatedContract.clientId) {
+      try { await syncContractToCrm(updatedContract.clientId, updatedContract); } catch {}
+    }
     await refreshContracts();
     toast.success(`[${target.clientName}] 의뢰인에게 서명 골든타임 재촉 알림톡을 정상 발송했습니다.`);
     setReminderTargetContract(null);
@@ -199,7 +203,13 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
       <ContractWizard 
         contract={editingContract} 
         onClose={() => { setEditingContract(null); refreshContracts(); }} 
-        onSave={(c) => { saveContract(c); refreshContracts(); }} 
+        onSave={async (c) => { 
+          await saveContract(c); 
+          if (c.clientId) {
+            try { await syncContractToCrm(c.clientId, c); } catch {}
+          }
+          refreshContracts(); 
+        }} 
       />
     );
   }

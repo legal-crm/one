@@ -14,9 +14,9 @@ export default function CreditorMeetingGuideModal({
   isOpen,
   onClose,
   courtName = '서울회생법원',
-  caseNumber = '2026개회108492',
-  meetingDate = '2026-10-24 14:00',
-  meetingPlace = '본관 회생법정'
+  caseNumber = '사건 접수 준비중',
+  meetingDate = '기일 지정 대기중',
+  meetingPlace = '회생법정'
 }: CreditorMeetingGuideModalProps) {
   if (!isOpen) return null;
 

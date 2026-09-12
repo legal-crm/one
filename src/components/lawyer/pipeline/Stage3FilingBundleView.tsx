@@ -243,7 +243,7 @@ export default function Stage3FilingBundleView({
               의뢰인 모바일 최종 제출 동의 완료
             </span>
             <span className="text-slate-500 block text-[11px] mt-0.5">
-              서명일시: 2026-09-12 14:35:20 | 서명자: {clientName} (카카오 간편인증)
+              서명일시: {crmExt?.contractDate || new Date().toISOString().slice(0, 10)} | 서명자: {clientName} (카카오 간편인증)
             </span>
           </div>
         </div>

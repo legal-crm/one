@@ -31,7 +31,7 @@ export default function AncillaryPetitionsModal({
 
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '서울회생법원';
-  const mainCaseNumber = crmExt.courtCase?.caseNumber || '2026개회 108492호';
+  const mainCaseNumber = crmExt.courtCase?.caseNumber || (clientRequest as any).caseNumber || '2026개회 (접수 예정)';
 
   const [activeTab, setActiveTab] = useState<'stay' | 'exempt' | 'prohibition' | 'release'>('stay');
 
