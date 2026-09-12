@@ -47,7 +47,7 @@ interface PropertyValuationModalProps {
   onSyncToRepaymentPlan?: (syncedAssets: any[], totalLiquidation: number) => void;
 }
 
-type TabType = 'realestate' | 'vehicle' | 'deductions' | 'verification';
+type TabType = 'realestate' | 'vehicle' | 'deductions' | 'business' | 'verification';
 
 export default function PropertyValuationModal({
   clientId,
@@ -253,6 +253,18 @@ export default function PropertyValuationModal({
             <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">법정공제 4종</span>
           </button>
           <button
+            onClick={() => setActiveTab('business')}
+            className={`py-3 px-4 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'business'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>4. 사업설비·채권 & 면제재산 ({(data.businessAssets?.length || 0) + (data.exemptProperties?.length || 0)}건)</span>
+            <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-normal">리걸플로 7-4</span>
+          </button>
+          <button
             onClick={() => setActiveTab('verification')}
             className={`py-3 px-4 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'verification'
@@ -261,7 +273,7 @@ export default function PropertyValuationModal({
             }`}
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>4. 청산가치 진단 & 동기화</span>
+            <span>5. 청산가치 진단 & 동기화</span>
           </button>
         </div>
 
@@ -1230,7 +1242,349 @@ export default function PropertyValuationModal({
           )}
 
           {/* ══════════════════════════════════════════════════════════════ */}
-          {/* TAB 4: 청산가치 진단 & 변제계획안 동기화                     */}
+          {/* TAB 4: 사업용 설비, 대여금/매출채권 & 면제재산 (리걸플로 7-4)  */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'business' && (
+            <div className="space-y-6">
+              {/* 안내 배너 */}
+              <div className="bg-linear-to-r from-slate-900 to-indigo-950 text-white p-5 rounded-2xl flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300">
+                      리걸플로 7-4 매뉴얼 규격
+                    </span>
+                    <h3 className="text-sm font-black">사업자산·채권 평가 및 채무자회생법 제383조 면제재산</h3>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    사업장 설비(감가상각 잔존가치), 대여금/외상매출금(실제 회수가능액)을 평가하고, 6개월 생계비(최대 1,110만 원) 등 법정 면제재산을 적용하여 청산가치를 합법적으로 절감합니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 1. 사업용 설비 / 대여금 채권 / 외상매출금 채권 */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-indigo-600" />
+                      <span>사업용 설비, 대여금 채권, 매출금 채권 (D5102 7·8번)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      외상매출금이나 대여금은 회수 불가능한 부실채권일 경우 실질 평가액을 0원으로 감액하여 청산가치를 낮출 수 있습니다.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newBa = {
+                        id: `ba-${Date.now()}`,
+                        type: 'equipment' as const,
+                        name: '사업장 영업설비 및 비품',
+                        description: '냉난방기, 컴퓨터, 집기 등',
+                        bookValue: 5000000,
+                        marketValue: 2000000,
+                        encumbrance: 0,
+                        liquidationValue: 2000000,
+                        recoveryStatus: 'normal' as const,
+                        note: '감가상각 잔존가치 반영'
+                      };
+                      updateData(prev => ({
+                        ...prev,
+                        businessAssets: [...(prev.businessAssets || []), newBa]
+                      }));
+                    }}
+                    className="px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ 자산/채권 추가</span>
+                  </button>
+                </div>
+
+                {(!data.businessAssets || data.businessAssets.length === 0) ? (
+                  <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-400">
+                    등록된 사업용 설비나 대여금/매출 채권이 없습니다. (급여소득자나 해당 없는 경우 생략)
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data.businessAssets.map((ba, idx) => (
+                      <div key={ba.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold">
+                              {idx + 1}
+                            </span>
+                            <select
+                              value={ba.type}
+                              onChange={(e) => {
+                                const newType = e.target.value as any;
+                                updateData(prev => ({
+                                  ...prev,
+                                  businessAssets: (prev.businessAssets || []).map(item => item.id === ba.id ? { ...item, type: newType } : item)
+                                }));
+                              }}
+                              className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1"
+                            >
+                              <option value="equipment">사업용 설비·비품 (기계/장비)</option>
+                              <option value="loan_receivable">대여금 채권 (빌려준 돈)</option>
+                              <option value="sales_receivable">외상매출금 채권 (미수 거래대금)</option>
+                            </select>
+                            <input
+                              type="text"
+                              value={ba.name}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateData(prev => ({
+                                  ...prev,
+                                  businessAssets: (prev.businessAssets || []).map(item => item.id === ba.id ? { ...item, name: val } : item)
+                                }));
+                              }}
+                              placeholder="설비명 또는 채무자/거래처명"
+                              className="text-xs font-bold px-2.5 py-1 bg-white border border-slate-300 rounded-lg w-48"
+                            />
+                          </div>
+                          <button
+                            onClick={() => {
+                              updateData(prev => ({
+                                ...prev,
+                                businessAssets: (prev.businessAssets || []).filter(item => item.id !== ba.id)
+                              }));
+                            }}
+                            className="text-slate-400 hover:text-rose-600 p-1"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <span className="text-[11px] text-slate-500 font-bold block mb-1">장부/원금 가액</span>
+                            <input
+                              type="number"
+                              step={100000}
+                              value={ba.bookValue}
+                              onChange={(e) => {
+                                const val = Number(e.target.value) || 0;
+                                updateData(prev => ({
+                                  ...prev,
+                                  businessAssets: (prev.businessAssets || []).map(item => item.id === ba.id ? { ...item, bookValue: val } : item)
+                                }));
+                              }}
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-right font-bold"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-indigo-600 font-bold block mb-1">실제 회수가능액/평가액</span>
+                            <input
+                              type="number"
+                              step={100000}
+                              value={ba.marketValue}
+                              onChange={(e) => {
+                                const val = Number(e.target.value) || 0;
+                                updateData(prev => ({
+                                  ...prev,
+                                  businessAssets: (prev.businessAssets || []).map(item => item.id === ba.id ? { ...item, marketValue: val } : item)
+                                }));
+                              }}
+                              className="w-full px-2.5 py-1.5 bg-white border border-indigo-300 rounded-lg text-right font-bold text-indigo-900"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-rose-600 font-bold block mb-1">담보/질권 설정액</span>
+                            <input
+                              type="number"
+                              step={100000}
+                              value={ba.encumbrance}
+                              onChange={(e) => {
+                                const val = Number(e.target.value) || 0;
+                                updateData(prev => ({
+                                  ...prev,
+                                  businessAssets: (prev.businessAssets || []).map(item => item.id === ba.id ? { ...item, encumbrance: val } : item)
+                                }));
+                              }}
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-right font-bold text-rose-700"
+                            />
+                          </div>
+                          <div className="bg-emerald-50/70 p-2 rounded-lg border border-emerald-200 flex flex-col justify-center">
+                            <span className="text-[10px] text-emerald-800 font-bold">인정 청산가치</span>
+                            <span className="text-sm font-black text-emerald-700">{won(ba.liquidationValue)}원</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <input
+                              type="text"
+                              value={ba.description || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateData(prev => ({
+                                  ...prev,
+                                  businessAssets: (prev.businessAssets || []).map(item => item.id === ba.id ? { ...item, description: val } : item)
+                                }));
+                              }}
+                              placeholder="상세 품목/원인 (예: 매장 내 집기비품 일체)"
+                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                            />
+                          </div>
+                          <div>
+                            <input
+                              type="text"
+                              value={ba.note || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateData(prev => ({
+                                  ...prev,
+                                  businessAssets: (prev.businessAssets || []).map(item => item.id === ba.id ? { ...item, note: val } : item)
+                                }));
+                              }}
+                              placeholder="소명 메모 (예: 차용증 구비, 거래처 폐업으로 회수불능 등)"
+                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. 채무자회생법 제383조 제2항 면제재산 신청 항목 */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-emerald-600" />
+                      <span>법 제383조 제2항 면제재산 신청 (청산가치 추가 공제)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      채무자 및 피부양자의 6개월간 생계비(최대 1,110만 원)를 면제재산으로 신청하여 청산가치에서 전액 차감할 수 있습니다.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newEp = {
+                        id: `ep-${Date.now()}`,
+                        type: 'living_expense_383_2' as const,
+                        appliedAmount: 11100000,
+                        approvedAmount: 11100000,
+                        description: '채무자회생법 제383조 제2항 제2호에 따른 6개월간 최저생계비 면제재산 신청',
+                        note: '의뢰인 기본 생계 보호 신청'
+                      };
+                      updateData(prev => ({
+                        ...prev,
+                        exemptProperties: [...(prev.exemptProperties || []), newEp]
+                      }));
+                    }}
+                    className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ 면제재산 신청 항목 추가</span>
+                  </button>
+                </div>
+
+                {(!data.exemptProperties || data.exemptProperties.length === 0) ? (
+                  <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-400">
+                    신청된 면제재산이 없습니다. (생계비 1,110만 원 면제재산 신청 시 청산가치를 크게 낮출 수 있습니다)
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data.exemptProperties.map((ep, idx) => (
+                      <div key={ep.id} className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                              {idx + 1}
+                            </span>
+                            <select
+                              value={ep.type}
+                              onChange={(e) => {
+                                const newType = e.target.value as any;
+                                updateData(prev => ({
+                                  ...prev,
+                                  exemptProperties: (prev.exemptProperties || []).map(item => item.id === ep.id ? { ...item, type: newType } : item)
+                                }));
+                              }}
+                              className="text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1"
+                            >
+                              <option value="living_expense_383_2">법 제383조 제2항 제2호 (6개월간 생계비 1,110만 원)</option>
+                              <option value="housing_deposit_383_1">법 제383조 제2항 제1호 (주거용 보증금 면제신청)</option>
+                              <option value="other">기타 법정 면제재산</option>
+                            </select>
+                          </div>
+                          <button
+                            onClick={() => {
+                              updateData(prev => ({
+                                ...prev,
+                                exemptProperties: (prev.exemptProperties || []).filter(item => item.id !== ep.id)
+                              }));
+                            }}
+                            className="text-slate-400 hover:text-rose-600 p-1"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <span className="text-[11px] text-slate-600 font-bold block mb-1">의뢰인 신청 희망액</span>
+                            <input
+                              type="number"
+                              step={100000}
+                              value={ep.appliedAmount}
+                              onChange={(e) => {
+                                const val = Number(e.target.value) || 0;
+                                updateData(prev => ({
+                                  ...prev,
+                                  exemptProperties: (prev.exemptProperties || []).map(item => item.id === ep.id ? { ...item, appliedAmount: val } : item)
+                                }));
+                              }}
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-right font-bold"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-emerald-800 font-bold block mb-1">변호사 검토 인정 공제액 (청산가치 차감)</span>
+                            <input
+                              type="number"
+                              step={100000}
+                              value={ep.approvedAmount !== undefined ? ep.approvedAmount : ep.appliedAmount}
+                              onChange={(e) => {
+                                const val = Number(e.target.value) || 0;
+                                updateData(prev => ({
+                                  ...prev,
+                                  exemptProperties: (prev.exemptProperties || []).map(item => item.id === ep.id ? { ...item, approvedAmount: val } : item)
+                                }));
+                              }}
+                              className="w-full px-2.5 py-1.5 bg-white border-2 border-emerald-500 rounded-lg text-right font-black text-emerald-700"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            value={ep.description}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateData(prev => ({
+                                ...prev,
+                                exemptProperties: (prev.exemptProperties || []).map(item => item.id === ep.id ? { ...item, description: val } : item)
+                              }));
+                            }}
+                            placeholder="신청 사유 설명"
+                            className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* TAB 5: 청산가치 진단 & 변제계획안 동기화                     */}
           {/* ══════════════════════════════════════════════════════════════ */}
           {activeTab === 'verification' && (
             <div className="space-y-6">

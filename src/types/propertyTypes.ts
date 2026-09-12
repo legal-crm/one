@@ -107,7 +107,35 @@ export interface FinancialAssetItem {
   note?: string;
 }
 
-// ── 7. 대법원 공식 [전산양식 D5102] 마스터 데이터 모델 ──
+// ── 7. 사업용 설비, 대여금 채권, 외상매출금 채권 (리걸플로 7-4 그림 7-12) ──
+export type BusinessAssetType = 'equipment' | 'loan_receivable' | 'sales_receivable';
+
+export interface BusinessAssetItem {
+  id: string;
+  type: BusinessAssetType;
+  name: string;                            // 설비명(기계/비품) 또는 채무자명/거래처명
+  description?: string;                    // 품목 규격 또는 채권 발생 원인
+  bookValue: number;                       // 취득가액 또는 장부상 채권액 (원)
+  marketValue: number;                     // 감가상각 잔존가치 또는 실제 회수가능액 (원)
+  encumbrance: number;                     // 양도담보/질권 등 담보설정액 (원)
+  liquidationValue: number;                // 청산가치 = max(0, marketValue - encumbrance)
+  recoveryStatus: 'normal' | 'doubtful' | 'uncollectible'; // 정상, 회수우려, 회수불능
+  note?: string;                           // 소명 서류 (차용증, 세금계산서, 장부 등)
+}
+
+// ── 8. 채무자회생법 제383조 제2항 면제재산 신청 항목 (리걸플로 7-4 그림 7-13) ──
+export type ExemptPropertyType = 'living_expense_383_2' | 'housing_deposit_383_1' | 'other';
+
+export interface ExemptPropertyItem {
+  id: string;
+  type: ExemptPropertyType;
+  appliedAmount: number;                   // 의뢰인 면제 신청 희망액 (최대 11,100,000원)
+  approvedAmount?: number;                 // 변호사 검토 인정액
+  description: string;                     // 신청 사유 (예: 6개월간 최저생계비 보호)
+  note?: string;
+}
+
+// ── 9. 대법원 공식 [전산양식 D5102] 마스터 데이터 모델 ──
 export interface PropertyListD5102Data {
   id: string;
   clientId: string;
@@ -121,15 +149,19 @@ export interface PropertyListD5102Data {
   insurances: InsuranceItem[];             // 3. 보험 해약환급금
   severances: SeveranceItem[];             // 9. 퇴직금
   financialAssets: FinancialAssetItem[];   // 1. 현금, 2. 예금, 10. 주식/가상자산 등
+  businessAssets?: BusinessAssetItem[];    // 7. 사업용 설비, 8. 대여금/매출채권
+  exemptProperties?: ExemptPropertyItem[]; // 면제재산 (법 제383조 제2항)
   
   // 총괄 집계
   totalMarketValue: number;                // 자산 총 시가/평가액
   totalEncumbrance: number;                // 총 담보 채무 (근저당, 할부, 약관대출, 질권)
-  totalStatutoryDeduction: number;         // 총 법정 공제액 (압류금지, 소액보증금, 퇴직금 50%)
+  totalStatutoryDeduction: number;         // 총 법정 공제액 (압류금지, 소액보증금, 퇴직금 50%, 면제재산)
   totalLiquidationValue: number;           // 최종 총 청산가치 (J)
   
-  // 상태
+  // 상태 및 의뢰인 제출 상태
   isCompleted: boolean;
+  clientIntakeStatus?: 'draft' | 'submitted_to_lawyer' | 'reviewed_by_lawyer';
+  clientSubmittedAt?: string;
   updatedAt: string;
   reviewedBy?: string;
 }

@@ -9,6 +9,7 @@ import {
   ApplicationDocTemplateService, 
   type ApplicationDocMasterItem 
 } from '../../services/documents/applicationDocTemplateService';
+const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 
 interface MobileApplicationDocHubModalProps {
   isOpen: boolean;
@@ -47,6 +48,8 @@ export default function MobileApplicationDocHubModal({
 
   // 펼쳐진 아코디언 항목 ID
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+  // 재산상황표(D5102) 모달 상태
+  const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
 
   const completedCount = submittedDocIds.size;
   const totalCount = docList.length;
@@ -251,6 +254,18 @@ export default function MobileApplicationDocHubModal({
                       </a>
                     )}
 
+                    {/* 📋 재산목록 관련 서류일 때 온라인 간편 작성 버튼 */}
+                    {(doc.name.includes('재산') || doc.id.includes('property') || doc.name.includes('D5102') || doc.name.includes('계좌') || doc.name.includes('보험')) && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPropertyModalOpen(true)}
+                        className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer press-scale shadow-xs"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>📋 재산상황표(D5102) 온라인 간편 작성하기</span>
+                      </button>
+                    )}
+
                     {/* 파일 첨부 / 카메라 촬영 버튼 */}
                     <div className="flex items-center gap-2">
                       <label className="flex-1 py-2.5 px-3 bg-brand hover:bg-brand-dark text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer press-scale transition-all">
@@ -299,6 +314,18 @@ export default function MobileApplicationDocHubModal({
         </div>
 
       </div>
+
+      {/* 📋 법원 제출용 재산상황표(D5102) 기초자료 작성 모달 (리걸플로 7-4 벤치마킹) */}
+      {isPropertyModalOpen && (
+        <React.Suspense fallback={null}>
+          <ClientPropertyIntakeModal
+            isOpen={isPropertyModalOpen}
+            onClose={() => setIsPropertyModalOpen(false)}
+            clientId={clientRequest?.id || 'client-mobile'}
+            clientName={clientName}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }

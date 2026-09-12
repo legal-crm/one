@@ -20,6 +20,7 @@ import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../services/documents/familyParserService';
 import type { FamilyMemberItem } from '../../types/incomeExpenseTypes';
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
+const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 
 interface MyPageViewProps {
   userAlias: string;
@@ -78,6 +79,8 @@ export default function MyPageView({
   const [isEditingBlueprint, setIsEditingBlueprint] = useState(false);
   // 법원 진술서 모달 열림 상태
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+  // 법원 재산상황표(D5102) 모달 열림 상태
+  const [isPropertyIntakeModalOpen, setIsPropertyIntakeModalOpen] = useState(false);
   
   const feeSettings = useMemo(() => loadFeeNotificationSettings(), []);
 
@@ -2211,6 +2214,39 @@ export default function MyPageView({
                         </div>
                       </div>
 
+                      {/* 📋 법원 제출용 재산상황표(D5102) 기초자료 간편 작성 배너 (리걸플로 7-4 벤치마킹) */}
+                      <div className="p-5 md:p-6 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl text-white shadow-lg space-y-4 border border-indigo-500/30">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-2xl shrink-0">
+                              📋
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-base md:text-lg text-white">
+                                  법원 제출용 재산상황표(D5102) 작성하기
+                                </h4>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500 text-white font-sans">
+                                  대법원 규격
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                                예금·보험, 자동차, 임차보증금, 부동산, 사업설비 등 6대 재산 사실관계를 간편하게 입력하시면 담당 변호사에게 안전하게 전달되어 법원 서류로 완성됩니다.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsPropertyIntakeModalOpen(true)}
+                            className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs md:text-sm rounded-2xl shadow-md transition-all cursor-pointer press-scale shrink-0 flex items-center justify-center gap-2"
+                          >
+                            <span>📋 재산상황표 작성하기</span>
+                            <ChevronRight className="w-4 h-4 text-indigo-200" />
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="flex items-center justify-between">
                         <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-purple-50 text-purple-500 dark:bg-purple-950/40"><FileText className="w-5 h-5" /></div>
@@ -2592,6 +2628,21 @@ export default function MyPageView({
         totalDebtAmount={profile?.debtTotal || 5000}
         monthlyIncome={profile?.income || 250}
         onSuccessSubmitted={() => {
+          setRefreshTick(c => c + 1);
+        }}
+      />
+    </React.Suspense>
+  )}
+
+  {/* 📋 법원 제출용 재산상황표(D5102) 기초자료 작성 모달 (리걸플로 7-4 벤치마킹) */}
+  {isPropertyIntakeModalOpen && (
+    <React.Suspense fallback={null}>
+      <ClientPropertyIntakeModal
+        isOpen={isPropertyIntakeModalOpen}
+        onClose={() => setIsPropertyIntakeModalOpen(false)}
+        clientId={activeRequest?.id || requests[0]?.id || 'client-self'}
+        clientName={profile?.name || userAlias || '신청인'}
+        onSyncToLawyerCrm={() => {
           setRefreshTick(c => c + 1);
         }}
       />

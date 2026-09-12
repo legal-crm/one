@@ -10,6 +10,8 @@ import {
   InsuranceItem,
   SeveranceItem,
   FinancialAssetItem,
+  BusinessAssetItem,
+  ExemptPropertyItem,
   PropertyListD5102Data,
 } from '../../types/propertyTypes';
 import {
@@ -191,6 +193,28 @@ export function recalculateD5102Totals(data: PropertyListD5102Data): PropertyLis
     return { ...fa, statutoryDeduction: deduction, liquidationValue: liq };
   });
 
+  // 7. 사업용 설비, 대여금 채권, 외상매출금 채권 (리걸플로 7-4 그림 7-12)
+  const updatedBusinessAssets = (data.businessAssets || []).map((ba) => {
+    const liq = Math.max(0, (ba.marketValue || 0) - (ba.encumbrance || 0));
+    totalMarketValue += ba.marketValue || 0;
+    totalEncumbrance += ba.encumbrance || 0;
+    totalLiquidationValue += liq;
+    return { ...ba, liquidationValue: liq };
+  });
+
+  // 8. 채무자회생법 제383조 제2항 면제재산 신청 항목 (리걸플로 7-4 그림 7-13)
+  const updatedExemptProperties = (data.exemptProperties || []).map((ep) => {
+    const deduct = ep.approvedAmount !== undefined ? ep.approvedAmount : (ep.appliedAmount || 0);
+    totalStatutoryDeduction += deduct;
+    return { ...ep };
+  });
+
+  // 최종 청산가치에서 신청된 면제재산 공제 (음수 방지)
+  const totalExemptDeduct = (data.exemptProperties || []).reduce((sum, ep) => {
+    return sum + (ep.approvedAmount !== undefined ? ep.approvedAmount : (ep.appliedAmount || 0));
+  }, 0);
+  totalLiquidationValue = Math.max(0, totalLiquidationValue - totalExemptDeduct);
+
   return {
     ...data,
     realEstates: updatedRealEstates,
@@ -199,6 +223,8 @@ export function recalculateD5102Totals(data: PropertyListD5102Data): PropertyLis
     insurances: updatedInsurances,
     severances: updatedSeverances,
     financialAssets: updatedFinancialAssets,
+    businessAssets: updatedBusinessAssets,
+    exemptProperties: updatedExemptProperties,
     totalMarketValue,
     totalEncumbrance,
     totalStatutoryDeduction,
