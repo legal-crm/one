@@ -4,7 +4,8 @@ import {
   CheckCircle2, Info, ChevronDown, ChevronUp, Sliders, Edit3, Lock, 
   Unlock, Save, Sparkles, Building2, Coins, ArrowRight, ShieldCheck,
   Calendar, Users, Home, HeartPulse, GraduationCap, DollarSign, Download,
-  Trash2, Plus, FileText, MapPin, Search, X, Check
+  Trash2, Plus, FileText, MapPin, Search, X, Check, GripVertical,
+  CornerDownRight, Minus, AlertOctagon, StickyNote, HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -215,6 +216,21 @@ export default function RepaymentPlanEditor({
     crmExt.repaymentPlan?.paymentDayOfMonth || 25
   );
 
+  // ── 채무 증대 사유 (이미지 3-5 실무 양식) ──
+  const [debtGrowthReasons, setDebtGrowthReasons] = useState<string[]>(() => {
+    return crmExt.repaymentPlan?.debtGrowthReasons || ['생활비 부족'];
+  });
+  const [debtGrowthNarrative, setDebtGrowthNarrative] = useState<string>(() => {
+    return crmExt.repaymentPlan?.debtGrowthNarrative || '';
+  });
+
+  // 채권자별 특이사항 메모 팝오버 상태
+  const [activeMemoCreditorId, setActiveMemoCreditorId] = useState<string | null>(null);
+
+  // 드래그 앤 드롭 상태
+  const [draggedCreditorId, setDraggedCreditorId] = useState<string | null>(null);
+  const [dragOverCreditorId, setDragOverCreditorId] = useState<string | null>(null);
+
   // 우선권 채권 2단계 자동 분할 배분 모드 (기본 18개월)
   const [isTwoStageRepayment, setIsTwoStageRepayment] = useState<boolean>(
     crmExt.repaymentPlan?.isTwoStageRepayment || false
@@ -233,7 +249,7 @@ export default function RepaymentPlanEditor({
 
   // ── 3. 핵심 엔진 연산 실행 (2026 Engine + Fine-tuning) ──
   const plan: RepaymentPlanData = useMemo(() => {
-    return buildRepaymentPlan({
+    const computed = buildRepaymentPlan({
       clientId,
       clientName: clientRequest.clientName || '의뢰인',
       courtName: (clientRequest as any).court || clientRequest.financialProfile?.selectedCourt || '서울회생법원',
@@ -254,6 +270,12 @@ export default function RepaymentPlanEditor({
           }
         : (isTwoStageRepayment ? { isTwoStageRepayment, stage1Months } : undefined),
     });
+
+    return {
+      ...computed,
+      debtGrowthReasons,
+      debtGrowthNarrative,
+    };
   }, [
     clientId,
     clientRequest.clientName,
@@ -272,6 +294,8 @@ export default function RepaymentPlanEditor({
     adjusterMemo,
     isTwoStageRepayment,
     stage1Months,
+    debtGrowthReasons,
+    debtGrowthNarrative,
   ]);
 
   // 채권자별 인라인 월 변제금 개별 수정 핸들러
@@ -350,7 +374,130 @@ export default function RepaymentPlanEditor({
     toast.success('새 채권자가 추가되었습니다.');
   };
 
-  // 채권자 삭제
+  // ── 보증인(기관) 추가 (그림 3-4 가지번호 생성) ──
+  const handleAddGuarantor = (parentId: string) => {
+    const parent = creditors.find((c) => c.id === parentId);
+    if (!parent) return;
+
+    const parentIndex = creditors.findIndex((c) => c.id === parentId);
+    const newGuarantor: RepaymentCreditor = {
+      id: `cred_g_${Date.now()}`,
+      creditorNumber: parent.creditorNumber,
+      name: '보증기관 (예: 서울보증보험, 신용보증기금)',
+      principal: 0,
+      interest: 0,
+      isSecured: false,
+      isUnconfirmed: false,
+      isPriority: false,
+      allocationRatio: 0,
+      monthlyRepayment: 0,
+      totalRepayment: 0,
+      repaymentRate: 0,
+      parentCreditorId: parentId,
+      isGuarantor: true,
+      debtCauseDetail: '연대보증 / 보증채무',
+      borrowedDate: parent.borrowedDate || '2024-01-01',
+    };
+
+    const updated = [...creditors];
+    // 부모 바로 다음(또는 해당 부모의 기존 보증인들 끝)에 삽입
+    let insertIndex = parentIndex + 1;
+    while (insertIndex < updated.length && updated[insertIndex].parentCreditorId === parentId) {
+      insertIndex++;
+    }
+    updated.splice(insertIndex, 0, newGuarantor);
+
+    setCreditors(updated);
+    toast.success(`'${parent.name}'의 보증기관이 가지번호로 추가되었습니다.`);
+  };
+
+  // ── 이자 3회 미납 토글 핸들러 (최근 채무 사기죄 리스크 관리) ──
+  const handleToggleUnpaidInterest3Times = (creditorId: string) => {
+    setCreditors((prev) =>
+      prev.map((c) => {
+        if (c.id === creditorId) {
+          const next = !c.isUnpaidInterest3Times;
+          if (next) {
+            toast.warning(`⚠️ [${c.name}] 이자 3회 미납 지정: 이자를 최소 3회도 납부하지 않은 최근 채무는 채권자의 사기죄 고소 위험이 있어 면밀한 소명이 필요합니다.`);
+          }
+          return { ...c, isUnpaidInterest3Times: next };
+        }
+        return c;
+      })
+    );
+  };
+
+  // ── 채권자별 개별 메모 수정 ──
+  const handleUpdateCreditorMemo = (creditorId: string, memo: string) => {
+    setCreditors((prev) =>
+      prev.map((c) => (c.id === creditorId ? { ...c, memo } : c))
+    );
+  };
+
+  // ── 채권자 인라인 필드(이름, 원금 등) 직접 수정 ──
+  const handleUpdateCreditorField = (
+    creditorId: string,
+    field: keyof RepaymentCreditor,
+    val: any
+  ) => {
+    setCreditors((prev) =>
+      prev.map((c) => (c.id === creditorId ? { ...c, [field]: val } : c))
+    );
+  };
+
+  // ── 채권자 순서 위/아래 이동 ──
+  const handleMoveCreditor = (creditorId: string, direction: 'up' | 'down') => {
+    const idx = creditors.findIndex((c) => c.id === creditorId);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === creditors.length - 1) return;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const updated = [...creditors];
+    const [moved] = updated.splice(idx, 1);
+    updated.splice(targetIdx, 0, moved);
+    setCreditors(updated);
+  };
+
+  // ── 드래그 앤 드롭 핸들러 ──
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedCreditorId(id);
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedCreditorId && draggedCreditorId !== id) {
+      setDragOverCreditorId(id);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setDragOverCreditorId(null);
+    if (!draggedCreditorId || draggedCreditorId === targetId) return;
+
+    const fromIdx = creditors.findIndex((c) => c.id === draggedCreditorId);
+    const toIdx = creditors.findIndex((c) => c.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const updated = [...creditors];
+    const [moved] = updated.splice(fromIdx, 1);
+    updated.splice(toIdx, 0, moved);
+    setCreditors(updated);
+    setDraggedCreditorId(null);
+    toast.info('채권자 목록 순서가 변경되었습니다.');
+  };
+
+  // ── 채무 증대 사유 체크박스 토글 ──
+  const toggleDebtGrowthReason = (reason: string) => {
+    setDebtGrowthReasons((prev) =>
+      prev.includes(reason) ? prev.filter((r) => r !== reason) : [...prev, reason]
+    );
+  };
+
+  // 채권자 삭제 (종속된 보증인도 함께 정리)
   const handleDeleteCreditor = (creditorId: string) => {
     if (creditors.length <= 1) {
       toast.error('최소 1개 이상의 채권자가 필요합니다.');
@@ -358,7 +505,7 @@ export default function RepaymentPlanEditor({
     }
     setCreditors((prev) =>
       prev
-        .filter((c) => c.id !== creditorId)
+        .filter((c) => c.id !== creditorId && c.parentCreditorId !== creditorId)
         .map((c, idx) => ({ ...c, creditorNumber: idx + 1 }))
     );
     toast.info('채권자가 삭제되었습니다.');
@@ -1093,100 +1240,201 @@ export default function RepaymentPlanEditor({
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
-                      <th className="py-3 px-3 text-center w-12">번호</th>
-                      <th className="py-3 px-4">채권자명 및 유형</th>
-                      <th className="py-3 px-3 text-right">원금 (원)</th>
-                      <th className="py-3 px-3 text-right">개시전이자</th>
-                      <th className="py-3 px-3 text-center">안분비율</th>
+                      <th className="py-3 px-2 text-center w-10">삭제</th>
+                      <th className="py-3 px-2 text-center w-14">번호</th>
+                      <th className="py-3 px-3 min-w-[200px]">채권자명</th>
+                      <th className="py-3 px-3 text-right w-36">채무액 (원금)</th>
+                      <th className="py-3 px-3 text-right w-24">개시전이자</th>
+                      <th className="py-3 px-3 min-w-[320px]">기타 체크사항</th>
                       {plan.isTwoStageRepayment ? (
                         <>
-                          <th className="py-3 px-3 text-right w-36 bg-amber-50/60 text-amber-900 border-x border-amber-200">
+                          <th className="py-3 px-3 text-right w-32 bg-amber-50/60 text-amber-900 border-x border-amber-200">
                             1단계 월변제금 (1~{plan.stage1Months}회)
                           </th>
-                          <th className="py-3 px-3 text-right w-36 bg-indigo-50/60 text-indigo-900 border-r border-indigo-200">
+                          <th className="py-3 px-3 text-right w-32 bg-indigo-50/60 text-indigo-900 border-r border-indigo-200">
                             2단계 월변제금 ({plan.stage1Months + 1}~{plan.months}회)
                           </th>
                         </>
                       ) : (
-                        <th className="py-3 px-4 text-right w-44">
+                        <th className="py-3 px-3 text-right w-36">
                           월 변제예정액 (수정가능)
                         </th>
                       )}
-                      <th className="py-3 px-4 text-right">총 변제예정액</th>
-                      <th className="py-3 px-3 text-center">변제율</th>
-                      <th className="py-3 px-3 text-center w-16">관리</th>
+                      <th className="py-3 px-3 text-right w-28">총 변제예정액</th>
+                      <th className="py-3 px-2 text-center w-14">변제율</th>
+                      <th className="py-3 px-2 text-center w-12">메모</th>
+                      <th className="py-3 px-2 text-center w-14">순서</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {plan.creditors.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-3 text-center font-mono text-slate-400">
-                          {c.creditorNumber}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-slate-900 text-sm">{c.name}</span>
+                    {plan.creditors.map((c, idx) => {
+                      const isGuarantor = !!c.parentCreditorId;
+                      const isDragOver = dragOverCreditorId === c.id;
+
+                      return (
+                        <tr
+                          key={c.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, c.id)}
+                          onDragOver={(e) => handleDragOver(e, c.id)}
+                          onDrop={(e) => handleDrop(e, c.id)}
+                          className={`transition-colors ${
+                            isDragOver ? 'border-t-2 border-indigo-500 bg-indigo-50/40' : ''
+                          } ${
+                            isGuarantor
+                              ? 'bg-slate-50/80 hover:bg-slate-100/70 text-slate-700'
+                              : 'hover:bg-slate-50/80 text-slate-900'
+                          }`}
+                        >
+                          {/* 1. 삭제 (-) 원형 버튼 */}
+                          <td className="py-3 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCreditor(c.id)}
+                              className="w-5 h-5 rounded-full bg-slate-200 hover:bg-rose-500 hover:text-white text-slate-600 inline-flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                              title={isGuarantor ? '보증기관 삭제' : '채권자 및 종속 보증인 삭제'}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                          </td>
+
+                          {/* 2. 번호 (1, 2, 3... 및 보증인 4-1 가지번호) */}
+                          <td className="py-3 px-2 text-center font-mono font-bold text-slate-500">
+                            {c.displayNumber || c.creditorNumber}
+                          </td>
+
+                          {/* 3. 채권자명 */}
+                          <td className="py-3 px-3">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                {isGuarantor && (
+                                  <div className="flex items-center text-indigo-500 shrink-0 font-bold" title="보증인/보증기관">
+                                    <CornerDownRight className="w-3.5 h-3.5 mr-0.5" />
+                                    <span className="text-[10px] bg-indigo-100/80 px-1 py-0.2 rounded text-indigo-800">보증</span>
+                                  </div>
+                                )}
+                                <input
+                                  type="text"
+                                  value={c.name}
+                                  onChange={(e) => handleUpdateCreditorField(c.id, 'name', e.target.value)}
+                                  className={`font-bold bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-500 outline-none w-full max-w-[200px] text-xs ${
+                                    isGuarantor ? 'text-indigo-950 font-semibold' : 'text-slate-900'
+                                  }`}
+                                  placeholder="채권자명 입력"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingAddressCreditor(c)}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border press-scale shrink-0 ${
+                                    c.address
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                      : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                  }`}
+                                  title={c.address ? `${c.address} (${c.zipCode || '우편번호 없음'}) - 클릭하여 수정` : '대법원 전자소송 송달을 위해 주소를 입력해 주세요 (클릭)'}
+                                >
+                                  <MapPin className="w-2.5 h-2.5" />
+                                  <span>{c.address ? '주소완료' : '송달주소'}</span>
+                                </button>
+                              </div>
+
+                              {c.address && (
+                                <div className="text-[10px] text-slate-400 truncate max-w-xs" title={`${c.serviceAddress || c.address} (우: ${c.zipCode || '-'})`}>
+                                  📍 {c.serviceAddress || c.address}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 4. 채무액 (원금: 만원 단위 입력) */}
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <input
+                                type="number"
+                                value={Math.round(c.principal / 10000)}
+                                onChange={(e) =>
+                                  handleUpdateCreditorField(c.id, 'principal', (Number(e.target.value) || 0) * 10000)
+                                }
+                                className="w-20 px-2 py-1 text-xs text-right font-mono font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-500 focus:bg-white outline-none"
+                              />
+                              <span className="text-[11px] font-bold text-slate-500">만원</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono text-right mt-0.5">
+                              {c.principal.toLocaleString()}원
+                            </div>
+                          </td>
+
+                          {/* 5. 개시전이자 */}
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <input
+                                type="number"
+                                value={Math.round((c.interest || 0) / 10000)}
+                                onChange={(e) =>
+                                  handleUpdateCreditorField(c.id, 'interest', (Number(e.target.value) || 0) * 10000)
+                                }
+                                className="w-14 px-1.5 py-0.5 text-xs text-right font-mono text-slate-600 bg-slate-50 border border-slate-200 rounded-lg focus:border-indigo-500 focus:bg-white outline-none"
+                              />
+                              <span className="text-[10px] text-slate-400">만원</span>
+                            </div>
+                          </td>
+
+                          {/* 6. 기타 체크사항 (이자 3회 미납 / 별제권 / 보증인 추가 / 우선권) */}
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {/* 1. 이자 3회 미납 뱃지 버튼 */}
                               <button
                                 type="button"
-                                onClick={() => setEditingAddressCreditor(c)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border press-scale ${
-                                  c.address
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                    : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                onClick={() => handleToggleUnpaidInterest3Times(c.id)}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer border flex items-center gap-1 ${
+                                  c.isUnpaidInterest3Times
+                                    ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-rose-50 hover:text-rose-600'
                                 }`}
-                                title={c.address ? `${c.address} (${c.zipCode || '우편번호 없음'}) - 클릭하여 수정` : '대법원 전자소송 송달을 위해 주소를 입력해 주세요 (클릭)'}
+                                title="이자 3회 미납: 최근 채무로 채권자의 사기죄 고소 위험 사전 점검 대상"
                               >
-                                <MapPin className="w-2.5 h-2.5" />
-                                <span>{c.address ? '주소완료' : '송달주소 입력필요'}</span>
+                                <AlertOctagon className="w-3 h-3" />
+                                <span>이자3회미납</span>
                               </button>
-                            </div>
-                            
-                            {c.address && (
-                              <div className="text-[11px] text-slate-400 truncate max-w-xs" title={`${c.serviceAddress || c.address} (우: ${c.zipCode || '-'})`}>
-                                📍 {c.serviceAddress || c.address}
-                              </div>
-                            )}
-                            
-                            {/* 채권 유형 칩 버튼 3종 */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
+
+                              {/* 2. 별제권부 채권 뱃지 버튼 */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCreditorFlag(c.id, 'isSecured')}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border ${
+                                  c.isSecured
+                                    ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-600'
+                                }`}
+                                title="담보부 채무의 경우 별제권부 채권으로 체크"
+                              >
+                                <span>{c.isSecured ? '🔒 별제권(담보)' : '별제권부 채권'}</span>
+                              </button>
+
+                              {/* 3. 보증인(기관) 추가 버튼 (주채권자만 노출) */}
+                              {!isGuarantor && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddGuarantor(c.id)}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all flex items-center gap-1 cursor-pointer"
+                                  title="클릭 시 하단에 가지번호(예: 4-1)가 매겨진 보증인 채권자 목록이 생성됩니다"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>보증인(기관) 추가</span>
+                                </button>
+                              )}
+
+                              {/* 우선권 세금 / 공탁유보 버튼 */}
                               <button
                                 type="button"
                                 onClick={() => handleToggleCreditorFlag(c.id, 'isPriority')}
                                 className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
                                   c.isPriority
                                     ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
-                                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                                    : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
                                 }`}
                                 title="국세, 지방세, 건강보험료 등 우선권 채권 (전체기간 1/2 내 우선완납)"
                               >
-                                {c.isPriority ? '★ 우선권(세금)' : '+ 우선권'}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleToggleCreditorFlag(c.id, 'isUnconfirmedReserve')}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
-                                  c.isUnconfirmedReserve
-                                    ? 'bg-purple-100 text-purple-900 border-purple-300 shadow-2xs'
-                                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                                }`}
-                                title="채권액 미확정 또는 별제권 행사 미료 채권 (법원 공탁 유보금 분리)"
-                              >
-                                {c.isUnconfirmedReserve ? '🛡️ 공탁유보' : '+ 공탁유보'}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleToggleCreditorFlag(c.id, 'isSecured')}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
-                                  c.isSecured
-                                    ? 'bg-rose-100 text-rose-900 border-rose-300 shadow-2xs'
-                                    : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                                }`}
-                                title="담보대출 별제권 채권 (담보평가액 초과 예정부족액만 회생채권 산입)"
-                              >
-                                {c.isSecured ? '🔒 담보(별제권)' : '+ 별제권'}
+                                {c.isPriority ? '★ 우선권(세금)' : '+ 세금'}
                               </button>
 
                               {c.isSecured && (
@@ -1194,106 +1442,165 @@ export default function RepaymentPlanEditor({
                                   type="button"
                                   onClick={() => setSelectedSecuredCreditor(c)}
                                   className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-600 text-white hover:bg-rose-700 transition-all flex items-center gap-1 cursor-pointer"
+                                  title="담보평가액 대비 예정부족액 산출기"
                                 >
                                   <Calculator className="w-3 h-3" />
-                                  <span>예정부족액 계산</span>
+                                  <span>부족액 계산</span>
                                 </button>
                               )}
                             </div>
 
                             {/* 별제권 예정부족액 산출 정보 안내 */}
                             {c.securedShortageInfo && (
-                              <div className="text-[10px] text-rose-700 bg-rose-50/70 px-2 py-0.5 rounded border border-rose-200">
-                                담보평가액: {Math.round(c.securedShortageInfo.assessedCollateralValue / 10000).toLocaleString()}만원 ➔ 예정부족액: {Math.round(c.securedShortageInfo.calculatedShortage / 10000).toLocaleString()}만원 산입됨
+                              <div className="text-[10px] text-rose-700 bg-rose-50/70 px-2 py-0.5 rounded border border-rose-200 mt-1">
+                                담보평가: {Math.round(c.securedShortageInfo.assessedCollateralValue / 10000).toLocaleString()}만원 ➔ 부족액: {Math.round(c.securedShortageInfo.calculatedShortage / 10000).toLocaleString()}만원 산입됨
                               </div>
                             )}
+                          </td>
 
-                            {/* 미확정 공탁 유보금 안내 */}
-                            {c.isUnconfirmedReserve && (
-                              <div className="text-[10px] text-purple-700 bg-purple-50/70 px-2 py-0.5 rounded border border-purple-200">
-                                인가 확정 시까지 법원 공탁소 유보 (월 {c.monthlyRepayment.toLocaleString()}원)
+                          {/* 7. 월 변제예정액 (2단계 또는 단일) */}
+                          {plan.isTwoStageRepayment ? (
+                            <>
+                              <td className="py-2 px-3 text-right font-mono font-bold bg-amber-50/30 border-x border-amber-100">
+                                {c.isPriority ? (
+                                  <span className="text-amber-950">
+                                    {(c.stage1MonthlyRepayment || c.monthlyRepayment).toLocaleString()}원
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-700">
+                                    {(c.stage1MonthlyRepayment || 0).toLocaleString()}원
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-bold bg-indigo-50/30 border-r border-indigo-100">
+                                {c.isPriority ? (
+                                  <span className="text-emerald-600 text-[11px] font-bold">
+                                    0원 (1단계 완납)
+                                  </span>
+                                ) : (
+                                  <span className="text-indigo-950">
+                                    {(c.stage2MonthlyRepayment || c.monthlyRepayment).toLocaleString()}원
+                                  </span>
+                                )}
+                              </td>
+                            </>
+                          ) : (
+                            <td className="py-2 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <input
+                                  type="number"
+                                  value={c.monthlyRepayment}
+                                  onChange={(e) =>
+                                    handleCreditorMonthlyChange(c.id, Number(e.target.value) || 0)
+                                  }
+                                  className="w-28 px-2 py-1 text-xs text-right font-mono font-bold text-slate-900 bg-purple-50/50 hover:bg-purple-50 border border-purple-200 rounded-lg focus:border-purple-600 focus:bg-white outline-none"
+                                />
+                                <span className="text-[11px] text-slate-500 font-bold">원</span>
+                              </div>
+                            </td>
+                          )}
+
+                          {/* 8. 총 변제예정액 */}
+                          <td className="py-3 px-3 text-right font-mono font-bold text-blue-900">
+                            {c.totalRepayment.toLocaleString()}원
+                          </td>
+
+                          {/* 9. 변제율 */}
+                          <td className="py-3 px-2 text-center font-mono font-bold">
+                            <span className={c.repaymentRate >= 50 ? 'text-emerald-600' : 'text-slate-700'}>
+                              {c.repaymentRate}%
+                            </span>
+                          </td>
+
+                          {/* 10. 메모 아이콘 & 팝오버 */}
+                          <td className="py-3 px-2 text-center relative">
+                            <button
+                              type="button"
+                              onClick={() => setActiveMemoCreditorId(activeMemoCreditorId === c.id ? null : c.id)}
+                              className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                c.memo
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-xs'
+                                  : 'text-slate-400 hover:text-slate-600 border-transparent hover:bg-slate-100'
+                              }`}
+                              title={c.memo ? `메모: ${c.memo}` : '채권자별 메모 입력'}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              {c.memo && (
+                                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-600 ring-2 ring-white" />
+                              )}
+                            </button>
+
+                            {activeMemoCreditorId === c.id && (
+                              <div className="absolute right-0 top-8 z-30 w-64 bg-white rounded-xl p-3 shadow-xl border border-slate-200 space-y-2 text-left animate-fadeIn">
+                                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                                  <span>{c.name} 특이사항 메모</span>
+                                  <button
+                                    onClick={() => setActiveMemoCreditorId(null)}
+                                    className="text-slate-400 hover:text-slate-600 text-xs"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                                <textarea
+                                  rows={3}
+                                  value={c.memo || ''}
+                                  onChange={(e) => handleUpdateCreditorMemo(c.id, e.target.value)}
+                                  placeholder="특이사항(보증 채권 양도, 이자 연체 경위 등)을 입력하세요"
+                                  className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-500"
+                                />
+                                <div className="flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveMemoCreditorId(null)}
+                                    className="px-2.5 py-1 bg-indigo-600 text-white rounded text-[11px] font-bold cursor-pointer"
+                                  >
+                                    확인
+                                  </button>
+                                </div>
                               </div>
                             )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono text-slate-700">
-                          {c.principal.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono text-slate-400">
-                          {c.interest.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-3 text-center font-mono font-semibold text-slate-600">
-                          {(c.allocationRatio * 100).toFixed(2)}%
-                        </td>
+                          </td>
 
-                        {/* 2단계 분할 배분 모드 컬럼 또는 단일 모드 컬럼 */}
-                        {plan.isTwoStageRepayment ? (
-                          <>
-                            <td className="py-2 px-3 text-right font-mono font-bold bg-amber-50/30 border-x border-amber-100">
-                              {c.isPriority ? (
-                                <span className="text-amber-950">
-                                  {(c.stage1MonthlyRepayment || c.monthlyRepayment).toLocaleString()}원
-                                </span>
-                              ) : (
-                                <span className="text-slate-700">
-                                  {(c.stage1MonthlyRepayment || 0).toLocaleString()}원
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono font-bold bg-indigo-50/30 border-r border-indigo-100">
-                              {c.isPriority ? (
-                                <span className="text-emerald-600 text-[11px] font-bold">
-                                  0원 (1단계 완납)
-                                </span>
-                              ) : (
-                                <span className="text-indigo-950">
-                                  {(c.stage2MonthlyRepayment || c.monthlyRepayment).toLocaleString()}원
-                                </span>
-                              )}
-                            </td>
-                          </>
-                        ) : (
-                          <td className="py-2 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <input
-                                type="number"
-                                value={c.monthlyRepayment}
-                                onChange={(e) =>
-                                  handleCreditorMonthlyChange(c.id, Number(e.target.value) || 0)
-                                }
-                                className="w-32 px-2.5 py-1.5 text-xs text-right font-mono font-bold text-slate-900 bg-purple-50/50 hover:bg-purple-50 border border-purple-200 rounded-lg focus:border-purple-600 focus:bg-white outline-none"
-                              />
-                              <span className="text-[11px] text-slate-500 font-bold">원</span>
+                          {/* 11. 순서 변경 (드래그 핸들 + 위/아래 이동) */}
+                          <td className="py-3 px-2 text-center">
+                            <div className="flex items-center justify-center gap-0.5">
+                              <div
+                                className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-700 p-0.5"
+                                title="드래그 앤 드롭으로 순서 변경"
+                              >
+                                <GripVertical className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="flex flex-col">
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveCreditor(c.id, 'up')}
+                                  disabled={idx === 0}
+                                  className="text-slate-400 hover:text-slate-700 disabled:opacity-20 p-0.2 cursor-pointer"
+                                  title="위로 이동"
+                                >
+                                  <ChevronUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveCreditor(c.id, 'down')}
+                                  disabled={idx === plan.creditors.length - 1}
+                                  className="text-slate-400 hover:text-slate-700 disabled:opacity-20 p-0.2 cursor-pointer"
+                                  title="아래로 이동"
+                                >
+                                  <ChevronDown className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           </td>
-                        )}
-
-                        <td className="py-3 px-4 text-right font-mono font-bold text-blue-900">
-                          {c.totalRepayment.toLocaleString()}원
-                        </td>
-                        <td className="py-3 px-3 text-center font-mono font-bold">
-                          <span className={c.repaymentRate >= 50 ? 'text-emerald-600' : 'text-slate-700'}>
-                            {c.repaymentRate}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCreditor(c.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
-                            title="채권자 삭제"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
 
                   {/* 합계 행 */}
                   <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-300">
                     <tr>
-                      <td colSpan={2} className="py-3 px-4 text-center text-slate-800">
+                      <td colSpan={3} className="py-3 px-4 text-center text-slate-800">
                         합계 ({plan.creditors.length}개사)
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-900">
@@ -1302,8 +1609,8 @@ export default function RepaymentPlanEditor({
                       <td className="py-3 px-3 text-right font-mono text-slate-400">
                         {plan.totalInterest.toLocaleString()}원
                       </td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-900">
-                        100.0%
+                      <td className="py-3 px-3 text-center text-slate-500 text-xs">
+                        무담보: {Math.round((plan.unsecuredDebtTotal || 0) / 10000).toLocaleString()}만 / 담보: {Math.round((plan.securedDebtTotal || 0) / 10000).toLocaleString()}만
                       </td>
                       {plan.isTwoStageRepayment ? (
                         <>
@@ -1322,13 +1629,124 @@ export default function RepaymentPlanEditor({
                       <td className="py-3 px-4 text-right font-mono text-blue-900 font-black text-sm">
                         {plan.totalRepaymentAmount.toLocaleString()}원
                       </td>
-                      <td className="py-3 px-3 text-center font-mono font-black text-blue-900">
+                      <td className="py-3 px-2 text-center font-mono font-black text-blue-900">
                         {plan.totalRepaymentRate}%
                       </td>
-                      <td></td>
+                      <td colSpan={2}></td>
                     </tr>
                   </tfoot>
                 </table>
+              </div>
+
+              {/* ── [그림 3-4 하단] 채권자 추가 원형 버튼 (+) ── */}
+              <div className="flex justify-center pt-2 pb-1">
+                <button
+                  type="button"
+                  onClick={handleAddNewCreditor}
+                  className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  title="새 채권자 추가"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* ── [그림 3-4 하단] 무담보부 vs 담보부 채무액 게이지 바 ── */}
+              <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-sm space-y-3">
+                <div className="max-w-xl mx-auto space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-slate-300 w-24 shrink-0">무담보부 채무액</span>
+                    <div className="flex-1 bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-700">
+                      <div
+                        className="bg-blue-500 h-full rounded-full transition-all duration-500 shadow-xs"
+                        style={{
+                          width: `${plan.totalDebt > 0 ? Math.min(100, Math.round(((plan.unsecuredDebtTotal || 0) / plan.totalDebt) * 100)) : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-black font-mono text-blue-400 w-28 text-right shrink-0">
+                      {Math.round((plan.unsecuredDebtTotal || 0) / 10000).toLocaleString()} 만원
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-slate-300 w-24 shrink-0">담보부 채무액</span>
+                    <div className="flex-1 bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-700">
+                      <div
+                        className="bg-rose-500 h-full rounded-full transition-all duration-500 shadow-xs"
+                        style={{
+                          width: `${plan.totalDebt > 0 ? Math.min(100, Math.round(((plan.securedDebtTotal || 0) / plan.totalDebt) * 100)) : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-black font-mono text-rose-400 w-28 text-right shrink-0">
+                      {Math.round((plan.securedDebtTotal || 0) / 10000).toLocaleString()} 만원
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── [그림 3-5] 채무 증대 사유 (중복 선택 가능) & 서술 ── */}
+              <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-sm border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-4 bg-blue-500 rounded-full" />
+                    <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                      채무 증대 사유 (중복 선택 가능)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-400">
+                    선택: <strong className="text-blue-400 font-mono">{debtGrowthReasons.length}</strong>개
+                  </span>
+                </div>
+
+                {/* 9개 공식 사유 체크박스 (그림 3-5 정확 일치) */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+                  {[
+                    '교육비 과다지출',
+                    '기타',
+                    '병원비 과다지출',
+                    '사기 피해',
+                    '생활비 부족',
+                    '음식, 음주, 여흥, 도박 또는 취미활동',
+                    '점포 운영의 실패',
+                    '주식투자 실패',
+                    '타인채무의 보증',
+                  ].map((reason) => {
+                    const isChecked = debtGrowthReasons.includes(reason);
+                    return (
+                      <label
+                        key={reason}
+                        className={`flex items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer text-xs select-none ${
+                          isChecked
+                            ? 'bg-blue-600/20 border-blue-500 text-blue-300 font-bold'
+                            : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleDebtGrowthReason(reason)}
+                          className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600 text-blue-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                        />
+                        <span className="leading-tight text-[11px]">{reason}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* 채무증대 사유에 관한 서술 */}
+                <div className="pt-2 space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-300 block">
+                    채무증대 사유에 관한 서술
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={debtGrowthNarrative}
+                    onChange={(e) => setDebtGrowthNarrative(e.target.value)}
+                    placeholder="채무증대 사유에 관한 구체적 정황 및 서술을 입력하세요 (개인회생 개시신청서 및 진술서 D5101에 자동 반영됩니다)"
+                    className="w-full p-2.5 bg-slate-950/80 border border-slate-700 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:border-blue-500 outline-none resize-y"
+                  />
+                </div>
               </div>
 
               {/* 하단 요약 정보 카드: 우선권 채무 및 미확정 공탁 유보금 */}

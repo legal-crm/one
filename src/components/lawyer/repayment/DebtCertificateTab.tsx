@@ -3,7 +3,7 @@ import {
   FileSpreadsheet, Upload, Download, Eye, Plus, Trash2, CheckCircle2, 
   Clock, AlertCircle, RefreshCw, FileText, Image as ImageIcon, ExternalLink,
   ShieldCheck, Calculator, ArrowRight, RotateCw, ZoomIn, ZoomOut, Sparkles, Building2,
-  MapPin, Search, Check
+  MapPin, Search, Check, CornerDownRight, AlertOctagon, Minus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -232,6 +232,69 @@ export default function DebtCertificateTab({
     toast.success('새 채권자가 추가되었습니다.');
   };
 
+  // 보증기관 가지번호 항목 추가 (그림 3-4 가지번호 생성)
+  const handleAddGuarantor = (parentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const parentIndex = order.items.findIndex((i) => i.id === parentId);
+    if (parentIndex === -1) return;
+
+    const newGuarantor: DebtCertificateItem = {
+      id: `item_g_${Date.now()}`,
+      creditorName: '보증기관 (예: 서울보증보험, 신용보증기금)',
+      expectedPrincipal: 0,
+      issueStatus: 'pending',
+      agencyFee: 15000,
+      issuanceFee: 2000,
+      parentItemId: parentId,
+      isGuarantor: true,
+      debtCauseDetail: '연대보증 / 보증채무',
+    };
+
+    const updatedItems = [...order.items];
+    let insertIndex = parentIndex + 1;
+    while (insertIndex < updatedItems.length && updatedItems[insertIndex].parentItemId === parentId) {
+      insertIndex++;
+    }
+    updatedItems.splice(insertIndex, 0, newGuarantor);
+
+    const updated = {
+      ...order,
+      items: updatedItems,
+      totalAgencyCost: updatedItems.length * 17000,
+    };
+    handleSaveOrder(updated);
+    setSelectedItemId(newGuarantor.id);
+    toast.success('보증기관이 가지번호로 추가되었습니다.');
+  };
+
+  // 항목별 가지번호 (1, 2, 4-1 등) 계산
+  const itemsWithDisplay = useMemo(() => {
+    let mainNumber = 0;
+    const childCountMap: Record<string, number> = {};
+    const mainNumberMap: Record<string, number> = {};
+
+    return order.items.map((item) => {
+      if (!item.parentItemId) {
+        mainNumber++;
+        mainNumberMap[item.id] = mainNumber;
+        return {
+          ...item,
+          displayNumber: `${mainNumber}`,
+          isGuarantor: false,
+        };
+      } else {
+        const parentNum = mainNumberMap[item.parentItemId] || 1;
+        const count = (childCountMap[item.parentItemId] || 0) + 1;
+        childCountMap[item.parentItemId] = count;
+        return {
+          ...item,
+          displayNumber: `${parentNum}-${count}`,
+          isGuarantor: true,
+        };
+      }
+    });
+  }, [order.items]);
+
   // 채권자 삭제
   const handleDeleteCreditor = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -241,7 +304,7 @@ export default function DebtCertificateTab({
     }
     const updated = {
       ...order,
-      items: order.items.filter((i) => i.id !== id),
+      items: order.items.filter((i) => i.id !== id && i.parentItemId !== id),
     };
     handleSaveOrder(updated);
     if (selectedItemId === id) {
@@ -510,9 +573,10 @@ export default function DebtCertificateTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {order.items.map((item, idx) => {
+                {itemsWithDisplay.map((item, idx) => {
                   const isSelected = item.id === selectedItemId;
                   const isDone = item.issueStatus === 'issued' || item.issueStatus === 'confirmed';
+                  const isGuarantor = !!item.parentItemId;
 
                   return (
                     <tr
@@ -521,27 +585,61 @@ export default function DebtCertificateTab({
                       className={`cursor-pointer transition-colors ${
                         isSelected
                           ? 'bg-indigo-50/70 font-semibold'
+                          : isGuarantor
+                          ? 'bg-slate-50/50 hover:bg-slate-100/60'
                           : 'hover:bg-slate-50/80'
                       }`}
                     >
                       <td className="py-3 px-3 text-center font-mono text-slate-400">
-                        {idx + 1}
+                        {item.displayNumber || idx + 1}
                       </td>
                       <td className="py-3 px-3">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-slate-900">{item.creditorName}</span>
-                          {item.address ? (
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-0.5" title={`${item.address} (우: ${item.zipCode || '-'})`}>
-                              <MapPin className="w-2.5 h-2.5" /> 주소등록
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-0.5" title="대법원 전자소송 송달을 위해 주소 입력이 필요합니다">
-                              <AlertCircle className="w-2.5 h-2.5" /> 송달주소 누락
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={item.serviceAddress || item.address || ''}>
-                          {item.serviceAddress || item.address || item.accountOrContractNo || item.branchName || '송달주소 미지정'}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {isGuarantor && (
+                              <div className="flex items-center text-indigo-500 shrink-0 font-bold" title="보증기관">
+                                <CornerDownRight className="w-3.5 h-3.5 mr-0.5" />
+                                <span className="text-[10px] bg-indigo-100/80 px-1 py-0.2 rounded text-indigo-800">보증</span>
+                              </div>
+                            )}
+                            <span className="font-bold text-slate-900">{item.creditorName}</span>
+
+                            {item.isUnpaidInterest3Times && (
+                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200 inline-flex items-center gap-0.5">
+                                <AlertOctagon className="w-2.5 h-2.5" /> 이자3회미납
+                              </span>
+                            )}
+
+                            {item.isSecured && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700 border border-blue-200">
+                                별제권(담보)
+                              </span>
+                            )}
+
+                            {item.address ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-0.5" title={`${item.address} (우: ${item.zipCode || '-'})`}>
+                                <MapPin className="w-2.5 h-2.5" /> 주소등록
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-0.5" title="대법원 전자소송 송달을 위해 주소 입력이 필요합니다">
+                                <AlertCircle className="w-2.5 h-2.5" /> 송달주소 누락
+                              </span>
+                            )}
+
+                            {!isGuarantor && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleAddGuarantor(item.id, e)}
+                                className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 inline-flex items-center gap-0.5 cursor-pointer"
+                                title="보증기관 가지번호 추가"
+                              >
+                                <Plus className="w-2.5 h-2.5" /> 보증기관
+                              </button>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400 truncate max-w-[220px]" title={item.serviceAddress || item.address || ''}>
+                            {item.serviceAddress || item.address || item.accountOrContractNo || item.branchName || '송달주소 미지정'}
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-600">
@@ -587,6 +685,7 @@ export default function DebtCertificateTab({
                         <button
                           onClick={(e) => handleDeleteCreditor(item.id, e)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                          title={isGuarantor ? '보증기관 삭제' : '채권자 삭제'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -782,6 +881,43 @@ export default function DebtCertificateTab({
                     placeholder="예: 카드론 채권 양도 발생으로 OK저축은행으로 이관됨"
                     className="w-full px-3 py-2 text-xs text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none"
                   />
+                </div>
+
+                {/* 기타 체크사항 (이자 3회 미납 & 별제권부 채권) */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <label className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-rose-50/50 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!selectedItem.isUnpaidInterest3Times}
+                      onChange={(e) =>
+                        handleUpdateItem(selectedItem.id, {
+                          isUnpaidInterest3Times: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-0"
+                    />
+                    <div>
+                      <span className="text-xs font-black text-rose-700 block">이자 3회 미납</span>
+                      <span className="text-[10px] text-slate-400">사기죄 고소 위험 관리</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/50 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!selectedItem.isSecured}
+                      onChange={(e) =>
+                        handleUpdateItem(selectedItem.id, {
+                          isSecured: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-blue-700 block">별제권부 채권</span>
+                      <span className="text-[10px] text-slate-400">담보대출/근저당 채무</span>
+                    </div>
+                  </label>
                 </div>
 
                 {/* ══════════ 법원 송달주소 및 채권자 법인 정보 (채권자목록 연동) ══════════ */}

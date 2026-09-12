@@ -40,6 +40,13 @@ export interface DebtCertificateItem {
   issuanceFee: number;             // 금융기관 제증명 발급 실비 (보통 2,000~3,000원)
   memo?: string;                   // 특이사항 (양도사, 특수채권 등)
 
+  // 보증인 가지번호 및 기타 체크사항 (이자 3회 미납, 별제권)
+  parentItemId?: string;           // 주채권자 ID (보증인일 경우)
+  displayNumber?: string;          // 표시 번호 (1, 2, 4-1 등)
+  isGuarantor?: boolean;           // 보증인/보증기관 여부
+  isUnpaidInterest3Times?: boolean;// 이자 3회 미납 여부 (최근 채무 사기죄 리스크 관리)
+  isSecured?: boolean;             // 별제권부(담보부) 채권 여부
+
   // 법원 송달용 채권자 주소 및 법인 정보 (채권자목록 연동)
   zipCode?: string;                // 우편번호 (5자리)
   address?: string;                // 본점 소재지 / 주민등록상 주소
@@ -116,6 +123,13 @@ export interface RepaymentCreditor {
 
   // 담당자 수동 미세 조정 플래그
   isManuallyAdjusted?: boolean;
+
+  // 보증인 가지번호 및 기타 체크사항 (이자 3회 미납, 메모)
+  parentCreditorId?: string;       // 주채권자 ID (보증인/보증기관일 경우 상위 채권자 참조)
+  displayNumber?: string;          // 표시 번호 (예: "1", "2", "4-1", "6-1")
+  isGuarantor?: boolean;           // 보증인/보증기관 여부
+  isUnpaidInterest3Times?: boolean;// 이자 3회 미납 여부 (최근 채무 사기죄 리스크 관리)
+  memo?: string;                   // 채권자별 메모/특이사항
 
   // 법원 송달용 채권자 주소 및 법인 정보 (대법원 전자소송 CSV 연동)
   zipCode?: string;                // 우편번호 (5자리)
@@ -208,6 +222,12 @@ export interface RepaymentPlanData {
   totalPrincipal: number;            // 채권 원금 총액 (G)
   totalInterest: number;             // 개시전 이자 총액
   totalDebt: number;                 // 총 채무액
+  unsecuredDebtTotal?: number;       // 무담보부 채무액 합계 (만원/원 단위 산출용)
+  securedDebtTotal?: number;         // 담보부 채무액 합계
+
+  // 채무 증대 사유 (이미지 3-5 실무 양식)
+  debtGrowthReasons?: string[];      // 채무 증대 사유 복수 선택 항목 (예: ['생활비 부족', '점포 운영의 실패'])
+  debtGrowthNarrative?: string;      // 채무 증대 사유에 관한 상세 서술
   
   // 청산가치 보장 및 라이프니쯔 현가 검증 결과
   leibnizFactor: number;             // 적용된 라이프니쯔 현가 계수 (36개월: 33.7719, 60개월: 53.6433)

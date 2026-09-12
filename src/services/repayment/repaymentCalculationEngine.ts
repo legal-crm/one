@@ -514,6 +514,40 @@ export interface BuildPlanOptions {
   };
 }
 
+/**
+ * 채권자 목록에 1, 2, 3... 및 보증인 가지번호(예: 4-1, 4-2) 자동 산출
+ */
+export function computeCreditorDisplayNumbers(creditors: RepaymentCreditor[]): RepaymentCreditor[] {
+  let mainNumber = 0;
+  const childCountMap: Record<string, number> = {};
+  const mainNumberMap: Record<string, number> = {};
+
+  return creditors.map((c) => {
+    if (!c.parentCreditorId) {
+      // 주채권자
+      mainNumber++;
+      mainNumberMap[c.id] = mainNumber;
+      return {
+        ...c,
+        creditorNumber: mainNumber,
+        displayNumber: `${mainNumber}`,
+        isGuarantor: false,
+      };
+    } else {
+      // 보증인 / 보증기관 가지번호
+      const parentNum = mainNumberMap[c.parentCreditorId] || 1;
+      const count = (childCountMap[c.parentCreditorId] || 0) + 1;
+      childCountMap[c.parentCreditorId] = count;
+      return {
+        ...c,
+        creditorNumber: parentNum,
+        displayNumber: `${parentNum}-${count}`,
+        isGuarantor: true,
+      };
+    }
+  });
+}
+
 export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData {
   const {
     planId = `plan_${Date.now()}`,
@@ -525,9 +559,12 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     paymentDayOfMonth = 25,
     incomeExpense,
     assets,
-    creditors,
+    creditors: rawCreditors,
     manualOverride,
   } = options;
+
+  // 번호 및 가지번호 정렬 처리
+  const creditors = computeCreditorDisplayNumbers(rawCreditors);
 
   // 1. 소득 및 생계비 계산
   const calculatedLiving = calculateLivingExpenseAndDisposableIncome(incomeExpense);
@@ -539,6 +576,15 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   const totalPrincipal = creditors.reduce((sum, c) => sum + (c.isSecured ? 0 : c.principal), 0);
   const totalInterest = creditors.reduce((sum, c) => sum + (c.isSecured ? 0 : c.interest), 0);
   const totalDebt = totalPrincipal + totalInterest;
+
+  // 무담보부 vs 담보부(별제권) 채권 총액 분리 집계
+  const unsecuredDebtTotal = creditors
+    .filter((c) => !c.isSecured)
+    .reduce((s, c) => s + c.principal + c.interest, 0);
+
+  const securedDebtTotal = creditors
+    .filter((c) => c.isSecured)
+    .reduce((s, c) => s + c.principal + c.interest, 0);
 
   // 4. 수동 오버라이드 유무에 따른 기간 및 월 변제금 결정
   let months = 36;
@@ -737,6 +783,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     totalPrincipal,
     totalInterest,
     totalDebt,
+    unsecuredDebtTotal,
+    securedDebtTotal,
     leibnizFactor: verification.leibnizFactor,
     presentValue: verification.presentValue,
     satisfiesLiquidationGuarantee: verification.satisfiesLiquidationGuarantee,
