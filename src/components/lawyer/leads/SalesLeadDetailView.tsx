@@ -21,6 +21,8 @@ import {
 } from '../../../services/leadService';
 import { loadPartners, loadInboundPaths } from '../../../services/settingsService';
 import CaseBriefingBanner from './CaseBriefingBanner';
+import { CaseDetailAiSummary } from './CaseDetailAiSummary';
+import { CaseCallsSmsTab } from './CaseCallsSmsTab';
 
 interface SalesLeadDetailViewProps {
   lead: SalesLead;
@@ -49,6 +51,7 @@ export default function SalesLeadDetailView({
 }: SalesLeadDetailViewProps) {
   const [currentLead, setCurrentLead] = useState<SalesLead>(lead);
   const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'calls'>('info');
+  const [dockTab, setDockTab] = useState<'reminders' | 'ai_summary'>('reminders');
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [isSavedPulsing, setIsSavedPulsing] = useState(false);
 
@@ -437,8 +440,8 @@ export default function SalesLeadDetailView({
       <div className="flex border-b border-slate-200 bg-white px-4 rounded-t-2xl overflow-x-auto shadow-2xs">
         {[
           { id: 'info', label: '📝 고객 정보 수정 (실시간 자동저장)' },
+          { id: 'calls', label: '💬 통화 및 문자 타임라인' },
           { id: 'timeline', label: '⏱ 상태 변경 타임라인' },
-          { id: 'calls', label: '📞 통화 및 상담 기록' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -1307,21 +1310,64 @@ export default function SalesLeadDetailView({
           {/* ============================================================ */}
           <div className="col-span-12 xl:col-span-4 space-y-4 xl:sticky xl:top-24">
             
-            {/* 리마인더 & 상담 이력 카드 */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-4 md:p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                  <h3 className="font-extrabold text-slate-900 text-sm">
-                    📅 리마인더 및 상담 이력
-                  </h3>
-                </div>
+            {/* 우측 독 탭 스위처 (리마인더 vs AI 통화 요약) */}
+            <div className="bg-slate-200/80 p-1 rounded-2xl flex items-center gap-1 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setDockTab('reminders')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  dockTab === 'reminders'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Calendar size={13} className={dockTab === 'reminders' ? 'text-amber-500' : 'text-slate-400'} />
+                <span>리마인더 & 이력</span>
                 {(currentLead.reminders || []).filter(r => !r.isCompleted).length > 0 && (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">
-                    대기 {(currentLead.reminders || []).filter(r => !r.isCompleted).length}건
+                  <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">
+                    {(currentLead.reminders || []).filter(r => !r.isCompleted).length}
                   </span>
                 )}
-              </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDockTab('ai_summary')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  dockTab === 'ai_summary'
+                    ? 'bg-white text-purple-900 shadow-xs'
+                    : 'text-slate-600 hover:text-purple-700'
+                }`}
+              >
+                <Sparkles size={13} className={dockTab === 'ai_summary' ? 'text-purple-600' : 'text-slate-400'} />
+                <span>AI 요약 & 대화록</span>
+                {currentLead.aiSummary && (
+                  <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                )}
+              </button>
+            </div>
+
+            {dockTab === 'ai_summary' ? (
+              <CaseDetailAiSummary
+                lead={currentLead}
+                onUpdateLead={persistLead}
+              />
+            ) : (
+              /* 리마인더 & 상담 이력 카드 */
+              <div className="bg-white rounded-3xl border border-slate-200 p-4 md:p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <h3 className="font-extrabold text-slate-900 text-sm">
+                      📅 리마인더 및 상담 이력
+                    </h3>
+                  </div>
+                  {(currentLead.reminders || []).filter(r => !r.isCompleted).length > 0 && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">
+                      대기 {(currentLead.reminders || []).filter(r => !r.isCompleted).length}건
+                    </span>
+                  )}
+                </div>
 
               {/* 1. 다음 일정 등록 */}
               <div className="space-y-2.5 p-3 bg-amber-50/50 rounded-2xl border border-amber-200/70">
@@ -1522,6 +1568,7 @@ export default function SalesLeadDetailView({
               </div>
 
             </div>
+            )}
 
           </div>
 
@@ -1580,99 +1627,13 @@ export default function SalesLeadDetailView({
         </div>
       )}
 
-      {/* ── 6. Sub-Tab 3: 통화 및 상담 기록 ── */}
+      {/* ── 6. Sub-Tab 3: 통화 및 문자 실시간 타임라인 & 문자 발송 ── */}
       {activeTab === 'calls' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
-          <div>
-            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <PhoneCall size={18} className="text-blue-600" />
-              통화 시도 및 SMS 발송 기록 (총 {currentLead.callCount}회)
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              원클릭 콜 디스포지션 및 상담 통화 내역 로그입니다.
-            </p>
-          </div>
-
-          {/* 원클릭 콜 디스포지션 툴바 */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-            <span className="text-xs font-bold text-slate-700 block">
-              ⚡ 원클릭 통화 결과 기록
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickCallDisposition('connected', '상담 통화 연결 성공')}
-                className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
-              >
-                💬 통화 연결
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickCallDisposition('no_answer', '부재중 통화')}
-                className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
-              >
-                📞 부재중
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickCallDisposition('callback', '재통화 약속')}
-                className="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
-              >
-                ⏰ 재통화 예약
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickCallDisposition('rejected', '상담 거절')}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl text-xs font-extrabold transition-all cursor-pointer"
-              >
-                🚫 거절/단순변심
-              </button>
-            </div>
-
-            {/* 퀵 SMS 발송 */}
-            <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500">퀵 문자:</span>
-              <button
-                type="button"
-                onClick={() => handleSendQuickSms('no_answer')}
-                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                부재중 안내문자 전송
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSendQuickSms('appointment')}
-                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                예약 안내문자 전송
-              </button>
-            </div>
-          </div>
-
-          {/* 통화 로그 목록 */}
-          <div className="space-y-2">
-            {(!currentLead.callLogs || currentLead.callLogs.length === 0) ? (
-              <p className="text-xs text-slate-400 text-center py-6">
-                기록된 통화 시도 내역이 없습니다.
-              </p>
-            ) : (
-              currentLead.callLogs.map(log => (
-                <div key={log.id} className="p-3 bg-white rounded-xl border border-slate-200 flex justify-between items-center text-xs">
-                  <div className="flex items-center gap-3">
-                    <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-slate-100 text-slate-700">
-                      {log.result === 'connected' ? '통화연결' : log.result === 'no_answer' ? '부재중' : log.result === 'callback' ? '재통화' : log.result}
-                    </span>
-                    <span className="font-bold text-slate-800">{log.memo || '통화 시도'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-400 font-mono text-[11px]">
-                    <span>{log.callerName}</span>
-                    <span>·</span>
-                    <span>{log.calledAt.slice(0, 16).replace('T', ' ')}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="bg-white rounded-3xl border border-slate-200 p-4 md:p-6 shadow-xs">
+          <CaseCallsSmsTab
+            lead={currentLead}
+            onUpdateLead={persistLead}
+          />
         </div>
       )}
 

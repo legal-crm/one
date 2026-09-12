@@ -138,6 +138,11 @@ export interface SalesLead {
   reminders: ReminderItem[];          // 리마인더 목록
   callLogs: CallLog[];                // 통화 상세 이력
 
+  // AI 통화 요약 및 녹취 & 실시간 통화/문자 동기화
+  aiSummary?: string;                 // AI 통화 요약 및 대화록 원문
+  recordings?: RecordingItem[];       // 통화 녹음 파일 목록
+  communicationLogs?: CommunicationLog[]; // 스마트폰/시스템 통화 및 문자 내역
+
   // 담당 및 이전
   assigneeId?: string;
   assigneeName?: string;
@@ -146,6 +151,49 @@ export interface SalesLead {
   convertedBy?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================
+// 통화 녹음 & 실시간 통화/문자 동기화 Types
+// ============================================
+
+export interface RecordingItem {
+  id: string;
+  filename: string;
+  uploadDate: string; // ISO
+  url: string; // Blob URL (Session only) or Remote URL
+  mimeType: string;
+  duration?: number; // seconds
+}
+
+export type CommunicationType = 'CALL_IN' | 'CALL_OUT' | 'CALL_MISSED' | 'SMS_IN' | 'SMS_OUT';
+
+export interface CommunicationLog {
+  id: string;
+  phoneNumber: string;
+  type: CommunicationType;
+  duration?: number;      // 통화 시간 (초)
+  content?: string;       // 문자 내용
+  timestamp: string;      // 발생 일시 (ISO)
+  createdAt: string;
+  lineInfo?: string;      // '기본' | '투넘버'
+}
+
+export interface SmsTemplate {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PendingSms {
+  id: string;
+  phoneNumber: string;
+  content: string;
+  status: 'pending' | 'sent' | 'failed';
+  sentAt?: string;
+  createdAt: string;
 }
 
 // [마스터 설정 관리 타입]
