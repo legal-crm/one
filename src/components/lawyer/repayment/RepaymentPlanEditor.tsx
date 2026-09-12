@@ -28,8 +28,8 @@ import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY, type Cr
 import PrintableRepaymentPlanModal from './PrintableRepaymentPlanModal';
 import SecuredDebtCalculatorModal from './SecuredDebtCalculatorModal';
 import IncomeExpenseModal from './IncomeExpenseModal';
-import PropertyValuationModal from '../assets/PropertyValuationModal';
 import CreditorAddressModal from './CreditorAddressModal';
+import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
 import { REGION_CONFIG_2026, RegionType } from '../../../services/repayment/repaymentConstants2026';
 
 interface RepaymentPlanEditorProps {
@@ -228,6 +228,7 @@ export default function RepaymentPlanEditor({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isD5103ModalOpen, setIsD5103ModalOpen] = useState(false);
   const [isD5102ModalOpen, setIsD5102ModalOpen] = useState(false);
+  const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'plan' | 'income' | 'assets'>('plan');
 
   // ── 3. 핵심 엔진 연산 실행 (2026 Engine + Fine-tuning) ──
@@ -481,6 +482,49 @@ export default function RepaymentPlanEditor({
     setCreditors(syncedCreditors);
     setCustomCreditorMonthly({});
     toast.success(`부채증명서 발급 탭에서 ${syncedCreditors.length}개 채권사의 최신 원금·이자 내역을 불러왔습니다!`);
+  };
+
+  // 간편인증 발굴 채권자 및 청산가치 자산 일괄 반영
+  const handleImportFromDiscovery = (
+    newCreditors: RepaymentCreditor[],
+    depositAsset?: RepaymentAsset
+  ) => {
+    const existingNames = new Set(creditors.map((c) => c.name.trim()));
+    const toAdd = newCreditors.filter((c) => !existingNames.has(c.name.trim()));
+
+    if (toAdd.length > 0) {
+      const combined = [...creditors, ...toAdd];
+      // 우선권 채권(조세) 먼저, 그 다음 일반 채권 정렬
+      const priorities = combined.filter((c) => c.isPriority);
+      const generals = combined.filter((c) => !c.isPriority);
+      const updatedCreditors = [...priorities, ...generals].map((c, idx) => ({
+        ...c,
+        creditorNumber: idx + 1,
+      }));
+      setCreditors(updatedCreditors);
+      setCustomCreditorMonthly({});
+    }
+
+    if (depositAsset) {
+      const hasDeposit = assets.some((a) => a.category === 'DEPOSIT');
+      let updatedAssets: RepaymentAsset[];
+      if (hasDeposit) {
+        updatedAssets = assets.map((a) =>
+          a.category === 'DEPOSIT'
+            ? {
+                ...a,
+                marketValue: depositAsset.marketValue,
+                statutoryDeduction: depositAsset.statutoryDeduction,
+                liquidationValue: depositAsset.liquidationValue,
+                note: depositAsset.note,
+              }
+            : a
+        );
+      } else {
+        updatedAssets = [depositAsset, ...assets];
+      }
+      setAssets(updatedAssets);
+    }
   };
 
   // 변제계획안 CRM 저장
@@ -1013,7 +1057,17 @@ export default function RepaymentPlanEditor({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setIsDiscoveryModalOpen(true)}
+                    className="px-3 py-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                    title="한국신용정보원, 국세청, 어카운트인포 간편인증 전수조회"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>⚡ 간편인증 채무·체납 전수조회</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleSyncFromDebtCerts}
@@ -1775,6 +1829,15 @@ export default function RepaymentPlanEditor({
           setCreditors(prev => prev.map(c => c.id === updated.id ? updated : c));
           setEditingAddressCreditor(null);
         }}
+      />
+
+      {/* ── 9. 간편인증 4대 기관 숨은 채무·체납·계좌 전수조회 모달 ── */}
+      <DebtDiscoveryModal
+        isOpen={isDiscoveryModalOpen}
+        onClose={() => setIsDiscoveryModalOpen(false)}
+        clientName={plan.clientName || clientRequest.clientName || '의뢰인'}
+        clientPhone={clientRequest.phone || '010-0000-0000'}
+        onImportToRepaymentPlan={handleImportFromDiscovery}
       />
 
     </div>

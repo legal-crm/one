@@ -23,6 +23,7 @@ import {
 } from '../../../services/repayment/debtCertificateService';
 import { downloadDebtPowerOfAttorneyPdf } from '../../../services/repayment/debtPowerOfAttorneyGenerator';
 import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY } from '../../../services/court/creditorAddressDirectory';
+import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
 
 interface DebtCertificateTabProps {
   clientId: string;
@@ -121,6 +122,7 @@ export default function DebtCertificateTab({
     order.agencyPreset || 'standard'
   );
   const [isZipping, setIsZipping] = useState(false);
+  const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +130,23 @@ export default function DebtCertificateTab({
   const handleSaveOrder = (newOrder: DebtCertificateOrder) => {
     setOrder(newOrder);
     saveDebtCertificateOrder(newOrder);
+  };
+
+  // 간편인증 발굴 채무 일괄 반영 핸들러
+  const handleImportFromDiscovery = (newItems: DebtCertificateItem[]) => {
+    const existingNames = new Set(order.items.map((i) => i.creditorName.trim()));
+    const toAdd = newItems.filter((i) => !existingNames.has(i.creditorName.trim()));
+    if (toAdd.length === 0) {
+      toast.info('선택한 채무가 이미 발급 목록에 모두 등록되어 있습니다.');
+      return;
+    }
+    const updatedItems = [...order.items, ...toAdd];
+    handleSaveOrder({
+      ...order,
+      items: updatedItems,
+      totalAgencyCost: updatedItems.length * 17000,
+    });
+    toast.success(`${toAdd.length}건의 금융 채무가 부채증명서 발급 목록에 추가되었습니다.`);
   };
 
   const selectedItem = useMemo(
@@ -345,6 +364,15 @@ export default function DebtCertificateTab({
                 <option value="koreacredit">한국신용발급 전용</option>
               </select>
             </div>
+
+            <button
+              onClick={() => setIsDiscoveryModalOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+              title="한국신용정보원 및 국세청 간편인증 실시간 전수조회"
+            >
+              <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>⚡ 간편인증 숨은 채무 발굴</span>
+            </button>
 
             <button
               onClick={handleDownloadPoa}
@@ -931,6 +959,15 @@ export default function DebtCertificateTab({
         </div>
 
       </div>
+
+      {/* 간편인증 4대 기관 숨은 채무 발굴 모달 */}
+      <DebtDiscoveryModal
+        isOpen={isDiscoveryModalOpen}
+        onClose={() => setIsDiscoveryModalOpen(false)}
+        clientName={order.clientName || clientRequest.clientName || '의뢰인'}
+        clientPhone={order.clientPhone || clientRequest.phone || '010-0000-0000'}
+        onImportToDebtCertificates={handleImportFromDiscovery}
+      />
     </div>
   );
 }

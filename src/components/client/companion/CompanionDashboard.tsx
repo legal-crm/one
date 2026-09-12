@@ -11,6 +11,7 @@ import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/c
 import CourtCaseModal from './CourtCaseModal';
 import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
 import BankStatementAuditModal from '../../common/BankStatementAuditModal';
+import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
 import { toast } from 'sonner';
 
 interface CompanionDashboardProps {
@@ -83,6 +84,7 @@ export default function CompanionDashboard({
   const [isCourtModalOpen, setIsCourtModalOpen] = useState(false);
   const [isDefenseGuideModalOpen, setIsDefenseGuideModalOpen] = useState(false);
   const [isBankAuditModalOpen, setIsBankAuditModalOpen] = useState(false);
+  const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
 
   // 미납 및 폐지 위험도 진단
   const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
@@ -210,6 +212,36 @@ export default function CompanionDashboard({
             ⚙️ 사건 정보 / 변제 조건 변경
           </button>
         </div>
+      </div>
+
+      {/* ═══ 1.2 간편인증 숨은 채무·체납 10초 전수조회 퀵 배너 ═══ */}
+      <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-50 via-indigo-50 to-blue-50 dark:from-slate-850 dark:to-indigo-950/30 border border-amber-200/80 dark:border-indigo-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2.5 rounded-2xl bg-amber-500 text-white shrink-0 shadow-xs">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                외부 서류 발급 없이 10초 만에 숨은 채무·세금체납 불러오기
+              </h4>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                카카오/PASS 간편인증
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              한국신용정보원 대출·카드, 국세청 체납, 전 금융권 계좌잔액, 대법원 지급명령 사건을 원클릭으로 전수조회합니다.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsDiscoveryModalOpen(true)}
+          className="shrink-0 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98] whitespace-nowrap"
+        >
+          <span>⚡ 10초 전수조회</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* ═══ 1.5 맞춤 공적 혜택 퀵 브릿지 배너 ═══ */}
@@ -669,6 +701,14 @@ export default function CompanionDashboard({
         caseNumber={caseData.caseNumber}
         courtName={caseData.courtName}
         isClientMode={true}
+      />
+
+      {/* 간편인증 숨은 채무·체납 10초 전수조회 모달 */}
+      <DebtDiscoveryModal
+        isOpen={isDiscoveryModalOpen}
+        onClose={() => setIsDiscoveryModalOpen(false)}
+        clientName={caseData.alias || '의뢰인'}
+        clientPhone="010-0000-0000"
       />
     </div>
   );
