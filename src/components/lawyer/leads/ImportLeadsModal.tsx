@@ -46,8 +46,6 @@ export default function ImportLeadsModal({
   const [defaultInboundPath, setDefaultInboundPath] = useState('타사DB구매');
   const [allowDuplicates, setAllowDuplicates] = useState(false);
 
-  if (!isOpen) return null;
-
   const handleClose = () => {
     setStep(1);
     setRawHeaders([]);
@@ -121,7 +119,7 @@ export default function ImportLeadsModal({
 
   // 파싱 및 중복 분석
   const processedResults = useMemo(() => {
-    if (step !== 3) return { valid: [], duplicates: [], errors: [] };
+    if (!isOpen || step !== 3) return { valid: [], duplicates: [], errors: [] };
 
     const valid: SalesLead[] = [];
     const duplicates: any[] = [];
@@ -198,7 +196,7 @@ export default function ImportLeadsModal({
     });
 
     return { valid, duplicates, errors };
-  }, [step, rawData, columnMapping, allowDuplicates, existingLeads, existingRequests, defaultInboundPath, batchName]);
+  }, [isOpen, step, rawData, columnMapping, allowDuplicates, existingLeads, existingRequests, defaultInboundPath, batchName]);
 
   const handleFinalImport = () => {
     if (processedResults.valid.length === 0) {
@@ -209,6 +207,8 @@ export default function ImportLeadsModal({
     toast.success(`${processedResults.valid.length}건의 영업 DB가 성공적으로 등록되었습니다.`);
     handleClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">

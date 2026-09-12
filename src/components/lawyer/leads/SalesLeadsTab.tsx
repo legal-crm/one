@@ -513,52 +513,62 @@ export default function SalesLeadsTab({
       </div>
 
       {/* ── 모달 레이어 ── */}
-      <NewLeadModal
-        isOpen={isNewModalOpen}
-        onClose={() => setIsNewModalOpen(false)}
-        onRegister={newLead => {
-          saveSalesLead(newLead);
-          setLeads(prev => [newLead, ...prev]);
-        }}
-        existingLeads={leads}
-        existingRequests={requests}
-      />
+      {isNewModalOpen && (
+        <NewLeadModal
+          isOpen={isNewModalOpen}
+          onClose={() => setIsNewModalOpen(false)}
+          onRegister={newLead => {
+            saveSalesLead(newLead);
+            setLeads(prev => [newLead, ...prev]);
+          }}
+          existingLeads={leads}
+          existingRequests={requests}
+        />
+      )}
 
-      <ImportLeadsModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onImport={importedLeads => {
-          bulkInsertLeads(importedLeads);
-          setLeads(prev => [...importedLeads, ...prev]);
-        }}
-        existingLeads={leads}
-        existingRequests={requests}
-      />
+      {isImportModalOpen && (
+        <ImportLeadsModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImport={importedLeads => {
+            bulkInsertLeads(importedLeads);
+            setLeads(prev => [...importedLeads, ...prev]);
+          }}
+          existingLeads={leads}
+          existingRequests={requests}
+        />
+      )}
 
-      <LeadConversionModal
-        isOpen={!!conversionTargetLead}
-        onClose={() => setConversionTargetLead(null)}
-        lead={conversionTargetLead}
-        activeLawyer={activeLawyer}
-        staffMembers={staffMembers}
-        lawyers={lawyers}
-        onConverted={handleConverted}
-        onNavigateToCrm={onNavigateToCrm}
-      />
+      {Boolean(conversionTargetLead) && (
+        <LeadConversionModal
+          isOpen={!!conversionTargetLead}
+          onClose={() => setConversionTargetLead(null)}
+          lead={conversionTargetLead}
+          activeLawyer={activeLawyer}
+          staffMembers={staffMembers}
+          lawyers={lawyers}
+          onConverted={handleConverted}
+          onNavigateToCrm={onNavigateToCrm}
+        />
+      )}
 
-      <StatusVisibilityModal
-        isOpen={isVisibilityModalOpen}
-        onClose={() => setIsVisibilityModalOpen(false)}
-        allStatuses={Object.keys(LEAD_STATUS_CONFIG)}
-        hiddenStatuses={hiddenStatuses}
-        onToggleStatus={toggleHiddenStatus}
-        title="영업 리드 상태 보기 설정"
-      />
+      {isVisibilityModalOpen && (
+        <StatusVisibilityModal
+          isOpen={isVisibilityModalOpen}
+          onClose={() => setIsVisibilityModalOpen(false)}
+          allStatuses={Object.keys(LEAD_STATUS_CONFIG)}
+          hiddenStatuses={hiddenStatuses}
+          onToggleStatus={toggleHiddenStatus}
+          title="영업 리드 상태 보기 설정"
+        />
+      )}
 
-      <SalesSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-      />
+      {isSettingsModalOpen && (
+        <SalesSettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

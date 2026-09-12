@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, UserCheck, Scale, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SalesLead } from '../../../types/leadTypes';
@@ -26,15 +26,19 @@ export default function LeadConversionModal({
   onConverted,
   onNavigateToCrm,
 }: LeadConversionModalProps) {
-  if (!isOpen || !lead) return null;
-
-  const [caseType, setCaseType] = useState<CaseType>(
-    lead.caseType === '개인파산' ? '개인파산' : '개인회생'
-  );
+  const [caseType, setCaseType] = useState<CaseType>('개인회생');
   const [assignedLawyerId, setAssignedLawyerId] = useState<string>(activeLawyer.id);
   const [assignedStaffId, setAssignedStaffId] = useState<string>('');
-  const [consultMemo, setConsultMemo] = useState<string>(lead.specialMemo || '');
+  const [consultMemo, setConsultMemo] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (lead) {
+      setCaseType(lead.caseType === '개인파산' ? '개인파산' : '개인회생');
+      setAssignedLawyerId(activeLawyer.id);
+      setConsultMemo(lead.specialMemo || '');
+    }
+  }, [lead, activeLawyer.id]);
 
   const handleConvert = () => {
     setIsSubmitting(true);
@@ -69,6 +73,8 @@ export default function LeadConversionModal({
       setIsSubmitting(false);
     }
   };
+
+  if (!isOpen || !lead) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
