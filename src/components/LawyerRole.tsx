@@ -4,7 +4,7 @@ import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle, Printer, Stamp, Scale
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle, Printer, Stamp, Scale, PhoneCall
 } from 'lucide-react';
 import { 
   ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType, LawyerSealInfo 
@@ -16,6 +16,8 @@ import LawyerProposalDraft from './lawyer/LawyerProposalDraft';
 import ProposalWorkspace from './lawyer/ProposalWorkspace';
 import { mapToRehabUserInput } from './lawyer/mapToRehabUserInput';
 import CrmTab from './lawyer/CrmTab';
+import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
+import { loadSalesLeads } from '../services/leadService';
 const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import AICaseAnalysisLocked from './lawyer/AICaseAnalysisLocked';
@@ -106,7 +108,7 @@ export default function LawyerRole({
 }: LawyerRoleProps) {
   const dialog = useDialog();
   // Lawyer sub navigation inside legal CRM
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
   const [settingsCategory, setSettingsCategory] = useState<'profile' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
   const [settingsSub, setSettingsSub] = useState<string>('profile-edit');
@@ -2566,6 +2568,34 @@ export default function LawyerRole({
                   );
                 })()}
               </button>
+
+              {permissionCtx.canAccessTab('sales-leads') && (
+                <button 
+                  onClick={() => setActiveTab('sales-leads')} 
+                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center p-3 relative' : 'gap-3 px-3.5 py-3'} rounded-xl text-[15px] transition-all cursor-pointer ${
+                    activeTab === 'sales-leads' 
+                      ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20' 
+                      : 'text-slate-300 hover:bg-white/5 hover:text-white font-medium'
+                  }`}
+                  title={sidebarCollapsed ? '영업 관리 (DB/콜)' : undefined}
+                >
+                  <PhoneCall className="w-5 h-5 shrink-0 text-blue-400" />
+                  {!sidebarCollapsed && <span className="truncate">영업 관리 (DB/콜)</span>}
+                  {(() => {
+                    const uncontacted = loadSalesLeads().filter(l => l.status === 'new').length;
+                    if (uncontacted === 0) return null;
+                    return sidebarCollapsed ? (
+                      <span className="absolute top-1.5 right-1.5 bg-blue-500 text-white rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold ring-2 ring-[#111827]">
+                        {uncontacted > 99 ? '99+' : uncontacted}
+                      </span>
+                    ) : (
+                      <span className="ml-auto text-[11px] text-blue-300 font-bold bg-blue-900/80 px-2 py-0.5 rounded-md border border-blue-500/30">
+                        신규 {uncontacted}
+                      </span>
+                    );
+                  })()}
+                </button>
+              )}
 
               {permissionCtx.canAccessTab('client-crm') && (
                 <button 
@@ -5198,6 +5228,21 @@ export default function LawyerRole({
         </div>
         )}
 
+
+        {/* TAB 5.5: SALES LEADS (영업 관리 — 리드 DB 및 콜 워크스페이스) */}
+        {activeTab === 'sales-leads' && (
+          <SalesLeadsTab
+            activeLawyer={activeLawyer}
+            staffMembers={staffMembers}
+            lawyers={lawyers}
+            requests={requests}
+            setRequests={setRequests}
+            onNavigateToCrm={(clientId) => {
+              setCrmTargetClientId(clientId);
+              setActiveTab('client-crm');
+            }}
+          />
+        )}
 
         {/* TAB 6: CLIENT CRM (고객 관리) — CrmTab 컴포넌트 */}
         {activeTab === 'client-crm' && (

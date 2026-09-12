@@ -122,6 +122,7 @@ export default function TasksScheduleTab({
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [taskScope, setTaskScope] = useState<TaskScope>('my');
   const [filter, setFilter] = useState<TaskFilter>('all');
+  const [domainFilter, setDomainFilter] = useState<'all' | 'sales' | 'client'>('all');
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completionNote, setCompletionNote] = useState('');
   
@@ -571,24 +572,47 @@ export default function TasksScheduleTab({
       return d;
     }), [weekStart]);
 
+  // 도메인별 활성 업무 건수
+  const salesTasksCount = useMemo(() => {
+    return tasks.filter(t => t.status !== 'COMPLETED' && (t.taskDomain === 'sales' || t.targetType === 'sales_lead')).length;
+  }, [tasks]);
+
+  const clientTasksCount = useMemo(() => {
+    return tasks.filter(t => t.status !== 'COMPLETED' && t.taskDomain !== 'sales' && t.targetType !== 'sales_lead').length;
+  }, [tasks]);
+
   // 필터링된 할일
   const filteredTasks = useMemo(() => {
-    if (filter === 'all') return tasks.filter(t => t.status !== 'COMPLETED');
-    if (filter === 'pending') return tasks.filter(t => t.status === 'PENDING');
-    if (filter === 'in_progress') return tasks.filter(t => t.status === 'IN_PROGRESS');
-    if (filter === 'review_requested') return tasks.filter(t => t.status === 'REVIEW_REQUESTED');
-    return tasks.filter(t => t.status === 'COMPLETED').slice(0, 40);
-  }, [tasks, filter]);
+    let list = tasks;
+    if (domainFilter === 'sales') {
+      list = list.filter(t => t.taskDomain === 'sales' || t.targetType === 'sales_lead');
+    } else if (domainFilter === 'client') {
+      list = list.filter(t => t.taskDomain !== 'sales' && t.targetType !== 'sales_lead');
+    }
+
+    if (filter === 'all') return list.filter(t => t.status !== 'COMPLETED');
+    if (filter === 'pending') return list.filter(t => t.status === 'PENDING');
+    if (filter === 'in_progress') return list.filter(t => t.status === 'IN_PROGRESS');
+    if (filter === 'review_requested') return list.filter(t => t.status === 'REVIEW_REQUESTED');
+    return list.filter(t => t.status === 'COMPLETED').slice(0, 40);
+  }, [tasks, filter, domainFilter]);
 
   // 칸반 컬럼별 할일
   const kanbanColumns = useMemo(() => {
+    let list = tasks;
+    if (domainFilter === 'sales') {
+      list = list.filter(t => t.taskDomain === 'sales' || t.targetType === 'sales_lead');
+    } else if (domainFilter === 'client') {
+      list = list.filter(t => t.taskDomain !== 'sales' && t.targetType !== 'sales_lead');
+    }
+
     return {
-      PENDING: tasks.filter(t => t.status === 'PENDING'),
-      IN_PROGRESS: tasks.filter(t => t.status === 'IN_PROGRESS'),
-      REVIEW_REQUESTED: tasks.filter(t => t.status === 'REVIEW_REQUESTED'),
-      COMPLETED: tasks.filter(t => t.status === 'COMPLETED').slice(0, 20),
+      PENDING: list.filter(t => t.status === 'PENDING'),
+      IN_PROGRESS: list.filter(t => t.status === 'IN_PROGRESS'),
+      REVIEW_REQUESTED: list.filter(t => t.status === 'REVIEW_REQUESTED'),
+      COMPLETED: list.filter(t => t.status === 'COMPLETED').slice(0, 20),
     };
-  }, [tasks]);
+  }, [tasks, domainFilter]);
 
   // ══════════════════════════════════════════════════════════════════
   // ── Activity 데이터 수집 및 안전한 파싱
@@ -811,6 +835,57 @@ export default function TasksScheduleTab({
           {/* 상단 컨트롤 바 */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
+              {/* 업무 도메인 필터 (영업·콜백 vs 고객·사건) */}
+              <div className="flex bg-slate-100 rounded-xl p-1 gap-1 border border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setDomainFilter('all')}
+                  className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                    domainFilter === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  전체 업무
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDomainFilter('sales')}
+                  className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    domainFilter === 'sales'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-blue-700 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>📞 영업·콜백</span>
+                  {salesTasksCount > 0 && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                      domainFilter === 'sales' ? 'bg-white text-blue-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {salesTasksCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDomainFilter('client')}
+                  className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    domainFilter === 'client'
+                      ? 'bg-indigo-700 text-white shadow-xs'
+                      : 'text-indigo-700 hover:bg-indigo-50'
+                  }`}
+                >
+                  <span>⚖️ 고객·사건</span>
+                  {clientTasksCount > 0 && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                      domainFilter === 'client' ? 'bg-white text-indigo-700' : 'bg-indigo-100 text-indigo-700'
+                    }`}>
+                      {clientTasksCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
               {/* 스코프 필터 (지시 권한이 있는 경우) */}
               {hasAssignPerm && (
                 <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
@@ -1028,6 +1103,28 @@ export default function TasksScheduleTab({
                               <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
                                 <ShieldCheck className="w-3 h-3 text-indigo-600" /> 컨펌 필수
                               </span>
+                            )}
+
+                            {/* 영업·콜백 vs 고객·사건 도메인 뱃지 */}
+                            {task.taskDomain === 'sales' || task.targetType === 'sales_lead' ? (
+                              <span className="text-[10px] bg-blue-100 text-blue-800 border border-blue-200 font-black px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                📞 영업·콜백
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2 py-0.5 rounded-lg">
+                                ⚖️ 고객·사건
+                              </span>
+                            )}
+
+                            {/* 영업 콜백 번호가 있으면 즉시 전화 걸기 링크 */}
+                            {task.leadPhone && (
+                              <a
+                                href={`tel:${task.leadPhone}`}
+                                onClick={e => e.stopPropagation()}
+                                className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold px-2 py-0.5 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                              >
+                                📞 {task.leadPhone} 바로 통화
+                              </a>
                             )}
 
                             {/* 연동 사건/상담 뱃지 */}

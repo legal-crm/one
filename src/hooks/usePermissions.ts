@@ -8,13 +8,14 @@ import type { StaffMember, StaffRole, StaffPermissions } from '../types';
 import { DEFAULT_PERMISSIONS } from '../types';
 
 // 탭 접근 권한 매트릭스
-export type LawyerTab = 'dashboard' | 'cases' | 'billing' | 'client-crm' | 'staff-management' | 'settings' | 'case-copilot';
+export type LawyerTab = 'dashboard' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'staff-management' | 'settings' | 'case-copilot';
 
 const TAB_ACCESS_MATRIX: Record<LawyerTab, StaffRole[]> = {
   'dashboard':        ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF', 'ACCOUNTING'],
   'cases':            ['OWNER', 'LAWYER'],
   'billing':          ['OWNER', 'LAWYER', 'ACCOUNTING'],
   'client-crm':       ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF', 'ACCOUNTING'],
+  'sales-leads':      ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF'],
   'staff-management': ['OWNER'],
   'settings':         ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF', 'ACCOUNTING'],
   'case-copilot':     ['OWNER', 'LAWYER', 'CONSULTANT', 'STAFF'],
@@ -26,6 +27,7 @@ export const TAB_LABELS: Record<LawyerTab, string> = {
   'cases':            '사건 관리',
   'billing':          '수임료/회계',
   'client-crm':       '고객 CRM',
+  'sales-leads':      '영업 관리',
   'staff-management': '사용자 관리',
   'settings':         '설정',
   'case-copilot':     'AI 사건 분석',

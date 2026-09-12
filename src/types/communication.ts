@@ -24,7 +24,7 @@ export type MessageVisibility =
   | 'designated';   // 지정인만
 
 /** 메시지 대상 유형 */
-export type MessageTargetType = 'consult_request' | 'case' | 'copilot_review' | 'general';
+export type MessageTargetType = 'consult_request' | 'case' | 'copilot_review' | 'general' | 'sales_lead';
 
 /** 내부 메시지 */
 export interface InternalMessage {
@@ -144,6 +144,12 @@ export interface TaskTicket {
   templateId?: string;
   /** 관련 사건 단계 (예: '서류준비', '신청서접수', '보정권고', '개시결정', '인가결정') */
   caseStage?: string;
+  /** 업무 도메인 구분: 'sales' (영업·콜백) vs 'client' (고객·사건) */
+  taskDomain?: 'sales' | 'client';
+  /** 영업 리드 연동 정보 */
+  leadId?: string;
+  leadPhone?: string;
+  leadDebt?: number;
   /** 생성 시각 */
   createdAt: string;
   /** 수정 시각 */

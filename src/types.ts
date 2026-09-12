@@ -176,6 +176,8 @@ export type IntakeChannel =
   | 'visit'       // 방문 상담
   | 'repeat'      // 기존 의뢰인 재의뢰
   | 'portal_search' // 포털 검색
+  | 'db_purchase' // DB 구매/제휴
+  | 'landing_cpa' // 랜딩/CPA 제휴
   | 'other';      // 기타
 
 export const INTAKE_CHANNEL_CONFIG: Record<IntakeChannel, { label: string; emoji: string; color: string; bgColor: string }> = {
@@ -189,6 +191,8 @@ export const INTAKE_CHANNEL_CONFIG: Record<IntakeChannel, { label: string; emoji
   visit:         { label: '방문 상담',    emoji: '🚶', color: 'text-purple-500',  bgColor: 'bg-purple-500/10' },
   repeat:        { label: '재의뢰',       emoji: '🔄', color: 'text-orange-500',  bgColor: 'bg-orange-500/10' },
   portal_search: { label: '포털 검색',    emoji: '🌐', color: 'text-blue-500',    bgColor: 'bg-blue-500/10' },
+  db_purchase:   { label: 'DB 구매/제휴', emoji: '📥', color: 'text-violet-500',  bgColor: 'bg-violet-500/10' },
+  landing_cpa:   { label: '랜딩/CPA',     emoji: '🎯', color: 'text-fuchsia-500', bgColor: 'bg-fuchsia-500/10' },
   other:         { label: '기타',         emoji: '📌', color: 'text-slate-500',   bgColor: 'bg-slate-500/10' },
 };
 
@@ -770,6 +774,15 @@ export interface CrmClientExtension {
   caseType?: CaseType;           // 사건 유형
   region?: string;               // 거주 지역
   preInfo?: string;              // 사전 수집 정보
+  secondaryStatus?: string;      // 2차 세부 상태 (사무장 접수, 검토 등)
+  tertiaryStatus?: string;       // 3차 세부 상태
+  loanMonthlyPay?: number;       // 월 대출 상환액 (만원)
+  creditCardUse?: '사용' | '미사용'; // 신용카드 사용 여부
+  collateralLoanDesc?: string;   // 담보대출 상세
+  historyDetail?: string;        // 과거 회생/파산/신복위 상세 이력
+  inboundPath?: string;          // 유입 경로
+  partnerId?: string;            // 연계 거래처/법률사무소 ID
+  reminders?: import('./leadTypes').ReminderItem[]; // 리마인더 목록
   // ── 배정 지시 이력 ──
   assignmentDirectives?: AssignmentDirective[];
   // ── 부채증명서 발급 대행 관리 ──

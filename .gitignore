@@ -9,6 +9,8 @@ coverage/
 
 .vercel
 .env*
+scratch/
+실제서류/
 references/
 
 .vercel

@@ -21,6 +21,9 @@ import MobileScanner from './MobileScanner';
 import FeeNotificationSettingsModal from './FeeNotificationSettingsModal';
 import FeeAlimtokModal from './FeeAlimtokModal';
 import BulkMessageSendModal from './BulkMessageSendModal';
+import CaseBriefingBanner from './CaseBriefingBanner';
+import CrmSettingsModal from './CrmSettingsModal';
+import { extractBriefingFromClient } from '../../services/leadService';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import CourtCaseTab from './CourtCaseTab';
@@ -250,6 +253,7 @@ export default function CrmTab({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDropOffModalOpen, setIsDropOffModalOpen] = useState(false);
+  const [isMasterSettingsModalOpen, setIsMasterSettingsModalOpen] = useState(false);
   
   // ── 수임료 자동 발송 및 모달 상태 ──
   const [isFeeSettingsModalOpen, setIsFeeSettingsModalOpen] = useState(false);
@@ -1542,6 +1546,13 @@ export default function CrmTab({
                   <Upload className="w-3.5 h-3.5 text-slate-500" />
                   <span>엑셀 대량 업로드</span>
                 </button>
+                <button
+                  onClick={() => { setIsMasterSettingsModalOpen(true); setIsToolsDropdownOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                >
+                  <Settings className="w-3.5 h-3.5 text-slate-500" />
+                  <span>CRM & 영업 마스터 설정</span>
+                </button>
                 <div className="border-t border-slate-100 my-1" />
                 <button
                   onClick={() => { setShowTrash(true); setIsToolsDropdownOpen(false); }}
@@ -2612,6 +2623,12 @@ export default function CrmTab({
                   {detailTab === 'info' && (
                     <div className="space-y-5">
                       
+                      {/* ═══ LeadMaster형 사건 종합 브리핑 배너 (1클릭 카톡/메신저 복사) ═══ */}
+                      <CaseBriefingBanner 
+                        data={extractBriefingFromClient(selectedClient, selectedExt)} 
+                        defaultExpanded={true} 
+                      />
+
                       {/* ═══ 리걸플로 벤치마킹: 표준 13단계 파이프라인 네비게이터 ═══ */}
                       {(() => {
                         const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
@@ -4306,6 +4323,10 @@ export default function CrmTab({
         onClose={() => setIsExportModalOpen(false)}
         requests={filteredRequests}
         getCrmExt={getCrmExt}
+      />
+      <CrmSettingsModal
+        isOpen={isMasterSettingsModalOpen}
+        onClose={() => setIsMasterSettingsModalOpen(false)}
       />
       <DropOffReasonModal
         isOpen={isDropOffModalOpen}
