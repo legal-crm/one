@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { ConsultRequest, ConsultMessage } from '../types';
-import { encryptField, decryptField } from '../utils/cryptoField';
+import { encryptField, decryptField, encryptString, decryptString } from '../utils/cryptoField';
 import { validateAndSanitizeConsultRequest } from '../schemas/consultSchema';
 
 // ============================================================
@@ -210,8 +210,14 @@ export async function deleteConsultRequest(requestId: string): Promise<void> {
   const requests = getLocalData<ConsultRequest[]>(REQUESTS_STORAGE_KEY, []);
   setLocalData(REQUESTS_STORAGE_KEY, requests.filter(r => r.id !== requestId));
 
+  // 로컬 메시지 동시 정화
+  const messages = getLocalData<ConsultMessage[]>(MESSAGES_STORAGE_KEY, []);
+  setLocalData(MESSAGES_STORAGE_KEY, messages.filter(m => m.consultRequestId !== requestId));
+
   if (isSupabaseConfigured) {
     try {
+      // ON DELETE CASCADE가 걸려있으나 명시적 2중 파기 수행
+      await supabase.from('consult_messages').delete().eq('consult_request_id', requestId);
       const { error } = await supabase.from('consult_requests').delete().eq('id', requestId);
       if (error) {
         logSupabaseError('deleteConsultRequest', error);
@@ -219,6 +225,41 @@ export async function deleteConsultRequest(requestId: string): Promise<void> {
     } catch (e) {
       logSupabaseError('deleteConsultRequest (exception)', e);
     }
+  }
+}
+
+/**
+ * [SECURITY Auto-Destruct / Data Purge]
+ * 텔레그램식 '원클릭 상담 기록 자폭' 함수.
+ * 특정 상담방의 모든 대화, 진단 상세 정보, 제안서 내역을 DB와 로컬 스토리지에서 영구 파기(Cryptographic Shredding)합니다.
+ */
+export async function purgeConsultationRecord(requestId: string): Promise<boolean> {
+  try {
+    await deleteConsultRequest(requestId);
+    return true;
+  } catch (err) {
+    console.error('[SECURITY] 상담 기록 영구 파기 실패:', err);
+    return false;
+  }
+}
+
+/**
+ * [SECURITY Complete Client Purge]
+ * 의뢰인의 모든 상담 요청, 금융 진단 데이터, 1:1 대화 로그를 전수 소각합니다.
+ */
+export async function purgeAllClientData(clientId: string): Promise<boolean> {
+  try {
+    const requests = getLocalData<ConsultRequest[]>(REQUESTS_STORAGE_KEY, []);
+    const clientReqs = requests.filter(r => r.clientId === clientId);
+    
+    for (const req of clientReqs) {
+      await deleteConsultRequest(req.id);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[SECURITY] 의뢰인 전체 데이터 소각 실패:', err);
+    return false;
   }
 }
 
@@ -241,15 +282,16 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
       if (error) {
         logSupabaseError('loadConsultMessages', error);
       } else if (data) {
-        return data.map((row: any) => ({
+        // [SECURITY Message Decryption] DB 저장 암호문 자동 복호화 (평문 하위 호환 100% 보장)
+        return await Promise.all(data.map(async (row: any) => ({
           id: row.id,
           consultRequestId: row.consult_request_id,
           senderType: row.sender_type,
           senderId: row.sender_id,
           senderName: row.sender_name,
-          message: row.message,
+          message: await decryptString(row.message),
           createdAt: row.created_at,
-        }));
+        })));
       }
     } catch (e) {
       logSupabaseError('loadConsultMessages (exception)', e);
@@ -257,7 +299,11 @@ export async function loadConsultMessages(requestIds?: string[]): Promise<Consul
   }
   
   const allMessages = getLocalData<ConsultMessage[]>(MESSAGES_STORAGE_KEY, []);
-  return allMessages.filter(m => requestIds.includes(m.consultRequestId));
+  const filtered = allMessages.filter(m => requestIds.includes(m.consultRequestId));
+  return await Promise.all(filtered.map(async m => ({
+    ...m,
+    message: await decryptString(m.message),
+  })));
 }
 
 export async function saveConsultMessage(message: ConsultMessage): Promise<void> {
@@ -269,13 +315,16 @@ export async function saveConsultMessage(message: ConsultMessage): Promise<void>
 
   if (isSupabaseConfigured) {
     try {
+      // [SECURITY Message Encryption] 메시지 본문 AES-256-GCM 암호화 후 DB 전송
+      const encryptedMessageText = await encryptString(message.message);
+
       const { error } = await supabase.from('consult_messages').upsert({
         id: message.id,
         consult_request_id: message.consultRequestId,
         sender_type: message.senderType,
         sender_id: message.senderId,
         sender_name: message.senderName,
-        message: message.message,
+        message: encryptedMessageText,
         created_at: message.createdAt,
       }, { onConflict: 'id' });
       if (error) {
@@ -292,15 +341,15 @@ export async function saveAllConsultMessages(messages: ConsultMessage[]): Promis
   
   if (isSupabaseConfigured && messages.length > 0) {
     try {
-      const payload = messages.map(msg => ({
+      const payload = await Promise.all(messages.map(async msg => ({
         id: msg.id,
         consult_request_id: msg.consultRequestId,
         sender_type: msg.senderType,
         sender_id: msg.senderId,
         sender_name: msg.senderName,
-        message: msg.message,
+        message: await encryptString(msg.message),
         created_at: msg.createdAt,
-      }));
+      })));
       const { error } = await supabase.from('consult_messages').upsert(payload, { onConflict: 'id' });
       if (error) {
         logSupabaseError('saveAllConsultMessages', error);

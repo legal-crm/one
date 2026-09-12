@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award, Heart, Scale, Search, ArrowRight, Sparkles } from 'lucide-react';
+import { DollarSign, TrendingDown, Percent, Shield, ChevronDown, ChevronUp, Lock, Send, Phone, MessageCircle, Check, AlertTriangle, FileText, User, Star, ArrowUp, X, Users, ShieldCheck, Clock, Award, Heart, Scale, Search, ArrowRight, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import MyPageView from './MyPageView';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile, User as UserType } from '../../types';
+import { purgeConsultationRecord } from '../../services/consultService';
 import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../rehab-chatbot-package/services/calculationService';
 
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
@@ -14,14 +15,16 @@ interface BannerProps {
   onClose: () => void;
 }
 
-// [SECURITY] 법률상담 비밀유지 + 보안 안내 배너
+// [SECURITY] 법률상담 비밀유지 + 보안 안내 배너 (AES-256 암호화 및 텔레그램식 자폭권 보장)
 function ChatPrivacyBanner({ onClose }: BannerProps) {
   return (
     <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl px-4.5 py-3.5 text-sm sm:text-base text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium flex gap-3 items-start shadow-sm text-left relative pr-8 animate-fadeIn">
       <Shield className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
       <div>
-        <strong className="font-bold">🔒 법률상담 비밀 보장</strong>
-        <span className="block mt-0.5 text-indigo-600/90 dark:text-indigo-400/90 text-sm">이 채팅은 법률상담을 위한 비밀 대화입니다. 상담 내용은 전담 변호사와 고객만 확인할 수 있으며, 플랫폼 운영자는 원문 내용을 열람하지 않습니다.</span>
+        <strong className="font-bold">🔒 법률상담 암호화 및 비밀 보장</strong>
+        <span className="block mt-0.5 text-indigo-600/90 dark:text-indigo-400/90 text-sm">
+          모든 1:1 대화와 재정 정보는 <strong>AES-256-GCM</strong>으로 암호화되어 저장됩니다. 운영자도 원문을 열람할 수 없으며, 필요 시 언제든지 <strong>'기록 자폭(완전삭제)'</strong>으로 서버에서 영구 파기할 수 있습니다.
+        </span>
       </div>
       <button 
         onClick={onClose}
@@ -282,6 +285,27 @@ export default function ChatView({
   } else if (proposals.length > 0 || requestedLawyerIds.length > 0) {
     currentStep = 2;
   }
+
+  // [SECURITY Auto-Destruct] 텔레그램식 상담 기록 즉시 완전 파기(자폭)
+  const handlePurgeRecord = async () => {
+    if (!currentRequest?.id) return;
+    const confirmed = await dialog.confirm({
+      title: '상담 기록 완전 파기 (자폭)',
+      message: '해당 상담방의 모든 대화 내용, 법률 제안서, 진단 정보가 서버 및 기기에서 즉시 영구 삭제되며 절대 복구할 수 없습니다.\n\n정말 파기하시겠습니까?',
+      confirmText: '즉시 완전 파기',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
+      const success = await purgeConsultationRecord(currentRequest.id);
+      if (success) {
+        onSetRequests(prev => prev.filter(r => r.id !== currentRequest.id));
+        toast.success('상담 기록과 대화 내역이 서버에서 영구 파기되었습니다.');
+      } else {
+        toast.error('기록 파기 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    }
+  };
 
   return (
     <>
@@ -752,20 +776,41 @@ export default function ChatView({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden flex flex-col relative transition-all duration-300">
           
           {/* Header */}
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="text-xl">💬</span> 1:1 비밀 상담
-            </h2>
-            {isSelectedLawyer && (
-              <button
-                type="button"
-                onClick={() => setShowPhoneConsultModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition-all shadow-sm"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>전화상담 신청</span>
-              </button>
-            )}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="text-xl">💬</span> 1:1 비밀 상담
+              </h2>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-full">
+                <ShieldCheck className="w-3 h-3" />
+                <span>AES-256 암호화</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {currentRequest && (
+                <button
+                  type="button"
+                  onClick={handlePurgeRecord}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 transition-all cursor-pointer active:scale-95"
+                  title="해당 상담방의 모든 대화와 진단 데이터를 서버에서 즉시 영구 삭제합니다"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">기록 자폭(완전삭제)</span>
+                  <span className="sm:hidden">기록 삭제</span>
+                </button>
+              )}
+              {isSelectedLawyer && (
+                <button
+                  type="button"
+                  onClick={() => setShowPhoneConsultModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>전화상담 신청</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {(!isSelectedLawyer && currentRequest?.status !== 'comparing') ? (

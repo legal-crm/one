@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Edit2, Check, X, LogOut, MessageSquare, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Shield, Edit2, Check, X, LogOut, MessageSquare, ExternalLink, CheckCircle2, Trash2, ShieldCheck, Lock } from 'lucide-react';
+import { toast } from 'sonner';
+import { useDialog } from '../common/DialogProvider';
 import { supabase } from '../../supabaseClient';
+import { purgeAllClientData } from '../../services/consultService';
 import type { ClientInquiry } from '../../types';
 
 interface MySettingsViewProps {
@@ -30,9 +33,27 @@ export default function MySettingsView({
   onShowAuthModal,
   onLogout
 }: MySettingsViewProps) {
+  const dialog = useDialog();
   const [userEmail, setUserEmail] = useState<string>('');
   const [loginProvider, setLoginProvider] = useState<string>('');
   const [expandedInquiryId, setExpandedInquiryId] = useState<string | null>(null);
+
+  // [SECURITY Complete Client Purge] 의뢰인 데이터 전체 자폭(영구 파기)
+  const handlePurgeAllData = async () => {
+    const confirmed = await dialog.confirm({
+      title: '나의 모든 상담·진단 데이터 영구 파기 (자폭)',
+      message: '의뢰인님의 모든 상담 내역, 1:1 대화 내용, 채무 진단 상세 기록이 서버와 기기에서 즉시 영구 파기됩니다.\n\n파기된 데이터는 절대 복구할 수 없습니다. 정말 진행하시겠습니까?',
+      confirmText: '모든 데이터 영구 파기',
+      variant: 'danger'
+    });
+
+    if (confirmed) {
+      const currentClientId = localStorage.getItem('legal_crm_client_id') || 'client-temp';
+      await purgeAllClientData(currentClientId);
+      toast.success('모든 상담 및 진단 기록이 서버에서 영구 파기되었습니다.');
+      onLogout();
+    }
+  };
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -159,14 +180,23 @@ export default function MySettingsView({
                 </div>
               </div>
 
-              {/* Logout action */}
-              <div className="flex justify-end pt-1">
+              {/* Purge & Logout actions */}
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handlePurgeAllData}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-955/20 dark:hover:bg-rose-900/30 text-rose-650 dark:text-rose-400 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-95 border border-rose-200 dark:border-rose-900/30"
+                  title="서버 및 로컬에 저장된 본인의 모든 상담 기록과 진단표를 영구 소멸합니다"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>기록 완전 자폭(영구 파기)</span>
+                </button>
                 <button
                   onClick={onLogout}
-                  className="flex items-center gap-1.5 px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-955/20 dark:hover:bg-red-900/30 text-red-650 dark:text-red-400 text-sm font-bold rounded-xl transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer active:scale-95"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>안전 로그아웃 및 흔적 지우기</span>
+                  <span>안전 로그아웃</span>
                 </button>
               </div>
             </div>
@@ -282,28 +312,44 @@ export default function MySettingsView({
                 </div>
 
                 <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4.5 h-4.5 text-brand shrink-0 mt-0.5" />
+                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
                   <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">개인정보 안심 보호 필터</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">실시간 데이터 암호화 필터 작동 중</span>
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">1:1 대화 AES-256 암호화</span>
+                    <span className="text-xs text-slate-555 dark:text-slate-450 block">상담 메시지 및 금융 프로필 DB 저장 시 필드 암호화</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5 text-left">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">원클릭 데이터 자폭권 보장</span>
+                    <span className="text-xs text-slate-555 dark:text-slate-450 block">원할 때 언제든 모든 대화와 진단 데이터 즉시 영구 소멸</span>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4.5 h-4.5 text-brand shrink-0 mt-0.5" />
                   <div className="space-y-0.5 text-left">
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">암호화 흔적 보호</span>
-                    <span className="text-xs text-slate-555 dark:text-slate-450 block">브라우저 내 로그아웃 시 완전 삭제 보증</span>
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">외부 타깃 광고 트래커 차단</span>
+                    <span className="text-xs text-slate-555 dark:text-slate-450 block">채무 사실 SNS 광고 유출 방지 (Zero-Tracker Shield)</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-brand shrink-0 mt-0.5" />
+                  <div className="space-y-0.5 text-left">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">스텔스 가명 및 안심번호</span>
+                    <span className="text-xs text-slate-555 dark:text-slate-450 block">정식 수임 동의 전까지 실명·실제 연락처 완전 비공개</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-brand/5 border border-brand/10 p-5 rounded-xl space-y-2 text-left">
                 <h4 className="text-sm font-bold text-brand flex items-center gap-1.5">
-                  <span>🔒</span> my김변 스텔스 안전 보증
+                  <span>🔒</span> my김변 스텔스 보안 보증
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                  본 서비스는 채무 사실의 외부 원천 노출을 방지하기 위해 가명 닉네임만을 변호사에게 전달하며, 제3자 알림 차단을 완벽히 준수하고 있습니다.
+                  본 서비스는 왓츠앱 수준의 저장 암호화(AES-256)와 텔레그램 수준의 데이터 자폭권을 지원하여, 채무 사실이 가족, 직장, 외부 광고망에 노출되지 않도록 철저히 보호합니다.
                 </p>
               </div>
             </div>
