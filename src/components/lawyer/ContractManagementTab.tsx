@@ -3,7 +3,7 @@ import {
   FileSignature, Clock, CheckCircle2, Plus, Search, Eye, Trash2, 
   RefreshCw, FolderKanban, Download, AlertTriangle, Send, 
   ExternalLink, ShieldCheck, Printer, ArrowRight, User, Building2, 
-  Check, X, FileText, ChevronRight, BellRing, Sparkles, Edit3 
+  Check, X, FileText, ChevronRight, BellRing, Sparkles, Edit3, Settings2 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -15,6 +15,7 @@ import {
 } from '../../services/contractService';
 import ContractWizard from './ContractWizard';
 import { ContractDocLibraryModal } from './ContractDocLibraryModal';
+import ApplicationDocSettingsModal from './documents/ApplicationDocSettingsModal';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
 import AuditTrailCertificate from './AuditTrailCertificate';
 import ContractReminderModal from './ContractReminderModal';
@@ -40,6 +41,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
   const [viewingContract, setViewingContract] = useState<ElectronicContract | null>(null);
   const [reminderTargetContract, setReminderTargetContract] = useState<ElectronicContract | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [docSettingsOpen, setDocSettingsOpen] = useState(false);
   const [verifyModalContract, setVerifyModalContract] = useState<ElectronicContract | null>(null);
 
   const refreshContracts = useCallback(async () => {
@@ -245,10 +247,20 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
             {/* 문서함 (서식 관리) */}
             <button
               onClick={() => setLibraryOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap min-h-[42px] border border-indigo-200 text-xs shadow-2xs"
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap min-h-[42px] border border-indigo-200 text-xs shadow-2xs press-scale"
             >
               <FolderKanban className="w-4 h-4 text-indigo-600" />
               <span>📂 문서함 (서식 보관함)</span>
+            </button>
+
+            {/* 신청서류 마스터 설정 (리걸플로 20p 벤치마킹) */}
+            <button
+              onClick={() => setDocSettingsOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap min-h-[42px] border border-slate-200 text-xs shadow-2xs press-scale"
+              title="개인회생·파산·보정권고 마스터 신청서류 템플릿 설정"
+            >
+              <Settings2 className="w-4 h-4 text-slate-600" />
+              <span>⚙️ 신청서류 설정</span>
             </button>
 
             {/* 고객 CRM에서 새 계약 진행 안내 버튼 */}
@@ -646,6 +658,12 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
         onClose={() => setLibraryOpen(false)}
         lawyerName={lawyerName}
         lawFirmName={lawFirmName}
+      />
+
+      {/* ── 5-1. 신청서류 마스터 설정 모달 (리걸플로 20~21p 벤치마킹) ── */}
+      <ApplicationDocSettingsModal
+        isOpen={docSettingsOpen}
+        onClose={() => setDocSettingsOpen(false)}
       />
 
       {/* ── 6. 계약서 전문 열람 전용 뷰어 모달 ── */}

@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Building2, Home, Briefcase, CreditCard, ShieldCheck, 
   Upload, Eye, CheckCircle2, AlertCircle, Clock, FileText,
   FileSpreadsheet, ArrowRight, Camera, RefreshCw, AlertTriangle,
-  Send, ExternalLink, HelpCircle
+  Send, ExternalLink, HelpCircle, Settings2, Smartphone, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
+import { 
+  ApplicationDocTemplateService, 
+  type ApplicationDocMasterItem 
+} from '../../../services/documents/applicationDocTemplateService';
+import ApplicationDocSettingsModal from '../documents/ApplicationDocSettingsModal';
+import MobileApplicationDocHubModal from '../../client/MobileApplicationDocHubModal';
 
 interface Stage2DocumentsHubViewProps {
   clientRequest: ConsultRequest;
@@ -34,6 +40,10 @@ export default function Stage2DocumentsHubView({
 }: Stage2DocumentsHubViewProps) {
   const [activeAgency, setActiveAgency] = useState<DocAgencyTab>('gov');
   const [thirdPartyMaskingConfirmed, setThirdPartyMaskingConfirmed] = useState(true);
+
+  // 리걸플로 벤치마킹 모달 상태
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showMobileHubModal, setShowMobileHubModal] = useState(false);
 
   // 기관별 4대 서류 표준 데이터베이스 (korea.legal 신우법무사 표준 실무 모델)
   const govDocs: StandardDocItem[] = [
@@ -82,9 +92,10 @@ export default function Stage2DocumentsHubView({
     return { isUploaded: false, file: null, status: '미제출' };
   };
 
-  // 모바일 제출 링크 발송
+  // 모바일 제출 링크 발송 (리걸플로 벤치마킹)
   const handleSendMobileDocLink = () => {
-    toast.success(`${clientRequest.clientName}님께 4대 발급처별 간편 서류 제출 안내 링크가 알림톡으로 전송되었습니다.`);
+    setShowMobileHubModal(true);
+    toast.success(`${clientRequest.clientName} 님께 맞춤 신청서류 발급함 링크가 복사되었으며, 모바일 화면이 열립니다.`);
   };
 
   return (
@@ -97,30 +108,53 @@ export default function Stage2DocumentsHubView({
               Stage 2. 발급처 기준 4대 서류 허브 & 부채증명 관리
             </span>
             <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
-              신우법무사 표준 실무 20종 연동
+              신우법무사 표준 실무 22종 연동
+            </span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              LegalFlow Engine
             </span>
           </div>
           <p className="text-xs text-slate-500">
-            의뢰인의 발급 동선에 맞추어 주민센터, 국세청, 직장, 금융기관 서류를 체계적으로 수합합니다.
+            의뢰인의 발급 동선에 맞추어 주민센터, 국세청, 직장, 금융기관 서류를 체계적으로 수합하고 전자소송 PDF로 번들링합니다.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 신청서류 마스터 설정 (리걸플로 그림 2-10 벤치마킹) */}
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+            title="사무소 공통 신청서류 템플릿(회생/파산/보정) 설정"
+          >
+            <Settings2 className="w-3.5 h-3.5 text-slate-600" />
+            <span>신청서류 마스터 설정</span>
+          </button>
+
+          {/* 모바일 신청서류 발급함 (리걸플로 그림 2-11 벤치마킹) */}
+          <button
+            onClick={() => setShowMobileHubModal(true)}
+            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+            title="의뢰인 모바일 신청서류 발급현황(0/22) 화면 열기"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+            <span>모바일 서류함 (0/22)</span>
+          </button>
+
           <button
             onClick={handleSendMobileDocLink}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 bg-brand/10 hover:bg-brand/20 text-brand font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
           >
-            <Send className="w-3.5 h-3.5 text-slate-500" />
-            <span>모바일 서류제출 링크 발송</span>
+            <Send className="w-3.5 h-3.5 text-brand" />
+            <span>알림톡 링크 발송</span>
           </button>
 
           {onOpenDocScanner && (
             <button
               onClick={onOpenDocScanner}
-              className="px-3.5 py-2 bg-brand/10 hover:bg-brand/20 text-brand font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>문서 스캐너 실행</span>
+              <span>스캐너</span>
             </button>
           )}
 
@@ -362,6 +396,21 @@ export default function Stage2DocumentsHubView({
           ))}
         </div>
       </div>
+
+      {/* ── 리걸플로 벤치마킹 1: 신청서류 마스터 설정 모달 (그림 2-10) ── */}
+      <ApplicationDocSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
+
+      {/* ── 리걸플로 벤치마킹 2: 의뢰인 모바일 신청서류 발급함 (그림 2-11) ── */}
+      <MobileApplicationDocHubModal
+        isOpen={showMobileHubModal}
+        onClose={() => setShowMobileHubModal(false)}
+        clientName={clientRequest.clientName || '신청인'}
+        clientRequest={clientRequest}
+        uploadedFiles={uploadedFiles}
+      />
     </div>
   );
 }
