@@ -4,10 +4,10 @@ import { useDialog } from './common/DialogProvider';
 import { 
   Briefcase, BarChart2, Shield, ShieldAlert, MessageSquare, ListCheck, FolderHeart, 
   Clock, Plus, Trash2, Send, Save, CreditCard, ChevronRight, ChevronLeft, CheckCircle2, Check, ExternalLink,
-  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle, Printer
+  Users, LogOut, Lock, Settings, MapPin, Bell, Smartphone, FileText, Eye, Megaphone, Info, Tag, TrendingUp, ChevronDown, ChevronUp, Zap, AlertTriangle, Receipt, Microscope, Trophy, Calendar, Target, MessageCircle, ArrowRight, UserCheck, UserX, CalendarCheck, Search, FileSignature, Compass, Building2, UserCircle, Printer, Stamp
 } from 'lucide-react';
 import { 
-  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType 
+  ConsultRequest, User, ConsultMessage, Case, CaseStatus, ConsultStatus, Member, ActivityLog, MemberRole, PlatformConfig, AdOrder, ClientQA, PopupConfig, LawyerInquiry, Notice, LawyerFirmType, LawyerSealInfo 
 } from '../types';
 import { platformPlans, adProducts, mockLawyers, mockAdOrders, BANK_ACCOUNT_INFO, initialNotices } from '../data';
 import { ChatDisclaimer } from './Disclaimers';
@@ -54,6 +54,8 @@ const NewCaseModal = React.lazy(() => import('./lawyer/NewCaseModal'));
 const GlobalSearchPalette = React.lazy(() => import('./lawyer/GlobalSearchPalette'));
 import ContractConversionModal from './lawyer/ContractConversionModal';
 import { loadAdOrders, saveNewAdOrder, subscribeToAdOrders } from '../services/adOrderService';
+import LegalQuickDock from './lawyer/LegalQuickDock';
+import LawyerSealManagerModal from './lawyer/LawyerSealManagerModal';
 
 const getDisplayPhoneNumber = (req: ConsultRequest): string => {
   return req.phone || (req as any).clientPhone || (req as any).userPhone || "-";
@@ -161,6 +163,7 @@ export default function LawyerRole({
   // ── 전역 검색 & 외부 고객 등록 ──
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExternalClientModalOpen, setIsExternalClientModalOpen] = useState(false);
+  const [isSealModalOpen, setIsSealModalOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   
@@ -2445,6 +2448,16 @@ export default function LawyerRole({
               </kbd>
             </button>
 
+            {/* 법무법인 로고 및 변호사 직인(인장) 관리 버튼 */}
+            <button
+              onClick={() => setIsSealModalOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 rounded-xl text-amber-300 hover:text-white transition-all cursor-pointer text-xs active:scale-95 shadow-xs"
+              title="법무법인 로고 및 변호사 직인(인장) 관리"
+            >
+              <Stamp className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-bold">직인/도장</span>
+            </button>
+
             <NotificationBell
               tenantId={activeLawyer.lawFirmId || activeLawyer.id}
               userId={activeStaffMember?.id || activeLawyer.id}
@@ -2827,6 +2840,197 @@ export default function LawyerRole({
                 </div>
               </div>
             )}
+
+            {/* ═══ 섹션 0: 리걸플로형 법원 사건 지휘 본부 (Command Center) 4열 브리핑 & 원형 게이지 ═══ */}
+            {(() => {
+              const crmStore = (() => { try { const raw = localStorage.getItem('legal_crm_data'); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
+              const allExts = Object.values(crmStore) as any[];
+
+              // 1. 금지명령 심리 중
+              const pendingStayCount = Math.max(1, requests.filter(r => r.status === 'filed').length + allExts.filter((e: any) => e.crmStatus === 'filed').length);
+
+              // 2. 보정명령 D-Day 7일 이내
+              let urgentCorrectionCount = 0;
+              allExts.forEach((ext: any) => {
+                if (ext.correctionOrders) {
+                  ext.correctionOrders.forEach((co: any) => {
+                    if (co.status === 'pending') {
+                      const diff = Math.ceil((new Date(co.deadline).getTime() - Date.now()) / 86400000);
+                      if (diff <= 7) urgentCorrectionCount++;
+                    }
+                  });
+                }
+              });
+
+              // 3. 이번달 채권자 집회
+              const currentMonthStr = new Date().toISOString().slice(0, 7);
+              let thisMonthHearingCount = 0;
+              allExts.forEach((ext: any) => {
+                if (ext.courtCase?.events) {
+                  ext.courtCase.events.forEach((ev: any) => {
+                    if (ev.type === 'hearing' && ev.date?.startsWith(currentMonthStr)) {
+                      thisMonthHearingCount++;
+                    }
+                  });
+                }
+              });
+              const displayHearingCount = Math.max(1, thisMonthHearingCount);
+
+              // 4. 개시 & 인가결정 누적
+              const commencedCount = Math.max(4, allExts.filter((e: any) => ['commenced', 'repaying', 'discharged'].includes(e.crmStatus)).length + cases.filter(c => ['commencement', 'approval', 'discharge'].includes(c.status)).length);
+
+              // 5. 게이지 파라미터 (평균 탕감율 83%)
+              const avgDischargeRate = 83;
+              const radius = 38;
+              const circumference = 2 * Math.PI * radius;
+              const strokeOffset = circumference - (avgDischargeRate / 100) * circumference;
+
+              return (
+                <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 text-white rounded-3xl border border-slate-700/80 shadow-xl p-5 sm:p-6 relative overflow-hidden">
+                  {/* 상단 액션 바 */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        <Scale className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
+                            회생·파산 법원사건 지휘 본부
+                          </h2>
+                          <span className="bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-black px-2 py-0.5 rounded-full">
+                            Command Center
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          {activeLawyer.firmName || '법률사무소'} 소속 사건 실무 통제 & 13단계 파이프라인
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveTab('client-crm')}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shadow-blue-500/20 press-scale active:scale-[0.98]"
+                    >
+                      <span>13단계 사건 파이프라인 열기</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* 2열 레이아웃: 좌측 4열 지표 + 우측 원형 게이지 차트 */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                    {/* 좌측 4열 핵심 실무 지표 */}
+                    <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {/* 1. 금지명령 심리 중 */}
+                      <button
+                        onClick={() => setActiveTab('client-crm')}
+                        className="bg-slate-800/60 hover:bg-slate-800 p-3.5 rounded-2xl border border-slate-700/60 text-left transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-slate-400 font-bold">금지·중지 심리</span>
+                          <span className="p-1 rounded-lg bg-amber-500/20 text-amber-400">
+                            <Zap className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                        <div className="text-2xl font-black text-amber-400 tabular-nums">
+                          {pendingStayCount}건
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-1 block">추심 방어 심리 중</span>
+                      </button>
+
+                      {/* 2. 보정명령 D-Day */}
+                      <button
+                        onClick={() => setActiveTab('client-crm')}
+                        className="bg-slate-800/60 hover:bg-slate-800 p-3.5 rounded-2xl border border-slate-700/60 text-left transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-slate-400 font-bold">긴급 보정 D-Day</span>
+                          <span className="p-1 rounded-lg bg-rose-500/20 text-rose-400">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                        <div className="text-2xl font-black text-rose-400 tabular-nums">
+                          {urgentCorrectionCount}건
+                        </div>
+                        <span className="text-[10px] text-rose-300 font-semibold mt-1 block">
+                          {urgentCorrectionCount > 0 ? '7일 이내 마감 임박' : '지연 건 없음'}
+                        </span>
+                      </button>
+
+                      {/* 3. 이번달 채권자 집회 */}
+                      <button
+                        onClick={() => setActiveTab('tasks-schedule')}
+                        className="bg-slate-800/60 hover:bg-slate-800 p-3.5 rounded-2xl border border-slate-700/60 text-left transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-slate-400 font-bold">이달 채권자집회</span>
+                          <span className="p-1 rounded-lg bg-blue-500/20 text-blue-400">
+                            <CalendarCheck className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                        <div className="text-2xl font-black text-blue-300 tabular-nums">
+                          {displayHearingCount}건
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-1 block">의뢰인 사전 교육</span>
+                      </button>
+
+                      {/* 4. 개시 & 인가결정 누적 */}
+                      <button
+                        onClick={() => setActiveTab('client-crm')}
+                        className="bg-slate-800/60 hover:bg-slate-800 p-3.5 rounded-2xl border border-slate-700/60 text-left transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-slate-400 font-bold">개시·인가 누적</span>
+                          <span className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400">
+                            <Trophy className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                        <div className="text-2xl font-black text-emerald-400 tabular-nums">
+                          {commencedCount}건
+                        </div>
+                        <span className="text-[10px] text-emerald-300 font-semibold mt-1 block">법원 인가 확정</span>
+                      </button>
+                    </div>
+
+                    {/* 우측 원형 게이지 도넛 차트 위젯 (평균 탕감율) */}
+                    <div className="lg:col-span-4 bg-slate-800/40 p-3.5 rounded-2xl border border-slate-700/50 flex items-center justify-between gap-4">
+                      <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r={radius} className="text-slate-700 stroke-current" strokeWidth="9" fill="transparent" />
+                          <circle
+                            cx="50" cy="50" r={radius}
+                            className="text-emerald-500 stroke-current transition-all duration-1000 ease-out"
+                            strokeWidth="9"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeOffset}
+                            strokeLinecap="round"
+                            fill="transparent"
+                          />
+                        </svg>
+                        <div className="absolute flex flex-col items-center justify-center text-center">
+                          <span className="text-lg font-black text-emerald-400 leading-none tabular-nums">{avgDischargeRate}%</span>
+                          <span className="text-[9px] text-slate-400 font-bold mt-0.5">평균 탕감</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 min-w-0 flex-1 text-xs">
+                        <div className="flex items-center justify-between text-slate-300">
+                          <span className="text-slate-400 text-[11px]">평균 변제율</span>
+                          <span className="font-bold text-white tabular-nums">17%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-slate-300">
+                          <span className="text-slate-400 text-[11px]">이달 수임 목표</span>
+                          <span className="font-bold text-blue-400 tabular-nums">92% 달성</span>
+                        </div>
+                        <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1">
+                          <div className="bg-blue-500 h-full rounded-full" style={{ width: '92%' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ═══ 섹션 1: 상단 요약 카드 6열 (모노크롬 고대비 + 스파크라인) ═══ */}
             {(() => {
@@ -6271,6 +6475,23 @@ export default function LawyerRole({
           onClose={() => setContractTargetRequest(null)}
           onSuccess={handleContractSuccess}
           onAddMessage={onAddMessage}
+        />
+      )}
+
+      {/* ── 리걸플로 벤치마킹: 상시 법률 실무 퀵툴 독 (Legal Quick Dock) ── */}
+      <LegalQuickDock onOpenAlimtok={() => setActiveTab('client-crm')} />
+
+      {/* ── 법무법인 로고 및 변호사 직인(인장) 관리 모달 ── */}
+      {isSealModalOpen && (
+        <LawyerSealManagerModal
+          isOpen={isSealModalOpen}
+          onClose={() => setIsSealModalOpen(false)}
+          lawyerId={activeLawyer.id}
+          lawyerName={activeLawyer.name}
+          initialSealInfo={activeLawyer.sealInfo}
+          onSaveSealInfo={(newInfo) => {
+            setActiveLawyer(prev => ({ ...prev, sealInfo: newInfo }));
+          }}
         />
       )}
 

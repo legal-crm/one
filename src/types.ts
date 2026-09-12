@@ -784,6 +784,10 @@ export interface CrmClientExtension {
   incomeExpenseD5103?: import('./types/incomeExpenseTypes').IncomeExpenseD5103Data;
   // ── 대법원 전산양식 D5102 재산목록 (11대 자산 가치 평가) ──
   propertyListD5102?: import('./types/propertyTypes').PropertyListD5102Data;
+  // ── 리걸플로형 표준 13단계 파이프라인 & 개시결정 요약 ──
+  thirteenStage?: LegalFlowRehabStage | LegalFlowBankruptcyStage | string;
+  isDismissedRevoked?: boolean; // 기각 및 폐지 플래그 (선택/해제 가능)
+  decisionSummary?: DecisionSummaryData; // 개시결정 요약본 데이터
 }
 
 export interface RepaymentEntry {
@@ -975,6 +979,109 @@ export interface User {
   aiCaseAnalysisActivatedAt?: string;    // 활성화 일시
   aiCaseAnalysisDeactivatedAt?: string;  // 비활성화 일시
   aiCaseAnalysisNote?: string;           // 어드민 메모 (계약 조건, 기간 등)
+  // ── 법무법인 직인/인장 및 서명 설정 (리걸플로 벤치마킹) ──
+  sealInfo?: LawyerSealInfo;
+}
+
+// ═══════════════════════════════════════════════
+// 리걸플로형 표준 13단계 파이프라인 & 개시결정 요약
+// ═══════════════════════════════════════════════
+
+export type LegalFlowRehabStage = 
+  | 'consult_waiting'      // 상담대기
+  | 'consult_completed'    // 상담완료
+  | 'contract_done'        // 계약
+  | 'doc_prep'             // 서류준비
+  | 'petition_drafting'    // 신청서 작성 진행중
+  | 'petition_submitted'   // 신청서 제출
+  | 'prohibition_order'    // 금지명령
+  | 'correction_period'    // 보정기간
+  | 'commencement'         // 개시결정
+  | 'creditor_meeting'     // 채권자 집회기일
+  | 'confirmation'         // 인가결정
+  | 'dismissed_revoked'    // 기각 및 폐지
+  | 'completed';           // 종료
+
+export type LegalFlowBankruptcyStage = 
+  | 'consult_waiting'      // 상담대기
+  | 'consult_completed'    // 상담완료
+  | 'contract_done'        // 계약
+  | 'doc_prep'             // 서류준비
+  | 'petition_drafting'    // 신청서 작성 진행중
+  | 'petition_submitted'   // 신청서 제출
+  | 'bankruptcy_declared'  // 파산선고
+  | 'hearing_date'         // 의견청취기일
+  | 'asset_liquidation'    // 재산 환가 및 배당
+  | 'bankruptcy_closed'    // 파산폐지
+  | 'discharge_granted'    // 면책결정
+  | 'discharge_denied'     // 면책 불허가
+  | 'completed';           // 종료
+
+export interface LegalFlowStageConfig {
+  id: string;
+  label: string;
+  shortLabel: string;
+  order: number;
+  isCourtStage: boolean; // 법원 접수 이후 단계인지 여부
+}
+
+export const LEGALFLOW_REHAB_STAGES: LegalFlowStageConfig[] = [
+  { id: 'consult_waiting', label: '상담대기', shortLabel: '대기', order: 1, isCourtStage: false },
+  { id: 'consult_completed', label: '상담완료', shortLabel: '상담', order: 2, isCourtStage: false },
+  { id: 'contract_done', label: '계약', shortLabel: '계약', order: 3, isCourtStage: false },
+  { id: 'doc_prep', label: '서류준비', shortLabel: '서류', order: 4, isCourtStage: false },
+  { id: 'petition_drafting', label: '신청서 작성 진행중', shortLabel: '작성중', order: 5, isCourtStage: false },
+  { id: 'petition_submitted', label: '신청서 제출', shortLabel: '접수', order: 6, isCourtStage: true },
+  { id: 'prohibition_order', label: '금지명령', shortLabel: '금지', order: 7, isCourtStage: true },
+  { id: 'correction_period', label: '보정기간', shortLabel: '보정', order: 8, isCourtStage: true },
+  { id: 'commencement', label: '개시결정', shortLabel: '개시', order: 9, isCourtStage: true },
+  { id: 'creditor_meeting', label: '채권자 집회기일', shortLabel: '집회', order: 10, isCourtStage: true },
+  { id: 'confirmation', label: '인가결정', shortLabel: '인가', order: 11, isCourtStage: true },
+  { id: 'dismissed_revoked', label: '기각 및 폐지', shortLabel: '폐지', order: 12, isCourtStage: true },
+  { id: 'completed', label: '종료', shortLabel: '종료', order: 13, isCourtStage: true },
+];
+
+export const LEGALFLOW_BANKRUPTCY_STAGES: LegalFlowStageConfig[] = [
+  { id: 'consult_waiting', label: '상담대기', shortLabel: '대기', order: 1, isCourtStage: false },
+  { id: 'consult_completed', label: '상담완료', shortLabel: '상담', order: 2, isCourtStage: false },
+  { id: 'contract_done', label: '계약', shortLabel: '계약', order: 3, isCourtStage: false },
+  { id: 'doc_prep', label: '서류준비', shortLabel: '서류', order: 4, isCourtStage: false },
+  { id: 'petition_drafting', label: '신청서 작성 진행중', shortLabel: '작성중', order: 5, isCourtStage: false },
+  { id: 'petition_submitted', label: '신청서 제출', shortLabel: '접수', order: 6, isCourtStage: true },
+  { id: 'bankruptcy_declared', label: '파산선고', shortLabel: '선고', order: 7, isCourtStage: true },
+  { id: 'hearing_date', label: '의견청취기일', shortLabel: '청취', order: 8, isCourtStage: true },
+  { id: 'asset_liquidation', label: '재산 환가 및 배당', shortLabel: '배당', order: 9, isCourtStage: true },
+  { id: 'bankruptcy_closed', label: '파산폐지', shortLabel: '폐지', order: 10, isCourtStage: true },
+  { id: 'discharge_granted', label: '면책결정', shortLabel: '면책', order: 11, isCourtStage: true },
+  { id: 'discharge_denied', label: '면책 불허가', shortLabel: '불허가', order: 12, isCourtStage: true },
+  { id: 'completed', label: '종료', shortLabel: '종료', order: 13, isCourtStage: true },
+];
+
+export interface DecisionSummaryData {
+  courtName?: string;
+  caseNumber?: string;
+  commencementDate?: string;     // 개시결정일
+  totalDebt: number;             // 총 채무액 (만 원)
+  totalRepayment: number;        // 총 변제액 (만 원)
+  repaymentRate: number;         // 변제율 (%)
+  totalDischarged: number;       // 면책 예상액 (만 원)
+  dischargeRate: number;         // 면책율/탕감율 (%)
+  monthlyPayment: number;        // 월 변제금 (만 원 또는 원)
+  repaymentMonths: number;       // 변제 기간 (기본 36개월)
+  virtualAccountBank?: string;   // 예: 신한은행
+  virtualAccountNumber?: string; // 법원 납부 전용 가상계좌
+  firstPaymentDate?: string;     // 첫 회차 납입일
+  specialMemo?: string;          // 유의사항 메모
+}
+
+export interface LawyerSealInfo {
+  firmLogoUrl?: string;          // 법무법인 로고 (Data URL)
+  lawyerSealUrl?: string;        // 변호사 직인/인장 도장 (투명 PNG Data URL)
+  signUrl?: string;              // 서명 이미지
+  autoSealContract?: boolean;    // 전자계약서 자동 날인
+  autoSealPetition?: boolean;    // 신청서 및 위임장 자동 날인
+  autoSealCorrection?: boolean;  // 보정서 자동 날인
+  updatedAt?: string;
 }
 
 export type Lawyer = User;

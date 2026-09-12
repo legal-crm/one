@@ -4,10 +4,11 @@ import {
   X, Save, Eye, Upload, Plus, Trash2, MapPin, Building, BookOpen,
   Shield, Award, Briefcase, Users, GraduationCap, Scale, CheckCircle,
   ChevronRight, Phone, Home, ExternalLink, Navigation, Copy, Link, Globe,
-  Image as ImageIcon
+  Image as ImageIcon, Stamp
 } from 'lucide-react';
-import type { User, LawFirm } from '../../types';
+import type { User, LawFirm, LawyerSealInfo } from '../../types';
 import { mockLawFirms } from '../../data';
+import LawyerSealManagerModal from './LawyerSealManagerModal';
 
 interface LawyerProfileEditorProps {
   lawyer: User;
@@ -26,6 +27,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   const [previewTab, setPreviewTab] = useState<'home' | 'info'>('home');
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
+  const [isSealModalOpen, setIsSealModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── 폼 업데이트 헬퍼 ──
@@ -247,6 +249,56 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   <p className="text-xs text-slate-600">JPG, PNG, WebP (최대 5MB 권장)</p>
                 </div>
               </div>
+            </div>
+
+            {/* § 법무법인 로고 & 직인(인장) 등록 (리걸플로 벤치마킹) */}
+            <div className={sectionCls}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-amber-400 flex items-center gap-1.5">
+                  <Stamp className="w-4 h-4" />
+                  법무법인 로고 & 변호사 직인(인장)
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsSealModalOpen(true)}
+                  className="text-xs font-bold text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-xl border border-amber-500/30 transition-all cursor-pointer"
+                >
+                  직인·로고 설정 열기 &rarr;
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B] flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[#1E293B] flex items-center justify-center overflow-hidden shrink-0">
+                    {form.sealInfo?.firmLogoUrl ? (
+                      <img src={form.sealInfo.firmLogoUrl} alt="로고" className="w-full h-full object-contain" />
+                    ) : (
+                      <ImageIcon className="w-5 h-5 text-slate-500" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-300 block">사무소 로고</span>
+                    <span className="text-[10px] text-slate-500">{form.sealInfo?.firmLogoUrl ? '등록 완료' : '미등록'}</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B] flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#1E293B] flex items-center justify-center overflow-hidden shrink-0 border border-red-500/30">
+                    {form.sealInfo?.lawyerSealUrl ? (
+                      <img src={form.sealInfo.lawyerSealUrl} alt="직인" className="w-full h-full object-contain" />
+                    ) : (
+                      <Stamp className="w-5 h-5 text-red-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-300 block">변호사 직인</span>
+                    <span className="text-[10px] text-slate-500">{form.sealInfo?.lawyerSealUrl ? '도장 등록됨' : '미등록'}</span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                전자계약 체결, 소송위임장, 보정서 출력 시 공인 직인이 자동 합성되어 정식 문서로 발행됩니다.
+              </p>
             </div>
 
             {/* § 전문 분야 */}
@@ -1121,6 +1173,20 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
 
         {/* 전체 미리보기 모달 */}
         {showFullPreview && renderContent()}
+
+        {/* 법무법인 직인 & 로고 관리 모달 (리걸플로 벤치마킹) */}
+        {isSealModalOpen && (
+          <LawyerSealManagerModal
+            isOpen={isSealModalOpen}
+            onClose={() => setIsSealModalOpen(false)}
+            lawyerId={form.id}
+            lawyerName={form.name}
+            initialSealInfo={form.sealInfo}
+            onSaveSealInfo={(newSealInfo) => {
+              updateForm({ sealInfo: newSealInfo });
+            }}
+          />
+        )}
 
         {/* 저장 토스트 */}
         {saveToast && (

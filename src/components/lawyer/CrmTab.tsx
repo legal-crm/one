@@ -36,6 +36,8 @@ import LegalDocHubModal from './documents/LegalDocHubModal';
 import IncomeExpenseModal from './repayment/IncomeExpenseModal';
 import PropertyValuationModal from './assets/PropertyValuationModal';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
+import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
+import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ContractView from './pipeline/Stage1ContractView';
 import Stage2DocumentsHubView from './pipeline/Stage2DocumentsHubView';
 import Stage3FilingBundleView from './pipeline/Stage3FilingBundleView';
@@ -2552,57 +2554,75 @@ export default function CrmTab({
                   {detailTab === 'info' && (
                     <div className="space-y-5">
                       
-                      {/* 법원 진행 현황 바 (수임 이후) */}
-                      {['contracted','document','filed','commenced','repaying','discharged'].includes(selectedExt.crmStatus) && (() => {
+                      {/* ═══ 리걸플로 벤치마킹: 표준 13단계 파이프라인 네비게이터 ═══ */}
+                      {(() => {
                         const isBk = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
-                        const steps = isBk ? [
-                          { key: 'contracted', label: '수임계약', short: '수임' },
-                          { key: 'document', label: '서류준비', short: '서류' },
-                          { key: 'filed', label: '파산접수', short: '접수' },
-                          { key: 'commenced', label: '파산선고(관재인)', short: '선고' },
-                          { key: 'repaying', label: '의견청취기일', short: '집회' },
-                          { key: 'discharged', label: '면책결정', short: '면책' },
-                        ] : [
-                          { key: 'contracted', label: '수임계약', short: '수임' },
-                          { key: 'document', label: '서류준비', short: '서류' },
-                          { key: 'filed', label: '법원접수', short: '접수' },
-                          { key: 'commenced', label: '개시결정', short: '개시' },
-                          { key: 'repaying', label: '변제인가', short: '변제' },
-                          { key: 'discharged', label: '면책확정', short: '면책' },
-                        ];
-                        const currentIdx = steps.findIndex(s => s.key === selectedExt.crmStatus);
+                        
+                        // crmStatus를 기반으로 기본 13단계 매핑 (지정되지 않았을 때 fallback)
+                        const defaultStageMap: Record<string, string> = {
+                          requested: 'consult_waiting',
+                          consulting: 'consult_completed',
+                          contracted: 'contract_done',
+                          document: 'doc_prep',
+                          filed: 'petition_submitted',
+                          commenced: isBk ? 'bankruptcy_declared' : 'commencement',
+                          repaying: isBk ? 'hearing_date' : 'confirmation',
+                          discharged: 'completed',
+                          cancelled: isBk ? 'bankruptcy_closed' : 'dismissed_revoked',
+                        };
+
+                        const currentStage = selectedExt.thirteenStage || defaultStageMap[selectedExt.crmStatus] || 'consult_waiting';
+                        const showDecisionCard = ['commenced', 'repaying', 'discharged'].includes(selectedExt.crmStatus) || 
+                          selectedExt.thirteenStage === 'commencement' || 
+                          selectedExt.thirteenStage === 'confirmation' || 
+                          selectedExt.thirteenStage === 'bankruptcy_declared' ||
+                          Boolean(selectedExt.decisionSummary);
+
                         return (
-                          <div className="bg-gradient-to-r from-brand/5 via-slate-50 to-emerald-50/50 p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-black text-brand flex items-center gap-1.5">
-                                <Scale className="w-4 h-4 text-brand" />
-                                법원 사건 진행 파이프라인
-                              </span>
-                              <span className="text-[11px] font-bold text-slate-500 font-mono">
-                                Step {currentIdx + 1} / {steps.length}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {steps.map((step, idx) => (
-                                <React.Fragment key={step.key}>
-                                  <div className={`flex flex-col items-center ${idx <= currentIdx ? '' : 'opacity-40'}`}>
-                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${
-                                      idx < currentIdx ? 'bg-emerald-500 border-emerald-500 text-white' :
-                                      idx === currentIdx ? 'bg-brand border-brand text-white shadow-md shadow-brand/30 ring-2 ring-brand/20' :
-                                      'bg-white border-slate-300 text-slate-400'
-                                    }`}>
-                                      {idx < currentIdx ? '✓' : idx + 1}
-                                    </div>
-                                    <span className={`text-[10px] mt-1 font-bold text-center leading-tight ${idx === currentIdx ? 'text-brand' : idx < currentIdx ? 'text-emerald-700' : 'text-slate-400'}`}>
-                                      {step.short}
-                                    </span>
-                                  </div>
-                                  {idx < steps.length - 1 && (
-                                    <div className={`flex-1 h-0.5 rounded-full mb-4 ${idx < currentIdx ? 'bg-emerald-400' : 'bg-slate-200'}`} />
-                                  )}
-                                </React.Fragment>
-                              ))}
-                            </div>
+                          <div className="space-y-4">
+                            <LegalFlowThirteenStepper
+                              currentStageId={currentStage}
+                              isBankruptcy={isBk}
+                              isDismissedRevoked={!!selectedExt.isDismissedRevoked}
+                              onSelectStage={(newStageId) => {
+                                if (!selectedClient) return;
+                                const updatedExt: CrmClientExtension = {
+                                  ...selectedExt,
+                                  thirteenStage: newStageId,
+                                  lastActivityAt: new Date().toISOString(),
+                                };
+                                saveCrmClient(selectedClient.id, updatedExt);
+                                setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
+                              }}
+                              onToggleDismissedRevoked={(val) => {
+                                if (!selectedClient) return;
+                                const updatedExt: CrmClientExtension = {
+                                  ...selectedExt,
+                                  isDismissedRevoked: val,
+                                  lastActivityAt: new Date().toISOString(),
+                                };
+                                saveCrmClient(selectedClient.id, updatedExt);
+                                setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
+                              }}
+                            />
+
+                            {/* 개시결정 이후 단계: 리걸플로형 개시결정 요약본 & 원형 게이지 브리핑 카드 */}
+                            {showDecisionCard && (
+                              <DecisionSummaryCard
+                                clientName={selectedClient.clientName || '의뢰인'}
+                                data={selectedExt.decisionSummary}
+                                onSave={(newSummary) => {
+                                  if (!selectedClient) return;
+                                  const updatedExt: CrmClientExtension = {
+                                    ...selectedExt,
+                                    decisionSummary: newSummary,
+                                    lastActivityAt: new Date().toISOString(),
+                                  };
+                                  saveCrmClient(selectedClient.id, updatedExt);
+                                  setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
+                                }}
+                              />
+                            )}
                           </div>
                         );
                       })()}
