@@ -6,7 +6,7 @@ import {
   Share2, ShieldCheck, RefreshCw, Clock, ChevronDown, ChevronUp, ExternalLink,
   FolderKanban, Edit3, RotateCcw, Highlighter, ShieldAlert,
   Sparkles, Printer, EyeOff, Landmark, CheckSquare, Square, Percent, Coins, HelpCircle,
-  Settings2
+  Settings2, Minus, Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -28,6 +28,12 @@ import { ContractDocLibraryModal } from './ContractDocLibraryModal';
 import { HighlightedDocumentViewer } from '../common/HighlightedDocumentViewer';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import ContractPublicVerifierModal from '../common/ContractPublicVerifierModal';
+
+export const MAJOR_BANKS = [
+  '신한은행', '국민은행', '우리은행', '하나은행', 'NH농협은행',
+  'IBK기업은행', '카카오뱅크', '토스뱅크', '케이뱅크', 'SC제일은행',
+  '우체국', '새마을금고', '신협', '수협은행', '직접입력'
+];
 
 interface Props {
   contract: ElectronicContract;
@@ -57,6 +63,16 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
     return {
       ...initialContract,
+      clientResidentNumber: initialContract.clientResidentNumber || '',
+      clientEmail: initialContract.clientEmail || '',
+      clientAddressDetail: initialContract.clientAddressDetail || '',
+      clientPostcode: initialContract.clientPostcode || '',
+      caseStageList: initialContract.caseStageList || ['개시결정'],
+      statementFees: initialContract.statementFees || {
+        baseFee: (initialContract.totalFee || 180) * 10000,
+        successFee: initialContract.successFee?.amount || 0,
+        otherFee: 0,
+      },
       caseCategory: initialContract.caseCategory || (initialContract.caseType?.includes('파산') ? 'individual_bankruptcy' : 'individual_rehab'),
       courtCosts: {
         creditorCount,
@@ -90,7 +106,11 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         dueDateCondition: '면책 또는 인가결정 확정 시',
         description: ''
       },
-      feeSchedule: initialContract.feeSchedule || [],
+      feeSchedule: (initialContract.feeSchedule || []).map((item) => ({
+        ...item,
+        itemType: item.itemType || (item.round === 0 ? 'down_payment' : 'installment'),
+        itemTitle: item.itemTitle || item.memo || (item.round === 0 ? '착수금(계약금)' : `${item.round}차 분할납부`),
+      })),
       documents: initialContract.documents || [],
       auditTrail: initialContract.auditTrail || [],
     };
@@ -131,6 +151,10 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
   // 법원 실비 단가 설정 패널 상태
   const [showRateSettings, setShowRateSettings] = useState(false);
+  // 주민번호 마스킹 토글 상태 (리걸플로 4-1)
+  const [showResidentNumber, setShowResidentNumber] = useState(false);
+  // 분납 스케줄 일괄 생성 패널 상태
+  const [showAutoSchedulePanel, setShowAutoSchedulePanel] = useState(false);
 
   // 약관 동의 (4대 효력 필수 항목) 및 상세 전문 열람 상태
   const [agreePrivacy, setAgreePrivacy] = useState(true);
@@ -266,6 +290,142 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     } catch (err) {
       toast.error('상담 데이터를 불러오는 중 오류가 발생했습니다.');
     }
+  };
+
+  // ── 납부 금액 개별 항목 조작 핸들러 (리걸플로 4-3 호환) ──
+  const handleAddCourtCostItem = () => {
+    const credCount = c.courtCosts?.creditorCount || 0;
+    const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
+    const delUnitFee = c.courtCosts?.deliveryUnitFee || 5200;
+    const costs = calculateCourtCosts(credCount, unitFee, delUnitFee, c.courtCosts?.stampFee || 30000);
+    const calculatedCourt = (c.courtCosts?.deliveryFee ?? costs.deliveryFee) + (c.courtCosts?.stampFee ?? costs.stampFee) + (c.courtCosts?.debtCertFee ?? costs.debtCertFee) + (c.courtCosts?.miscFee ?? 0) + (c.courtCosts?.provisionalDeposit ?? 0);
+
+    const today = c.contractDate || new Date().toISOString().slice(0, 10);
+    const newItem: FeeInstallment = {
+      id: `fee-court-${Date.now()}`,
+      round: 0,
+      itemType: 'court_cost',
+      itemTitle: '송달료 및 부대비용',
+      dueDate: today,
+      amount: calculatedCourt > 0 ? calculatedCourt : 500000,
+      status: 'pending',
+      memo: '송달료, 인지대, 부채증명서 발급 대행비 일체',
+    };
+    update({ feeSchedule: [...(c.feeSchedule || []), newItem] });
+    toast.success('송달료 및 부대비용 납부 항목이 추가되었습니다.');
+  };
+
+  const handleAddDownPaymentItem = () => {
+    const today = c.contractDate || new Date().toISOString().slice(0, 10);
+    const newItem: FeeInstallment = {
+      id: `fee-down-${Date.now()}`,
+      round: 0,
+      itemType: 'down_payment',
+      itemTitle: '착수금(계약금)',
+      dueDate: today,
+      amount: (downPayment || 50) * 10000,
+      status: 'pending',
+      memo: '계약 체결 시 착수금',
+    };
+    update({ feeSchedule: [...(c.feeSchedule || []), newItem] });
+    toast.success('착수금(계약금) 납부 항목이 추가되었습니다.');
+  };
+
+  const handleAddInstallmentItem = () => {
+    const existing = (c.feeSchedule || []).filter(f => f.itemType === 'installment' || f.round > 0);
+    const nextRound = existing.length + 1;
+    let nextDateStr = new Date().toISOString().slice(0, 10);
+    if (c.feeSchedule && c.feeSchedule.length > 0) {
+      const lastItem = c.feeSchedule[c.feeSchedule.length - 1];
+      if (lastItem.dueDate && !isNaN(Date.parse(lastItem.dueDate))) {
+        const d = new Date(lastItem.dueDate);
+        d.setMonth(d.getMonth() + 1);
+        nextDateStr = d.toISOString().slice(0, 10);
+      }
+    }
+
+    const newItem: FeeInstallment = {
+      id: `fee-inst-${Date.now()}`,
+      round: nextRound,
+      itemType: 'installment',
+      itemTitle: `${nextRound}차 분할납부`,
+      dueDate: nextDateStr,
+      amount: 300000,
+      status: 'pending',
+      memo: `${nextRound}차 분납 수임료`,
+    };
+    update({ feeSchedule: [...(c.feeSchedule || []), newItem] });
+    toast.success(`${nextRound}차 분할납부 항목이 추가되었습니다.`);
+  };
+
+  const handleAddSuccessFeeItem = () => {
+    const newItem: FeeInstallment = {
+      id: `fee-succ-${Date.now()}`,
+      round: 0,
+      itemType: 'success_fee',
+      itemTitle: '성공보수',
+      dueDate: '개시신청 즉시',
+      amount: 500000,
+      status: 'pending',
+      memo: '면책/인가결정 확정 시 성공보수',
+      successFeeOption: {
+        type: 'fixed',
+        amount: 500000,
+        ratePercent: 5,
+        description: '',
+      }
+    };
+    update({ 
+      feeSchedule: [...(c.feeSchedule || []), newItem],
+      successFee: {
+        ...(c.successFee || { enabled: true, type: 'fixed', amount: 500000 }),
+        enabled: true,
+      }
+    });
+    toast.success('성공보수 약정 항목이 추가되었습니다.');
+  };
+
+  const handleAddNewCustomItem = () => {
+    const today = c.contractDate || new Date().toISOString().slice(0, 10);
+    const newItem: FeeInstallment = {
+      id: `fee-custom-${Date.now()}`,
+      round: (c.feeSchedule?.length || 0) + 1,
+      itemType: 'misc',
+      itemTitle: '기타 약정 납부금',
+      dueDate: today,
+      amount: 100000,
+      status: 'pending',
+      memo: '사무실 별도 약정 비용',
+    };
+    update({ feeSchedule: [...(c.feeSchedule || []), newItem] });
+    toast.success('기타 납부 항목이 추가되었습니다.');
+  };
+
+  const handleDeleteScheduleItem = (id: string) => {
+    const nextList = (c.feeSchedule || []).filter(f => f.id !== id);
+    update({ feeSchedule: nextList });
+    toast.info('납부 항목이 삭제되었습니다.');
+  };
+
+  const handleUpdateScheduleItem = (id: string, patch: Partial<FeeInstallment>) => {
+    const nextList = (c.feeSchedule || []).map(f => {
+      if (f.id === id) {
+        return { ...f, ...patch };
+      }
+      return f;
+    });
+    update({ feeSchedule: nextList });
+  };
+
+  const handleToggleStage = (stageName: string) => {
+    const currentList = c.caseStageList || ['개시결정'];
+    let nextList: string[];
+    if (currentList.includes(stageName)) {
+      nextList = currentList.filter(s => s !== stageName);
+    } else {
+      nextList = [...currentList, stageName];
+    }
+    update({ caseStageList: nextList });
   };
 
   // ─── Step 1: 위임인 및 사건 정보 ───
@@ -430,9 +590,12 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
         </div>
       )}
 
-      {/* 기본 의뢰인 인적사항 */}
+      {/* 기본 의뢰인 인적사항 (리걸플로 4-1 반영) */}
       <div className="space-y-4">
-        <h3 className="text-base font-black text-slate-800">👤 위임인 인적사항</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-black text-slate-800">👤 위임인 인적사항</h3>
+          <span className="text-xs text-slate-400">※ 입력한 정보는 개인회생 개시신청서 및 소송위임장에 자동 반영됩니다.</span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-slate-500 mb-1.5 block">의뢰인 성명</label>
@@ -442,133 +605,97 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
             <label className="text-xs font-bold text-slate-500 mb-1.5 block">연락처 (스마트폰 번호)</label>
             <input value={c.clientPhone} onChange={e => update({ clientPhone: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400 font-mono" placeholder="010-0000-0000" />
           </div>
-          <div className="md:col-span-2">
-            <label className="text-xs font-bold text-slate-500 mb-1.5 block">주소 (등본상 주소지)</label>
-            <input value={c.clientAddress || ''} onChange={e => update({ clientAddress: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 placeholder-slate-400" placeholder="서울시 서초구 서초대로..." />
-            <p className="text-[11px] text-slate-400 mt-1">※ 여기서 입력한 주소는 법원 개시신청 서류 및 위임장에 자동으로 연동됩니다.</p>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-500">주민등록번호 (개시신청 필수)</label>
+              <button 
+                type="button" 
+                onClick={() => setShowResidentNumber(!showResidentNumber)} 
+                className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+              >
+                {showResidentNumber ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                <span>{showResidentNumber ? '마스킹' : '표시'}</span>
+              </button>
+            </div>
+            <input 
+              type={showResidentNumber ? 'text' : 'password'}
+              value={c.clientResidentNumber || ''} 
+              onChange={e => update({ clientResidentNumber: e.target.value })} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 font-mono" 
+              placeholder="예: 880512-1234567" 
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 mb-1.5 block">이메일 주소</label>
+            <input 
+              type="email"
+              value={c.clientEmail || ''} 
+              onChange={e => update({ clientEmail: e.target.value })} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900" 
+              placeholder="client@example.com" 
+            />
+          </div>
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-xs font-bold text-slate-500 block">주소 (등본상 주민등록지)</label>
+            <div className="flex gap-2">
+              <input 
+                value={c.clientPostcode || ''} 
+                onChange={e => update({ clientPostcode: e.target.value })} 
+                placeholder="우편번호" 
+                className="w-28 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-mono text-slate-900" 
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  update({ clientPostcode: '06647', clientAddress: '서울특별시 서초구 서초대로 250' });
+                  toast.info('표준 도로명 주소가 입력되었습니다. 필요 시 수정해 주세요.');
+                }}
+                className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                주소 검색
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <input 
+                value={c.clientAddress || ''} 
+                onChange={e => update({ clientAddress: e.target.value })} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900" 
+                placeholder="기본주소 (도로명 / 지번 주소)" 
+              />
+              <input 
+                value={c.clientAddressDetail || ''} 
+                onChange={e => update({ clientAddressDetail: e.target.value })} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900" 
+                placeholder="상세주소 (동·호수 등)" 
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">※ 여기서 입력한 주민등록번호와 주소는 법원 개시신청 서류 및 위임장에 자동으로 연동됩니다.</p>
           </div>
         </div>
       </div>
 
-      {/* 수임인 정보 */}
+      {/* 수임인 (담당 변호사) 정보 및 계약일자 (리걸플로 4-1 완벽 일치) */}
       <div className="border-t border-slate-100 pt-4">
-        <h4 className="text-sm font-bold text-slate-700 mb-3">수임인 (담당 변호사) 정보</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h4 className="text-sm font-bold text-slate-700 mb-3">수임인 (담당 변호사) 정보 및 계약일자</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs font-bold text-slate-500 mb-1.5 block">법무법인명</label>
+            <label className="text-xs font-bold text-slate-500 mb-1.5 block">법무법인(사무소)명</label>
             <input value={c.lawFirmName} onChange={e => update({ lawFirmName: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 font-bold" />
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 mb-1.5 block">담당 변호사</label>
             <input value={c.lawyerName} onChange={e => update({ lawyerName: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 font-bold" />
           </div>
-        </div>
-      </div>
-
-      {/* 수임료 및 송달료 입금계좌 분리 설정 (리걸플로 벤치마킹) */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-              <Landmark className="w-4 h-4 text-brand" />
-              <span>수임료 및 송달료(부대비용) 입금 계좌 안내</span>
-            </h4>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              변호사 보수(매출)와 송달료·부채발급비 등 법원비용(예수금 공과금)의 입금 계좌를 분리하여 회계 정산 투명성을 보장합니다.
-            </p>
+            <label className="text-xs font-bold text-slate-500 mb-1.5 block">계약체결 일자</label>
+            <input type="date" value={c.contractDate} onChange={e => update({ contractDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 font-bold" />
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          {/* 수임료 입금 계좌 */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
-            <span className="text-xs font-bold text-[#1E3A5F] block">💳 1. 수임료(보수) 입금계좌</span>
-            <div className="grid grid-cols-3 gap-2">
-              <input 
-                value={c.feeAccount?.bankName || ''} 
-                onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
-                placeholder="은행명" 
-                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs" 
-              />
-              <input 
-                value={c.feeAccount?.accountHolder || ''} 
-                onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountHolder: e.target.value } })}
-                placeholder="예금주" 
-                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold" 
-              />
-              <div className="col-span-3">
-                <input 
-                  value={c.feeAccount?.accountNumber || ''} 
-                  onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountNumber: e.target.value } })}
-                  placeholder="계좌번호 (하이픈 포함)" 
-                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-mono" 
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 송달료/공과금 입금 계좌 */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 block">⚖️ 2. 송달료·부대비용 입금계좌</span>
-              <label className="flex items-center gap-1 text-[11px] font-bold text-slate-500 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={c.sameAsFeeAccount ?? true} 
-                  onChange={e => {
-                    const same = e.target.checked;
-                    update({ 
-                      sameAsFeeAccount: same,
-                      courtCostAccount: same ? c.feeAccount : c.courtCostAccount 
-                    });
-                  }}
-                  className="w-3.5 h-3.5 rounded accent-brand cursor-pointer"
-                />
-                <span>수임료 계좌와 동일</span>
-              </label>
-            </div>
-
-            {c.sameAsFeeAccount ? (
-              <div className="p-3 bg-slate-50 rounded-lg text-xs text-slate-500 border border-slate-100 flex items-center justify-between">
-                <span>수임료 입금계좌로 일체 입금 받습니다.</span>
-                <span className="font-bold text-slate-700">{c.feeAccount?.bankName} {c.feeAccount?.accountNumber}</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                <input 
-                  value={c.courtCostAccount?.bankName || ''} 
-                  onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
-                  placeholder="은행명" 
-                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs" 
-                />
-                <input 
-                  value={c.courtCostAccount?.accountHolder || ''} 
-                  onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountHolder: e.target.value } })}
-                  placeholder="예금주" 
-                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold" 
-                />
-                <div className="col-span-3">
-                  <input 
-                    value={c.courtCostAccount?.accountNumber || ''} 
-                    onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountNumber: e.target.value } })}
-                    placeholder="별도 공과금 전용 계좌번호" 
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-mono" 
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs font-bold text-slate-500 mb-1.5 block">계약일자</label>
-        <input type="date" value={c.contractDate} onChange={e => update({ contractDate: e.target.value })} className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 text-slate-900 font-bold" />
       </div>
     </div>
   );
 
-  // ─── Step 2: 수임료·실비·성공보수 설정 ───
+  // ─── Step 2: 수임료·실비·성공보수 설정 (리걸플로 4-2, 4-3, 4-4 완벽 구현) ───
   const renderFeeSchedule = () => {
     const credCount = c.courtCosts?.creditorCount || 0;
     const unitFee = c.courtCosts?.debtCertUnitFee || 15000;
@@ -583,640 +710,900 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
 
     const totalCourt = deliveryFee + stampFee + debtCertFee + miscFee + provisionalDeposit;
 
-    const baseFee = (c.totalFee || 0) * 10000;
-    const vatAmount = c.vatIncluded ? Math.round(baseFee * 0.1) : 0;
-    const totalFeeWithVat = baseFee + vatAmount;
-    const grandTotal = totalFeeWithVat + totalCourt;
+    // 계산서 수임료 (그림 4-2 좌측)
+    const statementBaseFee = c.statementFees?.baseFee ?? ((c.totalFee || 180) * 10000);
+    const statementSuccessFee = c.statementFees?.successFee ?? (c.successFee?.enabled ? (c.successFee.amount || 0) : 0);
+    const statementOtherFee = c.statementFees?.otherFee ?? 0;
+    const statementSubtotal = statementBaseFee + statementSuccessFee + statementOtherFee;
+
+    const vatAmount = c.vatIncluded ? Math.round(statementBaseFee * 0.1) : 0;
+    const totalFeeWithVat = statementBaseFee + vatAmount;
+    const grandTotal = totalFeeWithVat + statementSuccessFee + statementOtherFee + totalCourt;
 
     const scheduleTotal = (c.feeSchedule || []).reduce((s, f) => s + (f.amount || 0), 0);
+    const scheduleDiff = grandTotal - scheduleTotal;
 
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-base font-black text-slate-800">💰 수임료·법원실비 및 분납·성공보수 설정</h3>
-          <p className="text-xs text-slate-500 mt-1">
-            부채증명서 발급대행비, 송달료, 인지대, 변제예납금과 변호사 보수를 투명하게 구분하고 분납 및 성공보수를 약정합니다.
-          </p>
-        </div>
-
-        {/* 1. 법원 비용 및 실비 산출 카드 (리걸플로 벤치마킹 + 변호사 사무실 직접 수정 지원) */}
+        {/* 상단 1: 사건 구분 및 진행단계, AI상담 데이터 가져오기 (리걸플로 4-2) */}
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
-              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <span>📋 법원비용 및 실비 산출·수정 (송달료·인지대·부채발급비)</span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                  금액 자유 수정 가능
+              <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                <span>📋 사건 형태 및 진행 단계</span>
+                <span className="text-[10px] bg-brand text-white px-2 py-0.5 rounded-full font-bold">리걸플로 4-2 표준</span>
+              </h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                계약하고자 하는 사건의 형태와 진행단계를 선택하고 법률상담 시의 납부내역을 불러옵니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleImportConsultationData}
+              className="px-3.5 py-2 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-xs whitespace-nowrap flex items-center justify-center gap-1.5 self-start sm:self-center"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>AI상담 납부내역 가져오기 &gt;</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 사건형태 선택 */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-600 block">사건 형태</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'individual_rehab', label: '개인회생' },
+                  { key: 'individual_bankruptcy', label: '개인파산' },
+                  { key: 'other', label: '기타사건' },
+                ].map((item) => {
+                  const isSelected = (c.caseCategory || 'individual_rehab') === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => update({ 
+                        caseCategory: item.key as any,
+                        caseType: item.key === 'individual_bankruptcy' ? '개인파산 및 면책사건' : item.key === 'individual_rehab' ? '개인회생사건' : '일반·기타사건'
+                      })}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        isSelected 
+                          ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-xs' 
+                          : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-slate-300'}`} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 진행상태 다중 선택 (리걸플로 4-2) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-600 block">진행 상태 (다중 선택 가능)</label>
+              <div className="grid grid-cols-3 gap-2">
+                {['기초서류대체', '개시결정', '면책결정'].map((stage) => {
+                  const checked = (c.caseStageList || ['개시결정']).includes(stage);
+                  return (
+                    <button
+                      key={stage}
+                      type="button"
+                      onClick={() => handleToggleStage(stage)}
+                      className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        checked 
+                          ? 'bg-blue-50 border-blue-400 text-blue-900 shadow-2xs' 
+                          : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      {checked ? <CheckSquare className="w-3.5 h-3.5 text-blue-600" /> : <Square className="w-3.5 h-3.5 text-slate-400" />}
+                      <span>{stage}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 상단 2: 리걸플로 그림 4-2 수임료 계산서 (좌측: 수임료/보수/기타 vs 우측: 송달료/인지대/부채증명서 발급비용) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* 좌측 카드: 계산서 수임료 */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-brand" />
+                  <span>계산서 수임료</span>
+                </h4>
+                <span className="text-xs font-black text-brand">
+                  소계 {statementSubtotal.toLocaleString()}원
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5 mb-3">
+                사무실 기본 수임료와 보수(성공금), 기타 비용을 입력합니다.
+              </p>
+
+              <div className="space-y-3">
+                {/* 1. 수임료 */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">기본 수임료</label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {Math.round(statementBaseFee / 10000)}만 원
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="number"
+                      min={0}
+                      step={10000}
+                      value={statementBaseFee}
+                      onChange={e => {
+                        const val = Math.max(0, +e.target.value);
+                        update({
+                          statementFees: { ...c.statementFees, baseFee: val, successFee: statementSuccessFee, otherFee: statementOtherFee },
+                          totalFee: Math.round(val / 10000),
+                        });
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+                    />
+                    <span className="text-xs text-slate-600 font-bold shrink-0">원</span>
+                  </div>
+                </div>
+
+                {/* 2. 보수(성공보수) */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">보수 (성공보수)</label>
+                    <span className="text-[10px] text-amber-600 font-bold">
+                      {statementSuccessFee > 0 ? `${Math.round(statementSuccessFee / 10000)}만 원` : '약정 시 입력'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="number"
+                      min={0}
+                      step={50000}
+                      value={statementSuccessFee}
+                      onChange={e => {
+                        const val = Math.max(0, +e.target.value);
+                        update({
+                          statementFees: { ...c.statementFees, baseFee: statementBaseFee, successFee: val, otherFee: statementOtherFee },
+                          successFee: { ...(c.successFee || { enabled: true, type: 'fixed', amount: val }), amount: val, enabled: val > 0 }
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+                    />
+                    <span className="text-xs text-slate-600 font-bold shrink-0">원</span>
+                  </div>
+                </div>
+
+                {/* 3. 기타비용 */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">기타비용 (번역·열람·추가서류)</label>
+                    <span className="text-[10px] text-slate-400">사무실별 특수비용</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="number"
+                      min={0}
+                      step={10000}
+                      value={statementOtherFee}
+                      onChange={e => {
+                        const val = Math.max(0, +e.target.value);
+                        update({
+                          statementFees: { ...c.statementFees, baseFee: statementBaseFee, successFee: statementSuccessFee, otherFee: val }
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+                    />
+                    <span className="text-xs text-slate-600 font-bold shrink-0">원</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* VAT 별도 토글 */}
+            <label className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 cursor-pointer shadow-2xs">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  checked={c.vatIncluded ?? false} 
+                  onChange={e => update({ vatIncluded: e.target.checked })} 
+                  className="w-4 h-4 rounded accent-brand cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-700">부가세(VAT 10%) 별도 청구</span>
+              </div>
+              {c.vatIncluded && (
+                <span className="text-xs font-black text-indigo-700 font-mono">
+                  + {vatAmount.toLocaleString()}원
+                </span>
+              )}
+            </label>
+          </div>
+
+          {/* 우측 카드: 송달료 / 인지대 / 부채증명서 발급비용 (리걸플로 4-2 우측) */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                <div>
+                  <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                    <span>송달료 / 인지대 / 부채증명서 발급비용</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400">채권자 수 {credCount}곳 기준 자동 합산</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black text-indigo-900">
+                    합계 {totalCourt.toLocaleString()}원
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 mt-2 mb-3">
+                <p className="text-[11px] text-slate-500">
+                  송달료와 인지대, 부채증명서 발급비용은 자동으로 계산되며 직접 수정 가능합니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowRateSettings(!showRateSettings)}
+                  className="text-[11px] font-bold px-2 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-slate-600 flex items-center gap-1 cursor-pointer whitespace-nowrap shadow-2xs"
+                >
+                  <Settings2 className="w-3 h-3" />
+                  <span>단가설정</span>
+                </button>
+              </div>
+
+              {/* 단가 설정 접이식 패널 */}
+              {showRateSettings && (
+                <div className="mb-3 bg-indigo-50/70 border border-indigo-200 rounded-xl p-3 space-y-2 text-xs animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-indigo-950">사무실 기준 단가 설정</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const auto = calculateCourtCosts(credCount, 15000, 5200, 30000);
+                        update({
+                          courtCosts: {
+                            ...c.courtCosts,
+                            deliveryFee: auto.deliveryFee,
+                            stampFee: auto.stampFee,
+                            debtCertFee: auto.debtCertFee,
+                            deliveryUnitFee: 5200,
+                            debtCertUnitFee: 15000,
+                            isCustomized: false,
+                          }
+                        });
+                        toast.success('2026년 법원 표준 단가로 재산출되었습니다.');
+                      }}
+                      className="text-[10px] text-indigo-700 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" /> 2026 기본값 복원
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">송달료 1곳당 단가</span>
+                      <input 
+                        type="number"
+                        value={c.courtCosts.deliveryUnitFee || 5200}
+                        onChange={e => {
+                          const unit = Math.max(0, +e.target.value);
+                          update({
+                            courtCosts: { ...c.courtCosts, deliveryUnitFee: unit, deliveryFee: credCount * unit, isCustomized: true }
+                          });
+                        }}
+                        className="w-full px-2 py-1 bg-white border rounded text-xs font-bold"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">부채발급 1곳당 단가</span>
+                      <input 
+                        type="number"
+                        value={c.courtCosts.debtCertUnitFee || 15000}
+                        onChange={e => {
+                          const unit = Math.max(0, +e.target.value);
+                          update({
+                            courtCosts: { ...c.courtCosts, debtCertUnitFee: unit, debtCertFee: credCount * unit, isCustomized: true }
+                          });
+                        }}
+                        className="w-full px-2 py-1 bg-white border rounded text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {/* 1. 송달료 */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">송달료</label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        채권자 수:
+                      </span>
+                      <input 
+                        type="number"
+                        min={0}
+                        value={c.courtCosts.creditorCount}
+                        onChange={e => {
+                          const num = Math.max(0, +e.target.value);
+                          const unitDel = c.courtCosts.deliveryUnitFee || 5200;
+                          const unitDebt = c.courtCosts.debtCertUnitFee || 15000;
+                          update({
+                            courtCosts: {
+                              ...c.courtCosts,
+                              creditorCount: num,
+                              deliveryFee: num * unitDel,
+                              debtCertFee: num * unitDebt,
+                            }
+                          });
+                        }}
+                        className="w-12 px-1.5 py-0.5 border border-slate-200 rounded text-center text-xs font-bold"
+                      />
+                      <span className="text-[10px] text-slate-500 font-bold">곳</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="number"
+                      min={0}
+                      step={100}
+                      value={deliveryFee}
+                      onChange={e => update({ courtCosts: { ...c.courtCosts, deliveryFee: Math.max(0, +e.target.value), isCustomized: true } })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+                    />
+                    <span className="text-xs text-slate-600 font-bold shrink-0">원</span>
+                  </div>
+                </div>
+
+                {/* 2. 인지대 */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">인지대</label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => update({ courtCosts: { ...c.courtCosts, stampFee: 30000, isCustomized: true } })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer ${stampFee === 30000 ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-600'}`}
+                      >
+                        표준 3만
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => update({ courtCosts: { ...c.courtCosts, stampFee: 27000, isCustomized: true } })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer ${stampFee === 27000 ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-600'}`}
+                      >
+                        전자 2.7만
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={stampFee}
+                      onChange={e => update({ courtCosts: { ...c.courtCosts, stampFee: Math.max(0, +e.target.value), isCustomized: true } })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+                    />
+                    <span className="text-xs text-slate-600 font-bold shrink-0">원</span>
+                  </div>
+                </div>
+
+                {/* 3. 부채증명서 발급 비용 */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">부채증명서 발급 비용</label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {credCount}곳 × {(c.courtCosts.debtCertUnitFee || 15000).toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="number"
+                      min={0}
+                      step={5000}
+                      value={debtCertFee}
+                      onChange={e => update({ courtCosts: { ...c.courtCosts, debtCertFee: Math.max(0, +e.target.value), isCustomized: true } })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30 font-mono"
+                    />
+                    <span className="text-xs text-slate-600 font-bold shrink-0">원</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 총액 안내 배너 */}
+            <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-950">수임료 + 실비 총 청구 합계</span>
+              <span className="text-base font-black text-[#1E3A5F] font-mono">{grandTotal.toLocaleString()}원</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── 그림 4-3 납부 금액 (★ 변호사 사무실별 수정·삭제·추가 핵심 영역) ─── */}
+        <div className="bg-slate-50 border-2 border-brand/20 rounded-2xl p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+            <div>
+              <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>💳 납부 금액 및 결제 스케줄 (항목 추가·수정·삭제)</span>
+                <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                  사무실 계약별 자유 커스텀
                 </span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                2026년 기준 송달료(채권자당 5,200원) 및 인지대(30,000원) 자동 반영되며, 
-                사무실 수임 정책에 맞춰 각 항목의 금액과 단가를 자유롭게 직접 수정할 수 있습니다.
+                계약금(착수금), 분할납부(1~N차), 송달료 및 성공보수 항목을 자유롭게 추가하고 각 행을 개별 수정하거나 삭제할 수 있습니다.
               </p>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
-              {/* 단가 설정 토글 버튼 */}
-              <button
-                type="button"
-                onClick={() => setShowRateSettings(!showRateSettings)}
-                className={`text-[11px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-colors cursor-pointer shadow-2xs ${
-                  showRateSettings 
-                    ? 'bg-brand text-white border-brand' 
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
-                }`}
-              >
-                <Settings2 className="w-3.5 h-3.5" />
-                <span>기준 단가 설정</span>
-              </button>
 
-              {/* 2026 기준 자동 재산출 버튼 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const auto = calculateCourtCosts(credCount, 15000, 5200, 30000);
-                  update({
-                    courtCosts: {
-                      ...c.courtCosts,
-                      deliveryFee: auto.deliveryFee,
-                      stampFee: auto.stampFee,
-                      debtCertFee: auto.debtCertFee,
-                      deliveryUnitFee: 5200,
-                      debtCertUnitFee: 15000,
-                      isCustomized: false,
-                    }
-                  });
-                  toast.success(`2026년 법원 기준 비용(송달료 ${auto.deliveryFee.toLocaleString()}원, 인지대 30,000원)으로 재계산되었습니다.`);
-                }}
-                className="text-[11px] font-bold text-slate-600 hover:text-brand bg-white hover:bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
-                title="2026년 법원 기준 공식으로 초기화"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                <span>2026 기준 재산출</span>
-              </button>
-
-              {/* 총 실비 합계 뱃지 */}
-              <div className="text-right pl-3 border-l border-slate-200">
-                <span className="text-[10px] text-slate-400 block">실비 총 합계</span>
-                <span className="text-base font-black text-[#1E3A5F]">{totalCourt.toLocaleString()}원</span>
-              </div>
-            </div>
+            {/* 스케줄 일괄 자동 생성기 접이식 토글 */}
+            <button
+              type="button"
+              onClick={() => setShowAutoSchedulePanel(!showAutoSchedulePanel)}
+              className="text-xs font-bold px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs self-start sm:self-center"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-brand" />
+              <span>⚡ 분납 스케줄 일괄 채우기</span>
+            </button>
           </div>
 
-          {/* 사무실 기준 단가 설정 접이식 패널 (ShowRateSettings) */}
-          {showRateSettings && (
-            <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3.5 space-y-3">
+          {/* 일괄 채우기 접이식 패널 */}
+          {showAutoSchedulePanel && (
+            <div className="p-4 bg-white border border-brand/20 rounded-xl space-y-3 animate-fadeIn shadow-xs">
               <div className="flex items-center justify-between">
-                <h5 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                  <Settings2 className="w-3.5 h-3.5 text-indigo-700" />
-                  <span>사무실 고유 산정 기준 단가 설정</span>
-                </h5>
-                <span className="text-[10px] text-indigo-700 font-medium">단가 변경 시 채권자 수({credCount}곳)에 연동되어 즉시 반영됩니다.</span>
+                <span className="text-xs font-black text-[#1E3A5F] flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-brand" />
+                  <span>착수금 + N회 분할납부 일괄 생성기</span>
+                </span>
+                <span className="text-[10px] text-slate-400">생성 후에도 언제든지 개별 수정 및 삭제 가능합니다.</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 송달료 1곳당 단가 */}
-                <div className="bg-white p-3 rounded-lg border border-indigo-100">
-                  <label className="text-[11px] font-bold text-slate-700 block">
-                    송달료 1곳당 단가 (2026 법원 표준: 5,200원)
-                  </label>
-                  <div className="flex items-center gap-2 mt-1.5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500">착수금 (계약금)</label>
+                  <div className="flex items-center gap-1 mt-1">
                     <input 
                       type="number" 
-                      step={100}
-                      min={0}
-                      value={c.courtCosts.deliveryUnitFee || 5200}
-                      onChange={e => {
-                        const newUnit = Math.max(0, +e.target.value);
-                        update({
-                          courtCosts: {
-                            ...c.courtCosts,
-                            deliveryUnitFee: newUnit,
-                            deliveryFee: credCount * newUnit,
-                            isCustomized: true,
-                          }
-                        });
-                      }}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
+                      value={downPayment} 
+                      onChange={e => setDownPayment(+e.target.value)} 
+                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold" 
                     />
-                    <span className="text-xs text-slate-500 font-bold shrink-0">원/곳</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-2 text-[10px]">
-                    <span className="text-slate-400">빠른 설정:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        update({
-                          courtCosts: {
-                            ...c.courtCosts,
-                            deliveryUnitFee: 5200,
-                            deliveryFee: credCount * 5200,
-                          }
-                        });
-                      }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold cursor-pointer transition-colors"
-                    >
-                      5,200원 (2026 기본)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        update({
-                          courtCosts: {
-                            ...c.courtCosts,
-                            deliveryUnitFee: 52000,
-                            deliveryFee: credCount * 52000,
-                          }
-                        });
-                      }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold cursor-pointer transition-colors"
-                    >
-                      52,000원 (10회분)
-                    </button>
+                    <span className="text-xs text-slate-500 font-bold shrink-0">만원</span>
                   </div>
                 </div>
-
-                {/* 부채증명서 1곳당 발급 단가 */}
-                <div className="bg-white p-3 rounded-lg border border-indigo-100">
-                  <label className="text-[11px] font-bold text-slate-700 block">
-                    부채증명서 대행 단가 (표준: 15,000원)
-                  </label>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <input 
-                      type="number" 
-                      step={1000}
-                      min={0}
-                      value={c.courtCosts.debtCertUnitFee || 15000}
-                      onChange={e => {
-                        const newUnit = Math.max(0, +e.target.value);
-                        update({
-                          courtCosts: {
-                            ...c.courtCosts,
-                            debtCertUnitFee: newUnit,
-                            debtCertFee: credCount * newUnit,
-                            isCustomized: true,
-                          }
-                        });
-                      }}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
-                    />
-                    <span className="text-xs text-slate-500 font-bold shrink-0">원/곳</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-2 text-[10px]">
-                    <span className="text-slate-400">빠른 설정:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        update({
-                          courtCosts: {
-                            ...c.courtCosts,
-                            debtCertUnitFee: 10000,
-                            debtCertFee: credCount * 10000,
-                          }
-                        });
-                      }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold cursor-pointer transition-colors"
-                    >
-                      10,000원
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        update({
-                          courtCosts: {
-                            ...c.courtCosts,
-                            debtCertUnitFee: 15000,
-                            debtCertFee: credCount * 15000,
-                          }
-                        });
-                      }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold cursor-pointer transition-colors"
-                    >
-                      15,000원 (기본)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        update({
-                          courtCosts: {
-                            ...c.courtCosts,
-                            debtCertUnitFee: 20000,
-                            debtCertFee: credCount * 20000,
-                          }
-                        });
-                      }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold cursor-pointer transition-colors"
-                    >
-                      20,000원
-                    </button>
-                  </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500">착수금 납부일</label>
+                  <input 
+                    type="date" 
+                    value={downDate} 
+                    onChange={e => setDownDate(e.target.value)} 
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs mt-1 font-mono font-bold" 
+                  />
                 </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500">잔금 분할 횟수</label>
+                  <select 
+                    value={installments} 
+                    onChange={e => setInstallments(+e.target.value)} 
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs mt-1 font-bold"
+                  >
+                    {[2, 3, 4, 5, 6, 8, 10, 12].map(n => <option key={n} value={n}>{n}회 분납</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500">1회차 분납 시작일</label>
+                  <input 
+                    type="date" 
+                    value={firstDate} 
+                    onChange={e => setFirstDate(e.target.value)} 
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs mt-1 font-mono font-bold" 
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetBase = c.vatIncluded ? totalFeeWithVat : (c.totalFee * 10000);
+                    const rawSchedule = generateFeeSchedule(targetBase, downPayment * 10000, installments, downDate, firstDate);
+                    const converted: FeeInstallment[] = rawSchedule.map(s => ({
+                      ...s,
+                      itemType: s.round === 0 ? 'down_payment' : 'installment',
+                      itemTitle: s.round === 0 ? '착수금(계약금)' : `${s.round}차 분할납부`,
+                      memo: s.memo || (s.round === 0 ? '착수금(계약금)' : `${s.round}차 분할납부`),
+                    }));
+                    // 기존 송달료나 성공보수 항목이 있었다면 유지
+                    const preserved = (c.feeSchedule || []).filter(f => f.itemType === 'court_cost' || f.itemType === 'success_fee');
+                    update({ feeSchedule: [...preserved, ...converted] });
+                    toast.success(`총 ${converted.length}개의 분납 항목이 스케줄에 반영되었습니다.`);
+                    setShowAutoSchedulePanel(false);
+                  }}
+                  className="px-4 py-2 bg-brand hover:bg-brand/90 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>스케줄 일괄 적용하기</span>
+                </button>
               </div>
             </div>
           )}
 
-          {/* 5대 실비 항목 상세 입력 그리드 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {/* 1. 채권자 수 */}
-            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 block">채권자 수 (곳)</label>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <input 
-                    type="number" 
-                    min={0} 
-                    value={c.courtCosts.creditorCount} 
-                    onChange={e => {
-                      const num = Math.max(0, +e.target.value);
-                      const unitDel = c.courtCosts.deliveryUnitFee || 5200;
-                      const unitDebt = c.courtCosts.debtCertUnitFee || 15000;
-                      update({ 
-                        courtCosts: { 
-                          ...c.courtCosts, 
-                          creditorCount: num,
-                          deliveryFee: num * unitDel,
-                          debtCertFee: num * unitDebt,
-                        } 
-                      });
-                    }} 
-                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm bg-white font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30" 
-                  />
-                  <span className="text-xs text-slate-500 font-bold shrink-0">곳</span>
-                </div>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">채권자 수 비례 산출</span>
-            </div>
-
-            {/* 2. 송달료 (변호사 사무실 직접 수정 가능) */}
-            <div className="bg-white p-3 rounded-xl border border-blue-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
-                    <span>송달료</span>
-                    <span className="text-[9px] bg-blue-100 text-blue-700 font-semibold px-1 py-0.5 rounded">수정가능</span>
-                  </label>
-                </div>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <input 
-                    type="number" 
-                    min={0}
-                    step={100}
-                    value={deliveryFee} 
-                    onChange={e => update({ courtCosts: { ...c.courtCosts, deliveryFee: Math.max(0, +e.target.value), isCustomized: true } })}
-                    className="w-full px-2.5 py-1.5 bg-blue-50/40 border border-blue-200 rounded-lg text-sm font-bold text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400" 
-                  />
-                  <span className="text-xs text-blue-800 font-bold shrink-0">원</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-1 text-[10px]">
-                <span className="text-slate-400 font-medium">{c.courtCosts.deliveryUnitFee || 5200}원 × {credCount}곳</span>
-                <button
-                  type="button"
-                  onClick={() => update({ courtCosts: { ...c.courtCosts, deliveryFee: credCount * (c.courtCosts.deliveryUnitFee || 5200) } })}
-                  className="text-blue-600 hover:underline cursor-pointer font-bold"
-                  title="단가 기준 자동계산 적용"
-                >
-                  기본적용
-                </button>
-              </div>
-            </div>
-
-            {/* 3. 인지대 (변호사 사무실 직접 수정 가능) */}
-            <div className="bg-white p-3 rounded-xl border border-amber-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
-                    <span>인지대</span>
-                    <span className="text-[9px] bg-amber-100 text-amber-700 font-semibold px-1 py-0.5 rounded">수정가능</span>
-                  </label>
-                </div>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <input 
-                    type="number" 
-                    min={0}
-                    step={1000}
-                    value={stampFee} 
-                    onChange={e => update({ courtCosts: { ...c.courtCosts, stampFee: Math.max(0, +e.target.value), isCustomized: true } })}
-                    className="w-full px-2.5 py-1.5 bg-amber-50/40 border border-amber-200 rounded-lg text-sm font-bold text-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-400" 
-                  />
-                  <span className="text-xs text-amber-800 font-bold shrink-0">원</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 mt-1 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => update({ courtCosts: { ...c.courtCosts, stampFee: 30000, isCustomized: true } })}
-                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
-                    stampFee === 30000 ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                  title="기본 인지대 30,000원"
-                >
-                  기본 3만
-                </button>
-                <button
-                  type="button"
-                  onClick={() => update({ courtCosts: { ...c.courtCosts, stampFee: 27000, isCustomized: true } })}
-                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
-                    stampFee === 27000 ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                  title="전자소송 10% 감액 27,000원"
-                >
-                  전자 2.7만
-                </button>
-              </div>
-            </div>
-
-            {/* 4. 부채증명서 발급대행비 (직접 수정 가능) */}
-            <div className="bg-white p-3 rounded-xl border border-indigo-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-indigo-900 flex items-center gap-1">
-                    <span>부채발급비</span>
-                    <span className="text-[9px] bg-indigo-100 text-indigo-700 font-semibold px-1 py-0.5 rounded">수정가능</span>
-                  </label>
-                </div>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <input 
-                    type="number" 
-                    min={0}
-                    step={5000}
-                    value={debtCertFee} 
-                    onChange={e => update({ courtCosts: { ...c.courtCosts, debtCertFee: Math.max(0, +e.target.value), isCustomized: true } })}
-                    className="w-full px-2.5 py-1.5 bg-indigo-50/40 border border-indigo-200 rounded-lg text-sm font-bold text-indigo-950 focus:outline-none focus:ring-2 focus:ring-indigo-400" 
-                  />
-                  <span className="text-xs text-indigo-800 font-bold shrink-0">원</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-1 text-[10px]">
-                <span className="text-slate-400 font-medium">{c.courtCosts.debtCertUnitFee || 15000}원 × {credCount}곳</span>
-                <button
-                  type="button"
-                  onClick={() => update({ courtCosts: { ...c.courtCosts, debtCertFee: credCount * (c.courtCosts.debtCertUnitFee || 15000) } })}
-                  className="text-indigo-600 hover:underline cursor-pointer font-bold"
-                  title="단가 기준 자동계산 적용"
-                >
-                  기본적용
-                </button>
-              </div>
-            </div>
-
-            {/* 5. 변제예납금 */}
-            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 block">변제예납금 (보관금)</label>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <input 
-                    type="number" 
-                    min={0}
-                    step={50000}
-                    value={provisionalDeposit} 
-                    onChange={e => update({ courtCosts: { ...c.courtCosts, provisionalDeposit: Math.max(0, +e.target.value) } })}
-                    placeholder="0"
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30" 
-                  />
-                  <span className="text-xs text-slate-500 font-bold shrink-0">원</span>
-                </div>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">법원 보관금 예납</span>
-            </div>
-
-            {/* 6. 기타 실비 (우편·제증명 등) */}
-            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 block">기타 공과금·실비</label>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <input 
-                    type="number" 
-                    min={0}
-                    step={1000}
-                    value={miscFee} 
-                    onChange={e => update({ courtCosts: { ...c.courtCosts, miscFee: Math.max(0, +e.target.value) } })}
-                    placeholder="0"
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30" 
-                  />
-                  <span className="text-xs text-slate-500 font-bold shrink-0">원</span>
-                </div>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">우편료/등록세 등</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. 총 수임료 및 VAT 설정 카드 */}
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h4 className="text-sm font-bold text-slate-800">💳 변호사 순 수임료(보수) 설정</h4>
-              <p className="text-[11px] text-slate-500">부가세 포함 여부 및 기본 수임료를 입력합니다.</p>
-            </div>
-            
-            {/* VAT 토글 스위치 (리걸플로 세무 벤치마킹) */}
-            <label className="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 cursor-pointer shadow-2xs">
-              <input 
-                type="checkbox" 
-                checked={c.vatIncluded ?? false} 
-                onChange={e => update({ vatIncluded: e.target.checked })} 
-                className="w-4 h-4 rounded accent-brand cursor-pointer"
-              />
-              <span className="text-xs font-bold text-slate-700">부가세(VAT 10%) 별도 청구</span>
-            </label>
+          {/* 리걸플로 4-3 상단 항목 추가 액션 버튼 4+1종 */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleAddCourtCostItem}
+              className="px-3 py-2 bg-white hover:bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
+            >
+              <Plus className="w-3.5 h-3.5 text-blue-600" />
+              <span>+ 송달료 및 부대비용</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddDownPaymentItem}
+              className="px-3 py-2 bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
+            >
+              <Plus className="w-3.5 h-3.5 text-emerald-600" />
+              <span>+ 착수금(계약금)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddInstallmentItem}
+              className="px-3 py-2 bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
+            >
+              <Plus className="w-3.5 h-3.5 text-indigo-600" />
+              <span>+ 분할 납부</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddSuccessFeeItem}
+              className="px-3 py-2 bg-white hover:bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-600" />
+              <span>+ 성공보수</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddNewCustomItem}
+              className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
+            >
+              <Plus className="w-3.5 h-3.5 text-slate-500" />
+              <span>+ 기타 납부항목 직접 추가</span>
+            </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500">순 수임료:</span>
-              <input 
-                type="number" 
-                min={0} 
-                value={c.totalFee} 
-                onChange={e => update({ totalFee: +e.target.value })} 
-                className="w-36 px-3 py-2 border border-slate-200 rounded-xl text-base font-black text-slate-900 bg-white" 
-              />
-              <span className="text-sm font-bold text-slate-600">만원</span>
-              <span className="text-xs text-slate-400">(= {baseFee.toLocaleString()}원)</span>
-            </div>
-
-            {c.vatIncluded && (
-              <div className="text-xs text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200 font-bold">
-                + VAT 10% ({vatAmount.toLocaleString()}원) = 보수 합계 {totalFeeWithVat.toLocaleString()}원
+          {/* 리걸플로 그림 4-3: 등록된 납부 항목 카드 리스트 (각 항목별 [-] 삭제 및 인라인 수정) */}
+          <div className="space-y-3 pt-2">
+            {(!c.feeSchedule || c.feeSchedule.length === 0) ? (
+              <div className="p-8 text-center bg-white border border-dashed border-slate-300 rounded-2xl space-y-2">
+                <CreditCard className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-600">등록된 납부 항목이 없습니다.</p>
+                <p className="text-[11px] text-slate-400">
+                  상단의 [+ 착수금], [+ 분할 납부], [+ 송달료] 버튼을 눌러 개별 항목을 추가하거나,<br />
+                  [⚡ 분납 스케줄 일괄 채우기]로 한 번에 스케줄을 생성하세요.
+                </p>
               </div>
-            )}
-
-            <div className="ml-auto text-right">
-              <span className="text-xs text-slate-400 block">수임료 + 실비 총 청구액</span>
-              <span className="text-lg font-black text-[#1E3A5F]">{grandTotal.toLocaleString()}원</span>
-            </div>
-          </div>
-
-          {/* 3. 분납 스케줄 자동 생성기 */}
-          <div className="border-t border-slate-200 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h5 className="text-xs font-bold text-slate-700">📅 분납 스케줄 자동 생성기</h5>
-                <p className="text-[10px] text-slate-400">착수금 및 잔여 분납 횟수를 지정하여 스케줄을 자동 생성합니다.</p>
-              </div>
-              <button 
-                type="button"
-                onClick={() => {
-                  const targetBase = c.vatIncluded ? totalFeeWithVat : (c.totalFee * 10000);
-                  const schedule = generateFeeSchedule(targetBase, downPayment * 10000, installments, downDate, firstDate);
-                  update({ feeSchedule: schedule });
-                  toast.success('분납 스케줄이 정상 적용되었습니다');
-                }} 
-                className="text-[11px] font-bold text-white bg-brand px-3.5 py-2 rounded-xl cursor-pointer hover:bg-brand/90 whitespace-nowrap shadow-xs flex items-center gap-1"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>스케줄 자동 생성</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
-              <div>
-                <label className="text-[10px] font-bold text-slate-500">착수금(계약금)</label>
-                <div className="flex items-center gap-1 mt-1">
-                  <input type="number" value={downPayment} onChange={e => setDownPayment(+e.target.value)} className="w-full px-2 py-1.5 border rounded-lg text-sm bg-white font-bold" />
-                  <span className="text-[11px] text-slate-400 shrink-0">만원</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500">착수금 납부일</label>
-                <input type="date" value={downDate} onChange={e => setDownDate(e.target.value)} className="w-full px-2 py-1.5 border rounded-lg text-sm mt-1 bg-white font-bold" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500">잔금 분할 횟수</label>
-                <select value={installments} onChange={e => setInstallments(+e.target.value)} className="w-full px-2 py-1.5 border rounded-lg text-sm mt-1 bg-white font-bold">
-                  {[2, 3, 4, 5, 6, 8, 10, 12].map(n => <option key={n} value={n}>{n}회 분납</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500">1회차 납부 시작일</label>
-                <input type="date" value={firstDate} onChange={e => setFirstDate(e.target.value)} className="w-full px-2 py-1.5 border rounded-lg text-sm mt-1 bg-white font-bold" />
-              </div>
-            </div>
-
-            {/* 스케줄 합계 상태바 */}
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-600">등록된 스케줄:</span>
-                <span className="text-slate-500">{c.feeSchedule.length}회차 분할</span>
-              </div>
-              <div className="text-right">
-                <span className="text-slate-500 mr-2">스케줄 합계:</span>
-                <span className={`font-black ${scheduleTotal === (c.vatIncluded ? totalFeeWithVat : (c.totalFee * 10000)) ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {scheduleTotal.toLocaleString()}원
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. 성공보수 약정 카드 (리걸플로 벤치마킹 그림 4-3) */}
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Coins className="w-4 h-4 text-amber-500" />
-              <h4 className="text-sm font-bold text-slate-800">🏆 성공보수 약정 (선택 사항)</h4>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={c.successFee?.enabled ?? false} 
-                onChange={e => update({ 
-                  successFee: { 
-                    ...(c.successFee || { type: 'fixed', amount: 500000, ratePercent: 5, targetType: 'principal', dueDateCondition: '면책/인가 결정 시' }),
-                    enabled: e.target.checked 
-                  } 
-                })} 
-                className="w-4 h-4 rounded accent-brand cursor-pointer"
-              />
-              <span className="text-xs font-bold text-slate-700">성공보수 약정 포함</span>
-            </label>
-          </div>
-
-          {c.successFee?.enabled && (
-            <div className="bg-white p-4 rounded-xl border border-amber-200 space-y-3 animate-fadeIn">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {[
-                  { key: 'fixed', label: '1. 고정 정액제', desc: '면책/인가 시 확정 금액' },
-                  { key: 'reduction_rate', label: '2. 탕감액 비례 요율(%)', desc: '원금 탕감액의 X%' },
-                  { key: 'custom', label: '3. 조건부 기타 약정', desc: '직접 조건 서술' },
-                ].map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => update({ successFee: { ...(c.successFee!), type: opt.key as any } })}
-                    className={`p-2.5 rounded-lg border text-left cursor-pointer transition-colors ${
-                      c.successFee?.type === opt.key 
-                        ? 'bg-amber-50/60 border-amber-400 ring-1 ring-amber-400 text-slate-900 font-bold' 
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
-                    }`}
+            ) : (
+              c.feeSchedule.map((item, index) => {
+                const isSuccessFeeItem = item.itemType === 'success_fee';
+                return (
+                  <div 
+                    key={item.id}
+                    className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-4 shadow-2xs transition-all space-y-3"
                   >
-                    <div className="text-xs">{opt.label}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
+                    {/* 카드 헤더: 타입 뱃지 + 항목명 인라인 수정 + 삭제 [-] 버튼 */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {/* 삭제 버튼 [-] (리걸플로 4-3 핵심) */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteScheduleItem(item.id)}
+                          className="w-7 h-7 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shrink-0 shadow-2xs active:scale-95"
+                          title="이 납부 항목 삭제"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
 
-              {/* 세부 옵션 입력 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                {c.successFee?.type === 'fixed' && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                          item.itemType === 'court_cost' ? 'bg-blue-100 text-blue-800' :
+                          item.itemType === 'down_payment' ? 'bg-emerald-100 text-emerald-800' :
+                          item.itemType === 'success_fee' ? 'bg-amber-100 text-amber-800' :
+                          'bg-slate-100 text-slate-800'
+                        }`}>
+                          {item.itemType === 'court_cost' ? '송달료·실비' :
+                           item.itemType === 'down_payment' ? '계약금' :
+                           item.itemType === 'success_fee' ? '성공보수' :
+                           `${item.round || index + 1}차 분납`}
+                        </span>
+
+                        {/* 항목 명칭 직접 수정 */}
+                        <input
+                          type="text"
+                          value={item.itemTitle || item.memo || ''}
+                          onChange={e => handleUpdateScheduleItem(item.id, { itemTitle: e.target.value, memo: e.target.value })}
+                          placeholder="항목 명칭 (예: 착수금, 1차 분할납부 등)"
+                          className="font-bold text-xs text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-brand focus:outline-none px-1.5 py-0.5 rounded bg-transparent flex-1"
+                        />
+                      </div>
+
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        # {index + 1}
+                      </span>
+                    </div>
+
+                    {/* 카드 본문: 결제일자 & 결제금액 */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      {/* 결제일자 */}
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 mb-1 block">
+                          {isSuccessFeeItem ? '결제 시점 (조건 또는 일자)' : '결제일자'}
+                        </label>
+                        {isSuccessFeeItem ? (
+                          <input
+                            type="text"
+                            value={item.dueDate || '개시신청 즉시'}
+                            onChange={e => handleUpdateScheduleItem(item.id, { dueDate: e.target.value })}
+                            placeholder="예: 개시신청 즉시, 면책결정 시"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                        ) : (
+                          <input
+                            type="date"
+                            value={item.dueDate || ''}
+                            onChange={e => handleUpdateScheduleItem(item.id, { dueDate: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                        )}
+                      </div>
+
+                      {/* 결제금액 */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-bold text-slate-500">결제금액 (원)</label>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {item.amount >= 10000 ? `${(item.amount / 10000).toLocaleString()}만 원` : ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            step={10000}
+                            value={item.amount || 0}
+                            onChange={e => handleUpdateScheduleItem(item.id, { amount: Math.max(0, +e.target.value) })}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                          <span className="text-xs font-bold text-slate-600 shrink-0">원</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 성공보수 항목 전용 옵션 3종 (리걸플로 4-3 성공보수 옵션 선택 완벽 재현) */}
+                    {isSuccessFeeItem && (
+                      <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-xl space-y-2.5 text-xs">
+                        <span className="font-bold text-amber-950 block text-[11px]">성공보수 산정 옵션</span>
+                        <div className="space-y-2">
+                          {/* 옵션 1: 정액 */}
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`succ-type-${item.id}`}
+                              checked={item.successFeeOption?.type === 'fixed' || !item.successFeeOption?.type}
+                              onChange={() => handleUpdateScheduleItem(item.id, {
+                                successFeeOption: { ...(item.successFeeOption || {}), type: 'fixed', amount: item.amount }
+                              })}
+                              className="w-3.5 h-3.5 accent-amber-600"
+                            />
+                            <span className="font-bold text-slate-700">정액제:</span>
+                            <span className="font-mono text-amber-900 font-bold">{(item.amount || 0).toLocaleString()}원</span>
+                          </label>
+
+                          {/* 옵션 2: 경제적 이익 대비 요율 % */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`succ-type-${item.id}`}
+                                checked={item.successFeeOption?.type === 'reduction_rate'}
+                                onChange={() => handleUpdateScheduleItem(item.id, {
+                                  successFeeOption: { ...(item.successFeeOption || {}), type: 'reduction_rate', ratePercent: 5 }
+                                })}
+                                className="w-3.5 h-3.5 accent-amber-600"
+                              />
+                              <span className="text-slate-700">개인회생채권자에 제공하여 얻은 경제적 이익 가액의</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={item.successFeeOption?.ratePercent || 5}
+                              onChange={e => handleUpdateScheduleItem(item.id, {
+                                successFeeOption: { ...(item.successFeeOption || {}), type: 'reduction_rate', ratePercent: +e.target.value }
+                              })}
+                              className="w-14 px-2 py-0.5 bg-white border border-slate-200 rounded text-center text-xs font-bold"
+                            />
+                            <span className="text-slate-700">%에 해당하는 금액 (부가세 별도)</span>
+                          </div>
+
+                          {/* 옵션 3: 기타약정 */}
+                          <div className="space-y-1">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`succ-type-${item.id}`}
+                                checked={item.successFeeOption?.type === 'custom'}
+                                onChange={() => handleUpdateScheduleItem(item.id, {
+                                  successFeeOption: { ...(item.successFeeOption || {}), type: 'custom' }
+                                })}
+                                className="w-3.5 h-3.5 accent-amber-600"
+                              />
+                              <span className="text-slate-700">기타약정:</span>
+                            </label>
+                            {item.successFeeOption?.type === 'custom' && (
+                              <input
+                                type="text"
+                                value={item.successFeeOption?.description || ''}
+                                onChange={e => handleUpdateScheduleItem(item.id, {
+                                  successFeeOption: { ...(item.successFeeOption || {}), type: 'custom', description: e.target.value }
+                                })}
+                                placeholder="기타 성공보수 약정 내용을 직접 입력하세요"
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* 스케줄 합계 검증 배너 */}
+          <div className="p-3.5 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-slate-700">등록된 스케줄:</span>
+              <span className="font-black text-[#1E3A5F]">{c.feeSchedule.length}개 항목</span>
+              <span className="text-slate-300">|</span>
+              <span className="font-bold text-slate-700">스케줄 총합:</span>
+              <span className="font-black text-brand font-mono text-sm">{scheduleTotal.toLocaleString()}원</span>
+            </div>
+
+            <div className="text-right">
+              {scheduleDiff === 0 ? (
+                <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>계산서 총액과 납부 스케줄이 완벽하게 일치합니다.</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-amber-700 font-bold">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>계산서({grandTotal.toLocaleString()}원)와 {Math.abs(scheduleDiff).toLocaleString()}원 차이 (자유 조정 가능)</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── 그림 4-4: 수임료 및 송달료 입금계좌 ─── */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-brand" />
+                <span>수임료 및 송달료 입금계좌 (리걸플로 4-4)</span>
+              </h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                수임료와 송달료 등 부대비용을 입금받을 계좌를 지정합니다. 기본 계좌와 동일하거나 분리하여 관리할 수 있습니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {/* 1. 수임료 입금계좌 */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+              <span className="text-xs font-black text-[#1E3A5F] block">💳 1. 수임료 입금계좌</span>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-500 mb-1 block">고정 성공보수 금액 (원)</label>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">은행</label>
+                    <select
+                      value={c.feeAccount?.bankName || '신한은행'}
+                      onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
+                      className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-bold"
+                    >
+                      {MAJOR_BANKS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">예금주</label>
                     <input 
-                      type="number" 
-                      value={c.successFee?.amount || 500000} 
-                      onChange={e => update({ successFee: { ...(c.successFee!), amount: +e.target.value } })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold" 
+                      value={c.feeAccount?.accountHolder || ''} 
+                      onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountHolder: e.target.value } })}
+                      placeholder="예금주 성명" 
+                      className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-bold" 
                     />
                   </div>
-                )}
-
-                {c.successFee?.type === 'reduction_rate' && (
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-500 mb-1 block">탕감액 대비 약정 요율 (%)</label>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="number" 
-                        value={c.successFee?.ratePercent || 5} 
-                        onChange={e => update({ successFee: { ...(c.successFee!), ratePercent: +e.target.value } })}
-                        className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold" 
-                      />
-                      <span className="text-xs font-bold text-slate-700">%</span>
-                      <select 
-                        value={c.successFee?.targetType || 'principal'} 
-                        onChange={e => update({ successFee: { ...(c.successFee!), targetType: e.target.value as any } })}
-                        className="flex-1 px-2 py-2 border border-slate-200 rounded-lg text-xs"
-                      >
-                        <option value="principal">원금 탕감액 기준</option>
-                        <option value="total_debt">총 채무(원금+이자) 감면액 기준</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-
+                </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 mb-1 block">성공보수 결제 시점 (조건)</label>
+                  <label className="text-[10px] font-bold text-slate-500 mb-1 block">계좌번호</label>
                   <input 
-                    value={c.successFee?.dueDateCondition || '면책결정 또는 인가결정 확정 시'} 
-                    onChange={e => update({ successFee: { ...(c.successFee!), dueDateCondition: e.target.value } })}
-                    placeholder="예: 면책결정 확정 시 즉시 납부" 
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" 
+                    value={c.feeAccount?.accountNumber || ''} 
+                    onChange={e => update({ feeAccount: { ...(c.feeAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountNumber: e.target.value } })}
+                    placeholder="계좌번호 (하이픈 포함)" 
+                    className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-mono font-bold" 
                   />
                 </div>
               </div>
+            </div>
 
-              {c.successFee?.type === 'custom' && (
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 mb-1 block">기타 성공보수 약정 문구</label>
+            {/* 2. 송달료 등 입금계좌 */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-800 block">⚖️ 2. 송달료 등 입금계좌</span>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer">
                   <input 
-                    value={c.successFee?.description || ''} 
-                    onChange={e => update({ successFee: { ...(c.successFee!), description: e.target.value } })}
-                    placeholder="예: 채무 70% 이상 탕감 시 1,000,000원 추가 약정" 
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs" 
+                    type="checkbox" 
+                    checked={c.sameAsFeeAccount ?? true} 
+                    onChange={e => {
+                      const same = e.target.checked;
+                      update({ 
+                        sameAsFeeAccount: same,
+                        courtCostAccount: same ? c.feeAccount : c.courtCostAccount 
+                      });
+                    }}
+                    className="w-3.5 h-3.5 rounded accent-brand cursor-pointer"
                   />
+                  <span>위와 동일</span>
+                </label>
+              </div>
+
+              {c.sameAsFeeAccount ? (
+                <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-600 border border-slate-100 space-y-1">
+                  <p className="font-bold text-slate-700">수임료 입금계좌로 동일하게 입금받습니다.</p>
+                  <p className="font-mono text-brand font-bold">{c.feeAccount?.bankName} {c.feeAccount?.accountNumber} ({c.feeAccount?.accountHolder})</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 mb-1 block">은행</label>
+                      <select
+                        value={c.courtCostAccount?.bankName || '신한은행'}
+                        onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), bankName: e.target.value } })}
+                        className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-bold"
+                      >
+                        {MAJOR_BANKS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 mb-1 block">예금주</label>
+                      <input 
+                        value={c.courtCostAccount?.accountHolder || ''} 
+                        onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountHolder: e.target.value } })}
+                        placeholder="예금주 성명" 
+                        className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-bold" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">계좌번호</label>
+                    <input 
+                      value={c.courtCostAccount?.accountNumber || ''} 
+                      onChange={e => update({ courtCostAccount: { ...(c.courtCostAccount || { bankName: '', accountNumber: '', accountHolder: '' }), accountNumber: e.target.value } })}
+                      placeholder="송달료 전용 계좌번호" 
+                      className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-mono font-bold" 
+                    />
+                  </div>
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
 
       </div>
@@ -2092,8 +2479,18 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200">
             <div className="space-y-1">
               <p><strong>위임인 (갑):</strong> {c.isBusiness && c.businessInfo ? `${c.businessInfo.companyName} (대표: ${c.clientName})` : c.clientName}</p>
+              {c.clientResidentNumber && (
+                <p className="text-slate-600">
+                  <strong>주민등록번호:</strong> {c.clientResidentNumber.replace(/^(\d{6})-?(\d{1})\d{6}$/, '$1-$2******')}
+                </p>
+              )}
               <p className="text-slate-600"><strong>연락처:</strong> {c.clientPhone}</p>
-              <p className="text-slate-600"><strong>주소:</strong> {c.clientAddress || '주소 미입력'}</p>
+              {c.clientEmail && (
+                <p className="text-slate-600"><strong>이메일:</strong> {c.clientEmail}</p>
+              )}
+              <p className="text-slate-600">
+                <strong>주소:</strong> {c.clientPostcode ? `[${c.clientPostcode}] ` : ''}{c.clientAddress || '주소 미입력'} {c.clientAddressDetail || ''}
+              </p>
               {c.isBusiness && c.businessInfo && (
                 <p className="text-slate-500"><strong>사업자등록번호:</strong> {c.businessInfo.businessNumber} (국세청 확인 완료)</p>
               )}
@@ -2180,30 +2577,48 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           {/* 제 2 조 (납부 스케줄 및 전용 입금 계좌 안내) */}
           {c.feeSchedule.length > 0 && (
             <div>
-              <h4 className="font-bold text-slate-800 mb-2 text-sm">제 2 조 (수임료 분납 스케줄 및 입금 계좌)</h4>
+              <h4 className="font-bold text-slate-800 mb-2 text-sm">제 2 조 (수임료 납부 스케줄 및 입금 계좌)</h4>
               <table className="w-full text-xs border border-slate-200 rounded-lg overflow-hidden">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700">
-                    <th className="p-2 text-left">회차</th>
-                    <th className="p-2 text-left">항목 구분</th>
+                    <th className="p-2 text-left">구분</th>
+                    <th className="p-2 text-left">항목 명칭 및 내역</th>
                     <th className="p-2 text-left">납부 약정일</th>
-                    <th className="p-2 text-right">납부 금액</th>
+                    <th className="p-2 text-right">납부 약정액</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {c.feeSchedule.map(f => (
+                  {c.feeSchedule.map((f, idx) => (
                     <tr key={f.id}>
-                      <td className="p-2 font-bold">{f.round === 0 ? '착수금' : `${f.round}차`}</td>
-                      <td className="p-2">{f.memo}</td>
-                      <td className="p-2 font-mono">{f.dueDate}</td>
-                      <td className="p-2 text-right font-bold">{f.amount.toLocaleString()}원</td>
+                      <td className="p-2 font-bold whitespace-nowrap text-slate-700">
+                        {f.itemType === 'court_cost' ? '송달료·실비' :
+                         f.itemType === 'down_payment' ? '계약금' :
+                         f.itemType === 'success_fee' ? '성공보수' :
+                         `${f.round || idx + 1}차 분납`}
+                      </td>
+                      <td className="p-2">
+                        <div className="font-bold text-slate-900">{f.itemTitle || f.memo}</div>
+                        {f.memo && f.itemTitle && f.memo !== f.itemTitle && (
+                          <div className="text-[10px] text-slate-400 mt-0.5">{f.memo}</div>
+                        )}
+                      </td>
+                      <td className="p-2 font-mono whitespace-nowrap text-slate-600">{f.dueDate}</td>
+                      <td className="p-2 text-right font-bold font-mono text-slate-900">{f.amount.toLocaleString()}원</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="mt-2 p-2.5 bg-slate-50 rounded-lg text-xs text-slate-600 flex flex-col sm:flex-row sm:items-center justify-between gap-1 border border-slate-200">
-                <span><strong>입금 안내:</strong> {c.feeAccount?.bankName} {c.feeAccount?.accountNumber} (예금주: {c.feeAccount?.accountHolder})</span>
-                <span className="text-[11px] text-slate-400">※ 입금 시 의뢰인 본인 성명으로 입금하여 주시기 바랍니다.</span>
+              <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-700 space-y-1.5 border border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <span><strong>💳 수임료(보수) 입금:</strong> {c.feeAccount?.bankName} {c.feeAccount?.accountNumber} (예금주: {c.feeAccount?.accountHolder})</span>
+                  <span className="text-[11px] text-slate-400">※ 입금 시 의뢰인 본인 성명 기재 요망</span>
+                </div>
+                {!c.sameAsFeeAccount && c.courtCostAccount && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-t border-slate-200 pt-1 text-slate-600">
+                    <span><strong>⚖️ 송달료 등 공과금 전용계좌:</strong> {c.courtCostAccount?.bankName} {c.courtCostAccount?.accountNumber} (예금주: {c.courtCostAccount?.accountHolder})</span>
+                    <span className="text-[10px] text-blue-600 font-bold">법원 비용 분리 정산</span>
+                  </div>
+                )}
               </div>
             </div>
           )}

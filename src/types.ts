@@ -202,6 +202,15 @@ export interface FeeInstallment {
   paidDate?: string;
   status: 'pending' | 'paid' | 'overdue';
   memo?: string;
+  // ── 리걸플로 호환 납부 항목 커스터마이징 ──
+  itemType?: 'court_cost' | 'down_payment' | 'installment' | 'success_fee' | 'misc';
+  itemTitle?: string;
+  successFeeOption?: {
+    type: 'fixed' | 'reduction_rate' | 'custom';
+    amount?: number;
+    ratePercent?: number;
+    description?: string;
+  };
   // ── 알림 발송 이력 추적 ──
   lastNotifiedAt?: string;
   lastNotifiedType?: AlimtokMilestone;
@@ -1957,6 +1966,10 @@ export interface ElectronicContract {
   clientName: string;
   clientPhone: string;
   clientAddress?: string;
+  clientAddressDetail?: string; // 상세주소 (리걸플로 4-1)
+  clientPostcode?: string;      // 우편번호
+  clientResidentNumber?: string;// 주민등록번호 (리걸플로 4-1)
+  clientEmail?: string;         // 이메일 주소 (리걸플로 4-1)
   lawyerName: string;
   lawFirmName: string;
   assignedLawyerId?: string;
@@ -1969,6 +1982,12 @@ export interface ElectronicContract {
   contractNumber?: string;
   caseType?: string;
   caseCategory?: 'individual_rehab' | 'individual_bankruptcy' | 'other';
+  caseStageList?: string[];     // 진행상태: 기초서류대체, 개시결정, 면책결정 (리걸플로 4-2)
+  statementFees?: {             // 계산서 수임료 (리걸플로 4-2)
+    baseFee: number;
+    successFee: number;
+    otherFee: number;
+  };
   title?: string;
   signedAt?: string;
   contractUrl?: string;
