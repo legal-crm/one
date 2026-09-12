@@ -16,6 +16,7 @@ import type {
 } from './repaymentTypes';
 import { getDebtPowerOfAttorneyPdfUint8Array } from './debtPowerOfAttorneyGenerator';
 import type { DocumentFile } from '../../types';
+import { matchCreditorPreset } from '../court/creditorAddressDirectory';
 
 const STORAGE_KEY_PREFIX = 'debt_cert_order_';
 
@@ -399,6 +400,16 @@ export function convertDebtItemsToRepaymentCreditors(
       name.includes('건강보험') || 
       name.includes('국민연금');
 
+    // 주소 정보 매칭 (직접 입력값 우선, 없으면 디렉토리 프리셋 매칭)
+    const preset = matchCreditorPreset(item.creditorName);
+    const zipCode = item.zipCode || preset?.zipCode || '';
+    const address = item.address || preset?.address || '';
+    const serviceAddress = item.serviceAddress || preset?.serviceAddress || address;
+    const representative = item.representative || preset?.representative || '';
+    const bizNumber = item.bizNumber || preset?.bizNumber || '';
+    const debtCauseDetail = item.debtCauseDetail || (isPriority ? '조세 및 공과금 체납' : '대여금 / 신용대출');
+    const borrowedDate = item.borrowedDate || item.issueDate || '2024-01-01';
+
     return {
       id: item.id || `cred_${idx + 1}`,
       creditorNumber: idx + 1,
@@ -407,12 +418,19 @@ export function convertDebtItemsToRepaymentCreditors(
       interest,
       isSecured: false,
       isUnconfirmed: item.issueStatus !== 'issued' && item.issueStatus !== 'confirmed',
-      isPriority,
+      isPriority: isPriority || (preset?.isPriorityDefault ?? false),
       allocationRatio: 0,
       monthlyRepayment: 0,
       totalRepayment: 0,
       repaymentRate: 0,
       isManuallyAdjusted: false,
+      zipCode,
+      address,
+      serviceAddress,
+      representative,
+      bizNumber,
+      debtCauseDetail,
+      borrowedDate,
     };
   });
 }

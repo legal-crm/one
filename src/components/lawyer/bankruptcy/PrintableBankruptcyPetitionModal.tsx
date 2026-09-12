@@ -286,7 +286,20 @@ export default function PrintableBankruptcyPetitionModal({
                   {c.map((item, idx) => (
                     <tr key={item.id}>
                       <td className="border border-slate-300 p-2 text-center font-mono">{idx + 1}</td>
-                      <td className="border border-slate-300 p-2 font-bold">{item.creditorName}</td>
+                      <td className="border border-slate-300 p-2 font-bold">
+                        <div>{item.creditorName}</div>
+                        {item.representative && <div className="text-[10px] text-slate-600 font-normal">대표자: {item.representative}</div>}
+                        {item.address && (
+                          <div className="text-[10px] text-slate-500 font-normal mt-0.5">
+                            주소: {item.address} {item.zipCode ? `(${item.zipCode})` : ''}
+                          </div>
+                        )}
+                        {item.serviceAddress && item.serviceAddress !== item.address && (
+                          <div className="text-[10px] text-slate-500 font-normal">
+                            송달지: {item.serviceAddress}
+                          </div>
+                        )}
+                      </td>
                       <td className="border border-slate-300 p-2">
                         {item.debtCauseDetail} <br />
                         <span className="text-slate-500 text-[10px] font-mono">({item.borrowedDate})</span>

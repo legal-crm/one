@@ -39,6 +39,15 @@ export interface DebtCertificateItem {
   agencyFee: number;               // 건당 대행 수수료 (기본 15,000원~20,000원)
   issuanceFee: number;             // 금융기관 제증명 발급 실비 (보통 2,000~3,000원)
   memo?: string;                   // 특이사항 (양도사, 특수채권 등)
+
+  // 법원 송달용 채권자 주소 및 법인 정보 (채권자목록 연동)
+  zipCode?: string;                // 우편번호 (5자리)
+  address?: string;                // 본점 소재지 / 주민등록상 주소
+  serviceAddress?: string;         // 법원 우편물 송달장소
+  representative?: string;         // 대표자 (예: 은행장 OOO)
+  bizNumber?: string;              // 법인/사업자/주민등록번호
+  debtCauseDetail?: string;        // 차용원인 (예: 대여금 / 신용대출)
+  borrowedDate?: string;           // 차용일자 (YYYY-MM-DD)
 }
 
 export interface DebtCertificateOrder {
@@ -107,6 +116,15 @@ export interface RepaymentCreditor {
 
   // 담당자 수동 미세 조정 플래그
   isManuallyAdjusted?: boolean;
+
+  // 법원 송달용 채권자 주소 및 법인 정보 (대법원 전자소송 CSV 연동)
+  zipCode?: string;                // 우편번호 (5자리)
+  address?: string;                // 본점 소재지 / 주민등록상 주소
+  serviceAddress?: string;         // 법원 우편물 송달장소
+  representative?: string;         // 대표자 (예: 은행장 OOO)
+  bizNumber?: string;              // 법인/사업자/주민등록번호
+  debtCauseDetail?: string;        // 차용원인 (예: 대여금 / 신용대출)
+  borrowedDate?: string;           // 차용일자 (YYYY-MM-DD)
 }
 
 export type AssetCategory = 

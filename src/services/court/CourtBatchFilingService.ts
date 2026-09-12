@@ -234,13 +234,13 @@ export class CourtBatchFilingService {
     const rows = creditors.map((c, idx) => {
       const seq = idx + 1;
       const name = `"${(c.name || '').replace(/"/g, '""')}"`;
-      const bizNo = `""`;
-      const rep = `""`;
-      const zip = `""`;
-      const addr = `""`;
-      const serviceAddr = `""`;
-      const cause = `"대여금 / 신용대출"`;
-      const date = `"2024-01-01"`;
+      const bizNo = `"${(c.bizNumber || '').replace(/"/g, '""')}"`;
+      const rep = `"${(c.representative || '').replace(/"/g, '""')}"`;
+      const zip = `"${(c.zipCode || '').replace(/"/g, '""')}"`;
+      const addr = `"${(c.address || '').replace(/"/g, '""')}"`;
+      const serviceAddr = `"${(c.serviceAddress || c.address || '').replace(/"/g, '""')}"`;
+      const cause = `"${(c.debtCauseDetail || (c.isPriority ? '조세 및 공과금 체납' : '대여금 / 신용대출')).replace(/"/g, '""')}"`;
+      const date = `"${c.borrowedDate || '2024-01-01'}"`;
       const principal = Math.round(c.principal || 0);
       const interest = Math.round(c.interest || 0);
       const total = principal + interest;

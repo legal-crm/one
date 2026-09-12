@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   X, FileText, Download, CheckCircle2, AlertCircle, 
   Archive, FileSpreadsheet, RefreshCw, Upload, Eye, 
-  Layers, Check, AlertTriangle, ShieldCheck
+  Layers, Check, AlertTriangle, ShieldCheck, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -13,6 +13,8 @@ import {
 } from '../../../services/court/CourtBatchFilingService';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepaymentCreditor } from '../../../services/repayment/repaymentTypes';
+import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
+import { matchCreditorPreset } from '../../../services/court/creditorAddressDirectory';
 
 interface BatchFilingPackagingModalProps {
   isOpen: boolean;
@@ -95,28 +97,48 @@ export default function BatchFilingPackagingModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processLabel, setProcessLabel] = useState('');
 
-  // 채권자 목록 추출 (변제계획안 또는 상담 채권자)
+  // 채권자 목록 추출 (변제계획안 ➔ 부채증명서 발급목록 ➔ 상담 채권자 순으로 fallback)
   const creditors: RepaymentCreditor[] = useMemo(() => {
     if (crmExt.repaymentPlan?.creditors && crmExt.repaymentPlan.creditors.length > 0) {
       return crmExt.repaymentPlan.creditors;
     }
+    const debtOrders = crmExt.debtCertificateOrders;
+    if (debtOrders && debtOrders.length > 0 && debtOrders[0].items.length > 0) {
+      return convertDebtItemsToRepaymentCreditors(debtOrders[0].items);
+    }
     // 기본 상담 금융기관 목업 fallback
     const debts = clientRequest.financialProfile?.debts || [];
-    return debts.map((d: any, idx: number) => ({
-      id: `cred-${idx + 1}`,
-      creditorNumber: idx + 1,
-      name: d.creditorName || d.name || `금융기관 #${idx + 1}`,
-      principal: (d.amount || 1000) * 10000,
-      interest: 0,
-      isSecured: false,
-      isUnconfirmed: false,
-      isPriority: false,
-      allocationRatio: 1 / Math.max(1, debts.length),
-      monthlyRepayment: 100000,
-      totalRepayment: 3600000,
-      repaymentRate: 40,
-    }));
-  }, [crmExt.repaymentPlan, clientRequest]);
+    return debts.map((d: any, idx: number) => {
+      const name = d.creditorName || d.name || `금융기관 #${idx + 1}`;
+      const preset = matchCreditorPreset(name);
+      return {
+        id: `cred-${idx + 1}`,
+        creditorNumber: idx + 1,
+        name,
+        principal: (d.amount || 1000) * 10000,
+        interest: 0,
+        isSecured: false,
+        isUnconfirmed: false,
+        isPriority: preset?.isPriorityDefault ?? false,
+        allocationRatio: 1 / Math.max(1, debts.length),
+        monthlyRepayment: 100000,
+        totalRepayment: 3600000,
+        repaymentRate: 40,
+        zipCode: preset?.zipCode || '',
+        address: preset?.address || '',
+        serviceAddress: preset?.serviceAddress || '',
+        representative: preset?.representative || '',
+        bizNumber: preset?.bizNumber || '',
+        debtCauseDetail: '대여금 / 신용대출',
+        borrowedDate: '2023-01-01',
+      };
+    });
+  }, [crmExt.repaymentPlan, crmExt.debtCertificateOrders, clientRequest]);
+
+  // 송달주소 누락 검증 (법원 송달불능 사전 차단)
+  const missingAddressCount = useMemo(() => {
+    return creditors.filter(c => !c.address || !c.address.trim()).length;
+  }, [creditors]);
 
   // 준비 완료 통계
   const totalSlots = slots.length;
@@ -164,6 +186,9 @@ export default function BatchFilingPackagingModal({
   // 3. 대법원 규격 채권자목록 CSV 다운로드
   const handleDownloadCreditorCsv = () => {
     try {
+      if (missingAddressCount > 0) {
+        toast.warning(`⚠️ 주의: 채권자 ${missingAddressCount}곳의 송달주소가 미입력 상태입니다. 대법원 전자소송 제출 시 법원 송달불능 위험이 있습니다.`);
+      }
       const csv = CourtBatchFilingService.generateCourtCreditorCsv(creditors, clientName);
       const filename = `[대법원전자소송]_${clientName}_채권자목록_일괄등록양식.csv`;
       CourtBatchFilingService.downloadCsv(csv, filename);
@@ -262,6 +287,17 @@ export default function BatchFilingPackagingModal({
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               <span>채권자목록 CSV</span>
+              {missingAddressCount > 0 ? (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-0.5" title={`송달주소 미입력 ${missingAddressCount}건`}>
+                  <AlertCircle className="w-2.5 h-2.5" />
+                  <span>주소누락 {missingAddressCount}</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 flex items-center gap-0.5" title="모든 채권자 송달주소 등록 완료">
+                  <Check className="w-2.5 h-2.5" />
+                  <span>주소검증완료</span>
+                </span>
+              )}
             </button>
 
             {/* 2. 개별 PDF ZIP */}

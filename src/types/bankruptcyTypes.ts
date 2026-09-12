@@ -110,6 +110,13 @@ export interface BankruptcyCreditorItem {
     caseNumber?: string;
     statusText?: string;
   };
+
+  // 법원 송달용 채권자 주소 및 법인 정보
+  zipCode?: string;                // 우편번호
+  address?: string;                // 본점 소재지 / 주소
+  serviceAddress?: string;         // 법원 우편물 송달장소
+  representative?: string;         // 대표자
+  bizNumber?: string;              // 법인/사업자/주민번호
 }
 
 // 4. 파산관재인 5대 심층 조사재산 (리걸플로 핵심 벤치마킹)

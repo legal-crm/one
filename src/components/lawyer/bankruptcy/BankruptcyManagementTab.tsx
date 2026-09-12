@@ -4,10 +4,11 @@ import {
   Printer, Download, Sparkles, Plus, Trash2, Home, Coins,
   Users, Check, X, Building2, HelpCircle, Save, Calendar,
   Landmark, AlertOctagon, ArrowDownCircle, HeartHandshake, Eye,
-  ChevronRight, RefreshCw, FileWarning
+  ChevronRight, RefreshCw, FileWarning, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveBankruptcyCase } from '../../../services/companionService';
+import { matchCreditorPreset } from '../../../services/court/creditorAddressDirectory';
 import type { 
   BankruptcyFullCaseData, 
   BankruptcyPetition, 
@@ -808,6 +809,35 @@ export default function BankruptcyManagementTab({
                       className="font-bold text-sm text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1"
                       placeholder="채권자명 입력"
                     />
+
+                    {(() => {
+                      const preset = matchCreditorPreset(c.creditorName);
+                      if (!preset) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreditors(prev => prev.map(item => item.id === c.id ? {
+                              ...item,
+                              creditorName: preset.officialName,
+                              zipCode: preset.zipCode,
+                              address: preset.address,
+                              serviceAddress: preset.serviceAddress,
+                              representative: preset.representative,
+                              bizNumber: preset.bizNumber,
+                              isNonDischargeable: preset.isPriorityDefault ?? item.isNonDischargeable
+                            } : item));
+                            toast.success(`'${preset.officialName}' 공식 송달주소가 적용되었습니다!`);
+                          }}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1 cursor-pointer press-scale"
+                          title="공식 법인명, 우편번호, 주소, 송달장소 원클릭 자동채우기"
+                        >
+                          <Sparkles className="w-2.5 h-2.5 text-indigo-600" />
+                          <span>공식주소 자동채우기</span>
+                        </button>
+                      );
+                    })()}
+
                     {c.isNonDischargeable ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300">
                         🚫 비면책 채권
@@ -894,6 +924,92 @@ export default function BankruptcyManagementTab({
                       }}
                       className="w-full bg-white border border-slate-200 rounded-lg p-1.5"
                     />
+                  </div>
+                </div>
+
+                {/* ── 법원 송달주소 및 대표자 정보 ── */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-[11px]">
+                  <div className="flex items-center justify-between text-slate-700 font-bold">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>법원 송달주소 및 법인정보 (송달불능 방지 필수)</span>
+                    </span>
+                    {c.address ? (
+                      <span className="text-[10px] text-emerald-600 font-bold">✓ 주소 등록됨</span>
+                    ) : (
+                      <span className="text-[10px] text-amber-600 font-bold">⚠️ 주소 미입력 (송달불능 위험)</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-slate-500 block mb-0.5 text-[10px]">우편번호</label>
+                      <input
+                        type="text"
+                        placeholder="예: 07331"
+                        value={c.zipCode || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, zipCode: val } : item));
+                        }}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 block mb-0.5 text-[10px]">대표자</label>
+                      <input
+                        type="text"
+                        placeholder="예: 대표이사 OOO"
+                        value={c.representative || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, representative: val } : item));
+                        }}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 block mb-0.5 text-[10px]">사업자/법인번호</label>
+                      <input
+                        type="text"
+                        placeholder="예: 201-81-47789"
+                        value={c.bizNumber || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, bizNumber: val } : item));
+                        }}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-500 block mb-0.5 text-[10px]">본점 주소 / 주민등록지</label>
+                      <input
+                        type="text"
+                        placeholder="예: 서울특별시 영등포구 의사당대로 141 (여의도동)"
+                        value={c.address || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, address: val } : item));
+                        }}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 block mb-0.5 text-[10px]">법원 우편물 송달장소</label>
+                      <input
+                        type="text"
+                        placeholder="미입력 시 본점 주소로 송달"
+                        value={c.serviceAddress || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, serviceAddress: val } : item));
+                        }}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 

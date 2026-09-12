@@ -4,7 +4,7 @@ import {
   CheckCircle2, Info, ChevronDown, ChevronUp, Sliders, Edit3, Lock, 
   Unlock, Save, Sparkles, Building2, Coins, ArrowRight, ShieldCheck,
   Calendar, Users, Home, HeartPulse, GraduationCap, DollarSign, Download,
-  Trash2, Plus, FileText
+  Trash2, Plus, FileText, MapPin, Search, X, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -24,10 +24,12 @@ import {
 } from '../../../services/repayment/repaymentCalculationEngine';
 import { exportCourtRepaymentScheduleExcel } from '../../../services/repayment/repaymentExcelExporter';
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
+import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY, type CreditorDirectoryItem } from '../../../services/court/creditorAddressDirectory';
 import PrintableRepaymentPlanModal from './PrintableRepaymentPlanModal';
 import SecuredDebtCalculatorModal from './SecuredDebtCalculatorModal';
 import IncomeExpenseModal from './IncomeExpenseModal';
 import PropertyValuationModal from '../assets/PropertyValuationModal';
+import CreditorAddressModal from './CreditorAddressModal';
 import { REGION_CONFIG_2026, RegionType } from '../../../services/repayment/repaymentConstants2026';
 
 interface RepaymentPlanEditorProps {
@@ -114,24 +116,14 @@ export default function RepaymentPlanEditor({
     // 부채증명서 대행에 등록된 채권자가 있다면 우선 매핑
     const debtOrders = crmExt.debtCertificateOrders;
     if (debtOrders && debtOrders.length > 0 && debtOrders[0].items.length > 0) {
-      return debtOrders[0].items.map((it, idx) => ({
-        id: it.id,
-        creditorNumber: idx + 1,
-        name: it.creditorName,
-        principal: it.confirmedPrincipal || it.expectedPrincipal,
-        interest: it.confirmedInterest || 0,
-        isSecured: false,
-        isUnconfirmed: it.issueStatus !== 'issued' && it.issueStatus !== 'confirmed',
-        isPriority: false,
-        allocationRatio: 0,
-        monthlyRepayment: 0,
-        totalRepayment: 0,
-        repaymentRate: 0,
-        isManuallyAdjusted: false,
-      }));
+      return convertDebtItemsToRepaymentCreditors(debtOrders[0].items);
     }
 
     const totalDebt = (clientRequest.financialProfile?.debtTotal || 6000) * 10000;
+    const p1 = matchCreditorPreset('국민은행');
+    const p2 = matchCreditorPreset('신한카드');
+    const p3 = matchCreditorPreset('OK저축은행');
+
     return [
       {
         id: 'cred_1',
@@ -146,6 +138,13 @@ export default function RepaymentPlanEditor({
         monthlyRepayment: 0,
         totalRepayment: 0,
         repaymentRate: 0,
+        zipCode: p1?.zipCode || '07331',
+        address: p1?.address || '서울특별시 영등포구 의사당대로 141 (여의도동)',
+        serviceAddress: p1?.serviceAddress || '서울특별시 영등포구 의사당대로 141, 여의도영업부 (법원송달팀)',
+        representative: p1?.representative || '은행장 이재근',
+        bizNumber: p1?.bizNumber || '201-81-47789',
+        debtCauseDetail: '대여금 / 신용대출',
+        borrowedDate: '2023-05-15',
       },
       {
         id: 'cred_2',
@@ -160,6 +159,13 @@ export default function RepaymentPlanEditor({
         monthlyRepayment: 0,
         totalRepayment: 0,
         repaymentRate: 0,
+        zipCode: p2?.zipCode || '04543',
+        address: p2?.address || '서울특별시 중구 을지로 100, 파인에비뉴 A동 (을지로2가)',
+        serviceAddress: p2?.serviceAddress || '서울특별시 중구 을지로 100, 파인에비뉴 A동 사후관리팀',
+        representative: p2?.representative || '대표이사 문동권',
+        bizNumber: p2?.bizNumber || '202-81-48079',
+        debtCauseDetail: '신용카드 대금',
+        borrowedDate: '2023-08-20',
       },
       {
         id: 'cred_3',
@@ -174,9 +180,19 @@ export default function RepaymentPlanEditor({
         monthlyRepayment: 0,
         totalRepayment: 0,
         repaymentRate: 0,
+        zipCode: p3?.zipCode || '04523',
+        address: p3?.address || '서울특별시 중구 세종대로 39, 대한서울상공회의소빌딩 10층',
+        serviceAddress: p3?.serviceAddress || '서울특별시 중구 세종대로 39, 상공회의소빌딩 10층 여신관리실',
+        representative: p3?.representative || '대표이사 정길호',
+        bizNumber: p3?.bizNumber || '214-81-88987',
+        debtCauseDetail: '금원차용(신용대출)',
+        borrowedDate: '2024-01-10',
       },
     ];
   });
+
+  // 채권자 송달주소 및 법인정보 편집 모달 상태
+  const [editingAddressCreditor, setEditingAddressCreditor] = useState<RepaymentCreditor | null>(null);
 
   // ── 2. 실무자 수동 미세 조정 상태 (Fine-tuning Overrides) ──
   const [isManualMode, setIsManualMode] = useState<boolean>(
@@ -1055,7 +1071,28 @@ export default function RepaymentPlanEditor({
                         </td>
                         <td className="py-3 px-4">
                           <div className="space-y-1.5">
-                            <span className="font-bold text-slate-900 text-sm">{c.name}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-slate-900 text-sm">{c.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingAddressCreditor(c)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border press-scale ${
+                                  c.address
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                }`}
+                                title={c.address ? `${c.address} (${c.zipCode || '우편번호 없음'}) - 클릭하여 수정` : '대법원 전자소송 송달을 위해 주소를 입력해 주세요 (클릭)'}
+                              >
+                                <MapPin className="w-2.5 h-2.5" />
+                                <span>{c.address ? '주소완료' : '송달주소 입력필요'}</span>
+                              </button>
+                            </div>
+                            
+                            {c.address && (
+                              <div className="text-[11px] text-slate-400 truncate max-w-xs" title={`${c.serviceAddress || c.address} (우: ${c.zipCode || '-'})`}>
+                                📍 {c.serviceAddress || c.address}
+                              </div>
+                            )}
                             
                             {/* 채권 유형 칩 버튼 3종 */}
                             <div className="flex items-center gap-1.5 flex-wrap">
@@ -1728,6 +1765,17 @@ export default function RepaymentPlanEditor({
           }}
         />
       )}
+
+      {/* ── 8. 채권자 법원 송달주소 및 법인정보 편집 모달 ── */}
+      <CreditorAddressModal
+        isOpen={!!editingAddressCreditor}
+        creditor={editingAddressCreditor}
+        onClose={() => setEditingAddressCreditor(null)}
+        onSave={(updated) => {
+          setCreditors(prev => prev.map(c => c.id === updated.id ? updated : c));
+          setEditingAddressCreditor(null);
+        }}
+      />
 
     </div>
   );

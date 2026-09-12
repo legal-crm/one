@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   FileSpreadsheet, Upload, Download, Eye, Plus, Trash2, CheckCircle2, 
   Clock, AlertCircle, RefreshCw, FileText, Image as ImageIcon, ExternalLink,
-  ShieldCheck, Calculator, ArrowRight, RotateCw, ZoomIn, ZoomOut, Sparkles, Building2
+  ShieldCheck, Calculator, ArrowRight, RotateCw, ZoomIn, ZoomOut, Sparkles, Building2,
+  MapPin, Search, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -21,6 +22,7 @@ import {
   type AgencyPresetType 
 } from '../../../services/repayment/debtCertificateService';
 import { downloadDebtPowerOfAttorneyPdf } from '../../../services/repayment/debtPowerOfAttorneyGenerator';
+import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY } from '../../../services/court/creditorAddressDirectory';
 
 interface DebtCertificateTabProps {
   clientId: string;
@@ -44,8 +46,12 @@ export default function DebtCertificateTab({
     const loaded = loadDebtCertificateOrder(clientId);
     if (loaded) return loaded;
 
-    // 초기 상담 데이터에서 채권자 추정치 시드
+    // 초기 상담 데이터에서 채권자 추정치 시드 (주소 프리셋 자동 매핑)
     const initialDebt = clientRequest.financialProfile?.debtTotal || 0;
+    const p1 = matchCreditorPreset('국민은행');
+    const p2 = matchCreditorPreset('신한카드');
+    const p3 = matchCreditorPreset('OK저축은행');
+
     const initialItems: DebtCertificateItem[] = [
       {
         id: 'item_1',
@@ -54,6 +60,13 @@ export default function DebtCertificateTab({
         issueStatus: 'pending',
         agencyFee: 15000,
         issuanceFee: 2000,
+        zipCode: p1?.zipCode || '07331',
+        address: p1?.address || '서울특별시 영등포구 의사당대로 141 (여의도동)',
+        serviceAddress: p1?.serviceAddress || '서울특별시 영등포구 의사당대로 141, 여의도영업부 (법원송달팀)',
+        representative: p1?.representative || '은행장 이재근',
+        bizNumber: p1?.bizNumber || '201-81-47789',
+        debtCauseDetail: '대여금 / 신용대출',
+        borrowedDate: '2023-05-15',
       },
       {
         id: 'item_2',
@@ -62,6 +75,13 @@ export default function DebtCertificateTab({
         issueStatus: 'pending',
         agencyFee: 15000,
         issuanceFee: 2000,
+        zipCode: p2?.zipCode || '04543',
+        address: p2?.address || '서울특별시 중구 을지로 100, 파인에비뉴 A동 (을지로2가)',
+        serviceAddress: p2?.serviceAddress || '서울특별시 중구 을지로 100, 파인에비뉴 A동 사후관리팀',
+        representative: p2?.representative || '대표이사 문동권',
+        bizNumber: p2?.bizNumber || '202-81-48079',
+        debtCauseDetail: '신용카드 대금',
+        borrowedDate: '2023-08-20',
       },
       {
         id: 'item_3',
@@ -70,6 +90,13 @@ export default function DebtCertificateTab({
         issueStatus: 'pending',
         agencyFee: 15000,
         issuanceFee: 2000,
+        zipCode: p3?.zipCode || '04523',
+        address: p3?.address || '서울특별시 중구 세종대로 39, 대한서울상공회의소빌딩 10층',
+        serviceAddress: p3?.serviceAddress || '서울특별시 중구 세종대로 39, 상공회의소빌딩 10층 여신관리실',
+        representative: p3?.representative || '대표이사 정길호',
+        bizNumber: p3?.bizNumber || '214-81-88987',
+        debtCauseDetail: '금원차용(신용대출)',
+        borrowedDate: '2024-01-10',
       },
     ];
 
@@ -473,9 +500,20 @@ export default function DebtCertificateTab({
                         {idx + 1}
                       </td>
                       <td className="py-3 px-3">
-                        <div className="font-bold text-slate-900">{item.creditorName}</div>
-                        <div className="text-[11px] text-slate-400">
-                          {item.accountOrContractNo || item.branchName || '전지점'}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900">{item.creditorName}</span>
+                          {item.address ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-0.5" title={`${item.address} (우: ${item.zipCode || '-'})`}>
+                              <MapPin className="w-2.5 h-2.5" /> 주소등록
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-0.5" title="대법원 전자소송 송달을 위해 주소 입력이 필요합니다">
+                              <AlertCircle className="w-2.5 h-2.5" /> 송달주소 누락
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={item.serviceAddress || item.address || ''}>
+                          {item.serviceAddress || item.address || item.accountOrContractNo || item.branchName || '송달주소 미지정'}
                         </div>
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-600">
@@ -716,6 +754,172 @@ export default function DebtCertificateTab({
                     placeholder="예: 카드론 채권 양도 발생으로 OK저축은행으로 이관됨"
                     className="w-full px-3 py-2 text-xs text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none"
                   />
+                </div>
+
+                {/* ══════════ 법원 송달주소 및 채권자 법인 정보 (채권자목록 연동) ══════════ */}
+                <div className="pt-3 border-t border-slate-200 space-y-3">
+                  {(() => {
+                    const preset = matchCreditorPreset(selectedItem.creditorName);
+                    return (
+                      <>
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="p-1 rounded-lg bg-indigo-50 text-indigo-700">
+                              <MapPin className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="font-extrabold text-xs text-slate-900">
+                              법원 송달주소 (개인회생채권자목록 기재용)
+                            </span>
+                          </div>
+
+                          {preset && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateItem(selectedItem.id, {
+                                  zipCode: preset.zipCode,
+                                  address: preset.address,
+                                  serviceAddress: preset.serviceAddress,
+                                  representative: preset.representative,
+                                  bizNumber: preset.bizNumber,
+                                  debtCauseDetail: selectedItem.debtCauseDetail || '대여금 / 신용대출'
+                                });
+                                toast.success(`'${preset.officialName}' 공식 송달주소가 자동 반영되었습니다!`);
+                              }}
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 cursor-pointer press-scale shadow-2xs"
+                              title="공식 법인명, 우편번호, 송달주소, 대표자 1클릭 채우기"
+                            >
+                              <Sparkles className="w-3 h-3 text-amber-300" />
+                              <span>{preset.officialName} 주소 자동채우기</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {preset && (!selectedItem.address || selectedItem.address !== preset.address) && (
+                          <div className="bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100 text-[11px] text-indigo-900 flex items-center justify-between">
+                            <div>
+                              <span className="font-bold">🏢 추천 DB 일치:</span> {preset.officialName} ({preset.zipCode})
+                              <div className="text-[10px] text-indigo-700 mt-0.5 truncate max-w-sm">
+                                {preset.address}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateItem(selectedItem.id, {
+                                  zipCode: preset.zipCode,
+                                  address: preset.address,
+                                  serviceAddress: preset.serviceAddress,
+                                  representative: preset.representative,
+                                  bizNumber: preset.bizNumber,
+                                });
+                                toast.success('추천 송달주소가 적용되었습니다.');
+                              }}
+                              className="px-2 py-1 bg-white hover:bg-indigo-100 text-indigo-700 rounded text-[10px] font-extrabold border border-indigo-200 cursor-pointer"
+                            >
+                              적용
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                              우편번호 (5자리)
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedItem.zipCode || ''}
+                              onChange={(e) =>
+                                handleUpdateItem(selectedItem.id, { zipCode: e.target.value })
+                              }
+                              placeholder="예: 07331"
+                              className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                              대표자 (대표이사 등)
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedItem.representative || ''}
+                              onChange={(e) =>
+                                handleUpdateItem(selectedItem.id, { representative: e.target.value })
+                              }
+                              placeholder="예: 은행장 이재근"
+                              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            본점 소재지 / 채권자 주소 (등기부상)
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedItem.address || ''}
+                            onChange={(e) =>
+                              handleUpdateItem(selectedItem.id, { address: e.target.value })
+                            }
+                            placeholder="예: 서울특별시 영등포구 의사당대로 141 (여의도동)"
+                            className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            법원 우편물 송달장소 (우편물 수신처)
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedItem.serviceAddress || ''}
+                            onChange={(e) =>
+                              handleUpdateItem(selectedItem.id, { serviceAddress: e.target.value })
+                            }
+                            placeholder="본점과 동일하거나 특정 부서 지정 시 입력 (미입력 시 본점 주소 적용)"
+                            className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                              사업자/법인등록번호
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedItem.bizNumber || ''}
+                              onChange={(e) =>
+                                handleUpdateItem(selectedItem.id, { bizNumber: e.target.value })
+                              }
+                              placeholder="예: 201-81-47789"
+                              className="w-full px-2.5 py-1.5 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                              차용원인
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedItem.debtCauseDetail || ''}
+                              onChange={(e) =>
+                                handleUpdateItem(selectedItem.id, { debtCauseDetail: e.target.value })
+                              }
+                              placeholder="예: 대여금 / 신용대출"
+                              className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[10px] text-amber-900 leading-relaxed">
+                          ⚠️ <strong>법원 송달 유의사항:</strong> 법원은 개시결정문 및 변제계획안을 위 송달장소로 우편 송달합니다. 채권이 양도되었거나 주소가 누락되면 즉시 송달불능 및 주소보정명령이 내려져 절차가 지연됩니다.
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </>
