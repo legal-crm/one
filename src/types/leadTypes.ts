@@ -59,6 +59,28 @@ export interface AssetItem {
   desc: string;
 }
 
+export interface CreditLoanItem {
+  id: string;
+  desc: string;
+  amount: number; // 만원
+}
+
+export interface LeadMemoItem {
+  id: string;
+  content: string;
+  createdAt: string;
+  authorId?: string;
+  authorName?: string;
+}
+
+export interface LeadStatusLog {
+  logId: string;
+  fromStatus: string;
+  toStatus: string;
+  changedAt: string;
+  memo?: string;
+}
+
 export interface SalesLead {
   id: string;                         // lead-xxx
   customerName: string;               // 고객명
@@ -71,11 +93,12 @@ export interface SalesLead {
   region: string;                     // 거주지역
   inboundPath?: string;               // 유입경로 (DB구매, 제휴랜딩, 네이버광고 등)
   partnerId?: string;                 // 제휴처 ID
+  preInfo?: string;                   // 웹 리드 사전 정보
   batchName?: string;                 // DB 업로드 배치명 (예: "2026-09 다음타겟DB 500건")
-  caseType?: '개인회생' | '개인파산' | '미정';
+  caseType?: '개인회생' | '개인파산' | '새출발' | '신용회복' | '미정';
 
   // 소득 및 직업
-  jobTypes: string[];                 // 직업군 ('급여소득', '영업소득' 등)
+  jobTypes: string[];                 // 직업군 ('급여소득', '영업소득', '직장인', '개인사업자' 등)
   insurance4: '가입' | '미가입';
   maritalStatus: '미혼' | '기혼' | '이혼';
   childrenCount?: number;             // 미성년 자녀수
@@ -87,16 +110,27 @@ export interface SalesLead {
   housingDetail?: string;             // 아파트, 빌라 등
   deposit: number;                    // 보증금 (만원)
   rent: number;                       // 월세 (만원)
+  depositLoanAmount?: number;         // 보증금 대출 (만원)
+  rentContractor?: '본인' | '배우자';
   ownHousePrice?: number;             // 자가 시세
   ownHouseLoan?: number;              // 담보 대출액
+  ownHouseOwner?: '본인' | '배우자' | '배우자 공동명의';
+  freeHousingOwner?: string;
   assets: AssetItem[];
+  creditLoans?: CreditLoanItem[];     // 신용대출 목록
 
   // 채무 및 대출
   debtTotal: number;                  // 총 채무액 (만원)
+  incomeDetails?: { salary?: number; business?: number; freelance?: number };
   creditCardUse?: '사용' | '미사용';    // 신용카드 사용 여부
+  creditCardAmount?: number;          // 신용카드 사용금액 (만원)
   collateralLoanDesc?: string;        // 담보대출 상세
+  historyType?: string;               // 과거 회생/파산/회복 유형
+  historyMemo?: string;               // 과거 이력 상세 메모
   historyDetail?: string;             // 과거 회생/파산/신복위 이력
   specialMemo: string;                // 특이사항 메모
+  memos?: LeadMemoItem[];             // 누적 상담 메모 이력
+  statusLogs?: LeadStatusLog[];       // 상태 전이 로그
 
   // 콜 및 리마인더
   callCount: number;                  // 총 통화 시도 횟수
