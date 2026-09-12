@@ -17,6 +17,8 @@ import RehabCompanionView from './companion/RehabCompanionView';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
+import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../services/documents/familyParserService';
+import type { FamilyMemberItem } from '../../types/incomeExpenseTypes';
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 
 interface MyPageViewProps {
@@ -167,6 +169,49 @@ export default function MyPageView({
       debtTypes: updatedDebtTypes,
       debtTotal: totalDebt
     });
+  };
+
+  // ── 등본/가족관계 서류 자동 파싱 상태 & 핸들러 ──
+  const [isParsingClientFamilyDoc, setIsParsingClientFamilyDoc] = useState(false);
+  const clientFamilyDocInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleClientFamilyDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsingClientFamilyDoc(true);
+    try {
+      const result = await parseFamilyDocument(file);
+      if (result.ok && result.extractedMembers?.length > 0) {
+        const parsedMembers = result.extractedMembers;
+        
+        // 미성년 자녀 자동 집계
+        const minorChildren = parsedMembers.filter(m => (m.relationship.includes('자') || m.relationship.includes('녀')) && calculateKoreanAgeInfo(m.birthDate).isMinor).length;
+        const otherDependents = parsedMembers.filter(m => !m.relationship.includes('본인') && !m.relationship.includes('자') && !m.relationship.includes('녀') && m.isEligibleDependent).length;
+        
+        // 배우자 확인
+        const hasSpouse = parsedMembers.some(m => m.relationship.includes('배우자'));
+        
+        onUpdateFinancialProfile({
+          ...profile,
+          familyMembers: parsedMembers,
+          minorChildren,
+          otherDependents,
+          dependents: minorChildren + otherDependents,
+          maritalStatus: hasSpouse ? 'MARRIED' : (profile?.maritalStatus || 'SINGLE'),
+        });
+        toast.success(`✨ ${result.docTitle} 자동 인식 완료! 가족 ${parsedMembers.length}명이 반영되고 자녀 나이가 자동 계산되었습니다.`);
+      } else {
+        toast.error('서류에서 가족 정보를 명확히 인식하지 못했습니다. 수기로 입력해 주세요.');
+      }
+    } catch (err: any) {
+      toast.error('서류 파싱 중 오류가 발생했습니다: ' + (err?.message || ''));
+    } finally {
+      setIsParsingClientFamilyDoc(false);
+      if (clientFamilyDocInputRef.current) {
+        clientFamilyDocInputRef.current.value = '';
+      }
+    }
   };
 
   const formatCurrency = (amount: number | undefined): string => {
@@ -371,101 +416,533 @@ export default function MyPageView({
           </div>
         </div>
 
-        {/* 2. 가족 구성 */}
-        <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-850 pt-4">
-          <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2">2. 가족 구성</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">결혼 상태</label>
-              <select
-                value={profile.maritalStatus || 'SINGLE'}
-                onChange={(e) => handleFieldChange('maritalStatus', e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+        {/* 2. 가족 구성 (매뉴얼 3-5 실무 기준) */}
+        <div className="space-y-4 border-t border-slate-100 dark:border-slate-850 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-bold text-slate-500 border-l-2 border-brand pl-2 flex items-center gap-1.5">
+              <span>2. 가족관계 및 부양가족 정밀 산정</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
+                만 나이 자동계산 & 등본 연동
+              </span>
+            </h4>
+
+            {/* 등본/가족관계 서류 자동 파싱 버튼 */}
+            <div>
+              <input
+                type="file"
+                ref={clientFamilyDocInputRef}
+                onChange={handleClientFamilyDocUpload}
+                accept="image/*,application/pdf"
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={isParsingClientFamilyDoc}
+                onClick={() => clientFamilyDocInputRef.current?.click()}
+                className="px-2.5 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-[11px] font-bold flex items-center gap-1.5 cursor-pointer press-scale shadow-xs disabled:opacity-50"
+                title="등본이나 가족관계증명서를 첨부하면 가족 성명, 생년월일, 자녀 나이가 자동 파싱됩니다."
               >
-                <option value="SINGLE">미혼</option>
-                <option value="MARRIED">기혼</option>
-                <option value="DIVORCED">이혼</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">만 19세 미만 자녀 수 (명)</label>
-              <input 
-                type="number" 
-                value={profile.minorChildren || 0} 
-                onChange={(e) => {
-                  const minor = Math.max(0, Number(e.target.value));
-                  handleFieldChange('minorChildren', minor);
-                  const other = profile.otherDependents || 0;
-                  handleFieldChange('dependents', minor + other);
-                }} 
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">기타 부양가족 수 (명)</label>
-              <input 
-                type="number" 
-                value={profile.otherDependents !== undefined ? profile.otherDependents : (profile.dependents ? Math.max(0, profile.dependents - (profile.minorChildren || 0)) : 0)} 
-                onChange={(e) => {
-                  const other = Math.max(0, Number(e.target.value));
-                  handleFieldChange('otherDependents', other);
-                  handleFieldChange('dependents', (profile.minorChildren || 0) + other);
-                }} 
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-              />
+                {isParsingClientFamilyDoc ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                    <span>서류 AI 분석 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5 text-emerald-200" />
+                    <span>📑 등본/가족증명서 자동 파싱</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
-          {/* 기혼 시 배우자 소득 */}
-          {profile.maritalStatus === 'MARRIED' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">배우자 월 소득 (만 원)</label>
-                <input 
-                  type="number" 
-                  value={profile.spouseIncome || 0} 
-                  onChange={(e) => handleFieldChange('spouseIncome', Math.max(0, Number(e.target.value)))} 
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">배우자 소유 재산액 (만 원)</label>
-                <input 
-                  type="number" 
-                  value={profile.spouseAsset || 0} 
-                  onChange={(e) => handleFieldChange('spouseAsset', Math.max(0, Number(e.target.value)))} 
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                />
-                <span className="text-[11px] text-slate-500 block">※ 법원 실무준칙에 따라 기혼 시 배우자 자산의 50%가 반영될 수 있습니다.</span>
+          {/* 1) 혼인 여부 (기혼 / 별거 / 미혼 / 이혼 - 그림 3-6) */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-3">
+            <div>
+              <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-2">
+                혼인 여부
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: '기혼', value: 'MARRIED' },
+                  { label: '별거 (기혼)', value: 'MARRIED_SEPARATED' },
+                  { label: '미혼', value: 'SINGLE' },
+                  { label: '이혼', value: 'DIVORCED' },
+                ].map(item => {
+                  const currentMarital = profile.isSeparated 
+                    ? 'MARRIED_SEPARATED' 
+                    : (profile.maritalStatus === 'MARRIED' || profile.maritalStatus === 'married' ? 'MARRIED' : profile.maritalStatus === 'DIVORCED' || profile.maritalStatus === 'divorced' ? 'DIVORCED' : 'SINGLE');
+                  const isSelected = currentMarital === item.value;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => {
+                        if (item.value === 'MARRIED_SEPARATED') {
+                          handleFieldChange('maritalStatus', 'MARRIED');
+                          handleFieldChange('isSeparated', true);
+                        } else if (item.value === 'MARRIED') {
+                          handleFieldChange('maritalStatus', 'MARRIED');
+                          handleFieldChange('isSeparated', false);
+                        } else {
+                          handleFieldChange('maritalStatus', item.value);
+                          handleFieldChange('isSeparated', false);
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-brand border-brand text-white shadow-sm'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          )}
 
-          {/* 이혼 시 양육비 */}
-          {profile.maritalStatus === 'DIVORCED' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">양육비 수령액 (월, 만 원)</label>
-                <input 
-                  type="number" 
-                  value={profile.childSupportReceived || 0} 
-                  onChange={(e) => handleFieldChange('childSupportReceived', Math.max(0, Number(e.target.value)))} 
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                />
+            {/* 기혼인 경우: 배우자 경제활동 여부 및 월평균 순수입액 */}
+            {(profile.maritalStatus === 'MARRIED' || profile.maritalStatus === 'married') && (
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">배우자 경제활동 여부</span>
+                    <span className="text-[11px] text-slate-500">배우자가 소득 활동을 하고 있다면 토글을 켜주세요.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = profile.spouseIsWorking ?? ((profile.spouseIncome || 0) > 0);
+                      handleFieldChange('spouseIsWorking', !current);
+                      if (current) {
+                        handleFieldChange('spouseIncome', 0);
+                      } else if (!profile.spouseIncome) {
+                        handleFieldChange('spouseIncome', 200);
+                      }
+                    }}
+                    className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                      (profile.spouseIsWorking ?? ((profile.spouseIncome || 0) > 0)) ? 'bg-brand' : 'bg-slate-300 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                      (profile.spouseIsWorking ?? ((profile.spouseIncome || 0) > 0)) ? 'right-0.5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+
+                {(profile.spouseIsWorking ?? ((profile.spouseIncome || 0) > 0)) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">배우자 월평균 순수입액 (만 원)</label>
+                      <input
+                        type="number"
+                        value={profile.spouseIncome || 0}
+                        onChange={e => handleFieldChange('spouseIncome', Math.max(0, Number(e.target.value)))}
+                        placeholder="예: 250"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-2.5 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">배우자 소유 재산액 (만 원)</label>
+                      <input
+                        type="number"
+                        value={profile.spouseAsset || 0}
+                        onChange={e => handleFieldChange('spouseAsset', Math.max(0, Number(e.target.value)))}
+                        placeholder="예: 1000"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-2.5 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <label className="block text-[13px] font-bold text-slate-700 dark:text-slate-300">양육비 지급액 (월, 만 원)</label>
-                <input 
-                  type="number" 
-                  value={profile.childSupportPaid || 0} 
-                  onChange={(e) => handleFieldChange('childSupportPaid', Math.max(0, Number(e.target.value)))} 
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand focus:outline-none" 
-                />
+            )}
+
+            {/* 이혼인 경우 양육비 수령/지급 */}
+            {(profile.maritalStatus === 'DIVORCED' || profile.maritalStatus === 'divorced') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-850 mt-2">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">월 양육비 수령액 (만 원)</label>
+                  <input
+                    type="number"
+                    value={profile.childSupportReceived || 0}
+                    onChange={e => handleFieldChange('childSupportReceived', Math.max(0, Number(e.target.value)))}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-2.5 text-xs font-bold focus:ring-1 focus:ring-brand"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">월 양육비 지급액 (만 원)</label>
+                  <input
+                    type="number"
+                    value={profile.childSupportPaid || 0}
+                    onChange={e => handleFieldChange('childSupportPaid', Math.max(0, Number(e.target.value)))}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl p-2.5 text-xs font-bold focus:ring-1 focus:ring-brand"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2) 미성년 자녀 수 (동거 / 비동거 스텝퍼 - 그림 3-6) */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 동거 중인 미성년 자녀 수 */}
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">동거 중인 미성년 자녀 수</span>
+                  <span className="text-[10.5px] text-slate-400">부양가족 100% 반영 대상</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = Math.max(0, (profile.minorChildren || 0) - 1);
+                      handleFieldChange('minorChildren', cur);
+                      handleFieldChange('dependents', cur + (profile.otherDependents || 0));
+                    }}
+                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="w-6 text-center font-bold text-sm text-brand">{profile.minorChildren || 0}명</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = (profile.minorChildren || 0) + 1;
+                      handleFieldChange('minorChildren', cur);
+                      handleFieldChange('dependents', cur + (profile.otherDependents || 0));
+                    }}
+                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* 비동거 중인 미성년 자녀 수 */}
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">비동거 중인 미성년 자녀 수</span>
+                  <span className="text-[10.5px] text-slate-400">이혼 양육권 분리 자녀 등</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = Math.max(0, (profile.nonCohabitingMinorChildren || 0) - 1);
+                      handleFieldChange('nonCohabitingMinorChildren', cur);
+                    }}
+                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="w-6 text-center font-bold text-sm text-slate-700 dark:text-slate-200">{profile.nonCohabitingMinorChildren || 0}명</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = (profile.nonCohabitingMinorChildren || 0) + 1;
+                      handleFieldChange('nonCohabitingMinorChildren', cur);
+                    }}
+                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* 3) 동거여부 토글 버튼군 (부, 모, 배우자, 부모 부양여부 - 그림 3-7) */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">동거 및 부양 여부</span>
+              <span className="text-[10.5px] text-slate-500">실질 동거 및 부양 시 활성화</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { key: 'cohabitingFather', label: '부 (아버지)', desc: '동거 중' },
+                { key: 'cohabitingMother', label: '모 (어머니)', desc: '동거 중' },
+                { key: 'cohabitingSpouse', label: '배우자', desc: '동거 중' },
+                { key: 'supportParents', label: '부모 부양', desc: '실질 부양 인정' },
+              ].map(toggleItem => {
+                const isChecked = !!(profile as any)[toggleItem.key];
+                return (
+                  <button
+                    key={toggleItem.key}
+                    type="button"
+                    onClick={() => {
+                      handleFieldChange(toggleItem.key, !isChecked);
+                      if (toggleItem.key === 'supportParents') {
+                        const add = !isChecked ? 1 : 0;
+                        handleFieldChange('otherDependents', add);
+                        handleFieldChange('dependents', (profile.minorChildren || 0) + add);
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      isChecked
+                        ? 'bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-850'
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">{toggleItem.label}</span>
+                    <span className="text-[10px] opacity-80">{isChecked ? '✓ 체크됨' : toggleItem.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4) 개별 가족 구성원 리스트 (자녀 생년월일 & 만 나이 자동계산) */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                  가족 구성원 명세 (자녀 생년월일 & 만 나이)
+                </span>
+                <span className="text-[10.5px] text-slate-500">
+                  생년월일을 입력하면 미성년자 나이가 자동으로 계산되어 부양가족에 산정됩니다.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const currentList = profile.familyMembers || [];
+                  const newM: FamilyMemberItem = {
+                    id: `client_fam_${Date.now()}`,
+                    relationship: '자',
+                    name: `자녀 ${currentList.length + 1}`,
+                    birthDate: '2016.03.15',
+                    cohabitationStatus: '동거',
+                    cohabitationPeriod: '출생시부터',
+                    isSupportedByDebtor: true,
+                    hasIncome: false,
+                    jobAndIncomeDetail: '학생 / 미성년자',
+                    isEligibleDependent: true,
+                  };
+                  const updated = [...currentList, newM];
+                  handleFieldChange('familyMembers', updated);
+                  // 미성년 자녀 수 자동 카운트 갱신
+                  const minorCount = updated.filter((m: any) => (m.relationship.includes('자') || m.relationship.includes('녀')) && calculateKoreanAgeInfo(m.birthDate).isMinor).length;
+                  handleFieldChange('minorChildren', minorCount);
+                  handleFieldChange('dependents', minorCount + (profile.otherDependents || 0));
+                }}
+                className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer press-scale shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>가족 추가</span>
+              </button>
+            </div>
+
+            {/* 구성원 카드 리스트 */}
+            <div className="space-y-2">
+              {(!profile.familyMembers || profile.familyMembers.length === 0) ? (
+                <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-500">
+                  등록된 가족 구성원이 없습니다. 상단의 <strong>[📑 등본/가족증명서 자동 파싱]</strong> 버튼이나 <strong>[+ 가족 추가]</strong>를 눌러주세요.
+                </div>
+              ) : (
+                profile.familyMembers.map((member: FamilyMemberItem, idx: number) => {
+                  const ageInfo = calculateKoreanAgeInfo(member.birthDate);
+                  return (
+                    <div key={member.id || idx} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-850 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2 min-w-[120px]">
+                        <input
+                          type="text"
+                          value={member.relationship}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const updated = profile.familyMembers!.map((m: any, i: number) => i === idx ? { ...m, relationship: val } : m);
+                            handleFieldChange('familyMembers', updated);
+                          }}
+                          className="w-14 p-1.5 border border-slate-200 dark:border-slate-800 rounded text-center font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+                          placeholder="관계"
+                        />
+                        <input
+                          type="text"
+                          value={member.name}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const updated = profile.familyMembers!.map((m: any, i: number) => i === idx ? { ...m, name: val } : m);
+                            handleFieldChange('familyMembers', updated);
+                          }}
+                          className="w-20 p-1.5 border border-slate-200 dark:border-slate-800 rounded font-medium bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+                          placeholder="성명"
+                        />
+                      </div>
+
+                      {/* 생년월일 & 만 나이 */}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={member.birthDate}
+                          placeholder="YYYY.MM.DD"
+                          onChange={e => {
+                            const val = e.target.value;
+                            const newAge = calculateKoreanAgeInfo(val);
+                            const updated = profile.familyMembers!.map((m: any, i: number) => i === idx ? {
+                              ...m,
+                              birthDate: val,
+                              parsedAge: newAge.fullAge,
+                              isMinor: newAge.isMinor,
+                              isEligibleDependent: newAge.defaultEligibleDependent
+                            } : m);
+                            handleFieldChange('familyMembers', updated);
+
+                            // 미성년 자녀 수 자동 재집계
+                            const minorCount = updated.filter((m: any) => (m.relationship.includes('자') || m.relationship.includes('녀')) && calculateKoreanAgeInfo(m.birthDate).isMinor).length;
+                            handleFieldChange('minorChildren', minorCount);
+                            handleFieldChange('dependents', minorCount + (profile.otherDependents || 0));
+                          }}
+                          className="w-28 p-1.5 border border-slate-200 dark:border-slate-800 rounded font-mono text-center font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+                        />
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${ageInfo.badgeColorClass}`}>
+                          {ageInfo.badgeText}
+                        </span>
+                      </div>
+
+                      {/* 동거 여부 및 삭제 */}
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={member.cohabitationStatus}
+                          onChange={e => {
+                            const val = e.target.value as any;
+                            const updated = profile.familyMembers!.map((m: any, i: number) => i === idx ? { ...m, cohabitationStatus: val } : m);
+                            handleFieldChange('familyMembers', updated);
+                          }}
+                          className="p-1.5 border border-slate-200 dark:border-slate-850 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 text-xs"
+                        >
+                          <option value="동거">동거</option>
+                          <option value="별거">별거</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = profile.familyMembers!.filter((_: any, i: number) => i !== idx);
+                            handleFieldChange('familyMembers', updated);
+                            const minorCount = updated.filter((m: any) => (m.relationship.includes('자') || m.relationship.includes('녀')) && calculateKoreanAgeInfo(m.birthDate).isMinor).length;
+                            handleFieldChange('minorChildren', minorCount);
+                            handleFieldChange('dependents', minorCount + (profile.otherDependents || 0));
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* 5) 추가생계비 및 추가지출 사유 (그림 3-8 완벽 구현) */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                  추가생계비 및 추가지출 사유 신청
+                </span>
+                <span className="text-[10.5px] text-slate-500">
+                  기준중위소득 60%를 초과하는 필수 주거비, 의료비, 교육비 등 추가 공제를 신청합니다.
+                </span>
+              </div>
+
+              {/* 5대 항목 추가 버튼군 (그림 3-8) */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { category: 'living' as const, label: '+생계비' },
+                  { category: 'housing' as const, label: '+주거비' },
+                  { category: 'medical' as const, label: '+의료비' },
+                  { category: 'education' as const, label: '+교육비' },
+                  { category: 'other' as const, label: '+기타' },
+                ].map(btn => (
+                  <button
+                    key={btn.category}
+                    type="button"
+                    onClick={() => {
+                      const currentList = profile.extraExpensesList || [];
+                      const categoryName = btn.category === 'living' ? '생계비' :
+                                           btn.category === 'housing' ? '주거비' :
+                                           btn.category === 'medical' ? '의료비' :
+                                           btn.category === 'education' ? '교육비' : '기타';
+                      const newItem = {
+                        id: `extra_${Date.now()}_${btn.category}`,
+                        category: btn.category,
+                        categoryLabel: categoryName,
+                        amount: 30, // 기본 30만원
+                        reason: ''
+                      };
+                      handleFieldChange('extraExpensesList', [...currentList, newItem]);
+                    }}
+                    className="px-2 py-1 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-lg cursor-pointer press-scale"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 추가생계비 행 리스트 */}
+            <div className="space-y-2">
+              {(!profile.extraExpensesList || profile.extraExpensesList.length === 0) ? (
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-[11px] text-slate-400">
+                  추가생계비 신청 항목이 없습니다. 기준 생계비 외에 지속 지출되는 비용이 있다면 위의 <strong>[+주거비], [+의료비]</strong> 등을 클릭해 등록하세요.
+                </div>
+              ) : (
+                profile.extraExpensesList.map((item, index) => (
+                  <div key={item.id || index} className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-850 flex flex-wrap items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = profile.extraExpensesList!.filter((_, i) => i !== index);
+                        handleFieldChange('extraExpensesList', updated);
+                      }}
+                      className="w-6 h-6 rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center font-bold cursor-pointer shrink-0"
+                      title="항목 삭제"
+                    >
+                      -
+                    </button>
+
+                    <span className="w-16 px-2 py-1 bg-slate-100 dark:bg-slate-800 font-bold text-center rounded text-slate-700 dark:text-slate-300 shrink-0">
+                      {item.categoryLabel}
+                    </span>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[11px] text-slate-500 font-medium">추가 생계비:</span>
+                      <input
+                        type="number"
+                        value={item.amount || 0}
+                        onChange={e => {
+                          const val = Math.max(0, Number(e.target.value));
+                          const updated = profile.extraExpensesList!.map((x, i) => i === index ? { ...x, amount: val } : x);
+                          handleFieldChange('extraExpensesList', updated);
+                        }}
+                        className="w-20 p-1.5 border border-slate-200 dark:border-slate-800 rounded font-bold text-right bg-slate-50 dark:bg-slate-950"
+                      />
+                      <span className="text-slate-600 font-bold">만 원</span>
+                    </div>
+
+                    <div className="flex-1 min-w-[180px]">
+                      <input
+                        type="text"
+                        value={item.reason || ''}
+                        placeholder="추가지출 사유 (예: 월세 기준주거비 초과분, 만성질환 정기 약제비 등)"
+                        onChange={e => {
+                          const val = e.target.value;
+                          const updated = profile.extraExpensesList!.map((x, i) => i === index ? { ...x, reason: val } : x);
+                          handleFieldChange('extraExpensesList', updated);
+                        }}
+                        className="w-full p-1.5 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-xs"
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {/* 3. 주거 및 자산 */}

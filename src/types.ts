@@ -1,5 +1,6 @@
 import type { DebtCertificateOrder, RepaymentPlanData } from './services/repayment/repaymentTypes';
 import type { BankruptcyFullCaseData } from './types/bankruptcyTypes';
+import type { FamilyMemberItem } from './types/incomeExpenseTypes';
 
 export interface Client {
   id: string;
@@ -79,6 +80,23 @@ export interface FinancialProfile {
   totalDebt?: number;        // 총 채무 별칭 (호환성)
   phone?: string;            // 연락처 별칭 (호환성)
   incomeType?: string;       // 소득 유형 별칭 (호환성)
+  
+  // ── 가족관계 정밀 분석 & 추가생계비 확장 필드 (매뉴얼 3-5 실무 반영) ──
+  familyMembers?: FamilyMemberItem[]; // 개별 가족 구성원 리스트 (자녀, 부모 등)
+  isSeparated?: boolean;              // 기혼 시 별거 여부
+  spouseIsWorking?: boolean;          // 배우자 경제활동 여부
+  nonCohabitingMinorChildren?: number;// 비동거 중인 미성년 자녀 수
+  cohabitingFather?: boolean;         // 부(아버지) 동거 여부
+  cohabitingMother?: boolean;         // 모(어머니) 동거 여부
+  cohabitingSpouse?: boolean;         // 배우자 동거 여부
+  supportParents?: boolean;           // 부모 실질 부양 여부
+  extraExpensesList?: Array<{         // 추가생계비 5종 사유별 상세 항목
+    id: string;
+    category: 'living' | 'housing' | 'medical' | 'education' | 'other';
+    categoryLabel: string;
+    amount: number;                   // 만 원 단위
+    reason: string;                   // 추가지출 사유
+  }>;
 }
 
 export type RequestType = 'direct' | 'open' | 'direct_multi';

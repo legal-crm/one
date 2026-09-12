@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, Sparkles, Printer, Download, Save, Plus, Trash2, 
   AlertTriangle, CheckCircle2, DollarSign, Users, Home, 
   HeartPulse, GraduationCap, ShieldAlert, FileText, ArrowRight,
-  Info, RefreshCw, Check
+  Info, RefreshCw, Check, Upload, UserCheck, ShieldCheck, FileCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
@@ -17,6 +17,7 @@ import {
   recalculateD5103Data, 
   validateD5103Data 
 } from '../../../services/documents/incomeExpenseService';
+import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../../services/documents/familyParserService';
 import { MIN_LIVING_EXPENSE_60_2026 } from '../../../services/repayment/repaymentConstants2026';
 import PrintableIncomeExpenseModal from './PrintableIncomeExpenseModal';
 
@@ -72,6 +73,52 @@ export default function IncomeExpenseModal({
   // 값 변경 헬퍼: 변경 후 자동 재집계(recalculateD5103Data) 실행
   const updateData = (updater: (prev: IncomeExpenseD5103Data) => IncomeExpenseD5103Data) => {
     setFormData(prev => recalculateD5103Data(updater(prev)));
+  };
+
+  // 등본/가족관계 서류 AI OCR 자동 파싱 상태 & 핸들러
+  const [isParsingFamilyDoc, setIsParsingFamilyDoc] = useState(false);
+  const familyDocInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFamilyDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsingFamilyDoc(true);
+    try {
+      const result = await parseFamilyDocument(file);
+      if (result.ok && result.extractedMembers?.length > 0) {
+        updateData(prev => {
+          const selfMember = prev.familyMembers.find(f => f.id === 'fam_self') || {
+            id: 'fam_self',
+            relationship: '본인(신청인)',
+            name: clientRequest.clientName || '신청인',
+            birthDate: '1988.05.12',
+            cohabitationStatus: '동거' as const,
+            cohabitationPeriod: '출생시부터',
+            isSupportedByDebtor: true,
+            hasIncome: true,
+            jobAndIncomeDetail: '신청인 본인 (소득활동)',
+            isEligibleDependent: true,
+          };
+
+          const otherOcrMembers = result.extractedMembers.filter(m => m.relationship !== '본인' && m.relationship !== '본인(신청인)');
+          return {
+            ...prev,
+            familyMembers: [selfMember, ...otherOcrMembers]
+          };
+        });
+        toast.success(`✨ ${result.docTitle} 자동 파싱 완료! 가족 구성원 및 생년월일이 자동 반영되었습니다.`);
+      } else {
+        toast.error('서류에서 가족 정보를 명확히 인식하지 못했습니다. 수기로 입력해 주세요.');
+      }
+    } catch (err: any) {
+      toast.error('서류 파싱 중 오류가 발생했습니다: ' + (err?.message || ''));
+    } finally {
+      setIsParsingFamilyDoc(false);
+      if (familyDocInputRef.current) {
+        familyDocInputRef.current.value = '';
+      }
+    }
   };
 
   // 저장 핸들러
@@ -799,37 +846,95 @@ export default function IncomeExpenseModal({
           {activeTab === 'family' && (
             <div className="space-y-4 animate-fadeIn">
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                {/* 상단 헤더 및 액션 버튼들 */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
                   <div>
                     <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                       <span>👨‍👩‍👧‍👦 동거 가족 및 피부양자 명세</span>
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        실시간 만 나이 & 부양 판정 연동
+                      </span>
                     </h4>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      총 {fam.length}명 (부양가족 인정: <strong className="text-emerald-600 font-bold">{fam.filter(f => f.isEligibleDependent).length}명</strong>)
+                      총 등록 {fam.length}명 중 인정 부양가족 <strong className="text-emerald-600 font-bold">{fam.filter(f => f.isEligibleDependent).length}명</strong> (본인 포함 총 <strong className="text-blue-600 font-bold">{exp.householdSize}인 가구</strong> 생계비 적용)
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      const newMember: FamilyMemberItem = {
-                        id: `fam_${Date.now()}`,
-                        relationship: '자',
-                        name: '새 가족',
-                        birthDate: '2015.01.01',
-                        cohabitationStatus: '동거',
-                        cohabitationPeriod: '3년',
-                        isSupportedByDebtor: true,
-                        hasIncome: false,
-                        jobAndIncomeDetail: '미성년자 (소득 없음)',
-                        isEligibleDependent: true
-                      };
-                      updateData(p => ({ ...p, familyMembers: [...p.familyMembers, newMember] }));
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>가족 추가</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* 숨김 서류 업로드 인풋 */}
+                    <input 
+                      type="file" 
+                      ref={familyDocInputRef} 
+                      onChange={handleFamilyDocUpload} 
+                      accept="image/*,application/pdf" 
+                      className="hidden" 
+                    />
+
+                    <button
+                      type="button"
+                      disabled={isParsingFamilyDoc}
+                      onClick={() => familyDocInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs disabled:opacity-50"
+                      title="주민등록등본 또는 가족관계증명서 이미지를 업로드하면 가족 성명, 생년월일, 관계가 자동 파싱됩니다."
+                    >
+                      {isParsingFamilyDoc ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>AI 등본 파싱 중...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5 text-emerald-200" />
+                          <span>📑 등본/가족증명서 자동 파싱</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newMember: FamilyMemberItem = {
+                          id: `fam_${Date.now()}`,
+                          relationship: '자',
+                          name: `자녀 ${fam.filter(f => f.relationship.includes('자') || f.relationship.includes('녀')).length + 1}`,
+                          birthDate: '2015.01.01',
+                          cohabitationStatus: '동거',
+                          cohabitationPeriod: '출생시부터',
+                          isSupportedByDebtor: true,
+                          hasIncome: false,
+                          jobAndIncomeDetail: '학생 / 미성년자 (소득 없음)',
+                          isEligibleDependent: true
+                        };
+                        updateData(p => ({ ...p, familyMembers: [...p.familyMembers, newMember] }));
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>가족 추가</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 부양가족 & 생계비 실시간 요약 카드 */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                  <div>
+                    <span className="text-slate-500 font-medium block">총 세대원</span>
+                    <strong className="text-sm font-bold text-slate-900">{fam.length}명</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">인정 부양가족</span>
+                    <strong className="text-sm font-bold text-emerald-600">{fam.filter(f => f.isEligibleDependent).length}명</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">2026 기준생계비</span>
+                    <strong className="text-sm font-mono font-bold text-slate-900">{exp.statutoryBaseCost2026.toLocaleString()}원</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">월 변제금 경감 효과</span>
+                    <strong className="text-sm font-mono font-bold text-blue-600">
+                      약 {Math.max(0, (fam.filter(f => f.isEligibleDependent).length - 1) * 94).toLocaleString()}만 원/월
+                    </strong>
+                  </div>
                 </div>
 
                 {/* 가족 테이블 */}
@@ -839,7 +944,7 @@ export default function IncomeExpenseModal({
                       <tr>
                         <th className="p-2.5 text-left border-r border-slate-200 w-24">관계</th>
                         <th className="p-2.5 text-left border-r border-slate-200 w-24">성명</th>
-                        <th className="p-2.5 text-left border-r border-slate-200 w-28">생년월일</th>
+                        <th className="p-2.5 text-left border-r border-slate-200 w-44">생년월일 & 만 나이</th>
                         <th className="p-2.5 text-center border-r border-slate-200 w-20">동거</th>
                         <th className="p-2.5 text-left border-r border-slate-200 w-28">동거기간</th>
                         <th className="p-2.5 text-left border-r border-slate-200">직업 및 월소득 내역</th>
@@ -848,141 +953,195 @@ export default function IncomeExpenseModal({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {fam.map((member, index) => (
-                        <tr key={member.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="p-2 border-r border-slate-100">
-                            <input
-                              type="text"
-                              value={member.relationship}
-                              onChange={e => {
-                                const val = e.target.value;
-                                updateData(p => ({
-                                  ...p,
-                                  familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, relationship: val } : m)
-                                }));
-                              }}
-                              className="w-full p-1.5 border border-slate-200 rounded text-xs font-bold"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-slate-100">
-                            <input
-                              type="text"
-                              value={member.name}
-                              onChange={e => {
-                                const val = e.target.value;
-                                updateData(p => ({
-                                  ...p,
-                                  familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, name: val } : m)
-                                }));
-                              }}
-                              className="w-full p-1.5 border border-slate-200 rounded text-xs"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-slate-100">
-                            <input
-                              type="text"
-                              value={member.birthDate}
-                              placeholder="YYYY.MM.DD"
-                              onChange={e => {
-                                const val = e.target.value;
-                                updateData(p => ({
-                                  ...p,
-                                  familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, birthDate: val } : m)
-                                }));
-                              }}
-                              className="w-full p-1.5 border border-slate-200 rounded text-xs font-mono"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-slate-100 text-center">
-                            <select
-                              value={member.cohabitationStatus}
-                              onChange={e => {
-                                const val = e.target.value as any;
-                                updateData(p => ({
-                                  ...p,
-                                  familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, cohabitationStatus: val } : m)
-                                }));
-                              }}
-                              className="p-1 border border-slate-200 rounded text-xs"
-                            >
-                              <option value="동거">동거</option>
-                              <option value="별거">별거</option>
-                            </select>
-                          </td>
-                          <td className="p-2 border-r border-slate-100">
-                            <input
-                              type="text"
-                              value={member.cohabitationPeriod}
-                              placeholder="예: 5년"
-                              onChange={e => {
-                                const val = e.target.value;
-                                updateData(p => ({
-                                  ...p,
-                                  familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, cohabitationPeriod: val } : m)
-                                }));
-                              }}
-                              className="w-full p-1.5 border border-slate-200 rounded text-xs"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-slate-100">
-                            <input
-                              type="text"
-                              value={member.jobAndIncomeDetail}
-                              placeholder="예: 학생(소득없음)"
-                              onChange={e => {
-                                const val = e.target.value;
-                                updateData(p => ({
-                                  ...p,
-                                  familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, jobAndIncomeDetail: val } : m)
-                                }));
-                              }}
-                              className="w-full p-1.5 border border-slate-200 rounded text-xs"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-slate-100 text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.isEligibleDependent}
-                              onChange={e => {
-                                const checked = e.target.checked;
-                                updateData(p => ({
-                                  ...p,
-                                  familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, isEligibleDependent: checked } : m)
-                                }));
-                              }}
-                              className="w-4 h-4 text-emerald-600 rounded"
-                            />
-                          </td>
-                          <td className="p-2 text-center">
-                            {member.id !== 'fam_self' && (
-                              <button
-                                onClick={() => {
+                      {fam.map((member, index) => {
+                        const ageInfo = calculateKoreanAgeInfo(member.birthDate);
+                        const isSelf = member.id === 'fam_self' || member.relationship.includes('본인');
+
+                        return (
+                          <tr key={member.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="p-2 border-r border-slate-100">
+                              <input
+                                type="text"
+                                value={member.relationship}
+                                disabled={isSelf}
+                                onChange={e => {
+                                  const val = e.target.value;
                                   updateData(p => ({
                                     ...p,
-                                    familyMembers: p.familyMembers.filter((_, i) => i !== index)
+                                    familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, relationship: val } : m)
                                   }));
                                 }}
-                                className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                                className={`w-full p-1.5 border rounded text-xs font-bold ${
+                                  isSelf ? 'bg-slate-100 text-slate-500 border-slate-200' : 'border-slate-200 text-slate-800'
+                                }`}
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-100">
+                              <input
+                                type="text"
+                                value={member.name}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  updateData(p => ({
+                                    ...p,
+                                    familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, name: val } : m)
+                                  }));
+                                }}
+                                className="w-full p-1.5 border border-slate-200 rounded text-xs"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-100">
+                              <input
+                                type="text"
+                                value={member.birthDate}
+                                placeholder="YYYY.MM.DD 또는 앞자리"
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  const newAgeInfo = calculateKoreanAgeInfo(val);
+                                  updateData(p => ({
+                                    ...p,
+                                    familyMembers: p.familyMembers.map((m, i) => {
+                                      if (i !== index) return m;
+                                      const autoEligible = isSelf 
+                                        ? true 
+                                        : m.relationship.includes('배우자')
+                                          ? false
+                                          : newAgeInfo.defaultEligibleDependent;
+                                      return {
+                                        ...m,
+                                        birthDate: val,
+                                        parsedAge: newAgeInfo.fullAge,
+                                        isMinor: newAgeInfo.isMinor,
+                                        isEligibleDependent: autoEligible
+                                      };
+                                    })
+                                  }));
+                                }}
+                                className="w-full p-1.5 border border-slate-200 rounded text-xs font-mono font-bold"
+                              />
+                              {/* 실시간 만 나이 & 법원 실무 뱃지 */}
+                              <div className="mt-1 flex items-center gap-1">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${ageInfo.badgeColorClass}`}>
+                                  {ageInfo.badgeText}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-2 border-r border-slate-100 text-center">
+                              <select
+                                value={member.cohabitationStatus}
+                                onChange={e => {
+                                  const val = e.target.value as any;
+                                  updateData(p => ({
+                                    ...p,
+                                    familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, cohabitationStatus: val } : m)
+                                  }));
+                                }}
+                                className="p-1 border border-slate-200 rounded text-xs"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                                <option value="동거">동거</option>
+                                <option value="별거">별거</option>
+                              </select>
+                            </td>
+                            <td className="p-2 border-r border-slate-100">
+                              <input
+                                type="text"
+                                value={member.cohabitationPeriod}
+                                placeholder="예: 5년"
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  updateData(p => ({
+                                    ...p,
+                                    familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, cohabitationPeriod: val } : m)
+                                  }));
+                                }}
+                                className="w-full p-1.5 border border-slate-200 rounded text-xs"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-100">
+                              <input
+                                type="text"
+                                value={member.jobAndIncomeDetail}
+                                placeholder="예: 초등학생(소득없음)"
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  updateData(p => ({
+                                    ...p,
+                                    familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, jobAndIncomeDetail: val } : m)
+                                  }));
+                                }}
+                                className="w-full p-1.5 border border-slate-200 rounded text-xs"
+                              />
+                            </td>
+                            <td className="p-2 border-r border-slate-100 text-center">
+                              <label className="flex items-center justify-center gap-1.5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={member.isEligibleDependent}
+                                  disabled={isSelf}
+                                  onChange={e => {
+                                    const checked = e.target.checked;
+                                    updateData(p => ({
+                                      ...p,
+                                      familyMembers: p.familyMembers.map((m, i) => i === index ? { ...m, isEligibleDependent: checked } : m)
+                                    }));
+                                  }}
+                                  className="w-4 h-4 text-emerald-600 rounded"
+                                />
+                                <span className={`text-[11px] font-bold ${
+                                  member.isEligibleDependent ? 'text-emerald-700 font-black' : 'text-slate-400'
+                                }`}>
+                                  {member.isEligibleDependent ? '인정' : '제외'}
+                                </span>
+                              </label>
+                            </td>
+                            <td className="p-2 text-center">
+                              {!isSelf && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateData(p => ({
+                                      ...p,
+                                      familyMembers: p.familyMembers.filter((_, i) => i !== index)
+                                    }));
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                                  title="가족 삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200/80 text-xs text-amber-900 space-y-1">
-                  <span className="font-bold block flex items-center gap-1">
-                    <Info className="w-3.5 h-3.5 text-amber-600" />
-                    법원 실무준칙상 부양가족 인정 안내
-                  </span>
-                  <p className="text-[11px] leading-relaxed text-amber-800">
-                    • 19세 미만 직계비속 또는 60세 이상 직계존속으로서 주민등록상 상당기간 동거하며 소득이 1인 최저생계비 미만인 경우 인정됩니다.<br />
-                    • 경제활동 가능 연령대의 배우자는 질병·장애 또는 미취학 자녀 다수 양육 사유를 진단서 등으로 소명하지 않으면 제외됩니다.
-                  </p>
+                {/* 법원 실무준칙 종합 가이드 (매뉴얼 3-5, 서울회생/부산회생 실무준칙 연동) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                  <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200/80 text-xs text-emerald-950 space-y-1.5">
+                    <span className="font-extrabold flex items-center gap-1.5 text-emerald-900">
+                      <UserCheck className="w-4 h-4 text-emerald-600" />
+                      미성년 자녀 부양가족 인정 원칙 (만 19세 미만)
+                    </span>
+                    <p className="text-[11.5px] leading-relaxed text-emerald-900">
+                      • <strong>원칙</strong>: 대한민국 법원 실무상 만 19세 미만 미성년 자녀는 동거 시 100% 부양가족으로 인정됩니다.<br />
+                      • <strong>배우자 소득 반영</strong>: 배우자의 소득이 신청인 소득의 70% 미만이면 100% 인정, 70~130%이면 50%(0.5인) 인정, 130%를 초과하면 배우자가 자녀를 부양하는 것으로 산정됩니다.
+                    </p>
+                  </div>
+
+                  <div className="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-200/80 text-xs text-indigo-950 space-y-1.5">
+                    <span className="font-extrabold flex items-center gap-1.5 text-indigo-900">
+                      <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                      성년 자녀(만 19세 이상) & 고령 부모 소명 기준
+                    </span>
+                    <p className="text-[11.5px] leading-relaxed text-indigo-900">
+                      • <strong>서울회생법원 청년특례</strong>: 만 19세~20세 성년 자녀라도 대학 재학 또는 취업준비 사실 소명 시 부양가족 인정 가능.<br />
+                      • <strong>만 21세 이상 성년 자녀</strong>: 질환·장애 등 근로무능력 의학적 소명 필수.<br />
+                      • <strong>만 65세 이상 부모</strong>: 주민등록상 동거 및 소득/재산 없음(과세증명서, 건강보험) 소명 시 인정.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

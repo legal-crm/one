@@ -333,6 +333,38 @@ const mapProfileToIntakeData = (profile: FinancialProfile): IntakeData => {
     });
   }
 
+  // 추가생계비 집계 (만원 -> 원)
+  let extraHousingWon = 0;
+  let extraMedicalWon = 0;
+  let extraEducationWon = 0;
+  let extraOtherWon = 0;
+  if (profile.extraExpensesList && Array.isArray(profile.extraExpensesList)) {
+    for (const exp of profile.extraExpensesList) {
+      const amtWon = (exp.amount || 0) * 10000;
+      if (exp.category === 'housing') extraHousingWon += amtWon;
+      else if (exp.category === 'medical') extraMedicalWon += amtWon;
+      else if (exp.category === 'education') extraEducationWon += amtWon;
+      else extraOtherWon += amtWon;
+    }
+  }
+
+  // 부양가족 자동 집계
+  let computedMinorChildren = (profile.dependents || 0) + (profile.nonCohabitingMinorChildren || 0);
+  let computedOtherDependents = 0;
+  if (profile.familyMembers && profile.familyMembers.length > 0) {
+    const minorKids = profile.familyMembers.filter(m => m.relationship === '자녀' && (m.isMinor ?? true));
+    const adultDeps = profile.familyMembers.filter(m => m.isDependent && (m.relationship !== '자녀' || !m.isMinor));
+    if (minorKids.length > 0) {
+      computedMinorChildren = minorKids.length + (profile.nonCohabitingMinorChildren || 0);
+    }
+    computedOtherDependents = adultDeps.length;
+  } else if (profile.supportParents) {
+    let parentCount = 0;
+    if (profile.cohabitingFather) parentCount++;
+    if (profile.cohabitingMother) parentCount++;
+    computedOtherDependents = parentCount;
+  }
+
   return {
     clientName: profile.companyNameMasked || '의뢰인',
     phoneNumber: '010-4567-8901',
@@ -347,19 +379,21 @@ const mapProfileToIntakeData = (profile: FinancialProfile): IntakeData => {
                    profile.residenceRegion === '부산' ? '부산회생법원' :
                    profile.residenceRegion === '수원' ? '수원회생법원' : '서울회생법원',
     maritalStatus: profile.maritalStatus === 'SINGLE' ? 'single' : profile.maritalStatus === 'MARRIED' ? 'married' : 'divorced',
-    minorChildren: profile.dependents || 0,
+    spouseIncome: (profile.spouseIncome || 0) * 10000,
+    spouseAsset: (profile.spouseAsset || 0) * 10000,
+    minorChildren: computedMinorChildren,
     minorChildrenFullRecognition: false,
-    otherDependents: 0,
+    otherDependents: computedOtherDependents,
     incomeSources,
     monthlyLivingCost: 0,
-    monthlyRent: 0,
+    monthlyRent: extraHousingWon,
     monthlyInsurance: 0,
     extraLivingCost: {
       utilities: 0,
-      education: 0,
+      education: extraEducationWon,
       specialEducation: 0,
-      medical: 0,
-      other: 0
+      medical: extraMedicalWon,
+      other: extraOtherWon
     },
     specialCircumstances: {
       singleParent: false,

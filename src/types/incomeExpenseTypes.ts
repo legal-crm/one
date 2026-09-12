@@ -80,6 +80,14 @@ export interface FamilyMemberItem {
   jobAndIncomeDetail: string;      // 직업 및 월수입 내역 (예: 고등학생(소득없음), 주부, 알바 60만원 등)
   isEligibleDependent: boolean;    // 법정 부양가족 인정 적격 여부
   ineligibilityReason?: string;    // 제외/유보 사유 (예: 만 19세 이상, 1인 최저생계비 이상 소득)
+  
+  // ── 스마트 연령 판정 & OCR 파싱 연동 필드 ──
+  parsedAge?: number;              // 정밀 산출된 만 나이
+  isMinor?: boolean;               // 만 19세 미만 미성년자 여부
+  ageCategory?: 'minor' | 'seoul_college' | 'adult' | 'elderly'; // 연령 구간
+  ageBadgeText?: string;           // 화면 표시용 뱃지 문구 (예: '만 12세 👶 미성년자')
+  ageBadgeColor?: string;          // 뱃지 색상 테마
+  source?: 'manual' | 'ocr_registration' | 'ocr_family'; // 등록 출처
 }
 
 /** 6. 지출 및 생계비 명세 */

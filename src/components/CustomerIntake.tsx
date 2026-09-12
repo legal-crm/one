@@ -17,6 +17,7 @@ import {
   generateDateOptions, formatKoreanCurrency 
 } from '../utils';
 import { calculateRehabPlan } from '../rehabEngine';
+import { calculateKoreanAgeInfo } from '../services/documents/familyParserService';
 
 // --- MoneyInput inline helper component ---
 interface MoneyInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -122,6 +123,11 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
     childSupportCost: initialData?.childSupportCost || 0,
     spouseIncome: initialData?.spouseIncome || 0,
     minorChildren: initialData?.minorChildren || 0,
+    minorChildrenDetails: Array.from({ length: initialData?.minorChildren || 0 }).map((_, i) => ({
+      year: String(new Date().getFullYear() - (8 + i * 3)),
+      month: '3',
+      day: '15'
+    })),
     minorChildrenFullRecognition: initialData?.minorChildrenFullRecognition || false,
     adultChildrenCount: initialData?.adultChildrenCount || 0,
     adultChildrenDetails: (initialData?.adultChildrenDetails || []).map(d => {
@@ -497,6 +503,14 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
       });
     };
 
+    const handleMinorChildDetailChange = (index: number, field: 'year' | 'month' | 'day', value: string) => {
+      setFamilyData(prev => {
+        const newDetails = [...(prev.minorChildrenDetails || [])];
+        newDetails[index] = { ...newDetails[index], [field]: value };
+        return { ...prev, minorChildrenDetails: newDetails };
+      });
+    };
+
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -506,14 +520,60 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           </div>
           <div>
             <label className={labelClass}>부양 미성년 자녀 수</label>
-            <select className={inputClass} value={familyData.minorChildren} onChange={e => setFamilyData({...familyData, minorChildren: Number(e.target.value)})}>{Array.from({length:8}).map((_,i) => <option key={i} value={i}>{i}명</option>)}</select>
+            <select 
+              className={inputClass} 
+              value={familyData.minorChildren} 
+              onChange={e => {
+                const count = Number(e.target.value);
+                setFamilyData(prev => {
+                  const current = [...(prev.minorChildrenDetails || [])];
+                  if (count > current.length) {
+                    for (let i = current.length; i < count; i++) {
+                      current.push({
+                        year: String(new Date().getFullYear() - (8 + i * 2)),
+                        month: '3',
+                        day: '15'
+                      });
+                    }
+                  } else {
+                    current.length = count;
+                  }
+                  return { ...prev, minorChildren: count, minorChildrenDetails: current };
+                });
+              }}
+            >
+              {Array.from({length:8}).map((_,i) => <option key={i} value={i}>{i}명</option>)}
+            </select>
           </div>
           <div className="col-span-2">
             <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 rounded" checked={familyData.minorChildrenFullRecognition} onChange={e => setFamilyData({...familyData, minorChildrenFullRecognition: e.target.checked})} /> <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">자녀에 대한 부양 권리 완전 단독 인정 (배우자 장애/부재 등)</span></label>
           </div>
           <div>
             <label className={labelClass}>부양 성년 자녀 수</label>
-            <select className={inputClass} value={familyData.adultChildrenCount} onChange={e => setFamilyData({...familyData, adultChildrenCount: Number(e.target.value)})}>{Array.from({length:6}).map((_,i) => <option key={i} value={i}>{i}명</option>)}</select>
+            <select 
+              className={inputClass} 
+              value={familyData.adultChildrenCount} 
+              onChange={e => {
+                const count = Number(e.target.value);
+                setFamilyData(prev => {
+                  const current = [...(prev.adultChildrenDetails || [])];
+                  if (count > current.length) {
+                    for (let i = current.length; i < count; i++) {
+                      current.push({
+                        year: String(new Date().getFullYear() - (20 + i)),
+                        month: '1',
+                        day: '1'
+                      });
+                    }
+                  } else {
+                    current.length = count;
+                  }
+                  return { ...prev, adultChildrenCount: count, adultChildrenDetails: current };
+                });
+              }}
+            >
+              {Array.from({length:6}).map((_,i) => <option key={i} value={i}>{i}명</option>)}
+            </select>
           </div>
           <div>
             <label className={labelClass}>기타 동거/직계존속 부양가족 수</label>
@@ -522,17 +582,53 @@ export const CustomerIntake: React.FC<CustomerIntakeProps> = ({
           <div className="col-span-2 text-center py-2.5 bg-blue-50/50 dark:bg-slate-950/60 border border-blue-100 dark:border-slate-800 rounded-lg"><span className="text-blue-500 dark:text-blue-400 font-extrabold text-sm">총 인정 부양가족 수 (자동연동): {rehabResult.client.dependents}명</span></div>
         </div>
 
+        {/* 미성년 자녀 생년월일 & 실시간 만 나이 */}
+        {familyData.minorChildren > 0 && (
+          <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+              <span>미성년 자녀 생년월일 & 실시간 만 나이 확인</span>
+              <span className="text-[10.5px] text-emerald-600 font-bold">만 19세 미만 당연 부양가족</span>
+            </h4>
+            {(familyData.minorChildrenDetails || []).map((child, index) => {
+              const bStr = `${child.year}-${String(child.month).padStart(2, '0')}-${String(child.day).padStart(2, '0')}`;
+              const ageInfo = calculateKoreanAgeInfo(bStr);
+              return (
+                <div key={index} className="flex flex-wrap gap-2 items-center text-xs">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 w-12 font-bold">자녀 {index + 1}</span>
+                  <select className={inputClass} value={child.year} onChange={e => handleMinorChildDetailChange(index, 'year', e.target.value)}>{years.slice(0, 25).map(y => <option key={y} value={y}>{y}년</option>)}</select>
+                  <select className={inputClass} value={child.month} onChange={e => handleMinorChildDetailChange(index, 'month', e.target.value)}>{months.map(m => <option key={m} value={m}>{m}월</option>)}</select>
+                  <select className={inputClass} value={child.day} onChange={e => handleMinorChildDetailChange(index, 'day', e.target.value)}>{days.map(d => <option key={d} value={d}>{d}일</option>)}</select>
+                  <span className={`px-2 py-1 rounded text-[11px] font-bold border ${ageInfo.badgeColorClass}`}>
+                    {ageInfo.badgeText}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 성년 자녀 생년월일 */}
         {familyData.adultChildrenCount > 0 && (
           <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <h4 className="text-xs font-bold text-slate-600 dark:text-slate-350">성년 자녀 생년월일</h4>
-            {familyData.adultChildrenDetails.map((child, index) => (
-              <div key={index} className="flex gap-2 items-center">
-                <span className="text-xs text-slate-600 w-12 font-bold">자녀 {index + 1}</span>
-                <select className={inputClass} value={child.year} onChange={e => handleAdultChildDetailChange(index, 'year', e.target.value)}>{years.map(y => <option key={y} value={y}>{y}년</option>)}</select>
-                <select className={inputClass} value={child.month} onChange={e => handleAdultChildDetailChange(index, 'month', e.target.value)}>{months.map(m => <option key={m} value={m}>{m}월</option>)}</select>
-                <select className={inputClass} value={child.day} onChange={e => handleAdultChildDetailChange(index, 'day', e.target.value)}>{days.map(d => <option key={d} value={d}>{d}일</option>)}</select>
-              </div>
-            ))}
+            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+              <span>성년 자녀 생년월일 & 소명 요건</span>
+              <span className="text-[10.5px] text-indigo-600 font-bold">서울회생 만 19~20세 청년특례 소명</span>
+            </h4>
+            {familyData.adultChildrenDetails.map((child, index) => {
+              const bStr = `${child.year}-${String(child.month).padStart(2, '0')}-${String(child.day).padStart(2, '0')}`;
+              const ageInfo = calculateKoreanAgeInfo(bStr);
+              return (
+                <div key={index} className="flex flex-wrap gap-2 items-center text-xs">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 w-12 font-bold">성년 {index + 1}</span>
+                  <select className={inputClass} value={child.year} onChange={e => handleAdultChildDetailChange(index, 'year', e.target.value)}>{years.map(y => <option key={y} value={y}>{y}년</option>)}</select>
+                  <select className={inputClass} value={child.month} onChange={e => handleAdultChildDetailChange(index, 'month', e.target.value)}>{months.map(m => <option key={m} value={m}>{m}월</option>)}</select>
+                  <select className={inputClass} value={child.day} onChange={e => handleAdultChildDetailChange(index, 'day', e.target.value)}>{days.map(d => <option key={d} value={d}>{d}일</option>)}</select>
+                  <span className={`px-2 py-1 rounded text-[11px] font-bold border ${ageInfo.badgeColorClass}`}>
+                    {ageInfo.badgeText}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 
