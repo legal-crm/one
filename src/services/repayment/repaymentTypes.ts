@@ -210,9 +210,21 @@ export interface RepaymentAsset {
   note?: string;
 }
 
+export interface IncomeSourceItem {
+  id: string;
+  type: 'salary' | 'business';
+  workplace: string;           // 직장명 / 상호명
+  position?: string;            // 직위
+  period?: string;              // 근무/운영 기간
+  baseAmount: number;           // 기본급/기본매출
+  overtimeBonusAverage?: number; // 야간/상여수당 환산평균
+  monthlyNet: number;           // 월평균 실수령/순소득
+}
+
 export interface IncomeAndExpenseInput {
   incomeType: 'salary' | 'business'; // 급여소득자 / 영업소득자
   monthlyNetIncome: number;          // 월 실수령 소득 (세후 평균)
+  additionalIncomeSources?: IncomeSourceItem[]; // 복수 수입원 (겸업)
   householdSize: number;             // 부양가족 수 (0.5인 포함 가능)
   region: RegionType;                // 거주지역
   
@@ -309,6 +321,15 @@ export interface RepaymentPlanData {
   requiredDisposalAmount: number;    // D5111인 경우 재산처분 투입 예정액
   disposalTargetDeadline?: string;   // 처분 예정 기한
   
+  // ── 리걸플로 7대 실무 튜닝박스 데이터 모델 ──
+  garnishmentDeposit?: GarnishmentDepositInfo;
+  propertyDisposal?: PropertyDisposalInfo;
+  interestRepaymentMode?: InterestRepaymentMode;
+  childSupport?: ChildSupportInfo;
+  adultChildTransition?: AdultChildTransitionInfo;
+  clientSubmissionConsent?: ClientSubmissionConsent;
+  presentValueBreakdown?: PresentValueBreakdown;
+
   // 실무자 미세 수동 조정 (Fine-Tuning) 메타데이터
   isManuallyOverridden: boolean;     // 수동 조정 여부
   overrideMonthlyRepayment?: number; // 수동 오버라이드한 월 변제금
@@ -324,4 +345,83 @@ export interface PriorityFeasibilityInfo {
   riskWarning?: string;               // '세금 체납액 과다로 인가 불허 위험'
   requiredDisposableForHalfPeriod?: number; // Math.ceil(T_priority / M_max)
   recommendedMonths?: number;         // 60개월 권장
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 3. 리걸플로 7대 실무 튜닝박스 데이터 모델 (Tuning Box Models)
+// ══════════════════════════════════════════════════════════════════
+
+// 1. 압류적립금 처리 (제3채무자 및 투입 회차)
+export interface GarnishmentDepositInfo {
+  thirdPartyDebtor: string;        // 제3채무자 (예: (주)대한전자)
+  depositAmount: number;           // 압류적립금 총액
+  inputMode: 'first_round' | 'spread'; // 1회차 일괄 투입 vs N회 분할 투입
+  spreadMonths?: number;           // 분할 투입 시 회차수
+  courtDepositNumber?: string;     // 법원 공탁번호/배당사건번호 (있을 경우)
+  isExecuted: boolean;             // 처리 활성화 여부
+}
+
+// 2. 재산처분에 의한 변제 (D5111 가중 승수)
+export interface PropertyDisposalInfo {
+  assetName: string;               // 처분 대상 재산명 (예: 경기도 용인시 아파트 지분)
+  marketValue: number;             // 평가액
+  encumbrance: number;             // 선순위 담보
+  estimatedNetValue: number;       // 순재산가치
+  deadlineMode: 'within_1yr' | 'within_2yr'; // 인가일로부터 1년 이내(1.1배) vs 2년 이내(1.3배)
+  multiplier: number;              // 1.1 or 1.3
+  targetDisposalAmount: number;    // 투입 예정액 = 부족분 * 승수
+  disposalDeadlineDate?: string;   // 처분 예정 일자
+  isExecuted: boolean;
+}
+
+// 3. 원금과 이자 변제 방식 (3대 모드)
+export type InterestRepaymentMode = 
+  | 'principal_only'               // 1. 원금만 전액 변제 (일반)
+  | 'principal_then_interest'      // 2. 원금 변제 후 잔여기간 이자 변제
+  | 'simultaneous_all';            // 3. 원금과 이자 동시 안분 변제 (총 채무액 기준)
+
+// 4. 장래양육비 모델
+export interface ChildSupportInfo {
+  recipientName: string;           // 양육권자 성명 (전 배우자)
+  birthDate?: string;              // 생년월일
+  monthlyAmount: number;           // 월 양육비
+  hasCourtDecree: boolean;         // 양육비부담조서/판결 확정 여부
+  includeInLivingExpense: boolean; // 추가생계비 반영(true) vs 채권자목록 추가(false)
+  isExecuted: boolean;
+}
+
+// 5. 변제기 내 성년 도달 부양가족 단계적 변제 모델
+export interface AdultChildTransitionInfo {
+  childName: string;               // 해당 자녀명
+  birthDate: string;               // 생년월일
+  adultDate: string;               // 성년 도달일 (만 19세 생일)
+  transitionMonthIndex: number;    // 변제 시작 후 몇 번째 달에 성년 도달 (1~36)
+  stage1LivingExpense: number;     // 1단계 생계비 (자녀 포함)
+  stage2LivingExpense: number;     // 2단계 생계비 (자녀 제외, 축소)
+  isExecuted: boolean;
+}
+
+// 6. 모바일 의뢰인 제출동의 모델
+export interface ClientSubmissionConsent {
+  isConsented: boolean;            // 제출 동의 완료 여부
+  consentedAt?: string;            // 동의 일시 (ISO String)
+  clientName: string;              // 의뢰인 성명
+  deviceType?: string;             // 모바일 기기 / 웹
+  ipAddress?: string;              // 접속 IP
+  consentStampText?: string;       // 인쇄물 반영 스탬프 텍스트
+}
+
+// 7. 라이프니쯔 현재가치 1/2단계 산출근거
+export interface PresentValueBreakdown {
+  stage1Months: number;
+  stage1MonthlyAmount: number;
+  stage1LeibnizFactor: number;
+  stage1PresentValue: number;
+  
+  stage2Months: number;
+  stage2MonthlyAmount: number;
+  stage2LeibnizFactor: number;
+  stage2PresentValue: number;
+  
+  totalPresentValue: number;
 }

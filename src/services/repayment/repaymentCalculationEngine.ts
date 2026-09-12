@@ -31,6 +31,13 @@ import type {
   RepaymentPlanData,
   RepaymentFormType,
   PriorityFeasibilityInfo,
+  GarnishmentDepositInfo,
+  PropertyDisposalInfo,
+  InterestRepaymentMode,
+  ChildSupportInfo,
+  AdultChildTransitionInfo,
+  ClientSubmissionConsent,
+  PresentValueBreakdown,
 } from './repaymentTypes';
 
 // ══════════════════════════════════════════════════════════════════
@@ -187,7 +194,8 @@ export function calculateTotalLiquidationValue(
 export function allocateCreditorRepayments(
   monthlyDisposableIncome: number,
   creditors: RepaymentCreditor[],
-  months: number = 36
+  months: number = 36,
+  interestRepaymentMode: InterestRepaymentMode = 'principal_only'
 ): {
   allocatedCreditors: RepaymentCreditor[];
   monthlyTotal: number;
@@ -195,9 +203,11 @@ export function allocateCreditorRepayments(
   roundingDifference: number;
 } {
   const unsecuredCreditors = creditors.filter((c) => !c.isSecured);
-  const totalPrincipal = unsecuredCreditors.reduce((sum, c) => sum + c.principal, 0);
+  const isSimultaneous = interestRepaymentMode === 'simultaneous_all';
+  const getClaimBasis = (c: RepaymentCreditor) => isSimultaneous ? (c.principal + (c.interest || 0)) : c.principal;
+  const totalBase = unsecuredCreditors.reduce((sum, c) => sum + getClaimBasis(c), 0);
 
-  if (totalPrincipal <= 0 || monthlyDisposableIncome <= 0) {
+  if (totalBase <= 0 || monthlyDisposableIncome <= 0) {
     const zeroed = creditors.map((c) => ({
       ...c,
       allocationRatio: 0,
@@ -228,15 +238,16 @@ export function allocateCreditorRepayments(
       continue;
     }
 
-    const ratio = creditor.principal / totalPrincipal;
+    const claim = getClaimBasis(creditor);
+    const ratio = claim / totalBase;
     // 법원 실무: 원 미만 무조건 '올림(Math.ceil)'
     const monthlyRepay = Math.ceil(monthlyDisposableIncome * ratio);
     calculatedMonthlyTotal += monthlyRepay;
 
     const totalRepay = monthlyRepay * months;
     const repaymentRate =
-      creditor.principal > 0
-        ? Math.round((totalRepay / creditor.principal) * 1000) / 10
+      claim > 0
+        ? Math.round((totalRepay / claim) * 1000) / 10
         : 0;
 
     resultCreditors.push({
@@ -511,6 +522,12 @@ export interface BuildPlanOptions {
     adjusterMemo?: string;
     isTwoStageRepayment?: boolean;
     stage1Months?: number;
+    garnishmentDeposit?: GarnishmentDepositInfo;
+    propertyDisposal?: PropertyDisposalInfo;
+    interestRepaymentMode?: InterestRepaymentMode;
+    childSupport?: ChildSupportInfo;
+    adultChildTransition?: AdultChildTransitionInfo;
+    clientSubmissionConsent?: ClientSubmissionConsent;
   };
 }
 
@@ -688,6 +705,18 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
   let stage1MonthlyTotal = 0;
   let stage2MonthlyTotal = 0;
 
+  const interestRepaymentMode = manualOverride?.interestRepaymentMode || 'principal_only';
+  const garnishmentDeposit = manualOverride?.garnishmentDeposit;
+  const propertyDisposal = manualOverride?.propertyDisposal;
+  const childSupport = manualOverride?.childSupport;
+  const adultChildTransition = manualOverride?.adultChildTransition;
+  const clientSubmissionConsent = manualOverride?.clientSubmissionConsent;
+
+  if (propertyDisposal?.isExecuted) {
+    formType = 'D5111';
+    requiredDisposalAmount = propertyDisposal.targetDisposalAmount;
+  }
+
   if (isTwoStage && hasPriority) {
     const twoStageRes = allocateTwoStageRepayments(
       monthlyRepaymentTarget,
@@ -703,7 +732,8 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     const singleRes = allocateCreditorRepayments(
       monthlyRepaymentTarget,
       creditors,
-      months
+      months,
+      interestRepaymentMode
     );
     allocatedCreditors = singleRes.allocatedCreditors;
     monthlyTotal = singleRes.monthlyTotal;
@@ -739,13 +769,55 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     .filter((c) => c.isUnconfirmedReserve)
     .reduce((s, c) => s + c.totalRepayment, 0);
 
-  // 6. 최종 라이프니쯔 현가 및 보장 원칙 검증
+  // 6. 최종 라이프니쯔 현가 1·2단계 분할 계산 및 보장 원칙 검증
+  let presentValueBreakdown: PresentValueBreakdown;
+  let totalCalculatedPresentValue = 0;
+
+  if (isTwoStage && hasPriority) {
+    const factorStage1 = LEIBNIZ_FACTORS[stage1Months] || 17.3826;
+    const factorTotal = LEIBNIZ_FACTORS[months] || (months === 60 ? LEIBNIZ_FACTOR_60 : LEIBNIZ_FACTOR_36);
+    const factorStage2Delta = Math.max(0, factorTotal - factorStage1);
+
+    const pv1 = Math.floor(stage1MonthlyTotal * factorStage1);
+    const pv2 = Math.floor(stage2MonthlyTotal * factorStage2Delta);
+    totalCalculatedPresentValue = pv1 + pv2;
+
+    presentValueBreakdown = {
+      stage1Months,
+      stage1MonthlyAmount: stage1MonthlyTotal,
+      stage1LeibnizFactor: Math.round(factorStage1 * 10000) / 10000,
+      stage1PresentValue: pv1,
+      stage2Months,
+      stage2MonthlyAmount: stage2MonthlyTotal,
+      stage2LeibnizFactor: Math.round(factorStage2Delta * 10000) / 10000,
+      stage2PresentValue: pv2,
+      totalPresentValue: totalCalculatedPresentValue,
+    };
+  } else {
+    const factorTotal = LEIBNIZ_FACTORS[months] || (months === 60 ? LEIBNIZ_FACTOR_60 : LEIBNIZ_FACTOR_36);
+    totalCalculatedPresentValue = Math.floor(monthlyTotal * factorTotal);
+    presentValueBreakdown = {
+      stage1Months: months,
+      stage1MonthlyAmount: monthlyTotal,
+      stage1LeibnizFactor: Math.round(factorTotal * 10000) / 10000,
+      stage1PresentValue: totalCalculatedPresentValue,
+      stage2Months: 0,
+      stage2MonthlyAmount: 0,
+      stage2LeibnizFactor: 0,
+      stage2PresentValue: 0,
+      totalPresentValue: totalCalculatedPresentValue,
+    };
+  }
+
   const verification = verifyLiquidationGuaranteeAndMinRepayment(
     totalPrincipal,
     monthlyTotal,
     months,
     totalLiquidationValue
   );
+  // 현가 갱신
+  verification.presentValue = totalCalculatedPresentValue;
+  verification.satisfiesLiquidationGuarantee = totalCalculatedPresentValue >= totalLiquidationValue;
 
   // 7. 변제 시작월 및 종료월 자동 계산
   const now = new Date();
@@ -805,6 +877,13 @@ export function buildRepaymentPlan(options: BuildPlanOptions): RepaymentPlanData
     satisfiesMinimumRepayment: verification.satisfiesMinimumRepayment,
     formType,
     requiredDisposalAmount,
+    garnishmentDeposit,
+    propertyDisposal,
+    interestRepaymentMode,
+    childSupport,
+    adultChildTransition,
+    clientSubmissionConsent,
+    presentValueBreakdown,
     isManuallyOverridden,
     overrideMonthlyRepayment: manualOverride?.monthlyRepayment,
     overrideMonths: manualOverride?.months,

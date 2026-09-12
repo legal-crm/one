@@ -16,7 +16,12 @@ import type {
   AssetCategory,
   IncomeAndExpenseInput,
   RepaymentFormType,
-  CreditorAnnexDocType
+  CreditorAnnexDocType,
+  GarnishmentDepositInfo,
+  PropertyDisposalInfo,
+  InterestRepaymentMode,
+  ChildSupportInfo,
+  AdultChildTransitionInfo
 } from '../../../services/repayment/repaymentTypes';
 import { ANNEX_DOC_CONFIG } from '../../../services/repayment/repaymentTypes';
 import { 
@@ -33,6 +38,12 @@ import SecuredDebtCalculatorModal from './SecuredDebtCalculatorModal';
 import IncomeExpenseModal from './IncomeExpenseModal';
 import CreditorAddressModal from './CreditorAddressModal';
 import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
+import RepaymentTuningBox from './RepaymentTuningBox';
+import ClientStatementSyncModal from '../statement/ClientStatementSyncModal';
+import LitigationPowerOfAttorneyModal from '../petitions/LitigationPowerOfAttorneyModal';
+import CourtDocumentExportModal from '../filing/CourtDocumentExportModal';
+import BatchFilingPackagingModal from '../filing/BatchFilingPackagingModal';
+import PropertyValuationModal from '../assets/PropertyValuationModal';
 import { REGION_CONFIG_2026, RegionType } from '../../../services/repayment/repaymentConstants2026';
 
 interface RepaymentPlanEditorProps {
@@ -242,11 +253,64 @@ export default function RepaymentPlanEditor({
   );
   const [selectedSecuredCreditor, setSelectedSecuredCreditor] = useState<RepaymentCreditor | null>(null);
 
+  // ── 리걸플로 7대 실무 튜닝박스 상태 ──
+  const [garnishment, setGarnishment] = useState<GarnishmentDepositInfo>(() => {
+    return crmExt.repaymentPlan?.garnishmentDeposit || {
+      thirdPartyDebtor: '',
+      depositAmount: 0,
+      inputMode: 'first_round',
+      isExecuted: false,
+    };
+  });
+
+  const [propertyDisposal, setPropertyDisposal] = useState<PropertyDisposalInfo>(() => {
+    return crmExt.repaymentPlan?.propertyDisposal || {
+      assetName: '',
+      marketValue: 0,
+      encumbrance: 0,
+      estimatedNetValue: 0,
+      deadlineMode: 'within_1yr',
+      multiplier: 1.1,
+      targetDisposalAmount: 0,
+      isExecuted: false,
+    };
+  });
+
+  const [interestMode, setInterestMode] = useState<InterestRepaymentMode>(() => {
+    return crmExt.repaymentPlan?.interestRepaymentMode || 'principal_only';
+  });
+
+  const [childSupport, setChildSupport] = useState<ChildSupportInfo>(() => {
+    return crmExt.repaymentPlan?.childSupport || {
+      recipientName: '',
+      monthlyAmount: 0,
+      hasCourtDecree: false,
+      includeInLivingExpense: true,
+      isExecuted: false,
+    };
+  });
+
+  const [adultChild, setAdultChild] = useState<AdultChildTransitionInfo>(() => {
+    return crmExt.repaymentPlan?.adultChildTransition || {
+      childName: '',
+      birthDate: '',
+      adultDate: '',
+      transitionMonthIndex: 19,
+      stage1LivingExpense: 0,
+      stage2LivingExpense: 0,
+      isExecuted: false,
+    };
+  });
+
   // 모달 제어
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isD5103ModalOpen, setIsD5103ModalOpen] = useState(false);
   const [isD5102ModalOpen, setIsD5102ModalOpen] = useState(false);
   const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
+  const [isStatementSyncOpen, setIsStatementSyncOpen] = useState(false);
+  const [isPowerOfAttorneyOpen, setIsPowerOfAttorneyOpen] = useState(false);
+  const [isCourtDocExportOpen, setIsCourtDocExportOpen] = useState(false);
+  const [isFilingPackagingOpen, setIsFilingPackagingOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'plan' | 'income' | 'assets'>('plan');
 
   // ── 3. 핵심 엔진 연산 실행 (2026 Engine + Fine-tuning) ──
@@ -261,16 +325,19 @@ export default function RepaymentPlanEditor({
       incomeExpense,
       assets,
       creditors,
-      manualOverride: isManualMode
-        ? {
-            months: manualMonths,
-            monthlyRepayment: manualMonthlyRepayment,
-            creditorMonthlyRepayments: Object.keys(customCreditorMonthly).length > 0 ? customCreditorMonthly : undefined,
-            adjusterMemo,
-            isTwoStageRepayment,
-            stage1Months,
-          }
-        : (isTwoStageRepayment ? { isTwoStageRepayment, stage1Months } : undefined),
+      manualOverride: {
+        months: isManualMode ? manualMonths : (crmExt.repaymentPlan?.months || 36),
+        monthlyRepayment: isManualMode ? manualMonthlyRepayment : undefined,
+        creditorMonthlyRepayments: Object.keys(customCreditorMonthly).length > 0 ? customCreditorMonthly : undefined,
+        adjusterMemo,
+        isTwoStageRepayment,
+        stage1Months,
+        garnishmentDeposit: garnishment,
+        propertyDisposal,
+        interestRepaymentMode: interestMode,
+        childSupport,
+        adultChildTransition: adultChild,
+      },
     });
 
     return {
@@ -284,6 +351,7 @@ export default function RepaymentPlanEditor({
     (clientRequest as any).court,
     clientRequest.financialProfile?.selectedCourt,
     crmExt.courtCase?.caseNumber,
+    crmExt.repaymentPlan?.months,
     startYearMonth,
     paymentDayOfMonth,
     incomeExpense,
@@ -298,6 +366,11 @@ export default function RepaymentPlanEditor({
     stage1Months,
     debtGrowthReasons,
     debtGrowthNarrative,
+    garnishment,
+    propertyDisposal,
+    interestMode,
+    childSupport,
+    adultChild,
   ]);
 
   // 채권자별 인라인 월 변제금 개별 수정 핸들러
@@ -745,11 +818,21 @@ export default function RepaymentPlanEditor({
             )}
 
             <button
-              onClick={() => exportCourtRepaymentScheduleExcel(plan)}
-              className="px-4 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              onClick={() => setIsStatementSyncOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+              title="STEP 6: 의뢰인이 스마트폰에서 작성한 진술서(채무증대경위서) 실시간 연동"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>변제예정액표 엑셀 다운로드</span>
+              <FileText className="w-4 h-4 text-sky-600" />
+              <span>고객 진술서 확인</span>
+            </button>
+
+            <button
+              onClick={() => setIsPowerOfAttorneyOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+              title="STEP 7: 소송위임장 및 법무법인 담당변호사 지정서 발급/날인"
+            >
+              <Scale className="w-4 h-4 text-purple-600" />
+              <span>소송위임장·지정서</span>
             </button>
 
             <button
@@ -771,16 +854,42 @@ export default function RepaymentPlanEditor({
             </button>
 
             <button
-              onClick={() => setIsPrintModalOpen(true)}
-              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              onClick={() => exportCourtRepaymentScheduleExcel(plan)}
+              className="px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
             >
-              <Printer className="w-4 h-4" />
-              <span>D5110 전문 인쇄/PDF</span>
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>변제예정액표 엑셀</span>
+            </button>
+
+            <button
+              onClick={() => setIsPrintModalOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+            >
+              <Printer className="w-4 h-4 text-slate-600" />
+              <span>D5110 전문 인쇄</span>
+            </button>
+
+            <button
+              onClick={() => setIsCourtDocExportOpen(true)}
+              className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+              title="STEP 8: 대법원 필수 8종 법원문서 일괄출력 및 모바일 의뢰인 제출동의 확인"
+            >
+              <Printer className="w-4 h-4 text-indigo-100" />
+              <span>법원문서 8종 출력 (모바일 동의)</span>
+            </button>
+
+            <button
+              onClick={() => setIsFilingPackagingOpen(true)}
+              className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+              title="전자소송 단일 PDF 순서 패키징 및 소명자료 합철"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-slate-600" />
+              <span>전자소송 일괄 패키징</span>
             </button>
 
             <button
               onClick={handleSavePlan}
-              className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
             >
               <Save className="w-4 h-4" />
               <span>저장</span>
@@ -1186,6 +1295,207 @@ export default function RepaymentPlanEditor({
 
               </div>
             </div>
+
+            {/* ── [리걸플로 p.64 벤치마킹] 청산가치 보장 3단 비교 및 라이프니쯔 현가 분할 산출 대시보드 ── */}
+            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-md border border-indigo-900/50 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-800/60 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                    <Scale className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-black text-white">
+                        청산가치 보장 3대 지표 비교 &amp; 라이프니쯔 현가 산출 내역
+                      </h3>
+                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                        plan.satisfiesLiquidationGuarantee
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      }`}>
+                        {plan.satisfiesLiquidationGuarantee ? '청산가치 보장 원칙 충족 (L ≥ J)' : '청산가치 보장 미달 (인가불가)'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-indigo-200/80 mt-0.5">
+                      대법원 회생 실무준칙: 가용소득 총변제액의 라이프니쯔 현재가치(L)가 신청인의 총 청산가치(J) 이상이어야 합니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className="text-[11px] text-indigo-300 block font-medium">현재가치 - 청산가치</span>
+                    <span className={`text-base font-black font-mono ${
+                      plan.presentValue >= plan.totalLiquidationValue ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {plan.presentValue >= plan.totalLiquidationValue ? '+' : ''}
+                      {(plan.presentValue - plan.totalLiquidationValue).toLocaleString()}원
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3대 핵심 지표 비교 그리드 (리걸플로 p.64 Figure 7-27 스타일) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 1. 청산가치 (J) */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xs relative overflow-hidden">
+                  <div className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                    <span>1. 청산가치 (J)</span>
+                    <span className="text-[10px] text-slate-400 font-normal">재산목록 합계</span>
+                  </div>
+                  <div className="mt-2 text-2xl font-black text-amber-300 font-mono">
+                    {plan.totalLiquidationValue.toLocaleString()}원
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    압류금지재산 및 소액임차보증금 공제 후 순가치
+                  </p>
+                  <div className="mt-3 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-amber-400 rounded-full transition-all duration-500" 
+                      style={{ width: `${Math.min(100, Math.round((plan.totalLiquidationValue / Math.max(1, plan.totalRepaymentAmount)) * 100))}%` }} 
+                    />
+                  </div>
+                </div>
+
+                {/* 2. 가용소득 총변제액 */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xs relative overflow-hidden">
+                  <div className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                    <span>2. 가용소득 총변제액</span>
+                    <span className="text-[10px] text-indigo-300 font-normal">{plan.months}개월 합산</span>
+                  </div>
+                  <div className="mt-2 text-2xl font-black text-white font-mono">
+                    {plan.totalRepaymentAmount.toLocaleString()}원
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    월 {plan.monthlyRepaymentTotal.toLocaleString()}원 × {plan.months}회 납부 총액 (변제율 {plan.totalRepaymentRate}%)
+                  </p>
+                  <div className="mt-3 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full w-full" />
+                  </div>
+                </div>
+
+                {/* 3. 라이프니쯔 현재가치 (L) */}
+                <div className={`border rounded-2xl p-4 backdrop-blur-xs relative overflow-hidden ${
+                  plan.satisfiesLiquidationGuarantee 
+                    ? 'bg-emerald-950/30 border-emerald-500/40' 
+                    : 'bg-rose-950/30 border-rose-500/40'
+                }`}>
+                  <div className="text-xs font-bold flex items-center justify-between">
+                    <span className={plan.satisfiesLiquidationGuarantee ? 'text-emerald-300' : 'text-rose-300'}>
+                      3. 라이프니쯔 현재가치 (L)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">법원 공제 연 5% 복리할인</span>
+                  </div>
+                  <div className={`mt-2 text-2xl font-black font-mono ${
+                    plan.satisfiesLiquidationGuarantee ? 'text-emerald-300' : 'text-rose-300'
+                  }`}>
+                    {plan.presentValue.toLocaleString()}원
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    청산가치 대비 충족율: <strong className="font-bold text-white">
+                      {Math.round((plan.presentValue / Math.max(1, plan.totalLiquidationValue)) * 100)}%
+                    </strong>
+                  </p>
+                  <div className="mt-3 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        plan.satisfiesLiquidationGuarantee ? 'bg-emerald-400' : 'bg-rose-400'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.round((plan.presentValue / Math.max(1, plan.totalLiquidationValue)) * 100))}%` }} 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 라이프니쯔 현가 분할 산출 계산식 (리걸플로 p.64 Figure 7-27 수식표) */}
+              {plan.presentValueBreakdown && (
+                <div className="bg-slate-950/60 rounded-2xl p-4 border border-indigo-900/60 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-indigo-200 font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <Calculator className="w-3.5 h-3.5 text-indigo-400" />
+                      라이프니쯔 회차별 산출 내역서 (대법원 표준 단리·복리 이율 5/1200)
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      총 {plan.months}개월 변제계획
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                    {/* 1차 기간 */}
+                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1 text-xs">
+                      <span className="text-[11px] font-bold text-indigo-300">
+                        1차 ({plan.presentValueBreakdown.stage1Months}개월)
+                      </span>
+                      <div className="font-mono text-white text-xs">
+                        월 {plan.presentValueBreakdown.stage1MonthlyPayment.toLocaleString()}원 × 계수 {plan.presentValueBreakdown.stage1LeibnizFactor.toFixed(4)}
+                      </div>
+                      <div className="text-emerald-400 font-mono font-bold text-sm pt-0.5">
+                        = {plan.presentValueBreakdown.stage1PresentValue.toLocaleString()}원
+                      </div>
+                    </div>
+
+                    {/* 2차 기간 (존재할 경우) */}
+                    {plan.presentValueBreakdown.stage2Months > 0 ? (
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1 text-xs">
+                        <span className="text-[11px] font-bold text-purple-300">
+                          2차 ({plan.presentValueBreakdown.stage2Months}개월)
+                        </span>
+                        <div className="font-mono text-white text-xs">
+                          월 {plan.presentValueBreakdown.stage2MonthlyPayment.toLocaleString()}원 × 계수 {plan.presentValueBreakdown.stage2LeibnizFactor.toFixed(4)}
+                        </div>
+                        <div className="text-emerald-400 font-mono font-bold text-sm pt-0.5">
+                          = {plan.presentValueBreakdown.stage2PresentValue.toLocaleString()}원
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex items-center justify-center text-xs text-slate-500">
+                        단일 단계 변제계획 (2단계 분기 없음)
+                      </div>
+                    )}
+
+                    {/* 최종 합계 및 보장 여부 */}
+                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1 text-xs sm:col-span-2 lg:col-span-1">
+                      <span className="text-[11px] font-bold text-slate-300">
+                        라이프니쯔 현재가치 합계 (L)
+                      </span>
+                      <div className="text-base font-black text-white font-mono">
+                        {plan.presentValueBreakdown.totalPresentValue.toLocaleString()}원
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        청산가치 보장: <span className={plan.satisfiesLiquidationGuarantee ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}>
+                          {plan.satisfiesLiquidationGuarantee ? '통과 (인가 적법)' : '부족 (인가 불허)'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── [리걸플로 STEP 4~5 벤치마킹] 7대 실무 튜닝 박스 ── */}
+            <RepaymentTuningBox
+              plan={plan}
+              creditors={creditors}
+              totalMonths={plan.months}
+              onUpdateMonths={(months) => {
+                setIsManualMode(true);
+                setManualMonths(months);
+              }}
+              isTwoStage={isTwoStageRepayment}
+              onToggleTwoStage={(val) => setIsTwoStageRepayment(val)}
+              stage1Months={stage1Months}
+              onUpdateStage1Months={(m) => setStage1Months(m)}
+              garnishment={garnishment}
+              onUpdateGarnishment={(g) => setGarnishment(g)}
+              propertyDisposal={propertyDisposal}
+              onUpdatePropertyDisposal={(p) => setPropertyDisposal(p)}
+              interestMode={interestMode}
+              onUpdateInterestMode={(m) => setInterestMode(m)}
+              childSupport={childSupport}
+              onUpdateChildSupport={(c) => setChildSupport(c)}
+              adultChild={adultChild}
+              onUpdateAdultChild={(a) => setAdultChild(a)}
+            />
 
             {/* 채권자별 안분표 (인라인 셀 직접 편집) */}
             <div className="bg-white rounded-3xl p-6 shadow-xs border border-slate-200/80 space-y-4">
@@ -2309,6 +2619,59 @@ export default function RepaymentPlanEditor({
         clientName={plan.clientName || clientRequest.clientName || '의뢰인'}
         clientPhone={clientRequest.phone || '010-0000-0000'}
         onImportToRepaymentPlan={handleImportFromDiscovery}
+      />
+
+      {/* ── 10. [STEP 6] 의뢰인 모바일 작성 진술서 실시간 동기화 모달 ── */}
+      <ClientStatementSyncModal
+        isOpen={isStatementSyncOpen}
+        onClose={() => setIsStatementSyncOpen(false)}
+        clientId={clientId}
+        clientRequest={clientRequest}
+        crmExt={crmExt}
+        onUpdateCrmExt={onUpdateCrmExt}
+        onStatementSynced={(statement) => {
+          if (statement.reasons && statement.reasons.length > 0) {
+            setDebtGrowthReasons(statement.reasons);
+          }
+          if (statement.detailedNarrative) {
+            setDebtGrowthNarrative(statement.detailedNarrative);
+          }
+        }}
+      />
+
+      {/* ── 11. [STEP 7] 소송위임장 및 법무법인 담당변호사 지정서 발급 모달 ── */}
+      <LitigationPowerOfAttorneyModal
+        isOpen={isPowerOfAttorneyOpen}
+        onClose={() => setIsPowerOfAttorneyOpen(false)}
+        clientRequest={clientRequest}
+        crmExt={crmExt}
+        activeLawyerName={activeLawyerName}
+      />
+
+      {/* ── 12. [STEP 8] 대법원 필수 8종 법원문서 일괄출력 및 모바일 의뢰인 제출동의 모달 ── */}
+      <CourtDocumentExportModal
+        isOpen={isCourtDocExportOpen}
+        onClose={() => setIsCourtDocExportOpen(false)}
+        clientId={clientId}
+        clientRequest={clientRequest}
+        crmExt={crmExt}
+        plan={plan}
+        activeLawyerName={activeLawyerName}
+        onOpenStatementPrint={() => setIsStatementSyncOpen(true)}
+        onOpenRepaymentPrint={() => setIsPrintModalOpen(true)}
+        onOpenPowerOfAttorney={() => setIsPowerOfAttorneyOpen(true)}
+        onOpenFilingPackaging={() => setIsFilingPackagingOpen(true)}
+      />
+
+      {/* ── 13. 전자소송 일괄 패키징 및 소명자료 합철 모달 ── */}
+      <BatchFilingPackagingModal
+        isOpen={isFilingPackagingOpen}
+        onClose={() => setIsFilingPackagingOpen(false)}
+        clientRequest={clientRequest}
+        crmExt={crmExt}
+        isBankruptcy={false}
+        onOpenIncomeExpenseModal={() => setIsD5103ModalOpen(true)}
+        onOpenPropertyModal={() => setIsD5102ModalOpen(true)}
       />
 
     </div>

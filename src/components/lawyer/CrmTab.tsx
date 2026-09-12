@@ -35,6 +35,10 @@ import LawyerStatementReviewSection from './statement/LawyerStatementReviewSecti
 import LegalDocHubModal from './documents/LegalDocHubModal';
 import IncomeExpenseModal from './repayment/IncomeExpenseModal';
 import PropertyValuationModal from './assets/PropertyValuationModal';
+import CourtDocumentExportModal from './filing/CourtDocumentExportModal';
+import ClientStatementSyncModal from './statement/ClientStatementSyncModal';
+import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
+import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
@@ -218,6 +222,9 @@ export default function CrmTab({
   const [showDocHubModal, setShowDocHubModal] = useState(false);
   const [showIncomeExpenseModal, setShowIncomeExpenseModal] = useState(false);
   const [showPropertyValuationModal, setShowPropertyValuationModal] = useState(false);
+  const [showCourtDocExportModal, setShowCourtDocExportModal] = useState(false);
+  const [showStatementSyncModal, setShowStatementSyncModal] = useState(false);
+  const [showPowerOfAttorneyModal, setShowPowerOfAttorneyModal] = useState(false);
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -521,6 +528,33 @@ export default function CrmTab({
   // ── 선택 변경 시 편집 필드 동기화 ──
   const selectedClient = requests.find(r => r.id === selectedId);
   const selectedExt = selectedId ? getCrmExt(selectedId) : null;
+
+  const activeRepaymentPlan = useMemo(() => {
+    if (selectedExt?.repaymentPlan) return selectedExt.repaymentPlan;
+    return buildRepaymentPlan({
+      clientId: selectedId || 'temp',
+      clientName: selectedClient?.clientName || '신청인',
+      courtName: selectedExt?.courtCase?.courtName || '서울회생법원',
+      caseNumber: selectedExt?.courtCase?.caseNumber || '',
+      startYearMonth: '2026-12',
+      paymentDayOfMonth: 25,
+      incomeExpense: {
+        incomeType: 'salary',
+        monthlyNetIncome: (selectedClient?.financialProfile?.income || 350) * 10000,
+        householdSize: 2,
+        region: 'SEOUL',
+        actualHousingExpense: 0,
+        actualMedicalExpense: 0,
+        numberOfChildren: 0,
+        educationExpensePerChild: 0,
+        isSpecialEducation: false,
+        otherApprovedExpense: 0,
+        trusteeType: 'INTERNAL',
+      },
+      assets: [],
+      creditors: [],
+    });
+  }, [selectedId, selectedClient, selectedExt]);
 
   useEffect(() => {
     if (selectedClient && selectedExt) {
@@ -2305,6 +2339,30 @@ export default function CrmTab({
                           className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
                         >
                           <span>🏦 개시·사후관리 (가상계좌·집회)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowCourtDocExportModal(true)}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                          title="대법원 필수 8종 법원문서 일괄출력 및 의뢰인 모바일 제출동의"
+                        >
+                          <span>📜 법원문서 8종 출력 (모바일 동의)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowStatementSyncModal(true)}
+                          className="px-3 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                          title="의뢰인이 스마트폰에서 작성한 진술서(채무증대경위서) 실시간 확인 및 동기화"
+                        >
+                          <span>✍️ 고객 진술서 동기화</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowPowerOfAttorneyModal(true)}
+                          className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
+                          title="소송위임장 및 법무법인 담당변호사 지정서 발급/날인"
+                        >
+                          <span>⚖️ 소송위임장·지정서</span>
                         </button>
                         <button
                           type="button"
@@ -4494,6 +4552,48 @@ export default function CrmTab({
               });
             }
           }}
+        />
+      )}
+
+      {/* ── 7. 대법원 필수 8종 법원문서 일괄출력 및 모바일 의뢰인 제출동의 모달 ── */}
+      {showCourtDocExportModal && selectedClient && (
+        <CourtDocumentExportModal
+          isOpen={showCourtDocExportModal}
+          onClose={() => setShowCourtDocExportModal(false)}
+          clientId={selectedId}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          plan={activeRepaymentPlan}
+          activeLawyerName={activeLawyer.name}
+          onOpenStatementPrint={() => setShowStatementSyncModal(true)}
+          onOpenRepaymentPrint={() => setDetailTab('repayment')}
+          onOpenPowerOfAttorney={() => setShowPowerOfAttorneyModal(true)}
+          onOpenFilingPackaging={() => setShowBatchFilingModal(true)}
+        />
+      )}
+
+      {/* ── 8. 의뢰인 모바일 작성 진술서 실시간 확인 및 동기화 모달 ── */}
+      {showStatementSyncModal && selectedClient && (
+        <ClientStatementSyncModal
+          isOpen={showStatementSyncModal}
+          onClose={() => setShowStatementSyncModal(false)}
+          clientId={selectedId}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          onUpdateCrmExt={async (updates) => {
+            await updateCrmExt(selectedId, updates);
+          }}
+        />
+      )}
+
+      {/* ── 9. 소송위임장 및 법무법인 담당변호사 지정서 발급 모달 ── */}
+      {showPowerOfAttorneyModal && selectedClient && (
+        <LitigationPowerOfAttorneyModal
+          isOpen={showPowerOfAttorneyModal}
+          onClose={() => setShowPowerOfAttorneyModal(false)}
+          clientRequest={selectedClient}
+          crmExt={selectedExt}
+          activeLawyerName={activeLawyer.name}
         />
       )}
     </div>
