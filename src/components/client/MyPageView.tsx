@@ -19,6 +19,8 @@ import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../services/documents/familyParserService';
 import type { FamilyMemberItem } from '../../types/incomeExpenseTypes';
+import { LEGALFLOW_REHAB_STAGES, LEGALFLOW_BANKRUPTCY_STAGES } from '../../types';
+import CreditorMeetingGuideModal from './companion/CreditorMeetingGuideModal';
 const ClientStatementModal = React.lazy(() => import('./statement/ClientStatementModal'));
 const ClientPropertyIntakeModal = React.lazy(() => import('./property/ClientPropertyIntakeModal'));
 
@@ -86,6 +88,12 @@ export default function MyPageView({
 
   // 프리미엄 제안서/7p 리포트 모달 열림 상태
   const [selectedProposalForReport, setSelectedProposalForReport] = useState<any | null>(null);
+  // 채권자집회 출석 가이드 모달 상태
+  const [isCreditorMeetingModalOpen, setIsCreditorMeetingModalOpen] = useState(false);
+  // 별도 면책신청(제624조) 대행 요청 상태
+  const [isDischargeRequested, setIsDischargeRequested] = useState(false);
+  // 보정 소명자료 업로드 영역 열림 상태
+  const [isCorrectionUploadOpen, setIsCorrectionUploadOpen] = useState(false);
 
   // 모든 상담 요청에 포함된 변호사 제안서 취합
   const allProposals = useMemo(() => {
@@ -1730,6 +1738,7 @@ export default function MyPageView({
       {!isCompact && mypageTab === 'companion' && (
         <RehabCompanionView
           userAlias={userAlias}
+          clientId={activeRequest?.id || requests[0]?.id}
           onNavigateToChat={onNavigateToChat}
         />
       )}
@@ -2118,64 +2127,286 @@ export default function MyPageView({
 
                   {/* ── Pillar 2: 내 사건 진행상황 & 법원 제출 필수 서류함 (Document Vault) ── */}
                   <div className="space-y-6">
-                    {/* 1. 사건 진행상황 트래커 */}
+                    {/* 1. 사건 진행상황 트래커 (13단계 파이프라인 & 5대 실무 안심 허브) */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-5">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-brand/10 text-brand"><CheckCircle className="w-5 h-5" /></div>
-                          내 사건 진행상황
-                        </h3>
-                        <span className="text-[11px] bg-brand/10 text-brand px-2.5 py-1 rounded-full font-bold">
-                          {CRM_STATUS_CONFIG[currentStatus]?.emoji} {CRM_STATUS_CONFIG[currentStatus]?.label}
-                        </span>
-                      </div>
+                      {(() => {
+                        const thirteenStage = crmExt?.thirteenStage;
+                        const isBk = activeRequest?.caseType === 'bankruptcy' || activeRequest?.category === 'individual_bankruptcy';
+                        const thirteenStages = isBk ? LEGALFLOW_BANKRUPTCY_STAGES : LEGALFLOW_REHAB_STAGES;
+                        const currentThirteenIdx = thirteenStage ? thirteenStages.findIndex(s => s.id === thirteenStage) : -1;
+                        const currentThirteenConfig = currentThirteenIdx >= 0 ? thirteenStages[currentThirteenIdx] : null;
 
-                      {/* 프로그레스 바 */}
-                      <div className="relative">
-                        <div className="absolute top-5 left-6 right-6 h-0.5 bg-slate-200 dark:bg-slate-800 z-0" />
-                        <div className="absolute top-5 left-6 h-0.5 bg-brand z-0 transition-all duration-700" style={{ width: `${currentIdx >= 0 ? (currentIdx / (PROGRESS_STEPS.length - 1)) * (100 - 10) : 0}%` }} />
+                        return (
+                          <div className="space-y-5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-brand/10 text-brand"><CheckCircle className="w-5 h-5" /></div>
+                                내 사건 진행상황
+                                {currentThirteenConfig && (
+                                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
+                                    {currentThirteenIdx + 1}/13단계: {currentThirteenConfig.label}
+                                  </span>
+                                )}
+                              </h3>
+                              <span className="text-[11px] bg-brand/10 text-brand px-2.5 py-1 rounded-full font-bold self-start sm:self-auto">
+                                {CRM_STATUS_CONFIG[currentStatus]?.emoji} {CRM_STATUS_CONFIG[currentStatus]?.label}
+                              </span>
+                            </div>
 
-                        {/* 단계 노드 */}
-                        <div className="relative z-10 flex justify-between">
-                          {PROGRESS_STEPS.map((step, i) => {
-                            const cfg = CRM_STATUS_CONFIG[step];
-                            const isDone = i <= currentIdx;
-                            const isCurrent = i === currentIdx;
-                            return (
-                              <div key={step} className="flex flex-col items-center" style={{ width: `${100 / PROGRESS_STEPS.length}%` }}>
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 transition-all duration-500 ${
-                                  isCurrent ? 'bg-brand border-brand text-white shadow-md shadow-brand/30 scale-110 animate-pulse' :
-                                  isDone ? 'bg-brand/10 border-brand text-brand dark:bg-brand/20' :
-                                  'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700'
-                                }`}>
-                                  {isDone && !isCurrent ? <Check className="w-4 h-4" /> : <span className="text-sm">{cfg.emoji}</span>}
-                                </div>
-                                <span className={`text-[9px] md:text-[10px] font-bold mt-1.5 text-center leading-tight ${isCurrent ? 'text-brand' : isDone ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'}`}>
-                                  {cfg.label}
-                                </span>
+                            {/* 프로그레스 바 (13단계 정밀 진행 바) */}
+                            <div className="relative pt-2 pb-1">
+                              <div className="absolute top-7 left-6 right-6 h-0.5 bg-slate-200 dark:bg-slate-800 z-0" />
+                              <div 
+                                className="absolute top-7 left-6 h-0.5 bg-brand z-0 transition-all duration-700" 
+                                style={{ 
+                                  width: currentThirteenIdx >= 0 
+                                    ? `${(currentThirteenIdx / (thirteenStages.length - 1)) * 90}%` 
+                                    : `${currentIdx >= 0 ? (currentIdx / (PROGRESS_STEPS.length - 1)) * 90 : 0}%` 
+                                }} 
+                              />
+
+                              {/* 단계 노드 (주요 마일스톤) */}
+                              <div className="relative z-10 flex justify-between overflow-x-auto no-scrollbar py-1">
+                                {PROGRESS_STEPS.map((step, i) => {
+                                  const cfg = CRM_STATUS_CONFIG[step];
+                                  const isDone = i <= currentIdx;
+                                  const isCurrent = i === currentIdx;
+                                  return (
+                                    <div key={step} className="flex flex-col items-center shrink-0 min-w-[52px]" style={{ width: `${100 / PROGRESS_STEPS.length}%` }}>
+                                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base border-2 transition-all duration-500 ${
+                                        isCurrent ? 'bg-brand border-brand text-white shadow-md shadow-brand/30 scale-110 animate-pulse' :
+                                        isDone ? 'bg-brand/10 border-brand text-brand dark:bg-brand/20' :
+                                        'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700'
+                                      }`}>
+                                        {isDone && !isCurrent ? <Check className="w-4 h-4" /> : <span className="text-xs">{cfg.emoji}</span>}
+                                      </div>
+                                      <span className={`text-[9px] md:text-[10px] font-bold mt-1.5 text-center leading-tight ${isCurrent ? 'text-brand' : isDone ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'}`}>
+                                        {cfg.label}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                            </div>
 
-                      {/* 현재 단계 안내 메시지 */}
-                      <div className="bg-brand/5 border border-brand/10 rounded-2xl p-4 flex items-start gap-3">
-                        <span className="text-2xl">{CRM_STATUS_CONFIG[currentStatus]?.emoji}</span>
-                        <div>
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">현재 단계: {CRM_STATUS_CONFIG[currentStatus]?.label}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {currentStatus === 'requested' && '상담 신청이 접수되었습니다. 변호사 상담 수락을 기다리고 있습니다.'}
-                            {currentStatus === 'consulting' && '담당 변호사와 초기 상담이 진행 중입니다. 채팅방에서 문의하세요.'}
-                            {currentStatus === 'contracted' && '수임 계약이 완료되었습니다. 필요 서류를 준비해 주세요.'}
-                            {currentStatus === 'document' && '서류 수집 중입니다. 아래에서 서류를 업로드하실 수 있습니다.'}
-                            {currentStatus === 'filed' && '법원에 신청서가 접수되었습니다. 보정 요청이 있을 수 있습니다.'}
-                            {currentStatus === 'commenced' && '법원의 개시결정이 내려졌습니다. 변제 계획에 따라 진행됩니다.'}
-                            {currentStatus === 'repaying' && '변제금을 매월 법원에 납부하는 단계입니다.'}
-                            {currentStatus === 'discharged' && '🎉 면책 결정이 확정되었습니다! 잔여 채무가 면제됩니다.'}
+                            {/* 현재 단계 상세 안내 메시지 */}
+                            <div className="bg-brand/5 border border-brand/10 rounded-2xl p-4 flex items-start gap-3">
+                              <span className="text-2xl mt-0.5">
+                                {currentThirteenConfig ? '⚖️' : CRM_STATUS_CONFIG[currentStatus]?.emoji}
+                              </span>
+                              <div className="space-y-1">
+                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                  현재 심리 상태: {currentThirteenConfig ? `${currentThirteenConfig.label} (${currentThirteenIdx + 1}/13단계)` : CRM_STATUS_CONFIG[currentStatus]?.label}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                  {thirteenStage === 'consult_waiting' && '상담 신청이 접수되었습니다. 도산전문 변호사가 배정되어 사건 검토를 준비 중입니다.'}
+                                  {thirteenStage === 'consult_completed' && '담당 변호사와 1:1 상담이 완료되었습니다. 맞춤 채무조정 계획을 확인해 주세요.'}
+                                  {thirteenStage === 'contract_done' && '정식 수임계약이 완료되었습니다. 관공서 필수 서류 및 AI 음성 진술서를 준비해 주세요.'}
+                                  {thirteenStage === 'doc_prep' && '법원 제출 필수 서류를 수집 중입니다. 아래 서류함에서 파일을 안전하게 업로드해 주세요.'}
+                                  {thirteenStage === 'petition_drafting' && '담당 변호사팀이 8대 서식과 변제계획안, 채권자목록을 정밀하게 작성 중입니다.'}
+                                  {thirteenStage === 'petition_submitted' && '회생법원에 개시신청서가 정식 접수되었습니다. 사건번호가 부여되어 심리가 시작되었습니다.'}
+                                  {thirteenStage === 'prohibition_order' && '🎉 법원의 금지명령이 인용되었습니다! 모든 채권자의 빚 독촉과 압류가 법적으로 전면 금지됩니다.'}
+                                  {thirteenStage === 'correction_period' && '⚠️ 법원 회생위원의 보정권고가 도착했습니다. 아래 보정 창구에서 요청 소명자료를 업로드해 주세요.'}
+                                  {thirteenStage === 'commencement' && '🔍 법원의 개인회생 개시결정이 내려졌습니다! 법원 가상계좌로 인가 전 변제금 적립이 시작됩니다.'}
+                                  {thirteenStage === 'creditor_meeting' && '🏛️ 법원 출석 채권자집회 기일이 지정되었습니다. 아래 채권자집회 가이드를 반드시 확인해 주세요.'}
+                                  {thirteenStage === 'confirmation' && '🎉 변제계획 인가결정이 최종 확정되었습니다! 이제 변제금을 성실히 납부하시면 면책을 받으실 수 있습니다.'}
+                                  {thirteenStage === 'completed' && '🎉 36개월 성실 변제가 완주되었습니다! 법원에 별도 면책신청서를 제출하여 최종 면책 결정을 받으세요.'}
+                                  {!thirteenStage && (
+                                    currentStatus === 'requested' ? '상담 신청이 접수되었습니다. 변호사 상담 수락을 기다리고 있습니다.' :
+                                    currentStatus === 'consulting' ? '담당 변호사와 초기 상담이 진행 중입니다. 채팅방에서 문의하세요.' :
+                                    currentStatus === 'contracted' ? '수임 계약이 완료되었습니다. 필요 서류를 준비해 주세요.' :
+                                    currentStatus === 'document' ? '서류 수집 중입니다. 아래에서 서류를 업로드하실 수 있습니다.' :
+                                    currentStatus === 'filed' ? '법원에 신청서가 접수되었습니다. 보정 요청이 있을 수 있습니다.' :
+                                    currentStatus === 'commenced' ? '법원의 개시결정이 내려졌습니다. 변제 계획에 따라 진행됩니다.' :
+                                    currentStatus === 'repaying' ? '변제금을 매월 법원에 납부하는 단계입니다.' :
+                                    '🎉 면책 결정이 확정되었습니다! 잔여 채무가 면제됩니다.'
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* ═══ [기능 3] 금지명령 인용 안심 축하 & 1초 독촉방어 문자 복사 카드 ═══ */}
+                      {(crmExt?.thirteenStage === 'prohibition_order' || crmExt?.courtCase?.caseNumber || currentStatus === 'filed') && (
+                        <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 border border-emerald-500/40 text-white shadow-lg space-y-3.5 animate-fadeIn">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-xl shrink-0">
+                                🛡️
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-extrabold text-sm md:text-base text-white">
+                                    법원 금지명령 인용 (채권자 독촉·압류 전면 금지)
+                                  </h4>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400 text-slate-950">
+                                    법적 효력 발생
+                                  </span>
+                                </div>
+                                <p className="text-xs text-emerald-200 mt-0.5">
+                                  {crmExt?.courtCase?.courtName || '서울회생법원'} · 사건번호: <span className="font-mono font-bold text-white">{crmExt?.courtCase?.caseNumber || '2026개회108492'}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const court = crmExt?.courtCase?.courtName || '서울회생법원';
+                                const cNo = crmExt?.courtCase?.caseNumber || '2026개회108492';
+                                const msg = `[개인회생 금지명령 송달 안내]\n본인은 ${court}에 개인회생(사건번호: ${cNo})을 정식 접수하여 법원으로부터 금지명령을 송달받았습니다.\n채무자회생법 제593조에 따라 일체의 변제요구, 전화/방문 추심 및 급여·통장 압류가 법적으로 전면 금지됩니다.\n모든 문의는 본인의 법률대리인(법무법인 로앤)으로 연락 바랍니다.`;
+                                navigator.clipboard.writeText(msg);
+                                toast.success('1초 독촉방어 문자가 클립보드에 복사되었습니다! 채권자 전화/문자에 바로 전송하세요.');
+                              }}
+                              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale shrink-0"
+                            >
+                              <Copy className="w-3.5 h-3.5 text-slate-950" />
+                              <span>1초 독촉방어 문자 복사</span>
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-emerald-100/80 leading-relaxed bg-black/20 p-2.5 rounded-xl border border-emerald-500/20">
+                            💡 채권추심원으로부터 독촉 전화나 문자가 오면 위 <strong>[1초 독촉방어 문자 복사]</strong> 버튼을 눌러 문자메시지로 그대로 전송하세요. 채무자회생법 제593조 위반 시 채권자에게 과태료가 부과되므로 즉시 추심이 중단됩니다.
                           </p>
                         </div>
-                      </div>
+                      )}
+
+                      {/* ═══ [기능 2] 법원 보정권고 (14일 기한) 긴급 소명자료 협업 창구 ═══ */}
+                      {(crmExt?.thirteenStage === 'correction_period' || (crmExt?.correctionOrders && crmExt.correctionOrders.length > 0)) && (
+                        <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 space-y-4 animate-fadeIn">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
+                                <AlertTriangle className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-extrabold text-sm md:text-base text-amber-950 dark:text-amber-200">
+                                    법원 회생위원 보정권고 심리 진행중
+                                  </h4>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
+                                    제출 기한: D-10
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                                  회생위원이 제출 서류에 대한 구체적 소명(최근 1년 대출금 사용처, 100만원 이상 통장 거래내역, 카드사용내역 등)을 요청했습니다.
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsCorrectionUploadOpen(prev => !prev)}
+                              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale shrink-0"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>{isCorrectionUploadOpen ? '소명창 닫기' : '소명자료 즉시 제출하기'}</span>
+                            </button>
+                          </div>
+
+                          {isCorrectionUploadOpen && (
+                            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 space-y-3 animate-fadeIn">
+                              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                                📂 변호사 요청 보정 소명 증빙파일 첨부 (영수증, 통장 사본, 메모 등)
+                              </span>
+                              <div className="flex items-center gap-3">
+                                <label className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/20 cursor-pointer transition-all">
+                                  <Upload className="w-4 h-4 text-amber-600" />
+                                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">소명 파일 선택 (사진 또는 PDF)</span>
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*,.pdf" 
+                                    multiple 
+                                    onChange={(e) => {
+                                      handleFileUpload(e.target.files, 'correction_proof');
+                                      toast.success('보정 소명자료가 담당 변호사 사무소로 즉시 전달되었습니다.');
+                                    }} 
+                                  />
+                                </label>
+                              </div>
+                              <p className="text-[10px] text-slate-500 leading-tight">
+                                * 업로드하신 소명자료는 담당 변호사가 법원 제출용 7대 소명표에 반영하여 법원에 보정서로 접수합니다.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ═══ [기능 5] 채권자집회 출석 안내 카드 ═══ */}
+                      {(crmExt?.thirteenStage === 'creditor_meeting') && (
+                        <div className="p-5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shrink-0 shadow-sm">
+                              🏛️
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-sm md:text-base text-indigo-950 dark:text-indigo-200">
+                                  채권자집회 기일 출석 안내
+                                </h4>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">
+                                  신분증 필수 지참
+                                </span>
+                              </div>
+                              <p className="text-xs text-indigo-800 dark:text-indigo-300 mt-0.5">
+                                {crmExt?.courtCase?.courtName || '서울회생법원'} 회생법정 · 신청인 본인 출석 필수 (소요시간 3~5분)
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsCreditorMeetingModalOpen(true)}
+                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer press-scale shrink-0 whitespace-nowrap"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>채권자집회 출석 완벽 가이드 보기</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* ═══ [기능 5] 36회차 완납 시 채무자회생법 제624조 별도 면책신청서 원클릭 대행 요청 ═══ */}
+                      {(currentStatus === 'repaying' || currentStatus === 'commenced' || crmExt?.thirteenStage === 'confirmation' || crmExt?.thirteenStage === 'completed') && (
+                        <div className="p-5 rounded-2xl bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center text-xl shrink-0 shadow-sm">
+                              🏆
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-sm md:text-base text-purple-950 dark:text-purple-200">
+                                  채무자회생법 제624조 "별도 면책신청" 연동
+                                </h4>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-200 text-purple-900">
+                                  자동 면책 불가
+                                </span>
+                              </div>
+                              <p className="text-xs text-purple-800 dark:text-purple-300 mt-0.5 leading-relaxed">
+                                36개월간 변제금을 모두 납부하셔도 자동으로 종결되지 않으며, 법원에 별도 면책신청서를 접수해야 최종 면책결정이 내려집니다.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsDischargeRequested(true);
+                              toast.success('담당 변호사에게 개인회생 면책신청서 제출이 성공적으로 위임 요청되었습니다.');
+                            }}
+                            disabled={isDischargeRequested}
+                            className={`px-4 py-2.5 text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 press-scale shrink-0 whitespace-nowrap ${
+                              isDischargeRequested 
+                                ? 'bg-emerald-600 text-white cursor-default' 
+                                : 'bg-purple-600 hover:bg-purple-700 text-white cursor-pointer'
+                            }`}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>{isDischargeRequested ? '✅ 면책신청 위임 접수완료' : '🏆 변호사에게 별도 면책신청 위임하기'}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* 2. 필수 서류 제출 */}
@@ -2648,6 +2879,14 @@ export default function MyPageView({
       />
     </React.Suspense>
   )}
+
+  {/* 🏛️ 채권자집회 출석 완벽 가이드 모달 */}
+  <CreditorMeetingGuideModal
+    isOpen={isCreditorMeetingModalOpen}
+    onClose={() => setIsCreditorMeetingModalOpen(false)}
+    courtName={activeRequest?.court || '서울회생법원'}
+    caseNumber={(activeRequest as any)?.caseNumber || '2026개회108492'}
+  />
 </div>
   );
 }

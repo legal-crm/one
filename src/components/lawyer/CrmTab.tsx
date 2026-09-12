@@ -53,6 +53,7 @@ import Stage5PostCareDischargeView from './pipeline/Stage5PostCareDischargeView'
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
+import { syncCompanionWithCrmCase } from '../../services/companionService';
 import SecureDocumentViewerModal from '../common/SecureDocumentViewerModal';
 import type { 
   ConsultRequest, User, StaffMember, StaffRole, CrmStatus, CrmClientExtension,
@@ -2661,13 +2662,77 @@ export default function CrmTab({
                               isDismissedRevoked={!!selectedExt.isDismissedRevoked}
                               onSelectStage={(newStageId) => {
                                 if (!selectedClient) return;
+
+                                // 13단계를 CrmStatus 8단계로 상호 호환 매핑
+                                const stageToCrmStatus: Record<string, CrmStatus> = {
+                                  consult_waiting: 'requested',
+                                  consult_completed: 'consulting',
+                                  contract_done: 'contracted',
+                                  doc_prep: 'document',
+                                  petition_drafting: 'document',
+                                  petition_submitted: 'filed',
+                                  prohibition_order: 'filed',
+                                  correction_period: 'filed',
+                                  commencement: 'commenced',
+                                  creditor_meeting: 'commenced',
+                                  confirmation: 'repaying',
+                                  dismissed_revoked: 'cancelled',
+                                  completed: 'discharged',
+                                  // 파산 단계 매핑
+                                  bankruptcy_declared: 'commenced',
+                                  hearing_date: 'commenced',
+                                  asset_liquidation: 'repaying',
+                                  bankruptcy_closed: 'cancelled',
+                                  discharge_granted: 'discharged',
+                                  discharge_denied: 'cancelled',
+                                };
+
+                                const mappedStatus = stageToCrmStatus[newStageId] || selectedExt.crmStatus;
+
                                 const updatedExt: CrmClientExtension = {
                                   ...selectedExt,
                                   thirteenStage: newStageId,
+                                  crmStatus: mappedStatus,
                                   lastActivityAt: new Date().toISOString(),
                                 };
+
                                 saveCrmClient(selectedClient.id, updatedExt);
                                 setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
+
+                                // 의뢰인 인앱 알림 실시간 발송
+                                const NOTIF_MAP: Record<string, { title: string; body: string; emoji: string; linkTab?: 'companion' | 'diagnosis' | 'settings' }> = {
+                                  consult_waiting: { title: '[상담 대기] 상담 신청이 접수되었습니다', body: '담당 도산전문 변호사가 배정되어 사건 검토를 준비하고 있습니다.', emoji: '📋', linkTab: 'diagnosis' },
+                                  consult_completed: { title: '[상담 완료] 초기 법률 상담이 완료되었습니다', body: '맞춤형 채무조정 방향과 수임계약 안내를 확인해 주세요.', emoji: '📞', linkTab: 'diagnosis' },
+                                  contract_done: { title: '[수임계약 체결] 정식 수임계약이 체결되었습니다', body: '변호사 사무소와 함께 법원 제출용 필수 서류 수합을 시작합니다.', emoji: '📝', linkTab: 'diagnosis' },
+                                  doc_prep: { title: '[서류 준비] 법원 필수 서류를 수집 중입니다', body: '관공서 15종 서류 및 AI 음성 진술서 작성을 진행해 주세요.', emoji: '📂', linkTab: 'diagnosis' },
+                                  petition_drafting: { title: '[신청서 작성] 법원 제출용 개시신청서를 작성 중입니다', body: '변호사팀이 8대 서식과 변제계획안을 정밀하게 검토하고 있습니다.', emoji: '✍️', linkTab: 'diagnosis' },
+                                  petition_submitted: { title: '[법원 접수 완료] 회생법원에 정식 접수되었습니다', body: '법원 사건번호가 부여되었습니다. 나의사건검색에서 심리 진행을 확인하세요.', emoji: '⚖️', linkTab: 'diagnosis' },
+                                  prohibition_order: { title: '[금지명령 인용 🎉] 채권추심 및 압류가 전면 금지되었습니다!', body: '법원에서 금지명령이 발령되었습니다. 채권자 독촉 전화 시 1초 독촉방어 문자를 활용하세요.', emoji: '🛡️', linkTab: 'diagnosis' },
+                                  correction_period: { title: '[보정권고 송달 ⚠️] 법원 회생위원의 보정사항이 도착했습니다', body: '기한(14일) 내에 변호사가 요청한 소명자료(통장/최근대출 등)를 업로드해 주세요.', emoji: '⚠️', linkTab: 'diagnosis' },
+                                  commencement: { title: '[개시결정 확정 🔍] 법원의 개인회생 개시결정이 내려졌습니다!', body: '법원 가상계좌가 발급되었습니다. 회생완주동행 대시보드에서 36개월 변제 스케줄을 확인하세요.', emoji: '🏛️', linkTab: 'companion' },
+                                  creditor_meeting: { title: '[채권자집회 기일 안내 🏛️] 법원 출석 기일이 지정되었습니다', body: '신분증을 지참하여 법정에 출석하셔야 합니다. 채권자집회 출석 가이드를 확인하세요.', emoji: '👥', linkTab: 'companion' },
+                                  confirmation: { title: '[인가결정 확정 🎉] 변제계획 인가결정이 최종 확정되었습니다!', body: '법원의 모든 심리가 통과되었습니다. 성실히 변제금을 납부하시면 면책을 받으실 수 있습니다.', emoji: '🏆', linkTab: 'companion' },
+                                  dismissed_revoked: { title: '[사건 종결 안내] 사건이 기각 또는 폐지되었습니다', body: '즉시항고 또는 재신청 가능 여부를 담당 변호사와 상담하세요.', emoji: '🚫', linkTab: 'diagnosis' },
+                                  completed: { title: '[최종 면책 완료 🕊️] 잔여 채무가 전액 면책되었습니다!', body: '36개월 완주를 축하드립니다! 한국신용정보원의 연체정보가 완전히 해제됩니다.', emoji: '🎉', linkTab: 'companion' },
+                                };
+
+                                const notif = NOTIF_MAP[newStageId];
+                                if (notif) {
+                                  try {
+                                    addClientNotification({
+                                      type: 'status_change',
+                                      title: notif.title,
+                                      body: notif.body,
+                                      emoji: notif.emoji,
+                                      linkTab: notif.linkTab,
+                                    });
+                                  } catch { /* ignore */ }
+                                }
+
+                                // 동행 서비스 실데이터 동기화
+                                try {
+                                  syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
+                                } catch { /* ignore */ }
                               }}
                               onToggleDismissedRevoked={(val) => {
                                 if (!selectedClient) return;
@@ -2695,6 +2760,18 @@ export default function CrmTab({
                                   };
                                   saveCrmClient(selectedClient.id, updatedExt);
                                   setCrmData(prev => ({ ...prev, [selectedClient.id]: updatedExt }));
+
+                                  // 동행 대시보드로 실데이터(가상계좌, 변제금, 사건번호 등) 즉시 실시간 동기화!
+                                  try {
+                                    syncCompanionWithCrmCase(selectedClient.id, updatedExt, selectedClient.clientName || '의뢰인');
+                                    addClientNotification({
+                                      type: 'status_change',
+                                      title: '[법원 가상계좌 발급 안내]',
+                                      body: `법원 가상계좌(${newSummary.virtualAccountBank} ${newSummary.virtualAccountNumber}) 및 월 변제금(${newSummary.monthlyPayment.toLocaleString()}원)이 등록되었습니다.`,
+                                      emoji: '🏛️',
+                                      linkTab: 'companion',
+                                    });
+                                  } catch { /* ignore */ }
                                 }}
                               />
                             )}

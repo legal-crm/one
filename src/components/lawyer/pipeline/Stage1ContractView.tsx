@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, User } from '../../../types';
 import { sendFeeAlimtok } from '../../../services/alimtokService';
+import { addClientNotification } from '../../../services/clientNotificationService';
 
 interface Stage1ContractViewProps {
   clientRequest: ConsultRequest;
@@ -56,6 +57,12 @@ export default function Stage1ContractView({
 
   // 전자계약서 모바일 발송 핸들러
   const handleSendElectronicContract = () => {
+    addClientNotification({
+      type: 'status_change',
+      title: '[전자계약서 발송] 카카오 알림톡으로 전송된 전자서명 링크를 확인해 서명을 완료해주세요.',
+      emoji: '✍️',
+      linkTab: 'diagnosis',
+    });
     toast.success(`${clientRequest.clientName}님께 모바일 전자계약서 링크가 카카오 알림톡으로 발송되었습니다.`);
   };
 
@@ -63,6 +70,12 @@ export default function Stage1ContractView({
   const handleConfirmInPersonContract = () => {
     setIsContractSigned(true);
     onUpdateStatus('contracted');
+    addClientNotification({
+      type: 'status_change',
+      title: '[수임계약 체결 완료] 정식 사건 위임계약이 체결되어 서류 수합 및 사건 진행을 개시합니다.',
+      emoji: '📝',
+      linkTab: 'diagnosis',
+    });
     toast.success('방문/서면 계약 체결이 완료 처리되었습니다. [Gate 1 통과]');
   };
 

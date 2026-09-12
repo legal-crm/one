@@ -154,16 +154,114 @@ export function loadRehabCompanionCase(): RehabCompanionCase {
 }
 
 // 회생동행 사건 저장
-export function saveRehabCompanionCase(caseData: RehabCompanionCase): void {
+export function saveRehabCompanionCase(caseData: RehabCompanionCase, clientId?: string): void {
   try {
-    localStorage.setItem(COMPANION_STORAGE_KEY, JSON.stringify({
+    const serialized = JSON.stringify({
       ...caseData,
       updatedAt: new Date().toISOString()
-    }));
+    });
+    localStorage.setItem(COMPANION_STORAGE_KEY, serialized);
+    if (clientId) {
+      localStorage.setItem(`${COMPANION_STORAGE_KEY}_${clientId}`, serialized);
+    }
   } catch (err) {
     console.error('Error saving companion case:', err);
   }
 }
+
+/**
+ * 변호사 CRM 등록 데이터(법원 사건번호, 개시결정 요약, 가상계좌 등)를 의뢰인 동행 대시보드로 실시간 동기화
+ */
+export function syncCompanionWithCrmCase(
+  clientId: string,
+  crmExt: any,
+  clientName: string = '의뢰인'
+): RehabCompanionCase {
+  const courtName = crmExt.courtCase?.courtName || crmExt.decisionSummary?.courtName || '서울회생법원';
+  const caseNumber = crmExt.courtCase?.caseNumber || crmExt.decisionSummary?.caseNumber || '2026개회108492';
+  const monthlyRepayment = crmExt.decisionSummary?.monthlyPayment || (crmExt.repaymentPlan?.monthlyPayment) || 500000;
+  const courtAccount = crmExt.decisionSummary?.courtVirtualAccount || crmExt.courtCase?.courtVirtualAccount || '';
+  const totalRounds = crmExt.decisionSummary?.totalRounds || crmExt.repaymentPlan?.totalRounds || 36;
+  const completedRounds = crmExt.decisionSummary?.completedRounds || 0;
+  
+  let startYearMonth = '2026-04';
+  let repaymentDay = 10;
+  if (crmExt.decisionSummary?.firstPaymentDate) {
+    startYearMonth = crmExt.decisionSummary.firstPaymentDate.slice(0, 7);
+    const day = parseInt(crmExt.decisionSummary.firstPaymentDate.split('-')[2], 10);
+    if (!isNaN(day)) repaymentDay = day;
+  }
+
+  // 13단계 또는 CRM 상태 기반 동행 단계 유추
+  const stage = crmExt.thirteenStage || crmExt.crmStatus;
+  let companionStage: CaseStageType = 'submitted';
+  if (stage === 'confirmation' || stage === 'repaying') {
+    companionStage = 'approved';
+  } else if (stage === 'commencement' || stage === 'commenced') {
+    companionStage = 'commenced';
+  } else if (stage === 'prohibition_order') {
+    companionStage = 'prohibition_ordered';
+  }
+
+  const schedules = generateRepaymentSchedules(
+    startYearMonth,
+    totalRounds,
+    monthlyRepayment,
+    repaymentDay,
+    completedRounds
+  );
+
+  const syncedCase: RehabCompanionCase = {
+    id: `case-crm-${clientId}`,
+    alias: clientName,
+    sourceType: 'mykim_internal',
+    caseType: 'individual_rehab',
+    caseStage: companionStage,
+    courtName,
+    caseNumber,
+    caseNumberMasked: caseNumber.length > 6 ? `${caseNumber.slice(0, -4)}****` : caseNumber,
+    monthlyRepaymentAmount: monthlyRepayment,
+    repaymentDay,
+    totalRounds,
+    completedRounds,
+    startRepaymentDate: startYearMonth,
+    courtVirtualAccount: courtAccount || '신한은행 (법원 가상계좌 발급 대기)',
+    assignedLawyerName: crmExt.decisionSummary?.assignedLawyerName || '도산 전문 법률대리인',
+    cashflow: {
+      monthlyIncome: crmExt.decisionSummary?.monthlyIncome || 2500000,
+      essentialLivingCost: crmExt.decisionSummary?.essentialLivingCost || 1500000,
+      repaymentAmount: monthlyRepayment,
+      otherFixedExpenses: 300000,
+    },
+    schedules,
+    documents: [],
+    notificationLevel: 'basic',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  saveRehabCompanionCase(syncedCase, clientId);
+  return syncedCase;
+}
+
+/**
+ * 특정 의뢰인 ID 기준 동행 케이스 불러오기 (CRM 연동 케이스 우선)
+ */
+export function loadRehabCompanionCaseForClient(clientId?: string): RehabCompanionCase {
+  if (clientId) {
+    try {
+      const clientScopedRaw = localStorage.getItem(`${COMPANION_STORAGE_KEY}_${clientId}`);
+      if (clientScopedRaw) {
+        const parsed = JSON.parse(clientScopedRaw);
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      }
+    } catch { /* ignore */ }
+  }
+  return loadRehabCompanionCase();
+}
+
 
 // 신규 사건 등록 (오픈 온보딩: 타 사무소 / 나홀로 / 마이김변)
 export function registerNewCompanionCase(params: {

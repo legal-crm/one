@@ -10,6 +10,7 @@ import {
 import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
 import CourtCaseModal from './CourtCaseModal';
 import OverdueDefenseGuideModal from './OverdueDefenseGuideModal';
+import CreditorMeetingGuideModal from './CreditorMeetingGuideModal';
 import BankStatementAuditModal from '../../common/BankStatementAuditModal';
 import DebtDiscoveryModal from '../../common/DebtDiscoveryModal';
 import { toast } from 'sonner';
@@ -85,6 +86,8 @@ export default function CompanionDashboard({
   const [isDefenseGuideModalOpen, setIsDefenseGuideModalOpen] = useState(false);
   const [isBankAuditModalOpen, setIsBankAuditModalOpen] = useState(false);
   const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
+  const [isCreditorMeetingModalOpen, setIsCreditorMeetingModalOpen] = useState(false);
+  const [isDischargeRequested, setIsDischargeRequested] = useState(false);
 
   // 미납 및 폐지 위험도 진단
   const overdueRisk = evaluateOverdueRisk(caseData || { schedules: [] } as any);
@@ -105,6 +108,49 @@ export default function CompanionDashboard({
   return (
     <div className="space-y-6 text-left animate-fadeIn">
       
+      {/* ═══ 0.1 36회차 성실 변제 완납 & 별도 면책신청(제624조) 축하 배너 ═══ */}
+      {completedCount >= totalRounds && (
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 border border-purple-500/40 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 rounded-2xl bg-purple-500 text-white shrink-0 shadow-md">
+              <Award className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-purple-400 text-slate-950">
+                  36개월 완주 완료
+                </span>
+                <span className="text-xs font-bold text-purple-200">
+                  {completedCount}/{totalRounds}회차 전액 성실 납부
+                </span>
+              </div>
+              <h4 className="text-base font-black tracking-tight text-white">
+                축하합니다! 3~5년간의 긴 여정을 완주하셨습니다.
+              </h4>
+              <p className="text-xs text-purple-200/90 leading-relaxed">
+                법률상 필수: 변제 완료 후 법원에 <strong>'별도 면책신청서(채무자회생법 제624조)'</strong>를 제출해야 최종 면책결정(잔여채무 전액 탕감 및 신용정보원 연체코드 해제)이 내려집니다.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsDischargeRequested(true);
+              toast.success('담당 변호사에게 개인회생 면책신청서 제출이 성공적으로 위임 요청되었습니다.');
+            }}
+            disabled={isDischargeRequested}
+            className={`px-5 py-3 rounded-2xl text-xs font-black transition-all shadow-lg cursor-pointer press-scale shrink-0 whitespace-nowrap flex items-center gap-2 ${
+              isDischargeRequested
+                ? 'bg-emerald-500 text-slate-950 cursor-default'
+                : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>{isDischargeRequested ? '✅ 면책신청 접수 위임완료' : '🏆 변호사에게 별도 면책신청 위임하기'}</span>
+          </button>
+        </div>
+      )}
+
       {/* ═══ 0. 미납 & 폐지위험 스마트 경보 배너 (위험 감지 시만 노출) ═══ */}
       {overdueRisk.riskLevel !== 'safe' && (
         <div className="p-5 rounded-3xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
@@ -203,6 +249,19 @@ export default function CompanionDashboard({
               <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand shrink-0" />
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsCreditorMeetingModalOpen(true)}
+            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 rounded-2xl text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center justify-between transition-all cursor-pointer group active:scale-[0.98]"
+            title="채권자집회 출석 가이드"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>채권자집회 출석 가이드</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-indigo-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </button>
 
           <button
             type="button"
@@ -709,6 +768,14 @@ export default function CompanionDashboard({
         onClose={() => setIsDiscoveryModalOpen(false)}
         clientName={caseData.alias || '의뢰인'}
         clientPhone="010-0000-0000"
+      />
+
+      {/* 채권자집회 출석 완벽 가이드 모달 */}
+      <CreditorMeetingGuideModal
+        isOpen={isCreditorMeetingModalOpen}
+        onClose={() => setIsCreditorMeetingModalOpen(false)}
+        courtName={caseData.courtName}
+        caseNumber={caseData.caseNumber}
       />
     </div>
   );

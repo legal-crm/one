@@ -6,7 +6,9 @@ import {
 } from '../../../types';
 import { 
   loadRehabCompanionCase, 
+  loadRehabCompanionCaseForClient,
   saveRehabCompanionCase,
+  syncCompanionWithCrmCase,
   loadBankruptcyCase 
 } from '../../../services/companionService';
 import CompanionDashboard from './CompanionDashboard';
@@ -21,20 +23,48 @@ import { toast } from 'sonner';
 
 interface RehabCompanionViewProps {
   userAlias?: string;
+  clientId?: string;
   onNavigateToChat?: (reqId?: string) => void;
   onNavigateToLawyers?: () => void;
 }
 
 export default function RehabCompanionView({
   userAlias = '회원',
+  clientId,
   onNavigateToChat,
   onNavigateToLawyers
 }: RehabCompanionViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'support' | 'academy'>('dashboard');
   const [caseTypeMode, setCaseTypeMode] = useState<'rehab' | 'bankruptcy'>('rehab');
   
-  const [rehabCase, setRehabCase] = useState<RehabCompanionCase>(() => loadRehabCompanionCase());
+  const [rehabCase, setRehabCase] = useState<RehabCompanionCase>(() => {
+    // CRM에 연동된 실제 사건 데이터가 있다면 우선 동기화
+    if (clientId) {
+      try {
+        const crmData = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
+        const ext = crmData[clientId];
+        if (ext && (ext.courtCase || ext.decisionSummary || ext.repaymentPlan)) {
+          return syncCompanionWithCrmCase(clientId, ext, userAlias);
+        }
+      } catch { /* ignore */ }
+    }
+    return loadRehabCompanionCaseForClient(clientId);
+  });
   const [bankruptcyCase, setBankruptcyCase] = useState<BankruptcyCompanionCase>(() => loadBankruptcyCase());
+
+  useEffect(() => {
+    if (clientId) {
+      try {
+        const crmData = JSON.parse(localStorage.getItem('legal_crm_data') || '{}');
+        const ext = crmData[clientId];
+        if (ext && (ext.courtCase || ext.decisionSummary || ext.repaymentPlan)) {
+          setRehabCase(syncCompanionWithCrmCase(clientId, ext, userAlias));
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+    setRehabCase(loadRehabCompanionCaseForClient(clientId));
+  }, [clientId, userAlias]);
   
   // 모달 상태
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -43,7 +73,7 @@ export default function RehabCompanionView({
   const [selectedRoundItem, setSelectedRoundItem] = useState<RepaymentRoundItem | null>(null);
 
   const refreshData = () => {
-    setRehabCase(loadRehabCompanionCase());
+    setRehabCase(loadRehabCompanionCaseForClient(clientId));
     setBankruptcyCase(loadBankruptcyCase());
   };
 

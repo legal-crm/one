@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { 
   Scale, FileEdit, Clock, CheckCircle2, AlertTriangle, 
   Send, ExternalLink, ArrowRight, Table, Sparkles, FileText,
-  ShieldCheck, RefreshCw, BellRing, Check
+  ShieldCheck, RefreshCw, BellRing, Check, Paperclip, Eye, FolderOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
+import { addClientNotification } from '../../../services/clientNotificationService';
 
 interface Stage4CorrectionCenterViewProps {
   clientRequest: ConsultRequest;
@@ -38,13 +39,41 @@ export default function Stage4CorrectionCenterView({
     { id: 7, title: '표 7. 채무 증대 경위 진술서', desc: '회생위원이 납득할 수 있는 성실한 실패 및 갱생 의지 기술' },
   ];
 
+  // 의뢰인이 업로드한 긴급 보정 소명 서류 필터링
+  const correctionFiles = (crmExt?.uploadedFiles || []).filter(
+    f => f.linkedDocId === 'correction_proof' || f.category === 'correction'
+  );
+
   // 금지명령 인용 알림톡 발송
   const handleSendProhibitionNotice = () => {
+    addClientNotification({
+      type: 'status_change',
+      title: '[금지명령 인용 결정] 채권자의 일체 독촉 전화·방문 및 급여·통장 압류가 법적으로 전면 금지되었습니다.',
+      emoji: '🛡️',
+      linkTab: 'diagnosis',
+    });
     toast.success(`${clientName}님께 "금지명령 인용 결정 안내(채권자 독촉·압류 일체 중단)" 카카오 알림톡이 발송되었습니다.`);
+  };
+
+  // 의뢰인에게 보정 소명자료 긴급 업로드 요청 알림
+  const handleRequestCorrectionDoc = () => {
+    addClientNotification({
+      type: 'status_change',
+      title: '[보정 소명자료 긴급 요청] 회생위원 보정권고에 따른 소명서류(대출금 사용처/통장내역)를 업로드해 주세요.',
+      emoji: '⚠️',
+      linkTab: 'diagnosis',
+    });
+    toast.success(`${clientName}님께 보정 소명자료 긴급 업로드 요청 알림이 전송되었습니다.`);
   };
 
   // 보정서 전자 제출
   const handleSubmitCorrection = () => {
+    addClientNotification({
+      type: 'status_change',
+      title: '[법원 보정서 제출 완료] 회생위원 보정요구에 대한 소명서가 대법원 전자소송에 정상 접수되었습니다.',
+      emoji: '📋',
+      linkTab: 'diagnosis',
+    });
     toast.success('보정서 및 7대 표 소명서가 대법원 전자소송에 접수 완료되었습니다.');
   };
 
@@ -139,6 +168,75 @@ export default function Stage4CorrectionCenterView({
         </div>
       </div>
 
+      {/* ═══ 의뢰인이 마이페이지에서 업로드한 긴급 보정 소명자료 수합함 ═══ */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+              <Paperclip className="w-4 h-4 text-amber-600" />
+              의뢰인 긴급 보정 소명자료 수합함 (마이페이지 연동)
+            </span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              correctionFiles.length > 0 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}>
+              {correctionFiles.length > 0 ? `${correctionFiles.length}건 소명자료 접수됨` : '소명자료 대기중'}
+            </span>
+          </div>
+
+          <button
+            onClick={handleRequestCorrectionDoc}
+            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <BellRing className="w-3.5 h-3.5 text-amber-600" />
+            <span>의뢰인 소명자료 제출 재요청 알림</span>
+          </button>
+        </div>
+
+        {correctionFiles.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {correctionFiles.map((file, idx) => (
+              <div key={file.id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 shrink-0">
+                    <FileText className="w-4 h-4 text-brand" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 truncate block">{file.name}</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      {file.uploadedAt ? new Date(file.uploadedAt).toLocaleString('ko-KR') : '최근 제출'}
+                      {file.fileSize ? ` · ${(file.fileSize / 1024).toFixed(0)}KB` : ''}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {file.dataUrl && (
+                    <a
+                      href={file.dataUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3 text-slate-500" />
+                      보기
+                    </a>
+                  )}
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">
+                    소명 증빙
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500 space-y-1">
+            <p className="font-medium">의뢰인이 마이페이지 긴급 소명 창구에서 제출한 통장 사본, 영수증 등이 여기에 실시간 동기화됩니다.</p>
+            <p className="text-[11px] text-slate-400">의뢰인이 소명파일을 등록하면 별지 소명표에 증빙으로 자동 반영할 수 있습니다.</p>
+          </div>
+        )}
+      </div>
+
       {/* ⭐ 리걸플로 벤치마킹 핵심: 7대 표 템플릿 별지 소명서 에디터 */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
@@ -152,6 +250,15 @@ export default function Stage4CorrectionCenterView({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {onOpenComprehensiveCorrectionModal && (
+              <button
+                onClick={onOpenComprehensiveCorrectionModal}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <FolderOpen className="w-3.5 h-3.5 text-slate-600" />
+                <span>종합 보정센터 전체보기</span>
+              </button>
+            )}
             <button
               onClick={handleSubmitCorrection}
               className="px-3 py-1.5 bg-brand hover:bg-brand-dark text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center gap-1 cursor-pointer"

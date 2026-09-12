@@ -13,6 +13,7 @@ import {
   type ScourtCaseDetail 
 } from '../../services/scourtService';
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
+import { syncCompanionWithCrmCase } from '../../services/companionService';
 
 interface CourtCaseTabProps {
   clientId: string;
@@ -127,17 +128,24 @@ export default function CourtCaseTab({
 
       setCourtDetail(detail);
 
+      const updatedCourtCase = {
+        caseNumber: detail.caseNumber,
+        courtName: detail.courtName,
+        caseType: (detail.caseType.includes('회생') ? '개인회생' : '개인파산') as any,
+        filedDate: detail.filedDate,
+        lastSyncedAt: detail.lastSyncedAt,
+        events: detail.events
+      };
+
       // CRM Extension에 동기화 정보 저장
       await onUpdateCrmExt({
-        courtCase: {
-          caseNumber: detail.caseNumber,
-          courtName: detail.courtName,
-          caseType: (detail.caseType.includes('회생') ? '개인회생' : '개인파산') as any,
-          filedDate: detail.filedDate,
-          lastSyncedAt: detail.lastSyncedAt,
-          events: detail.events
-        }
+        courtCase: updatedCourtCase
       });
+
+      // 의뢰인 동행 서비스에도 실제 법원 사건번호 실시간 동기화
+      try {
+        syncCompanionWithCrmCase(clientId, { ...crmExt, courtCase: updatedCourtCase }, clientName);
+      } catch { /* ignore */ }
 
       toast.success(
         detail.isB2BLive
