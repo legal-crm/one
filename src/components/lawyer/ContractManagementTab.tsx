@@ -3,7 +3,7 @@ import {
   FileSignature, Clock, CheckCircle2, Plus, Search, Eye, Trash2, 
   RefreshCw, FolderKanban, Download, AlertTriangle, Send, 
   ExternalLink, ShieldCheck, Printer, ArrowRight, User, Building2, 
-  Check, X, FileText, ChevronRight, BellRing, Sparkles 
+  Check, X, FileText, ChevronRight, BellRing, Sparkles, Edit3 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -437,7 +437,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                 <th className="p-3.5 text-center">계약 문서 현황</th>
                 <th className="p-3.5 text-center">무결성·서명 검증</th>
                 <th className="p-3.5 text-center">체결 상태</th>
-                <th className="p-3.5 text-center">관리 액션</th>
+                <th className="p-3.5 text-center min-w-[260px]">관리 액션</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -544,23 +544,24 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                       </td>
 
                       {/* 관리 액션 */}
-                      <td className="p-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1 flex-wrap">
-                          {/* 1. 전문 열람 모달 */}
+                      <td className="p-3.5 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+                          {/* 1. 전문 열람 (기본 공통) */}
                           <button
                             onClick={() => setViewingContract(c)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                            className="h-7.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
                             title="계약서 전문 및 감사증서 열람"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 text-slate-600" />
                             <span>전문 열람</span>
                           </button>
 
-                          {/* 2. 체결 완료 건: 법원 제출용 일체형 PDF 다운로드 */}
+                          {/* 2. 상태별 핵심 액션 */}
+                          {/* (1) 서명 완료: 법원 제출용 일체형 PDF 다운로드 */}
                           {c.status === 'completed' && (
                             <button
                               onClick={() => generateCourtSubmissionPdf(c)}
-                              className="flex items-center gap-1 px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                              className="h-7.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
                               title="감사증서 및 블록체인 각인이 포함된 법원제출용 통합 PDF 다운로드"
                             >
                               <Download className="w-3.5 h-3.5 text-emerald-600" />
@@ -568,38 +569,23 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* 3. 체결 완료 건: 블록체인 원본 검증기 */}
+                          {/* (2) 서명 완료: 블록체인 원본 검증기 */}
                           {c.status === 'completed' && (
                             <button
                               onClick={() => setVerifyModalContract(c)}
-                              className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                              className="h-7.5 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
                               title="블록체인 분산원장 원본 검증 팝업 열기"
                             >
-                              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
                               <span>검증</span>
                             </button>
                           )}
 
-                          {/* 4. CRM 이동 버튼 */}
-                          {onNavigateToCrm && (
-                            <button
-                              onClick={() => {
-                                onNavigateToCrm();
-                                toast.info(`[${c.clientName}] 의뢰인의 CRM 상세 화면으로 이동합니다.`);
-                              }}
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-brand/10 hover:bg-brand/20 text-brand font-bold rounded-lg text-xs transition-colors cursor-pointer"
-                              title="고객 CRM 상세 페이지로 바로 이동"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>CRM 이동</span>
-                            </button>
-                          )}
-
-                          {/* 5. 서명 진행/지체 건인 경우 재촉 알림톡 버튼 */}
+                          {/* (3) 서명 진행/지체 건: 재촉 알림톡 버튼 */}
                           {(c.status === 'signing' || overdue) && (
                             <button
                               onClick={() => handleSendReminder(c)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                              className="h-7.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
                               title="골든타임 재촉 알림톡 미리보기 및 발송"
                             >
                               <Send className="w-3.5 h-3.5 text-amber-700" />
@@ -607,22 +593,38 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                             </button>
                           )}
 
-                          {/* 6. 작성중인 경우 마법사 수정 */}
+                          {/* (4) 작성중인 경우 마법사 수정 */}
                           {c.status === 'drafting' && (
                             <button
                               onClick={() => setEditingContract(c)}
-                              className="px-2 py-1.5 text-slate-500 hover:text-slate-800 rounded-lg text-xs font-bold cursor-pointer"
-                              title="마법사에서 수정"
+                              className="h-7.5 px-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
+                              title="계약서 마법사에서 수정"
                             >
-                              수정
+                              <Edit3 className="w-3.5 h-3.5 text-purple-600" />
+                              <span>수정</span>
                             </button>
                           )}
 
-                          {/* 7. 삭제 버튼 */}
+                          {/* 3. CRM 이동 버튼 (공통 연동) */}
+                          {onNavigateToCrm && (
+                            <button
+                              onClick={() => {
+                                onNavigateToCrm();
+                                toast.info(`[${c.clientName}] 의뢰인의 CRM 상세 화면으로 이동합니다.`);
+                              }}
+                              className="h-7.5 px-2.5 bg-blue-50/80 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 press-scale active:scale-95 shadow-2xs cursor-pointer"
+                              title="고객 CRM 상세 페이지로 바로 이동"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                              <span>CRM 이동</span>
+                            </button>
+                          )}
+
+                          {/* 4. 삭제 버튼 (우측 끝 정렬) */}
                           <button
                             onClick={() => handleDelete(c.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
-                            title="삭제"
+                            className="h-7.5 w-7.5 inline-flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl cursor-pointer transition-colors press-scale active:scale-95"
+                            title="계약 삭제"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
