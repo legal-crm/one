@@ -10,6 +10,9 @@ import { RehabCalculationResult, RehabUserInput, formatCurrency } from '../../re
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
 const RehabResultReport = React.lazy(() => import('../../rehab-chatbot-package/components/rehab/RehabResultReport'));
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
+import { createContract, saveContract } from '../../services/contractService';
+import { updateCrmClientExtension } from '../../services/crmService';
+import confetti from 'canvas-confetti';
 
 interface BannerProps {
   onClose: () => void;
@@ -165,6 +168,55 @@ export default function ChatView({
   useEffect(() => {
     setAppointedLawyerId(localStorage.getItem('legal_crm_appointed_lawyer_id'));
   }, [activeChatReqId]);
+
+  // 제안서 조건으로 즉시 수임계약 체결 핸들러 (채팅방 내 원스톱 계약)
+  const handleAppointLawyerFromChat = async (proposal: ConsultProposal) => {
+    if (!currentRequest) return;
+    const confirmed = await dialog.confirm({
+      title: `${proposal.lawyerName} 변호사 수임계약 체결`,
+      message: `${proposal.lawyerName} 변호사의 제안 조건(예상 탕감률 ${proposal.reductionRate}%, 수임료 ${proposal.fee}만원, ${proposal.installment})으로 전자 수임계약을 진행하시겠습니까?\n\n계약 체결 후 본격적인 사건 절차 및 법원 서류 준비가 시작됩니다.`,
+      confirmText: '전자계약 체결하기',
+      cancelText: '더 상담하기',
+      variant: 'primary'
+    });
+
+    if (!confirmed) return;
+
+    try {
+      const newContract = createContract({
+        clientId: currentRequest.id,
+        clientRefId: currentRequest.id,
+        clientName: currentRequest.clientName || '의뢰인',
+        clientPhone: currentRequest.phone || '010-0000-0000',
+        lawyerName: proposal.lawyerName,
+        lawyerId: proposal.lawyerId,
+        totalFee: proposal.fee,
+        downPayment: Math.min(proposal.fee, 50),
+        installmentCount: 6,
+        caseType: '개인회생 정식 사건'
+      });
+
+      newContract.signedAt = new Date().toISOString();
+      newContract.status = 'completed' as any;
+      newContract.clientSignature = '전자서명 완료(모바일 본인인증)';
+      await saveContract(newContract);
+
+      await updateCrmClientExtension(currentRequest.id, {
+        thirteenStage: 'contract_done',
+        contractSignedAt: new Date().toISOString(),
+        assignedLawyerName: proposal.lawyerName
+      });
+
+      currentRequest.status = 'contracted';
+      currentRequest.assignedLawyerId = proposal.lawyerId;
+
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      toast.success(`${proposal.lawyerName} 변호사님과의 정식 수임계약이 완료되었습니다!`);
+      setSelectedProposalForReport(null);
+    } catch (err) {
+      toast.error('계약 체결 처리 중 오류가 발생했습니다.');
+    }
+  };
 
 
   // financialProfile → RehabUserInput 재구성 (상세 진단서 표시용)
@@ -898,14 +950,26 @@ export default function ChatView({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProposalForReport(currentChatProposal)}
-                    className="px-3.5 py-2 bg-blue-500 hover:bg-blue-400 text-white text-xs font-black rounded-xl shadow transition-all shrink-0 flex items-center gap-1 cursor-pointer active:scale-95"
-                  >
-                    <span>의견서 열람</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProposalForReport(currentChatProposal)}
+                      className="px-3 py-1.5 bg-blue-500/30 hover:bg-blue-500/50 text-blue-200 hover:text-white text-xs font-bold rounded-xl border border-blue-400/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                    >
+                      <span>제안서 열람</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                    {currentRequest?.status !== 'contracted' && (
+                      <button
+                        type="button"
+                        onClick={() => handleAppointLawyerFromChat(currentChatProposal)}
+                        className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>수임계약 체결</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1517,6 +1581,8 @@ export default function ChatView({
           onClose={() => setSelectedProposalForReport(null)}
           proposal={selectedProposalForReport}
           clientInfo={currentRequest || activeResult}
+          onAppointLawyer={() => handleAppointLawyerFromChat(selectedProposalForReport)}
+          onAcceptProposal={() => handleAppointLawyerFromChat(selectedProposalForReport)}
         />
       )}
 

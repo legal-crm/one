@@ -12,10 +12,11 @@ import { secureGetItem } from '../../utils/secureStorage';
 import { mockLawyers } from '../../data';
 import MobileScanner from '../lawyer/MobileScanner';
 import { loadFeeNotificationSettings } from '../../services/alimtokService';
-import { loadContractsLocal } from '../../services/contractService';
+import { loadContractsLocal, createContract, saveContract } from '../../services/contractService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import RehabCompanionView from './companion/RehabCompanionView';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
+import ClientProposalTracker from './proposal/ClientProposalTracker';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
 import { calculateKoreanAgeInfo, parseFamilyDocument } from '../../services/documents/familyParserService';
@@ -60,8 +61,8 @@ export default function MyPageView({
 }: MyPageViewProps) {
   const dialog = useDialog();
 
-  // 마이페이지 3대 서브 탭 (기본값: 'companion' - 회생완주동행 메인, initialSubTab 지원)
-  const [mypageTab, setMypageTab] = useState<'companion' | 'diagnosis' | 'settings'>(initialSubTab || 'companion');
+  // 마이페이지 3대 서브 탭 (계약 전에는 제안서/진단 'diagnosis' 우선 활성화)
+  const [mypageTab, setMypageTab] = useState<'companion' | 'diagnosis' | 'settings'>(initialSubTab || 'diagnosis');
 
   useEffect(() => {
     if (initialSubTab) {
@@ -148,6 +149,74 @@ export default function MyPageView({
   }, [activeRequest?.id, requests, refreshTick]);
 
   const profile = activeRequest?.financialProfile;
+
+  // 계약 체결 여부 (제안서 검토 완료 후 정식 계약 단계 진입 여부)
+  const isContracted = useMemo(() => {
+    if (clientContract && (clientContract.signedAt || clientContract.status === 'completed' || clientContract.status === 'signed')) return true;
+    if (crmExt?.thirteenStage && crmExt.thirteenStage !== 'consult_waiting' && crmExt.thirteenStage !== 'consult_completed') return true;
+    const reqStatus = activeRequest?.status || requests[0]?.status;
+    if (reqStatus && ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'].includes(reqStatus)) return true;
+    return false;
+  }, [clientContract, crmExt?.thirteenStage, activeRequest?.status, requests]);
+
+  // 제안서 조건으로 즉시 수임계약 체결 핸들러
+  const handleStartContractFromProposal = async (proposal: ConsultProposal) => {
+    const targetReq = requests.find(r => r.proposals?.some(p => p.id === proposal.id)) || activeRequest || requests[0];
+    const targetReqId = targetReq?.id || 'client-self';
+    const clientName = profile?.name || userAlias || '의뢰인';
+    const clientPhone = profile?.phone || targetReq?.phone || '010-0000-0000';
+
+    const confirmed = await dialog.confirm({
+      title: `${proposal.lawyerName} 변호사 수임계약 체결`,
+      message: `${proposal.lawyerName} 변호사의 제안 조건(예상 탕감률 ${proposal.reductionRate}%, 수임료 ${proposal.fee}만원, ${proposal.installment})으로 전자 수임계약을 진행하시겠습니까?\n\n계약 체결 후 법원 제출을 위한 필수 서류 수집 및 8대 서식 작성이 시작됩니다.`,
+      confirmText: '전자계약 체결하기',
+      cancelText: '더 검토하기',
+      variant: 'primary'
+    });
+
+    if (!confirmed) return;
+
+    try {
+      // 1. 전자계약서 생성 또는 업데이트
+      const newContract = createContract({
+        clientId: targetReqId,
+        clientRefId: targetReqId,
+        clientName,
+        clientPhone,
+        lawyerName: proposal.lawyerName,
+        lawyerId: proposal.lawyerId,
+        totalFee: proposal.fee,
+        downPayment: Math.min(proposal.fee, 50),
+        installmentCount: 6,
+        caseType: '개인회생 정식 사건'
+      });
+
+      // 2. 즉시 전자서명 완료 처리
+      newContract.signedAt = new Date().toISOString();
+      newContract.status = 'completed' as any;
+      newContract.clientSignature = '전자서명 완료(모바일 본인인증)';
+      await saveContract(newContract);
+
+      // 3. CRM 상태 업데이트 (contract_done)
+      await updateCrmClientExtension(targetReqId, {
+        thirteenStage: 'contract_done',
+        contractSignedAt: new Date().toISOString(),
+        assignedLawyerName: proposal.lawyerName
+      });
+
+      // 4. 의뢰인 요청 상태 변경
+      if (targetReq) {
+        targetReq.status = 'contracted';
+        targetReq.assignedLawyerId = proposal.lawyerId;
+      }
+
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      toast.success(`${proposal.lawyerName} 변호사님과의 정식 수임계약이 완료되었습니다!`);
+      setRefreshTick(t => t + 1);
+    } catch (err) {
+      toast.error('계약 체결 처리 중 오류가 발생했습니다.');
+    }
+  };
 
   const handleAddMypageNote = () => {
     if (!newNoteInput.trim() || !profile) return;
@@ -1748,12 +1817,16 @@ export default function MyPageView({
             }`}
           >
             <span>📋</span>
-            <span>내 채무진단 & 서류</span>
-            {allProposals.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-blue-600 text-white ml-0.5 animate-pulse">
+            <span>{!isContracted && allProposals.length > 0 ? '맞춤 제안서 & 진단' : !isContracted ? '제안서 작성 & 진단' : '내 채무진단 & 서류'}</span>
+            {!isContracted && allProposals.length > 0 ? (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950 ml-0.5 animate-bounce shadow-xs">
+                도착 {allProposals.length}
+              </span>
+            ) : allProposals.length > 0 ? (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-blue-600 text-white ml-0.5">
                 {allProposals.length}
               </span>
-            )}
+            ) : null}
           </button>
 
           <button
@@ -1862,35 +1935,48 @@ export default function MyPageView({
         );
       })()}
 
-      {/* ═══ 탭 2: 채무 진단 & 법원 서류 제출 ═══ */}
+      {/* ═══ 탭 2: 채무 진단 & 맞춤 제안서 / 법원 서류 제출 ═══ */}
       {mypageTab === 'diagnosis' && (
         <div className="space-y-6 animate-fadeIn">
-          {/* 💡 변호사 맞춤 제안서 도착 안내 배너 (내 관리방 유도 - 중복 카드 완전 제거) */}
-          {allProposals.length > 0 && (
+          {/* ═══ [제안서 중심 Proposal-First 트래커] ═══ */}
+          {/* 계약 전 단계(!isContracted)일 때는 제안서 작성 중/도착 상태를 최우선 센터피스로 렌더링 */}
+          {!isContracted && (
+            <ClientProposalTracker
+              proposals={allProposals}
+              activeRequest={activeRequest || requests[0]}
+              onViewReport={(proposal) => setSelectedProposalForReport(proposal)}
+              onNavigateToChat={(reqId) => onNavigateToChat(reqId || allProposals[0]?.req?.id)}
+              onStartContract={handleStartContractFromProposal}
+              onOpenLawyerCompare={() => onNavigateToChat(allProposals[0]?.req?.id)}
+            />
+          )}
+
+          {/* 이미 계약 완료된 경우(isContracted) 수임 제안서 보관 배너 표시 */}
+          {isContracted && allProposals.length > 0 && (
             <div className="bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 border border-blue-500/40 rounded-2xl p-4 md:p-5 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div className="w-11 h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-amber-300 shrink-0">
-                  <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+                  <Sparkles className="w-5 h-5 text-amber-400" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-sm md:text-base text-white">변호사 맞춤 제안서 & 정밀 진단 리포트 도착</span>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 text-xs font-bold border border-blue-400/30">
-                      {allProposals.length}건
+                    <span className="font-extrabold text-sm md:text-base text-white">수임 변호사 제안서 & 진단 리포트 보관함</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 text-xs font-bold border border-emerald-400/30">
+                      수임 체결됨
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    변호사 제안서 비교, 7p 법률의견서 열람 및 1:1 비밀 상담은 <strong>내 관리방</strong>에서 진행하실 수 있습니다.
+                    체결된 맞춤 제안서 및 7p 법률의견서 전문을 언제든 열람하실 수 있습니다.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => onNavigateToChat(allProposals[0]?.req?.id)}
-                className="min-h-[44px] px-5 py-2.5 bg-gradient-to-r from-brand to-indigo-600 hover:from-brand-hover hover:to-indigo-700 text-white text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap active:scale-[0.98] shrink-0"
+                onClick={() => setSelectedProposalForReport(allProposals[0]?.proposal)}
+                className="min-h-[44px] px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap active:scale-[0.98] shrink-0"
               >
-                <MessageSquare className="w-4 h-4" />
-                <span>내 관리방에서 확인 & 상담하기</span>
+                <FileText className="w-4 h-4" />
+                <span>제안서 리포트 열람</span>
                 <ChevronRight className="w-4 h-4 text-white/70" />
               </button>
             </div>
@@ -2242,7 +2328,11 @@ export default function MyPageView({
                                   현재 심리 상태: {currentThirteenConfig ? `${currentThirteenConfig.label} (${currentThirteenIdx + 1}/13단계)` : CRM_STATUS_CONFIG[currentStatus]?.label}
                                 </p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                  {thirteenStage === 'consult_waiting' && '상담 신청이 접수되었습니다. 도산전문 변호사가 배정되어 사건 검토를 준비 중입니다.'}
+                                  {thirteenStage === 'consult_waiting' && (
+                                    allProposals.length > 0 
+                                      ? '🎉 담당 변호사의 맞춤 제안서가 도착했습니다! 상단 제안서를 확인하시고 추가 상담 또는 수임계약을 진행해 주세요.' 
+                                      : '상담 신청이 접수되었습니다. 도산전문 변호사가 배정되어 의뢰인의 채무 데이터를 정밀 분석하고 맞춤 제안서를 작성하고 있습니다.'
+                                  )}
                                   {thirteenStage === 'consult_completed' && '담당 변호사와 1:1 상담이 완료되었습니다. 맞춤 채무조정 계획을 확인해 주세요.'}
                                   {thirteenStage === 'contract_done' && '정식 수임계약이 완료되었습니다. 관공서 필수 서류 및 AI 음성 진술서를 준비해 주세요.'}
                                   {thirteenStage === 'doc_prep' && '법원 제출 필수 서류를 수집 중입니다. 아래 서류함에서 파일을 안전하게 업로드해 주세요.'}
@@ -2255,7 +2345,11 @@ export default function MyPageView({
                                   {thirteenStage === 'confirmation' && '🎉 변제계획 인가결정이 최종 확정되었습니다! 이제 변제금을 성실히 납부하시면 면책을 받으실 수 있습니다.'}
                                   {thirteenStage === 'completed' && '🎉 36개월 성실 변제가 완주되었습니다! 법원에 별도 면책신청서를 제출하여 최종 면책 결정을 받으세요.'}
                                   {!thirteenStage && (
-                                    currentStatus === 'requested' ? '상담 신청이 접수되었습니다. 변호사 상담 수락을 기다리고 있습니다.' :
+                                    currentStatus === 'requested' ? (
+                                      allProposals.length > 0
+                                        ? '🎉 담당 변호사의 맞춤 제안서가 도착했습니다! 상단 제안서를 확인해 주세요.'
+                                        : '상담 신청이 접수되었습니다. 변호사가 맞춤 솔루션 및 제안서를 작성하고 있습니다.'
+                                    ) :
                                     currentStatus === 'consulting' ? '담당 변호사와 초기 상담이 진행 중입니다. 채팅방에서 문의하세요.' :
                                     currentStatus === 'contracted' ? '수임 계약이 완료되었습니다. 필요 서류를 준비해 주세요.' :
                                     currentStatus === 'document' ? '서류 수집 중입니다. 아래에서 서류를 업로드하실 수 있습니다.' :
@@ -2897,6 +2991,16 @@ export default function MyPageView({
       onClose={() => setSelectedProposalForReport(null)}
       proposal={selectedProposalForReport}
       clientInfo={activeRequest || requests[0]}
+      onContactLawyer={() => {
+        const targetReqId = activeRequest?.id || requests[0]?.id;
+        setSelectedProposalForReport(null);
+        onNavigateToChat(targetReqId);
+      }}
+      onAppointLawyer={() => {
+        const propToAppoint = selectedProposalForReport;
+        setSelectedProposalForReport(null);
+        handleStartContractFromProposal(propToAppoint);
+      }}
     />
   )}
 
