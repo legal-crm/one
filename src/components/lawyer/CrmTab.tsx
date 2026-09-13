@@ -2557,6 +2557,7 @@ export default function CrmTab({
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
                           activeLawyer={activeLawyer}
+                          activeStaff={activeStaff}
                           onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
                           onAdvanceToNextStage={() => setPipelineStage(3)}
                           onOpenContractSubTab={() => {
@@ -2564,6 +2565,9 @@ export default function CrmTab({
                             setDetailTab('contracts');
                           }}
                           onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
+                          onUpdateCrmExt={async (patch) => {
+                            await updateCrmExt(selectedId, patch);
+                          }}
                         />
                       )}
                       {pipelineStage === 3 && (
