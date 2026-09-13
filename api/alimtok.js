@@ -38,13 +38,14 @@ export default async function handler(req, res) {
   }
 
   // URL 쿼리 파라미터 파싱
-  let isStatusQuery = false;
+  let actionQuery = '';
   try {
     const url = new URL(req.url, 'https://mykim.kr');
-    if (url.searchParams.get('action') === 'status') isStatusQuery = true;
+    actionQuery = url.searchParams.get('action') || '';
   } catch (_) {}
 
-  const isStatus = req.method === 'GET' || isStatusQuery || req.query?.action === 'status' || req.body?.action === 'status';
+  const action = actionQuery || req.query?.action || req.body?.action || '';
+  const isStatus = req.method === 'GET' || action === 'status' || action === 'templates' || action === 'template_mgt_url';
 
   // [SECURITY] Multi-Tier Rate Limiting (1분 3회, 10분 5회, 30분 10회 + 30분 Jail)
   const forwarded = req.headers['x-forwarded-for'];
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // A. [STATUS / 잔액 조회] 팝빌 연동 상태 및 잔여 포인트 확인
+  // A. [STATUS / 템플릿 / 관리URL 조회] 팝빌 연동 상태 및 승인 템플릿 목록
   // ─────────────────────────────────────────────────────────────
   if (isStatus) {
     if (!POPBILL_CONFIG.isConfigured) {
@@ -87,11 +88,37 @@ export default async function handler(req, res) {
         senders: [POPBILL_CONFIG.senderPhone],
         plusFriends: [{ plusFriendID: POPBILL_CONFIG.plusFriendId, state: 'READY' }],
         templates: [],
+        templateMgtUrl: 'https://www.popbill.com/KakaoTalk/?TG=TEMPLATE',
       });
     }
 
     try {
       const corpNum = POPBILL_CONFIG.corpNum;
+
+      // 팝빌 템플릿 관리 및 심사 신청 SSO URL
+      const templateMgtUrl = await new Promise((resolve, reject) => {
+        kakaoService.getATSTemplateMgtURL(corpNum, POPBILL_CONFIG.userId, (url) => resolve(url), (err) => reject(err));
+      }).catch(() => 'https://www.popbill.com/KakaoTalk/?TG=TEMPLATE');
+
+      if (action === 'template_mgt_url') {
+        return res.status(200).json({
+          ok: true,
+          templateMgtUrl,
+        });
+      }
+
+      const templates = await new Promise((resolve, reject) => {
+        kakaoService.listATSTemplate(corpNum, (res) => resolve(res), (err) => reject(err));
+      }).catch(() => []);
+
+      if (action === 'templates') {
+        return res.status(200).json({
+          ok: true,
+          configured: true,
+          templates,
+          templateMgtUrl,
+        });
+      }
 
       const balance = await new Promise((resolve, reject) => {
         kakaoService.getBalance(corpNum, (res) => resolve(res), (err) => reject(err));
@@ -109,21 +136,6 @@ export default async function handler(req, res) {
         kakaoService.listPlusFriendID(corpNum, (res) => resolve(res), (err) => reject(err));
       }).catch(() => []);
 
-      const templates = await new Promise((resolve, reject) => {
-        kakaoService.listATSTemplate(corpNum, (res) => resolve(res), (err) => reject(err));
-      }).catch(() => []);
-
-      // [SECURITY] 비인가 사용자는 민감한 사업자번호 및 실시간 잔액 은닉
-      const hasAuth = Boolean(req.headers.authorization && req.headers.authorization.startsWith('Bearer '));
-      if (!hasAuth) {
-        return res.status(200).json({
-          ok: true,
-          configured: true,
-          channelStatus: plusFriends.length > 0 ? 'CONNECTED' : 'STANDBY',
-          statusMessage: '알림톡 발송 서비스 가동 중'
-        });
-      }
-
       return res.status(200).json({
         ok: true,
         configured: true,
@@ -139,6 +151,7 @@ export default async function handler(req, res) {
         senders,
         plusFriends,
         templates,
+        templateMgtUrl,
       });
     } catch (err) {
       console.error('[Popbill Status Check Error]:', err);
@@ -147,6 +160,7 @@ export default async function handler(req, res) {
         configured: true,
         error: err.message || '팝빌 상태 조회 중 오류가 발생했습니다.',
         code: err.code || -1,
+        templateMgtUrl: 'https://www.popbill.com/KakaoTalk/?TG=TEMPLATE',
       });
     }
   }
