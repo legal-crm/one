@@ -6,7 +6,7 @@ import {
   FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
   Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
   Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
-  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock
+  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';

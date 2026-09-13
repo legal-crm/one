@@ -3,7 +3,7 @@ import {
   Building2, Home, Briefcase, CreditCard, ShieldCheck, 
   Upload, Eye, CheckCircle2, AlertCircle, Clock, FileText,
   FileSpreadsheet, ArrowRight, Camera, RefreshCw, AlertTriangle,
-  Send, ExternalLink, HelpCircle, Settings2, Smartphone, Sparkles
+  Send, ExternalLink, HelpCircle, Settings2, Smartphone, Sparkles, FolderArchive
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';
