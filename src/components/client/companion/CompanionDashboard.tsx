@@ -5,7 +5,7 @@ import {
   TrendingUp, AlertTriangle, ShieldCheck, Copy, 
   ChevronRight, ArrowUpRight, Sparkles, Upload, 
   Layers, Percent, Activity, RefreshCw, Send, Check,
-  ExternalLink, Search, Award, AlertOctagon, FileSpreadsheet
+  ExternalLink, Search, Award, AlertOctagon, FileSpreadsheet, Users
 } from 'lucide-react';
 import { getCourtSearchDeepLink, evaluateOverdueRisk } from '../../../services/companionService';
 import CourtCaseModal from './CourtCaseModal';

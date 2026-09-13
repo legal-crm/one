@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell, CheckCircle2, XCircle, RotateCcw, Send, Download, ExternalLink, ChevronDown, ChevronUp, FileCheck } from 'lucide-react';
+import { MessageSquare, Edit2, Check, X, Shield, AlertTriangle, Users, DollarSign, Home, CreditCard, Scale, Sparkles, HelpCircle, Save, ArrowLeft, Coins, Percent, Plus, Trash2, FileText, Upload, Camera, CheckCircle, Clock, ChevronRight, Bell, CheckCircle2, XCircle, RotateCcw, Send, Download, ExternalLink, ChevronDown, ChevronUp, FileCheck, Copy } from 'lucide-react';
 import type { ConsultRequest, ConsultProposal, CrmStatus, FeeInstallment, DocumentReviewStatus, DocumentCheckItem, DocumentRequest, DocumentFile, ElectronicContract } from '../../types';
 import { CRM_STATUS_CONFIG, DOC_REVIEW_STATUS_CONFIG } from '../../types';
 import type { RehabCalculationResult } from '../../rehab-chatbot-package/services/calculationService';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
-import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount } from '../../services/clientNotificationService';
-import { submitClientDocument, updateCrmClientExtension } from '../../services/crmService';
+import { loadClientNotifications, markAsRead, markAllAsRead, getUnreadCount, type ClientNotification } from '../../services/clientNotificationService';
+import { submitClientDocument, updateCrmClientExtension, getCrmClientSync } from '../../services/crmService';
 import { secureGetItem } from '../../utils/secureStorage';
 import { mockLawyers } from '../../data';
 import MobileScanner from '../lawyer/MobileScanner';
@@ -135,6 +135,17 @@ export default function MyPageView({
       return null;
     }
   }, [activeRequest, requests, activeRequest?.financialProfile, userAlias, refreshTick]);
+
+  // CRM 확장 상세 정보 (13단계 심리 상태, 법원 사건정보, 보정권고 연동)
+  const crmExt = useMemo(() => {
+    try {
+      const clientId = activeRequest?.id || requests[0]?.id;
+      if (!clientId) return null;
+      return getCrmClientSync(clientId);
+    } catch {
+      return null;
+    }
+  }, [activeRequest?.id, requests, refreshTick]);
 
   const profile = activeRequest?.financialProfile;
 

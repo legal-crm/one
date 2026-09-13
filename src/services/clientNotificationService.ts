@@ -7,7 +7,7 @@ export interface ClientNotification {
   id: string;
   type: 'status_change' | 'new_message' | 'document_request' | 'fee_reminder' | 'notice' | 'system';
   title: string;
-  body: string;
+  body?: string;
   createdAt: string;
   isRead: boolean;
   linkTab?: string;
@@ -30,6 +30,7 @@ export function addClientNotification(notif: Omit<ClientNotification, 'id' | 'cr
   const notifications = loadClientNotifications();
   const newNotif: ClientNotification = {
     ...notif,
+    body: notif.body || '',
     id: `cn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     isRead: false,

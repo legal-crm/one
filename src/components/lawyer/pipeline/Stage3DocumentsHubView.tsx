@@ -4,7 +4,7 @@ import {
   Upload, Eye, CheckCircle2, AlertCircle, Clock, FileText,
   ArrowRight, Camera, RefreshCw, AlertTriangle, Send, 
   ExternalLink, Smartphone, Sparkles, FolderArchive, Check,
-  RotateCcw, Filter
+  RotateCcw, Filter, FileCheck2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, DocumentFile } from '../../../types';

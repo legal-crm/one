@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, Landmark, Calendar, AlertTriangle, CheckCircle2, 
   Copy, ArrowRight, ShieldCheck, Users, Clock, Send,
-  AlertOctagon, Scale, ShieldAlert, Sparkles, MessageSquare, Printer
+  AlertOctagon, Scale, ShieldAlert, Sparkles, MessageSquare, Printer, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
