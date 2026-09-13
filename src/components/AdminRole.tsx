@@ -405,10 +405,11 @@ export default function AdminRole({
       setIsGoogleLoggingIn(true);
       setLoginError('');
       sessionStorage.setItem('pending_admin_oauth', 'true');
+      const adminRolePath = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_auth';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/?role=adm_sec_9k7q`
+          redirectTo: `${window.location.origin}/?role=${adminRolePath}`
         }
       });
       if (error) throw error;

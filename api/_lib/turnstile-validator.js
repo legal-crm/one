@@ -12,8 +12,11 @@ const DUMMY_SECRET_KEY = '1x0000000000000000000000000000000AA';
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
 export async function verifyTurnstileToken(token, remoteIp = '') {
-  // 개발 모드이거나 토큰이 mock_turnstile_pass인 경우 통과
-  if (token === 'mock_turnstile_pass' || token === 'test-bypass') {
+  const isDev = process.env.NODE_ENV === 'development' && process.env.VERCEL_ENV !== 'production';
+
+  // 로컬 개발 모드에서만 모의 토큰 허용
+  if (isDev && (token === 'mock_turnstile_pass' || token === 'test-bypass')) {
+    console.warn('[SECURITY Turnstile] Development mock bypass used.');
     return { success: true };
   }
 
@@ -21,7 +24,11 @@ export async function verifyTurnstileToken(token, remoteIp = '') {
     return { success: false, error: '봇 방지 인증(CAPTCHA) 토큰이 누락되었습니다.' };
   }
 
-  const secretKey = process.env.TURNSTILE_SECRET_KEY || DUMMY_SECRET_KEY;
+  const secretKey = process.env.TURNSTILE_SECRET_KEY || (isDev ? DUMMY_SECRET_KEY : '');
+  if (!secretKey) {
+    console.error('[SECURITY Turnstile] TURNSTILE_SECRET_KEY is not configured in production.');
+    return { success: false, error: '보안 인증 서비스 설정이 구성되지 않았습니다.' };
+  }
 
   try {
     const formData = new URLSearchParams();
@@ -51,8 +58,8 @@ export async function verifyTurnstileToken(token, remoteIp = '') {
     return { success: false, error: `비정상적인 접속 환경이 감지되었습니다. (${errorCodes})` };
   } catch (err) {
     console.error('[Turnstile] Server verification exception:', err);
-    // 검증 서버 통신 장애 시 환경에 따라 안전 처리 (개발 환경에서는 통과)
-    if (!process.env.TURNSTILE_SECRET_KEY) {
+    // 검증 서버 통신 장애 시 개발 환경에서만 안전 통과
+    if (isDev && !process.env.TURNSTILE_SECRET_KEY) {
       return { success: true };
     }
     return { success: false, error: '보안 인증 서버 연결에 실패했습니다.' };

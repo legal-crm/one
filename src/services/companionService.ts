@@ -12,6 +12,7 @@ import {
 } from '../types';
 import { CourtRepealThreshold } from '../types/courtPetitionTypes';
 import { mockLawyers } from '../data';
+import { getAuthHeaders } from '../supabaseClient';
 
 const COMPANION_STORAGE_KEY = 'mykim_rehab_companion_case';
 const CRISIS_STORAGE_KEY = 'mykim_life_crisis_reports';
@@ -465,9 +466,13 @@ export async function parseCaseDocumentOcr(file: File): Promise<CaseOcrParseResu
     });
 
     // 백엔드 AI OCR 서버리스 엔드포인트 호출 (/api/ocr-case)
+    const authHeaders = await getAuthHeaders();
     const apiRes = await fetch('/api/ocr-case', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders
+      },
       body: JSON.stringify({
         imageBase64: base64Data,
         fileName

@@ -1,17 +1,12 @@
 // Vercel Serverless Function: 공공데이터포털(data.go.kr) & 복지로 혜택 실시간 중계 API
 // GET /api/benefits?stage=approved&category=all&region=all&completedRounds=14
 
+import { handleCorsPreflight } from './_lib/cors-helper.js';
+
 const CACHE_TTL_SECONDS = 3600; // 1시간 캐시
 
 export default async function handler(req, res) {
-  // CORS 설정
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'GET') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });

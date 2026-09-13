@@ -1754,9 +1754,9 @@ export const adProducts = [
 ];
 
 export const BANK_ACCOUNT_INFO = {
-  bank: '카카오뱅크',
-  accountNumber: '3333-35-6862273',
-  holder: '진성호(몬스터랩)',
+  bank: (import.meta as any).env?.VITE_BANK_NAME || '카카오뱅크',
+  accountNumber: (import.meta as any).env?.VITE_BANK_ACCOUNT || '3333-35-6862273',
+  holder: (import.meta as any).env?.VITE_BANK_HOLDER || '진성호(몬스터랩)',
 };
 
 // ── 전담 변호사 선임 Mock Data ──

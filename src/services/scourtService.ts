@@ -5,6 +5,7 @@
 
 import { toast } from 'sonner';
 import type { CourtCaseLink, CourtEvent, CorrectionOrder } from '../types';
+import { getAuthHeaders } from '../supabaseClient';
 
 export interface CourtDeliveryItem {
   id: string;
@@ -141,9 +142,13 @@ export async function fetchCourtCase({
   }
 
   // 2. 서버리스 프록시 호출
+  const authHeaders = await getAuthHeaders();
   const res = await fetch('/api/scourt-proxy', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders
+    },
     body: JSON.stringify({
       courtName: cleanCourt,
       caseNumber: cleanCaseNumber,

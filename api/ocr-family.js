@@ -1,21 +1,58 @@
 // Vercel Serverless Function: 주민등록등본 / 가족관계증명서 실시간 AI Vision OCR 파서
 // POST /api/ocr-family
 
-export default async function handler(req, res) {
-  // CORS 설정
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+import { handleCorsPreflight } from './_lib/cors-helper.js';
+import { verifyAuth } from './_lib/auth-middleware.js';
+import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+export default async function handler(req, res) {
+  if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
+  // [SECURITY] 1. 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)
+  const authHeader = req.headers.authorization;
+  const cfToken = req.body?.turnstileToken || req.headers['x-turnstile-token'];
+
+  let isAuthorized = false;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const user = await verifyAuth(req);
+      if (user) isAuthorized = true;
+    } catch (_) {}
+  }
+
+  if (!isAuthorized && cfToken) {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+    const cfCheck = await verifyTurnstileToken(cfToken, ip);
+    if (cfCheck.success) isAuthorized = true;
+  }
+
+  // 개발 환경 로컬 테스트 편의 지원
+  if (!isAuthorized && process.env.NODE_ENV === 'development') {
+    isAuthorized = true;
+  }
+
+  if (!isAuthorized) {
+    return res.status(401).json({
+      ok: false,
+      error: '인증 토큰(Bearer) 또는 보안 인증(Turnstile)이 필요합니다.'
+    });
+  }
+
   const { imageBase64, fileName = '' } = req.body || {};
+
+  // [SECURITY] 2. 대용량 페이로드 DoS 방어 (최대 10MB 제한)
+  if (!imageBase64) {
+    return res.status(400).json({ ok: false, error: '이미지 데이터(imageBase64)가 누락되었습니다.' });
+  }
+  if (typeof imageBase64 === 'string' && imageBase64.length > 14 * 1024 * 1024) {
+    return res.status(413).json({ ok: false, error: '업로드 가능한 최대 이미지 용량(10MB)을 초과했습니다.' });
+  }
+
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
   if (geminiKey && imageBase64) {

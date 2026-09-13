@@ -2,6 +2,10 @@
 // POST /api/debt-discovery
 // 연동 대상: 한국신용정보원(크레딧포유), 금융결제원(어카운트인포), 국세청/공공마이데이터(조세·공과금), 대법원 나의사건검색
 
+import { handleCorsPreflight } from './_lib/cors-helper.js';
+import { verifyAuth } from './_lib/auth-middleware.js';
+import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
+
 let cachedToken = {
   accessToken: null,
   expiresAt: 0
@@ -245,16 +249,41 @@ function generateSimulatedDiscoveryData(clientName = '홍길동', phone = '010-0
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
+  // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)
+  const authHeader = req.headers.authorization;
+  const cfToken = req.body?.turnstileToken || req.headers['x-turnstile-token'];
+
+  let isAuthorized = false;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const user = await verifyAuth(req);
+      if (user) isAuthorized = true;
+    } catch (_) {}
+  }
+
+  if (!isAuthorized && cfToken) {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+    const cfCheck = await verifyTurnstileToken(cfToken, ip);
+    if (cfCheck.success) isAuthorized = true;
+  }
+
+  // 개발 환경 로컬 테스트 편의 지원
+  if (!isAuthorized && process.env.NODE_ENV === 'development') {
+    isAuthorized = true;
+  }
+
+  if (!isAuthorized) {
+    return res.status(401).json({
+      ok: false,
+      error: '인증 토큰(Bearer) 또는 보안 인증(Turnstile)이 필요합니다.'
+    });
   }
 
   const {

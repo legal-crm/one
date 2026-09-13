@@ -1,4 +1,5 @@
 import { FamilyMemberItem } from '../../types/incomeExpenseTypes';
+import { getAuthHeaders } from '../../supabaseClient';
 
 export interface KoreanAgeInfo {
   birthDateFormatted: string; // YYYY.MM.DD
@@ -193,9 +194,13 @@ export async function parseFamilyDocument(file: File): Promise<FamilyOcrResult> 
     });
 
     // 2. 서버리스 AI Vision 엔드포인트 호출 (/api/ocr-family)
+    const authHeaders = await getAuthHeaders();
     const apiRes = await fetch('/api/ocr-family', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders
+      },
       body: JSON.stringify({
         imageBase64: base64Data,
         fileName

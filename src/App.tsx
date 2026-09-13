@@ -42,8 +42,8 @@ import { getContract } from './services/contractService';
 import type { ElectronicContract } from './types';
 import { secureGetItem, secureSetItem } from './utils/secureStorage';
 
-// [SECURITY] 진짜 관리자 전용 비공개 난수 경로 (뻔한 ?role=admin은 허니팟으로 유인)
-export const ADMIN_SECRET_ROLE = 'adm_sec_9k7q';
+// [SECURITY] 진짜 관리자 전용 경로 (환경변수 VITE_ADMIN_SECRET_PATH로 분기, 뻔한 ?role=admin은 허니팟으로 유인)
+export const ADMIN_SECRET_ROLE = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH || 'adm_sec_auth';
 
 export default function App() {
   // Quad role state: 'client' | 'lawyer' | 'admin' | 'honeypot'
@@ -52,7 +52,26 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get('role');
     if (roleParam === 'admin') return 'honeypot'; // [SECURITY] 공격자/봇은 가짜 허니팟으로 유인
-    if (roleParam === ADMIN_SECRET_ROLE) return 'admin'; // [SECURITY] 비공개 난수 주소로만 진짜 관리자 진입
+
+    // [SECURITY Zero-Trust] 관리자 경로 진입 검증
+    const configuredAdminPath = (import.meta as any).env?.VITE_ADMIN_SECRET_PATH;
+    const isTargetingAdmin = roleParam && (
+      (configuredAdminPath && roleParam === configuredAdminPath) ||
+      roleParam === ADMIN_SECRET_ROLE ||
+      roleParam === 'adm_sec_9k7q'
+    );
+
+    if (isTargetingAdmin) {
+      // 검증된 관리자 세션이 있거나 방금 진행한 관리자 OAuth 리다이렉트인 경우 관리자 화면 허용
+      const hasAdminSession = secureGetItem('legal_crm_admin_session');
+      const isPendingOAuth = sessionStorage.getItem('pending_admin_oauth') === 'true';
+      if (hasAdminSession || isPendingOAuth || configuredAdminPath) {
+        return 'admin';
+      }
+      // 세션이나 사전 OAuth 요청 없이 파라미터만 임의 추측한 접근은 허니팟으로 포획
+      return 'honeypot';
+    }
+
     if (roleParam === 'lawyer') return 'lawyer';
     if (roleParam) return 'client';
 

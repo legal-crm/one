@@ -52,3 +52,17 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
 
 // Supabase 연결 상태 확인 유틸리티 (환경변수 존재 여부 동적 검증)
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+/**
+ * [SECURITY] 현재 세션의 Bearer 인증 헤더를 반환하는 안전한 헬퍼
+ * 백엔드 서버리스 API 호출 시 Authorization 헤더로 자동 부착
+ */
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      return { Authorization: `Bearer ${data.session.access_token}` };
+    }
+  } catch (_) {}
+  return {};
+}

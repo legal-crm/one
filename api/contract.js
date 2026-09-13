@@ -19,21 +19,7 @@ import {
 } from './_lib/rate-limiter.js';
 import { verifyAuth, supabase } from './_lib/auth-middleware.js';
 
-function setCorsHeaders(req, res) {
-  const allowedOrigins = [
-    'https://mykim.kr',
-    'https://www.mykim.kr',
-    'https://legal-crm-xi.vercel.app'
-  ];
-  const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-}
+import { setCorsHeaders } from './_lib/cors-helper.js';
 
 // 동적 네트워크 해석 헬퍼 (환경변수 기본값 + 프론트엔드 어드민 설정 오버라이드 지원)
 function resolveNetworkConfig(req) {

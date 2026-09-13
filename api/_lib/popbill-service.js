@@ -55,25 +55,4 @@ export function getTodayStr() {
 }
 
 // CORS 헤더 설정
-export function setCorsHeaders(req, res) {
-  const allowedOrigins = [
-    'https://mykim.kr',
-    'https://www.mykim.kr',
-    'https://legal-crm-xi.vercel.app'
-  ];
-  
-  if (process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview') {
-    allowedOrigins.push('http://localhost:5173');
-    allowedOrigins.push('http://localhost:3000');
-  }
-
-  const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    res.setHeader('Access-Control-Allow-Origin', '*'); 
-  }
-
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-}
+export { setCorsHeaders } from './cors-helper.js';

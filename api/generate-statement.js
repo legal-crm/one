@@ -1,18 +1,46 @@
 // Vercel Serverless Function: 개인회생·파산 진술서 Gemini 2.5 AI 작성 및 윤문 엔드포인트
 // POST /api/generate-statement
 
-export default async function handler(req, res) {
-  // CORS 헤더
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+import { handleCorsPreflight } from './_lib/cors-helper.js';
+import { verifyAuth } from './_lib/auth-middleware.js';
+import { verifyTurnstileToken } from './_lib/turnstile-validator.js';
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+export default async function handler(req, res) {
+  if (handleCorsPreflight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
+  // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)
+  const authHeader = req.headers.authorization;
+  const cfToken = req.body?.turnstileToken || req.headers['x-turnstile-token'];
+
+  let isAuthorized = false;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const user = await verifyAuth(req);
+      if (user) isAuthorized = true;
+    } catch (_) {}
+  }
+
+  if (!isAuthorized && cfToken) {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+    const cfCheck = await verifyTurnstileToken(cfToken, ip);
+    if (cfCheck.success) isAuthorized = true;
+  }
+
+  // 개발 환경 로컬 테스트 편의 지원
+  if (!isAuthorized && process.env.NODE_ENV === 'development') {
+    isAuthorized = true;
+  }
+
+  if (!isAuthorized) {
+    return res.status(401).json({
+      ok: false,
+      error: '인증 토큰(Bearer) 또는 보안 인증(Turnstile)이 필요합니다.'
+    });
   }
 
   const {

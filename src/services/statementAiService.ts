@@ -2,6 +2,7 @@ import type {
   GenerateStatementAiPayload, 
   GenerateStatementAiResponse 
 } from '../types/statementTypes';
+import { getAuthHeaders } from '../supabaseClient';
 
 /**
  * 개인회생·파산 법원 제출용 진술서 Gemini 2.5 Flash 연동 서비스
@@ -15,9 +16,13 @@ export class StatementAiService {
   ): Promise<GenerateStatementAiResponse> {
     // 1. 서버리스 API 우선 호출 시도
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch('/api/generate-statement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders
+        },
         body: JSON.stringify(payload)
       });
 
