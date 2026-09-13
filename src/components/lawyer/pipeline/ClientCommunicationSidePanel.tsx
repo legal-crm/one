@@ -5,9 +5,10 @@ import {
   Inbox, ListChecks, History, PhoneCall
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ConsultRequest, CrmClientExtension, User } from '../../../types';
+import type { ConsultRequest, CrmClientExtension, User, AlimtokMilestone } from '../../../types';
 import type { PipelineStage } from './WorkflowPipelineStepper';
 import { addClientNotification } from '../../../services/clientNotificationService';
+import AlimtalkSendConfirmModal from './AlimtalkSendConfirmModal';
 
 interface ClientCommunicationSidePanelProps {
   clientRequest: ConsultRequest;
@@ -31,7 +32,14 @@ export default function ClientCommunicationSidePanel({
   const [activeTab, setActiveTab] = useState<PanelTab>('action_required');
   const [quickMemo, setQuickMemo] = useState('');
   const [callDuration, setCallDuration] = useState('5분');
-  const [isSending, setIsSending] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    desc?: string;
+    emoji: string;
+    defaultMessage: string;
+    milestone?: AlimtokMilestone;
+  } | null>(null);
 
   const clientName = clientRequest.clientName || '고객';
   const cleanPhone = clientRequest.phone ? clientRequest.phone.replace(/[^0-9]/g, '') : '';
@@ -132,19 +140,24 @@ export default function ClientCommunicationSidePanel({
 
   const currentTemplates = stageTemplates[pipelineStage] || stageTemplates[1];
 
-  // 알림톡 템플릿 원클릭 발송
-  const handleSendTemplate = (tpl: { title: string; message: string; emoji: string }) => {
-    setIsSending(true);
-    addClientNotification({
-      type: 'status_change',
-      title: tpl.message,
+  // 알림톡 템플릿 사전 확인 팝업 오픈
+  const handleOpenSendModal = (tpl: { title: string; desc?: string; message: string; emoji: string }) => {
+    const stageMilestoneMap: Record<number, AlimtokMilestone> = {
+      1: 'consult_booked',
+      2: 'contract_signed',
+      3: 'document_request',
+      4: 'court_filed',
+      5: 'correction_order',
+      6: 'commenced',
+    };
+    setConfirmModalConfig({
+      isOpen: true,
+      title: tpl.title,
+      desc: tpl.desc,
       emoji: tpl.emoji,
-      linkTab: 'diagnosis',
+      defaultMessage: tpl.message,
+      milestone: stageMilestoneMap[pipelineStage] || 'consult_booked',
     });
-    setTimeout(() => {
-      setIsSending(false);
-      toast.success(`${clientName}님께 '${tpl.title}' 카카오 알림톡이 성공적으로 발송되었습니다.`);
-    }, 250);
   };
 
   // 메모 작성 및 저장
@@ -284,7 +297,12 @@ export default function ClientCommunicationSidePanel({
               <button
                 type="button"
                 onClick={() => {
-                  toast.success('고객 문의 답변 알림톡 템플릿이 작성기에 입력되었습니다.');
+                  handleOpenSendModal({
+                    title: '고객 질문 답변 안내',
+                    desc: '급여명세서 준비 범위 및 대체 서류 안내',
+                    emoji: '💬',
+                    message: `[답변 안내] ${clientName}님, 문의해주신 급여명세서 서류 관련 안내드립니다.\n\n급여명세서는 최근 1년(12개월)분을 준비해 주시면 되며, 회사 직인 날인이 어렵거나 발급이 어려우신 경우 급여 입금 통장 거래내역서로 대체 가능합니다. 스마트폰 마이페이지 서류함에서 촬영하여 업로드해 주시기 바랍니다.`,
+                  });
                 }}
                 className="mt-1 text-[11px] font-bold text-[#1E3A5F] hover:underline flex items-center gap-1 cursor-pointer"
               >
@@ -317,6 +335,22 @@ export default function ClientCommunicationSidePanel({
               </p>
               <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                 <div className="bg-blue-600 h-full rounded-full" style={{ width: '33%' }} />
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenSendModal({
+                      title: '미제출 서류 제출 재촉 리마인더',
+                      desc: '법원 접수 지연 방지를 위한 서류 신속 제출 독촉',
+                      emoji: '📑',
+                      message: `[서류 제출 재촉] ${clientName}님, 법원 접수를 위한 필수 서류 중 아직 미제출된 항목이 남아있습니다.\n\n서류 제출이 지체되면 채권자 추심·압류를 방지하는 [금지명령] 신청 또한 늦어지게 됩니다. 스마트폰으로 사진을 촬영하여 모바일 서류함에 업로드해 주시기 바랍니다.`,
+                    });
+                  }}
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>서류 재촉 알림톡 발송 ➔</span>
+                </button>
               </div>
             </div>
 
@@ -420,8 +454,7 @@ export default function ClientCommunicationSidePanel({
               <button
                 key={idx}
                 type="button"
-                onClick={() => handleSendTemplate(tpl)}
-                disabled={isSending}
+                onClick={() => handleOpenSendModal(tpl)}
                 className="w-full text-left p-2.5 rounded-xl border border-slate-200 hover:border-[#1E3A5F] bg-white hover:bg-slate-50 transition-all shadow-2xs group cursor-pointer press-scale space-y-0.5"
               >
                 <div className="flex items-center justify-between">
@@ -437,6 +470,28 @@ export default function ClientCommunicationSidePanel({
           </div>
         </div>
       </div>
+
+      {/* ── 카카오 알림톡 발송 전 사전 확인 & 실시간 말풍선 미리보기 모달 ── */}
+      {confirmModalConfig && confirmModalConfig.isOpen && (
+        <AlimtalkSendConfirmModal
+          isOpen={confirmModalConfig.isOpen}
+          onClose={() => setConfirmModalConfig(null)}
+          clientName={clientName}
+          clientPhone={clientRequest.phone || ''}
+          templateTitle={confirmModalConfig.title}
+          templateDesc={confirmModalConfig.desc}
+          emoji={confirmModalConfig.emoji}
+          defaultMessage={confirmModalConfig.defaultMessage}
+          firmName={activeLawyer.lawFirmName || activeLawyer.firm || '법무법인'}
+          lawyerName={activeLawyer.name || '담당 변호사'}
+          stageNumber={pipelineStage}
+          milestone={confirmModalConfig.milestone}
+          onSent={(sentMsg) => {
+            onAddNote(`[카카오 알림톡 발송 - ${confirmModalConfig.title}] ${sentMsg}`);
+            setConfirmModalConfig(null);
+          }}
+        />
+      )}
     </div>
   );
 }
