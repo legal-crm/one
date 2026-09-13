@@ -149,20 +149,29 @@ export default function App() {
       keysToRemove.forEach(key => localStorage.removeItem(key));
     } catch (_) { /* silent */ }
 
-    // OAuth 리다이렉트 후 URL에 남는 #access_token=... 또는 빈 # 제거
-    if (window.location.hash) {
-      const hash = window.location.hash;
-      const isOAuthToken = hash.includes('access_token') || hash.includes('error') || hash.includes('refresh_token');
-      if (isOAuthToken) {
-        // Supabase가 해시 토큰을 파싱할 수 있도록 2초 대기 후 제거
-        setTimeout(() => {
-          const cleanUrl = window.location.pathname + window.location.search;
-          window.history.replaceState({}, document.title, cleanUrl);
-        }, 2000);
-      } else {
-        const cleanUrl = window.location.pathname + window.location.search;
-        window.history.replaceState({}, document.title, cleanUrl);
-      }
+    // OAuth 리다이렉트 후 URL에 남는 #access_token=... 또는 ?code=... 또는 빈 # 제거
+    const hasHashToken = window.location.hash && (
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('error') ||
+      window.location.hash.includes('refresh_token')
+    );
+    const hasSearchCode = window.location.search && (
+      window.location.search.includes('code=') ||
+      window.location.search.includes('error=')
+    );
+
+    if (hasHashToken || hasSearchCode) {
+      // Supabase가 토큰 또는 authorization code를 파싱/교환할 수 있도록 2초 대기 후 URL 정화
+      setTimeout(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('code');
+        url.searchParams.delete('state');
+        url.hash = '';
+        window.history.replaceState({}, document.title, url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''));
+      }, 2000);
+    } else if (window.location.hash) {
+      const cleanUrl = window.location.pathname + window.location.search;
+      window.history.replaceState({}, document.title, cleanUrl);
     }
 
     // Share/Role parameter detection은 useState 초기화에서 동기적으로 처리됨 (플래시 방지)

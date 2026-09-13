@@ -182,13 +182,17 @@ export default function LawyerRole({
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(() => {
     if (sessionStorage.getItem('legal_crm_lawyer_session')) return false;
     const hasPendingOauth = sessionStorage.getItem('pending_lawyer_oauth') === 'true';
-    const hasOAuthHash = typeof window !== 'undefined' && Boolean(
-      window.location.hash && (
+    const hasOAuthReturn = typeof window !== 'undefined' && Boolean(
+      (window.location.hash && (
         window.location.hash.includes('access_token') ||
         window.location.hash.includes('refresh_token')
-      )
+      )) ||
+      (window.location.search && (
+        window.location.search.includes('code=') ||
+        window.location.search.includes('error=')
+      ))
     );
-    return hasPendingOauth || hasOAuthHash;
+    return hasPendingOauth || hasOAuthReturn;
   });
   const [isStartingOAuth, setIsStartingOAuth] = useState<'kakao' | 'google' | null>(null);
   const [isAuthSuccess, setIsAuthSuccess] = useState(false);

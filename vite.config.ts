@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const isProd = mode === 'production' || process.env.NODE_ENV === 'production';
+
   return {
     base: '/',
     plugins: [react(), tailwindcss()],
@@ -23,11 +25,10 @@ export default defineConfig(() => {
     build: {
       sourcemap: false,
       target: 'es2020',
-      // console.*, debugger 제거
       minify: 'esbuild' as const,
     },
     esbuild: {
-      drop: process.env.NODE_ENV === 'production' ? ['console' as const, 'debugger' as const] : [],
+      drop: isProd ? (['console', 'debugger'] as const) : [],
     },
   };
 });

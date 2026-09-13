@@ -7,6 +7,7 @@
  */
 import type { AdOrder, NotificationLog, NotificationSettings } from '../types';
 import { BANK_ACCOUNT_INFO } from '../data';
+import { getAuthHeaders } from '../supabaseClient';
 
 // ═══════════════════════════════════════════════════════
 // 설정 저장/로드 (localStorage)
@@ -197,18 +198,21 @@ export async function testTelegramConnection(
 
 export async function sendEmailNotification(
   senderGmail: string,
-  senderAppPassword: string,
-  recipients: string[],
-  subject: string,
-  htmlBody: string
+  _senderAppPassword?: string,
+  recipients: string[] = [],
+  subject: string = '',
+  htmlBody: string = ''
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    const authHeaders = await getAuthHeaders();
     const res = await fetch('/api/send-email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders
+      },
       body: JSON.stringify({
         senderGmail,
-        senderAppPassword,
         recipients,
         subject,
         htmlBody,

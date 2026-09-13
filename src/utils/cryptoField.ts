@@ -4,27 +4,42 @@
 // Web Crypto API (AES-256-GCM)를 사용하여 DB 내 민감 정보(채무, 자산 등)를 암호화합니다.
 // ============================================================
 
-const SECRET_KEY_STR = import.meta.env.VITE_SESSION_SECRET || 'mykim-legal-crm-default-vault-key-2026';
+const LEGACY_VAULT_KEY = 'mykim-legal-crm-default-vault-key-2026';
 
-let cachedCryptoKey: CryptoKey | null = null;
+function getVaultSecret(): string {
+  const envSecret = (import.meta as any).env?.VITE_SESSION_SECRET;
+  if (envSecret) return envSecret;
+  let dynamicSecret = sessionStorage.getItem('__mykim_vault_k');
+  if (!dynamicSecret) {
+    const rand = new Uint8Array(32);
+    crypto.getRandomValues(rand);
+    dynamicSecret = Array.from(rand).map(b => b.toString(16).padStart(2, '0')).join('');
+    sessionStorage.setItem('__mykim_vault_k', dynamicSecret);
+  }
+  return dynamicSecret;
+}
 
-async function getMasterKey(): Promise<CryptoKey> {
-  if (cachedCryptoKey) return cachedCryptoKey;
+const keyCache = new Map<string, CryptoKey>();
+
+async function getMasterKey(secretStr?: string): Promise<CryptoKey> {
+  const secret = secretStr || getVaultSecret();
+  const cached = keyCache.get(secret);
+  if (cached) return cached;
 
   const encoder = new TextEncoder();
-  const rawKey = encoder.encode(SECRET_KEY_STR);
+  const rawKey = encoder.encode(secret);
 
   // SHA-256을 통해 항상 256비트 AES 키 생성
   const hash = await crypto.subtle.digest('SHA-256', rawKey);
-  cachedCryptoKey = await crypto.subtle.importKey(
+  const key = await crypto.subtle.importKey(
     'raw',
     hash,
     { name: 'AES-GCM' },
     false,
     ['encrypt', 'decrypt']
   );
-
-  return cachedCryptoKey;
+  keyCache.set(secret, key);
+  return key;
 }
 
 export interface EncryptedFieldWrapper {
@@ -78,18 +93,28 @@ export async function decryptField<T>(value: any): Promise<T> {
   }
 
   try {
-    const key = await getMasterKey();
     const ivBytes = new Uint8Array(value.iv.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
     const dataBytes = new Uint8Array(value.data.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: ivBytes },
-      key,
-      dataBytes
-    );
-
     const decoder = new TextDecoder();
-    return JSON.parse(decoder.decode(decrypted)) as T;
+
+    try {
+      const primaryKey = await getMasterKey();
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: ivBytes },
+        primaryKey,
+        dataBytes
+      );
+      return JSON.parse(decoder.decode(decrypted)) as T;
+    } catch (_) {
+      // 1차 실패 시 레거시 마스터키로 복호화 시도 (하위 호환성 100% 보장)
+      const legacyKey = await getMasterKey(LEGACY_VAULT_KEY);
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: ivBytes },
+        legacyKey,
+        dataBytes
+      );
+      return JSON.parse(decoder.decode(decrypted)) as T;
+    }
   } catch (err) {
     console.error('[SECURITY] 필드 복호화 실패:', err);
     return value as T;
@@ -143,18 +168,28 @@ export async function decryptString(value: string): Promise<string> {
     const [ivHex, dataHex] = payload.split(':');
     if (!ivHex || !dataHex) return value;
 
-    const key = await getMasterKey();
     const ivBytes = new Uint8Array(ivHex.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
     const dataBytes = new Uint8Array(dataHex.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: ivBytes },
-      key,
-      dataBytes
-    );
-
     const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
+
+    try {
+      const primaryKey = await getMasterKey();
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: ivBytes },
+        primaryKey,
+        dataBytes
+      );
+      return decoder.decode(decrypted);
+    } catch (_) {
+      // 1차 실패 시 레거시 마스터키로 복호화 시도 (하위 호환성 100% 보장)
+      const legacyKey = await getMasterKey(LEGACY_VAULT_KEY);
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: ivBytes },
+        legacyKey,
+        dataBytes
+      );
+      return decoder.decode(decrypted);
+    }
   } catch (err) {
     console.error('[SECURITY] 문자열 복호화 실패 (원본 유지):', err);
     return value;

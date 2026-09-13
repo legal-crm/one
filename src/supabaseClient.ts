@@ -37,10 +37,12 @@ const sessionStorageAdapter = {
   },
 };
 
-// Supabase 서버가 #access_token (implicit) 방식으로 응답하므로 클라이언트도 implicit으로 설정
+// [SECURITY] OAuth 인증 플로우 설정 (기본값: implicit 하위호환 지원, 환경변수 VITE_SUPABASE_FLOW_TYPE으로 PKCE 전환 가능)
+const authFlowType = (import.meta.env.VITE_SUPABASE_FLOW_TYPE as 'pkce' | 'implicit') || 'implicit';
+
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    flowType: 'implicit',
+    flowType: authFlowType,
     detectSessionInUrl: true,
     lock: noOpLock as any,
     storage: sessionStorageAdapter,

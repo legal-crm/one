@@ -1,28 +1,32 @@
 // ============================================================
 // [SECURITY] HMAC 세션 서명 유틸리티
-// Web Crypto API를 사용하여 localStorage 세션 조작을 방지합니다.
+// Web Crypto API를 사용하여 세션 조작을 방지합니다.
+// 정적 번들 노출을 방지하기 위해 세션 스토리지 기반 CSPRNG 동적 키를 조합합니다.
 // ============================================================
 
-// 서명 키 (빌드 시 환경변수에서 주입, 없으면 기본값 제거하고 에러 처리)
-const SESSION_SECRET = import.meta.env.VITE_SESSION_SECRET;
-
-// 환경변수 미설정 시 DEV 모드에서 경고 출력
-if (!SESSION_SECRET && import.meta.env.DEV) {
-  console.warn('[SECURITY] VITE_SESSION_SECRET이 설정되지 않았습니다. 보안 세션 기능이 정상 작동하지 않을 수 있습니다.');
+function getSessionKey(): string {
+  let key = sessionStorage.getItem('__mykim_sec_k');
+  if (!key) {
+    const envKey = (import.meta as any).env?.VITE_SESSION_SECRET;
+    if (envKey) {
+      key = envKey;
+    } else {
+      const randomBytes = new Uint8Array(32);
+      crypto.getRandomValues(randomBytes);
+      key = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      sessionStorage.setItem('__mykim_sec_k', key);
+    }
+  }
+  return key;
 }
 
 /**
  * 문자열을 HMAC-SHA256으로 서명합니다.
  */
 async function hmacSign(message: string): Promise<string> {
-  // [SECURITY] 서명 키가 없으면 안전한 빈 문자열 또는 에러 처리를 위해 임시 키 사용(또는 거부)
-  // 여기서는 세션 생성을 거부하기 위해 빈 키 사용시 예외를 발생시키거나 빈 서명을 반환하게 합니다.
-  if (!SESSION_SECRET) {
-    throw new Error('VITE_SESSION_SECRET is required but not configured.');
-  }
-
+  const secret = getSessionKey();
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(SESSION_SECRET);
+  const keyData = encoder.encode(secret);
   const msgData = encoder.encode(message);
 
   const cryptoKey = await crypto.subtle.importKey(
@@ -61,9 +65,6 @@ export interface SecureSession {
  * 서명된 세션 토큰을 생성합니다.
  */
 export async function createSecureSession(): Promise<string> {
-  if (!SESSION_SECRET) {
-    return '';
-  }
   const timestamp = Date.now();
   const signature = await hmacSign(String(timestamp));
   const session: SecureSession = { timestamp, signature };
