@@ -2550,6 +2550,10 @@ export default function CrmTab({
                           onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
                           onAdvanceToNextStage={() => setPipelineStage(2)}
                           onSwitchCaseType={handleSwitchCaseType}
+                          onOpenProposalDraft={handleOpenProposalDraft ? () => handleOpenProposalDraft(selectedClient.id) : undefined}
+                          onNavigateToChat={() => {
+                            if (setActiveTab) setActiveTab('chat');
+                          }}
                         />
                       )}
                       {pipelineStage === 2 && (

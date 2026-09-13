@@ -15,6 +15,8 @@ interface Stage1ConsultationViewProps {
   onUpdateStatus: (newStatus: any) => void;
   onAdvanceToNextStage: () => void;
   onSwitchCaseType?: (type: 'individual_rehab' | 'bankruptcy') => void;
+  onOpenProposalDraft?: () => void;
+  onNavigateToChat?: () => void;
 }
 
 export default function Stage1ConsultationView({
@@ -24,11 +26,19 @@ export default function Stage1ConsultationView({
   onUpdateStatus,
   onAdvanceToNextStage,
   onSwitchCaseType,
+  onOpenProposalDraft,
+  onNavigateToChat,
 }: Stage1ConsultationViewProps) {
   const fp = clientRequest.financialProfile || {};
   const debtTotal = fp.debtTotal || 0; // 만원
   const income = fp.income || 0; // 만원
   const isBankruptcy = crmExt?.caseType === 'bankruptcy' || crmExt?.caseType === 'individual_bankruptcy' || income === 0;
+
+  // 제안서 발송 상태 및 계약 상태 확인
+  const proposals = clientRequest.proposals || [];
+  const myProposal = proposals.find(p => p.lawyerId === activeLawyer.id) || proposals[0];
+  const hasProposalSent = Boolean(myProposal);
+  const isContracted = clientRequest.status === 'contracted' || crmExt?.thirteenStage === 'contract_done';
 
   // 체크리스트 상태
   const [debtCheckPassed, setDebtCheckPassed] = useState(() => debtTotal > 0 && debtTotal <= 150000); // 15억 이하
@@ -76,88 +86,185 @@ export default function Stage1ConsultationView({
             Stage 01 목표
           </span>
           <span className="text-xs font-bold text-slate-800">
-            신청인 적격성 판정 및 사건유형(회생 vs 파산) 확정
+            맞춤 제안서 발송 및 의뢰인 상담·수임 결정
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">완료 조건:</span>
+          <span className="text-slate-500 font-medium">실무 진행도:</span>
           <span className="font-mono font-bold text-[#1E3A5F]">
-            {Number(debtCheckPassed) + Number(incomeCheckPassed) + Number(article595Passed) + Number(caseTypeConfirmed)} / 4 충족
+            {isContracted ? '4/4 (수임계약 완료)' : hasProposalSent ? '3/4 (제안서 발송 완료)' : '1/4 (제안서 작성 필요)'}
           </span>
-          <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden ml-1">
+          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden ml-1">
             <div 
-              className="h-full bg-[#1E3A5F] rounded-full transition-all" 
-              style={{ width: `${((Number(debtCheckPassed) + Number(incomeCheckPassed) + Number(article595Passed) + Number(caseTypeConfirmed)) / 4) * 100}%` }}
+              className={`h-full rounded-full transition-all ${isContracted ? 'bg-emerald-500' : hasProposalSent ? 'bg-blue-600' : 'bg-amber-500'}`} 
+              style={{ width: `${isContracted ? 100 : hasProposalSent ? 75 : 25}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* ── 2. Next Action Hero Card (1 Major + 1~2 Minor 원칙) ── */}
-      <div className={`p-5 rounded-2xl border transition-all shadow-xs ${
-        allConditionsMet 
-          ? 'bg-emerald-50/70 border-emerald-200/90 text-emerald-950' 
-          : 'bg-white border-slate-200 text-slate-900'
-      }`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className={`p-3 rounded-xl shrink-0 mt-0.5 ${
-              allConditionsMet ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white shadow-xs'
-            }`}>
-              {allConditionsMet ? <CheckCircle2 className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-                  {allConditionsMet ? 'Gate 1 통과 완료' : '지금 해야 할 핵심 작업'}
-                </span>
-                <span className="text-sm font-black tracking-tight">
-                  {allConditionsMet 
-                    ? '적격 판정이 완료되었습니다. 2단계(계약·착수)로 진행하여 수임계약을 체결하세요.' 
-                    : '신청인의 채무·소득 요건 및 제595조 결격사유를 검토하고 사건 유형을 확정하세요.'}
-                </span>
+      {/* ── 2. Next Action Hero Card (제안서 상태에 따른 3단계 동적 카드) ── */}
+      {!hasProposalSent && !isContracted ? (
+        // [상황 A: 제안서 미발송 상태 - 최우선 핵심 작업]
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-500/40 bg-gradient-to-r from-slate-900 via-[#1E3A5F] to-slate-900 text-white shadow-lg space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-blue-500/20 border border-blue-400/30 text-amber-300 shadow-xs">
+                <Sparkles className="w-6 h-6 animate-pulse" />
               </div>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                {allConditionsMet 
-                  ? '법원 인지대·송달료 실비 산출 및 모바일 전자계약서를 발송할 준비가 되었습니다.' 
-                  : '무담보 10억/담보 15억 한도 내 채무액과 지속 소득 유무를 확인한 뒤 적격을 판정합니다.'}
-              </p>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950">
+                    ⚡ 최우선 실행 작업
+                  </span>
+                  <span className="text-xs text-blue-200">
+                    신규 상담 신청 접수됨
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  신청인 맞춤 솔루션 및 비용 제안서를 작성하여 고객에게 발송하세요
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                  의뢰인은 변호사님의 검토 제안서를 기다리고 있습니다. 탕감률, 예상 월 변제금, 분납 수임료가 담긴 제안서가 전달되어야 의뢰인의 1:1 심층 상담 및 정식 수임계약 체결이 가능합니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {onOpenProposalDraft && (
+                <button
+                  type="button"
+                  onClick={onOpenProposalDraft}
+                  className="px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 press-scale cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>고객 맞춤 제안서 작성 및 발송하기 (Major)</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSendEligibilityAlimtok}
+                className="px-3.5 py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                title="의뢰인에게 적격 진단 결과 및 필요 서류 알림톡 발송"
+              >
+                <Send className="w-3.5 h-3.5 text-blue-300" />
+                <span>적격 안내톡</span>
+              </button>
             </div>
           </div>
+        </div>
+      ) : hasProposalSent && !isContracted ? (
+        // [상황 B: 제안서 발송 완료 상태 - 고객 검토 및 상담 대기]
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/40 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-md space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-300/40 shadow-xs">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                    ✅ 제안서 발송 완료 (고객 검토 대기 중)
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {myProposal?.createdAt ? new Date(myProposal.createdAt).toLocaleString('ko-KR') : '발송 완료'}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                  {myProposal?.lawyerName || activeLawyer.name} 변호사님의 제안서가 고객에게 성공적으로 전달되었습니다
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  고객이 마이페이지에서 제안서를 확인하고 1:1 추가 상담을 요청하거나 정식 수임계약을 체결할 수 있습니다.
+                </p>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
-            {!allConditionsMet ? (
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {onNavigateToChat && (
+                <button
+                  type="button"
+                  onClick={onNavigateToChat}
+                  className="px-5 py-3 bg-[#1E3A5F] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>고객과 1:1 상담 진행</span>
+                </button>
+              )}
+              {onOpenProposalDraft && (
+                <button
+                  type="button"
+                  onClick={onOpenProposalDraft}
+                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                >
+                  <span>제안서 조건 수정 / 재발송</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleConfirmEligibility}
-                className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
+                className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 press-scale cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>적격 판정 및 사건유형 확정 (Major)</span>
+                <Check className="w-3.5 h-3.5" />
+                <span>적격 확정 (수임 준비)</span>
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onAdvanceToNextStage}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
-              >
-                <span>Stage 2 (계약·착수)로 진행</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
+            </div>
+          </div>
+
+          {/* 발송된 제안서 핵심 스펙 3열 요약 타일 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+              <span className="text-slate-400 block text-[11px]">예상 채무 탕감률</span>
+              <span className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                최대 {myProposal?.reductionRate || 0}%
+              </span>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+              <span className="text-slate-400 block text-[11px]">예상 월 변제금</span>
+              <span className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5 block">
+                월 {myProposal?.monthlyPayment || 0}만원 ({myProposal?.duration || 36}개월)
+              </span>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+              <span className="text-slate-400 block text-[11px]">제안 수임료 및 분납</span>
+              <span className="text-base font-black text-slate-800 dark:text-slate-200 mt-0.5 block truncate">
+                {myProposal?.fee || 0}만원 ({myProposal?.installment || '분납 지원'})
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // [상황 C: 수임계약 체결 완료 상태]
+        <div className="p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/50 bg-emerald-50/80 text-emerald-950 shadow-md">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-xl shrink-0 mt-0.5 bg-emerald-600 text-white shadow-xs">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900">
+                  🎉 수임계약 체결 완료
+                </span>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-emerald-950 mt-1">
+                  의뢰인과의 정식 전자 수임계약이 완료되었습니다!
+                </h3>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  다음 단계(Stage 02)로 이동하여 관공서 필수 서류 수집 및 법원 실비(인지대·송달료) 산출을 진행하세요.
+                </p>
+              </div>
+            </div>
 
             <button
               type="button"
-              onClick={handleSendEligibilityAlimtok}
-              className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-              title="의뢰인에게 적격 진단 결과 및 필요 서류 알림톡 발송"
+              onClick={onAdvanceToNextStage}
+              className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center gap-2 press-scale cursor-pointer shrink-0"
             >
-              <Send className="w-3.5 h-3.5 text-[#1E3A5F]" />
-              <span>적격 안내톡 발송</span>
+              <span>Stage 02 (계약·착수)로 진행</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── 3. 단계별 업무 체크리스트 (아코디언 방식) ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
