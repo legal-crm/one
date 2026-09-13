@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import { 
   Send, Phone, MessageSquare, Clock, FileText, CheckCircle2, 
-  Sparkles, X, ChevronRight, AlertCircle, Copy
+  Sparkles, X, ChevronRight, AlertCircle, Copy, AlertTriangle,
+  Inbox, ListChecks, History, PhoneCall
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, User } from '../../../types';
+import type { PipelineStage } from './WorkflowPipelineStepper';
 import { addClientNotification } from '../../../services/clientNotificationService';
 
 interface ClientCommunicationSidePanelProps {
   clientRequest: ConsultRequest;
   crmExt: CrmClientExtension;
   activeLawyer: User;
-  pipelineStage: 1 | 2 | 3 | 4 | 5;
+  pipelineStage: PipelineStage;
   onAddNote: (text: string) => void;
   onClose?: () => void;
 }
+
+type PanelTab = 'action_required' | 'active_requests' | 'timeline' | 'calls';
 
 export default function ClientCommunicationSidePanel({
   clientRequest,
@@ -24,15 +28,31 @@ export default function ClientCommunicationSidePanel({
   onAddNote,
   onClose,
 }: ClientCommunicationSidePanelProps) {
+  const [activeTab, setActiveTab] = useState<PanelTab>('action_required');
   const [quickMemo, setQuickMemo] = useState('');
+  const [callDuration, setCallDuration] = useState('5분');
   const [isSending, setIsSending] = useState(false);
 
   const clientName = clientRequest.clientName || '고객';
   const cleanPhone = clientRequest.phone ? clientRequest.phone.replace(/[^0-9]/g, '') : '';
 
-  // 현재 단계별 추천 알림톡 템플릿
+  // 6단계별 추천 알림톡 템플릿
   const stageTemplates: Record<number, Array<{ title: string; desc: string; emoji: string; message: string }>> = {
     1: [
+      {
+        title: '신청 적격 판정 결과 안내',
+        desc: '회생/파산 적격 요건 충족 및 향후 절차',
+        emoji: '⚖️',
+        message: `[적격 진단] ${clientName}님, 제출해주신 정보를 검토한 결과 개인회생 신청 적격 요건을 충족하셨습니다. 정식 위임 절차를 안내해 드립니다.`
+      },
+      {
+        title: '상담 일정 및 준비사항 안내',
+        desc: '유선/방문 심층 상담 안내',
+        emoji: '📅',
+        message: `[상담 안내] ${clientName}님, 정밀 채무 진단을 위한 변호사 상담 일정이 조율되었습니다.`
+      }
+    ],
+    2: [
       {
         title: '모바일 전자계약 서명 요청',
         desc: '카카오 알림톡 전자서명 링크 전송',
@@ -46,27 +66,27 @@ export default function ClientCommunicationSidePanel({
         message: `[착수금 안내] ${clientName}님, 개인회생 진행을 위한 법무법인 전용 착수금 계좌가 안내되었습니다. 확인 후 입금 부탁드립니다.`
       }
     ],
-    2: [
+    3: [
       {
-        title: '미제출 4대 서류 발급 안내톡',
+        title: '미제출 서류 간편발급함 안내톡',
         desc: '정부24/홈택스 간편 발급 링크 전송',
         emoji: '📑',
         message: `[서류 수합 안내] ${clientName}님, 법원 제출에 필요한 미제출 서류 목록과 스마트폰 간편 발급 링크가 모바일 서류함에 업데이트되었습니다.`
-      },
-      {
-        title: '부채증명서 발급 위임동의 요청',
-        desc: '채권자별 부채발급 전자동의',
-        emoji: '📜',
-        message: `[부채증명 발급] ${clientName}님, 금융기관 부채증명서 대리 발급을 위한 전자위임 동의를 모바일에서 진행해주세요.`
       },
       {
         title: '채무경위 진술서 작성 요청',
         desc: '모바일 10문 10답 진술서 링크',
         emoji: '🎙️',
         message: `[진술서 작성] ${clientName}님, 법원에 제출할 채무 증대 경위서(진술서)를 스마트폰에서 간편하게 작성해 주세요.`
+      },
+      {
+        title: '제3자 주민번호 마스킹 재발급 요청',
+        desc: '가족 뒷자리 별표 표기 서류 재발급',
+        emoji: '⚠️',
+        message: `[서류 보완요청] ${clientName}님, 법원 제출 기준에 맞추어 가족 주민등록번호 뒷자리가 미표기(******)된 서류로 다시 발급해 업로드해주세요.`
       }
     ],
-    3: [
+    4: [
       {
         title: '법원 개시신청 접수완료 안내',
         desc: '사건번호 및 관할법원 통보',
@@ -80,7 +100,7 @@ export default function ClientCommunicationSidePanel({
         message: `[금지명령 결정] ${clientName}님, 법원의 금지명령이 인용되었습니다. 이제 채권자의 독촉 전화 및 급여 압류가 전면 금지됩니다.`
       }
     ],
-    4: [
+    5: [
       {
         title: '법원 보정권고 소명자료 요청',
         desc: '회생위원 요구 소명서류 요청',
@@ -94,10 +114,10 @@ export default function ClientCommunicationSidePanel({
         message: `[긴급] ${clientName}님, 법원 보정서 제출 기한이 얼마 남지 않았습니다. 서류 제출이 지연되면 기각될 수 있으니 즉시 확인해주세요.`
       }
     ],
-    5: [
+    6: [
       {
-        title: '개시결정 축하 & 가상계좌 스케줄 안내',
-        desc: '인가 전 적립금 입금 스케줄',
+        title: '개시결정 축하 & 가상계좌 스케줄',
+        desc: '인가 전 적립금 입금 스케줄 안내',
         emoji: '🏦',
         message: `[개시결정 축하] ${clientName}님, 개인회생 개시결정이 내려졌습니다! 법원 가상계좌로 인가 전 적립금을 성실히 납부해주세요.`
       },
@@ -124,40 +144,41 @@ export default function ClientCommunicationSidePanel({
     setTimeout(() => {
       setIsSending(false);
       toast.success(`${clientName}님께 '${tpl.title}' 카카오 알림톡이 성공적으로 발송되었습니다.`);
-    }, 300);
+    }, 250);
   };
 
   // 메모 작성 및 저장
   const handleSaveMemo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickMemo.trim()) return;
-    onAddNote(`[상담소통] ${quickMemo.trim()}`);
+    onAddNote(`[통화/상담 ${callDuration}] ${quickMemo.trim()}`);
     setQuickMemo('');
-    toast.success('고객 상담 메모가 저장되었습니다.');
+    toast.success('고객 상담 메모가 사건 타임라인에 저장되었습니다.');
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white border-l border-slate-200/90 shadow-sm">
+    <div className="w-full h-full flex flex-col bg-white border-l border-slate-200 shadow-sm">
       {/* 패널 헤더 */}
-      <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+      <div className="p-4 bg-[#1E3A5F] text-white flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-white/10 text-white">
             <MessageSquare className="w-4 h-4" />
           </div>
           <div>
             <span className="font-extrabold text-xs block text-slate-100">
-              원스톱 고객 소통 패널
+              사건 실행형 고객 소통창
             </span>
-            <span className="text-[11px] text-slate-400">
-              {clientName} 의뢰인과 실시간 연결
+            <span className="text-[11px] text-blue-200">
+              {clientName} 고객 ({clientRequest.phone ? clientRequest.phone.slice(-4) : ''})
             </span>
           </div>
         </div>
 
         {onClose && (
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
             title="패널 닫기"
           >
             <X className="w-4 h-4" />
@@ -165,19 +186,20 @@ export default function ClientCommunicationSidePanel({
         )}
       </div>
 
-      {/* 고객 연락처 카드 */}
-      <div className="p-3.5 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between text-xs">
+      {/* 고객 연락처 및 빠른 전화걸기 바 */}
+      <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <Phone className="w-3.5 h-3.5 text-slate-500" />
           <span className="font-mono font-bold text-slate-800">{clientRequest.phone || '연락처 없음'}</span>
           <button
+            type="button"
             onClick={() => {
               if (clientRequest.phone) {
                 navigator.clipboard.writeText(clientRequest.phone);
                 toast.success('전화번호가 복사되었습니다.');
               }
             }}
-            className="text-slate-400 hover:text-slate-700 p-0.5"
+            className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
             title="복사"
           >
             <Copy className="w-3 h-3" />
@@ -193,13 +215,201 @@ export default function ClientCommunicationSidePanel({
         </a>
       </div>
 
-      {/* 스크롤 가능한 본문 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
-        {/* 1. 현재 단계 맞춤 알림톡 빠른 발송 */}
-        <div className="space-y-2.5">
+      {/* 4대 탭 바 (처리 필요 / 요청 현황 / 전체 타임라인 / 통화 메모) */}
+      <div className="flex border-b border-slate-200 bg-slate-100/70 p-1 gap-1 text-[11px] font-bold">
+        <button
+          type="button"
+          onClick={() => setActiveTab('action_required')}
+          className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+            activeTab === 'action_required'
+              ? 'bg-white text-[#1E3A5F] shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <AlertCircle className="w-3 h-3 text-amber-500" />
+          <span>처리 필요</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('active_requests')}
+          className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+            activeTab === 'active_requests'
+              ? 'bg-white text-[#1E3A5F] shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <ListChecks className="w-3 h-3 text-blue-600" />
+          <span>요청 현황</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('timeline')}
+          className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+            activeTab === 'timeline'
+              ? 'bg-white text-[#1E3A5F] shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <History className="w-3 h-3 text-slate-500" />
+          <span>타임라인</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('calls')}
+          className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+            activeTab === 'calls'
+              ? 'bg-white text-[#1E3A5F] shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <PhoneCall className="w-3 h-3 text-emerald-600" />
+          <span>상담 메모</span>
+        </button>
+      </div>
+
+      {/* 탭 콘텐츠 영역 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+        {/* 탭 1: 처리 필요 (Action Required) */}
+        {activeTab === 'action_required' && (
+          <div className="space-y-3">
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-950 space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                <span>고객 질문 및 확인 요청 (1건)</span>
+              </div>
+              <p className="text-[11px] text-slate-700 leading-relaxed">
+                "급여명세서는 최근 몇 개월분이 필요한가요?" (14분 전 카카오톡 수신)
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  toast.success('고객 문의 답변 알림톡 템플릿이 작성기에 입력되었습니다.');
+                }}
+                className="mt-1 text-[11px] font-bold text-[#1E3A5F] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>답변하기 ➔</span>
+              </button>
+            </div>
+
+            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-blue-950 space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                <span>서류 제출 도착 (2건 대기)</span>
+              </div>
+              <p className="text-[11px] text-slate-700 leading-relaxed">
+                주민등록등본, 원천징수영수증이 모바일로 업로드되었습니다.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 탭 2: 요청 현황 (Active Tasks) */}
+        {activeTab === 'active_requests' && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-[11px]">필수서류 6건 일괄 요청</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold">진행중</span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                발송 9/13 14:20 | 열람 14:32 | 현재 2/6건 제출됨
+              </p>
+              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-blue-600 h-full rounded-full" style={{ width: '33%' }} />
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-[11px]">모바일 전자계약서</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">서명 완료</span>
+              </div>
+              <p className="text-[11px] text-slate-500">2026.09.12 전자서명 체결 완료됨</p>
+            </div>
+          </div>
+        )}
+
+        {/* 탭 3: 전체 타임라인 (Timeline) */}
+        {activeTab === 'timeline' && (
+          <div className="space-y-2.5">
+            <div className="text-[10px] font-bold text-slate-400">오늘 (9월 13일)</div>
+            <div className="space-y-2 pl-2 border-l-2 border-slate-200">
+              <div className="text-[11px] space-y-0.5">
+                <div className="text-slate-400 text-[10px]">16:35</div>
+                <div className="font-bold text-slate-800">근로소득세 원천징수영수증 제출됨</div>
+              </div>
+              <div className="text-[11px] space-y-0.5">
+                <div className="text-slate-400 text-[10px]">16:20</div>
+                <div className="font-bold text-slate-800">주민등록등본 모바일 제출됨</div>
+              </div>
+              <div className="text-[11px] space-y-0.5">
+                <div className="text-slate-400 text-[10px]">14:32</div>
+                <div className="font-medium text-slate-600">고객이 카카오톡 서류함 링크 열람함</div>
+              </div>
+              <div className="text-[11px] space-y-0.5">
+                <div className="text-slate-400 text-[10px]">14:20</div>
+                <div className="font-medium text-[#1E3A5F]">미제출 서류 묶음 요청 알림톡 발송됨</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 탭 4: 통화·상담 메모 (Calls) */}
+        {activeTab === 'calls' && (
+          <div className="space-y-3">
+            <form onSubmit={handleSaveMemo} className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-[11px]">통화 내용 기록</span>
+                <select
+                  value={callDuration}
+                  onChange={e => setCallDuration(e.target.value)}
+                  className="bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] text-slate-600"
+                >
+                  <option value="3분">3분</option>
+                  <option value="5분">5분</option>
+                  <option value="10분">10분</option>
+                  <option value="15분+">15분 이상</option>
+                </select>
+              </div>
+              <textarea
+                rows={3}
+                value={quickMemo}
+                onChange={e => setQuickMemo(e.target.value)}
+                placeholder="통화 중 협의된 채무 사유, 가족 관계, 서류 발급 기한을 기록하세요..."
+                className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#1E3A5F] resize-none"
+              />
+              <button
+                type="submit"
+                disabled={!quickMemo.trim()}
+                className="w-full py-1.5 bg-[#1E3A5F] hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg font-bold text-xs transition-colors cursor-pointer"
+              >
+                메모 저장
+              </button>
+            </form>
+
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold text-slate-700">이전 상담 메모 ({crmExt.notes.length})</span>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {crmExt.notes.slice(-4).reverse().map(n => (
+                  <div key={n.id} className="p-2 bg-white rounded-lg border border-slate-200 text-[11px]">
+                    <div className="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                      <span className="font-bold text-slate-600">{n.authorName}</span>
+                      <span>{new Date(n.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-slate-800">{n.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 하단: 현재 단계 추천 알림톡 발송기 ── */}
+        <div className="pt-3 border-t border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-extrabold text-slate-900 flex items-center gap-1 text-xs">
-              <Sparkles className="w-3.5 h-3.5 text-brand" />
+            <span className="font-black text-slate-900 flex items-center gap-1 text-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#1E3A5F]" />
               Stage 0{pipelineStage} 추천 알림톡
             </span>
             <span className="text-[10px] text-slate-400 font-medium">원클릭 발송</span>
@@ -209,74 +419,21 @@ export default function ClientCommunicationSidePanel({
             {currentTemplates.map((tpl, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => handleSendTemplate(tpl)}
                 disabled={isSending}
-                className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-brand/40 bg-white hover:bg-slate-50 transition-all shadow-2xs group cursor-pointer press-scale space-y-1"
+                className="w-full text-left p-2.5 rounded-xl border border-slate-200 hover:border-[#1E3A5F] bg-white hover:bg-slate-50 transition-all shadow-2xs group cursor-pointer press-scale space-y-0.5"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                     <span>{tpl.emoji}</span>
-                    <span className="group-hover:text-brand transition-colors">{tpl.title}</span>
+                    <span className="group-hover:text-[#1E3A5F] transition-colors">{tpl.title}</span>
                   </span>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#1E3A5F] transition-all" />
                 </div>
-                <p className="text-[11px] text-slate-500 line-clamp-1">
-                  {tpl.desc}
-                </p>
+                <p className="text-[10px] text-slate-500 line-clamp-1">{tpl.desc}</p>
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* 2. 빠른 상담 통화 메모 입력 */}
-        <div className="space-y-2 pt-2 border-t border-slate-200">
-          <span className="font-extrabold text-slate-900 flex items-center gap-1 text-xs">
-            <FileText className="w-3.5 h-3.5 text-slate-600" />
-            상담 통화 메모 작성
-          </span>
-          <form onSubmit={handleSaveMemo} className="space-y-2">
-            <textarea
-              rows={3}
-              value={quickMemo}
-              onChange={e => setQuickMemo(e.target.value)}
-              placeholder="고객과의 통화 내용이나 특이사항을 빠르게 기록하세요..."
-              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 bg-slate-50/50 focus:bg-white resize-none"
-            />
-            <button
-              type="submit"
-              disabled={!quickMemo.trim()}
-              className="w-full py-2 bg-brand hover:bg-brand-hover text-white rounded-xl font-bold text-xs transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed press-scale cursor-pointer"
-            >
-              메모 기록 저장
-            </button>
-          </form>
-        </div>
-
-        {/* 3. 최근 상담 메모 히스토리 */}
-        <div className="space-y-2 pt-2 border-t border-slate-200">
-          <div className="flex items-center justify-between">
-            <span className="font-extrabold text-slate-900 flex items-center gap-1 text-xs">
-              <Clock className="w-3.5 h-3.5 text-slate-600" />
-              최근 소통 메모 ({crmExt.notes.length})
-            </span>
-          </div>
-
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-            {crmExt.notes.length === 0 ? (
-              <p className="text-slate-400 text-[11px] text-center py-4 bg-slate-50 rounded-xl">
-                아직 기록된 소통 메모가 없습니다.
-              </p>
-            ) : (
-              crmExt.notes.slice(-5).reverse().map((n) => (
-                <div key={n.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] space-y-1">
-                  <div className="flex justify-between items-center text-[10px] text-slate-500">
-                    <span className="font-bold text-slate-700">{n.authorName}</span>
-                    <span>{new Date(n.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <p className="text-slate-800 font-medium whitespace-pre-wrap">{n.text}</p>
-                </div>
-              ))
-            )}
           </div>
         </div>
       </div>

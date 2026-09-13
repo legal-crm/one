@@ -45,11 +45,12 @@ import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculatio
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
-import Stage1ContractView from './pipeline/Stage1ContractView';
-import Stage2DocumentsHubView from './pipeline/Stage2DocumentsHubView';
-import Stage3FilingBundleView from './pipeline/Stage3FilingBundleView';
-import Stage4CorrectionCenterView from './pipeline/Stage4CorrectionCenterView';
-import Stage5PostCareDischargeView from './pipeline/Stage5PostCareDischargeView';
+import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
+import Stage2ContractRetainerView from './pipeline/Stage2ContractRetainerView';
+import Stage3DocumentsHubView from './pipeline/Stage3DocumentsHubView';
+import Stage4FilingBundleView from './pipeline/Stage4FilingBundleView';
+import Stage5CorrectionCenterView from './pipeline/Stage5CorrectionCenterView';
+import Stage6PostCareDischargeView from './pipeline/Stage6PostCareDischargeView';
 import ClientCommunicationSidePanel from './pipeline/ClientCommunicationSidePanel';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
@@ -232,6 +233,10 @@ export default function CrmTab({
   const [showPowerOfAttorneyModal, setShowPowerOfAttorneyModal] = useState(false);
   const [showFormsDropdown, setShowFormsDropdown] = useState(false);
   const [showCommPanel, setShowCommPanel] = useState(true);
+  const [showFinanceAccordion, setShowFinanceAccordion] = useState(false);
+  const [showStatusAccordion, setShowStatusAccordion] = useState(false);
+  const [showMetaAccordion, setShowMetaAccordion] = useState(false);
+  const [showMoreActionsDropdown, setShowMoreActionsDropdown] = useState(false);
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -574,17 +579,19 @@ export default function CrmTab({
       setEditConsultantId(selectedExt.assignedConsultantId || '');
       setEditStaffId(selectedExt.assignedStaffId || '');
       setDetailTab('info');
-      // 상태 기반 파이프라인 단계 자동 동기화
-      if (['requested', 'consulting'].includes(selectedExt.crmStatus)) {
+      // 상태 기반 6단계 파이프라인 단계 자동 동기화
+      if (selectedExt.crmStatus === 'requested') {
         setPipelineStage(1);
-      } else if (['contracted', 'document'].includes(selectedExt.crmStatus)) {
+      } else if (['consulting', 'contracted'].includes(selectedExt.crmStatus)) {
         setPipelineStage(2);
-      } else if (selectedExt.crmStatus === 'filed') {
+      } else if (selectedExt.crmStatus === 'document') {
         setPipelineStage(3);
-      } else if (selectedExt.crmStatus === 'commenced') {
+      } else if (selectedExt.crmStatus === 'filed') {
         setPipelineStage(4);
-      } else if (['repaying', 'discharged'].includes(selectedExt.crmStatus)) {
+      } else if (selectedExt.crmStatus === 'commenced') {
         setPipelineStage(5);
+      } else if (['repaying', 'discharged'].includes(selectedExt.crmStatus)) {
+        setPipelineStage(6);
       }
     }
   }, [selectedId]);
@@ -2132,194 +2139,223 @@ export default function CrmTab({
             {/* ── 2단 레이아웃: 좌측 컨트롤 허브 + 우측 메인 작업 캔버스 ── */}
             <div className="flex flex-col lg:flex-row">
               
-              {/* ══════════ 좌측 컬럼: Action & Summary Control Hub (320px) ══════════ */}
-              <div className="w-full lg:w-[320px] shrink-0 border-r border-slate-200/80 bg-slate-50/50 p-4 space-y-4">
+              {/* ══════════ 좌측 컬럼: 사건 팩트시트 (280px 고정) ══════════ */}
+              <div className="w-full lg:w-[280px] shrink-0 border-r border-slate-200/90 bg-slate-50/70 p-4 space-y-3.5">
                 
-                {/* 1. 재무 스펙 & 탕감 매트릭스 카드 */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-800 flex items-center gap-1">
-                      <Calculator className="w-3.5 h-3.5 text-brand" />
-                      재무 스펙 & 탕감 분석
+                {/* 📌 상시 표시 핵심 팩트 카드 */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <span>📌 사건 팩트시트</span>
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
-                      채무 배율 {dtiRatio}배
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                      {selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy' ? '개인파산' : '개인회생'}
                     </span>
                   </div>
 
-                  {/* 총 채무 & 월 소득 2단 그리드 */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-rose-50/80 p-3 rounded-xl border border-rose-100">
-                      <span className="text-rose-500 block text-[10px] font-bold">총 채무액</span>
-                      <span className="font-mono font-extrabold text-rose-600 text-base">
-                        {debtTotal.toLocaleString()}<span className="text-[11px] ml-0.5 font-bold">만</span>
-                      </span>
-                    </div>
-                    <div className="bg-blue-50/80 p-3 rounded-xl border border-blue-100">
-                      <span className="text-blue-500 block text-[10px] font-bold">월 소득 (세후)</span>
-                      <span className="font-mono font-extrabold text-blue-600 text-base">
-                        {income.toLocaleString()}<span className="text-[11px] ml-0.5 font-bold">만</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 채무 과다 위험도 게이지 바 */}
-                  <div className="space-y-1 pt-1">
-                    <div className="flex justify-between text-[11px] font-medium text-slate-500">
-                      <span>소득 대비 채무 위험도</span>
-                      <span className={`font-bold ${dtiNum >= 25 ? 'text-rose-600' : dtiNum >= 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                        {dtiNum >= 25 ? '⚠️ 초고위험' : dtiNum >= 15 ? '경고' : '양호'}
-                      </span>
-                    </div>
-
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all ${dtiNum >= 25 ? 'bg-rose-500' : dtiNum >= 15 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                        style={{ width: `${Math.min(100, (dtiNum / 40) * 100)}%` }} 
-                      />
-                    </div>
-                  </div>
-
-                  {/* 예상 변제금 및 탕감률 시뮬레이션 지표 */}
-                  <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 p-3 rounded-xl border border-slate-200/70 space-y-2 text-xs">
-                    <div className="flex justify-between items-center text-slate-600">
-                      <span>법정 인정 생계비 ({depCount + 1}인)</span>
-                      <span className="font-mono font-bold text-slate-800">{minLivingCost}만원</span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-600">
-                      <span>월 예상 가용소득</span>
-                      <span className="font-mono font-extrabold text-blue-600">{monthlyDisposable.toLocaleString()}만원</span>
-                    </div>
-                    <div className="h-px bg-slate-200/80 my-1" />
+                  <div className="space-y-2 text-xs">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-800">{termMonths}개월 변제 시 탕감률</span>
-                      <span className="font-mono font-black text-emerald-600 text-sm">약 {estimatedDischargeRate}% 탕감</span>
+                      <span className="text-slate-500 font-medium">현재 단계</span>
+                      <span className="font-bold text-[#1E3A5F]">Stage 0{pipelineStage}</span>
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-tight">
-                      * 총 예상 변제금: 약 {estimatedTotalRepay.toLocaleString()}만 원 (원금 {Math.max(0, debtTotal - estimatedTotalRepay).toLocaleString()}만 탕감)
-                    </p>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-medium">담당자</span>
+                      <span className="font-bold text-slate-800">
+                        {lawyers.find(l => l.id === (selectedExt.assigneeId || selectedExt.assignedLawyerId))?.name || 
+                         staffMembers.find(m => m.id === (selectedExt.assigneeId || selectedExt.assignedStaffId))?.name || 
+                         '김사무장'}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-medium">관할 법원</span>
+                      <span className="font-bold text-slate-700 font-mono">
+                        {selectedExt.courtCase?.courtName || selectedClient.court || '서울회생법원'}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-medium">고객 반응</span>
+                      <span className="text-slate-600 font-mono text-[11px]">
+                        {timeAgo(selectedExt.lastActivityAt || selectedClient.createdAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* 2. 사건 배정 & 파이프라인 상태 컨트롤 */}
-                {currentPermissions.changeStatus && (
-                  <div className="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs">
+                {/* 📂 아코디언 1: 재무 스펙 요약 (기본 축소형 2줄) */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setShowFinanceAccordion(!showFinanceAccordion)}
+                    className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
                     <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-brand" />
-                      사건 상태 & 담당자 배정
+                      <Calculator className="w-3.5 h-3.5 text-[#1E3A5F]" />
+                      <span>재무 스펙 요약</span>
                     </span>
-
-                    <div className="space-y-2.5">
-                      <div className="space-y-1">
-                        <label className="text-[11px] text-slate-500 font-bold">진행 상태</label>
-                        <select 
-                          value={editStatus} 
-                          onChange={e => setEditStatus(e.target.value as CrmStatus)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 cursor-pointer"
-                        >
-                          {CRM_STATUSES.map(s => (
-                            <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[11px] text-slate-500 font-bold">담당자 배정</label>
-                        <select 
-                          value={editAssigneeId} 
-                          onChange={e => setEditAssigneeId(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 cursor-pointer"
-                        >
-                          <option value="">미배정</option>
-                          {[...lawyers.map(l => ({ ...l, role: 'LAWYER' as const })), ...staffMembers.filter(m => m.isActive)].map(l => (
-                            <option key={l.id} value={l.id}>
-                              {l.role === 'LAWYER' || l.role === 'OWNER' ? '👔' : '📋'} {l.name} ({STAFF_ROLE_CONFIG[l.role]?.label || l.role})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <button 
-                        onClick={handleSaveAssignment}
-                        className="w-full bg-brand hover:bg-brand-hover text-white py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all press-scale shadow-xs whitespace-nowrap"
-                      >
-                        배정 및 상태 저장
-                      </button>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-emerald-600 font-mono">
+                        약 {estimatedDischargeRate}% 탕감
+                      </span>
+                      <span className="text-slate-400 text-xs">{showFinanceAccordion ? '▴' : '▾'}</span>
                     </div>
+                  </button>
+
+                  {/* 항상 보이는 콤팩트 2행 요약 */}
+                  <div className="px-3.5 pb-3 pt-0 grid grid-cols-2 gap-2 text-xs border-b border-slate-100">
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">총 채무</span>
+                      <span className="font-mono font-bold text-slate-900">{formatWonShort(debtTotal)}</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">월 소득 (세후)</span>
+                      <span className="font-mono font-bold text-slate-900">{income.toLocaleString()}만원</span>
+                    </div>
+                  </div>
+
+                  {/* 펼침 시 상세 분석 지표 */}
+                  {showFinanceAccordion && (
+                    <div className="p-3.5 bg-slate-50/70 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
+                      <div className="flex justify-between text-slate-600">
+                        <span>법정 인정 생계비</span>
+                        <span className="font-mono font-bold text-slate-800">{minLivingCost}만원</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>월 예상 가용소득</span>
+                        <span className="font-mono font-bold text-blue-600">{monthlyDisposable.toLocaleString()}만원</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>채무 배율 (DTI)</span>
+                        <span className="font-mono font-bold text-slate-800">{dtiRatio}배</span>
+                      </div>
+                      <div className="pt-2 border-t border-slate-200 flex justify-between font-bold text-slate-900">
+                        <span>{termMonths}개월 총 변제예정</span>
+                        <span className="font-mono text-emerald-600">{estimatedTotalRepay.toLocaleString()}만원</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 📂 아코디언 2: 사건 상태 & 배정 관리 */}
+                {currentPermissions.changeStatus && (
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setShowStatusAccordion(!showStatusAccordion)}
+                      className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-slate-600" />
+                        <span>상태 및 담당자 설정</span>
+                      </span>
+                      <span className="text-slate-400 text-xs">{showStatusAccordion ? '▴' : '▾'}</span>
+                    </button>
+
+                    {showStatusAccordion && (
+                      <div className="p-3.5 pt-0 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 font-bold">진행 상태</label>
+                          <select 
+                            value={editStatus} 
+                            onChange={e => setEditStatus(e.target.value as CrmStatus)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:bg-white cursor-pointer"
+                          >
+                            {CRM_STATUSES.map(s => (
+                              <option key={s} value={s}>{CRM_STATUS_CONFIG[s].emoji} {CRM_STATUS_CONFIG[s].label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 font-bold">담당자 배정</label>
+                          <select 
+                            value={editAssigneeId} 
+                            onChange={e => setEditAssigneeId(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-medium text-slate-800 focus:bg-white cursor-pointer"
+                          >
+                            <option value="">미배정</option>
+                            {[...lawyers.map(l => ({ ...l, role: 'LAWYER' as const })), ...staffMembers.filter(m => m.isActive)].map(l => (
+                              <option key={l.id} value={l.id}>
+                                {l.name} ({STAFF_ROLE_CONFIG[l.role]?.label || l.role})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button 
+                          onClick={handleSaveAssignment}
+                          className="w-full bg-[#1E3A5F] hover:bg-slate-800 text-white py-2 rounded-xl text-xs font-bold cursor-pointer transition-all press-scale shadow-xs"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* 3. 차기 리마인더 / Next Action 위젯 */}
-                {(() => {
-                  const pendingReminderNote = selectedExt.notes.find(n => n.reminder && !n.reminder.completed);
-                  if (!pendingReminderNote || !pendingReminderNote.reminder) return null;
-                  const rem = pendingReminderNote.reminder;
-                  const dday = Math.ceil((new Date(rem.date + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / 86400000);
-                  return (
-                    <div className="bg-amber-50/80 rounded-2xl border border-amber-200/80 p-3.5 space-y-2 animate-fadeIn">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-amber-800 flex items-center gap-1">
-                          ⏰ 다음 할 일 (리마인더)
-                        </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dday <= 0 ? 'bg-rose-500 text-white' : 'bg-amber-200 text-amber-800'}`}>
-                          {dday === 0 ? 'D-Day' : dday > 0 ? `D-${dday}` : `D+${Math.abs(dday)}`}
+                {/* 📂 아코디언 3: 유입 채널 및 관리 도구 */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setShowMetaAccordion(!showMetaAccordion)}
+                    className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <span>⚙️ 유입 정보 & 관리</span>
+                    </span>
+                    <span className="text-slate-400 text-xs">{showMetaAccordion ? '▴' : '▾'}</span>
+                  </button>
+
+                  {showMetaAccordion && (
+                    <div className="p-3.5 pt-0 space-y-2.5 text-xs animate-fadeIn border-t border-slate-100">
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span>유입 채널</span>
+                        <span className="font-bold text-slate-800">
+                          {INTAKE_CHANNEL_CONFIG[selectedExt.intakeChannel || 'mykim']?.label || '마이김변'}
                         </span>
                       </div>
-                      <div className="text-xs text-amber-900">
-                        <p className="font-bold">{rem.action} {rem.time && `(${rem.time})`}</p>
-                        {rem.memo && <p className="text-[11px] text-amber-700 mt-0.5">{rem.memo}</p>}
-                        <p className="text-[10px] text-slate-400 mt-1">📅 {rem.date}</p>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        {currentPermissions.assignCases && (
+                          <button 
+                            type="button"
+                            onClick={() => setShowTransferModal(true)}
+                            className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 py-1.5 rounded-lg font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1 cursor-pointer press-scale"
+                          >
+                            <ArrowRightLeft className="w-3 h-3 text-amber-600" />
+                            이관
+                          </button>
+                        )}
+                        <button 
+                          type="button"
+                          onClick={async () => {
+                            const confirmed = await dialog.confirm({
+                              title: '고객 데이터 아카이브',
+                              message: `${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브(휴지통 이동)하시겠습니까?`,
+                              confirmText: '아카이브',
+                              variant: 'warning'
+                            });
+                            if (!confirmed) return;
+                            await deleteCrmClient(selectedId);
+                            setCrmData(prev => {
+                              const next = { ...prev };
+                              delete next[selectedId];
+                              return next;
+                            });
+                            setSelectedId('');
+                            toast.success(`${selectedClient?.clientName} 고객 데이터가 아카이브되었습니다.`);
+                          }}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg font-bold text-[11px] border border-rose-200 flex items-center gap-1 cursor-pointer press-scale"
+                          title="아카이브 / 휴지통 이동"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          삭제
+                        </button>
                       </div>
                     </div>
-                  );
-                })()}
-
-                {/* 4. 유입 정보 & 사건 관리 유틸리티 */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 space-y-2.5 text-xs text-slate-500">
-                  <div className="flex justify-between items-center">
-                    <span>유입 채널</span>
-                    <span className="font-bold text-slate-800">{INTAKE_CHANNEL_CONFIG[selectedExt.intakeChannel || 'mykim']?.label || '마이김변'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>최종 활동</span>
-                    <span className="font-mono text-slate-700">{timeAgo(selectedExt.lastActivityAt || selectedClient.createdAt)}</span>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                    {currentPermissions.assignCases && (
-                      <button 
-                        onClick={() => setShowTransferModal(true)}
-                        className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 py-1.5 rounded-lg font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1 cursor-pointer press-scale"
-                      >
-                        <ArrowRightLeft className="w-3 h-3 text-amber-600" />
-                        사건 이관
-                      </button>
-                    )}
-                    <button 
-                      onClick={async () => {
-                        const confirmed = await dialog.confirm({
-                          title: '고객 데이터 아카이브',
-                          message: `${selectedClient?.clientName} 고객의 CRM 데이터를 아카이브(휴지통 이동)하시겠습니까?`,
-                          confirmText: '아카이브',
-                          variant: 'warning'
-                        });
-                        if (!confirmed) return;
-                        await deleteCrmClient(selectedId);
-                        setCrmData(prev => {
-                          const next = { ...prev };
-                          delete next[selectedId];
-                          return next;
-                        });
-                        setSelectedId('');
-                        toast.success(`${selectedClient?.clientName} 고객 데이터가 아카이브되었습니다.`);
-                      }}
-                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg font-bold text-[11px] border border-rose-200 flex items-center gap-1 cursor-pointer press-scale"
-                      title="아카이브 / 휴지통 이동"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      삭제
-                    </button>
-                  </div>
+                  )}
                 </div>
 
               </div>
@@ -2331,11 +2367,12 @@ export default function CrmTab({
                 {selectedClient && (() => {
                   const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
                   const stageGuides: Record<number, string> = {
-                    1: '💡 모바일 전자계약서를 전송하여 정식 위임 계약을 체결하세요.',
-                    2: '💡 4대 발급처 서류 현황을 점검하고 미제출 서류 안내톡을 발송하세요.',
-                    3: '💡 8대 법원 서식 및 D5102/D5103을 검증하고 전자소송 패키징을 생성하세요.',
-                    4: '💡 법원 보정권고 기한을 준수하고 7대 표 소명서를 제출하세요.',
-                    5: '💡 법원 가상계좌 적립금 납부 현황과 채권자집회 일정을 관리하세요.'
+                    1: '💡 채무·소득 요건 및 제595조 결격사유를 검토하고 사건 유형을 확정하세요.',
+                    2: '💡 모바일 전자계약서를 전송하여 정식 위임 계약을 체결하세요.',
+                    3: '💡 4대 발급처 서류를 일괄 요청하고 도착 서류 및 진술서를 검토하세요.',
+                    4: '💡 8대 법원 서식 및 D5102/D5103을 검증하고 전자소송 패키징을 생성하세요.',
+                    5: '💡 법원 보정권고 기한을 준수하고 7대 표 소명서를 제출하세요.',
+                    6: '💡 법원 가상계좌 적립금 납부 현황과 채권자집회 일정을 관리하세요.'
                   };
 
                   return (
@@ -2506,12 +2543,22 @@ export default function CrmTab({
                     {/* 중앙 5단계 실무 캔버스 */}
                     <div className="flex-1 min-w-0">
                       {pipelineStage === 1 && (
-                        <Stage1ContractView
+                        <Stage1ConsultationView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
                           activeLawyer={activeLawyer}
                           onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
                           onAdvanceToNextStage={() => setPipelineStage(2)}
+                          onSwitchCaseType={handleSwitchCaseType}
+                        />
+                      )}
+                      {pipelineStage === 2 && (
+                        <Stage2ContractRetainerView
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          activeLawyer={activeLawyer}
+                          onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
+                          onAdvanceToNextStage={() => setPipelineStage(3)}
                           onOpenContractSubTab={() => {
                             setPipelineViewMode('subtabs');
                             setDetailTab('contracts');
@@ -2519,20 +2566,20 @@ export default function CrmTab({
                           onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
                         />
                       )}
-                      {pipelineStage === 2 && (
-                        <Stage2DocumentsHubView
+                      {pipelineStage === 3 && (
+                        <Stage3DocumentsHubView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
-                          onAdvanceToNextStage={() => setPipelineStage(3)}
+                          onAdvanceToNextStage={() => setPipelineStage(4)}
                           onOpenDocScanner={() => setShowDocScanner(true)}
                           onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
                         />
                       )}
-                      {pipelineStage === 3 && (
-                        <Stage3FilingBundleView
+                      {pipelineStage === 4 && (
+                        <Stage4FilingBundleView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
-                          onAdvanceToNextStage={() => setPipelineStage(4)}
+                          onAdvanceToNextStage={() => setPipelineStage(5)}
                           onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
                           onOpenAncillaryModal={() => setShowAncillaryModal(true)}
                           onOpenCourtDocExportModal={() => setShowCourtDocExportModal(true)}
@@ -2540,19 +2587,19 @@ export default function CrmTab({
                           onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
                         />
                       )}
-                      {pipelineStage === 4 && (
-                        <Stage4CorrectionCenterView
+                      {pipelineStage === 5 && (
+                        <Stage5CorrectionCenterView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
-                          onAdvanceToNextStage={() => setPipelineStage(5)}
+                          onAdvanceToNextStage={() => setPipelineStage(6)}
                           onOpenComprehensiveCorrectionModal={() => {
                             setPipelineViewMode('subtabs');
                             setDetailTab('corrections');
                           }}
                         />
                       )}
-                      {pipelineStage === 5 && (
-                        <Stage5PostCareDischargeView
+                      {pipelineStage === 6 && (
+                        <Stage6PostCareDischargeView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
                           onOpenPostCareModal={() => setShowPostCareModal(true)}
