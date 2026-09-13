@@ -164,85 +164,99 @@ export default function WorkflowPipelineStepper({
         </div>
       </div>
 
-      {/* 6단계 가로형 스텝 바 (Deep Navy Active + 균등 그리드) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 divide-x divide-y xl:divide-y-0 divide-slate-100 bg-slate-50/50">
-        {stages.map((st) => {
-          const isActive = currentStage === st.stage && viewMode === 'pipeline';
-          const IconComponent = st.icon;
+      {/* 6단계 가로형 스텝 바 (눈에 띄는 백그라운드 쉘프 + 카드 타일 + 고대비 상태별 배경색) */}
+      <div className="p-2 sm:p-2.5 bg-slate-100/90 border-t border-slate-200">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-2.5">
+          {stages.map((st) => {
+            const isActive = currentStage === st.stage && viewMode === 'pipeline';
+            const IconComponent = st.icon;
 
-          return (
-            <button
-              key={st.stage}
-              type="button"
-              onClick={() => {
-                onToggleViewMode('pipeline');
-                onSelectStage(st.stage);
-              }}
-              className={`p-3 text-left transition-all relative flex flex-col justify-between group cursor-pointer ${
-                isActive 
-                  ? 'bg-white text-slate-900 shadow-xs ring-1 ring-inset ring-slate-200 z-10' 
-                  : 'hover:bg-white/90 text-slate-600'
-              }`}
-            >
-              {/* 상단 굵은 인디케이터 (활성화 시 Deep Navy) */}
-              {isActive && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-[#1E3A5F]" />
-              )}
-
-              {/* 스텝 헤더 (번호 + 뱃지) */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[11px] font-mono font-black ${
-                    isActive ? 'text-[#1E3A5F]' : 'text-slate-400 group-hover:text-slate-600'
-                  }`}>
-                    {st.number}
-                  </span>
-                  {st.isCompleted ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  ) : st.isLocked ? (
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
-                  ) : (
-                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#1E3A5F] animate-ping' : 'bg-slate-300'}`} />
-                  )}
-                </div>
-
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border whitespace-nowrap ${
-                  st.isCompleted
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : isActive
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-slate-100 text-slate-600 border-slate-200'
-                }`}>
-                  {st.badgeText}
-                </span>
-              </div>
-
-              {/* 스텝 본문 (아이콘 + 타이틀) */}
-              <div className="flex items-start gap-2">
-                <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 transition-colors ${
+            return (
+              <button
+                key={st.stage}
+                type="button"
+                onClick={() => {
+                  onToggleViewMode('pipeline');
+                  onSelectStage(st.stage);
+                }}
+                className={`p-2.5 sm:p-3 text-left transition-all relative flex flex-col justify-between rounded-xl cursor-pointer press-scale min-h-[82px] group ${
                   isActive 
-                    ? 'bg-[#1E3A5F] text-white shadow-xs' 
+                    ? 'bg-[#1E3A5F] text-white shadow-md border-2 border-[#1E3A5F] ring-2 ring-blue-500/25 z-10' 
                     : st.isCompleted
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
-                }`}>
-                  <IconComponent className="w-3.5 h-3.5" />
+                      ? 'bg-emerald-50/90 hover:bg-emerald-100/90 border border-emerald-300/80 text-emerald-950 shadow-2xs'
+                      : st.isLocked
+                        ? 'bg-white/60 hover:bg-white/90 border border-dashed border-slate-300 text-slate-400 opacity-80 shadow-2xs'
+                        : 'bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 text-slate-700 shadow-2xs'
+                }`}
+              >
+                {/* 활성화 시 상단 발광 바 */}
+                {isActive && (
+                  <div className="absolute top-0 left-3 right-3 h-0.5 bg-blue-400 rounded-full" />
+                )}
+
+                {/* 스텝 헤더 (번호 + 뱃지) */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[11px] font-mono font-black px-1.5 py-0.5 rounded ${
+                      isActive 
+                        ? 'text-blue-100 bg-white/15' 
+                        : st.isCompleted 
+                          ? 'text-emerald-800 bg-emerald-100/80' 
+                          : 'text-slate-600 bg-slate-100'
+                    }`}>
+                      {st.number}
+                    </span>
+                    {st.isCompleted ? (
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-300' : 'text-emerald-600'}`} />
+                    ) : st.isLocked ? (
+                      <Lock className={`w-3.5 h-3.5 ${isActive ? 'text-blue-200' : 'text-slate-400'}`} />
+                    ) : (
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
+                    )}
+                  </div>
+
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap shadow-2xs border ${
+                    isActive
+                      ? 'bg-blue-500 text-white border-blue-400'
+                      : st.isCompleted
+                        ? 'bg-white/90 text-emerald-800 border-emerald-300'
+                        : st.isLocked
+                          ? 'bg-slate-100 text-slate-400 border-slate-200'
+                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                  }`}>
+                    {st.badgeText}
+                  </span>
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className={`text-xs font-black truncate ${
-                    isActive ? 'text-slate-900' : 'text-slate-700 group-hover:text-slate-900'
+                {/* 스텝 본문 (아이콘 + 타이틀) */}
+                <div className="flex items-start gap-2">
+                  <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 transition-colors ${
+                    isActive 
+                      ? 'bg-white text-[#1E3A5F] shadow-xs font-black' 
+                      : st.isCompleted
+                        ? 'bg-emerald-200/80 text-emerald-800'
+                        : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
                   }`}>
-                    {st.title}
+                    <IconComponent className="w-3.5 h-3.5" />
                   </div>
-                  <div className="text-[10px] text-slate-500 truncate mt-0.5 font-normal">
-                    {st.desc}
+
+                  <div className="min-w-0 flex-1">
+                    <div className={`text-xs font-black truncate tracking-tight ${
+                      isActive ? 'text-white' : 'text-slate-900'
+                    }`}>
+                      {st.title}
+                    </div>
+                    <div className={`text-[10px] truncate mt-0.5 font-normal ${
+                      isActive ? 'text-blue-100' : 'text-slate-500'
+                    }`}>
+                      {st.desc}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
