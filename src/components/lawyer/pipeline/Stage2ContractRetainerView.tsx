@@ -86,6 +86,7 @@ export default function Stage2ContractRetainerView({
   const [selectedSpecialTerms, setSelectedSpecialTerms] = useState<string[]>(['allcare', 'cancel_refund']);
   const [customSpecialTerm, setCustomSpecialTerm] = useState('');
   const [showAddCustomTerm, setShowAddCustomTerm] = useState(false);
+  const [showOfflineMenu, setShowOfflineMenu] = useState(false);
 
   // 법원 실비 계산 공식 (2026 전자소송 기준)
   const stampFee = 28800; // 인지대: 개시 27,000 + 금지명령 1,800
@@ -432,45 +433,47 @@ ${d.content}
         </div>
       </div>
 
-      {/* ── 2. Next Action Hero Card (1 Major + 1~2 Minor 원칙) ── */}
+      {/* ── 2. Next Action Hero Card (1 Major + 1 Minor 원칙 준수) ── */}
       <div className={`p-5 rounded-2xl border transition-all shadow-xs ${
         isContractSigned 
           ? 'bg-emerald-50/70 border-emerald-200/90 text-emerald-950' 
           : 'bg-white border-slate-200 text-slate-900'
       }`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          {/* 좌측 안내 (최소 너비 확보 및 flex-1로 압축 방지) */}
+          <div className="flex items-start gap-3.5 min-w-0 flex-1">
             <div className={`p-3 rounded-xl shrink-0 mt-0.5 ${
               isContractSigned ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#1E3A5F] text-white shadow-xs'
             }`}>
               {isContractSigned ? <CheckCircle2 className="w-5 h-5" /> : <FileCheck2 className="w-5 h-5" />}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap shrink-0">
                   {isContractSigned ? 'Gate 2 통과 완료' : '지금 해야 할 핵심 작업'}
                 </span>
-                <span className="text-sm font-black tracking-tight">
+                <span className="text-sm font-black tracking-tight text-slate-900 whitespace-normal">
                   {isContractSigned 
                     ? '정식 위임계약이 완료되었습니다. 소송위임장을 확인하거나 3단계로 진행하세요.' 
-                    : '계약 조항과 특약사항을 검토한 후, 의뢰인 스마트폰으로 전자계약서를 전송하세요.'}
+                    : '계약 조항과 특약사항을 검토한 후, 의뢰인에게 전자계약서를 발송하세요.'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 {isContractSigned 
                   ? '체결된 계약서와 소송대리 위임장이 안전하게 보관되었습니다. 3단계(고객정보·서류수집)로 진행하세요.' 
-                  : '카카오 알림톡으로 스마트폰 전자서명 링크를 발송하거나, 방문 대면 고객인 경우 즉시 서면 인쇄하여 종이 체결합니다.'}
+                  : '카카오 알림톡으로 스마트폰 전자서명 링크를 즉시 발송하거나, 방문 대면 고객인 경우 서면 인쇄하여 종이 체결합니다.'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* 우측 CTA 영역 (1 Major + 1 Minor + 서면/오프라인 드롭다운) */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
             {!isContractSigned ? (
               <>
                 <button
                   type="button"
                   onClick={handleSendElectronicContract}
-                  className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer"
+                  className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 press-scale cursor-pointer whitespace-nowrap"
                 >
                   <Send className="w-4 h-4 text-emerald-400" />
                   <span>모바일 전자계약서 발송 (Major)</span>
@@ -479,42 +482,52 @@ ${d.content}
                 <button
                   type="button"
                   onClick={() => setIsPreviewAllOpen(true)}
-                  className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                  className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
                   title="현재 설정된 수임료·특약이 반영된 계약서 전문 열람"
                 >
                   <Eye className="w-3.5 h-3.5 text-blue-600" />
                   <span>계약서 미리보기</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsWizardOpen(true)}
-                  className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-                  title="계약서 6단계 전체 정보(위임인, 계좌, 도장 등) 상세 수정"
-                >
-                  <Edit3 className="w-3.5 h-3.5 text-slate-600" />
-                  <span>계약내용 상세 수정</span>
-                </button>
+                {/* 대면 방문 서면계약 보조 메뉴 */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowOfflineMenu(prev => !prev)}
+                    className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer press-scale whitespace-nowrap"
+                    title="대면 방문 고객용 종이 인쇄 및 수동 체결 처리"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-600" />
+                    <span>서면/오프라인 ▾</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handlePrintContract}
-                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-                  title="대면 방문 고객용 종이 서면계약서 인쇄"
-                >
-                  <Printer className="w-3.5 h-3.5 text-slate-600" />
-                  <span>서면 인쇄</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleConfirmInPersonContract}
-                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-                  title="방문 상담 등으로 이미 종이 서면 계약서를 체결한 경우"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>서면계약 완료 처리</span>
-                </button>
+                  {showOfflineMenu && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-20" 
+                        onClick={() => setShowOfflineMenu(false)} 
+                      />
+                      <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-30 space-y-1 text-xs animate-fadeIn">
+                        <button
+                          type="button"
+                          onClick={() => { setShowOfflineMenu(false); handlePrintContract(); }}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-50 rounded-lg flex items-center gap-2 text-slate-700 font-bold cursor-pointer"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-slate-500" />
+                          <span>종이 계약서 인쇄</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowOfflineMenu(false); handleConfirmInPersonContract(); }}
+                          className="w-full px-3 py-2 text-left hover:bg-emerald-50 text-emerald-700 rounded-lg flex items-center gap-2 font-bold cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>서면계약 완료 처리</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </>
             ) : (
               <>
