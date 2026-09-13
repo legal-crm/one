@@ -67,39 +67,59 @@ export default function Stage5PostCareDischargeView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* 헤더 안내 바 */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-slate-900">
-              Stage 5. 개시결정·인가·변제수행 및 최종 별도 면책 신청
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-purple-50 text-purple-700 border border-purple-200">
-              인가 후 사후관리 진행중
-            </span>
+      {/* ⭐️ Next Best Action Hero Card (신입 사무장용 명확한 단일 가이드) */}
+      <div className="p-5 rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 rounded-xl bg-brand text-white shadow-xs shrink-0 mt-0.5">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                  Stage 05 핵심 작업
+                </span>
+                <span className="text-sm font-black tracking-tight">
+                  법원 가상계좌 적립금 납부 현황을 관리하고, 채권자집회 출석 지도 및 별도 면책을 신청하세요.
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                법원 가상계좌 인가 전 적립금 관리, 채권조사확정재판 대응, 36개월 납부 관리 및 최종 별도 면책 신청을 총괄합니다.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-slate-500">
-            법원 가상계좌 인가 전 적립금 관리, 채권조사확정재판 대응, 36개월 납부 관리 및 최종 별도 면책 신청을 총괄합니다.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {paidMonths >= totalMonths ? (
-            <button
-              onClick={handleGenerateDischargePetition}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
-            >
-              <Award className="w-4 h-4" />
-              <span>🏆 최종 면책신청서 원클릭 생성</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setPaidMonths(totalMonths)}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer text-[11px]"
-            >
-              <span>(테스트: 36회차 완납 시뮬레이션)</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {onOpenPostCareModal && (
+              <button
+                type="button"
+                onClick={onOpenPostCareModal}
+                className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                title="개시·사후관리 (가상계좌·집회) 상세 모달 열기"
+              >
+                <span>🏦 개시·사후관리 상세</span>
+              </button>
+            )}
+
+            {paidMonths >= totalMonths ? (
+              <button
+                type="button"
+                onClick={handleGenerateDischargePetition}
+                className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+              >
+                <Award className="w-4 h-4" />
+                <span>🏆 최종 면책신청서 원클릭 생성</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPaidMonths(totalMonths)}
+                className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer text-[11px]"
+              >
+                <span>(테스트: 36회차 완납 시뮬레이션)</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -93,42 +93,53 @@ export default function Stage4CorrectionCenterView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* 사건 정보 & 대법원 나의사건 크롤링 카드 */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-slate-900">
-              Stage 4. 대법원 사건 크롤링 & 리걸플로 보정센터
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200">
-              보정권고 심리 진행중
-            </span>
+      {/* ⭐️ Next Best Action Hero Card (신입 사무장용 명확한 단일 가이드) */}
+      <div className="p-5 rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 rounded-xl bg-brand text-white shadow-xs shrink-0 mt-0.5">
+              <Scale className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                  Stage 04 핵심 작업
+                </span>
+                <span className="text-sm font-black tracking-tight">
+                  대법원 보정권고 기한을 관리하고, 7대 표 소명서를 작성하여 제출하세요.
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-slate-500 font-mono mt-1">
+                <span>관할: {courtName}</span>
+                <span>•</span>
+                <span className="font-bold text-slate-800">사건번호: {caseNumber}</span>
+                <span>•</span>
+                <span className={`font-bold ${dDayInfo.isUrgent ? 'text-rose-600' : 'text-slate-600'}`}>
+                  {dDayInfo.text}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
-            <span>관할: {courtName}</span>
-            <span>•</span>
-            <span className="font-bold text-slate-800">사건번호: {caseNumber}</span>
-            <span>•</span>
-            <span>재판부: 회생단독 21부</span>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <button
+              type="button"
+              onClick={() => toast.info('대법원 나의사건검색 스크래핑을 실행하여 최신 진행상황을 동기화했습니다.')}
+              className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>대법원 동기화</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onAdvanceToNextStage}
+              className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+            >
+              <span>개시결정 완료 (Stage 5 이동)</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => toast.info('대법원 나의사건검색 스크래핑을 실행하여 최신 진행상황을 동기화했습니다.')}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-            <span>대법원 동기화</span>
-          </button>
-
-          <button
-            onClick={onAdvanceToNextStage}
-            className="px-4 py-2 bg-brand hover:bg-brand-dark text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
-          >
-            <span>개시결정 완료 (Stage 5 이동)</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
         </div>
       </div>
 

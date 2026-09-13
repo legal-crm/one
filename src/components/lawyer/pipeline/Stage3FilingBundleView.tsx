@@ -14,15 +14,21 @@ interface Stage3FilingBundleViewProps {
   onAdvanceToNextStage: () => void;
   onOpenBatchFilingModal?: () => void;
   onOpenAncillaryModal?: () => void;
+  onOpenCourtDocExportModal?: () => void;
+  onOpenPropertyValuationModal?: () => void;
+  onOpenIncomeExpenseModal?: () => void;
 }
 
 export default function Stage3FilingBundleView({
   clientRequest,
   crmExt,
   onAdvanceToNextStage,
-  onBatchFilingModal,
+  onOpenBatchFilingModal,
   onOpenAncillaryModal,
-}: any) {
+  onOpenCourtDocExportModal,
+  onOpenPropertyValuationModal,
+  onOpenIncomeExpenseModal,
+}: Stage3FilingBundleViewProps) {
   const [includeProhibition, setIncludeProhibition] = useState(true);
   const [includeStayOrder, setIncludeStayOrder] = useState(true);
   const [stayExecutionCaseNo, setStayExecutionCaseNo] = useState('2025타채 54321호 (급여압류)');
@@ -58,38 +64,97 @@ export default function Stage3FilingBundleView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* 헤더 안내 카드 */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-slate-900">
-              Stage 3. 개시신청 8대 서식 & 금지·중지명령 일괄 패키징
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              전자소송 원클릭 번들
-            </span>
+      {/* ⭐️ Next Best Action Hero Card (신입 사무장용 명확한 단일 가이드) */}
+      <div className="p-5 rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 rounded-xl bg-brand text-white shadow-xs shrink-0 mt-0.5">
+              <Send className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                  Stage 03 핵심 작업
+                </span>
+                <span className="text-sm font-black tracking-tight">
+                  8대 법원 서식을 점검하고 전자소송 일괄 패키징을 생성하여 접수하세요.
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                재산목록(D5102), 가용소득(D5103), 금지명령신청서를 일괄 결합하여 법원에 동시 접수함으로써 채권추심을 즉시 방어합니다.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-slate-500">
-            전자소송 접수 시 개시신청서와 금지명령·중지명령을 동일 번들로 묶어 채권자의 독촉과 급여 압류를 동시에 방어합니다.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {onOpenBatchFilingModal && (
+              <button
+                type="button"
+                onClick={onOpenBatchFilingModal}
+                className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+              >
+                <span>⚖️ 전자소송 일괄 패키징 & CSV</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleCompleteFiling}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+            >
+              <span>접수 완료 (Stage 4 이동)</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleDownloadBundle}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>전자소송 ZIP 번들 다운로드</span>
-          </button>
-
-          <button
-            onClick={handleCompleteFiling}
-            className="px-4 py-2 bg-brand hover:bg-brand-dark text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
-          >
-            <span>전자소송 접수 완료 (Stage 4 이동)</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+      {/* 📁 Stage 3 실무 필수 서식 도구 모음 (기존 상단 산발 버튼의 유기적 흡수) */}
+      <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+            <FileSpreadsheet className="w-4 h-4 text-brand" />
+            3단계 필수 전산서식 및 신청서 실무 작성 센터
+          </span>
+          <span className="text-[11px] text-slate-500">필요 시 각 양식을 열어 정밀 산정 및 인쇄</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          {onOpenPropertyValuationModal && (
+            <button
+              type="button"
+              onClick={onOpenPropertyValuationModal}
+              className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer press-scale text-left"
+            >
+              <span>🏛️ 재산목록 (D5102)</span>
+            </button>
+          )}
+          {onOpenIncomeExpenseModal && (
+            <button
+              type="button"
+              onClick={onOpenIncomeExpenseModal}
+              className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer press-scale text-left"
+            >
+              <span>💰 수입·지출목록 (D5103)</span>
+            </button>
+          )}
+          {onOpenAncillaryModal && (
+            <button
+              type="button"
+              onClick={onOpenAncillaryModal}
+              className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer press-scale text-left"
+            >
+              <span>📋 부수신청서 (중지·압류)</span>
+            </button>
+          )}
+          {onOpenCourtDocExportModal && (
+            <button
+              type="button"
+              onClick={onOpenCourtDocExportModal}
+              className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer press-scale text-left"
+            >
+              <span>📜 법원문서 8종 출력 (동의)</span>
+            </button>
+          )}
         </div>
       </div>
 

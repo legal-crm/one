@@ -16,6 +16,7 @@ interface Stage1ContractViewProps {
   onUpdateStatus: (newStatus: any) => void;
   onAdvanceToNextStage: () => void;
   onOpenContractSubTab?: () => void;
+  onOpenPowerOfAttorneyModal?: () => void;
 }
 
 export default function Stage1ContractView({
@@ -25,6 +26,7 @@ export default function Stage1ContractView({
   onUpdateStatus,
   onAdvanceToNextStage,
   onOpenContractSubTab,
+  onOpenPowerOfAttorneyModal,
 }: Stage1ContractViewProps) {
   const [creditorCount, setCreditorCount] = useState<number>(() => {
     return (crmExt?.debtCertificateOrders?.[0]?.items || []).length || (clientRequest as any)?.creditorCount || 5;
@@ -89,45 +91,82 @@ export default function Stage1ContractView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* 게이트키퍼 안내 배너 */}
-      <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 shadow-xs ${
+      {/* ⭐️ Next Best Action Hero Card (신입 사무장용 명확한 단일 가이드) */}
+      <div className={`p-5 rounded-2xl border transition-all shadow-xs ${
         isContractSigned 
-          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' 
-          : 'bg-amber-50/90 border-amber-200 text-amber-950'
+          ? 'bg-emerald-50/70 border-emerald-200/90 text-emerald-950' 
+          : 'bg-white border-slate-200 text-slate-900'
       }`}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${isContractSigned ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-            {isContractSigned ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className={`p-3 rounded-xl shrink-0 mt-0.5 ${
+              isContractSigned ? 'bg-emerald-600 text-white shadow-xs' : 'bg-brand text-white shadow-xs'
+            }`}>
+              {isContractSigned ? <CheckCircle2 className="w-5 h-5" /> : <FileCheck2 className="w-5 h-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                  {isContractSigned ? 'Gate 1 통과 완료' : 'Stage 01 핵심 작업'}
+                </span>
+                <span className="text-sm font-black tracking-tight">
+                  {isContractSigned 
+                    ? '정식 위임계약이 완료되었습니다. 소송위임장을 발급하거나 2단계로 진행하세요.' 
+                    : '의뢰인에게 모바일 전자계약서를 전송하여 정식 위임 계약을 체결하세요.'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                {isContractSigned 
+                  ? '법원 제출용 담당변호사 소송위임장·지정서를 즉시 발급/인쇄할 수 있으며, 2단계 서류 수합 허브로 안전하게 이동할 수 있습니다.'
+                  : '똑생·리걸플로 실무 기준: 사건 위임계약 체결 및 착수금 약정이 선행되어야 2단계(4대 기관 서류 수합)를 개시할 수 있습니다.'}
+              </p>
+            </div>
           </div>
-          <div>
-            <div className="text-sm font-black flex items-center gap-2">
-              {isContractSigned ? 'Gate 1 통과 완료 (수임 계약 체결)' : 'Gate 1 대기중: 수임 계약이 선행되어야 서류 수합을 개시할 수 있습니다'}
-            </div>
-            <div className="text-xs text-slate-600 mt-0.5">
-              {isContractSigned 
-                ? '전자계약 또는 방문 서명이 완료되어 Stage 2(서류·부채증명 발급)로 진입할 수 있습니다.'
-                : '똑생·리걸플로 실무 기준: 의뢰인과의 위임계약 및 착수금 약정 후 본격적인 서류 요청이 진행됩니다.'}
-            </div>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {isContractSigned ? (
+              <>
+                {onOpenPowerOfAttorneyModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenPowerOfAttorneyModal}
+                    className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                    title="소송위임장 및 법무법인 담당변호사 지정서 발급/날인"
+                  >
+                    <span>⚖️ 소송위임장·지정서 발급</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onAdvanceToNextStage}
+                  className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                >
+                  <span>Stage 2 (서류 허브)로 이동</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSendElectronicContract}
+                  className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>모바일 전자계약서 알림톡 발송</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmInPersonContract}
+                  className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <UserCheck className="w-4 h-4 text-slate-600" />
+                  <span>방문/대면 계약 완료 처리</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
-
-        {isContractSigned ? (
-          <button
-            onClick={onAdvanceToNextStage}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer shrink-0"
-          >
-            <span>Stage 2 (서류 허브)로 이동</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            onClick={handleConfirmInPersonContract}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer shrink-0"
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>방문/대면 계약 완료 처리</span>
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

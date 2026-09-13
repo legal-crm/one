@@ -19,6 +19,7 @@ interface Stage2DocumentsHubViewProps {
   crmExt?: CrmClientExtension;
   onAdvanceToNextStage: () => void;
   onOpenDocScanner?: () => void;
+  onOpenStatementSyncModal?: () => void;
 }
 
 type DocAgencyTab = 'gov' | 'tax' | 'work' | 'finance' | 'special';
@@ -37,6 +38,7 @@ export default function Stage2DocumentsHubView({
   crmExt,
   onAdvanceToNextStage,
   onOpenDocScanner,
+  onOpenStatementSyncModal,
 }: Stage2DocumentsHubViewProps) {
   const [activeAgency, setActiveAgency] = useState<DocAgencyTab>('gov');
   const [thirdPartyMaskingConfirmed, setThirdPartyMaskingConfirmed] = useState(true);
@@ -100,71 +102,68 @@ export default function Stage2DocumentsHubView({
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* 상단 액션 바: 진행 현황 & 모바일 촬영/전송 */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-slate-900">
-              Stage 2. 발급처 기준 4대 서류 허브 & 부채증명 관리
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
-              신우법무사 표준 실무 22종 연동
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              LegalFlow Engine
-            </span>
+      {/* ⭐️ Next Best Action Hero Card (신입 사무장용 명확한 단일 가이드) */}
+      <div className="p-5 rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 rounded-xl bg-brand text-white shadow-xs shrink-0 mt-0.5">
+              <FolderArchive className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                  Stage 02 핵심 작업
+                </span>
+                <span className="text-sm font-black tracking-tight">
+                  의뢰인에게 모바일 발급함 알림톡을 전송하고, 도착 서류 및 진술서를 검토하세요.
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                정부24, 홈택스 등 4대 발급처 서류를 체계적으로 수합하며, 의뢰인이 작성한 채무증대경위서(진술서)를 실시간 동기화합니다.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-slate-500">
-            의뢰인의 발급 동선에 맞추어 주민센터, 국세청, 직장, 금융기관 서류를 체계적으로 수합하고 전자소송 PDF로 번들링합니다.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* 신청서류 마스터 설정 (리걸플로 그림 2-10 벤치마킹) */}
-          <button
-            onClick={() => setShowSettingsModal(true)}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-            title="사무소 공통 신청서류 템플릿(회생/파산/보정) 설정"
-          >
-            <Settings2 className="w-3.5 h-3.5 text-slate-600" />
-            <span>신청서류 마스터 설정</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {onOpenStatementSyncModal && (
+              <button
+                type="button"
+                onClick={onOpenStatementSyncModal}
+                className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
+                title="의뢰인이 스마트폰에서 작성한 진술서(채무증대경위서) 실시간 확인 및 동기화"
+              >
+                <span>✍️ 고객 진술서 동기화</span>
+              </button>
+            )}
 
-          {/* 모바일 신청서류 발급함 (리걸플로 그림 2-11 벤치마킹) */}
-          <button
-            onClick={() => setShowMobileHubModal(true)}
-            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-            title="의뢰인 모바일 신청서류 발급현황(0/22) 화면 열기"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-            <span>모바일 서류함 (0/22)</span>
-          </button>
-
-          <button
-            onClick={handleSendMobileDocLink}
-            className="px-3.5 py-2 bg-brand/10 hover:bg-brand/20 text-brand font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer press-scale"
-          >
-            <Send className="w-3.5 h-3.5 text-brand" />
-            <span>알림톡 링크 발송</span>
-          </button>
-
-          {onOpenDocScanner && (
             <button
-              onClick={onOpenDocScanner}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              type="button"
+              onClick={handleSendMobileDocLink}
+              className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-brand border border-brand/30 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer press-scale"
             >
-              <Camera className="w-3.5 h-3.5" />
-              <span>스캐너</span>
+              <Send className="w-3.5 h-3.5 text-brand" />
+              <span>서류함 알림톡 발송</span>
             </button>
-          )}
 
-          <button
-            onClick={onAdvanceToNextStage}
-            className="px-4 py-2 bg-brand hover:bg-brand-dark text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
-          >
-            <span>Stage 3 (접수·금지명령)으로 이동</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowMobileHubModal(true)}
+              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              title="의뢰인 모바일 신청서류 발급현황 화면 열기"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-slate-600" />
+              <span>모바일 서류함 확인</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onAdvanceToNextStage}
+              className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer"
+            >
+              <span>Stage 3 (접수·금지)로 이동</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -300,20 +299,34 @@ export default function Stage2DocumentsHubView({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {status.isUploaded ? (
                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>제출완료</span>
                         </span>
                       ) : (
-                        <button
-                          onClick={() => toast.info(`${doc.name} 업로드 창이 열렸습니다.`)}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <Upload className="w-3.5 h-3.5 text-slate-500" />
-                          <span>업로드</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toast.success(`[알림톡 발송] ${clientRequest.clientName}님께 '${doc.name}' 모바일 간편 발급 가이드가 전송되었습니다.`);
+                            }}
+                            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer press-scale border border-blue-200"
+                            title="고객에게 해당 서류 모바일 발급 안내 알림톡 전송"
+                          >
+                            <Send className="w-3 h-3 text-blue-600" />
+                            <span>카톡 요청</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toast.info(`${doc.name} 직접 업로드 창이 열렸습니다.`)}
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Upload className="w-3 h-3 text-slate-500" />
+                            <span>업로드</span>
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

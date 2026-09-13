@@ -50,6 +50,7 @@ import Stage2DocumentsHubView from './pipeline/Stage2DocumentsHubView';
 import Stage3FilingBundleView from './pipeline/Stage3FilingBundleView';
 import Stage4CorrectionCenterView from './pipeline/Stage4CorrectionCenterView';
 import Stage5PostCareDischargeView from './pipeline/Stage5PostCareDischargeView';
+import ClientCommunicationSidePanel from './pipeline/ClientCommunicationSidePanel';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { applyCourtSubmissionWatermark } from '../../utils/documentWatermark';
@@ -229,6 +230,8 @@ export default function CrmTab({
   const [showCourtDocExportModal, setShowCourtDocExportModal] = useState(false);
   const [showStatementSyncModal, setShowStatementSyncModal] = useState(false);
   const [showPowerOfAttorneyModal, setShowPowerOfAttorneyModal] = useState(false);
+  const [showFormsDropdown, setShowFormsDropdown] = useState(false);
+  const [showCommPanel, setShowCommPanel] = useState(true);
 
   // 외부(정식사건 전환 모달 등)에서 지정한 고객 ID 및 탭 동기화
   useEffect(() => {
@@ -2324,89 +2327,42 @@ export default function CrmTab({
               {/* ══════════ 우측 메인 영역: Deep Analysis & Workspace Canvas ══════════ */}
               <div className="flex-1 min-w-0 bg-white">
                 
-                {/* ══════════ 리걸플로 벤치마킹: 3대 실무 원클릭 도구 툴바 ══════════ */}
+                {/* ══════════ 리걸플로 벤치마킹: 정제된 실무 가이드 툴바 & 서식 보관함 ══════════ */}
                 {selectedClient && (() => {
                   const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
+                  const stageGuides: Record<number, string> = {
+                    1: '💡 모바일 전자계약서를 전송하여 정식 위임 계약을 체결하세요.',
+                    2: '💡 4대 발급처 서류 현황을 점검하고 미제출 서류 안내톡을 발송하세요.',
+                    3: '💡 8대 법원 서식 및 D5102/D5103을 검증하고 전자소송 패키징을 생성하세요.',
+                    4: '💡 법원 보정권고 기한을 준수하고 7대 표 소명서를 제출하세요.',
+                    5: '💡 법원 가상계좌 적립금 납부 현황과 채권자집회 일정을 관리하세요.'
+                  };
+
                   return (
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold text-slate-400">⚡ 실무 원클릭:</span>
-                        <button
-                          type="button"
-                          onClick={() => setShowBatchFilingModal(true)}
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
-                        >
-                          <span>⚖️ 전자소송 일괄 패키징 & CSV</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowAncillaryModal(true)}
-                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
-                        >
-                          <span>📋 부수신청서 (중지·면제·압류해제)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowPostCareModal(true)}
-                          className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
-                        >
-                          <span>🏦 개시·사후관리 (가상계좌·집회)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowCourtDocExportModal(true)}
-                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
-                          title="대법원 필수 8종 법원문서 일괄출력 및 의뢰인 모바일 제출동의"
-                        >
-                          <span>📜 법원문서 8종 출력 (모바일 동의)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowStatementSyncModal(true)}
-                          className="px-3 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
-                          title="의뢰인이 스마트폰에서 작성한 진술서(채무증대경위서) 실시간 확인 및 동기화"
-                        >
-                          <span>✍️ 고객 진술서 동기화</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowPowerOfAttorneyModal(true)}
-                          className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
-                          title="소송위임장 및 법무법인 담당변호사 지정서 발급/날인"
-                        >
-                          <span>⚖️ 소송위임장·지정서</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowIncomeExpenseModal(true)}
-                          className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
-                          title="대법원 전산양식 D5103 수입 및 지출에 관한 목록 (가용소득 산출표) 작성 및 인쇄"
-                        >
-                          <span>💰 수입·지출목록 (D5103)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowPropertyValuationModal(true)}
-                          className="px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap"
-                          title="대법원 전산양식 D5102 재산목록 (부동산·자동차·보험·퇴직금 11대 자산 가치 산정)"
-                        >
-                          <span>🏛️ 재산목록 (D5102)</span>
-                        </button>
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800 relative z-30">
+                      {/* 좌측: 현재 단계 칩 & 신입 사무장용 원라인 가이드 */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-600/90 text-white text-xs font-black shrink-0 tracking-tight shadow-2xs">
+                          Stage 0{pipelineStage}
+                        </span>
+                        <span className="text-xs text-slate-300 truncate font-medium">
+                          {stageGuides[pipelineStage] || stageGuides[1]}
+                        </span>
                       </div>
 
-                      {/* 사건 담당 변호사/직원 전용 사건 유형 전환 스위처 */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold text-slate-400">사건 유형:</span>
+                      {/* 우측: 사건 유형 스위처 + 실무 서식 보관함 드롭다운 + 소통창 토글 */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* 사건 유형 전환 스위처 */}
                         <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-xl p-0.5 shadow-inner">
                           <button
                             type="button"
                             onClick={() => handleSwitchCaseType('individual_rehab')}
-                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
                               !isBankruptcyCase
                                 ? 'bg-blue-600 text-white shadow-xs'
                                 : 'text-slate-400 hover:text-white'
                             }`}
-                            title="개인회생 사건으로 전환 (변제계획안 모드)"
+                            title="개인회생 사건으로 전환"
                           >
                             <span>⚖️ 개인회생</span>
                             {!isBankruptcyCase && <span className="w-1.5 h-1.5 rounded-full bg-blue-200 animate-pulse" />}
@@ -2414,17 +2370,120 @@ export default function CrmTab({
                           <button
                             type="button"
                             onClick={() => handleSwitchCaseType('bankruptcy')}
-                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
                               isBankruptcyCase
                                 ? 'bg-purple-600 text-white shadow-xs'
                                 : 'text-slate-400 hover:text-white'
                             }`}
-                            title="개인파산·면책 사건으로 전환 (파산 관리 센터 모드)"
+                            title="개인파산·면책 사건으로 전환"
                           >
-                            <span>🏛️ 개인파산·면책</span>
+                            <span>🏛️ 개인파산</span>
                             {isBankruptcyCase && <span className="w-1.5 h-1.5 rounded-full bg-purple-200 animate-pulse" />}
                           </button>
                         </div>
+
+                        {/* 📁 실무 서식 보관함 드롭다운 (상단 산발적 버튼 8종을 깔끔한 단일 드롭다운으로 통합) */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setShowFormsDropdown(!showFormsDropdown)}
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs"
+                            title="자주 쓰는 실무 법원 서식 및 패키징 도구 전체보기"
+                          >
+                            <span>📁 실무 서식 보관함</span>
+                            <span className="text-[10px] text-slate-400">▾</span>
+                          </button>
+
+                          {showFormsDropdown && (
+                            <div className="absolute right-0 top-full mt-1.5 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-xl py-2 z-50 text-xs animate-fadeIn">
+                              <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 border-b border-slate-800">
+                                신속 실행 서식 및 패키징 도구
+                              </div>
+                              <div className="py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowBatchFilingModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>⚖️</span>
+                                  <span>전자소송 일괄 패키징 & CSV</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowCourtDocExportModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>📜</span>
+                                  <span>법원문서 8종 출력 (모바일 동의)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowPropertyValuationModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>🏛️</span>
+                                  <span>재산목록 산정 (D5102)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowIncomeExpenseModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>💰</span>
+                                  <span>수입·지출목록 (D5103)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowAncillaryModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>📋</span>
+                                  <span>부수신청서 (중지·면제·압류)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowPowerOfAttorneyModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>⚖️</span>
+                                  <span>소송위임장·지정서 발급</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowStatementSyncModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>✍️</span>
+                                  <span>고객 진술서 동기화</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowFormsDropdown(false); setShowPostCareModal(true); }}
+                                  className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <span>🏦</span>
+                                  <span>개시·사후관리 (가상계좌)</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 💬 우측 원스톱 고객 소통 패널 토글 버튼 */}
+                        <button
+                          type="button"
+                          onClick={() => setShowCommPanel(!showCommPanel)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs ${
+                            showCommPanel 
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                              : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                          }`}
+                          title="서류 수합과 고객 알림톡/메모를 동시에 처리하는 우측 패널 토글"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>고객 소통창</span>
+                          <span className="text-[10px] opacity-75">{showCommPanel ? 'ON' : 'OFF'}</span>
+                        </button>
                       </div>
                     </div>
                   );
@@ -2443,54 +2502,76 @@ export default function CrmTab({
 
                 {/* 5단계 파이프라인 중심 뷰 또는 기존 상세 서브탭 뷰 조건부 렌더링 */}
                 {pipelineViewMode === 'pipeline' ? (
-                  <div className="bg-slate-50/40 min-h-[600px]">
-                    {pipelineStage === 1 && (
-                      <Stage1ContractView
-                        clientRequest={selectedClient}
-                        crmExt={selectedExt}
-                        activeLawyer={activeLawyer}
-                        onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
-                        onAdvanceToNextStage={() => setPipelineStage(2)}
-                        onOpenContractSubTab={() => {
-                          setPipelineViewMode('subtabs');
-                          setDetailTab('contracts');
-                        }}
-                      />
-                    )}
-                    {pipelineStage === 2 && (
-                      <Stage2DocumentsHubView
-                        clientRequest={selectedClient}
-                        crmExt={selectedExt}
-                        onAdvanceToNextStage={() => setPipelineStage(3)}
-                        onOpenDocScanner={() => setShowDocScanner(true)}
-                      />
-                    )}
-                    {pipelineStage === 3 && (
-                      <Stage3FilingBundleView
-                        clientRequest={selectedClient}
-                        crmExt={selectedExt}
-                        onAdvanceToNextStage={() => setPipelineStage(4)}
-                        onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
-                        onOpenAncillaryModal={() => setShowAncillaryModal(true)}
-                      />
-                    )}
-                    {pipelineStage === 4 && (
-                      <Stage4CorrectionCenterView
-                        clientRequest={selectedClient}
-                        crmExt={selectedExt}
-                        onAdvanceToNextStage={() => setPipelineStage(5)}
-                        onOpenComprehensiveCorrectionModal={() => {
-                          setPipelineViewMode('subtabs');
-                          setDetailTab('corrections');
-                        }}
-                      />
-                    )}
-                    {pipelineStage === 5 && (
-                      <Stage5PostCareDischargeView
-                        clientRequest={selectedClient}
-                        crmExt={selectedExt}
-                        onOpenPostCareModal={() => setShowPostCareModal(true)}
-                      />
+                  <div className="flex flex-col xl:flex-row min-h-[650px] bg-slate-50/40">
+                    {/* 중앙 5단계 실무 캔버스 */}
+                    <div className="flex-1 min-w-0">
+                      {pipelineStage === 1 && (
+                        <Stage1ContractView
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          activeLawyer={activeLawyer}
+                          onUpdateStatus={(newStatus) => handleStatusChangeWithDropOff(selectedId, newStatus)}
+                          onAdvanceToNextStage={() => setPipelineStage(2)}
+                          onOpenContractSubTab={() => {
+                            setPipelineViewMode('subtabs');
+                            setDetailTab('contracts');
+                          }}
+                          onOpenPowerOfAttorneyModal={() => setShowPowerOfAttorneyModal(true)}
+                        />
+                      )}
+                      {pipelineStage === 2 && (
+                        <Stage2DocumentsHubView
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          onAdvanceToNextStage={() => setPipelineStage(3)}
+                          onOpenDocScanner={() => setShowDocScanner(true)}
+                          onOpenStatementSyncModal={() => setShowStatementSyncModal(true)}
+                        />
+                      )}
+                      {pipelineStage === 3 && (
+                        <Stage3FilingBundleView
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          onAdvanceToNextStage={() => setPipelineStage(4)}
+                          onOpenBatchFilingModal={() => setShowBatchFilingModal(true)}
+                          onOpenAncillaryModal={() => setShowAncillaryModal(true)}
+                          onOpenCourtDocExportModal={() => setShowCourtDocExportModal(true)}
+                          onOpenPropertyValuationModal={() => setShowPropertyValuationModal(true)}
+                          onOpenIncomeExpenseModal={() => setShowIncomeExpenseModal(true)}
+                        />
+                      )}
+                      {pipelineStage === 4 && (
+                        <Stage4CorrectionCenterView
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          onAdvanceToNextStage={() => setPipelineStage(5)}
+                          onOpenComprehensiveCorrectionModal={() => {
+                            setPipelineViewMode('subtabs');
+                            setDetailTab('corrections');
+                          }}
+                        />
+                      )}
+                      {pipelineStage === 5 && (
+                        <Stage5PostCareDischargeView
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          onOpenPostCareModal={() => setShowPostCareModal(true)}
+                        />
+                      )}
+                    </div>
+
+                    {/* 우측 원스톱 고객 소통 패널 (토글 지원) */}
+                    {showCommPanel && (
+                      <div className="w-full xl:w-[320px] shrink-0 border-t xl:border-t-0 xl:border-l border-slate-200/90 bg-white">
+                        <ClientCommunicationSidePanel
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          activeLawyer={activeLawyer}
+                          pipelineStage={pipelineStage}
+                          onAddNote={(text) => handleAddNote(text, 'general')}
+                          onClose={() => setShowCommPanel(false)}
+                        />
+                      </div>
                     )}
                   </div>
                 ) : (
