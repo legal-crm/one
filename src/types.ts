@@ -254,7 +254,11 @@ export interface FeeNotificationSettings {
 export type AlimtokMilestone =
   | 'consult_booked'      // 상담 접수
   | 'contract_signed'     // 수임계약 체결
-  | 'document_request'    // 서류 제출 요청
+  | 'document_request'    // 서류 제출 요청 (공통)
+  // ── 1차 / 2차 세분화 서류 마일스톤 ──
+  | 'doc_request_phase1'  // [1차] 개인회생 착수 기본서류 빠른등기 발송 안내
+  | 'doc_request_phase2'  // [2차] 1차 서류 수령 및 부채증명서 발급 착수 (2차 간편제출 안내)
+  | 'doc_phase2_reminder' // [2차] 부채증명서 발급 완료 임박 미제출 2차 서류 리마인더
   | 'court_filed'         // 법원 접수 완료
   | 'injunction_granted'  // 금지명령 결정
   | 'correction_order'    // 보정명령 안내
@@ -270,7 +274,23 @@ export type AlimtokMilestone =
 export const ALIMTOK_MILESTONE_CONFIG: Record<AlimtokMilestone, { label: string; emoji: string; template: string }> = {
   consult_booked:     { label: '상담 접수',     emoji: '📋', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 상담 요청이 접수되었습니다.\n\n📌 접수 일시: {{date}}\n📌 다음 단계: 담당 변호사가 확인 후 연락드리겠습니다.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
   contract_signed:    { label: '수임계약 체결', emoji: '📝', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 수임계약이 체결되었습니다.\n\n📌 다음 단계: 필요 서류를 안내해 드리겠습니다.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
-  document_request:   { label: '서류 요청',     emoji: '📂', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 아래 서류 제출을 부탁드립니다.\n\n{{documentList}}\n\n📌 제출 기한: {{deadline}}\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  document_request:   { label: '서류 요청(공통)', emoji: '📂', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 아래 서류 제출을 부탁드립니다.\n\n{{documentList}}\n\n📌 제출 기한: {{deadline}}\n\n▶ 진행상황 확인: {{trackingUrl}}' },
+  // 1차/2차 세분화 템플릿
+  doc_request_phase1: { 
+    label: '1차 등기서류 요청', 
+    emoji: '📮', 
+    template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 개인회생 신속 착수를 위한 [1차 기본서류] 안내드립니다.\n부채증명서 발급 대행(약 7일 소요)을 위해 아래 서류를 사무소로 빠른 등기 발송해 주세요.\n\n■ 1차 준비 서류 목록\n1. 주민등록등본 1부 (전체 포함)\n2. 주민등록초본 1부 (주소이력 포함)\n3. 가족관계증명서 1부 (상세)\n4. 혼인관계증명서 1부 (상세)\n5. 신분증 사본 (앞/뒤)\n6. 인감도장 (서명대체 불가)\n7. 인감증명서 {{creditorCount}}부 (채권사 {{creditorNum}}곳 + 5부)\n8. 세목별과세증명서 1부 (최근 5년, 본인/배우자)\n9. 자동차등록원부 갑/을 (차량 소유 시)\n\n📮 등기 발송 주소: {{firmAddress}}\n수신: {{firmName}} 개인회생팀 앞\n\n▶ 상세 발급가이드: {{trackingUrl}}' 
+  },
+  doc_request_phase2: { 
+    label: '2차 서류 간편제출', 
+    emoji: '📲', 
+    template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 1차 서류(인감 등)가 안전하게 도착했습니다.\n오늘부터 각 금융기관 부채증명서 발급(약 7일 소요)에 착수합니다.\n\n발급 기간 동안 아래 [2차 서류]를 모바일로 간편하게 촬영하여 업로드해 주세요.\n\n■ 2차 서류 (모바일 사진/파일 업로드 가능)\n- 주거래 통장 1년 입출금 거래내역\n- 보험가입내역 및 예상 해약환급금 확인서\n- 건강보험 자격득실확인서 & 납부확인서\n- 지적전산자료(내토지찾기 무소유증명)\n- 재직증명서 & 최근 6개월 급여명세서\n- 개인회생 진술서 및 임대차계약서 사본\n\n▶ 모바일 간편 제출: {{trackingUrl}}' 
+  },
+  doc_phase2_reminder: { 
+    label: '2차 서류 마감안내', 
+    emoji: '⏰', 
+    template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님, 금융기관 부채증명서 발급이 이번 주 중 완료될 예정입니다!\n완료 즉시 법원에 회생신청서 및 금지명령을 접수할 수 있도록 미제출 2차 서류({{unsubmittedCount}}건)의 업로드를 부탁드립니다.\n\n■ 미제출 서류: {{unsubmittedDocNames}}\n■ 제출 기한: {{deadline}}\n\n▶ 모바일 즉시 업로드: {{trackingUrl}}' 
+  },
   court_filed:        { label: '법원 접수',     emoji: '⚖️', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 {{caseType}} 사건이 법원에 접수되었습니다.\n\n📌 사건번호: {{caseNumber}}\n📌 다음 단계: 금지명령 결정 대기 (약 1~2주)\n\n▶ 진행상황 확인: {{trackingUrl}}' },
   injunction_granted: { label: '금지명령 결정', emoji: '🛡️', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 금지명령이 결정되었습니다.\n\n📌 효력: 채권자의 추심행위가 중단됩니다.\n📌 주의: 독촉 연락이 오면 즉시 알려주세요.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
   correction_order:   { label: '보정명령',     emoji: '📮', template: '{{firmName}} ({{lawyerName}} 변호사)\n\n{{clientName}}님의 사건에 보정명령이 내려졌습니다.\n\n📌 보정 내용: {{correctionDetail}}\n📌 제출 기한: {{deadline}}\n📌 담당 변호사가 보정서 작성 중입니다.\n\n▶ 진행상황 확인: {{trackingUrl}}' },
@@ -645,6 +665,8 @@ export interface DocumentCheckItem {
   checked: boolean;
   checkedBy?: string;
   checkedAt?: string;
+  phase?: 1 | 2;                        // 1차 실물 등기 vs 2차 디지털
+  submissionMethod?: 'POST_MAIL' | 'DIGITAL_UPLOAD' | 'DIRECT_VISIT';
   // ── 양방향 동기화 ──
   reviewStatus?: DocumentReviewStatus;  // 검토 상태
   linkedFileId?: string;                // 연결된 uploadedFile의 ID
@@ -782,7 +804,7 @@ export interface CrmClientExtension {
   historyDetail?: string;        // 과거 회생/파산/신복위 상세 이력
   inboundPath?: string;          // 유입 경로
   partnerId?: string;            // 연계 거래처/법률사무소 ID
-  reminders?: import('./leadTypes').ReminderItem[]; // 리마인더 목록
+  reminders?: import('./types/leadTypes').ReminderItem[]; // 리마인더 목록
   // ── 배정 지시 이력 ──
   assignmentDirectives?: AssignmentDirective[];
   // ── 부채증명서 발급 대행 관리 ──
