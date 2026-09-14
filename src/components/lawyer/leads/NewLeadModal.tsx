@@ -147,7 +147,7 @@ export default function NewLeadModal({
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-center gap-2.5 text-xs text-rose-800 animate-pulse">
               <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>
-                <strong>중복 번호 감지:</strong> 이미 {duplicateCheck.matchType === 'client' ? '고객 관리(CRM)' : '영업 DB'}에 등록된 번호입니다. ({duplicateCheck.matchedName})
+                <strong>중복 번호 감지:</strong> 이미 {duplicateCheck.matchType === 'client' ? '고객관리' : '영업 DB'}에 등록된 번호입니다. ({duplicateCheck.matchedName})
               </span>
             </div>
           )}

@@ -93,7 +93,7 @@ export default function LeadConversionModal({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                유의미한 상담이 성사된 리드를 고객 관리(CRM) 파이프라인으로 이전합니다.
+                유의미한 상담이 성사된 리드를 고객관리 파이프라인으로 이전합니다.
               </p>
             </div>
           </div>
@@ -227,7 +227,7 @@ export default function LeadConversionModal({
             className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-sm shadow-emerald-500/20 transition-all cursor-pointer press-scale active:scale-[0.98] flex items-center gap-1.5"
           >
             <Sparkles size={14} />
-            <span>{isSubmitting ? '이전 처리 중...' : '고객 관리(CRM)로 이전 확정'}</span>
+            <span>{isSubmitting ? '이전 처리 중...' : '고객관리로 이전 확정'}</span>
           </button>
         </div>
       </div>

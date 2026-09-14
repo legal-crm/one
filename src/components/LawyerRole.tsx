@@ -2609,10 +2609,10 @@ export default function LawyerRole({
                       ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20' 
                       : 'text-slate-300 hover:bg-white/5 hover:text-white font-medium'
                   }`}
-                  title={sidebarCollapsed ? '영업 관리 (DB/콜)' : undefined}
+                  title={sidebarCollapsed ? '영업관리' : undefined}
                 >
                   <PhoneCall className="w-5 h-5 shrink-0 text-blue-400" />
-                  {!sidebarCollapsed && <span className="truncate">영업 관리 (DB/콜)</span>}
+                  {!sidebarCollapsed && <span className="truncate">영업관리</span>}
                   {(() => {
                     const uncontacted = loadSalesLeads().filter(l => l.status === 'new').length;
                     if (uncontacted === 0) return null;
@@ -2637,10 +2637,10 @@ export default function LawyerRole({
                       ? 'bg-brand text-white font-bold shadow-md shadow-brand/20' 
                       : 'text-slate-300 hover:bg-white/5 hover:text-white font-medium'
                   }`}
-                  title={sidebarCollapsed ? '고객 관리 (CRM)' : undefined}
+                  title={sidebarCollapsed ? '고객관리' : undefined}
                 >
                   <Users className="w-5 h-5 shrink-0" />
-                  {!sidebarCollapsed && <span className="truncate">고객 관리 (CRM)</span>}
+                  {!sidebarCollapsed && <span className="truncate">고객관리</span>}
                   {requests.length > 0 && (
                     sidebarCollapsed ? (
                       <span className="absolute top-1.5 right-1.5 bg-slate-700 text-slate-200 rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold ring-2 ring-[#111827]">
@@ -3936,7 +3936,7 @@ export default function LawyerRole({
                       onClick={() => setActiveTab('client-crm')}
                       className="text-brand font-bold text-sm hover:underline press-scale cursor-pointer"
                     >
-                      고객 관리(CRM)에서 신규 의뢰 확인하기 →
+                      고객관리에서 신규 의뢰 확인하기 →
                     </button>
                   </div>
                 )}
@@ -6390,7 +6390,7 @@ export default function LawyerRole({
                                               onClick={() => {
                                                 setActiveChatReqId(m.card!.reqId);
                                                 setActiveTab('client-crm');
-                                                toast.info('플랫폼의 고객 관리(CRM) 탭으로 이동하여 의뢰인 상세 명세를 조회합니다.');
+                                                toast.info('플랫폼의 고객관리 탭으로 이동하여 의뢰인 상세 명세를 조회합니다.');
                                               }}
                                               className="py-1.5 bg-[#1C2836] hover:bg-[#253547] text-[#86959E] text-[10px] font-bold rounded-lg border border-[#2D3E50] transition-colors cursor-pointer"
                                             >

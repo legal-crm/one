@@ -280,7 +280,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                   onNavigateToCrm();
                   toast.info('고객 관리 CRM으로 이동했습니다. 계약을 진행할 고객을 선택해 주세요.');
                 } else {
-                  toast.info('좌측 [고객 관리 (CRM)] 메뉴에서 의뢰인을 선택하신 후 [전자계약] 탭에서 계약서를 작성해 주세요.');
+                  toast.info('좌측 [고객관리] 메뉴에서 의뢰인을 선택하신 후 [전자계약] 탭에서 계약서를 작성해 주세요.');
                 }
               }} 
               className="flex items-center gap-2 px-4 py-2.5 bg-[#1E3A5F] text-white font-bold rounded-xl hover:bg-[#162d4a] transition-colors cursor-pointer whitespace-nowrap min-h-[42px] shadow-xs text-xs"
@@ -467,7 +467,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-slate-400 space-y-2">
                     <p className="text-sm font-bold">조건에 맞는 전자 계약 내역이 없습니다.</p>
-                    <p className="text-xs text-slate-400">고객 관리(CRM)에서 새 계약을 생성하거나 필터를 변경해 보세요.</p>
+                    <p className="text-xs text-slate-400">고객관리에서 새 계약을 생성하거나 필터를 변경해 보세요.</p>
                   </td>
                 </tr>
               ) : (
