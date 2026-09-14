@@ -57,6 +57,18 @@ export default function Stage4FilingBundleView({
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt?.courtCase?.courtName || clientRequest.court || '서울회생법원';
 
+  // 8대 필수 서식 목록
+  const standardForms = [
+    { code: 'R01', name: '개인회생절차 개시신청서 본안', isReady: true, note: '당사자 기본 인적사항 및 관할법원 지정' },
+    { code: 'R02', name: '개인회생 채권자목록 (CSV)', isReady: true, note: '채권사 원금·이자 산정 및 CSV 변환 완료' },
+    { code: 'R06', name: '재산목록 (D5102)', isReady: true, note: '부동산, 자동차, 예금, 보험환급금 청산가치 산정' },
+    { code: 'R08', name: '수입 및 지출에 관한 목록 (D5103)', isReady: true, note: '중위소득 60% 기준 생계비 및 가용소득 확정' },
+    { code: 'R10', name: '진술서 (채무 증대 경위서)', isReady: true, note: 'AI 첨삭 및 신청인 확인 완료' },
+    { code: 'R04', name: '변제계획안 및 변제예정표', isReady: true, note: '법 제614조 제2항 최저변제율 충족' },
+    { code: 'R03', name: '소송위임장', isReady: true, note: '전자서명 체결 완료' },
+    { code: 'R07', name: '첨부서류 일체 (4대 발급처 증빙)', isReady: true, note: '수합 서류 번들링 완료' },
+  ];
+
   // 선행 조건 검증 헬퍼
   const checkPreconditions = async (): Promise<boolean> => {
     if (!hasProposalSent || !isContactShared) {
