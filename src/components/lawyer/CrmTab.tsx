@@ -6,7 +6,7 @@ import {
   FileText, Clock, AlertTriangle, X, Star, Download, Upload, RotateCcw, Check,
   Phone, Copy, Edit3, Sparkles, TrendingDown, Scale, Calculator,
   Building2, Home, AlertCircle, Calendar, BadgePercent, Coins, Briefcase,
-  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare
+  ShieldCheck, FileCheck2, ExternalLink, Camera, Eye, Lock, MessageSquare, KeyRound
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
@@ -43,6 +43,7 @@ import ClientStatementSyncModal from './statement/ClientStatementSyncModal';
 import LitigationPowerOfAttorneyModal from './petitions/LitigationPowerOfAttorneyModal';
 import { buildRepaymentPlan } from '../../services/repayment/repaymentCalculationEngine';
 import WorkflowPipelineStepper, { type PipelineStage } from './pipeline/WorkflowPipelineStepper';
+import CertificateVaultCard from './vault/CertificateVaultCard';
 import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
@@ -218,7 +219,7 @@ export default function CrmTab({
   const [bulkAssignee, setBulkAssignee] = useState('');
 
   // ── 활동 탭 ──
-  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court'>(initialDetailTab || 'info');
+  const [detailTab, setDetailTab] = useState<'info' | 'notes' | 'timeline' | 'tasks' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
   // ── 5단계 실무 파이프라인 상태 ──
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
   const [pipelineViewMode, setPipelineViewMode] = useState<'pipeline' | 'subtabs'>('pipeline');
@@ -2648,6 +2649,25 @@ export default function CrmTab({
                           )}
                         </div>
 
+                        {/* 🔐 의뢰인 인증서 안전 금고 바로가기 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPipelineViewMode('subtabs');
+                            setDetailTab('vault');
+                          }}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer press-scale whitespace-nowrap shadow-xs bg-emerald-600 hover:bg-emerald-500 text-white"
+                          title="의뢰인 공동인증서·금융인증서 안전 금고 열람"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>인증서 금고</span>
+                          {selectedExt.certificateVault?.npki && (
+                            <span className="text-[10px] bg-emerald-700/80 px-1.5 py-0.2 rounded font-mono">
+                              D-{selectedExt.certificateVault.npki.daysRemaining}
+                            </span>
+                          )}
+                        </button>
+
                         {/* 💬 우측 원스톱 고객 소통 패널 토글 버튼 */}
                         <button
                           type="button"
@@ -2817,6 +2837,12 @@ export default function CrmTab({
                         })() 
                       },
                       { key: 'documents', label: '문서', icon: '📁', count: (selectedExt.uploadedFiles || []).length > 0 ? (selectedExt.uploadedFiles || []).length : null },
+                      { 
+                        key: 'vault', 
+                        label: '인증서 금고', 
+                        icon: '🔐', 
+                        count: selectedExt.certificateVault?.npki ? `D-${selectedExt.certificateVault.npki.daysRemaining}` : null 
+                      },
                       { 
                         key: 'debt-certs', 
                         label: '부채증명서', 
@@ -3913,6 +3939,16 @@ export default function CrmTab({
                           </div>
                         )}
 
+                        {/* ── 의뢰인 인증서 안전 금고 위젯 (문서 탭 상단) ── */}
+                        <CertificateVaultCard
+                          clientId={selectedId}
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          onUpdateCrmExt={async (patch) => {
+                            await updateCrmExt(selectedId, patch);
+                          }}
+                        />
+
                         {/* Progress Dashboard */}
                         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
                           <div className="flex items-center justify-between mb-2">
@@ -4325,6 +4361,20 @@ export default function CrmTab({
                       }}
                       activeLawyerName={activeLawyer.name}
                     />
+                  )}
+
+                  {/* ══════════ [인증서] 의뢰인 공동인증서·금융인증서 안전 금고 전용 탭 ══════════ */}
+                  {detailTab === 'vault' && selectedClient && (
+                    <div className="space-y-4">
+                      <CertificateVaultCard
+                        clientId={selectedId}
+                        clientRequest={selectedClient}
+                        crmExt={selectedExt}
+                        onUpdateCrmExt={async (updates) => {
+                          await updateCrmExt(selectedId, updates);
+                        }}
+                      />
+                    </div>
                   )}
 
                   {/* ══════════ [9] 부채증명서 발급 대행 탭 ══════════ */}
